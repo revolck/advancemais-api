@@ -1,8 +1,13 @@
+// src/app.module.ts
 import { Module } from "@nestjs/common";
-import { PrismaService } from "./prisma.service";
+import { AppController } from "./app.controller";
+import { AppService } from "./app.service";
+import { PrismaService } from "./prisma/prisma.service";
 
 @Module({
-  providers: [PrismaService],
-  exports: [PrismaService],
+  imports: [],
+  controllers: [AppController],
+  providers: [AppService, PrismaService],
+  exports: [PrismaService], // Exporta para ser usado por outros módulos
 })
 export class AppModule {}

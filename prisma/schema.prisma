@@ -13,3 +13,101 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// Enum para status geral (ativo/inativo)
+enum Status {
+  ATIVO
+  INATIVO
+}
+
+// Enum para tipos de usuário
+enum TipoUsuario {
+  PESSOA_FISICA
+  PESSOA_JURIDICA
+}
+
+// Enum para logs de auditoria
+enum TipoAcao {
+  LOGIN
+  LOGOUT
+  CRIACAO
+  ATUALIZACAO
+  EXCLUSAO
+  ACESSO_NEGADO
+}
+
+// Modelo principal de usuário
+model Usuario {
+  id           String      @id @default(uuid())
+  email        String      @unique @db.VarChar(255)
+  senha        String      @db.VarChar(255) // Hash com Argon2
+  tipoUsuario  TipoUsuario
+  matricula    String      @unique @db.VarChar(10) // Formato: AD158KJ
+  refreshToken String?     @db.Text
+  status       Status      @default(ATIVO)
+  criadoEm     DateTime    @default(now())
+  atualizadoEm DateTime    @updatedAt
+  ultimoLogin  DateTime?
+  
+  // Dados pessoais opcionais (expandir conforme necessário)
+  nome         String?     @db.VarChar(255)
+  telefone     String?     @db.VarChar(20)
+  
+  // Relacionamentos futuros
+  perfil       PerfilUsuario?
+  logs         LogAuditoria[]
+  
+  // Índices para performance
+  @@map("usuarios")
+}
+
+// Perfil estendido do usuário (separar dados sensíveis)
+model PerfilUsuario {
+  id           String   @id @default(uuid())
+  usuarioId    String   @unique
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  
+  // Campos específicos por tipo
+  cpf          String?  @unique @db.VarChar(11)  // Para PESSOA_FISICA
+  cnpj         String?  @unique @db.VarChar(14)  // Para PESSOA_JURIDICA
+  razaoSocial  String?  @db.VarChar(255)         // Para PESSOA_JURIDICA
+  
+  endereco     String?  @db.VarChar(500)
+  cidade       String?  @db.VarChar(100)
+  estado       String?  @db.VarChar(2)
+  cep          String?  @db.VarChar(8)
+  
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+  
+  @@map("perfis_usuarios")
+}
+
+// Log de auditoria para rastreabilidade
+model LogAuditoria {
+  id         String    @id @default(uuid())
+  usuarioId  String?
+  usuario    Usuario?  @relation(fields: [usuarioId], references: [id])
+  
+  acao       TipoAcao
+  descricao  String    @db.Text
+  ipAddress  String?   @db.VarChar(45) // IPv4 ou IPv6
+  userAgent  String?   @db.Text
+  
+  criadoEm   DateTime  @default(now())
+  
+  // Índice para consultas por usuário e data
+  @@index([usuarioId, criadoEm])
+  @@map("logs_auditoria")
+}
+
+// Tabela para controle de rate limiting (futura)
+model RateLimit {
+  id         String   @id @default(uuid())
+  chave      String   @unique @db.VarChar(255) // IP ou user ID
+  tentativas Int      @default(0)
+  ultimaTentativa DateTime @default(now())
+  bloqueadoAte DateTime?
+  
+  @@map("rate_limits")
+}

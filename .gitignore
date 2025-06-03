@@ -1,58 +1,87 @@
-# compiled output
-/dist
-/node_modules
-/build
+# 📁 .gitignore
+# 🚫 Arquivos e pastas que NÃO devem ser commitados
 
-# Logs
-logs
+# 🗂️ Dependências
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+
+# 🏗️ Build e distribuição
+dist/
+build/
+out/
+.next/
+
+# 🗄️ Banco de dados e Prisma
+generated/
+prisma/migrations/
+*.db
+*.sqlite
+
+# 🔐 Variáveis de ambiente (CRÍTICO - NUNCA COMMITAR)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 📊 Logs
+logs/
 *.log
 npm-debug.log*
-pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
-# OS
+# 🖥️ Sistema operacional
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-# Tests
-/coverage
-/.nyc_output
-
-# IDEs and editors
-/.idea
-.project
-.classpath
-.c9/
-*.launch
-.settings/
-*.sublime-workspace
-
-# IDE - VSCode
-.vscode/*
+# 💻 IDEs e editores
+.vscode/
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
 
-# dotenv environment variable files
-.env
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
+# 🧪 Testes e coverage
+coverage/
+.nyc_output/
+.jest/
 
-# temp directory
-.temp
-.tmp
+# 📦 Cache
+.cache/
+.parcel-cache/
+.eslintcache
 
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
+# 🔧 Temporários
+.tmp/
+.temp/
+*.tgz
+*.tar.gz
 
-# Diagnostic reports (https://nodejs.org/api/report.html)
-report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+# 🚀 Deploy
+.vercel/
+.netlify/
 
-/generated/prisma
+# 📱 React Native
+.expo/
+.expo-shared/
+
+# 🔒 Arquivos sensíveis
+*.pem
+*.key
+*.cert
+secrets.json

@@ -4,10 +4,8 @@ import {
   Body,
   HttpCode,
   HttpStatus,
-  Req,
   UseGuards,
 } from '@nestjs/common';
-import { Request } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
@@ -20,19 +18,21 @@ import { AuthenticatedUser } from '../../common/types/request.interface';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  /**
+   * 🔐 Endpoint de login
+   * POST /api/v1/auth/login
+   */
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(
-    @Body() loginDto: LoginDto,
-    @Req() request: Request,
-  ): Promise<AuthResponseDto> {
-    const ip = request.ip || request.connection.remoteAddress;
-    const userAgent = request.get('User-Agent');
-
-    return this.authService.login(loginDto, ip, userAgent);
+  async login(@Body() loginDto: LoginDto): Promise<AuthResponseDto> {
+    return this.authService.login(loginDto);
   }
 
+  /**
+   * 🔄 Endpoint para renovar access token
+   * POST /api/v1/auth/refresh
+   */
   @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
@@ -42,19 +42,21 @@ export class AuthController {
     return this.authService.refreshToken(refreshTokenDto);
   }
 
+  /**
+   * 🚪 Endpoint de logout
+   * POST /api/v1/auth/logout
+   */
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async logout(
-    @CurrentUser() user: AuthenticatedUser,
-    @Req() request: Request,
-  ): Promise<void> {
-    const ip = request.ip || request.connection.remoteAddress;
-    const userAgent = request.get('User-Agent');
-
-    return this.authService.logout(user.id, ip, userAgent);
+  async logout(@CurrentUser() user: AuthenticatedUser): Promise<void> {
+    return this.authService.logout(user.id);
   }
 
+  /**
+   * 👤 Endpoint para obter dados do usuário logado
+   * GET /api/v1/auth/me
+   */
   @UseGuards(JwtAuthGuard)
   @Post('me')
   @HttpCode(HttpStatus.OK)

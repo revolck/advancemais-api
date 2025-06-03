@@ -1,9 +1,8 @@
-// src/modules/auth/auth.service.ts
 import {
   Injectable,
   UnauthorizedException,
-  BadRequestException,
   Logger,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseService } from '../../database/database.service';
@@ -12,7 +11,6 @@ import { JwtUtil } from '../../utils/jwt.util';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
-import { AuditoriaService } from '../auditoria/auditoria.service';
 
 @Injectable()
 export class AuthService {
@@ -21,135 +19,127 @@ export class AuthService {
   constructor(
     private database: DatabaseService,
     private configService: ConfigService,
-    private auditoriaService: AuditoriaService,
   ) {}
 
-  async login(
-    loginDto: LoginDto,
-    ip?: string,
-    userAgent?: string,
-  ): Promise<AuthResponseDto> {
+  /**
+   * 🔐 Realiza login do usuário
+   */
+  async login(loginDto: LoginDto): Promise<AuthResponseDto> {
     const { email, senha } = loginDto;
 
-    // Buscar usuário
-    const usuario = await this.database.usuario.findUnique({
-      where: { email },
-      select: {
-        id: true,
-        email: true,
-        senha: true,
-        matricula: true,
-        tipoUsuario: true,
-        status: true,
-        nome: true,
-      },
-    });
-
-    if (!usuario) {
-      // Log de tentativa de login com email inexistente
-      await this.auditoriaService.criarLog({
-        acao: 'ACESSO_NEGADO',
-        descricao: `Tentativa de login com email não cadastrado: ${email}`,
-        ipAddress: ip,
-        userAgent,
+    try {
+      // Buscar usuário no banco MySQL
+      const usuario = await this.database.usuario.findUnique({
+        where: { email },
+        select: {
+          id: true,
+          email: true,
+          senha: true,
+          matricula: true,
+          tipoUsuario: true,
+          status: true,
+          nome: true,
+        },
       });
 
-      throw new UnauthorizedException('Credenciais inválidas');
-    }
+      if (!usuario) {
+        throw new UnauthorizedException('Credenciais inválidas');
+      }
 
-    // Verificar se usuário está ativo
-    if (usuario.status !== 'ATIVO') {
-      await this.auditoriaService.criarLog({
-        usuarioId: usuario.id,
-        acao: 'ACESSO_NEGADO',
-        descricao: 'Tentativa de login com usuário inativo',
-        ipAddress: ip,
-        userAgent,
+      // Verificar se usuário está ativo
+      if (usuario.status !== 'ATIVO') {
+        throw new UnauthorizedException('Usuário inativo');
+      }
+
+      // Verificar senha
+      const senhaValida = await HashUtil.verificarHash(usuario.senha, senha);
+      if (!senhaValida) {
+        throw new UnauthorizedException('Credenciais inválidas');
+      }
+
+      // Obter configurações JWT
+      const jwtSecret = this.configService.get<string>('jwt.secret');
+      const jwtExpiresIn = this.configService.get<string>('jwt.expiresIn');
+      const refreshSecret = this.configService.get<string>('jwt.refreshSecret');
+      const refreshExpiresIn = this.configService.get<string>(
+        'jwt.refreshExpiresIn',
+      );
+
+      if (!jwtSecret || !refreshSecret) {
+        this.logger.error('Configurações JWT não encontradas');
+        throw new InternalServerErrorException('Erro interno de configuração');
+      }
+
+      // Gerar tokens
+      const accessToken = await JwtUtil.gerarToken(
+        {
+          sub: usuario.id,
+          email: usuario.email,
+          tipoUsuario: usuario.tipoUsuario,
+          matricula: usuario.matricula,
+        },
+        jwtSecret,
+        jwtExpiresIn || '15m',
+      );
+
+      const refreshToken = await JwtUtil.gerarRefreshToken(
+        usuario.id,
+        refreshSecret,
+        refreshExpiresIn || '7d',
+      );
+
+      // Salvar refresh token no banco
+      await this.database.usuario.update({
+        where: { id: usuario.id },
+        data: {
+          refreshToken,
+          ultimoLogin: new Date(),
+        },
       });
 
-      throw new UnauthorizedException('Usuário inativo');
-    }
+      this.logger.log(
+        `Login realizado: ${usuario.email} (${usuario.matricula})`,
+      );
 
-    // Verificar senha
-    const senhaValida = await HashUtil.verificarHash(usuario.senha, senha);
-    if (!senhaValida) {
-      await this.auditoriaService.criarLog({
-        usuarioId: usuario.id,
-        acao: 'ACESSO_NEGADO',
-        descricao: 'Tentativa de login com senha incorreta',
-        ipAddress: ip,
-        userAgent,
-      });
-
-      throw new UnauthorizedException('Credenciais inválidas');
-    }
-
-    // Gerar tokens
-    const jwtSecret = this.configService.get<string>('jwt.secret');
-    const jwtExpiresIn = this.configService.get<string>('jwt.expiresIn');
-    const refreshSecret = this.configService.get<string>('jwt.refreshSecret');
-    const refreshExpiresIn = this.configService.get<string>(
-      'jwt.refreshExpiresIn',
-    );
-
-    const accessToken = await JwtUtil.gerarToken(
-      {
-        sub: usuario.id,
-        email: usuario.email,
-        tipoUsuario: usuario.tipoUsuario,
-        matricula: usuario.matricula,
-      },
-      jwtSecret,
-      jwtExpiresIn,
-    );
-
-    const refreshToken = await JwtUtil.gerarRefreshToken(
-      usuario.id,
-      refreshSecret,
-      refreshExpiresIn,
-    );
-
-    // Salvar refresh token no banco
-    await this.database.usuario.update({
-      where: { id: usuario.id },
-      data: {
+      return {
+        accessToken,
         refreshToken,
-        ultimoLogin: new Date(),
-      },
-    });
-
-    // Log de login bem-sucedido
-    await this.auditoriaService.criarLog({
-      usuarioId: usuario.id,
-      acao: 'LOGIN',
-      descricao: `Login realizado com sucesso`,
-      ipAddress: ip,
-      userAgent,
-    });
-
-    this.logger.log(`Login realizado: ${usuario.email} (${usuario.matricula})`);
-
-    return {
-      accessToken,
-      refreshToken,
-      usuario: {
-        id: usuario.id,
-        email: usuario.email,
-        matricula: usuario.matricula,
-        tipoUsuario: usuario.tipoUsuario,
-        nome: usuario.nome,
-      },
-    };
+        usuario: {
+          id: usuario.id,
+          email: usuario.email,
+          matricula: usuario.matricula,
+          tipoUsuario: usuario.tipoUsuario,
+          nome: usuario.nome,
+        },
+      };
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      this.logger.error('Erro no login:', error);
+      throw new InternalServerErrorException('Erro interno no servidor');
+    }
   }
 
+  /**
+   * 🔄 Atualiza access token usando refresh token
+   */
   async refreshToken(
     refreshTokenDto: RefreshTokenDto,
   ): Promise<AuthResponseDto> {
     const { refreshToken } = refreshTokenDto;
 
     try {
-      // Verificar refresh token
+      // Obter configurações
       const refreshSecret = this.configService.get<string>('jwt.refreshSecret');
+
+      if (!refreshSecret) {
+        throw new InternalServerErrorException(
+          'Configuração de refresh token não encontrada',
+        );
+      }
+
+      // Verificar refresh token
       const payload = await JwtUtil.verificarToken(refreshToken, refreshSecret);
 
       // Buscar usuário
@@ -176,13 +166,20 @@ export class AuthService {
         throw new UnauthorizedException('Usuário inativo');
       }
 
-      // Gerar novos tokens
+      // Obter configurações JWT
       const jwtSecret = this.configService.get<string>('jwt.secret');
       const jwtExpiresIn = this.configService.get<string>('jwt.expiresIn');
       const refreshExpiresIn = this.configService.get<string>(
         'jwt.refreshExpiresIn',
       );
 
+      if (!jwtSecret) {
+        throw new InternalServerErrorException(
+          'Configuração JWT não encontrada',
+        );
+      }
+
+      // Gerar novos tokens
       const accessToken = await JwtUtil.gerarToken(
         {
           sub: usuario.id,
@@ -191,13 +188,13 @@ export class AuthService {
           matricula: usuario.matricula,
         },
         jwtSecret,
-        jwtExpiresIn,
+        jwtExpiresIn || '15m',
       );
 
       const newRefreshToken = await JwtUtil.gerarRefreshToken(
         usuario.id,
         refreshSecret,
-        refreshExpiresIn,
+        refreshExpiresIn || '7d',
       );
 
       // Atualizar refresh token no banco
@@ -218,39 +215,30 @@ export class AuthService {
         },
       };
     } catch (error) {
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof InternalServerErrorException
+      ) {
+        throw error;
+      }
       throw new UnauthorizedException('Refresh token inválido');
     }
   }
 
-  async logout(userId: string, ip?: string, userAgent?: string): Promise<void> {
-    // Remover refresh token
-    await this.database.usuario.update({
-      where: { id: userId },
-      data: { refreshToken: null },
-    });
+  /**
+   * 🚪 Realiza logout do usuário
+   */
+  async logout(userId: string): Promise<void> {
+    try {
+      await this.database.usuario.update({
+        where: { id: userId },
+        data: { refreshToken: null },
+      });
 
-    // Log de logout
-    await this.auditoriaService.criarLog({
-      usuarioId: userId,
-      acao: 'LOGOUT',
-      descricao: 'Logout realizado',
-      ipAddress: ip,
-      userAgent,
-    });
-
-    this.logger.log(`Logout realizado: ${userId}`);
-  }
-
-  async validateUser(email: string, senha: string): Promise<any> {
-    const usuario = await this.database.usuario.findUnique({
-      where: { email },
-    });
-
-    if (usuario && (await HashUtil.verificarHash(usuario.senha, senha))) {
-      const { senha: _, ...result } = usuario;
-      return result;
+      this.logger.log(`Logout realizado: ${userId}`);
+    } catch (error) {
+      this.logger.error('Erro no logout:', error);
+      throw new InternalServerErrorException('Erro ao realizar logout');
     }
-
-    return null;
   }
 }

@@ -9,7 +9,11 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     super();
   }
 
+  /**
+   * 🔍 Verifica se o endpoint pode ser acessado
+   */
   canActivate(context: ExecutionContext) {
+    // Verifica se o endpoint é público
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),

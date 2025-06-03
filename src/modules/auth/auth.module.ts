@@ -5,11 +5,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { AuditoriaModule } from '../auditoria/auditoria.module';
 
 @Module({
   imports: [
+    // Configuração do Passport
     PassportModule.register({ defaultStrategy: 'jwt' }),
+
+    // Configuração do JWT de forma assíncrona
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -20,7 +22,6 @@ import { AuditoriaModule } from '../auditoria/auditoria.module';
       }),
       inject: [ConfigService],
     }),
-    AuditoriaModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

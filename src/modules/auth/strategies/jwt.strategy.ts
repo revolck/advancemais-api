@@ -11,34 +11,48 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private configService: ConfigService,
     private database: DatabaseService,
   ) {
+    const jwtSecret = configService.get<string>('jwt.secret');
+
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET não configurado no ambiente');
+    }
+
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('jwt.secret'),
+      secretOrKey: jwtSecret,
     });
   }
 
+  /**
+   * ✅ Valida payload do JWT e retorna dados do usuário
+   * 🔧 CORREÇÃO: Agora o database.usuario existe porque DatabaseService herda do PrismaClient
+   */
   async validate(payload: JwtPayload) {
-    const usuario = await this.database.usuario.findUnique({
-      where: { id: payload.sub },
-      select: {
-        id: true,
-        email: true,
-        matricula: true,
-        tipoUsuario: true,
-        status: true,
-        nome: true,
-      },
-    });
+    try {
+      const usuario = await this.database.usuario.findUnique({
+        where: { id: payload.sub },
+        select: {
+          id: true,
+          email: true,
+          matricula: true,
+          tipoUsuario: true,
+          status: true,
+          nome: true,
+        },
+      });
 
-    if (!usuario) {
-      throw new UnauthorizedException('Usuário não encontrado');
+      if (!usuario) {
+        throw new UnauthorizedException('Usuário não encontrado');
+      }
+
+      if (usuario.status !== 'ATIVO') {
+        throw new UnauthorizedException('Usuário inativo');
+      }
+
+      return usuario;
+    } catch (error) {
+      throw new UnauthorizedException('Token inválido');
     }
-
-    if (usuario.status !== 'ATIVO') {
-      throw new UnauthorizedException('Usuário inativo');
-    }
-
-    return usuario;
   }
 }

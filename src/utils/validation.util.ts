@@ -1,6 +1,6 @@
 export class ValidationUtil {
   /**
-   * Valida formato de email
+   * 📧 Valida formato de email
    */
   static validarEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -8,7 +8,7 @@ export class ValidationUtil {
   }
 
   /**
-   * Valida força da senha
+   * 🔒 Valida força da senha
    */
   static validarSenha(senha: string): { valida: boolean; erros: string[] } {
     const erros: string[] = [];
@@ -33,14 +33,11 @@ export class ValidationUtil {
       erros.push('Senha deve conter pelo menos um caractere especial');
     }
 
-    return {
-      valida: erros.length === 0,
-      erros,
-    };
+    return { valida: erros.length === 0, erros };
   }
 
   /**
-   * Gera matrícula única no formato AD123XY
+   * 🎯 Gera matrícula única no formato AD123XY
    */
   static gerarMatricula(): string {
     const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -48,12 +45,12 @@ export class ValidationUtil {
 
     let matricula = 'AD';
 
-    // 3 números
+    // 3 números aleatórios
     for (let i = 0; i < 3; i++) {
       matricula += numeros[Math.floor(Math.random() * numeros.length)];
     }
 
-    // 2 letras
+    // 2 letras aleatórias
     for (let i = 0; i < 2; i++) {
       matricula += letras[Math.floor(Math.random() * letras.length)];
     }
@@ -62,7 +59,7 @@ export class ValidationUtil {
   }
 
   /**
-   * Valida CPF
+   * 🆔 Valida CPF brasileiro
    */
   static validarCPF(cpf: string): boolean {
     cpf = cpf.replace(/[^\d]/g, '');
@@ -91,7 +88,7 @@ export class ValidationUtil {
   }
 
   /**
-   * Valida CNPJ
+   * 🏢 Valida CNPJ brasileiro
    */
   static validarCNPJ(cnpj: string): boolean {
     cnpj = cnpj.replace(/[^\d]/g, '');

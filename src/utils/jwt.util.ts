@@ -1,19 +1,19 @@
 import { SignJWT, jwtVerify } from 'jose';
 
 export interface JwtPayload {
-  sub: string; // user ID
-  email: string;
-  tipoUsuario: string;
-  matricula: string;
-  iat?: number;
-  exp?: number;
+  sub: string; // ID do usuário
+  email: string; // Email do usuário
+  tipoUsuario: string; // Tipo do usuário
+  matricula: string; // Matrícula única
+  iat?: number; // Issued at
+  exp?: number; // Expires at
 }
 
 export class JwtUtil {
   private static textEncoder = new TextEncoder();
 
   /**
-   * Gera token JWT usando jose
+   * 🔐 Gera token JWT assinado usando jose
    */
   static async gerarToken(
     payload: Omit<JwtPayload, 'iat' | 'exp'>,
@@ -30,7 +30,7 @@ export class JwtUtil {
   }
 
   /**
-   * Verifica e decodifica token JWT
+   * ✅ Verifica e decodifica token JWT
    */
   static async verificarToken(
     token: string,
@@ -40,14 +40,34 @@ export class JwtUtil {
 
     try {
       const { payload } = await jwtVerify(token, secretKey);
-      return payload as JwtPayload;
+
+      // Validar propriedades necessárias e converter corretamente
+      if (
+        typeof payload.sub === 'string' &&
+        typeof payload.email === 'string' &&
+        typeof payload.tipoUsuario === 'string' &&
+        typeof payload.matricula === 'string'
+      ) {
+        return {
+          sub: payload.sub,
+          email: payload.email,
+          tipoUsuario: payload.tipoUsuario,
+          matricula: payload.matricula,
+          iat: payload.iat,
+          exp: payload.exp,
+        };
+      }
+
+      throw new Error(
+        'Payload do token não contém as propriedades necessárias',
+      );
     } catch (error) {
-      throw new Error(`Token inválido: ${error.message}`);
+      throw new Error(`Token JWT inválido: ${error.message}`);
     }
   }
 
   /**
-   * Gera refresh token
+   * 🔄 Gera refresh token
    */
   static async gerarRefreshToken(
     userId: string,

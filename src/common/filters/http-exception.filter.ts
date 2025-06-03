@@ -26,6 +26,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message: exception.message || null,
     };
 
+    // Log detalhado para erros de servidor
     if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
       this.logger.error(
         `${request.method} ${request.url}`,

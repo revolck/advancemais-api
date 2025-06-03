@@ -1,0 +1,45 @@
+src/
+├── 📁 config/              # Configurações da aplicação
+│   ├── app.config.ts       # Configurações gerais
+│   ├── database.config.ts  # Configurações do banco
+│   └── jwt.config.ts       # Configurações JWT
+│
+├── 📁 database/            # Conexão e serviços do banco
+│   ├── database.module.ts  # Módulo global do Prisma
+│   └── database.service.ts # Serviço do Prisma
+│
+├── 📁 modules/             # Módulos da aplicação
+│   ├── 📁 auth/           # Autenticação
+│   │   ├── auth.module.ts
+│   │   ├── auth.controller.ts
+│   │   ├── auth.service.ts
+│   │   ├── 📁 dto/        # Data Transfer Objects
+│   │   └── 📁 strategies/ # Estratégias do Passport
+│   │
+│   ├── 📁 usuarios/       # Gestão de usuários
+│   │   ├── usuarios.module.ts
+│   │   ├── usuarios.controller.ts
+│   │   ├── usuarios.service.ts
+│   │   └── 📁 dto/
+│   │
+│   └── 📁 auditoria/      # Logs e auditoria
+│       ├── auditoria.module.ts
+│       ├── auditoria.service.ts
+│       └── 📁 dto/
+│
+├── 📁 common/              # Recursos compartilhados
+│   ├── 📁 decorators/     # Decorators customizados
+│   ├── 📁 guards/         # Guards de autenticação
+│   ├── 📁 interceptors/   # Interceptors
+│   ├── 📁 filters/        # Filtros de exceção
+│   └── 📁 types/          # Tipos TypeScript
+│
+├── 📁 utils/               # Utilitários
+│   ├── hash.util.ts       # Funções de hash (Argon2)
+│   ├── jwt.util.ts        # Funções JWT (jose)
+│   └── validation.util.ts # Validações customizadas
+│
+├── app.module.ts           # Módulo principal
+├── app.controller.ts       # Controller principal
+├── app.service.ts         # Service principal
+└── main.ts                # Ponto de entrada

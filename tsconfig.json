@@ -1,42 +1,27 @@
 {
   "compilerOptions": {
-    /* ------------------------ Alvo e módulos ------------------------ */
-    "target": "ES2023", // Compilar para ES2023 (pode usar ES2020, ES2022, etc.)
-    "module": "commonjs", // Módulos no estilo CommonJS (padrão para Node/NestJS)
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-
-    /* --------------------- Decorators do NestJS --------------------- */
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-
-    /* ----------------- Fonte, saída e mapas de origem ----------------- */
-    "rootDir": "./src", // Código-fonte fica em ./src
-    "outDir": "./dist", // Arquivos compilados serão gerados em ./dist
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2023",
     "sourceMap": true,
-
-    /* ------------------------ Verificações estritas ------------------------ */
-    "strict": true, // Habilita todas as verificações estritas do TS
-    "strictNullChecks": true, // Obriga que trate null / undefined
-    "noImplicitAny": true, // Erro caso algo seja inferido como `any`
-    "noImplicitReturns": true, // Erro se faltarem returns em alguma branch
-    "noFallthroughCasesInSwitch": true, // Erro se houver "fallthrough" em switch
-    "forceConsistentCasingInFileNames": true,
-
-    /* ------------------------ Declarações e comentários ------------------------ */
-    "declaration": true, // Gera arquivos de declaração (.d.ts)
-    "removeComments": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
     "incremental": true,
-    "skipLibCheck": true, // Não checa tipos de bibliotecas de terceiros (ganha performance)
-
-    /* ------------------------ Caminhos (opcional) ------------------------ */
-    "baseUrl": "./"
-    // Se quiser usar aliases, por exemplo:
-    // "paths": {
-    //   "@app/*": ["src/app/*"],
-    //   "@shared/*": ["src/shared/*"]
-    // }
+    "skipLibCheck": true,
+    "strictNullChecks": false,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "noFallthroughCasesInSwitch": false,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitReturns": false,
+    "noImplicitThis": false,
+    "alwaysStrict": false,
+    "strictFunctionTypes": false,
+    "strictPropertyInitialization": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

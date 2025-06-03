@@ -1,33 +1,38 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 
-// Configurações
+// 📋 Configurações
 import { appConfig } from './config/app.config';
 import { databaseConfig } from './config/database.config';
 import { jwtConfig } from './config/jwt.config';
 
-// Módulos
+// 🗄️ Módulos
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { UsuariosModule } from './modules/usuarios/usuarios.module';
-import { AuditoriaModule } from './modules/auditoria/auditoria.module';
+import { SiteModule } from './modules/site/site.module'; // 🆕 Novo módulo
 
-// Controllers e Services básicos
+// 🛡️ Guards, Filters e Interceptors
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+
+// 🎮 Controllers e Services básicos
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
 @Module({
   imports: [
-    // Configuração global
+    // 🌐 Configuração global do environment
     ConfigModule.forRoot({
       isGlobal: true,
       load: [appConfig, databaseConfig, jwtConfig],
       envFilePath: ['.env.local', '.env'],
+      expandVariables: true,
     }),
 
-    // Rate Limiting (proteção contra ataques)
+    // 🛡️ Rate Limiting
     ThrottlerModule.forRoot([
       {
         name: 'short',
@@ -46,19 +51,42 @@ import { AppService } from './app.service';
       },
     ]),
 
-    // Módulos da aplicação
+    // 📦 Módulos da aplicação
     DatabaseModule,
     AuthModule,
-    UsuariosModule,
-    AuditoriaModule,
+    SiteModule, // 🆕 Módulo do site adicionado
+
+    // 🔮 Módulos futuros
+    // UsuariosModule,
+    // AuditoriaModule,
+    // MercadoPagoModule,
+    // BrevoModule,
+    // GoogleMeetModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
-    // Rate Limiting global
+
+    // 🛡️ Guards globais
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+
+    // 🔍 Filtros globais
+    {
+      provide: APP_FILTER,
+      useClass: HttpExceptionFilter,
+    },
+
+    // 📊 Interceptors globais
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LoggingInterceptor,
     },
   ],
 })

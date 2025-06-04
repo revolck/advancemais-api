@@ -42,11 +42,12 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async login(
     @Body() loginDto: LoginDto,
-    @Ip() ipAddress: string,
-    @Headers('user-agent') userAgent: string,
+    @Ip() _ipAddress: string, // 🔧 CORREÇÃO: prefixo _ para indicar não utilizado
+    @Headers('user-agent') _userAgent: string, // 🔧 CORREÇÃO: prefixo _ para indicar não utilizado
   ): Promise<AuthResponseDto> {
     // TODO: Implementar rate limiting por IP
     // TODO: Registrar tentativas de login para auditoria
+    // TODO: Utilizar ipAddress e userAgent para logs de segurança
 
     return this.authService.login(loginDto);
   }

@@ -79,11 +79,11 @@ export class FiltrarBanimentosDto {
 
   @IsString({ message: 'Página deve ser uma string' })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value) || 1)
+  @Transform(({ value }) => parseInt(value as string, 10) || 1) // 🔧 CORREÇÃO: cast explícito
   pagina?: number;
 
   @IsString({ message: 'Limite deve ser uma string' })
   @IsOptional()
-  @Transform(({ value }) => Math.min(parseInt(value) || 10, 100))
+  @Transform(({ value }) => Math.min(parseInt(value as string, 10) || 10, 100)) // 🔧 CORREÇÃO: cast explícito
   limite?: number;
 }

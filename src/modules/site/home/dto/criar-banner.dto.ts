@@ -1,4 +1,4 @@
-import { IsString, IsUrl, IsNotEmpty, IsInt, Min } from 'class-validator';
+import { IsUrl, IsNotEmpty, IsInt, Min } from 'class-validator';
 
 export class CriarBannerDto {
   @IsUrl({}, { message: 'URL da imagem deve ser válida' })

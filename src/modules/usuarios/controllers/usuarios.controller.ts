@@ -16,7 +16,6 @@ import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { CurrentUser } from '../../../common/decorators/auth.decorator';
 import {
-  Roles,
   AdminOnly,
   ManagerOnly,
 } from '../../../common/decorators/roles.decorator';

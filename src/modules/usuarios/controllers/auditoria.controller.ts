@@ -59,9 +59,11 @@ export class AuditoriaController {
     const filtrosProcessados: FiltroAuditoriaDto = {
       ...filtros,
       dataInicio: filtros.dataInicio
-        ? new Date(filtros.dataInicio as any)
+        ? new Date(filtros.dataInicio as string) // 🔧 CORREÇÃO: cast explícito
         : undefined,
-      dataFim: filtros.dataFim ? new Date(filtros.dataFim as any) : undefined,
+      dataFim: filtros.dataFim
+        ? new Date(filtros.dataFim as string) // 🔧 CORREÇÃO: cast explícito
+        : undefined,
       acao: filtros.acao as TipoAcao,
     };
 

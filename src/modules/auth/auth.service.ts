@@ -14,6 +14,23 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 
+// 🔧 Interface tipada para dados do usuário
+interface UsuarioData {
+  id: string;
+  email: string;
+  senha?: string;
+  matricula: string;
+  nome: string | null;
+  tipoUsuario: string;
+  role: string;
+  status: string;
+  tipoBanimento?: string | null;
+  dataInicioBanimento?: Date | null;
+  dataFimBanimento?: Date | null;
+  motivoBanimento?: string | null;
+  banidoPor?: string | null;
+}
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -60,10 +77,10 @@ export class AuthService {
       }
 
       // 🚫 Verificar banimento
-      await this.verificarBanimento(usuario);
+      await this.verificarBanimento(usuario as UsuarioData);
 
       // 🔒 Verificar senha
-      const senhaValida = await HashUtil.verificarHash(usuario.senha, senha);
+      const senhaValida = await HashUtil.verificarHash(usuario.senha!, senha);
       if (!senhaValida) {
         // 📝 Log da tentativa de login inválida para auditoria
         await this.criarLogAuditoria(
@@ -76,7 +93,7 @@ export class AuthService {
       }
 
       // 🎫 Gerar tokens
-      const tokens = await this.gerarTokens(usuario);
+      const tokens = await this.gerarTokens(usuario as UsuarioData);
 
       // 📝 Atualizar último login e salvar refresh token
       await this.database.usuario.update({
@@ -107,9 +124,9 @@ export class AuthService {
           email: usuario.email,
           matricula: usuario.matricula,
           nome: usuario.nome,
-          tipoUsuario: usuario.tipoUsuario,
-          role: usuario.role,
-          status: usuario.status,
+          tipoUsuario: usuario.tipoUsuario as any,
+          role: usuario.role as any,
+          status: usuario.status as any,
         },
       };
     } catch (error) {
@@ -175,10 +192,10 @@ export class AuthService {
         throw new UnauthorizedException('Conta inativa');
       }
 
-      await this.verificarBanimento(usuario);
+      await this.verificarBanimento(usuario as UsuarioData);
 
       // 🎫 Gerar novos tokens
-      const tokens = await this.gerarTokens(usuario);
+      const tokens = await this.gerarTokens(usuario as UsuarioData);
 
       // 💾 Atualizar refresh token no banco
       await this.database.usuario.update({
@@ -194,9 +211,9 @@ export class AuthService {
           email: usuario.email,
           matricula: usuario.matricula,
           nome: usuario.nome,
-          tipoUsuario: usuario.tipoUsuario,
-          role: usuario.role,
-          status: usuario.status,
+          tipoUsuario: usuario.tipoUsuario as any,
+          role: usuario.role as any,
+          status: usuario.status as any,
         },
       };
     } catch (error) {
@@ -234,7 +251,7 @@ export class AuthService {
    * 🚫 Verifica se o usuário está banido
    * @private
    */
-  private async verificarBanimento(usuario: any): Promise<void> {
+  private async verificarBanimento(usuario: UsuarioData): Promise<void> {
     if (usuario.status === Status.BANIDO) {
       // 📅 Verificar se o banimento expirou
       if (
@@ -278,7 +295,7 @@ export class AuthService {
    * 📝 Constrói mensagem detalhada de banimento
    * @private
    */
-  private construirMensagemBanimento(usuario: any): string {
+  private construirMensagemBanimento(usuario: UsuarioData): string {
     let mensagem = 'Conta banida.';
 
     if (usuario.motivoBanimento) {
@@ -302,7 +319,7 @@ export class AuthService {
    * 🎫 Gera tokens JWT para o usuário
    * @private
    */
-  private async gerarTokens(usuario: any): Promise<{
+  private async gerarTokens(usuario: UsuarioData): Promise<{
     accessToken: string;
     refreshToken: string;
   }> {
@@ -322,10 +339,10 @@ export class AuthService {
       {
         sub: usuario.id,
         email: usuario.email,
-        tipoUsuario: usuario.tipoUsuario,
+        tipoUsuario: usuario.tipoUsuario as any,
         matricula: usuario.matricula,
-        role: usuario.role,
-        status: usuario.status,
+        role: usuario.role as any,
+        status: usuario.status as any,
       },
       jwtSecret,
       jwtExpiresIn || '15m',

@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import helmet from 'helmet'; // 🔧 CORREÇÃO: Import sem asterisco
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -14,7 +14,7 @@ async function bootstrap() {
 
   // 📋 Obter configurações
   const configService = app.get(ConfigService);
-  const port = configService.get('app.port') || 3000;
+  const port = configService.get<string>('app.port') || '3000'; // 🔧 CORREÇÃO: tipagem explícita
   const environment = configService.get('app.environment') || 'development';
   const corsOrigins = configService.get('cors.origin') || [
     'http://localhost:3000',
@@ -51,12 +51,13 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1');
 
   // 🚀 Iniciar servidor
-  await app.listen(port);
+  const portNumber = parseInt(port, 10); // 🔧 CORREÇÃO: conversão explícita
+  await app.listen(portNumber);
 
   // 📋 Logs de inicialização
   logger.log(`🚀 Aplicação iniciada no ambiente: ${environment}`);
-  logger.log(`🌐 Servidor rodando na porta: ${port}`);
-  logger.log(`📍 URL da API: http://localhost:${port}/api/v1`);
+  logger.log(`🌐 Servidor rodando na porta: ${portNumber}`);
+  logger.log(`📍 URL da API: http://localhost:${portNumber}/api/v1`);
   logger.log(`🔐 Autenticação JWT configurada`);
   logger.log(`🛡️ Rate limiting ativo`);
   logger.log(`🗄️ Banco PostgreSQL conectado`);

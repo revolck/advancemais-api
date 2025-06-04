@@ -61,7 +61,6 @@ import { AppService } from './app.service';
     UsuariosModule,
 
     // 🔮 Módulos futuros
-    // UsuariosModule,
     // AuditoriaModule,
     // MercadoPagoModule,
     // BrevoModule,
@@ -75,6 +74,10 @@ import { AppService } from './app.service';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
     {
       provide: APP_GUARD,

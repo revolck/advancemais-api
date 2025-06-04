@@ -19,6 +19,16 @@ import {
 import { AuditoriaService } from './auditoria.service';
 import { ValidacaoService } from './validacao.service';
 
+// 🔧 Interface tipada para dados do usuário
+interface UsuarioExistente {
+  id: string;
+  email: string;
+  senha: string;
+  matricula: string;
+  nome: string | null;
+  status: string;
+}
+
 /**
  * 👥 Service principal para gestão de usuários
  * Responsável por todas as operações CRUD e validações
@@ -274,7 +284,7 @@ export class UsuariosService {
 
         // ✅ Verificar senha atual
         const senhaValida = await HashUtil.verificarHash(
-          usuarioExistente.senha,
+          (usuarioExistente as UsuarioExistente).senha, // 🔧 CORREÇÃO: cast explícito
           atualizarUsuarioDto.senhaAtual,
         );
 

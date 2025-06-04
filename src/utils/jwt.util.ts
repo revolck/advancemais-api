@@ -83,8 +83,9 @@ export class JwtUtil {
       throw new Error(
         'Payload do token não contém as propriedades necessárias',
       );
-    } catch (error) {
-      throw new Error(`Token JWT inválido: ${error.message}`);
+    } catch (err) {
+      // 🔧 CORREÇÃO: variável renomeada
+      throw new Error(`Token JWT inválido: ${err.message}`);
     }
   }
 
@@ -126,8 +127,9 @@ export class JwtUtil {
         Buffer.from(parts[1], 'base64url').toString('utf8'),
       );
       return payload;
-    } catch (error) {
-      throw new Error(`Erro ao decodificar token: ${error.message}`);
+    } catch (err) {
+      // 🔧 CORREÇÃO: variável renomeada
+      throw new Error(`Erro ao decodificar token: ${err.message}`);
     }
   }
 
@@ -143,7 +145,7 @@ export class JwtUtil {
 
       const agora = Math.floor(Date.now() / 1000);
       return payload.exp < agora;
-    } catch (error) {
+    } catch {
       return true; // Considerar expirado se não conseguir decodificar
     }
   }

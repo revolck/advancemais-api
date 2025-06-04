@@ -4,6 +4,13 @@ import { MercadoTrabalhoController } from './controllers/mercado-trabalho.contro
 import { TituloPaginaCursosService } from './services/titulo-pagina-cursos.service';
 import { MercadoTrabalhoService } from './services/mercado-trabalho.service';
 
+/**
+ * 📚 Módulo de Cursos
+ *
+ * Gerencia conteúdos da página de cursos:
+ * - Títulos da página de cursos
+ * - Mercado de trabalho e destaques
+ */
 @Module({
   controllers: [TituloPaginaCursosController, MercadoTrabalhoController],
   providers: [TituloPaginaCursosService, MercadoTrabalhoService],

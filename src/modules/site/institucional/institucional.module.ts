@@ -8,6 +8,15 @@ import { InformacaoAdvanceService } from './services/informacao-advance.service'
 import { PorqueEscolherAdvanceService } from './services/porque-escolher-advance.service';
 import { EmpresaService } from './services/empresa.service';
 
+/**
+ * 🏢 Módulo Institucional
+ *
+ * Gerencia conteúdos das páginas institucionais:
+ * - Títulos de páginas
+ * - Informações da Advance
+ * - Por que escolher a Advance
+ * - Informações da empresa
+ */
 @Module({
   controllers: [
     TituloPaginaController,
@@ -28,4 +37,4 @@ import { EmpresaService } from './services/empresa.service';
     EmpresaService,
   ],
 })
-export class SobreModule {}
+export class InstitucionalModule {}

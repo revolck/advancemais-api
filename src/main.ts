@@ -7,20 +7,17 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
-  // 🏗️ Criar aplicação NestJS
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
   });
 
-  // 📋 Obter configurações
   const configService = app.get(ConfigService);
-  const port = configService.get<string>('app.port') || '3000'; // 🔧 CORREÇÃO: tipagem explícita
+  const port = configService.get<string>('app.port') || '3000';
   const environment = configService.get('app.environment') || 'development';
   const corsOrigins = configService.get('cors.origin') || [
     'http://localhost:3000',
   ];
 
-  // 🛡️ Configurações de segurança com Helmet
   app.use(
     helmet({
       contentSecurityPolicy: environment === 'production',
@@ -28,7 +25,6 @@ async function bootstrap() {
     }),
   );
 
-  // 🌐 CORS configurado para desenvolvimento e produção
   app.enableCors({
     origin: corsOrigins,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
@@ -36,25 +32,22 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // ✅ Validação global com class-validator
   app.useGlobalPipes(
     new ValidationPipe({
-      transform: true,
+      transform: true, // 👈 Importante para funcionar @Transform
       whitelist: true,
       forbidNonWhitelisted: true,
       validateCustomDecorators: true,
-      disableErrorMessages: environment === 'production',
+      stopAtFirstError: false, // opcional: se quiser parar na primeira validação
+      disableErrorMessages: environment === 'production', // em prod, esconde mensagens detalhadas
     }),
   );
 
-  // 🌍 Prefixo global para todas as rotas
   app.setGlobalPrefix('api/v1');
 
-  // 🚀 Iniciar servidor
-  const portNumber = parseInt(port, 10); // 🔧 CORREÇÃO: conversão explícita
+  const portNumber = parseInt(port, 10);
   await app.listen(portNumber);
 
-  // 📋 Logs de inicialização
   logger.log(`🚀 Aplicação iniciada no ambiente: ${environment}`);
   logger.log(`🌐 Servidor rodando na porta: ${portNumber}`);
   logger.log(`📍 URL da API: http://localhost:${portNumber}/api/v1`);
@@ -67,7 +60,6 @@ async function bootstrap() {
   }
 }
 
-// 🚨 Tratamento de erros não capturados
 bootstrap().catch((error) => {
   console.error('❌ Erro crítico ao iniciar aplicação:', error);
   process.exit(1);

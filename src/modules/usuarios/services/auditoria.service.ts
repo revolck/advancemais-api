@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { TipoAcao } from '@prisma/client';
 import { DatabaseService } from '../../../database/database.service';
+import { FiltroAuditoriaDto } from '../dto/filtro-auditoria.dto';
 
 /**
  * 📝 Interface para criação de log de auditoria
@@ -11,18 +12,6 @@ export interface CriarLogAuditoriaDto {
   descricao: string;
   ipAddress?: string | null;
   userAgent?: string | null;
-}
-
-/**
- * 📊 Interface para filtros de auditoria
- */
-export interface FiltroAuditoriaDto {
-  usuarioId?: string;
-  acao?: TipoAcao;
-  dataInicio?: Date;
-  dataFim?: Date;
-  pagina?: number;
-  limite?: number;
 }
 
 /**

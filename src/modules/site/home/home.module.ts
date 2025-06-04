@@ -6,6 +6,14 @@ import { SobreService } from './services/sobre.service';
 import { BannerService } from './services/banner.service';
 import { ServicoService } from './services/servico.service';
 
+/**
+ * 🏠 Módulo da página inicial
+ *
+ * Gerencia conteúdos da home:
+ * - Seção sobre
+ * - Banners
+ * - Serviços oferecidos
+ */
 @Module({
   controllers: [SobreController, BannerController, ServicoController],
   providers: [SobreService, BannerService, ServicoService],

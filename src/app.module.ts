@@ -8,13 +8,16 @@ import { appConfig } from './config/app.config';
 import { databaseConfig } from './config/database.config';
 import { jwtConfig } from './config/jwt.config';
 
-// 🗄️ Módulos
+// 🗄️ Módulos principais
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { SiteModule } from './modules/site/site.module'; // 🆕 Novo módulo
+import { UsuariosModule } from './modules/usuarios/usuarios.module';
+import { SiteModule } from './modules/site/site.module';
 
 // 🛡️ Guards, Filters e Interceptors
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { RolesGuard } from './common/guards/roles.guard';
+
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
@@ -54,7 +57,8 @@ import { AppService } from './app.service';
     // 📦 Módulos da aplicação
     DatabaseModule,
     AuthModule,
-    SiteModule, // 🆕 Módulo do site adicionado
+    SiteModule,
+    UsuariosModule,
 
     // 🔮 Módulos futuros
     // UsuariosModule,

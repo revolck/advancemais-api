@@ -1,6 +1,3 @@
-// 📁 prisma/schema.prisma
-// 🗄️ Schema configurado para MySQL com modelos do site
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,7 +7,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// 📊 Enums para padronização de dados
+// =======================
+// 🚩 ENUMS
+// =======================
+
 enum Status {
   ATIVO
   INATIVO
@@ -19,6 +19,18 @@ enum Status {
 enum TipoUsuario {
   PESSOA_FISICA    
   PESSOA_JURIDICA  
+}
+
+enum Role {
+  ADMIN
+  ADMINISTRATOR
+  FINANCIAL
+  PROFESSOR
+  STUDENT
+  COMPANY
+  PEDAGOGICAL
+  RECRUITER
+  HR
 }
 
 enum TipoAcao {
@@ -31,95 +43,104 @@ enum TipoAcao {
   TENTATIVA_SUSPICAO
 }
 
-// 🌐 Enums para o Website
 enum TipoServico {
   CONSULTORIA
   RECRUTAMENTO
 }
 
-// 👤 Modelo principal de usuário
+// =======================
+// 👥 MODELOS DE USUÁRIO
+// =======================
+
 model Usuario {
-  id        String @id @default(uuid())
-  email     String @unique @db.VarChar(255)
-  matricula String @unique @db.VarChar(10)
-  
-  senha        String  @db.VarChar(255)
-  refreshToken String? @db.Text
-  
-  tipoUsuario TipoUsuario
-  status      Status @default(ATIVO)
-  
-  criadoEm     DateTime  @default(now())
-  atualizadoEm DateTime  @updatedAt
+  id           String     @id @default(uuid())
+  nomeCompleto String     @db.VarChar(255)
+  cpf          String?    @unique @db.Char(11) // Obrigatório se for pessoa física
+  cnpj         String?    @unique @db.Char(14) // Obrigatório se for pessoa jurídica
+  dataNasc     DateTime?
+  telefone     String?    @db.VarChar(20)
+  genero       String?    @db.VarChar(20)
+
+  email        String     @unique @db.VarChar(255)
+  senha        String     @db.VarChar(255)
+  aceitarTermos Boolean
+
+  tipoUsuario  TipoUsuario
+  role         Role        @default(STUDENT)
+  status       Status      @default(ATIVO)
+
+  refreshToken String?     @db.Text
+
+  criadoEm     DateTime    @default(now())
+  atualizadoEm DateTime    @updatedAt
   ultimoLogin  DateTime?
-  
-  nome     String? @db.VarChar(255)
-  telefone String? @db.VarChar(20)
-  
-  perfil PerfilUsuario?
-  logs   LogAuditoria[]
-  
+
+  perfil       PerfilUsuario?
+  logs         LogAuditoria[]
+
   @@map("usuarios")
   @@index([email, status])
-  @@index([matricula])
+  @@index([cpf])
+  @@index([cnpj])
 }
 
+// 🔥 Perfil complementa dados específicos
 model PerfilUsuario {
-  id        String @id @default(uuid())
-  usuarioId String @unique
-  
-  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  
-  cpf         String? @unique @db.VarChar(11)
-  cnpj        String? @unique @db.VarChar(14)
-  razaoSocial String? @db.VarChar(255)
-  
-  endereco String? @db.VarChar(500)
-  cidade   String? @db.VarChar(100)
-  estado   String? @db.VarChar(2)
-  cep      String? @db.VarChar(8)
-  
+  id           String   @id @default(uuid())
+  usuarioId    String   @unique
+
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  // Dados empresariais (opcional para pessoa jurídica)
+  razaoSocial  String?  @db.VarChar(255)
+  nomeFantasia String?  @db.VarChar(255)
+
+  endereco     String?  @db.VarChar(500)
+  cidade       String?  @db.VarChar(100)
+  estado       String?  @db.VarChar(2)
+  cep          String?  @db.VarChar(8)
+
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
-  
+
   @@map("perfis_usuarios")
 }
 
+// 📜 Logs de Auditoria
 model LogAuditoria {
-  id        String @id @default(uuid())
-  usuarioId String?
-  
-  usuario Usuario? @relation(fields: [usuarioId], references: [id])
-  
-  acao      TipoAcao
-  descricao String   @db.Text
-  
-  ipAddress String? @db.VarChar(45)
-  userAgent String? @db.Text
-  
-  criadoEm DateTime @default(now())
-  
+  id          String     @id @default(uuid())
+  usuarioId   String?
+
+  usuario     Usuario?   @relation(fields: [usuarioId], references: [id])
+
+  acao        TipoAcao
+  descricao   String     @db.Text
+  ipAddress   String?    @db.VarChar(45)
+  userAgent   String?    @db.Text
+
+  criadoEm    DateTime   @default(now())
+
+  @@map("logs_auditoria")
   @@index([usuarioId, criadoEm])
   @@index([acao, criadoEm])
-  @@map("logs_auditoria")
 }
 
+// 🔐 Controle de Rate Limit
 model RateLimit {
   id              String    @id @default(uuid())
   chave           String    @unique @db.VarChar(255)
   tentativas      Int       @default(0)
   ultimaTentativa DateTime  @default(now())
   bloqueadoAte    DateTime?
-  
-  @@index([ultimaTentativa])
+
   @@map("rate_limits")
+  @@index([ultimaTentativa])
 }
 
-//=========
-// WEBSITE 
-//=========
+// =======================
+// 🌐 MODELOS DO WEBSITE
+// =======================
 
-// Página Inicial
 model Sobre {
   id          Int      @id @default(autoincrement())
   imagemUrl   String   @db.VarChar(500)
@@ -127,7 +148,7 @@ model Sobre {
   descricao   String   @db.Text
   criadoEm    DateTime @default(now())
   atualizadoEm DateTime @updatedAt
-  
+
   @@map("sobre")
 }
 
@@ -135,28 +156,29 @@ model Banner {
   id         Int      @id @default(autoincrement())
   imagemUrl  String   @db.VarChar(500)
   linkUrl    String   @db.VarChar(500)
-  position   Int      // Define a ordem de exibição
+  position   Int
+
   criadoEm   DateTime @default(now())
   atualizadoEm DateTime @updatedAt
-  
+
   @@map("banners")
 }
 
 model Servico {
-  id          Int         @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   tipo        TipoServico
-  imagemUrl   String      @db.VarChar(500)
-  titulo      String      @db.VarChar(255)
-  descricao   String      @db.Text
-  titleButton String      @db.VarChar(100)
-  urlButton   String      @db.VarChar(500)
-  criadoEm    DateTime    @default(now())
-  atualizadoEm DateTime   @updatedAt
-  
+  imagemUrl   String    @db.VarChar(500)
+  titulo      String    @db.VarChar(255)
+  descricao   String    @db.Text
+  titleButton String    @db.VarChar(100)
+  urlButton   String    @db.VarChar(500)
+
+  criadoEm    DateTime  @default(now())
+  atualizadoEm DateTime @updatedAt
+
   @@map("servicos")
 }
 
-// Página Sobre
 model TituloPagina {
   id           Int      @id @default(autoincrement())
   titulo       String   @db.VarChar(255)
@@ -164,9 +186,10 @@ model TituloPagina {
   descricao    String   @db.VarChar(250)
   textoBotao   String   @db.VarChar(100)
   urlBotao     String   @db.VarChar(500)
+
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
-  
+
   @@map("titulos_pagina")
 }
 
@@ -176,9 +199,10 @@ model InformacaoAdvance {
   historia  String   @db.VarChar(500)
   missao    String   @db.VarChar(500)
   visao     String   @db.VarChar(500)
+
   criadoEm  DateTime @default(now())
   atualizadoEm DateTime @updatedAt
-  
+
   @@map("informacoes_advance")
 }
 
@@ -188,10 +212,12 @@ model PorqueEscolherAdvance {
   descricao    String        @db.VarChar(250)
   textoBotao   String        @db.VarChar(100)
   urlBotao     String        @db.VarChar(500)
-  boxes        BoxDestaque[] // Relação com os boxes
+
+  boxes        BoxDestaque[]
+
   criadoEm     DateTime      @default(now())
   atualizadoEm DateTime      @updatedAt
-  
+
   @@map("porque_escolher_advance")
 }
 
@@ -201,8 +227,9 @@ model BoxDestaque {
   titulo                    String   @db.VarChar(255)
   descricao                 String   @db.Text
   porqueEscolherAdvanceId   Int
+
   porqueEscolherAdvance     PorqueEscolherAdvance @relation(fields: [porqueEscolherAdvanceId], references: [id], onDelete: Cascade)
-  
+
   @@map("boxes_destaque")
 }
 
@@ -215,13 +242,13 @@ model Empresa {
   descricaoImagem String   @db.Text
   textoBotao      String   @db.VarChar(100)
   urlBotao        String   @db.VarChar(500)
+
   criadoEm        DateTime @default(now())
   atualizadoEm    DateTime @updatedAt
-  
+
   @@map("empresas")
 }
 
-// Página Cursos
 model TituloPaginaCursos {
   id         Int      @id @default(autoincrement())
   titulo     String   @db.VarChar(255)
@@ -229,9 +256,10 @@ model TituloPaginaCursos {
   descricao  String   @db.Text
   textoBotao String   @db.VarChar(100)
   urlBotao   String   @db.VarChar(500)
+
   criadoEm   DateTime @default(now())
   atualizadoEm DateTime @updatedAt
-  
+
   @@map("titulos_pagina_cursos")
 }
 
@@ -239,10 +267,12 @@ model MercadoTrabalho {
   id         Int                @id @default(autoincrement())
   titulo     String             @db.VarChar(255)
   subtitulo  String             @db.VarChar(255)
-  destaques  DestaqueMercado[]  // Relação 1:N
+
+  destaques  DestaqueMercado[]
+
   criadoEm   DateTime           @default(now())
   atualizadoEm DateTime         @updatedAt
-  
+
   @@map("mercados_trabalho")
 }
 
@@ -251,7 +281,8 @@ model DestaqueMercado {
   numeroDestaque    String           @db.VarChar(50)
   descricaoDestaque String           @db.Text
   mercadoTrabalhoId Int
+
   mercadoTrabalho   MercadoTrabalho @relation(fields: [mercadoTrabalhoId], references: [id], onDelete: Cascade)
-  
+
   @@map("destaques_mercado")
 }

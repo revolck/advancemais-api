@@ -3,400 +3,79 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  directUrl         = env("DIRECT_URL")
 }
 
-// =======================
-// 🏷️ ENUMS
-// =======================
+model Usuario {
+  id            String         @id @default(uuid())
+  nomeCompleto  String
+  supabaseId    String         @unique
+  cpf           String?        @unique
+  cnpj          String?        @unique
+  dataNasc      DateTime?
+  telefone      String
+  genero        String?
+  email         String         @unique
+  senha         String
+  matricula     String?
+  codEmpresa    String?
+  tipoUsuario   TipoUsuario
+  role          Role
+  status        Status         @default(ATIVO)
+  aceitarTermos Boolean        @default(false)
+  criadoEm      DateTime       @default(now())
+  atualizadoEm  DateTime       @updatedAt
+  ultimoLogin   DateTime?
+  refreshToken  String?
+  empresa       Empresa?       @relation(fields: [codEmpresa], references: [id])
+  enderecos     Endereco[]
+}
+
+model Empresa {
+  id         String    @id @default(uuid())
+  nome       String
+  usuarios   Usuario[]
+  criadoEm   DateTime  @default(now())
+}
+
+model Endereco {
+  id         String    @id @default(uuid())
+  usuarioId  String
+  logradouro String
+  numero     String
+  bairro     String
+  cidade     String
+  estado     String
+  cep        String
+  criadoEm   DateTime  @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  usuario    Usuario   @relation(fields: [usuarioId], references: [id])
+}
+
+enum TipoUsuario {
+  PESSOA_FISICA
+  PESSOA_JURIDICA
+}
+
+enum Role {
+  ADMIN
+  MODERADOR
+  FINANCEIRO
+  PROFESSOR
+  EMPRESA
+  PEDAGOGICO
+  RECRUTADOR
+  PSICOLOGO
+  ALUNO_CANDIDATO
+}
 
 enum Status {
   ATIVO
   INATIVO
   BANIDO
-}
-
-enum TipoBanimento {
-  TEMPORARIO_15_DIAS  // Banimento por 15 dias
-  TEMPORARIO_30_DIAS  // Banimento por 30 dias  
-  TEMPORARIO_90_DIAS  // Banimento por 90 dias
-  TEMPORARIO_120_DIAS // Banimento por 120 dias
-  PERMANENTE          // Banimento indefinido
-}
-
-enum TipoUsuario {
-  PESSOA_FISICA    
-  PESSOA_JURIDICA  
-}
-
-enum Role {
-  ADMIN
-  ADMINISTRATOR
-  FINANCIAL
-  PROFESSOR
-  STUDENT
-  COMPANY
-  PEDAGOGICAL
-  RECRUITER
-  HR
-}
-
-enum TipoAcao {
-  LOGIN
-  LOGOUT
-  CRIACAO
-  ATUALIZACAO
-  EXCLUSAO
-  ACESSO_NEGADO
-  TENTATIVA_SUSPEITA // 🔧 Corrigido: era "TENTATIVA_SUSPICAO"
-  BANIMENTO_APLICADO
-  BANIMENTO_REMOVIDO
-  BANIMENTO_EXPIRADO
-}
-
-enum TipoServico {
-  CONSULTORIA
-  RECRUTAMENTO
-}
-
-// =======================
-// 👥 MODELOS DE USUÁRIO
-// =======================
-
-/**
- * 👤 Modelo principal do usuário
- * Contém dados essenciais de autenticação, identificação e controle de banimento
- */
-model Usuario {
-  id           String     @id @default(uuid())
-  
-  // 📝 Dados pessoais básicos
-  nome         String     @db.VarChar(255) // 🔧 Renomeado de nomeCompleto para consistência
-  cpf          String?    @unique @db.Char(11) // Obrigatório apenas para pessoa física
-  cnpj         String?    @unique @db.Char(14) // Obrigatório apenas para pessoa jurídica
-  dataNasc     DateTime?  @map("data_nascimento")
-  telefone     String?    @db.VarChar(20)
-  genero       String?    @db.VarChar(20)
-
-  // 🔐 Dados de autenticação
-  email        String     @unique @db.VarChar(255)
-  senha        String     @db.VarChar(255)
-  matricula    String     @unique @db.VarChar(8) // 🆕 Adicionado para consistência com o código
-  
-  // ⚖️ Configurações e controle
-  tipoUsuario  TipoUsuario
-  role         Role        @default(STUDENT)
-  status       Status      @default(ATIVO)
-  aceitarTermos Boolean    @default(false) @map("aceitar_termos")
-
-  // 🚫 Controle de banimento
-  tipoBanimento TipoBanimento? @map("tipo_banimento")
-  dataInicioBanimento DateTime? @map("data_inicio_banimento")
-  dataFimBanimento DateTime? @map("data_fim_banimento")
-  motivoBanimento String? @db.Text @map("motivo_banimento")
-  banidoPor String? @map("banido_por") // ID do admin que aplicou o banimento
-
-  // 🔄 Tokens e sessão
-  refreshToken String?     @db.Text @map("refresh_token")
-
-  // 📅 Timestamps
-  criadoEm     DateTime    @default(now()) @map("criado_em")
-  atualizadoEm DateTime    @updatedAt @map("atualizado_em")
-  ultimoLogin  DateTime?   @map("ultimo_login")
-
-  // 🔗 Relacionamentos
-  perfil       PerfilUsuario?
-  logs         LogAuditoria[]
-
-  @@map("usuarios")
-  @@index([email, status]) // Busca por email ativo
-  @@index([matricula]) // 🆕 Índice para matrícula
-  @@index([cpf]) // Busca por CPF
-  @@index([cnpj]) // Busca por CNPJ
-  @@index([status, role]) // 🆕 Índice composto para filtros administrativos
-  @@index([status, dataFimBanimento]) // 🆕 Verificação de banimentos expirados
-  @@index([banidoPor]) // 🆕 Auditoria de banimentos por admin
-}
-
-/**
- * 📋 Perfil complementar do usuário
- * Dados opcionais, específicos por tipo de usuário e endereço completo
- */
-model PerfilUsuario {
-  id           String   @id @default(uuid())
-  usuarioId    String   @unique @map("usuario_id")
-
-  // 🔗 Relacionamento
-  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-
-  // 🏢 Dados empresariais (opcional para pessoa jurídica)
-  razaoSocial  String?  @db.VarChar(255) @map("razao_social")
-  nomeFantasia String?  @db.VarChar(255) @map("nome_fantasia")
-
-  // 📍 Endereço completo (todos opcionais)
-  cep          String?  @db.VarChar(8)
-  logradouro   String?  @db.VarChar(255) // Rua, Avenida, etc.
-  numero       String?  @db.VarChar(20)
-  complemento  String?  @db.VarChar(100) // Apto, Bloco, etc.
-  bairro       String?  @db.VarChar(100)
-  cidade       String?  @db.VarChar(100)
-  estado       String?  @db.VarChar(2) // UF
-  pais         String?  @db.VarChar(100) @default("Brasil")
-  referencia   String?  @db.VarChar(255) // Ponto de referência
-
-  // 📅 Timestamps
-  criadoEm     DateTime @default(now()) @map("criado_em")
-  atualizadoEm DateTime @updatedAt @map("atualizado_em")
-
-  @@map("perfis_usuarios")
-  @@index([cep]) // 🆕 Busca geográfica por CEP
-  @@index([cidade, estado]) // 🆕 Busca por localização
-}
-
-/**
- * 📜 Sistema de auditoria e logs
- * Rastreia todas as ações importantes do sistema
- */
-model LogAuditoria {
-  id          String     @id @default(uuid())
-  usuarioId   String?    @map("usuario_id")
-
-  // 🔗 Relacionamento opcional (logs podem existir sem usuário)
-  usuario     Usuario?   @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
-
-  // 📝 Dados da ação
-  acao        TipoAcao
-  descricao   String     @db.Text
-  ipAddress   String?    @db.VarChar(45) @map("ip_address")
-  userAgent   String?    @db.Text @map("user_agent")
-
-  // 📅 Timestamp
-  criadoEm    DateTime   @default(now()) @map("criado_em")
-
-  @@map("logs_auditoria")
-  @@index([usuarioId, criadoEm]) // Logs por usuário ordenados por data
-  @@index([acao, criadoEm]) // Logs por tipo de ação
-  @@index([criadoEm]) // 🆕 Índice para limpeza de logs antigos
-}
-
-/**
- * 🛡️ Controle de rate limiting
- * Previne ataques de força bruta
- */
-model RateLimit {
-  id              String    @id @default(uuid())
-  chave           String    @unique @db.VarChar(255)
-  tentativas      Int       @default(0)
-  ultimaTentativa DateTime  @default(now()) @map("ultima_tentativa")
-  bloqueadoAte    DateTime? @map("bloqueado_ate")
-
-  @@map("rate_limits")
-  @@index([ultimaTentativa]) // Limpeza de registros antigos
-  @@index([bloqueadoAte]) // 🆕 Verificação de bloqueios ativos
-}
-
-// =======================
-// 🌐 MODELOS DO WEBSITE
-// =======================
-
-/**
- * ℹ️ Seção "Sobre" da página inicial
- */
-model Sobre {
-  id          Int      @id @default(autoincrement())
-  imagemUrl   String   @db.VarChar(500) @map("imagem_url")
-  titulo      String   @db.VarChar(255)
-  descricao   String   @db.Text
-  
-  // 📅 Timestamps
-  criadoEm    DateTime @default(now()) @map("criado_em")
-  atualizadoEm DateTime @updatedAt @map("atualizado_em")
-
-  @@map("sobre")
-}
-
-/**
- * 🖼️ Banners do site
- */
-model Banner {
-  id         Int      @id @default(autoincrement())
-  imagemUrl  String   @db.VarChar(500) @map("imagem_url")
-  linkUrl    String   @db.VarChar(500) @map("link_url")
-  position   Int      @map("posicao")
-  ativo      Boolean  @default(true) // 🆕 Controle de exibição
-
-  // 📅 Timestamps
-  criadoEm   DateTime @default(now()) @map("criado_em")
-  atualizadoEm DateTime @updatedAt @map("atualizado_em")
-
-  @@map("banners")
-  @@index([ativo, position]) // 🆕 Busca por banners ativos ordenados
-}
-
-/**
- * 🛠️ Serviços oferecidos
- */
-model Servico {
-  id          Int         @id @default(autoincrement())
-  tipo        TipoServico
-  imagemUrl   String      @db.VarChar(500) @map("imagem_url")
-  titulo      String      @db.VarChar(255)
-  descricao   String      @db.Text
-  titleButton String      @db.VarChar(100) @map("titulo_botao")
-  urlButton   String      @db.VarChar(500) @map("url_botao")
-  ativo       Boolean     @default(true) // 🆕 Controle de exibição
-
-  // 📅 Timestamps
-  criadoEm    DateTime    @default(now()) @map("criado_em")
-  atualizadoEm DateTime   @updatedAt @map("atualizado_em")
-
-  @@map("servicos")
-  @@index([tipo, ativo]) // 🆕 Busca por tipo de serviço ativo
-}
-
-/**
- * 📄 Títulos de páginas
- */
-model TituloPagina {
-  id           Int      @id @default(autoincrement())
-  titulo       String   @db.VarChar(255)
-  subtitulo    String   @db.VarChar(255)
-  descricao    String   @db.VarChar(250)
-  textoBotao   String   @db.VarChar(100) @map("texto_botao")
-  urlBotao     String   @db.VarChar(500) @map("url_botao")
-
-  // 📅 Timestamps
-  criadoEm     DateTime @default(now()) @map("criado_em")
-  atualizadoEm DateTime @updatedAt @map("atualizado_em")
-
-  @@map("titulos_pagina")
-}
-
-/**
- * 📊 Informações da empresa Advance
- */
-model InformacaoAdvance {
-  id        Int      @id @default(autoincrement())
-  urlVideo  String   @db.VarChar(500) @map("url_video")
-  historia  String   @db.VarChar(500)
-  missao    String   @db.VarChar(500)
-  visao     String   @db.VarChar(500)
-
-  // 📅 Timestamps
-  criadoEm  DateTime @default(now()) @map("criado_em")
-  atualizadoEm DateTime @updatedAt @map("atualizado_em")
-
-  @@map("informacoes_advance")
-}
-
-/**
- * ⭐ Seção "Por que escolher a Advance"
- */
-model PorqueEscolherAdvance {
-  id           Int           @id @default(autoincrement())
-  titulo       String        @db.VarChar(255)
-  descricao    String        @db.VarChar(250)
-  textoBotao   String        @db.VarChar(100) @map("texto_botao")
-  urlBotao     String        @db.VarChar(500) @map("url_botao")
-
-  // 🔗 Relacionamentos
-  boxes        BoxDestaque[]
-
-  // 📅 Timestamps
-  criadoEm     DateTime      @default(now()) @map("criado_em")
-  atualizadoEm DateTime      @updatedAt @map("atualizado_em")
-
-  @@map("porque_escolher_advance")
-}
-
-/**
- * 📦 Boxes de destaque
- */
-model BoxDestaque {
-  id                        Int      @id @default(autoincrement())
-  icone                     String   @db.VarChar(255)
-  titulo                    String   @db.VarChar(255)
-  descricao                 String   @db.Text
-  ordem                     Int      @default(0) // 🆕 Controle de ordem de exibição
-  porqueEscolherAdvanceId   Int      @map("porque_escolher_advance_id")
-
-  // 🔗 Relacionamento
-  porqueEscolherAdvance     PorqueEscolherAdvance @relation(fields: [porqueEscolherAdvanceId], references: [id], onDelete: Cascade)
-
-  @@map("boxes_destaque")
-  @@index([porqueEscolherAdvanceId, ordem]) // 🆕 Ordenação dos boxes
-}
-
-/**
- * 🏢 Informações da empresa
- */
-model Empresa {
-  id              Int      @id @default(autoincrement())
-  imagemUrl       String   @db.VarChar(500) @map("imagem_url")
-  titulo          String   @db.VarChar(255)
-  descricao       String   @db.VarChar(500)
-  tituloImagem    String   @db.VarChar(255) @map("titulo_imagem")
-  descricaoImagem String   @db.Text @map("descricao_imagem")
-  textoBotao      String   @db.VarChar(100) @map("texto_botao")
-  urlBotao        String   @db.VarChar(500) @map("url_botao")
-
-  // 📅 Timestamps
-  criadoEm        DateTime @default(now()) @map("criado_em")
-  atualizadoEm    DateTime @updatedAt @map("atualizado_em")
-
-  @@map("empresas")
-}
-
-/**
- * 📚 Títulos da página de cursos
- */
-model TituloPaginaCursos {
-  id         Int      @id @default(autoincrement())
-  titulo     String   @db.VarChar(255)
-  subtitulo  String   @db.VarChar(255)
-  descricao  String   @db.Text
-  textoBotao String   @db.VarChar(100) @map("texto_botao")
-  urlBotao   String   @db.VarChar(500) @map("url_botao")
-
-  // 📅 Timestamps
-  criadoEm   DateTime @default(now()) @map("criado_em")
-  atualizadoEm DateTime @updatedAt @map("atualizado_em")
-
-  @@map("titulos_pagina_cursos")
-}
-
-/**
- * 💼 Mercado de trabalho
- */
-model MercadoTrabalho {
-  id         Int                @id @default(autoincrement())
-  titulo     String             @db.VarChar(255)
-  subtitulo  String             @db.VarChar(255)
-
-  // 🔗 Relacionamentos
-  destaques  DestaqueMercado[]
-
-  // 📅 Timestamps
-  criadoEm   DateTime           @default(now()) @map("criado_em")
-  atualizadoEm DateTime         @updatedAt @map("atualizado_em")
-
-  @@map("mercados_trabalho")
-}
-
-/**
- * 🎯 Destaques do mercado de trabalho
- */
-model DestaqueMercado {
-  id                Int              @id @default(autoincrement())
-  numeroDestaque    String           @db.VarChar(50) @map("numero_destaque")
-  descricaoDestaque String           @db.Text @map("descricao_destaque")
-  ordem             Int              @default(0) // 🆕 Controle de ordem
-  mercadoTrabalhoId Int              @map("mercado_trabalho_id")
-
-  // 🔗 Relacionamento
-  mercadoTrabalho   MercadoTrabalho @relation(fields: [mercadoTrabalhoId], references: [id], onDelete: Cascade)
-
-  @@map("destaques_mercado")
-  @@index([mercadoTrabalhoId, ordem]) // 🆕 Ordenação dos destaques
+  PENDENTE
+  SUSPENSO
 }

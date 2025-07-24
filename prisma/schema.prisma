@@ -3,56 +3,55 @@ generator client {
 }
 
 datasource db {
-  provider          = "postgresql"
-  url               = env("DATABASE_URL")
-  directUrl         = env("DIRECT_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Usuario {
-  id            String         @id @default(uuid())
+  id            String      @id @default(uuid())
   nomeCompleto  String
-  supabaseId    String         @unique
-  cpf           String?        @unique
-  cnpj          String?        @unique
+  supabaseId    String      @unique
+  cpf           String?     @unique
+  cnpj          String?     @unique
   dataNasc      DateTime?
   telefone      String
   genero        String?
-  email         String         @unique
+  email         String      @unique
   senha         String
   matricula     String?
   codEmpresa    String?
   tipoUsuario   TipoUsuario
   role          Role
-  status        Status         @default(ATIVO)
-  aceitarTermos Boolean        @default(false)
-  criadoEm      DateTime       @default(now())
-  atualizadoEm  DateTime       @updatedAt
+  status        Status      @default(ATIVO)
+  aceitarTermos Boolean     @default(false)
+  criadoEm      DateTime    @default(now())
+  atualizadoEm  DateTime    @updatedAt
   ultimoLogin   DateTime?
   refreshToken  String?
-  empresa       Empresa?       @relation(fields: [codEmpresa], references: [id])
   enderecos     Endereco[]
+  empresa       Empresa?    @relation(fields: [codEmpresa], references: [id])
 }
 
 model Empresa {
-  id         String    @id @default(uuid())
-  nome       String
-  usuarios   Usuario[]
-  criadoEm   DateTime  @default(now())
+  id       String    @id @default(uuid())
+  nome     String
+  criadoEm DateTime  @default(now())
+  usuarios Usuario[]
 }
 
 model Endereco {
-  id         String    @id @default(uuid())
-  usuarioId  String
-  logradouro String
-  numero     String
-  bairro     String
-  cidade     String
-  estado     String
-  cep        String
-  criadoEm   DateTime  @default(now())
+  id           String   @id @default(uuid())
+  usuarioId    String
+  logradouro   String
+  numero       String
+  bairro       String
+  cidade       String
+  estado       String
+  cep          String
+  criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
-
-  usuario    Usuario   @relation(fields: [usuarioId], references: [id])
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id])
 }
 
 enum TipoUsuario {

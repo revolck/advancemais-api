@@ -1,4 +1,0 @@
-export enum TipoUsuario {
-  PESSOA_FISICA = "PESSOA_FISICA",
-  PESSOA_JURIDICA = "PESSOA_JURIDICA",
-}

@@ -11,6 +11,7 @@ CREATE TYPE "Status" AS ENUM ('ATIVO', 'INATIVO', 'BANIDO', 'PENDENTE', 'SUSPENS
 CREATE TABLE "Usuario" (
     "id" TEXT NOT NULL,
     "nomeCompleto" TEXT NOT NULL,
+    "supabaseId" TEXT NOT NULL,
     "cpf" TEXT,
     "cnpj" TEXT,
     "dataNasc" TIMESTAMP(3),
@@ -56,6 +57,9 @@ CREATE TABLE "Endereco" (
 
     CONSTRAINT "Endereco_pkey" PRIMARY KEY ("id")
 );
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Usuario_supabaseId_key" ON "Usuario"("supabaseId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Usuario_cpf_key" ON "Usuario"("cpf");

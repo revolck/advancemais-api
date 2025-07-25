@@ -2,15 +2,14 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import jwksRsa from "jwks-rsa";
 import { prisma } from "../../../config/prisma";
+import { supabaseConfig } from "../../../config/env";
 
 /**
  * Cliente JWKS para validação de tokens Supabase
  * Cache habilitado para melhor performance
  */
 const jwksClient = jwksRsa({
-  jwksUri:
-    process.env.SUPABASE_JWKS_URI ||
-    "https://mldktbtctxeiufhsspsa.supabase.co/auth/v1/.well-known/jwks.json",
+  jwksUri: supabaseConfig.jwksUri,
   cache: true,
   rateLimit: true,
 });
@@ -61,7 +60,7 @@ export const supabaseAuthMiddleware =
         }
 
         try {
-          // Busca usuário no banco usando supabaseId (agora campo válido)
+          // Busca usuário no banco usando supabaseId
           const usuario = await prisma.usuario.findUnique({
             where: { supabaseId: decoded.sub },
             select: {

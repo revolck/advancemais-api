@@ -1,13 +1,13 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import jwksRsa from "jwks-rsa";
+import { supabaseConfig } from "../../../config/env";
 
 /**
  * Cliente JWKS para validação de tokens
  */
 const jwksClient = jwksRsa({
-  jwksUri:
-    "https://mldktbtctxeiufhsspsa.supabase.co/auth/v1/.well-known/jwks.json",
+  jwksUri: supabaseConfig.jwksUri,
   cache: true,
   rateLimit: true,
 });
@@ -34,8 +34,8 @@ function getKey(header: any, callback: any) {
  * @param roles - Array de roles permitidas (opcional)
  * @returns Middleware function
  */
-export const authMiddleware =
-  (roles?: string[]) => (req: Request, res: Response, next: NextFunction) => {
+export const authMiddleware = (roles?: string[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     const token = req.headers.authorization?.split(" ")[1];
 
     if (!token) {
@@ -70,3 +70,4 @@ export const authMiddleware =
       }
     );
   };
+};

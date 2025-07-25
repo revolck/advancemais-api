@@ -8,32 +8,34 @@ import {
 } from "../controllers";
 import { authMiddleware } from "../middlewares";
 import { supabaseAuthMiddleware } from "../auth";
-import { prisma } from "../../../config/prisma"; // Import adicionado
+import { prisma } from "../../../config/prisma";
 
 const router = Router();
 
 /**
  * Rotas públicas (sem autenticação)
  */
-// Registro de novo usuário
+
+// POST /registrar - Registro de novo usuário
 router.post("/registrar", criarUsuario);
 
-// Login de usuário (validação de credenciais)
+// POST /login - Login de usuário
 router.post("/login", loginUsuario);
 
-// Validação de refresh token
+// POST /refresh - Validação de refresh token
 router.post("/refresh", refreshToken);
 
 /**
  * Rotas protegidas (requerem autenticação)
  */
-// Logout de usuário (requer token válido)
+
+// POST /logout - Logout de usuário
 router.post("/logout", authMiddleware(), logoutUsuario);
 
-// Perfil do usuário autenticado
+// GET /perfil - Perfil do usuário autenticado
 router.get("/perfil", supabaseAuthMiddleware(), obterPerfil);
 
-// Rota apenas para administradores (exemplo)
+// GET /admin - Rota apenas para administradores
 router.get("/admin", supabaseAuthMiddleware(["ADMIN"]), (req, res) => {
   res.json({
     message: "Área administrativa",
@@ -42,13 +44,12 @@ router.get("/admin", supabaseAuthMiddleware(["ADMIN"]), (req, res) => {
   });
 });
 
-// Rota para listar usuários (apenas ADMIN e MODERADOR)
+// GET /listar - Listar usuários (ADMIN e MODERADOR)
 router.get(
   "/listar",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
   async (req, res) => {
     try {
-      // Implementar paginação em produção
       const usuarios = await prisma.usuario.findMany({
         select: {
           id: true,
@@ -59,12 +60,11 @@ router.get(
           tipoUsuario: true,
           criadoEm: true,
           ultimoLogin: true,
-          // Não incluir dados sensíveis
         },
         orderBy: {
           criadoEm: "desc",
         },
-        take: 50, // Limita a 50 registros
+        take: 50,
       });
 
       res.json({
@@ -83,79 +83,26 @@ router.get(
 );
 
 /**
- * Rota para atualizar status de usuário (apenas ADMIN)
+ * Rotas com parâmetros - definidas por último para evitar conflitos
  */
-router.patch(
-  "/:id/status",
-  supabaseAuthMiddleware(["ADMIN"]),
-  async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { status } = req.body;
 
-      // Validação de status válido
-      const statusValidos = [
-        "ATIVO",
-        "INATIVO",
-        "BANIDO",
-        "PENDENTE",
-        "SUSPENSO",
-      ];
-      if (!statusValidos.includes(status)) {
-        return res.status(400).json({
-          message: "Status inválido",
-          statusValidos,
-        });
-      }
-
-      const usuario = await prisma.usuario.update({
-        where: { id },
-        data: { status },
-        select: {
-          id: true,
-          email: true,
-          nomeCompleto: true,
-          status: true,
-          atualizadoEm: true,
-        },
-      });
-
-      res.json({
-        message: "Status do usuário atualizado com sucesso",
-        usuario,
-      });
-    } catch (error) {
-      console.error("Erro ao atualizar status:", error);
-
-      if (
-        error instanceof Error &&
-        error.message.includes("Record to update not found")
-      ) {
-        return res.status(404).json({
-          message: "Usuário não encontrado",
-        });
-      }
-
-      res.status(500).json({
-        message: "Erro ao atualizar status do usuário",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
-      });
-    }
-  }
-);
-
-/**
- * Rota para buscar usuário por ID (ADMIN, MODERADOR)
- */
+// GET /usuario/:userId - Buscar usuário por ID
 router.get(
-  "/:id",
+  "/usuario/:userId",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
   async (req, res) => {
     try {
-      const { id } = req.params;
+      const { userId } = req.params;
+
+      // Validação básica do parâmetro
+      if (!userId || userId.trim() === "") {
+        return res.status(400).json({
+          message: "ID do usuário é obrigatório",
+        });
+      }
 
       const usuario = await prisma.usuario.findUnique({
-        where: { id },
+        where: { id: userId },
         select: {
           id: true,
           email: true,
@@ -207,6 +154,74 @@ router.get(
       console.error("Erro ao buscar usuário:", error);
       res.status(500).json({
         message: "Erro ao buscar usuário",
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  }
+);
+
+// PATCH /usuario/:userId/status - Atualizar status de usuário
+router.patch(
+  "/usuario/:userId/status",
+  supabaseAuthMiddleware(["ADMIN"]),
+  async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { status } = req.body;
+
+      // Validação básica dos parâmetros
+      if (!userId || userId.trim() === "") {
+        return res.status(400).json({
+          message: "ID do usuário é obrigatório",
+        });
+      }
+
+      // Validação de status válido
+      const statusValidos = [
+        "ATIVO",
+        "INATIVO",
+        "BANIDO",
+        "PENDENTE",
+        "SUSPENSO",
+      ];
+
+      if (!status || !statusValidos.includes(status)) {
+        return res.status(400).json({
+          message: "Status inválido",
+          statusValidos,
+        });
+      }
+
+      const usuario = await prisma.usuario.update({
+        where: { id: userId },
+        data: { status },
+        select: {
+          id: true,
+          email: true,
+          nomeCompleto: true,
+          status: true,
+          atualizadoEm: true,
+        },
+      });
+
+      res.json({
+        message: "Status do usuário atualizado com sucesso",
+        usuario,
+      });
+    } catch (error) {
+      console.error("Erro ao atualizar status:", error);
+
+      if (
+        error instanceof Error &&
+        error.message.includes("Record to update not found")
+      ) {
+        return res.status(404).json({
+          message: "Usuário não encontrado",
+        });
+      }
+
+      res.status(500).json({
+        message: "Erro ao atualizar status do usuário",
         error: error instanceof Error ? error.message : "Erro desconhecido",
       });
     }

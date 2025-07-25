@@ -6,8 +6,7 @@ import {
   refreshToken,
   obterPerfil,
 } from "../controllers";
-import { authMiddleware } from "../middlewares";
-import { supabaseAuthMiddleware } from "../auth";
+import { supabaseAuthMiddleware } from "../../../modules/superbase/middleware";
 import { prisma } from "../../../config/prisma";
 
 const router = Router();
@@ -15,27 +14,19 @@ const router = Router();
 /**
  * Rotas públicas (sem autenticação)
  */
-
-// POST /registrar - Registro de novo usuário
 router.post("/registrar", criarUsuario);
-
-// POST /login - Login de usuário
 router.post("/login", loginUsuario);
-
-// POST /refresh - Validação de refresh token
 router.post("/refresh", refreshToken);
 
 /**
- * Rotas protegidas (requerem autenticação)
+ * Rotas protegidas básicas
  */
-
-// POST /logout - Logout de usuário
-router.post("/logout", authMiddleware(), logoutUsuario);
-
-// GET /perfil - Perfil do usuário autenticado
+router.post("/logout", supabaseAuthMiddleware(), logoutUsuario);
 router.get("/perfil", supabaseAuthMiddleware(), obterPerfil);
 
-// GET /admin - Rota apenas para administradores
+/**
+ * Rotas administrativas
+ */
 router.get("/admin", supabaseAuthMiddleware(["ADMIN"]), (req, res) => {
   res.json({
     message: "Área administrativa",
@@ -44,7 +35,6 @@ router.get("/admin", supabaseAuthMiddleware(["ADMIN"]), (req, res) => {
   });
 });
 
-// GET /listar - Listar usuários (ADMIN e MODERADOR)
 router.get(
   "/listar",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
@@ -61,9 +51,7 @@ router.get(
           criadoEm: true,
           ultimoLogin: true,
         },
-        orderBy: {
-          criadoEm: "desc",
-        },
+        orderBy: { criadoEm: "desc" },
         take: 50,
       });
 
@@ -74,19 +62,19 @@ router.get(
       });
     } catch (error) {
       console.error("Erro ao listar usuários:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Erro desconhecido";
       res.status(500).json({
         message: "Erro ao listar usuários",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
+        error: errorMessage,
       });
     }
   }
 );
 
 /**
- * Rotas com parâmetros - definidas por último para evitar conflitos
+ * Rotas com parâmetros - por último para evitar conflitos
  */
-
-// GET /usuario/:userId - Buscar usuário por ID
 router.get(
   "/usuario/:userId",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
@@ -94,7 +82,6 @@ router.get(
     try {
       const { userId } = req.params;
 
-      // Validação básica do parâmetro
       if (!userId || userId.trim() === "") {
         return res.status(400).json({
           message: "ID do usuário é obrigatório",
@@ -107,36 +94,11 @@ router.get(
           id: true,
           email: true,
           nomeCompleto: true,
-          cpf: true,
-          cnpj: true,
-          telefone: true,
-          dataNasc: true,
-          genero: true,
-          matricula: true,
           role: true,
           status: true,
           tipoUsuario: true,
-          supabaseId: true,
           ultimoLogin: true,
           criadoEm: true,
-          atualizadoEm: true,
-          empresa: {
-            select: {
-              id: true,
-              nome: true,
-            },
-          },
-          enderecos: {
-            select: {
-              id: true,
-              logradouro: true,
-              numero: true,
-              bairro: true,
-              cidade: true,
-              estado: true,
-              cep: true,
-            },
-          },
         },
       });
 
@@ -152,15 +114,16 @@ router.get(
       });
     } catch (error) {
       console.error("Erro ao buscar usuário:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Erro desconhecido";
       res.status(500).json({
         message: "Erro ao buscar usuário",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
+        error: errorMessage,
       });
     }
   }
 );
 
-// PATCH /usuario/:userId/status - Atualizar status de usuário
 router.patch(
   "/usuario/:userId/status",
   supabaseAuthMiddleware(["ADMIN"]),
@@ -169,14 +132,12 @@ router.patch(
       const { userId } = req.params;
       const { status } = req.body;
 
-      // Validação básica dos parâmetros
       if (!userId || userId.trim() === "") {
         return res.status(400).json({
           message: "ID do usuário é obrigatório",
         });
       }
 
-      // Validação de status válido
       const statusValidos = [
         "ATIVO",
         "INATIVO",
@@ -220,9 +181,11 @@ router.patch(
         });
       }
 
+      const errorMessage =
+        error instanceof Error ? error.message : "Erro desconhecido";
       res.status(500).json({
         message: "Erro ao atualizar status do usuário",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
+        error: errorMessage,
       });
     }
   }

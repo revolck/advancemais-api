@@ -31,11 +31,16 @@ export const debugRouter = (router: Router, routerName: string) => {
           console.log(`  🔧 ${index + 1}. Middleware: ${layer.regexp.source}`);
         }
       } catch (error) {
-        console.error(`  ❌ ${index + 1}. Erro na camada:`, error.message);
+        // Type guard para verificar se error é uma instância de Error
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        console.error(`  ❌ ${index + 1}. Erro na camada:`, errorMessage);
       }
     });
   } catch (error) {
-    console.error(`❌ Erro ao debugar router ${routerName}:`, error.message);
+    // Type guard para verificar se error é uma instância de Error
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`❌ Erro ao debugar router ${routerName}:`, errorMessage);
   }
 };
 
@@ -75,10 +80,15 @@ export const debugExpressApp = (app: any) => {
           }
         }
       } catch (error) {
-        console.error(`  ❌ ${index + 1}. Erro na camada:`, error.message);
+        // Type guard para verificar se error é uma instância de Error
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        console.error(`  ❌ ${index + 1}. Erro na camada:`, errorMessage);
       }
     });
   } catch (error) {
-    console.error("❌ Erro ao debugar aplicação:", error.message);
+    // Type guard para verificar se error é uma instância de Error
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("❌ Erro ao debugar aplicação:", errorMessage);
   }
 };

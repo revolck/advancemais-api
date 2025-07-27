@@ -29,8 +29,23 @@ model Usuario {
   atualizadoEm  DateTime    @updatedAt
   ultimoLogin   DateTime?
   refreshToken  String?
+  
+  // CAMPOS PARA RECUPERAÇÃO DE SENHA
+  tokenRecuperacao           String?   
+  tokenRecuperacaoExp        DateTime? 
+  tentativasRecuperacao      Int       @default(0)
+  ultimaTentativaRecuperacao DateTime?
+  
+  // CAMPOS PARA AUDITORIA DE EMAILS
+  emailVerificado      Boolean   @default(false)
+  emailBoasVindasEnviado Boolean @default(false)
+  dataEmailBoasVindas  DateTime?
+  
+  // RELACIONAMENTOS
   enderecos     Endereco[]
   empresa       Empresa?    @relation(fields: [codEmpresa], references: [id])
+  
+  @@index([tokenRecuperacao])
 }
 
 model Empresa {
@@ -52,6 +67,42 @@ model Endereco {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
   usuario      Usuario  @relation(fields: [usuarioId], references: [id])
+}
+
+model LogEmail {
+  id          String      @id @default(uuid())
+  usuarioId   String?
+  email       String
+  tipoEmail   TipoEmail
+  status      StatusEmail
+  tentativas  Int         @default(1)
+  erro        String?
+  messageId   String?
+  criadoEm    DateTime    @default(now())
+  atualizadoEm DateTime   @updatedAt
+
+  @@index([usuarioId])
+  @@index([email])
+  @@index([tipoEmail])
+  @@index([criadoEm])
+}
+
+model LogSMS {
+  id          String    @id @default(uuid())
+  usuarioId   String?
+  telefone    String
+  tipoSMS     TipoSMS
+  status      StatusSMS
+  tentativas  Int       @default(1)
+  erro        String?
+  messageId   String?
+  criadoEm    DateTime  @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([usuarioId])
+  @@index([telefone])
+  @@index([tipoSMS])
+  @@index([criadoEm])
 }
 
 enum TipoUsuario {
@@ -77,4 +128,29 @@ enum Status {
   BANIDO
   PENDENTE
   SUSPENSO
+}
+
+enum TipoEmail {
+  BOAS_VINDAS
+  RECUPERACAO_SENHA
+  VERIFICACAO_EMAIL
+  NOTIFICACAO_SISTEMA
+}
+
+enum StatusEmail {
+  ENVIADO
+  FALHA
+  PENDENTE
+}
+
+enum TipoSMS {
+  VERIFICACAO
+  NOTIFICACAO
+  MARKETING
+}
+
+enum StatusSMS {
+  ENVIADO
+  FALHA
+  PENDENTE
 }

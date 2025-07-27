@@ -251,6 +251,11 @@ export const criarUsuario = async (req: Request, res: Response) => {
       },
     });
 
+    // IMPORTANTE: Prepara dados para o middleware de email
+    res.locals.usuarioCriado = {
+      usuario,
+    };
+
     res.status(201).json({
       message: `${
         tipoUsuario === TipoUsuario.PESSOA_FISICA ? "Pessoa física" : "Empresa"

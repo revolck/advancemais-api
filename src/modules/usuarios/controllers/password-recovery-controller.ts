@@ -1,0 +1,360 @@
+import { Request, Response } from "express";
+import bcrypt from "bcrypt";
+import crypto from "crypto";
+import { prisma } from "../../../config/prisma";
+import { EmailService } from "../../brevo/services/email-service";
+import { brevoConfig } from "../../../config/env";
+import {
+  validarCPF,
+  validarCNPJ,
+  validarEmail,
+  validarSenha,
+  limparDocumento,
+} from "../utils/validation";
+
+/**
+ * Interface para solicitação de recuperação de senha
+ */
+interface SolicitarRecuperacaoData {
+  identificador: string; // CPF, CNPJ ou email
+}
+
+/**
+ * Interface para redefinição de senha
+ */
+interface RedefinirSenhaData {
+  token: string;
+  novaSenha: string;
+  confirmarSenha: string;
+}
+
+/**
+ * Controller para recuperação de senha
+ * Gerencia todo o fluxo de recuperação via email
+ */
+export class PasswordRecoveryController {
+  private emailService: EmailService;
+
+  constructor() {
+    this.emailService = new EmailService();
+  }
+
+  /**
+   * Solicita recuperação de senha via CPF, CNPJ ou email
+   * @param req - Request com identificador
+   * @param res - Response com resultado
+   */
+  public solicitarRecuperacao = async (req: Request, res: Response) => {
+    try {
+      const { identificador }: SolicitarRecuperacaoData = req.body;
+
+      // Validação básica
+      if (!identificador || identificador.trim() === "") {
+        return res.status(400).json({
+          message: "Identificador (CPF, CNPJ ou email) é obrigatório",
+        });
+      }
+
+      // Limpa e determina o tipo de identificador
+      const identificadorLimpo = identificador.trim();
+      let buscarPor: any = {};
+
+      // Verifica se é email
+      if (validarEmail(identificadorLimpo)) {
+        buscarPor = { email: identificadorLimpo.toLowerCase() };
+      } else {
+        // Remove caracteres especiais para CPF/CNPJ
+        const documentoLimpo = limparDocumento(identificadorLimpo);
+
+        if (validarCPF(documentoLimpo)) {
+          buscarPor = { cpf: documentoLimpo };
+        } else if (validarCNPJ(documentoLimpo)) {
+          buscarPor = { cnpj: documentoLimpo };
+        } else {
+          return res.status(400).json({
+            message:
+              "Identificador deve ser um email válido, CPF (11 dígitos) ou CNPJ (14 dígitos)",
+          });
+        }
+      }
+
+      // Busca usuário no banco
+      const usuario = await prisma.usuario.findFirst({
+        where: {
+          ...buscarPor,
+          status: "ATIVO", // Só permite recuperação para usuários ativos
+        },
+        select: {
+          id: true,
+          email: true,
+          nomeCompleto: true,
+          tentativasRecuperacao: true,
+          ultimaTentativaRecuperacao: true,
+        },
+      });
+
+      if (!usuario) {
+        // Por segurança, sempre retorna sucesso mesmo se usuário não existe
+        return res.json({
+          message:
+            "Se o identificador estiver correto, você receberá um email com instruções para recuperação",
+        });
+      }
+
+      // Verifica limite de tentativas
+      const agora = new Date();
+      const cooldownMinutes = brevoConfig.passwordRecovery.cooldownMinutes;
+      const maxAttempts = brevoConfig.passwordRecovery.maxAttempts;
+
+      if (usuario.ultimaTentativaRecuperacao) {
+        const tempoCooldown = new Date(
+          usuario.ultimaTentativaRecuperacao.getTime() + cooldownMinutes * 60000
+        );
+
+        if (
+          agora < tempoCooldown &&
+          usuario.tentativasRecuperacao >= maxAttempts
+        ) {
+          const minutosRestantes = Math.ceil(
+            (tempoCooldown.getTime() - agora.getTime()) / 60000
+          );
+          return res.status(429).json({
+            message: `Muitas tentativas de recuperação. Tente novamente em ${minutosRestantes} minutos`,
+          });
+        }
+
+        // Reset do contador se passou do tempo de cooldown
+        if (agora >= tempoCooldown) {
+          await prisma.usuario.update({
+            where: { id: usuario.id },
+            data: {
+              tentativasRecuperacao: 0,
+            },
+          });
+        }
+      }
+
+      // Gera token seguro
+      const token = crypto.randomBytes(32).toString("hex");
+      const tokenExpiracao = new Date(
+        agora.getTime() +
+          brevoConfig.passwordRecovery.tokenExpirationMinutes * 60000
+      );
+
+      // Atualiza usuário com token e incrementa tentativas
+      await prisma.usuario.update({
+        where: { id: usuario.id },
+        data: {
+          tokenRecuperacao: token,
+          tokenRecuperacaoExp: tokenExpiracao,
+          tentativasRecuperacao: { increment: 1 },
+          ultimaTentativaRecuperacao: agora,
+        },
+      });
+
+      // Envia email de recuperação
+      const emailResult = await this.emailService.enviarEmailRecuperacaoSenha(
+        usuario,
+        token
+      );
+
+      if (!emailResult.success) {
+        console.error(
+          "Erro ao enviar email de recuperação:",
+          emailResult.error
+        );
+        return res.status(500).json({
+          message: "Erro interno ao enviar email de recuperação",
+        });
+      }
+
+      res.json({
+        message:
+          "Se o identificador estiver correto, você receberá um email com instruções para recuperação",
+      });
+    } catch (error) {
+      console.error("Erro na solicitação de recuperação:", error);
+      res.status(500).json({
+        message: "Erro interno do servidor",
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  };
+
+  /**
+   * Valida token de recuperação
+   * @param req - Request com token
+   * @param res - Response com validação
+   */
+  public validarToken = async (req: Request, res: Response) => {
+    try {
+      const { token } = req.params;
+
+      if (!token || token.trim() === "") {
+        return res.status(400).json({
+          message: "Token é obrigatório",
+        });
+      }
+
+      // Busca usuário pelo token
+      const usuario = await prisma.usuario.findFirst({
+        where: {
+          tokenRecuperacao: token,
+          status: "ATIVO",
+        },
+        select: {
+          id: true,
+          email: true,
+          nomeCompleto: true,
+          tokenRecuperacaoExp: true,
+        },
+      });
+
+      if (!usuario) {
+        return res.status(400).json({
+          message: "Token inválido ou expirado",
+        });
+      }
+
+      // Verifica se token não expirou
+      if (
+        !usuario.tokenRecuperacaoExp ||
+        new Date() > usuario.tokenRecuperacaoExp
+      ) {
+        // Remove token expirado
+        await prisma.usuario.update({
+          where: { id: usuario.id },
+          data: {
+            tokenRecuperacao: null,
+            tokenRecuperacaoExp: null,
+          },
+        });
+
+        return res.status(400).json({
+          message: "Token expirado. Solicite uma nova recuperação",
+        });
+      }
+
+      res.json({
+        message: "Token válido",
+        usuario: {
+          email: usuario.email,
+          nomeCompleto: usuario.nomeCompleto,
+        },
+      });
+    } catch (error) {
+      console.error("Erro na validação do token:", error);
+      res.status(500).json({
+        message: "Erro interno do servidor",
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  };
+
+  /**
+   * Redefine senha usando token válido
+   * @param req - Request com token e nova senha
+   * @param res - Response com resultado
+   */
+  public redefinirSenha = async (req: Request, res: Response) => {
+    try {
+      const { token, novaSenha, confirmarSenha }: RedefinirSenhaData = req.body;
+
+      // Validações básicas
+      if (!token || !novaSenha || !confirmarSenha) {
+        return res.status(400).json({
+          message: "Token, nova senha e confirmação são obrigatórios",
+        });
+      }
+
+      // Valida nova senha
+      const validacaoSenha = validarSenha(novaSenha);
+      if (!validacaoSenha.valida) {
+        return res.status(400).json({
+          message: "Nova senha não atende aos critérios de segurança",
+          detalhes: validacaoSenha.mensagens,
+        });
+      }
+
+      // Verifica confirmação de senha
+      if (novaSenha !== confirmarSenha) {
+        return res.status(400).json({
+          message: "Confirmação de senha não confere",
+        });
+      }
+
+      // Busca usuário pelo token
+      const usuario = await prisma.usuario.findFirst({
+        where: {
+          tokenRecuperacao: token,
+          status: "ATIVO",
+        },
+        select: {
+          id: true,
+          email: true,
+          nomeCompleto: true,
+          tokenRecuperacaoExp: true,
+          senha: true,
+        },
+      });
+
+      if (!usuario) {
+        return res.status(400).json({
+          message: "Token inválido ou expirado",
+        });
+      }
+
+      // Verifica se token não expirou
+      if (
+        !usuario.tokenRecuperacaoExp ||
+        new Date() > usuario.tokenRecuperacaoExp
+      ) {
+        await prisma.usuario.update({
+          where: { id: usuario.id },
+          data: {
+            tokenRecuperacao: null,
+            tokenRecuperacaoExp: null,
+          },
+        });
+
+        return res.status(400).json({
+          message: "Token expirado. Solicite uma nova recuperação",
+        });
+      }
+
+      // Verifica se a nova senha é diferente da atual
+      const senhaIgual = await bcrypt.compare(novaSenha, usuario.senha);
+      if (senhaIgual) {
+        return res.status(400).json({
+          message: "A nova senha deve ser diferente da senha atual",
+        });
+      }
+
+      // Gera hash da nova senha
+      const novaSenhaHash = await bcrypt.hash(novaSenha, 12);
+
+      // Atualiza senha e remove token
+      await prisma.usuario.update({
+        where: { id: usuario.id },
+        data: {
+          senha: novaSenhaHash,
+          tokenRecuperacao: null,
+          tokenRecuperacaoExp: null,
+          tentativasRecuperacao: 0,
+          ultimaTentativaRecuperacao: null,
+          atualizadoEm: new Date(),
+        },
+      });
+
+      res.json({
+        message: "Senha redefinida com sucesso",
+      });
+    } catch (error) {
+      console.error("Erro na redefinição de senha:", error);
+      res.status(500).json({
+        message: "Erro interno do servidor",
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  };
+}

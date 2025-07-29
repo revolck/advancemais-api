@@ -1,6 +1,12 @@
 import { Request, Response } from "express";
 import { OrdersService, SubscriptionService } from "../../mercadopago";
-import { ProcessingMode, CurrencyId, PaymentMethodType, FrequencyType } from "../../mercadopago/enums";
+import { 
+  ProcessingMode, 
+  CurrencyId, 
+  PaymentMethodType, 
+  FrequencyType,
+  IdentificationType // ← IMPORTAÇÃO ADICIONADA
+} from "../../mercadopago/enums";
 import { prisma } from "../../../config/prisma";
 import { EmailService } from "../../brevo/services/email-service";
 
@@ -104,7 +110,8 @@ export class PaymentController {
               first_name: usuario.nomeCompleto.split(' ')[0],
               last_name: usuario.nomeCompleto.split(' ').slice(1).join(' ') || 'Silva',
               identification: {
-                type: usuario.cpf ? "CPF" as const : "CNPJ" as const,
+                // ← CORREÇÃO: usar enum ao invés de string literal
+                type: usuario.cpf ? IdentificationType.CPF : IdentificationType.CNPJ,
                 number: usuario.cpf || usuario.cnpj || ''
               }
             }

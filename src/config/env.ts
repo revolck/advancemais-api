@@ -19,14 +19,22 @@ const requiredEnvVars = [
   "BREVO_API_KEY",
 ];
 
+// Adicionar variáveis do MercadoPago
+const mercadoPagoRequiredVars = [
+  "MERCADOPAGO_ACCESS_TOKEN",
+  "MERCADOPAGO_PUBLIC_KEY",
+];
+
+// Combinar todas as variáveis obrigatórias
+const allRequiredVars = [...requiredEnvVars, ...mercadoPagoRequiredVars];
+
 // Verifica se todas as variáveis obrigatórias estão definidas
-const missingVars = requiredEnvVars.filter((varName) => !process.env[varName]);
+const missingVars = allRequiredVars.filter((varName) => !process.env[varName]);
 if (missingVars.length > 0) {
-  throw new Error(
-    `Variáveis de ambiente obrigatórias não encontradas: ${missingVars.join(
-      ", "
-    )}`
+  console.warn(
+    `⚠️  Variáveis de ambiente não encontradas: ${missingVars.join(", ")}`
   );
+  console.warn("⚠️  Alguns módulos podem não funcionar corretamente");
 }
 
 /**
@@ -109,6 +117,64 @@ export const brevoConfig = {
 } as const;
 
 /**
+ * Configurações do MercadoPago
+ */
+export const mercadoPagoConfig = {
+  // Chaves de API do MercadoPago
+  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN || "",
+  publicKey: process.env.MERCADOPAGO_PUBLIC_KEY || "",
+
+  // Ambiente (sandbox ou production)
+  environment: process.env.MERCADOPAGO_ENVIRONMENT || "sandbox",
+
+  // Secret para validação de webhooks (opcional mas recomendado)
+  webhookSecret: process.env.MERCADOPAGO_WEBHOOK_SECRET || "",
+
+  // Configurações de timeout e retry
+  timeout: parseInt(process.env.MERCLADOPAGO_TIMEOUT || "5000", 10),
+  retryAttempts: parseInt(process.env.MERCADOPAGO_RETRY_ATTEMPTS || "3", 10),
+
+  // IDs opcionais para integração avançada
+  integratorId: process.env.MERCADOPAGO_INTEGRATOR_ID || "",
+  platformId: process.env.MERCADOPAGO_PLATFORM_ID || "",
+  corporationId: process.env.MERCADOPAGO_CORPORATION_ID || "",
+
+  // Configurações de notificação
+  notificationUrl: process.env.MERCADOPAGO_NOTIFICATION_URL || "",
+
+  // Configurações de experiência do usuário
+  locale: process.env.MERCADOPAGO_LOCALE || "pt-BR",
+
+  // Configurações de processamento
+  defaultProcessingMode:
+    process.env.MERCADOPAGO_DEFAULT_PROCESSING_MODE || "automatic",
+  defaultCurrency: process.env.MERCADOPAGO_DEFAULT_CURRENCY || "BRL",
+
+  // Configurações de reembolso
+  refundConfig: {
+    allowPartialRefunds:
+      process.env.MERCADOPAGO_ALLOW_PARTIAL_REFUNDS === "true",
+    maxRefundDays: parseInt(
+      process.env.MERCADOPAGO_MAX_REFUND_DAYS || "180",
+      10
+    ),
+    autoRefundOnCancel:
+      process.env.MERCADOPAGO_AUTO_REFUND_ON_CANCEL === "true",
+  },
+
+  // Configurações de assinatura
+  subscriptionConfig: {
+    maxFrequencyDays: parseInt(
+      process.env.MERCADOPAGO_MAX_FREQUENCY_DAYS || "365",
+      10
+    ),
+    allowFreeTrials: process.env.MERCADOPAGO_ALLOW_FREE_TRIALS === "true",
+    defaultFrequencyType:
+      process.env.MERCADOPAGO_DEFAULT_FREQUENCY_TYPE || "months",
+  },
+} as const;
+
+/**
  * Configurações de rate limiting
  */
 export const rateLimitConfig = {
@@ -162,6 +228,43 @@ export const securityConfig = {
 } as const;
 
 /**
+ * Validação específica para produção do MercadoPago
+ */
+export const validateMercadoPagoProductionConfig = (): void => {
+  if (isProduction) {
+    // Verifica se não está usando chaves de teste em produção
+    if (mercadoPagoConfig.accessToken.includes("TEST")) {
+      throw new Error('ACCESS_TOKEN de produção não deve conter "TEST"');
+    }
+
+    if (mercadoPagoConfig.publicKey.includes("TEST")) {
+      throw new Error('PUBLIC_KEY de produção não deve conter "TEST"');
+    }
+
+    // Verifica se o ambiente está correto
+    if (mercadoPagoConfig.environment !== "production") {
+      throw new Error(
+        'MERCADOPAGO_ENVIRONMENT deve ser "production" em ambiente de produção'
+      );
+    }
+
+    // Verifica se o webhook secret está configurado
+    if (!mercadoPagoConfig.webhookSecret) {
+      console.warn(
+        "⚠️  MERCADOPAGO_WEBHOOK_SECRET não configurado - webhooks não serão validados"
+      );
+    }
+
+    // Verifica se a URL de notificação está configurada
+    if (!mercadoPagoConfig.notificationUrl) {
+      console.warn(
+        "⚠️  MERCADOPAGO_NOTIFICATION_URL não configurado - webhooks podem não funcionar"
+      );
+    }
+  }
+};
+
+/**
  * Helper para validar configurações críticas em produção
  */
 export const validateProductionConfig = (): void => {
@@ -199,6 +302,9 @@ export const validateProductionConfig = (): void => {
         "JWT_REFRESH_SECRET deve ter pelo menos 32 caracteres em produção"
       );
     }
+
+    // Executa validação do MercadoPago
+    validateMercadoPagoProductionConfig();
   }
 };
 
@@ -206,7 +312,12 @@ export const validateProductionConfig = (): void => {
  * Executa validação de produção se necessário
  */
 if (isProduction) {
-  validateProductionConfig();
+  try {
+    validateProductionConfig();
+  } catch (error) {
+    console.error("❌ Erro na configuração:", error);
+    process.exit(1);
+  }
 }
 
 /**
@@ -222,5 +333,28 @@ if (isDevelopment) {
     brevoConfigured: brevoConfig.apiKey
       ? "✅ Configurado"
       : "❌ Não configurado",
+    mercadoPagoConfigured: mercadoPagoConfig.accessToken
+      ? "✅ Configurado"
+      : "❌ Não configurado",
+  });
+
+  console.log("🏦 Configurações do MercadoPago:", {
+    environment: mercadoPagoConfig.environment,
+    locale: mercadoPagoConfig.locale,
+    accessTokenConfigured: mercadoPagoConfig.accessToken
+      ? "✅ Configurado"
+      : "❌ Não configurado",
+    publicKeyConfigured: mercadoPagoConfig.publicKey
+      ? "✅ Configurado"
+      : "❌ Não configurado",
+    webhookSecretConfigured: mercadoPagoConfig.webhookSecret
+      ? "✅ Configurado"
+      : "❌ Não configurado",
+    notificationUrlConfigured: mercadoPagoConfig.notificationUrl
+      ? "✅ Configurado"
+      : "❌ Não configurado",
+    timeout: mercadoPagoConfig.timeout,
+    defaultCurrency: mercadoPagoConfig.defaultCurrency,
+    defaultProcessingMode: mercadoPagoConfig.defaultProcessingMode,
   });
 }

@@ -4,11 +4,24 @@ import dotenv from "dotenv";
 dotenv.config();
 
 /**
- * Configurações de ambiente centralizadas
- * Valida e exporta todas as variáveis necessárias
+ * Configurações de ambiente centralizadas e validadas
+ * Inclui todas as configurações necessárias para o sistema AdvanceMais
+ *
+ * Módulos configurados:
+ * - Supabase (Autenticação e Banco)
+ * - JWT (Tokens de acesso)
+ * - Brevo (Email e SMS) - ATUALIZADO
+ * - MercadoPago (Pagamentos)
+ * - Servidor e Segurança
+ *
+ * @author Sistema AdvanceMais
+ * @version 2.1.0
  */
 
-// Validação de variáveis obrigatórias
+// =============================================
+// VALIDAÇÃO DE VARIÁVEIS OBRIGATÓRIAS
+// =============================================
+
 const requiredEnvVars = [
   "SUPABASE_URL",
   "SUPABASE_KEY",
@@ -16,19 +29,25 @@ const requiredEnvVars = [
   "DIRECT_URL",
   "JWT_SECRET",
   "JWT_REFRESH_SECRET",
-  "BREVO_API_KEY",
 ];
 
-// Adicionar variáveis do MercadoPago
+// Variáveis específicas do Brevo (atualizadas)
+const brevoRequiredVars = ["BREVO_API_KEY"];
+
+// Variáveis do MercadoPago
 const mercadoPagoRequiredVars = [
   "MERCADOPAGO_ACCESS_TOKEN",
   "MERCADOPAGO_PUBLIC_KEY",
 ];
 
 // Combinar todas as variáveis obrigatórias
-const allRequiredVars = [...requiredEnvVars, ...mercadoPagoRequiredVars];
+const allRequiredVars = [
+  ...requiredEnvVars,
+  ...brevoRequiredVars,
+  ...mercadoPagoRequiredVars,
+];
 
-// Verifica se todas as variáveis obrigatórias estão definidas
+// Verifica variáveis obrigatórias
 const missingVars = allRequiredVars.filter((varName) => !process.env[varName]);
 if (missingVars.length > 0) {
   console.warn(
@@ -37,8 +56,12 @@ if (missingVars.length > 0) {
   console.warn("⚠️  Alguns módulos podem não funcionar corretamente");
 }
 
+// =============================================
+// CONFIGURAÇÕES DO SUPABASE
+// =============================================
+
 /**
- * Configurações do Supabase
+ * Configurações do Supabase para autenticação e banco de dados
  */
 export const supabaseConfig = {
   url: process.env.SUPABASE_URL!,
@@ -48,8 +71,12 @@ export const supabaseConfig = {
     `${process.env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`,
 } as const;
 
+// =============================================
+// CONFIGURAÇÕES JWT
+// =============================================
+
 /**
- * Configurações JWT
+ * Configurações JWT para tokens de acesso e refresh
  * Tipos compatíveis com a biblioteca jsonwebtoken
  */
 export const jwtConfig = {
@@ -71,8 +98,12 @@ export const jwtConfig = {
     | "90d",
 } as const;
 
+// =============================================
+// CONFIGURAÇÕES DO SERVIDOR
+// =============================================
+
 /**
- * Configurações do servidor
+ * Configurações gerais do servidor Express
  */
 export const serverConfig = {
   port: parseInt(process.env.PORT || "3000", 10),
@@ -80,25 +111,62 @@ export const serverConfig = {
   corsOrigin: process.env.CORS_ORIGIN || "*",
 } as const;
 
+// =============================================
+// CONFIGURAÇÕES DO BANCO DE DADOS
+// =============================================
+
 /**
- * Configurações do banco de dados
+ * Configurações de conexão com PostgreSQL via Prisma
  */
 export const databaseConfig = {
   url: process.env.DATABASE_URL!,
   directUrl: process.env.DIRECT_URL!,
 } as const;
 
+// =============================================
+// CONFIGURAÇÕES DO BREVO (ATUALIZADO)
+// =============================================
+
 /**
- * Configurações do Brevo
+ * Configurações do Brevo (ex-Sendinblue) para email e SMS
+ *
+ * Credenciais atualizadas:
+ * - API Key: 851JKC36h92VRfbk
+ * - SMTP Server: smtp-relay.brevo.com:587
+ * - SMTP User: 93713f002@smtp-brevo.com
+ * - SMTP Pass: 8G2CrnFRt4EpNUbs
  */
 export const brevoConfig = {
-  apiKey: process.env.BREVO_API_KEY!,
-  smtpHost: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
-  smtpPort: parseInt(process.env.BREVO_SMTP_PORT || "587", 10),
-  smtpUser: process.env.BREVO_SMTP_USER || "",
-  smtpPassword: process.env.BREVO_SMTP_PASSWORD || "",
+  // API Key principal para todas as operações
+  apiKey: process.env.BREVO_API_KEY || "851JKC36h92VRfbk",
+
+  // Configurações de remetente para emails
   fromEmail: process.env.BREVO_FROM_EMAIL || "noreply@advancemais.com",
   fromName: process.env.BREVO_FROM_NAME || "AdvanceMais",
+
+  // Configurações SMTP (backup/alternativa)
+  smtp: {
+    host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+    port: parseInt(process.env.BREVO_SMTP_PORT || "587", 10),
+    secure: false, // true para 465, false para 587
+    auth: {
+      user: process.env.BREVO_SMTP_USER || "93713f002@smtp-brevo.com",
+      pass: process.env.BREVO_SMTP_PASSWORD || "8G2CrnFRt4EpNUbs",
+    },
+    // Configurações adicionais do Postfix
+    connectionTimeout: 60000, // 60 segundos
+    greetingTimeout: 30000, // 30 segundos
+    socketTimeout: 60000, // 60 segundos
+  },
+
+  // URLs da API Brevo
+  apiUrls: {
+    base: "https://api.brevo.com/v3",
+    email: "https://api.brevo.com/v3/smtp/email",
+    sms: "https://api.brevo.com/v3/transactionalSMS",
+    account: "https://api.brevo.com/v3/account",
+  },
+
   // Configurações específicas para recuperação de senha
   passwordRecovery: {
     tokenExpirationMinutes: parseInt(
@@ -114,10 +182,39 @@ export const brevoConfig = {
       10
     ),
   },
+
+  // Configurações de envio
+  sending: {
+    maxRetries: parseInt(process.env.BREVO_MAX_RETRIES || "3", 10),
+    retryDelay: parseInt(process.env.BREVO_RETRY_DELAY || "1000", 10),
+    timeout: parseInt(process.env.BREVO_TIMEOUT || "30000", 10), // 30 segundos
+
+    // Limites diários (ajuste conforme seu plano Brevo)
+    dailyEmailLimit: parseInt(
+      process.env.BREVO_DAILY_EMAIL_LIMIT || "10000",
+      10
+    ),
+    dailySMSLimit: parseInt(process.env.BREVO_DAILY_SMS_LIMIT || "1000", 10),
+
+    // Configurações de SMS
+    defaultSMSSender: process.env.BREVO_SMS_SENDER || "AdvanceMais",
+    smsUnicodeEnabled: process.env.BREVO_SMS_UNICODE === "true",
+  },
+
+  // Configurações de template
+  templates: {
+    cacheEnabled: process.env.BREVO_TEMPLATE_CACHE !== "false",
+    preloadOnStart: process.env.BREVO_PRELOAD_TEMPLATES !== "false",
+    customTemplateDir: process.env.BREVO_CUSTOM_TEMPLATE_DIR || "",
+  },
 } as const;
 
+// =============================================
+// CONFIGURAÇÕES DO MERCADOPAGO
+// =============================================
+
 /**
- * Configurações do MercadoPago
+ * Configurações do MercadoPago para pagamentos
  */
 export const mercadoPagoConfig = {
   // Chaves de API do MercadoPago
@@ -131,7 +228,7 @@ export const mercadoPagoConfig = {
   webhookSecret: process.env.MERCADOPAGO_WEBHOOK_SECRET || "",
 
   // Configurações de timeout e retry
-  timeout: parseInt(process.env.MERCLADOPAGO_TIMEOUT || "5000", 10),
+  timeout: parseInt(process.env.MERCADOPAGO_TIMEOUT || "5000", 10),
   retryAttempts: parseInt(process.env.MERCADOPAGO_RETRY_ATTEMPTS || "3", 10),
 
   // IDs opcionais para integração avançada
@@ -174,16 +271,24 @@ export const mercadoPagoConfig = {
   },
 } as const;
 
+// =============================================
+// CONFIGURAÇÕES DE RATE LIMITING
+// =============================================
+
 /**
- * Configurações de rate limiting
+ * Configurações para controle de taxa de requisições
  */
 export const rateLimitConfig = {
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000", 10), // 15 minutos
   maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || "100", 10), // 100 requests por janela
 } as const;
 
+// =============================================
+// CONFIGURAÇÕES DE UPLOAD
+// =============================================
+
 /**
- * Configurações de upload
+ * Configurações para upload de arquivos
  */
 export const uploadConfig = {
   maxFileSize: parseInt(process.env.MAX_FILE_SIZE || "10485760", 10), // 10MB
@@ -193,23 +298,23 @@ export const uploadConfig = {
   ).split(","),
 } as const;
 
+// =============================================
+// CONFIGURAÇÕES DE AMBIENTE
+// =============================================
+
 /**
- * Verifica se está em ambiente de desenvolvimento
+ * Helpers para verificar ambiente atual
  */
 export const isDevelopment = serverConfig.nodeEnv === "development";
-
-/**
- * Verifica se está em ambiente de produção
- */
 export const isProduction = serverConfig.nodeEnv === "production";
-
-/**
- * Verifica se está em ambiente de teste
- */
 export const isTest = serverConfig.nodeEnv === "test";
 
+// =============================================
+// CONFIGURAÇÕES DE LOGGING
+// =============================================
+
 /**
- * Configurações de logging
+ * Configurações de sistema de logs
  */
 export const logConfig = {
   level: process.env.LOG_LEVEL || (isDevelopment ? "debug" : "info"),
@@ -217,8 +322,12 @@ export const logConfig = {
   enableFile: process.env.ENABLE_FILE_LOG === "true",
 } as const;
 
+// =============================================
+// CONFIGURAÇÕES DE SEGURANÇA
+// =============================================
+
 /**
- * Configurações de segurança
+ * Configurações de segurança da aplicação
  */
 export const securityConfig = {
   bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || "12", 10),
@@ -226,6 +335,39 @@ export const securityConfig = {
     process.env.SESSION_SECRET || "default-session-secret-change-in-production",
   cookieMaxAge: parseInt(process.env.COOKIE_MAX_AGE || "86400000", 10), // 24 horas
 } as const;
+
+// =============================================
+// VALIDAÇÕES ESPECÍFICAS PARA PRODUÇÃO
+// =============================================
+
+/**
+ * Validação específica para produção do Brevo
+ */
+export const validateBrevoProductionConfig = (): void => {
+  if (isProduction) {
+    // Verifica se a API key não está usando valor padrão em produção
+    if (!process.env.BREVO_API_KEY) {
+      console.warn("⚠️  BREVO_API_KEY não configurada - usando valor padrão");
+    }
+
+    // Verifica configurações de email
+    if (!brevoConfig.fromEmail.includes("@")) {
+      throw new Error("BREVO_FROM_EMAIL deve ser um email válido em produção");
+    }
+
+    // Verifica se não está usando credenciais de desenvolvimento
+    if (
+      brevoConfig.fromEmail.includes("test") ||
+      brevoConfig.fromEmail.includes("dev")
+    ) {
+      console.warn(
+        "⚠️  Email remetente parece ser de desenvolvimento em produção"
+      );
+    }
+
+    console.log("✅ Configuração do Brevo validada para produção");
+  }
+};
 
 /**
  * Validação específica para produção do MercadoPago
@@ -303,10 +445,15 @@ export const validateProductionConfig = (): void => {
       );
     }
 
-    // Executa validação do MercadoPago
+    // Executa validações específicas dos módulos
+    validateBrevoProductionConfig();
     validateMercadoPagoProductionConfig();
   }
 };
+
+// =============================================
+// EXECUÇÃO DE VALIDAÇÕES
+// =============================================
 
 /**
  * Executa validação de produção se necessário
@@ -314,11 +461,16 @@ export const validateProductionConfig = (): void => {
 if (isProduction) {
   try {
     validateProductionConfig();
+    console.log("✅ Todas as configurações de produção validadas com sucesso");
   } catch (error) {
     console.error("❌ Erro na configuração:", error);
     process.exit(1);
   }
 }
+
+// =============================================
+// LOGS DE CONFIGURAÇÃO (DESENVOLVIMENTO)
+// =============================================
 
 /**
  * Log das configurações carregadas (sem dados sensíveis)
@@ -336,6 +488,21 @@ if (isDevelopment) {
     mercadoPagoConfigured: mercadoPagoConfig.accessToken
       ? "✅ Configurado"
       : "❌ Não configurado",
+  });
+
+  console.log("📧 Configurações do Brevo:", {
+    apiKey: brevoConfig.apiKey
+      ? `${brevoConfig.apiKey.substring(0, 8)}...`
+      : "❌ Não configurado",
+    fromEmail: brevoConfig.fromEmail,
+    fromName: brevoConfig.fromName,
+    smtpHost: brevoConfig.smtp.host,
+    smtpPort: brevoConfig.smtp.port,
+    smtpUser: brevoConfig.smtp.auth.user,
+    dailyEmailLimit: brevoConfig.sending.dailyEmailLimit,
+    dailySMSLimit: brevoConfig.sending.dailySMSLimit,
+    maxRetries: brevoConfig.sending.maxRetries,
+    templatesEnabled: brevoConfig.templates.cacheEnabled,
   });
 
   console.log("🏦 Configurações do MercadoPago:", {
@@ -358,3 +525,31 @@ if (isDevelopment) {
     defaultProcessingMode: mercadoPagoConfig.defaultProcessingMode,
   });
 }
+
+// =============================================
+// EXPORTAÇÕES FINAIS
+// =============================================
+
+/**
+ * Configuração consolidada para fácil acesso
+ */
+export const appConfig = {
+  server: serverConfig,
+  database: databaseConfig,
+  supabase: supabaseConfig,
+  jwt: jwtConfig,
+  brevo: brevoConfig,
+  mercadoPago: mercadoPagoConfig,
+  security: securityConfig,
+  rateLimit: rateLimitConfig,
+  upload: uploadConfig,
+  log: logConfig,
+  environment: {
+    isDevelopment,
+    isProduction,
+    isTest,
+    nodeEnv: serverConfig.nodeEnv,
+  },
+} as const;
+
+export default appConfig;

@@ -5,6 +5,9 @@ import { mercadoPagoRoutes } from "../modules/mercadopago";
 /**
  * Router principal da aplicação
  * Centraliza todas as rotas dos módulos
+ *
+ * @author Sistema AdvanceMais
+ * @version 2.1.0
  */
 const router = Router();
 
@@ -18,6 +21,8 @@ router.get("/", (req, res) => {
     timestamp: new Date().toISOString(),
     endpoints: {
       usuarios: "/api/v1/usuarios",
+      mercadopago: "/api/v1/mercadopago",
+      brevo: "/api/v1/brevo",
       health: "/health",
     },
   });
@@ -36,8 +41,12 @@ router.get("/health", (req, res) => {
   });
 });
 
+// =============================================
+// MÓDULOS DA APLICAÇÃO
+// =============================================
+
 /**
- * Modulo de usuários
+ * Módulo de usuários
  * - Gerenciamento de usuários
  * - Autenticação e autorização
  * - Perfis e permissões
@@ -46,7 +55,7 @@ router.get("/health", (req, res) => {
 router.use("/api/v1/usuarios", usuarioRoutes);
 
 /**
- * Modulo do mercadopago
+ * Módulo do MercadoPago
  * - Integração com a API do MercadoPago
  * - Criação e gerenciamento de orders
  * - Assinaturas e cobranças recorrentes
@@ -56,5 +65,30 @@ router.use("/api/v1/usuarios", usuarioRoutes);
  * - Logs e auditoria
  */
 router.use("/api/v1/mercadopago", mercadoPagoRoutes);
+
+/**
+ * Módulo do Brevo (Email e SMS)
+ * - Envio de emails transacionais
+ * - Envio de SMS para verificação
+ * - Templates HTML responsivos
+ * - Sistema de retry automático
+ * - Health checks e monitoramento
+ * - Estatísticas de envio
+ */
+try {
+  const brevoRoutes = require("../modules/brevo/routes").default;
+  router.use("/api/v1/brevo", brevoRoutes);
+  console.log("✅ Módulo Brevo registrado no router principal");
+} catch (error) {
+  console.error("❌ Erro ao carregar rotas do Brevo:", error);
+
+  // Fallback em caso de erro
+  router.use("/api/v1/brevo", (req, res) => {
+    res.status(503).json({
+      message: "Módulo Brevo temporariamente indisponível",
+      error: "Falha ao carregar o módulo",
+    });
+  });
+}
 
 export { router as appRoutes };

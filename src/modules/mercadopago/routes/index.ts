@@ -5,13 +5,17 @@ import webhooksRoutes from "./webhooks";
 import configRoutes from "./config";
 
 /**
- * Router principal do módulo MercadoPago
- * Centraliza todas as rotas dos submodulos
+ * Router principal do módulo MercadoPago - CORRIGIDO
+ * Centraliza todas as rotas dos submódulos
+ *
+ * @author Sistema AdvanceMais
+ * @version 3.0.1
  */
 const router = Router();
 
 /**
- * Rota de informações do módulo
+ * Informações do módulo
+ * GET /mercadopago
  */
 router.get("/", (req, res) => {
   res.json({
@@ -19,10 +23,10 @@ router.get("/", (req, res) => {
     version: "v1",
     timestamp: new Date().toISOString(),
     endpoints: {
-      orders: "/api/v1/mercadopago/orders",
-      subscriptions: "/api/v1/mercadopago/subscriptions",
-      webhooks: "/api/v1/mercadopago/webhooks",
-      config: "/api/v1/mercadopago/config",
+      orders: "/orders",
+      subscriptions: "/subscriptions",
+      webhooks: "/webhooks",
+      config: "/config",
     },
     documentation: {
       orders: "Gerenciamento de orders (pagamentos únicos)",
@@ -34,7 +38,8 @@ router.get("/", (req, res) => {
 });
 
 /**
- * Rota de health check específica do módulo
+ * Health check do módulo
+ * GET /mercadopago/health
  */
 router.get("/health", (req, res) => {
   res.json({
@@ -51,7 +56,7 @@ router.get("/health", (req, res) => {
   });
 });
 
-// Registra as rotas dos submodulos
+// Registra as rotas dos submódulos
 router.use("/orders", ordersRoutes);
 router.use("/subscriptions", subscriptionsRoutes);
 router.use("/webhooks", webhooksRoutes);

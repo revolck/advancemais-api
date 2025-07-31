@@ -2,50 +2,70 @@ import { Router } from "express";
 import { SubscriptionController } from "../controllers";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
 
+/**
+ * Rotas para Assinaturas do MercadoPago - CORRIGIDAS
+ * Endpoints para gerenciamento de pagamentos recorrentes
+ *
+ * @author Sistema AdvanceMais
+ * @version 3.0.1
+ */
 const router = Router();
 const subscriptionController = new SubscriptionController();
 
 /**
- * Rotas para gerenciamento de Assinaturas do MercadoPago
- * Todas as rotas requerem autenticação
+ * Informações sobre assinaturas
+ * GET /subscriptions
  */
-
-// POST /subscriptions - Criar nova assinatura
-router.post(
-  "/",
-  supabaseAuthMiddleware(),
-  subscriptionController.createSubscription
-);
-
-// GET /subscriptions - Listar assinaturas do usuário
 router.get(
   "/",
   supabaseAuthMiddleware(),
   subscriptionController.getUserSubscriptions
 );
 
-// GET /subscriptions/:subscriptionId - Obter informações de uma assinatura
+/**
+ * Criar nova assinatura
+ * POST /subscriptions
+ */
+router.post(
+  "/",
+  supabaseAuthMiddleware(),
+  subscriptionController.createSubscription
+);
+
+/**
+ * Obter informações de uma assinatura
+ * GET /subscriptions/:subscriptionId
+ */
 router.get(
   "/:subscriptionId",
   supabaseAuthMiddleware(),
   subscriptionController.getSubscription
 );
 
-// PUT /subscriptions/:subscriptionId/pause - Pausar assinatura
+/**
+ * Pausar assinatura
+ * PUT /subscriptions/:subscriptionId/pause
+ */
 router.put(
   "/:subscriptionId/pause",
   supabaseAuthMiddleware(),
   subscriptionController.pauseSubscription
 );
 
-// PUT /subscriptions/:subscriptionId/cancel - Cancelar assinatura
+/**
+ * Cancelar assinatura
+ * PUT /subscriptions/:subscriptionId/cancel
+ */
 router.put(
   "/:subscriptionId/cancel",
   supabaseAuthMiddleware(),
   subscriptionController.cancelSubscription
 );
 
-// PUT /subscriptions/:subscriptionId/reactivate - Reativar assinatura
+/**
+ * Reativar assinatura
+ * PUT /subscriptions/:subscriptionId/reactivate
+ */
 router.put(
   "/:subscriptionId/reactivate",
   supabaseAuthMiddleware(),

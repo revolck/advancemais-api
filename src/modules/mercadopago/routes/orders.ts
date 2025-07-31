@@ -2,28 +2,58 @@ import { Router } from "express";
 import { OrdersController } from "../controllers";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
 
+/**
+ * Rotas para Orders do MercadoPago - CORRIGIDAS
+ * Endpoints para gerenciamento de pagamentos únicos
+ *
+ * @author Sistema AdvanceMais
+ * @version 3.0.1
+ */
 const router = Router();
 const ordersController = new OrdersController();
 
 /**
- * Rotas para gerenciamento de Orders do MercadoPago
- * Todas as rotas requerem autenticação
+ * Informações sobre orders
+ * GET /orders
  */
+router.get("/", (req, res) => {
+  res.json({
+    message: "MercadoPago Orders API",
+    endpoints: {
+      create: "POST /",
+      get: "GET /:orderId",
+      cancel: "PUT /:orderId/cancel",
+      refund: "POST /:orderId/refund",
+    },
+  });
+});
 
-// POST /orders - Criar nova order
+/**
+ * Criar nova order
+ * POST /orders
+ */
 router.post("/", supabaseAuthMiddleware(), ordersController.createOrder);
 
-// GET /orders/:orderId - Obter informações de uma order
+/**
+ * Obter informações de uma order
+ * GET /orders/:orderId
+ */
 router.get("/:orderId", supabaseAuthMiddleware(), ordersController.getOrder);
 
-// PUT /orders/:orderId/cancel - Cancelar uma order
+/**
+ * Cancelar uma order
+ * PUT /orders/:orderId/cancel
+ */
 router.put(
   "/:orderId/cancel",
   supabaseAuthMiddleware(),
   ordersController.cancelOrder
 );
 
-// POST /orders/:orderId/refund - Processar reembolso de uma order
+/**
+ * Processar reembolso de uma order
+ * POST /orders/:orderId/refund
+ */
 router.post(
   "/:orderId/refund",
   supabaseAuthMiddleware(),

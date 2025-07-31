@@ -2,27 +2,58 @@ import { Router } from "express";
 import { ConfigController } from "../controllers";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
 
+/**
+ * Rotas para configurações do MercadoPago - CORRIGIDAS
+ * Endpoints para configuração e informações do módulo
+ *
+ * @author Sistema AdvanceMais
+ * @version 3.0.1
+ */
 const router = Router();
 const configController = new ConfigController();
 
 /**
- * Rotas para configurações do MercadoPago
+ * Informações sobre configurações
+ * GET /config
  */
+router.get("/", (req, res) => {
+  res.json({
+    message: "MercadoPago Config API",
+    endpoints: {
+      publicKey: "GET /public-key",
+      paymentMethods: "GET /payment-methods",
+      accountInfo: "GET /account-info (ADMIN)",
+      testConnection: "GET /test-connection (ADMIN)",
+    },
+  });
+});
 
-// GET /config/public-key - Obter chave pública (rota pública para frontend)
+/**
+ * Obter chave pública (rota pública para frontend)
+ * GET /config/public-key
+ */
 router.get("/public-key", configController.getPublicKey);
 
-// GET /config/payment-methods - Obter métodos de pagamento (rota pública)
+/**
+ * Obter métodos de pagamento (rota pública)
+ * GET /config/payment-methods
+ */
 router.get("/payment-methods", configController.getPaymentMethods);
 
-// GET /config/account-info - Obter informações da conta (apenas ADMIN/FINANCEIRO)
+/**
+ * Obter informações da conta (apenas ADMIN/FINANCEIRO)
+ * GET /config/account-info
+ */
 router.get(
   "/account-info",
   supabaseAuthMiddleware(["ADMIN", "FINANCEIRO"]),
   configController.getAccountInfo
 );
 
-// GET /config/test-connection - Testar conexão (apenas ADMIN/FINANCEIRO)
+/**
+ * Testar conexão (apenas ADMIN/FINANCEIRO)
+ * GET /config/test-connection
+ */
 router.get(
   "/test-connection",
   supabaseAuthMiddleware(["ADMIN", "FINANCEIRO"]),

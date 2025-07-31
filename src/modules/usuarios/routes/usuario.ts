@@ -13,74 +13,134 @@ import { PaymentController } from "../controllers/payment-controller";
 import passwordRecoveryRoutes from "./password-recovery";
 import { prisma } from "../../../config/prisma";
 
+/**
+ * Rotas do módulo de usuários - CORRIGIDAS
+ * Implementa todas as funcionalidades de gestão de usuários
+ *
+ * @author Sistema AdvanceMais
+ * @version 3.0.1
+ */
 const router = Router();
 
 // Instanciar o PaymentController
 const paymentController = new PaymentController();
 
-/**
- * Rotas públicas (sem autenticação)
- */
+// =============================================
+// ROTAS PÚBLICAS (sem autenticação)
+// =============================================
 
-// POST /registrar - Registro de novo usuário (com email de boas-vindas)
+/**
+ * Informações do módulo de usuários
+ * GET /usuarios
+ */
+router.get("/", (req, res) => {
+  res.json({
+    module: "Usuarios Module",
+    version: "3.0.1",
+    endpoints: {
+      register: "POST /registrar",
+      login: "POST /login",
+      logout: "POST /logout",
+      profile: "GET /perfil",
+      passwordRecovery: "POST /recuperar-senha",
+      payments: "POST /pagamentos/*",
+      admin: "GET /admin",
+    },
+  });
+});
+
+/**
+ * Registro de novo usuário (com email de boas-vindas)
+ * POST /registrar
+ */
 router.post("/registrar", criarUsuario, WelcomeEmailMiddleware.create());
 
-// POST /login - Login de usuário
+/**
+ * Login de usuário
+ * POST /login
+ */
 router.post("/login", loginUsuario);
 
-// POST /refresh - Validação de refresh token
+/**
+ * Validação de refresh token
+ * POST /refresh
+ */
 router.post("/refresh", refreshToken);
 
-// Rotas de recuperação de senha
+/**
+ * Rotas de recuperação de senha
+ * /recuperar-senha/*
+ */
 router.use("/recuperar-senha", passwordRecoveryRoutes);
 
-/**
- * Rotas protegidas (requerem autenticação)
- */
+// =============================================
+// ROTAS PROTEGIDAS (requerem autenticação)
+// =============================================
 
-// POST /logout - Logout de usuário
+/**
+ * Logout de usuário
+ * POST /logout
+ */
 router.post("/logout", authMiddleware(), logoutUsuario);
 
-// GET /perfil - Perfil do usuário autenticado
+/**
+ * Perfil do usuário autenticado
+ * GET /perfil
+ */
 router.get("/perfil", supabaseAuthMiddleware(), obterPerfil);
 
-/**
- * Rotas de Pagamentos - Integração com MercadoPago
- */
+// =============================================
+// ROTAS DE PAGAMENTOS - MercadoPago
+// =============================================
 
-// POST /pagamentos/curso - Processar pagamento de curso individual
+/**
+ * Processar pagamento de curso individual
+ * POST /pagamentos/curso
+ */
 router.post(
   "/pagamentos/curso",
   supabaseAuthMiddleware(),
   paymentController.processarPagamentoCurso
 );
 
-// POST /pagamentos/assinatura - Criar assinatura premium
+/**
+ * Criar assinatura premium
+ * POST /pagamentos/assinatura
+ */
 router.post(
   "/pagamentos/assinatura",
   supabaseAuthMiddleware(),
   paymentController.criarAssinaturaPremium
 );
 
-// PUT /pagamentos/assinatura/cancelar - Cancelar assinatura
+/**
+ * Cancelar assinatura
+ * PUT /pagamentos/assinatura/cancelar
+ */
 router.put(
   "/pagamentos/assinatura/cancelar",
   supabaseAuthMiddleware(),
   paymentController.cancelarAssinatura
 );
 
-// GET /pagamentos/historico - Listar histórico de pagamentos do usuário
+/**
+ * Histórico de pagamentos do usuário
+ * GET /pagamentos/historico
+ */
 router.get(
   "/pagamentos/historico",
   supabaseAuthMiddleware(),
   paymentController.listarHistoricoPagamentos
 );
 
-/**
- * Rotas administrativas
- */
+// =============================================
+// ROTAS ADMINISTRATIVAS
+// =============================================
 
-// GET /admin - Rota apenas para administradores
+/**
+ * Área administrativa (apenas ADMIN)
+ * GET /admin
+ */
 router.get("/admin", supabaseAuthMiddleware(["ADMIN"]), (req, res) => {
   res.json({
     message: "Área administrativa",
@@ -89,7 +149,10 @@ router.get("/admin", supabaseAuthMiddleware(["ADMIN"]), (req, res) => {
   });
 });
 
-// GET /listar - Listar usuários (ADMIN e MODERADOR)
+/**
+ * Listar usuários (ADMIN e MODERADOR)
+ * GET /listar
+ */
 router.get(
   "/listar",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
@@ -116,7 +179,6 @@ router.get(
           criadoEm: true,
           ultimoLogin: true,
           emailBoasVindasEnviado: true,
-          // Incluir contadores de pagamentos
           _count: {
             select: {
               mercadoPagoOrders: true,
@@ -131,7 +193,6 @@ router.get(
         take: Number(limit),
       });
 
-      // Contar total para paginação
       const total = await prisma.usuario.count({ where });
 
       res.json({
@@ -154,13 +215,15 @@ router.get(
   }
 );
 
-// GET /dashboard-stats - Estatísticas do dashboard (ADMIN e MODERADOR)
+/**
+ * Estatísticas do dashboard (ADMIN e MODERADOR)
+ * GET /dashboard-stats
+ */
 router.get(
   "/dashboard-stats",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
   async (req, res) => {
     try {
-      // Estatísticas básicas de usuários
       const totalUsuarios = await prisma.usuario.count();
       const usuariosAtivos = await prisma.usuario.count({
         where: { status: "ATIVO" },
@@ -173,7 +236,6 @@ router.get(
         },
       });
 
-      // Estatísticas de pagamentos
       const totalOrders = await prisma.mercadoPagoOrder.count();
       const ordersAprovadas = await prisma.mercadoPagoOrder.count({
         where: { status: "closed" },
@@ -183,7 +245,6 @@ router.get(
         where: { status: "authorized" },
       });
 
-      // Receita total (aproximada)
       const receitaOrders = await prisma.mercadoPagoOrder.aggregate({
         where: { status: "closed" },
         _sum: { paidAmount: true },
@@ -230,11 +291,14 @@ router.get(
   }
 );
 
-/**
- * Rotas com parâmetros - definidas por último para evitar conflitos
- */
+// =============================================
+// ROTAS COM PARÂMETROS - DEFINIDAS POR ÚLTIMO
+// =============================================
 
-// GET /usuario/:userId - Buscar usuário por ID
+/**
+ * Buscar usuário por ID
+ * GET /usuario/:userId
+ */
 router.get(
   "/usuario/:userId",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
@@ -242,7 +306,6 @@ router.get(
     try {
       const { userId } = req.params;
 
-      // Validação básica do parâmetro
       if (!userId || userId.trim() === "") {
         return res.status(400).json({
           message: "ID do usuário é obrigatório",
@@ -287,7 +350,6 @@ router.get(
               cep: true,
             },
           },
-          // Incluir dados de pagamentos
           mercadoPagoOrders: {
             select: {
               id: true,
@@ -335,7 +397,10 @@ router.get(
   }
 );
 
-// PATCH /usuario/:userId/status - Atualizar status de usuário
+/**
+ * Atualizar status de usuário
+ * PATCH /usuario/:userId/status
+ */
 router.patch(
   "/usuario/:userId/status",
   supabaseAuthMiddleware(["ADMIN"]),
@@ -344,14 +409,12 @@ router.patch(
       const { userId } = req.params;
       const { status, motivo } = req.body;
 
-      // Validação básica dos parâmetros
       if (!userId || userId.trim() === "") {
         return res.status(400).json({
           message: "ID do usuário é obrigatório",
         });
       }
 
-      // Validação de status válido
       const statusValidos = [
         "ATIVO",
         "INATIVO",
@@ -367,7 +430,6 @@ router.patch(
         });
       }
 
-      // Buscar dados do usuário antes da atualização
       const usuarioAntes = await prisma.usuario.findUnique({
         where: { id: userId },
         select: { status: true, email: true, nomeCompleto: true },
@@ -379,7 +441,6 @@ router.patch(
         });
       }
 
-      // Atualizar status
       const usuario = await prisma.usuario.update({
         where: { id: userId },
         data: { status },
@@ -407,9 +468,10 @@ router.patch(
             });
 
           if (assinaturaAtiva) {
-            // Cancelar assinatura via MercadoPago
-            const subscriptionService =
-              new (require("../../mercadopago/services/subscription-service").SubscriptionService)();
+            const { SubscriptionService } = await import(
+              "../../mercadopago/services/subscription-service"
+            );
+            const subscriptionService = new SubscriptionService();
             await subscriptionService.cancelSubscription(
               assinaturaAtiva.mercadoPagoSubscriptionId,
               userId
@@ -424,13 +486,13 @@ router.patch(
             "Erro ao cancelar assinatura do usuário suspenso/banido:",
             error
           );
-          // Não falha o processo principal
         }
       }
 
-      // Log da alteração
       console.log(
-        `Status do usuário ${userId} alterado de ${usuarioAntes.status} para ${status} ${motivo ? `(Motivo: ${motivo})` : ""}`
+        `Status do usuário ${userId} alterado de ${
+          usuarioAntes.status
+        } para ${status} ${motivo ? `(Motivo: ${motivo})` : ""}`
       );
 
       res.json({
@@ -458,7 +520,10 @@ router.patch(
   }
 );
 
-// PATCH /usuario/:userId/role - Atualizar role de usuário (apenas ADMIN)
+/**
+ * Atualizar role de usuário (apenas ADMIN)
+ * PATCH /usuario/:userId/role
+ */
 router.patch(
   "/usuario/:userId/role",
   supabaseAuthMiddleware(["ADMIN"]),
@@ -473,7 +538,6 @@ router.patch(
         });
       }
 
-      // Validação de role válida
       const rolesValidas = [
         "ADMIN",
         "MODERADOR",
@@ -493,7 +557,6 @@ router.patch(
         });
       }
 
-      // Prevenir que o usuário altere sua própria role para não-ADMIN
       if (req.user?.id === userId && role !== "ADMIN") {
         return res.status(400).json({
           message:
@@ -514,7 +577,9 @@ router.patch(
       });
 
       console.log(
-        `Role do usuário ${userId} alterada para ${role} ${motivo ? `(Motivo: ${motivo})` : ""}`
+        `Role do usuário ${userId} alterada para ${role} ${
+          motivo ? `(Motivo: ${motivo})` : ""
+        }`
       );
 
       res.json({
@@ -531,7 +596,10 @@ router.patch(
   }
 );
 
-// GET /usuario/:userId/pagamentos - Histórico de pagamentos de um usuário específico (ADMIN/MODERADOR)
+/**
+ * Histórico de pagamentos de um usuário específico
+ * GET /usuario/:userId/pagamentos
+ */
 router.get(
   "/usuario/:userId/pagamentos",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR", "FINANCEIRO"]),
@@ -547,7 +615,6 @@ router.get(
         });
       }
 
-      // Buscar orders
       const orders = await prisma.mercadoPagoOrder.findMany({
         where: { usuarioId: userId },
         orderBy: { criadoEm: "desc" },
@@ -568,7 +635,6 @@ router.get(
         },
       });
 
-      // Buscar assinaturas
       const subscriptions = await prisma.mercadoPagoSubscription.findMany({
         where: { usuarioId: userId },
         orderBy: { criadoEm: "desc" },
@@ -586,7 +652,6 @@ router.get(
         },
       });
 
-      // Buscar reembolsos
       const refunds = await prisma.mercadoPagoRefund.findMany({
         where: { usuarioId: userId },
         orderBy: { criadoEm: "desc" },

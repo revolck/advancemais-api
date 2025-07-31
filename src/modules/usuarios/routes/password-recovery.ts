@@ -1,20 +1,47 @@
 import { Router } from "express";
 import { PasswordRecoveryController } from "../controllers/password-recovery-controller";
 
+/**
+ * Rotas para recuperação de senha - CORRIGIDAS
+ * Endpoints públicos para reset de senha
+ *
+ * @author Sistema AdvanceMais
+ * @version 3.0.1
+ */
 const router = Router();
 const passwordRecoveryController = new PasswordRecoveryController();
 
 /**
- * Rotas públicas para recuperação de senha
+ * Informações sobre recuperação de senha
+ * GET /recuperar-senha
  */
+router.get("/", (req, res) => {
+  res.json({
+    message: "Módulo de recuperação de senha",
+    endpoints: {
+      request: "POST /",
+      validate: "GET /validar/:token",
+      reset: "POST /redefinir",
+    },
+  });
+});
 
-// POST /recuperar-senha - Solicita recuperação de senha
+/**
+ * Solicita recuperação de senha
+ * POST /recuperar-senha
+ */
 router.post("/", passwordRecoveryController.solicitarRecuperacao);
 
-// GET /recuperar-senha/validar/:token - Valida token de recuperação
+/**
+ * Valida token de recuperação
+ * GET /recuperar-senha/validar/:token
+ */
 router.get("/validar/:token", passwordRecoveryController.validarToken);
 
-// POST /recuperar-senha/redefinir - Redefine senha com token
+/**
+ * Redefine senha com token
+ * POST /recuperar-senha/redefinir
+ */
 router.post("/redefinir", passwordRecoveryController.redefinirSenha);
 
 export default router;

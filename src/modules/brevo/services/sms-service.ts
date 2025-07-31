@@ -1,164 +1,167 @@
 import * as Brevo from "@getbrevo/brevo";
 import { BrevoClient } from "../client/brevo-client";
+import { SMSData, ServiceResponse, IBrevoConfig } from "../types/interfaces";
 import { prisma } from "../../../config/prisma";
 
 /**
- * Interface para dados de SMS
- */
-interface SMSData {
-  to: string;
-  message: string;
-  sender?: string;
-}
-
-/**
- * Interface para resposta de envio de SMS
- */
-interface SMSResponse {
-  success: boolean;
-  messageId?: string;
-  error?: string;
-}
-
-/**
- * Serviço para envio de SMS via Brevo
- * Versão simplificada e funcional
+ * Serviço de SMS simplificado e robusto
+ * Implementa envio de SMS com validação e logging
+ *
+ * @author Sistema AdvanceMais
+ * @version 3.0.1
  */
 export class SMSService {
-  private transactionalSMSApi: Brevo.TransactionalSMSApi;
-  private defaultSender: string;
+  private client: BrevoClient;
+  private config: IBrevoConfig;
 
   constructor() {
-    const brevoClient = BrevoClient.getInstance();
-    this.transactionalSMSApi = brevoClient.getTransactionalSMSApi();
-    this.defaultSender = "AdvanceMais";
+    this.client = BrevoClient.getInstance();
+    this.config = this.client.getConfig();
   }
 
   /**
-   * Envia SMS simples
+   * Envia SMS com retry automático
    */
-  public async enviarSMS(
+  public async sendSMS(
     smsData: SMSData,
-    usuarioId?: string
-  ): Promise<SMSResponse> {
-    try {
-      console.log(`📤 Enviando SMS para: ${smsData.to}`);
+    userId?: string
+  ): Promise<ServiceResponse> {
+    let lastError: Error | null = null;
 
-      // Valida dados básicos
-      if (!this.validarSMS(smsData)) {
-        return {
-          success: false,
-          error: "Dados de SMS inválidos",
-        };
+    for (let attempt = 1; attempt <= this.config.maxRetries; attempt++) {
+      try {
+        console.log(
+          `📱 SMS tentativa ${attempt}/${this.config.maxRetries} - ${smsData.to}`
+        );
+
+        const result = await this.performSMSSend(smsData);
+
+        // Log de sucesso
+        await this.logSMSSend({
+          usuarioId: userId,
+          phone: smsData.to,
+          status: "ENVIADO",
+          attempts: attempt,
+          messageId: result.messageId,
+        });
+
+        console.log(`✅ SMS enviado com sucesso (tentativa ${attempt})`);
+        return result;
+      } catch (error) {
+        lastError =
+          error instanceof Error ? error : new Error("Erro desconhecido");
+        console.warn(`⚠️ SMS tentativa ${attempt} falhou:`, lastError.message);
+
+        if (attempt < this.config.maxRetries) {
+          await this.delay(this.config.retryDelay * attempt);
+        }
       }
-
-      // Formata telefone brasileiro
-      const telefoneFormatado = this.formatarTelefone(smsData.to);
-      if (!telefoneFormatado) {
-        return {
-          success: false,
-          error: "Número de telefone inválido",
-        };
-      }
-
-      // Prepara SMS para Brevo
-      const sendTransacSms = new Brevo.SendTransacSms();
-      sendTransacSms.recipient = telefoneFormatado;
-      sendTransacSms.content = smsData.message;
-      sendTransacSms.sender = smsData.sender || this.defaultSender;
-
-      // Envia o SMS
-      const response = await this.transactionalSMSApi.sendTransacSms(
-        sendTransacSms
-      );
-      const messageId = this.extrairMessageId(response);
-
-      // Log de sucesso
-      await this.logarEnvio(usuarioId, telefoneFormatado, "ENVIADO", messageId);
-
-      console.log(`✅ SMS enviado com sucesso - MessageID: ${messageId}`);
-
-      return {
-        success: true,
-        messageId,
-      };
-    } catch (error) {
-      console.error("❌ Erro ao enviar SMS:", error);
-
-      // Log de erro
-      await this.logarEnvio(
-        usuarioId,
-        smsData.to,
-        "FALHA",
-        undefined,
-        error instanceof Error ? error.message : "Erro desconhecido"
-      );
-
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Erro desconhecido",
-      };
     }
+
+    // Log de falha final
+    await this.logSMSSend({
+      usuarioId: userId,
+      phone: smsData.to,
+      status: "FALHA",
+      attempts: this.config.maxRetries,
+      error: lastError?.message,
+    });
+
+    return {
+      success: false,
+      error: `SMS falhou após ${this.config.maxRetries} tentativas: ${lastError?.message}`,
+    };
+  }
+
+  /**
+   * Realiza envio único do SMS
+   */
+  private async performSMSSend(smsData: SMSData): Promise<ServiceResponse> {
+    this.validateSMSData(smsData);
+
+    const formattedPhone = this.formatBrazilianPhone(smsData.to);
+    if (!formattedPhone) {
+      throw new Error("Número de telefone inválido");
+    }
+
+    const sendTransacSms = new Brevo.SendTransacSms();
+    sendTransacSms.recipient = formattedPhone;
+    sendTransacSms.content = smsData.message;
+    sendTransacSms.sender = smsData.sender || "AdvanceMais";
+
+    const smsAPI = this.client.getSMSAPI();
+    const response = await smsAPI.sendTransacSms(sendTransacSms);
+    const messageId = this.extractMessageId(response);
+
+    return {
+      success: true,
+      messageId,
+      data: response,
+      timestamp: new Date().toISOString(),
+    };
   }
 
   /**
    * Envia SMS de verificação com código
    */
-  public async enviarSMSVerificacao(dados: {
-    telefone: string;
-    codigo: string;
-    usuarioId?: string;
-  }): Promise<SMSResponse> {
-    const mensagem = `Seu código de verificação AdvanceMais é: ${dados.codigo}\n\nVálido por 10 minutos.\n\nNão compartilhe este código.`;
+  public async sendVerificationSMS(
+    phoneNumber: string,
+    code: string,
+    userId?: string
+  ): Promise<ServiceResponse> {
+    const message = `Seu código de verificação AdvanceMais é: ${code}\n\nVálido por 10 minutos.\n\nNão compartilhe este código.`;
 
-    return this.enviarSMS(
+    return this.sendSMS(
       {
-        to: dados.telefone,
-        message: mensagem,
-        sender: this.defaultSender,
+        to: phoneNumber,
+        message,
+        sender: "AdvanceMais",
+        type: "transactional",
       },
-      dados.usuarioId
+      userId
     );
   }
 
   /**
    * Valida dados do SMS
    */
-  private validarSMS(smsData: SMSData): boolean {
-    if (!smsData.to || !smsData.message) {
-      return false;
+  private validateSMSData(smsData: SMSData): void {
+    if (!smsData.to?.trim()) {
+      throw new Error("Número de telefone é obrigatório");
+    }
+
+    if (!smsData.message?.trim()) {
+      throw new Error("Mensagem do SMS é obrigatória");
     }
 
     if (smsData.message.length > 160) {
       console.warn(
-        `⚠️ SMS com ${smsData.message.length} caracteres (máximo recomendado: 160)`
+        `⚠️ SMS com ${smsData.message.length} caracteres (recomendado: 160)`
       );
     }
-
-    return true;
   }
 
   /**
    * Formata telefone brasileiro para padrão internacional
    */
-  private formatarTelefone(telefone: string): string | null {
-    const numeroLimpo = telefone.replace(/\D/g, "");
+  private formatBrazilianPhone(phone: string): string | null {
+    const cleanNumber = phone.replace(/\D/g, "");
 
     // Já internacional
-    if (numeroLimpo.startsWith("55") && numeroLimpo.length === 13) {
-      return `+${numeroLimpo}`;
+    if (cleanNumber.startsWith("55") && cleanNumber.length === 13) {
+      return `+${cleanNumber}`;
     }
 
     // Formato brasileiro 11 dígitos
-    if (numeroLimpo.length === 11) {
-      return `+55${numeroLimpo}`;
+    if (cleanNumber.length === 11) {
+      return `+55${cleanNumber}`;
     }
 
     // Formato brasileiro 10 dígitos (adiciona 9)
-    if (numeroLimpo.length === 10) {
-      const ddd = numeroLimpo.substring(0, 2);
-      const numero = numeroLimpo.substring(2);
-      return `+55${ddd}9${numero}`;
+    if (cleanNumber.length === 10) {
+      const areaCode = cleanNumber.substring(0, 2);
+      const number = cleanNumber.substring(2);
+      return `+55${areaCode}9${number}`;
     }
 
     return null;
@@ -167,71 +170,68 @@ export class SMSService {
   /**
    * Extrai messageId da resposta
    */
-  private extrairMessageId(response: any): string {
+  private extractMessageId(response: any): string {
     if (response?.messageId) return String(response.messageId);
     if (response?.body?.messageId) return String(response.body.messageId);
-    return `sms_${Date.now()}`;
+    return `sms_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   /**
-   * Registra log de SMS no banco
+   * Registra log de SMS
    */
-  private async logarEnvio(
-    usuarioId?: string,
-    telefone?: string,
-    status?: string,
-    messageId?: string,
-    erro?: string
-  ): Promise<void> {
+  private async logSMSSend(logData: {
+    usuarioId?: string;
+    phone: string;
+    status: string;
+    attempts: number;
+    messageId?: string;
+    error?: string;
+  }): Promise<void> {
     try {
       await prisma.logSMS.create({
         data: {
-          usuarioId,
-          telefone: telefone || "unknown",
+          usuarioId: logData.usuarioId,
+          telefone: logData.phone,
           tipoSMS: "VERIFICACAO",
-          status: status as any,
-          tentativas: 1,
-          messageId,
-          erro,
+          status: logData.status as any,
+          tentativas: logData.attempts,
+          messageId: logData.messageId,
+          erro: logData.error,
         },
       });
     } catch (error) {
-      console.error("⚠️ Erro ao registrar log SMS:", error);
+      console.warn("⚠️ Erro ao registrar log SMS:", error);
     }
   }
 
   /**
-   * Testa conectividade
+   * Verifica conectividade
    */
-  public async testarConectividade(): Promise<boolean> {
-    try {
-      const client = BrevoClient.getInstance();
-      return await client.isConfigured();
-    } catch {
-      return false;
-    }
+  public async checkConnectivity(): Promise<boolean> {
+    return await this.client.checkHealth();
   }
 
   /**
-   * Obtém estatísticas simples
+   * Obtém estatísticas
    */
-  public async obterEstatisticasEnvio() {
+  public async getStatistics(): Promise<any> {
     try {
-      const dataInicio = new Date();
-      dataInicio.setDate(dataInicio.getDate() - 30);
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
       const stats = await prisma.logSMS.groupBy({
         by: ["status"],
-        where: { criadoEm: { gte: dataInicio } },
+        where: { criadoEm: { gte: thirtyDaysAgo } },
         _count: { id: true },
       });
 
       return {
-        periodo: "últimos 30 dias",
-        estatisticas: stats,
+        period: "últimos 30 dias",
+        statistics: stats,
         total: stats.reduce((sum, stat) => sum + stat._count.id, 0),
       };
-    } catch {
+    } catch (error) {
+      console.error("❌ Erro ao obter estatísticas SMS:", error);
       return null;
     }
   }
@@ -239,9 +239,16 @@ export class SMSService {
   /**
    * Gera código de verificação
    */
-  public static gerarCodigoVerificacao(digitos: number = 6): string {
-    const min = Math.pow(10, digitos - 1);
-    const max = Math.pow(10, digitos) - 1;
+  public static generateVerificationCode(digits: number = 6): string {
+    const min = Math.pow(10, digits - 1);
+    const max = Math.pow(10, digits) - 1;
     return Math.floor(Math.random() * (max - min + 1) + min).toString();
+  }
+
+  /**
+   * Implementa delay assíncrono
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

@@ -1,18 +1,41 @@
 import { Router } from "express";
 import { WebhookController } from "../controllers";
 
+/**
+ * Rotas para Webhooks do MercadoPago - CORRIGIDAS
+ * Endpoints públicos para recebimento de notificações
+ *
+ * @author Sistema AdvanceMais
+ * @version 3.0.1
+ */
 const router = Router();
 const webhookController = new WebhookController();
 
 /**
- * Rotas para Webhooks do MercadoPago
- * Estas rotas são públicas pois são chamadas pelo MercadoPago
+ * Informações sobre webhooks
+ * GET /webhooks
  */
+router.get("/", (req, res) => {
+  res.json({
+    message: "MercadoPago Webhooks API",
+    endpoints: {
+      webhook: "POST /",
+      test: "GET /test",
+    },
+    note: "Estes endpoints são chamados pelo MercadoPago automaticamente",
+  });
+});
 
-// POST /webhooks - Receber notificações do MercadoPago
+/**
+ * Receber notificações do MercadoPago
+ * POST /webhooks
+ */
 router.post("/", webhookController.processWebhook);
 
-// GET /webhooks/test - Endpoint de teste para validar configuração
+/**
+ * Endpoint de teste para validar configuração
+ * GET /webhooks/test
+ */
 router.get("/test", webhookController.testWebhook);
 
 export default router;

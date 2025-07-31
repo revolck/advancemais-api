@@ -1,250 +1,153 @@
 import * as Brevo from "@getbrevo/brevo";
 import { BrevoClient } from "../client/brevo-client";
 import { EmailTemplates } from "../templates/email-templates";
-import { brevoConfig } from "../../../config/env";
+import {
+  EmailData,
+  ServiceResponse,
+  UserTemplateData,
+  EmailType,
+  SendStatus,
+  IBrevoConfig,
+} from "../types/interfaces";
 import { prisma } from "../../../config/prisma";
 
 /**
- * Interface para dados básicos de email
- */
-interface EmailData {
-  to: string;
-  toName?: string;
-  subject: string;
-  htmlContent: string;
-  textContent?: string;
-  templateId?: number;
-  templateParams?: Record<string, any>;
-  attachments?: Array<{
-    name: string;
-    content: string; // base64
-    contentType?: string;
-  }>;
-  headers?: Record<string, string>;
-  tags?: string[];
-}
-
-/**
- * Interface para resposta de envio de email
- */
-interface EmailResponse {
-  success: boolean;
-  messageId?: string;
-  error?: string;
-  details?: any;
-}
-
-/**
- * Interface para dados de email de boas-vindas
- */
-interface WelcomeEmailData {
-  id: string;
-  email: string;
-  nomeCompleto: string;
-  tipoUsuario: string;
-}
-
-/**
- * Interface para dados de email de recuperação de senha
- */
-interface PasswordRecoveryEmailData {
-  id: string;
-  email: string;
-  nomeCompleto: string;
-}
-
-/**
- * Serviço para envio de emails via Brevo (ex-Sendinblue)
- *
- * Funcionalidades principais:
- * - Envio de emails transacionais
- * - Templates personalizados em HTML
- * - Log de envios no banco de dados
- * - Tratamento de erros robusto
- * - Suporte a anexos e headers customizados
- *
- * Configuração SMTP:
- * - Servidor: smtp-relay.brevo.com
- * - Porta: 587
- * - Autenticação: SASL
- * - Segurança: TLS
+ * Serviço de email com retry automático e logging
+ * Implementa padrões de microserviços para comunicação confiável
  *
  * @author Sistema AdvanceMais
- * @version 2.0.0
+ * @version 3.0.1
  */
 export class EmailService {
-  private transactionalEmailsApi: Brevo.TransactionalEmailsApi;
-  private fromEmail: string;
-  private fromName: string;
+  private client: BrevoClient;
+  private config: IBrevoConfig;
 
-  /**
-   * Construtor do serviço de email
-   * Inicializa a API do Brevo e configura remetente padrão
-   */
   constructor() {
-    const brevoClient = BrevoClient.getInstance();
-    this.transactionalEmailsApi = brevoClient.getTransactionalEmailsApi();
-
-    // Configurações do remetente padrão
-    this.fromEmail = brevoConfig.fromEmail;
-    this.fromName = brevoConfig.fromName;
-
-    console.log(
-      `📧 EmailService inicializado - Remetente: ${this.fromName} <${this.fromEmail}>`
-    );
+    this.client = BrevoClient.getInstance();
+    this.config = this.client.getConfig();
   }
 
   /**
-   * Envia um email transacional através do Brevo
-   *
-   * @param {EmailData} emailData - Dados completos do email a ser enviado
-   * @param {string} [usuarioId] - ID do usuário para logging (opcional)
-   * @returns {Promise<EmailResponse>} Resultado detalhado do envio
+   * Envia email com retry automático
    */
-  public async enviarEmail(
+  public async sendEmail(
     emailData: EmailData,
-    usuarioId?: string
-  ): Promise<EmailResponse> {
-    try {
-      console.log(
-        `📤 Enviando email para: ${emailData.to} - Assunto: ${emailData.subject}`
-      );
+    userId?: string
+  ): Promise<ServiceResponse> {
+    let lastError: Error | null = null;
 
-      // Valida dados obrigatórios
-      if (!this.validarDadosEmail(emailData)) {
-        return {
-          success: false,
-          error: "Dados de email inválidos - verifique destinatário e conteúdo",
-        };
-      }
+    for (let attempt = 1; attempt <= this.config.maxRetries; attempt++) {
+      try {
+        console.log(
+          `📤 Tentativa ${attempt}/${this.config.maxRetries} - ${emailData.to}`
+        );
 
-      // Prepara o objeto de email para o Brevo
-      const sendSmtpEmail = this.construirEmailBrevo(emailData);
+        const result = await this.performEmailSend(emailData);
 
-      // Envia o email através da API
-      const response = await this.transactionalEmailsApi.sendTransacEmail(
-        sendSmtpEmail
-      );
+        // Log de sucesso
+        await this.logEmailSend({
+          usuarioId: userId,
+          recipient: emailData.to,
+          type: this.inferEmailType(emailData.subject),
+          status: SendStatus.SENT,
+          attempts: attempt,
+          messageId: result.messageId,
+        });
 
-      // Extrai o messageId da resposta
-      const messageId = this.extrairMessageId(response);
+        console.log(`✅ Email enviado com sucesso (tentativa ${attempt})`);
+        return result;
+      } catch (error) {
+        lastError =
+          error instanceof Error ? error : new Error("Erro desconhecido");
+        console.warn(`⚠️ Tentativa ${attempt} falhou:`, lastError.message);
 
-      // Registra o sucesso no log
-      await this.registrarLogEmail({
-        usuarioId,
-        email: emailData.to,
-        tipoEmail: this.inferirTipoEmail(emailData.subject),
-        status: "ENVIADO",
-        tentativas: 1,
-        messageId,
-        assunto: emailData.subject,
-      });
-
-      console.log(`✅ Email enviado com sucesso - MessageID: ${messageId}`);
-
-      return {
-        success: true,
-        messageId,
-        details: response,
-      };
-    } catch (error) {
-      console.error("❌ Erro ao enviar email:", error);
-
-      // Registra o erro no log
-      await this.registrarLogEmail({
-        usuarioId,
-        email: emailData.to,
-        tipoEmail: this.inferirTipoEmail(emailData.subject),
-        status: "FALHA",
-        tentativas: 1,
-        erro: error instanceof Error ? error.message : "Erro desconhecido",
-        assunto: emailData.subject,
-      });
-
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Erro desconhecido",
-        details: error,
-      };
-    }
-  }
-
-  /**
-   * Envia email de boas-vindas para novos usuários
-   * Utiliza template personalizado e registra o envio
-   *
-   * @param {WelcomeEmailData} usuario - Dados do usuário para personalização
-   * @returns {Promise<EmailResponse>} Resultado do envio
-   */
-  public async enviarEmailBoasVindas(
-    usuario: WelcomeEmailData
-  ): Promise<EmailResponse> {
-    try {
-      console.log(`🎉 Preparando email de boas-vindas para: ${usuario.email}`);
-
-      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-      const tipoUsuarioTexto = this.formatarTipoUsuario(usuario.tipoUsuario);
-
-      // Gera conteúdo HTML personalizado
-      const htmlContent = EmailTemplates.gerarTemplateBoasVindas({
-        nomeCompleto: usuario.nomeCompleto,
-        tipoUsuario: tipoUsuarioTexto,
-        frontendUrl,
-        ano: new Date().getFullYear(),
-      });
-
-      // Gera versão texto alternativa
-      const textContent = EmailTemplates.gerarTextoBoasVindas({
-        nomeCompleto: usuario.nomeCompleto,
-        tipoUsuario: tipoUsuarioTexto,
-        frontendUrl,
-        ano: new Date().getFullYear(),
-      });
-
-      // Envia o email
-      const resultado = await this.enviarEmail(
-        {
-          to: usuario.email,
-          toName: usuario.nomeCompleto,
-          subject: `Bem-vindo(a) ao AdvanceMais, ${
-            usuario.nomeCompleto.split(" ")[0]
-          }! 🎉`,
-          htmlContent,
-          textContent,
-          tags: ["boas-vindas", "novo-usuario"],
-          headers: {
-            "X-Mailin-Custom": `user-${usuario.id}`,
-            "X-Category": "welcome",
-          },
-        },
-        usuario.id
-      );
-
-      // Se o envio foi bem-sucedido, atualiza o registro do usuário
-      if (resultado.success) {
-        try {
-          await prisma.usuario.update({
-            where: { id: usuario.id },
-            data: {
-              emailBoasVindasEnviado: true,
-              dataEmailBoasVindas: new Date(),
-            },
-          });
-          console.log(
-            `📝 Flag de email de boas-vindas atualizada para usuário ${usuario.id}`
-          );
-        } catch (updateError) {
-          console.error(
-            "⚠️ Erro ao atualizar flag de email enviado:",
-            updateError
-          );
-          // Não falha o processo principal se não conseguir atualizar a flag
+        // Aguarda antes da próxima tentativa (exceto na última)
+        if (attempt < this.config.maxRetries) {
+          await this.delay(this.config.retryDelay * attempt);
         }
       }
+    }
 
-      return resultado;
+    // Log de falha final
+    await this.logEmailSend({
+      usuarioId: userId,
+      recipient: emailData.to,
+      type: this.inferEmailType(emailData.subject),
+      status: SendStatus.FAILED,
+      attempts: this.config.maxRetries,
+      error: lastError?.message,
+    });
+
+    return {
+      success: false,
+      error: `Falha após ${this.config.maxRetries} tentativas: ${lastError?.message}`,
+    };
+  }
+
+  /**
+   * Realiza envio único do email
+   */
+  private async performEmailSend(
+    emailData: EmailData
+  ): Promise<ServiceResponse> {
+    this.validateEmailData(emailData);
+
+    const sendSmtpEmail = this.buildBrevoEmail(emailData);
+    const emailAPI = this.client.getEmailAPI();
+
+    const response = await emailAPI.sendTransacEmail(sendSmtpEmail);
+    const messageId = this.extractMessageId(response);
+
+    return {
+      success: true,
+      messageId,
+      data: response,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Envia email de boas-vindas
+   */
+  public async sendWelcomeEmail(
+    userData: UserTemplateData
+  ): Promise<ServiceResponse> {
+    try {
+      const templateData = {
+        nomeCompleto: userData.nomeCompleto,
+        tipoUsuario: this.formatUserType(userData.tipoUsuario),
+        frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
+        ano: new Date().getFullYear(),
+      };
+
+      const htmlContent = EmailTemplates.generateWelcomeTemplate(templateData);
+      const textContent = EmailTemplates.generateWelcomeText(templateData);
+
+      const emailData: EmailData = {
+        to: userData.email,
+        toName: userData.nomeCompleto,
+        subject: `Bem-vindo(a) ao AdvanceMais, ${
+          userData.nomeCompleto.split(" ")[0]
+        }! 🎉`,
+        htmlContent,
+        textContent,
+        tags: ["welcome", "new-user"],
+        headers: {
+          "X-User-ID": userData.id,
+          "X-Email-Type": "welcome",
+        },
+      };
+
+      const result = await this.sendEmail(emailData, userData.id);
+
+      // Atualiza flag no usuário se enviado com sucesso
+      if (result.success) {
+        await this.updateUserWelcomeFlag(userData.id);
+      }
+
+      return result;
     } catch (error) {
-      console.error("❌ Erro no envio de email de boas-vindas:", error);
+      console.error("❌ Erro no email de boas-vindas:", error);
       return {
         success: false,
         error:
@@ -257,65 +160,44 @@ export class EmailService {
 
   /**
    * Envia email de recuperação de senha
-   * Inclui link seguro e token temporário
-   *
-   * @param {PasswordRecoveryEmailData} usuario - Dados do usuário
-   * @param {string} token - Token de recuperação gerado
-   * @returns {Promise<EmailResponse>} Resultado do envio
    */
-  public async enviarEmailRecuperacaoSenha(
-    usuario: PasswordRecoveryEmailData,
+  public async sendPasswordRecoveryEmail(
+    userData: UserTemplateData,
     token: string
-  ): Promise<EmailResponse> {
+  ): Promise<ServiceResponse> {
     try {
-      console.log(
-        `🔐 Preparando email de recuperação de senha para: ${usuario.email}`
-      );
-
-      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-      const linkRecuperacao = `${frontendUrl}/recuperar-senha?token=${token}`;
-
-      // Gera conteúdo HTML personalizado
-      const htmlContent = EmailTemplates.gerarTemplateRecuperacaoSenha({
-        nomeCompleto: usuario.nomeCompleto,
-        linkRecuperacao,
+      const templateData = {
+        nomeCompleto: userData.nomeCompleto,
+        linkRecuperacao: `${process.env.FRONTEND_URL}/recuperar-senha?token=${token}`,
         token,
-        expiracaoMinutos: brevoConfig.passwordRecovery.tokenExpirationMinutes,
-        maxTentativas: brevoConfig.passwordRecovery.maxAttempts,
-        frontendUrl,
+        expiracaoMinutos: 30,
+        maxTentativas: 3,
+        frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
         ano: new Date().getFullYear(),
-      });
+      };
 
-      // Gera versão texto alternativa
-      const textContent = EmailTemplates.gerarTextoRecuperacaoSenha({
-        nomeCompleto: usuario.nomeCompleto,
-        linkRecuperacao,
-        token,
-        expiracaoMinutos: brevoConfig.passwordRecovery.tokenExpirationMinutes,
-        maxTentativas: brevoConfig.passwordRecovery.maxAttempts,
-        frontendUrl,
-        ano: new Date().getFullYear(),
-      });
+      const htmlContent =
+        EmailTemplates.generatePasswordRecoveryTemplate(templateData);
+      const textContent =
+        EmailTemplates.generatePasswordRecoveryText(templateData);
 
-      // Envia o email com alta prioridade
-      return await this.enviarEmail(
-        {
-          to: usuario.email,
-          toName: usuario.nomeCompleto,
-          subject: `Recuperação de Senha - AdvanceMais 🔐`,
-          htmlContent,
-          textContent,
-          tags: ["recuperacao-senha", "seguranca"],
-          headers: {
-            "X-Mailin-Custom": `user-${usuario.id}`,
-            "X-Category": "password-recovery",
-            "X-Priority": "1", // Alta prioridade
-          },
+      const emailData: EmailData = {
+        to: userData.email,
+        toName: userData.nomeCompleto,
+        subject: "Recuperação de Senha - AdvanceMais 🔐",
+        htmlContent,
+        textContent,
+        tags: ["password-recovery", "security"],
+        headers: {
+          "X-User-ID": userData.id,
+          "X-Email-Type": "password-recovery",
+          "X-Priority": "1",
         },
-        usuario.id
-      );
+      };
+
+      return await this.sendEmail(emailData, userData.id);
     } catch (error) {
-      console.error("❌ Erro no envio de email de recuperação:", error);
+      console.error("❌ Erro no email de recuperação:", error);
       return {
         success: false,
         error:
@@ -327,54 +209,28 @@ export class EmailService {
   }
 
   /**
-   * Valida se os dados do email estão corretos
-   *
-   * @param {EmailData} emailData - Dados para validação
-   * @returns {boolean} true se válidos, false caso contrário
+   * Valida dados do email
    */
-  private validarDadosEmail(emailData: EmailData): boolean {
-    // Verifica email do destinatário
-    if (!emailData.to || !this.validarFormatoEmail(emailData.to)) {
-      console.error("❌ Email do destinatário inválido:", emailData.to);
-      return false;
+  private validateEmailData(emailData: EmailData): void {
+    if (!emailData.to || !this.isValidEmail(emailData.to)) {
+      throw new Error("Email do destinatário é obrigatório e deve ser válido");
     }
 
-    // Verifica assunto
-    if (!emailData.subject || emailData.subject.trim() === "") {
-      console.error("❌ Assunto do email não pode estar vazio");
-      return false;
+    if (!emailData.subject?.trim()) {
+      throw new Error("Assunto do email é obrigatório");
     }
 
-    // Verifica conteúdo
-    if (!emailData.htmlContent || emailData.htmlContent.trim() === "") {
-      console.error("❌ Conteúdo HTML do email não pode estar vazio");
-      return false;
+    if (!emailData.htmlContent?.trim()) {
+      throw new Error("Conteúdo HTML do email é obrigatório");
     }
-
-    return true;
   }
 
   /**
-   * Valida formato de email usando regex
-   *
-   * @param {string} email - Email para validar
-   * @returns {boolean} true se válido
+   * Constrói objeto email para Brevo
    */
-  private validarFormatoEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  }
-
-  /**
-   * Constrói o objeto de email no formato esperado pelo Brevo
-   *
-   * @param {EmailData} emailData - Dados do email
-   * @returns {Brevo.SendSmtpEmail} Objeto configurado para o Brevo
-   */
-  private construirEmailBrevo(emailData: EmailData): Brevo.SendSmtpEmail {
+  private buildBrevoEmail(emailData: EmailData): Brevo.SendSmtpEmail {
     const sendSmtpEmail = new Brevo.SendSmtpEmail();
 
-    // Configuração básica
     sendSmtpEmail.to = [
       {
         email: emailData.to,
@@ -383,24 +239,18 @@ export class EmailService {
     ];
 
     sendSmtpEmail.sender = {
-      email: this.fromEmail,
-      name: this.fromName,
+      email: this.config.fromEmail,
+      name: this.config.fromName,
     };
 
     sendSmtpEmail.subject = emailData.subject;
     sendSmtpEmail.htmlContent = emailData.htmlContent;
 
-    // Configurações opcionais
     if (emailData.textContent) {
       sendSmtpEmail.textContent = emailData.textContent;
     }
 
-    if (emailData.templateId) {
-      sendSmtpEmail.templateId = emailData.templateId;
-      sendSmtpEmail.params = emailData.templateParams;
-    }
-
-    if (emailData.attachments && emailData.attachments.length > 0) {
+    if (emailData.attachments?.length) {
       sendSmtpEmail.attachment = emailData.attachments;
     }
 
@@ -408,7 +258,7 @@ export class EmailService {
       sendSmtpEmail.headers = emailData.headers;
     }
 
-    if (emailData.tags && emailData.tags.length > 0) {
+    if (emailData.tags?.length) {
       sendSmtpEmail.tags = emailData.tags;
     }
 
@@ -416,75 +266,38 @@ export class EmailService {
   }
 
   /**
-   * Extrai o messageId da resposta do Brevo
-   * O Brevo pode retornar a resposta em diferentes formatos
-   *
-   * @param {any} response - Resposta da API do Brevo
-   * @returns {string} MessageId extraído ou "unknown"
+   * Extrai messageId da resposta
    */
-  private extrairMessageId(response: any): string {
-    if (!response) return "unknown";
-
-    // Tenta diferentes estruturas de resposta
-    if (response.messageId) {
-      return String(response.messageId);
-    }
-
-    if (response.body && response.body.messageId) {
-      return String(response.body.messageId);
-    }
-
-    if (response.data && response.data.messageId) {
-      return String(response.data.messageId);
-    }
-
-    // Se não encontrar, gera um ID baseado em timestamp
+  private extractMessageId(response: any): string {
+    if (response?.messageId) return String(response.messageId);
+    if (response?.body?.messageId) return String(response.body.messageId);
     return `brevo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   /**
-   * Infere o tipo de email baseado no assunto
-   * Usado para categorização nos logs
-   *
-   * @param {string} subject - Assunto do email
-   * @returns {string} Tipo inferido do email
+   * Infere tipo de email pelo assunto
    */
-  private inferirTipoEmail(
-    subject: string
-  ):
-    | "BOAS_VINDAS"
-    | "RECUPERACAO_SENHA"
-    | "VERIFICACAO_EMAIL"
-    | "NOTIFICACAO_SISTEMA" {
+  private inferEmailType(subject: string): EmailType {
     const subjectLower = subject.toLowerCase();
 
     if (subjectLower.includes("bem-vind") || subjectLower.includes("welcome")) {
-      return "BOAS_VINDAS";
+      return EmailType.WELCOME;
+    }
+    if (subjectLower.includes("recupera") || subjectLower.includes("senha")) {
+      return EmailType.PASSWORD_RECOVERY;
+    }
+    if (subjectLower.includes("verific")) {
+      return EmailType.VERIFICATION;
     }
 
-    if (
-      subjectLower.includes("recupera") ||
-      subjectLower.includes("senha") ||
-      subjectLower.includes("password")
-    ) {
-      return "RECUPERACAO_SENHA";
-    }
-
-    if (subjectLower.includes("verific") || subjectLower.includes("confirm")) {
-      return "VERIFICACAO_EMAIL";
-    }
-
-    return "NOTIFICACAO_SISTEMA";
+    return EmailType.NOTIFICATION;
   }
 
   /**
-   * Formata o tipo de usuário para exibição amigável
-   *
-   * @param {string} tipoUsuario - Tipo do usuário do enum
-   * @returns {string} Descrição formatada
+   * Formata tipo de usuário
    */
-  private formatarTipoUsuario(tipoUsuario: string): string {
-    switch (tipoUsuario) {
+  private formatUserType(userType: string): string {
+    switch (userType) {
       case "PESSOA_FISICA":
         return "pessoa física";
       case "PESSOA_JURIDICA":
@@ -495,89 +308,94 @@ export class EmailService {
   }
 
   /**
-   * Registra log de email no banco de dados
-   * Mantém histórico para auditoria e troubleshooting
-   *
-   * @param {Object} logData - Dados para o log
+   * Atualiza flag de email de boas-vindas
    */
-  private async registrarLogEmail(logData: {
+  private async updateUserWelcomeFlag(userId: string): Promise<void> {
+    try {
+      await prisma.usuario.update({
+        where: { id: userId },
+        data: {
+          emailBoasVindasEnviado: true,
+          dataEmailBoasVindas: new Date(),
+        },
+      });
+    } catch (error) {
+      console.warn("⚠️ Erro ao atualizar flag de boas-vindas:", error);
+    }
+  }
+
+  /**
+   * Registra log de envio
+   */
+  private async logEmailSend(logData: {
     usuarioId?: string;
-    email: string;
-    tipoEmail: string;
-    status: string;
-    tentativas: number;
-    erro?: string;
+    recipient: string;
+    type: EmailType;
+    status: SendStatus;
+    attempts: number;
     messageId?: string;
-    assunto?: string;
+    error?: string;
   }): Promise<void> {
     try {
       await prisma.logEmail.create({
         data: {
           usuarioId: logData.usuarioId,
-          email: logData.email,
-          tipoEmail: logData.tipoEmail as any,
-          status: logData.status as any,
-          tentativas: logData.tentativas,
-          erro: logData.erro,
+          email: logData.recipient,
+          tipoEmail: logData.type,
+          status: logData.status,
+          tentativas: logData.attempts,
           messageId: logData.messageId,
+          erro: logData.error,
         },
       });
     } catch (error) {
-      console.error("⚠️ Erro ao registrar log de email:", error);
-      // Não falha o processo principal se não conseguir fazer o log
+      console.warn("⚠️ Erro ao registrar log de email:", error);
     }
   }
 
   /**
-   * Método utilitário para testar conectividade do serviço
-   * Útil para health checks e diagnósticos
-   *
-   * @returns {Promise<boolean>} true se o serviço está funcionando
+   * Verifica conectividade
    */
-  public async testarConectividade(): Promise<boolean> {
-    try {
-      const brevoClient = BrevoClient.getInstance();
-      return await brevoClient.isConfigured();
-    } catch (error) {
-      console.error(
-        "❌ Erro no teste de conectividade do EmailService:",
-        error
-      );
-      return false;
-    }
+  public async checkConnectivity(): Promise<boolean> {
+    return await this.client.checkHealth();
   }
 
   /**
-   * Obtém estatísticas de envio de emails (últimos 30 dias)
-   * Útil para monitoramento e relatórios
-   *
-   * @returns {Promise<any>} Estatísticas de envio ou null em caso de erro
+   * Obtém estatísticas
    */
-  public async obterEstatisticasEnvio(): Promise<any> {
+  public async getStatistics(): Promise<any> {
     try {
-      const dataInicio = new Date();
-      dataInicio.setDate(dataInicio.getDate() - 30);
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
       const stats = await prisma.logEmail.groupBy({
         by: ["status", "tipoEmail"],
-        where: {
-          criadoEm: {
-            gte: dataInicio,
-          },
-        },
-        _count: {
-          id: true,
-        },
+        where: { criadoEm: { gte: thirtyDaysAgo } },
+        _count: { id: true },
       });
 
       return {
-        periodo: "últimos 30 dias",
-        estatisticas: stats,
-        totalEmails: stats.reduce((sum, stat) => sum + stat._count.id, 0),
+        period: "últimos 30 dias",
+        statistics: stats,
+        total: stats.reduce((sum, stat) => sum + stat._count.id, 0),
       };
     } catch (error) {
-      console.error("❌ Erro ao obter estatísticas de email:", error);
+      console.error("❌ Erro ao obter estatísticas:", error);
       return null;
     }
+  }
+
+  /**
+   * Valida formato de email
+   */
+  private isValidEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  /**
+   * Implementa delay assíncrono
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

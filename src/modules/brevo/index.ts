@@ -1,180 +1,76 @@
-import { BrevoClient } from "./client/brevo-client";
-import { EmailService } from "./services/email-service";
-import { SMSService } from "./services/sms-service";
-import { EmailTemplates } from "./templates/email-templates";
-import { WelcomeEmailMiddleware } from "./middlewares/welcome-email-middleware";
-
 /**
- * Módulo Brevo - Versão Simplificada
- *
- * Interface mínima para evitar conflitos de importação
+ * Módulo Brevo - Ponto de entrada principal
+ * Exportações organizadas e interface limpa
  *
  * @author Sistema AdvanceMais
- * @version 2.0.1
+ * @version 3.0.0
  */
-class BrevoModule {
-  private emailService: EmailService | null = null;
-  private smsService: SMSService | null = null;
-  private client: BrevoClient | null = null;
 
-  /**
-   * Inicializa serviços sob demanda para evitar problemas de importação circular
-   */
-  private getEmailService() {
-    if (!this.emailService) {
-      this.emailService = new EmailService();
-    }
-    return this.emailService;
-  }
-
-  private getSMSService() {
-    if (!this.smsService) {
-      this.smsService = new SMSService();
-    }
-    return this.smsService;
-  }
-
-  private getClient() {
-    if (!this.client) {
-      this.client = BrevoClient.getInstance();
-    }
-    return this.client;
-  }
-
-  /**
-   * Envia email
-   */
-  async sendEmail(emailData: {
-    to: string;
-    toName?: string;
-    subject: string;
-    htmlContent: string;
-    textContent?: string;
-    tags?: string[];
-  }) {
-    try {
-      return await this.getEmailService().enviarEmail(emailData);
-    } catch (error) {
-      console.error("Erro ao enviar email:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Erro desconhecido",
-      };
-    }
-  }
-
-  /**
-   * Envia SMS
-   */
-  async sendSMS(smsData: {
-    to: string;
-    message: string;
-    type?: "transac" | "marketing";
-    tag?: string;
-  }) {
-    try {
-      return await this.getSMSService().enviarSMS({
-        to: smsData.to,
-        message: smsData.message,
-        sender: smsData.tag || "AdvanceMais",
-      });
-    } catch (error) {
-      console.error("Erro ao enviar SMS:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Erro desconhecido",
-      };
-    }
-  }
-
-  /**
-   * Obtém estatísticas básicas
-   */
-  async getStats() {
-    try {
-      const emailStats = await this.getEmailService()
-        .obterEstatisticasEnvio()
-        .catch(() => null);
-      const smsStats = await this.getSMSService()
-        .obterEstatisticasEnvio()
-        .catch(() => null);
-
-      return {
-        email: emailStats,
-        sms: smsStats,
-        timestamp: new Date().toISOString(),
-      };
-    } catch (error) {
-      return {
-        email: null,
-        sms: null,
-        error:
-          error instanceof Error ? error.message : "Erro ao obter estatísticas",
-        timestamp: new Date().toISOString(),
-      };
-    }
-  }
-
-  /**
-   * Verifica saúde dos serviços
-   */
-  async healthCheck() {
-    try {
-      const clientOk = await this.getClient()
-        .isConfigured()
-        .catch(() => false);
-      const emailOk = await this.getEmailService()
-        .testarConectividade()
-        .catch(() => false);
-      const smsOk = await this.getSMSService()
-        .testarConectividade()
-        .catch(() => false);
-
-      return {
-        client: clientOk,
-        email: emailOk,
-        sms: smsOk,
-        overall: clientOk && emailOk && smsOk,
-      };
-    } catch (error) {
-      return {
-        client: false,
-        email: false,
-        sms: false,
-        overall: false,
-        error: error instanceof Error ? error.message : "Erro no health check",
-      };
-    }
-  }
-
-  /**
-   * Reinicializa o módulo
-   */
-  async refresh() {
-    try {
-      EmailTemplates.clearCache();
-      this.emailService = null;
-      this.smsService = null;
-      this.client = null;
-      console.log("🔄 Módulo Brevo reinicializado");
-    } catch (error) {
-      console.error("Erro ao reinicializar módulo Brevo:", error);
-    }
-  }
-}
-
-// Instância singleton
-const brevoModule = new BrevoModule();
-
-// Exportações individuais
+// Exportações principais
 export { BrevoClient } from "./client/brevo-client";
 export { EmailService } from "./services/email-service";
 export { SMSService } from "./services/sms-service";
 export { EmailTemplates } from "./templates/email-templates";
 export { WelcomeEmailMiddleware } from "./middlewares/welcome-email-middleware";
+export { BrevoController } from "./controllers/brevo-controller";
 
-// Exporta instância do módulo
-export { brevoModule };
+// Exportações de tipos
+export * from "./types/interfaces";
 
-// Exportação padrão
-export default brevoModule;
+// Router padrão
+export { default as brevoRoutes } from "./routes";
+
+/**
+ * Classe principal do módulo para uso simplificado
+ */
+import { BrevoClient } from "./client/brevo-client";
+import { EmailService } from "./services/email-service";
+import { SMSService } from "./services/sms-service";
+
+export class BrevoModule {
+  private static instance: BrevoModule;
+  private emailService: EmailService;
+  private smsService: SMSService;
+  private client: BrevoClient;
+
+  private constructor() {
+    this.client = BrevoClient.getInstance();
+    this.emailService = new EmailService();
+    this.smsService = new SMSService();
+  }
+
+  public static getInstance(): BrevoModule {
+    if (!BrevoModule.instance) {
+      BrevoModule.instance = new BrevoModule();
+    }
+    return BrevoModule.instance;
+  }
+
+  public getEmailService(): EmailService {
+    return this.emailService;
+  }
+
+  public getSMSService(): SMSService {
+    return this.smsService;
+  }
+
+  public getClient(): BrevoClient {
+    return this.client;
+  }
+
+  public async healthCheck() {
+    const clientHealthy = await this.client.checkHealth();
+    const emailHealthy = await this.emailService.checkConnectivity();
+    const smsHealthy = await this.smsService.checkConnectivity();
+
+    return {
+      client: clientHealthy,
+      email: emailHealthy,
+      sms: smsHealthy,
+      overall: clientHealthy && emailHealthy && smsHealthy,
+    };
+  }
+}
+
+// Instância padrão para uso direto
+export const brevoModule = BrevoModule.getInstance();

@@ -3,11 +3,11 @@ import { OrdersController } from "../controllers";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
 
 /**
- * Rotas para Orders do MercadoPago - CORRIGIDAS
+ * Rotas para Orders do MercadoPago - CORRIGIDO
  * Endpoints para gerenciamento de pagamentos únicos
  *
  * @author Sistema AdvanceMais
- * @version 3.0.1
+ * @version 3.0.2
  */
 const router = Router();
 const ordersController = new OrdersController();
@@ -60,4 +60,4 @@ router.post(
   ordersController.refundOrder
 );
 
-export default router;
+export { router as ordersRoutes };

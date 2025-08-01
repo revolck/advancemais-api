@@ -3,11 +3,11 @@ import { ConfigController } from "../controllers";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
 
 /**
- * Rotas para configurações do MercadoPago - CORRIGIDAS
+ * Rotas para configurações do MercadoPago - CORRIGIDO
  * Endpoints para configuração e informações do módulo
  *
  * @author Sistema AdvanceMais
- * @version 3.0.1
+ * @version 3.0.2
  */
 const router = Router();
 const configController = new ConfigController();
@@ -60,4 +60,4 @@ router.get(
   configController.testConnection
 );
 
-export default router;
+export { router as configRoutes };

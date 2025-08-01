@@ -2,11 +2,11 @@ import { Router } from "express";
 import { WebhookController } from "../controllers";
 
 /**
- * Rotas para Webhooks do MercadoPago - CORRIGIDAS
+ * Rotas para Webhooks do MercadoPago - CORRIGIDO
  * Endpoints públicos para recebimento de notificações
  *
  * @author Sistema AdvanceMais
- * @version 3.0.1
+ * @version 3.0.2
  */
 const router = Router();
 const webhookController = new WebhookController();
@@ -38,4 +38,4 @@ router.post("/", webhookController.processWebhook);
  */
 router.get("/test", webhookController.testWebhook);
 
-export default router;
+export { router as webhooksRoutes };

@@ -1,15 +1,15 @@
 import { Router } from "express";
-import ordersRoutes from "./orders";
-import subscriptionsRoutes from "./subscriptions";
-import webhooksRoutes from "./webhooks";
-import configRoutes from "./config";
+import { ordersRoutes } from "./orders";
+import { subscriptionsRoutes } from "./subscriptions";
+import { webhooksRoutes } from "./webhooks";
+import { configRoutes } from "./config";
 
 /**
  * Router principal do módulo MercadoPago - CORRIGIDO
  * Centraliza todas as rotas dos submódulos
  *
  * @author Sistema AdvanceMais
- * @version 3.0.1
+ * @version 3.0.2 - Correção de path-to-regexp
  */
 const router = Router();
 
@@ -28,12 +28,7 @@ router.get("/", (req, res) => {
       webhooks: "/webhooks",
       config: "/config",
     },
-    documentation: {
-      orders: "Gerenciamento de orders (pagamentos únicos)",
-      subscriptions: "Gerenciamento de assinaturas (pagamentos recorrentes)",
-      webhooks: "Recebimento de notificações do MercadoPago",
-      config: "Configurações e informações da integração",
-    },
+    status: "operational",
   });
 });
 
@@ -47,12 +42,6 @@ router.get("/health", (req, res) => {
     module: "mercadopago",
     timestamp: new Date().toISOString(),
     version: "v1",
-    services: {
-      orders: "active",
-      subscriptions: "active",
-      webhooks: "active",
-      config: "active",
-    },
   });
 });
 

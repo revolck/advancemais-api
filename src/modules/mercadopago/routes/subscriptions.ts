@@ -3,11 +3,11 @@ import { SubscriptionController } from "../controllers";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
 
 /**
- * Rotas para Assinaturas do MercadoPago - CORRIGIDAS
+ * Rotas para Assinaturas do MercadoPago - CORRIGIDO
  * Endpoints para gerenciamento de pagamentos recorrentes
  *
  * @author Sistema AdvanceMais
- * @version 3.0.1
+ * @version 3.0.2
  */
 const router = Router();
 const subscriptionController = new SubscriptionController();
@@ -72,4 +72,4 @@ router.put(
   subscriptionController.reactivateSubscription
 );
 
-export default router;
+export { router as subscriptionsRoutes };

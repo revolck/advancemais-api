@@ -3,15 +3,13 @@ import { BrevoController } from "../controllers/brevo-controller";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
 
 /**
- * Rotas do módulo Brevo
+ * Rotas do módulo Brevo - CORRIGIDO
  * API RESTful para comunicação via email e SMS
  *
  * @author Sistema AdvanceMais
- * @version 3.0.0
+ * @version 3.0.2
  */
 const router = Router();
-
-// Instancia controller
 const brevoController = new BrevoController();
 
 /**
@@ -21,7 +19,7 @@ const brevoController = new BrevoController();
 router.get("/", (req, res) => {
   res.json({
     module: "Brevo Communication Module",
-    version: "3.0.0",
+    version: "3.0.2",
     status: "active",
     timestamp: new Date().toISOString(),
     endpoints: {
@@ -64,26 +62,8 @@ router.get(
  * Testes de desenvolvimento
  */
 if (process.env.NODE_ENV !== "production") {
-  // POST /brevo/test/email
   router.post("/test/email", brevoController.testEmail);
-
-  // POST /brevo/test/sms
   router.post("/test/sms", brevoController.testSMS);
 }
 
-/**
- * Middleware de tratamento de erros
- */
-router.use((error: any, req: any, res: any, next: any) => {
-  console.error("❌ Erro no módulo Brevo:", error);
-
-  res.status(500).json({
-    module: "brevo",
-    message: "Erro interno do módulo",
-    error:
-      process.env.NODE_ENV === "development" ? error.message : "Erro interno",
-    timestamp: new Date().toISOString(),
-  });
-});
-
-export default router;
+export { router as brevoRoutes };

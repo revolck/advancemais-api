@@ -1,9 +1,9 @@
 /**
- * Router principal do módulo de usuários
+ * Router principal do módulo de usuários - CORRIGIDO
  * Centraliza e organiza todas as sub-rotas
  *
  * @author Sistema AdvanceMais
- * @version 3.0.0 - Refatorado para microserviços
+ * @version 3.0.3 - Correção definitiva path-to-regexp
  */
 import { Router } from "express";
 import { usuarioRoutes } from "./usuario-routes";
@@ -14,32 +14,49 @@ import { statsRoutes } from "./stats-routes";
 const router = Router();
 
 /**
- * Rotas básicas de usuário
- * - Registro, login, perfil
- * - Recuperação de senha
+ * Informações do módulo de usuários
+ * GET /usuarios
  */
-router.use("/", usuarioRoutes);
+router.get("/", (req, res) => {
+  res.json({
+    message: "Módulo de Usuários - AdvanceMais API",
+    version: "3.0.3",
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      auth: "POST /login, POST /registrar, POST /logout",
+      profile: "GET /perfil",
+      admin: "/admin/*",
+      payments: "/pagamentos/*",
+      stats: "/stats/*",
+      recovery: "/recuperar-senha/*",
+    },
+    status: "operational",
+  });
+});
+
+// =============================================
+// REGISTRO DE SUB-ROTAS - ORDEM IMPORTANTE
+// =============================================
 
 /**
- * Rotas administrativas
- * - Gestão de usuários
- * - Alteração de status/roles
+ * Rotas administrativas - PRIMEIRO (mais específicas)
  */
 router.use("/admin", adminRoutes);
 
 /**
+ * Rotas de estatísticas
+ */
+router.use("/stats", statsRoutes);
+
+/**
  * Rotas de pagamentos
- * - Integração com MercadoPago
- * - Assinaturas e cursos
  */
 router.use("/pagamentos", paymentRoutes);
 
 /**
- * Rotas de estatísticas
- * - Dashboard stats
- * - Relatórios
+ * Rotas básicas de usuário - ÚLTIMO (mais genéricas)
  */
-router.use("/stats", statsRoutes);
+router.use("/", usuarioRoutes);
 
 export { router as usuarioRoutes };
 export default router;

@@ -12,11 +12,11 @@ import {
 import { prisma } from "../../../config/prisma";
 
 /**
- * Serviço de email com retry automático e logging
- * Implementa padrões de microserviços para comunicação confiável
+ * Serviço de email com tratamento de erro robusto
+ * Implementa fallbacks e não quebra a aplicação
  *
  * @author Sistema AdvanceMais
- * @version 3.0.1
+ * @version 3.0.4 - Correção tratamento de erro
  */
 export class EmailService {
   private client: BrevoClient;
@@ -28,7 +28,7 @@ export class EmailService {
   }
 
   /**
-   * Envia email com retry automático
+   * Envia email com retry automático e fallback
    */
   public async sendEmail(
     emailData: EmailData,
@@ -36,10 +36,20 @@ export class EmailService {
   ): Promise<ServiceResponse> {
     let lastError: Error | null = null;
 
+    // Verifica se o cliente está configurado
+    const healthStatus = this.client.getHealthStatus();
+    if (!healthStatus.healthy && healthStatus.error?.includes("API Key")) {
+      console.warn("⚠️ Brevo não configurado - email não enviado");
+      return {
+        success: false,
+        error: "Serviço de email não configurado (API Key inválida)",
+      };
+    }
+
     for (let attempt = 1; attempt <= this.config.maxRetries; attempt++) {
       try {
         console.log(
-          `📤 Tentativa ${attempt}/${this.config.maxRetries} - ${emailData.to}`
+          `📤 Email tentativa ${attempt}/${this.config.maxRetries} - ${emailData.to}`
         );
 
         const result = await this.performEmailSend(emailData);
@@ -59,7 +69,17 @@ export class EmailService {
       } catch (error) {
         lastError =
           error instanceof Error ? error : new Error("Erro desconhecido");
-        console.warn(`⚠️ Tentativa ${attempt} falhou:`, lastError.message);
+        console.warn(
+          `⚠️ Email tentativa ${attempt} falhou: ${lastError.message}`
+        );
+
+        // Se é erro de autorização, não tenta novamente
+        if (
+          lastError.message.includes("401") ||
+          lastError.message.includes("unauthorized")
+        ) {
+          break;
+        }
 
         // Aguarda antes da próxima tentativa (exceto na última)
         if (attempt < this.config.maxRetries) {
@@ -80,24 +100,62 @@ export class EmailService {
 
     return {
       success: false,
-      error: `Falha após ${this.config.maxRetries} tentativas: ${lastError?.message}`,
+      error: `Email falhou após ${this.config.maxRetries} tentativas: ${lastError?.message}`,
     };
   }
 
   /**
-   * Realiza envio único do email
+   * Verifica conectividade de forma não-crítica
    */
+  public async checkConnectivity(): Promise<boolean> {
+    try {
+      return await this.client.checkHealth();
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Testa conectividade (método público para health checks)
+   */
+  public async testarConectividade(): Promise<boolean> {
+    return this.checkConnectivity();
+  }
+
+  /**
+   * Obtém estatísticas de envio
+   */
+  public async obterEstatisticasEnvio(): Promise<any> {
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const stats = await prisma.logEmail.groupBy({
+        by: ["status", "tipoEmail"],
+        where: { criadoEm: { gte: thirtyDaysAgo } },
+        _count: { id: true },
+      });
+
+      return {
+        period: "últimos 30 dias",
+        statistics: stats,
+        total: stats.reduce((sum, stat) => sum + stat._count.id, 0),
+      };
+    } catch (error) {
+      console.error("❌ Erro ao obter estatísticas:", error);
+      return null;
+    }
+  }
+
+  // ... resto dos métodos permanecem iguais
   private async performEmailSend(
     emailData: EmailData
   ): Promise<ServiceResponse> {
     this.validateEmailData(emailData);
-
     const sendSmtpEmail = this.buildBrevoEmail(emailData);
     const emailAPI = this.client.getEmailAPI();
-
     const response = await emailAPI.sendTransacEmail(sendSmtpEmail);
     const messageId = this.extractMessageId(response);
-
     return {
       success: true,
       messageId,
@@ -106,9 +164,6 @@ export class EmailService {
     };
   }
 
-  /**
-   * Envia email de boas-vindas
-   */
   public async sendWelcomeEmail(
     userData: UserTemplateData
   ): Promise<ServiceResponse> {
@@ -158,9 +213,6 @@ export class EmailService {
     }
   }
 
-  /**
-   * Envia email de recuperação de senha
-   */
   public async sendPasswordRecoveryEmail(
     userData: UserTemplateData,
     token: string
@@ -208,94 +260,53 @@ export class EmailService {
     }
   }
 
-  /**
-   * Valida dados do email
-   */
+  // Métodos auxiliares privados
   private validateEmailData(emailData: EmailData): void {
     if (!emailData.to || !this.isValidEmail(emailData.to)) {
       throw new Error("Email do destinatário é obrigatório e deve ser válido");
     }
-
     if (!emailData.subject?.trim()) {
       throw new Error("Assunto do email é obrigatório");
     }
-
     if (!emailData.htmlContent?.trim()) {
       throw new Error("Conteúdo HTML do email é obrigatório");
     }
   }
 
-  /**
-   * Constrói objeto email para Brevo
-   */
   private buildBrevoEmail(emailData: EmailData): Brevo.SendSmtpEmail {
     const sendSmtpEmail = new Brevo.SendSmtpEmail();
-
-    sendSmtpEmail.to = [
-      {
-        email: emailData.to,
-        name: emailData.toName,
-      },
-    ];
-
+    sendSmtpEmail.to = [{ email: emailData.to, name: emailData.toName }];
     sendSmtpEmail.sender = {
       email: this.config.fromEmail,
       name: this.config.fromName,
     };
-
     sendSmtpEmail.subject = emailData.subject;
     sendSmtpEmail.htmlContent = emailData.htmlContent;
-
-    if (emailData.textContent) {
+    if (emailData.textContent)
       sendSmtpEmail.textContent = emailData.textContent;
-    }
-
-    if (emailData.attachments?.length) {
+    if (emailData.attachments?.length)
       sendSmtpEmail.attachment = emailData.attachments;
-    }
-
-    if (emailData.headers) {
-      sendSmtpEmail.headers = emailData.headers;
-    }
-
-    if (emailData.tags?.length) {
-      sendSmtpEmail.tags = emailData.tags;
-    }
-
+    if (emailData.headers) sendSmtpEmail.headers = emailData.headers;
+    if (emailData.tags?.length) sendSmtpEmail.tags = emailData.tags;
     return sendSmtpEmail;
   }
 
-  /**
-   * Extrai messageId da resposta
-   */
   private extractMessageId(response: any): string {
     if (response?.messageId) return String(response.messageId);
     if (response?.body?.messageId) return String(response.body.messageId);
     return `brevo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  /**
-   * Infere tipo de email pelo assunto
-   */
   private inferEmailType(subject: string): EmailType {
     const subjectLower = subject.toLowerCase();
-
-    if (subjectLower.includes("bem-vind") || subjectLower.includes("welcome")) {
+    if (subjectLower.includes("bem-vind") || subjectLower.includes("welcome"))
       return EmailType.WELCOME;
-    }
-    if (subjectLower.includes("recupera") || subjectLower.includes("senha")) {
+    if (subjectLower.includes("recupera") || subjectLower.includes("senha"))
       return EmailType.PASSWORD_RECOVERY;
-    }
-    if (subjectLower.includes("verific")) {
-      return EmailType.VERIFICATION;
-    }
-
+    if (subjectLower.includes("verific")) return EmailType.VERIFICATION;
     return EmailType.NOTIFICATION;
   }
 
-  /**
-   * Formata tipo de usuário
-   */
   private formatUserType(userType: string): string {
     switch (userType) {
       case "PESSOA_FISICA":
@@ -307,9 +318,6 @@ export class EmailService {
     }
   }
 
-  /**
-   * Atualiza flag de email de boas-vindas
-   */
   private async updateUserWelcomeFlag(userId: string): Promise<void> {
     try {
       await prisma.usuario.update({
@@ -324,9 +332,6 @@ export class EmailService {
     }
   }
 
-  /**
-   * Registra log de envio
-   */
   private async logEmailSend(logData: {
     usuarioId?: string;
     recipient: string;
@@ -353,48 +358,14 @@ export class EmailService {
     }
   }
 
-  /**
-   * Verifica conectividade
-   */
-  public async checkConnectivity(): Promise<boolean> {
-    return await this.client.checkHealth();
-  }
-
-  /**
-   * Obtém estatísticas
-   */
   public async getStatistics(): Promise<any> {
-    try {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-      const stats = await prisma.logEmail.groupBy({
-        by: ["status", "tipoEmail"],
-        where: { criadoEm: { gte: thirtyDaysAgo } },
-        _count: { id: true },
-      });
-
-      return {
-        period: "últimos 30 dias",
-        statistics: stats,
-        total: stats.reduce((sum, stat) => sum + stat._count.id, 0),
-      };
-    } catch (error) {
-      console.error("❌ Erro ao obter estatísticas:", error);
-      return null;
-    }
+    return this.obterEstatisticasEnvio();
   }
 
-  /**
-   * Valida formato de email
-   */
   private isValidEmail(email: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
-  /**
-   * Implementa delay assíncrono
-   */
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }

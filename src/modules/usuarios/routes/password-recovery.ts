@@ -1,9 +1,9 @@
 /**
- * Rotas de recuperação de senha
+ * Rotas de recuperação de senha - CORRIGIDO
  * Responsabilidade única: reset de senha via email
  *
  * @author Sistema AdvanceMais
- * @version 3.0.0
+ * @version 3.0.3 - Correção path-to-regexp
  */
 import { Router } from "express";
 import { PasswordRecoveryController } from "../controllers/password-recovery-controller";
@@ -12,20 +12,19 @@ const router = Router();
 const passwordRecoveryController = new PasswordRecoveryController();
 
 /**
- * Rotas públicas para recuperação de senha
- */
-
-/**
  * Solicita recuperação de senha
  * POST /recuperar-senha
  */
 router.post("/", passwordRecoveryController.solicitarRecuperacao);
 
 /**
- * Valida token de recuperação
+ * Valida token de recuperação - ROTA CORRIGIDA
  * GET /recuperar-senha/validar/:token
  */
-router.get("/validar/:token", passwordRecoveryController.validarToken);
+router.get(
+  "/validar/:token([a-fA-F0-9]{64})",
+  passwordRecoveryController.validarToken
+);
 
 /**
  * Redefine senha com token

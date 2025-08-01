@@ -3,7 +3,7 @@
  * Responsabilidade única: operações essenciais do usuário
  *
  * @author Sistema AdvanceMais
- * @version 3.0.0
+ * @version 3.0.3 - Correção path-to-regexp
  */
 import { Router } from "express";
 import { criarUsuario } from "../register";
@@ -42,12 +42,6 @@ router.post("/login", loginUsuario);
  */
 router.post("/refresh", refreshToken);
 
-/**
- * Rotas de recuperação de senha
- * /recuperar-senha/*
- */
-router.use("/recuperar-senha", passwordRecoveryRoutes);
-
 // =============================================
 // ROTAS PROTEGIDAS - Requerem autenticação
 // =============================================
@@ -63,5 +57,15 @@ router.post("/logout", authMiddleware(), logoutUsuario);
  * GET /perfil
  */
 router.get("/perfil", supabaseAuthMiddleware(), obterPerfil);
+
+// =============================================
+// RECUPERAÇÃO DE SENHA - REGISTRO SEPARADO
+// =============================================
+
+/**
+ * Rotas de recuperação de senha
+ * Registradas separadamente para evitar conflitos
+ */
+router.use("/recuperar-senha", passwordRecoveryRoutes);
 
 export { router as usuarioRoutes };

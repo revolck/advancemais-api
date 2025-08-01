@@ -3,11 +3,11 @@ import { BrevoConfigManager } from "../config/brevo-config";
 import { IBrevoConfig } from "../types/interfaces";
 
 /**
- * Cliente Brevo com padrão Singleton e validação robusta
- * Implementa retry automático e health checks
+ * Cliente Brevo com tratamento de erro gracioso
+ * Health check não-crítico para não quebrar a aplicação
  *
  * @author Sistema AdvanceMais
- * @version 3.0.1
+ * @version 3.0.4 - Correção health check gracioso
  */
 export class BrevoClient {
   private static instance: BrevoClient;
@@ -17,6 +17,7 @@ export class BrevoClient {
   private config: IBrevoConfig;
   private isHealthy: boolean = false;
   private lastHealthCheck: Date | null = null;
+  private healthCheckError: string | null = null;
 
   /**
    * Construtor privado para Singleton
@@ -24,7 +25,7 @@ export class BrevoClient {
   private constructor() {
     this.config = BrevoConfigManager.getInstance().getConfig();
     this.initializeAPIs();
-    this.performInitialHealthCheck();
+    this.performInitialHealthCheckSilent();
   }
 
   /**
@@ -60,7 +61,7 @@ export class BrevoClient {
         this.config.apiKey
       );
 
-      console.log("✅ APIs do Brevo inicializadas com sucesso");
+      console.log("✅ APIs do Brevo inicializadas");
     } catch (error) {
       console.error("❌ Erro ao inicializar APIs do Brevo:", error);
       throw new Error(`Falha na inicialização do cliente Brevo: ${error}`);
@@ -68,19 +69,19 @@ export class BrevoClient {
   }
 
   /**
-   * Realiza health check inicial
+   * Health check inicial silencioso (não quebra a aplicação)
    */
-  private async performInitialHealthCheck(): Promise<void> {
+  private async performInitialHealthCheckSilent(): Promise<void> {
     try {
       await this.checkHealth();
-      console.log("✅ Health check inicial do Brevo concluído");
     } catch (error) {
-      console.warn("⚠️ Health check inicial falhou:", error);
+      // Health check falhou, mas não quebra a aplicação
+      console.warn("⚠️ Brevo health check inicial falhou (não-crítico)");
     }
   }
 
   /**
-   * Verifica saúde do cliente
+   * Verifica saúde do cliente com tratamento de erro gracioso
    */
   public async checkHealth(): Promise<boolean> {
     try {
@@ -90,14 +91,29 @@ export class BrevoClient {
 
       this.isHealthy = true;
       this.lastHealthCheck = new Date();
+      this.healthCheckError = null;
 
       console.log(`✅ Brevo healthy (${responseTime}ms)`);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       this.isHealthy = false;
       this.lastHealthCheck = new Date();
 
-      console.error("❌ Brevo health check failed:", error);
+      // Tratamento específico de erros
+      if (error.statusCode === 401) {
+        this.healthCheckError = "API Key inválida ou expirada";
+        console.warn("⚠️ Brevo: API Key inválida - verifique BREVO_API_KEY");
+      } else if (error.statusCode === 403) {
+        this.healthCheckError = "Acesso negado - verifique permissões";
+        console.warn("⚠️ Brevo: Acesso negado");
+      } else if (error.code === "ENOTFOUND") {
+        this.healthCheckError = "Problema de conectividade";
+        console.warn("⚠️ Brevo: Problema de rede");
+      } else {
+        this.healthCheckError = "Erro desconhecido";
+        console.warn("⚠️ Brevo: Health check falhou");
+      }
+
       return false;
     }
   }
@@ -126,10 +142,15 @@ export class BrevoClient {
   /**
    * Verifica se cliente está saudável
    */
-  public getHealthStatus(): { healthy: boolean; lastCheck: Date | null } {
+  public getHealthStatus(): {
+    healthy: boolean;
+    lastCheck: Date | null;
+    error: string | null;
+  } {
     return {
       healthy: this.isHealthy,
       lastCheck: this.lastHealthCheck,
+      error: this.healthCheckError,
     };
   }
 
@@ -138,6 +159,13 @@ export class BrevoClient {
    */
   public getConfig(): IBrevoConfig {
     return { ...this.config };
+  }
+
+  /**
+   * Verifica se está configurado (sem fazer health check)
+   */
+  public async isConfigured(): Promise<boolean> {
+    return !!(this.config.apiKey && this.config.fromEmail);
   }
 
   /**

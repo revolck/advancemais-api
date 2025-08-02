@@ -321,8 +321,10 @@ router.use((err: any, req: any, res: any, next: any) => {
  */
 router.get("/health", async (req, res) => {
   try {
+    // CORREÇÃO: Import com extensão .js obrigatória
+    const { prisma } = await import("../../../config/prisma.js");
+
     // Testa conectividade com banco (query simples)
-    const { prisma } = await import("../../../config/prisma");
     await prisma.$queryRaw`SELECT 1`;
 
     res.json({

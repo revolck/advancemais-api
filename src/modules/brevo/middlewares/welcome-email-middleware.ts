@@ -14,7 +14,7 @@ import { UserTemplateData } from "../types/interfaces";
  * - Validação robusta de dados
  *
  * @author Sistema AdvanceMais
- * @version 4.0.0 - Refatoração para microserviços
+ * @version 4.0.1 - Correção de tipos TypeScript
  */
 export class WelcomeEmailMiddleware {
   private emailService: EmailService;
@@ -322,6 +322,8 @@ export class WelcomeEmailMiddleware {
   /**
    * Factory method para criar middleware com logs de inicialização
    * Implementa padrão de instanciação segura
+   *
+   * CORREÇÃO: Retorna função que sempre retorna Promise<void>
    */
   public static create(): (
     req: Request,
@@ -333,16 +335,26 @@ export class WelcomeEmailMiddleware {
 
       console.log("✅ WelcomeEmailMiddleware: Instância criada com sucesso");
 
-      // Retorna função bound para manter contexto
-      return instance.sendWelcomeEmail.bind(instance);
+      // Retorna função bound para manter contexto - SEMPRE async
+      return async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+      ): Promise<void> => {
+        return instance.sendWelcomeEmail(req, res, next);
+      };
     } catch (error) {
       console.error(
         "❌ WelcomeEmailMiddleware: Erro na criação da instância:",
         error
       );
 
-      // Retorna middleware que não faz nada em caso de erro crítico
-      return (req: Request, res: Response, next: NextFunction) => {
+      // Retorna middleware que não faz nada em caso de erro crítico - SEMPRE async
+      return async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+      ): Promise<void> => {
         console.warn(
           "⚠️ WelcomeEmailMiddleware: Instância degradada - pulando envio"
         );
@@ -362,7 +374,7 @@ export class WelcomeEmailMiddleware {
     return {
       status: "operational",
       timestamp: new Date().toISOString(),
-      version: "4.0.0",
+      version: "4.0.1",
     };
   }
 }

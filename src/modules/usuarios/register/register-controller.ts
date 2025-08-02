@@ -449,6 +449,7 @@ async function processUserTypeSpecificData(
 
 /**
  * Verifica duplicatas de forma otimizada
+ * CORREÇÃO: Tipagem explícita para resolver erro do Prisma OR conditions
  */
 async function checkForDuplicates(
   data: {
@@ -462,12 +463,15 @@ async function checkForDuplicates(
   try {
     console.log(`🔍 [${correlationId}] Verificando duplicatas`);
 
-    // Constrói condições de busca dinamicamente
-    const orConditions = [
-      { email: data.email },
-      { supabaseId: data.supabaseId },
-    ];
+    // CORREÇÃO: Tipagem explícita para condições OR do Prisma
+    const orConditions: Array<
+      | { email: string }
+      | { supabaseId: string }
+      | { cpf: string }
+      | { cnpj: string }
+    > = [{ email: data.email }, { supabaseId: data.supabaseId }];
 
+    // Adiciona condições específicas se fornecidas
     if (data.cpf) {
       orConditions.push({ cpf: data.cpf });
     }
@@ -476,6 +480,7 @@ async function checkForDuplicates(
       orConditions.push({ cnpj: data.cnpj });
     }
 
+    // Busca com tipagem correta
     const usuarioExistente = await prisma.usuario.findFirst({
       where: { OR: orConditions },
       select: {
@@ -489,14 +494,17 @@ async function checkForDuplicates(
     if (usuarioExistente) {
       let reason = "Já existe usuário cadastrado com ";
 
+      // Verifica qual campo causou a duplicata
       if (usuarioExistente.email === data.email) {
         reason += "este email";
-      } else if (usuarioExistente.cpf === data.cpf) {
+      } else if (data.cpf && usuarioExistente.cpf === data.cpf) {
         reason += "este CPF";
-      } else if (usuarioExistente.cnpj === data.cnpj) {
+      } else if (data.cnpj && usuarioExistente.cnpj === data.cnpj) {
         reason += "este CNPJ";
-      } else {
+      } else if (usuarioExistente.supabaseId === data.supabaseId) {
         reason += "este ID do Supabase";
+      } else {
+        reason += "estes dados";
       }
 
       return { found: true, reason };
@@ -514,7 +522,6 @@ async function checkForDuplicates(
     return { found: false };
   }
 }
-
 /**
  * Constrói dados para inserção no banco
  */

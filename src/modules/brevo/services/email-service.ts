@@ -16,7 +16,7 @@ import { prisma } from "../../../config/prisma";
  * Implementa padrões de microserviços para resiliência
  *
  * @author Sistema AdvanceMais
- * @version 4.0.0 - Refatoração completa para microserviços
+ * @version 4.0.1 - Correção para templates assíncronos
  */
 export class EmailService {
   private client: BrevoClient;
@@ -74,7 +74,7 @@ export class EmailService {
 
   /**
    * Envia email de boas-vindas com tratamento completo
-   * Implementa padrão Circuit Breaker para resiliência
+   * CORREÇÃO: Aguarda templates assíncronos corretamente
    *
    * @param userData - Dados do usuário para personalização
    * @returns Promise<ServiceResponse> - Resultado da operação
@@ -94,8 +94,8 @@ export class EmailService {
       // Prepara dados do template com valores dinâmicos
       const templateData = this.buildWelcomeTemplateData(userData);
 
-      // Gera conteúdo do email
-      const emailContent = this.generateWelcomeEmailContent(templateData);
+      // CORREÇÃO: Aguarda geração assíncrona do conteúdo
+      const emailContent = await this.generateWelcomeEmailContent(templateData);
 
       // Envia email com retry automático
       const result = await this.sendEmailWithRetry(emailContent, userData.id);
@@ -130,6 +130,93 @@ export class EmailService {
   }
 
   /**
+   * Envia email de recuperação de senha
+   * NOVO: Método para recuperação de senha com templates assíncronos
+   *
+   * @param userData - Dados do usuário
+   * @param recoveryData - Dados de recuperação (token, link, etc.)
+   * @returns Promise<ServiceResponse>
+   */
+  public async sendPasswordRecoveryEmail(
+    userData: UserTemplateData,
+    recoveryData: {
+      token: string;
+      linkRecuperacao: string;
+      expiracaoMinutos: number;
+      maxTentativas: number;
+    }
+  ): Promise<ServiceResponse> {
+    const operation = "PASSWORD_RECOVERY";
+    const startTime = Date.now();
+
+    try {
+      console.log(`🔐 ${operation}: Iniciando para ${userData.email}`);
+
+      // Valida dados de entrada
+      this.validateUserData(userData);
+
+      // Prepara dados do template
+      const templateData = {
+        nomeCompleto: userData.nomeCompleto,
+        linkRecuperacao: recoveryData.linkRecuperacao,
+        token: recoveryData.token,
+        expiracaoMinutos: recoveryData.expiracaoMinutos,
+        maxTentativas: recoveryData.maxTentativas,
+        frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
+        ano: new Date().getFullYear(),
+      };
+
+      // Gera conteúdo do email
+      const emailContent = await this.generatePasswordRecoveryEmailContent(
+        templateData
+      );
+
+      // Envia email
+      const result = await this.sendEmailWithRetry(emailContent, userData.id);
+
+      if (result.success) {
+        await this.logEmailSuccess(userData, operation, result.messageId);
+        console.log(`✅ ${operation}: Sucesso em ${Date.now() - startTime}ms`);
+      }
+
+      return result;
+    } catch (error) {
+      const errorMsg =
+        error instanceof Error ? error.message : "Erro desconhecido";
+      console.error(
+        `❌ ${operation}: Falha após ${Date.now() - startTime}ms - ${errorMsg}`
+      );
+
+      await this.logEmailError(userData, operation, errorMsg);
+
+      return {
+        success: false,
+        error: `Falha no email de recuperação: ${errorMsg}`,
+        timestamp: new Date().toISOString(),
+      };
+    }
+  }
+
+  /**
+   * Envia email genérico
+   * Método utilitário para outros tipos de email
+   */
+  public async sendEmail(emailData: EmailData): Promise<ServiceResponse> {
+    try {
+      this.validateEmailData(emailData);
+      return await this.sendEmailWithRetry(emailData);
+    } catch (error) {
+      const errorMsg =
+        error instanceof Error ? error.message : "Erro desconhecido";
+      return {
+        success: false,
+        error: errorMsg,
+        timestamp: new Date().toISOString(),
+      };
+    }
+  }
+
+  /**
    * Constrói dados do template de forma dinâmica
    * Implementa configuração baseada em ambiente
    */
@@ -151,15 +238,24 @@ export class EmailService {
       supportUrl: `${frontendUrl}/suporte`,
       // Personalização por tipo de usuário
       recursosDisponiveis: this.getAvailableFeatures(userData.tipoUsuario),
+      // Para compatibilidade com templates
+      email: userData.email,
+      userData: userData,
     };
   }
 
   /**
-   * Gera conteúdo do email com fallback seguro
+   * Gera conteúdo do email de boas-vindas com fallback seguro
+   * CORREÇÃO: Método assíncrono para aguardar carregamento de templates
    */
-  private generateWelcomeEmailContent(templateData: any): EmailData {
+  private async generateWelcomeEmailContent(
+    templateData: any
+  ): Promise<EmailData> {
     try {
-      const htmlContent = EmailTemplates.generateWelcomeTemplate(templateData);
+      // CORREÇÃO: Aguarda carregamento assíncrono do template
+      const htmlContent = await EmailTemplates.generateWelcomeTemplate(
+        templateData
+      );
       const textContent = EmailTemplates.generateWelcomeText(templateData);
 
       return {
@@ -177,8 +273,44 @@ export class EmailService {
         },
       };
     } catch (error) {
-      console.warn("⚠️ Falha no template, usando fallback");
+      console.warn("⚠️ Falha no template externo, usando fallback", error);
       return this.generateFallbackWelcomeEmail(templateData);
+    }
+  }
+
+  /**
+   * Gera conteúdo do email de recuperação de senha
+   * NOVO: Método para email de recuperação
+   */
+  private async generatePasswordRecoveryEmailContent(
+    templateData: any
+  ): Promise<EmailData> {
+    try {
+      const htmlContent = await EmailTemplates.generatePasswordRecoveryTemplate(
+        templateData
+      );
+      const textContent =
+        EmailTemplates.generatePasswordRecoveryText(templateData);
+
+      return {
+        to: templateData.email || templateData.userData?.email,
+        toName: templateData.nomeCompleto,
+        subject: `🔐 Recuperação de Senha - AdvanceMais`,
+        htmlContent,
+        textContent,
+        tags: ["password-recovery", "security"],
+        headers: {
+          "X-Email-Type": "password-recovery",
+          "X-Platform": "AdvanceMais",
+          "X-Priority": "1",
+        },
+      };
+    } catch (error) {
+      console.warn(
+        "⚠️ Falha no template de recuperação, usando fallback",
+        error
+      );
+      return this.generateFallbackPasswordRecoveryEmail(templateData);
     }
   }
 
@@ -390,6 +522,46 @@ export class EmailService {
   }
 
   /**
+   * Gera email de fallback para recuperação de senha
+   */
+  private generateFallbackPasswordRecoveryEmail(templateData: any): EmailData {
+    return {
+      to: templateData.email,
+      toName: templateData.nomeCompleto,
+      subject: "🔐 Recuperação de Senha - AdvanceMais",
+      htmlContent: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #ff9800;">🔐 Recuperação de Senha</h1>
+          <p>Olá, <strong>${templateData.nomeCompleto}</strong>!</p>
+          <p>Para recuperar sua senha, use o código: <strong>${templateData.token}</strong></p>
+          <p>
+            <a href="${templateData.linkRecuperacao}" 
+               style="background: #ff9800; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
+              Redefinir Senha
+            </a>
+          </p>
+          <p style="color: #d32f2f;"><strong>Válido por ${templateData.expiracaoMinutos} minutos!</strong></p>
+          <p>Atenciosamente,<br><strong>Equipe AdvanceMais</strong></p>
+        </div>
+      `,
+      textContent: `
+        Recuperação de Senha - AdvanceMais
+        
+        Olá, ${templateData.nomeCompleto}!
+        
+        Para recuperar sua senha, use o código: ${templateData.token}
+        Ou acesse: ${templateData.linkRecuperacao}
+        
+        Válido por ${templateData.expiracaoMinutos} minutos!
+        
+        Atenciosamente,
+        Equipe AdvanceMais
+      `,
+      tags: ["password-recovery", "fallback"],
+    };
+  }
+
+  /**
    * Métodos auxiliares para validação e logging
    */
 
@@ -492,11 +664,16 @@ export class EmailService {
     messageId?: string
   ): Promise<void> {
     try {
+      const emailType =
+        operation === "WELCOME_EMAIL"
+          ? EmailType.WELCOME
+          : EmailType.PASSWORD_RECOVERY;
+
       await prisma.logEmail.create({
         data: {
           usuarioId: userData.id,
           email: userData.email,
-          tipoEmail: EmailType.WELCOME,
+          tipoEmail: emailType,
           status: SendStatus.SENT,
           tentativas: 1,
           messageId,
@@ -514,11 +691,16 @@ export class EmailService {
     errorMessage: string
   ): Promise<void> {
     try {
+      const emailType =
+        operation === "WELCOME_EMAIL"
+          ? EmailType.WELCOME
+          : EmailType.PASSWORD_RECOVERY;
+
       await prisma.logEmail.create({
         data: {
           usuarioId: userData.id,
           email: userData.email,
-          tipoEmail: EmailType.WELCOME,
+          tipoEmail: emailType,
           status: SendStatus.FAILED,
           tentativas: this.config.maxRetries || 3,
           erro: errorMessage,

@@ -7,7 +7,7 @@ import { supabaseAuthMiddleware } from "../../usuarios/auth";
  * API RESTful para comunicação via email e SMS
  *
  * @author Sistema AdvanceMais
- * @version 3.0.2
+ * @version 3.0.3 - Correção de exports
  */
 const router = Router();
 const brevoController = new BrevoController();
@@ -19,7 +19,7 @@ const brevoController = new BrevoController();
 router.get("/", (req, res) => {
   res.json({
     module: "Brevo Communication Module",
-    version: "3.0.2",
+    version: "3.0.3",
     status: "active",
     timestamp: new Date().toISOString(),
     endpoints: {
@@ -66,4 +66,5 @@ if (process.env.NODE_ENV !== "production") {
   router.post("/test/sms", brevoController.testSMS);
 }
 
+// CORREÇÃO: Export nomeado ao invés de default
 export { router as brevoRoutes };

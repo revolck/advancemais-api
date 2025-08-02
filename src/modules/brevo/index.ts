@@ -3,7 +3,7 @@
  * Exportações organizadas e interface limpa
  *
  * @author Sistema AdvanceMais
- * @version 3.0.0
+ * @version 3.0.1 - Correção de exports e simplificação
  */
 
 // Exportações principais
@@ -17,8 +17,8 @@ export { BrevoController } from "./controllers/brevo-controller";
 // Exportações de tipos
 export * from "./types/interfaces";
 
-// Router padrão
-export { default as brevoRoutes } from "./routes";
+// CORREÇÃO: Export das rotas sem default
+export { brevoRoutes } from "./routes";
 
 /**
  * Classe principal do módulo para uso simplificado

@@ -23,7 +23,7 @@ import passwordRecoveryRoutes from "./password-recovery";
  * - Rate limiting inteligente
  *
  * @author Sistema AdvanceMais
- * @version 4.0.0 - Refatoração para microserviços
+ * @version 4.0.1 - Correção do middleware de email
  */
 const router = Router();
 
@@ -118,7 +118,7 @@ const authRateLimit = (maxRequests: number = 5, windowMinutes: number = 15) => {
 router.get("/", (req, res) => {
   res.json({
     module: "Usuários API",
-    version: "4.0.0",
+    version: "4.0.1",
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
     endpoints: {
@@ -143,38 +143,60 @@ router.get("/", (req, res) => {
 });
 
 /**
- * Registro de novo usuário com middleware de email
+ * Registro de novo usuário com middleware de email CORRIGIDO
  * POST /registrar
  *
- * FLUXO:
+ * FLUXO CORRIGIDO:
  * 1. criarUsuario -> cria usuário e define res.locals.usuarioCriado
- * 2. WelcomeEmailMiddleware -> envia email de boas-vindas de forma assíncrona
+ * 2. Middleware de debug -> verifica se dados foram definidos
+ * 3. WelcomeEmailMiddleware -> envia email de boas-vindas de forma assíncrona
  */
 router.post(
   "/registrar",
   authRateLimit(3, 10), // Máximo 3 tentativas de registro por 10 minutos
   async (req, res, next) => {
-    console.log("📝 Iniciando processo de registro");
+    const correlationId = req.headers["x-correlation-id"];
+    console.log(`📝 [${correlationId}] Iniciando processo de registro`);
     next();
   },
-  criarUsuario,
+  criarUsuario, // Controller que cria o usuário e define res.locals.usuarioCriado
   async (req, res, next) => {
-    // Middleware de debug para verificar se dados foram definidos
+    // Middleware de debug MELHORADO para verificar se dados foram definidos
     const correlationId = req.headers["x-correlation-id"];
 
-    if (res.locals.usuarioCriado) {
+    console.log(
+      `🔍 [${correlationId}] Verificando dados para middleware de email`
+    );
+    console.log(`🔍 [${correlationId}] res.locals existe:`, !!res.locals);
+    console.log(
+      `🔍 [${correlationId}] res.locals.usuarioCriado existe:`,
+      !!res.locals?.usuarioCriado
+    );
+
+    if (res.locals?.usuarioCriado?.usuario) {
+      const user = res.locals.usuarioCriado.usuario;
       console.log(
-        `✅ [${correlationId}] res.locals.usuarioCriado definido para email`
+        `✅ [${correlationId}] Dados do usuário prontos para email:`,
+        {
+          id: user.id,
+          email: user.email,
+          nome: user.nomeCompleto,
+          tipo: user.tipoUsuario,
+        }
       );
     } else {
       console.warn(
-        `⚠️ [${correlationId}] res.locals.usuarioCriado NÃO definido`
+        `⚠️ [${correlationId}] res.locals.usuarioCriado NÃO está definido corretamente`
+      );
+      console.warn(
+        `⚠️ [${correlationId}] Estrutura atual do res.locals:`,
+        res.locals
       );
     }
 
     next();
   },
-  WelcomeEmailMiddleware.create()
+  WelcomeEmailMiddleware.create() // Middleware de email que lê res.locals.usuarioCriado
 );
 
 /**
@@ -321,7 +343,6 @@ router.use((err: any, req: any, res: any, next: any) => {
  */
 router.get("/health", async (req, res) => {
   try {
-    // CORREÇÃO: Import com extensão .js obrigatória
     const { prisma } = await import("../../../config/prisma.js");
 
     // Testa conectividade com banco (query simples)
@@ -330,7 +351,7 @@ router.get("/health", async (req, res) => {
     res.json({
       status: "healthy",
       module: "usuarios",
-      version: "4.0.0",
+      version: "4.0.1",
       timestamp: new Date().toISOString(),
       database: "connected",
       environment: process.env.NODE_ENV,
@@ -340,7 +361,7 @@ router.get("/health", async (req, res) => {
     res.status(503).json({
       status: "unhealthy",
       module: "usuarios",
-      version: "4.0.0",
+      version: "4.0.1",
       timestamp: new Date().toISOString(),
       database: "disconnected",
       error:

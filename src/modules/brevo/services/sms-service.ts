@@ -11,7 +11,7 @@ import { prisma } from "../../../config/prisma";
  * - Registrar logs para auditoria
  *
  * @author Sistema AdvanceMais
- * @version 5.0.1 - Correção da estrutura da API Brevo SMS
+ * @version 5.0.2 - Correção do erro SendTransacSmsTag
  */
 export interface SMSResult {
   success: boolean;
@@ -91,15 +91,16 @@ export class SMSService {
       const sendTransacSms = new Brevo.SendTransacSms();
 
       // Estrutura correta da API Brevo para SMS
-      sendTransacSms.recipient = smsData.to;
+      sendTransacSms.recipient = this.formatPhoneNumber(smsData.to);
       sendTransacSms.content = smsData.message;
       sendTransacSms.sender = smsData.sender || "AdvanceMais";
 
       // Usa o enum correto para type
       sendTransacSms.type = Brevo.SendTransacSms.TypeEnum.Transactional;
 
-      // Define tag para organização
-      sendTransacSms.tag = "advancemais";
+      // CORREÇÃO: Removido o campo 'tag' que estava causando erro
+      // A API Brevo pode não suportar tags customizadas para SMS
+      // ou pode ter uma estrutura diferente
 
       const response = await this.client
         .getSMSAPI()
@@ -275,6 +276,11 @@ export class SMSService {
 
     // Se já tem código do país, apenas adiciona +
     if (cleanPhone.length > 11) {
+      return `+${cleanPhone}`;
+    }
+
+    // Retorna com + se não tiver
+    if (!phone.startsWith("+")) {
       return `+${cleanPhone}`;
     }
 

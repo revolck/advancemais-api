@@ -26,7 +26,7 @@ import {
  * - Rollback automático em caso de erro
  *
  * @author Sistema AdvanceMais
- * @version 4.0.0 - Refatoração para microserviços
+ * @version 4.0.2 - Correção de tipagem TypeScript
  */
 
 /**
@@ -181,6 +181,10 @@ export const criarUsuario = async (req: Request, res: Response) => {
     // ===================================================================
     // CRÍTICO: Prepara dados para middleware de email de boas-vindas
     // ===================================================================
+    console.log(
+      `📧 [${correlationId}] Preparando dados para middleware de email`
+    );
+
     res.locals.usuarioCriado = {
       usuario: {
         id: usuario.id,
@@ -196,10 +200,16 @@ export const criarUsuario = async (req: Request, res: Response) => {
       correlationId,
       createdAt: new Date().toISOString(),
       source: "register-controller",
+      emailShouldBeSent: true, // Flag explícita para o middleware
     };
 
     console.log(
-      `📧 [${correlationId}] Dados preparados para middleware de email`
+      `📧 [${correlationId}] Dados do usuário salvos em res.locals:`,
+      {
+        email: usuario.email,
+        nome: usuario.nomeCompleto,
+        id: usuario.id,
+      }
     );
 
     // Resposta de sucesso
@@ -221,6 +231,11 @@ export const criarUsuario = async (req: Request, res: Response) => {
       correlationId,
       duration: `${duration}ms`,
     });
+
+    // IMPORTANTE: Não retorna aqui, deixa o middleware processar
+    console.log(
+      `🔄 [${correlationId}] Resposta enviada, aguardando middleware`
+    );
   } catch (error) {
     const duration = Date.now() - startTime;
     const errorMessage =
@@ -449,7 +464,7 @@ async function processUserTypeSpecificData(
 
 /**
  * Verifica duplicatas de forma otimizada
- * CORREÇÃO: Tipagem explícita para resolver erro do Prisma OR conditions
+ * CORREÇÃO: Tipagem explícita corrigida para resolver erro do Prisma OR conditions
  */
 async function checkForDuplicates(
   data: {
@@ -463,13 +478,17 @@ async function checkForDuplicates(
   try {
     console.log(`🔍 [${correlationId}] Verificando duplicatas`);
 
-    // CORREÇÃO: Tipagem explícita para condições OR do Prisma
-    const orConditions: Array<
+    // CORREÇÃO: Tipagem explícita corrigida para Array
+    type WhereCondition =
       | { email: string }
       | { supabaseId: string }
       | { cpf: string }
-      | { cnpj: string }
-    > = [{ email: data.email }, { supabaseId: data.supabaseId }];
+      | { cnpj: string };
+
+    const orConditions: WhereCondition[] = [
+      { email: data.email },
+      { supabaseId: data.supabaseId },
+    ];
 
     // Adiciona condições específicas se fornecidas
     if (data.cpf) {
@@ -522,6 +541,7 @@ async function checkForDuplicates(
     return { found: false };
   }
 }
+
 /**
  * Constrói dados para inserção no banco
  */

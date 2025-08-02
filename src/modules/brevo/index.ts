@@ -1,32 +1,35 @@
 /**
- * Módulo Brevo - Ponto de entrada principal
- * Exportações organizadas e interface limpa
+ * Módulo Brevo - Exportações principais
  *
  * @author Sistema AdvanceMais
- * @version 3.0.1 - Correção de exports e simplificação
+ * @version 5.0.1 - Correção de imports
  */
 
-// Exportações principais
-export { BrevoClient } from "./client/brevo-client";
+// Serviços principais
 export { EmailService } from "./services/email-service";
 export { SMSService } from "./services/sms-service";
+export { BrevoClient } from "./client/brevo-client";
 export { EmailTemplates } from "./templates/email-templates";
+
+// Middleware
 export { WelcomeEmailMiddleware } from "./middlewares/welcome-email-middleware";
+
+// Controller e rotas
 export { BrevoController } from "./controllers/brevo-controller";
-
-// Exportações de tipos
-export * from "./types/interfaces";
-
-// CORREÇÃO: Export das rotas sem default
 export { brevoRoutes } from "./routes";
 
-/**
- * Classe principal do módulo para uso simplificado
- */
-import { BrevoClient } from "./client/brevo-client";
+// Configuração e tipos
+export { BrevoConfigManager } from "./config/brevo-config";
+export * from "./types/interfaces";
+
+// Imports corretos para a classe principal
 import { EmailService } from "./services/email-service";
 import { SMSService } from "./services/sms-service";
+import { BrevoClient } from "./client/brevo-client";
 
+/**
+ * Classe principal do módulo
+ */
 export class BrevoModule {
   private static instance: BrevoModule;
   private emailService: EmailService;
@@ -59,15 +62,17 @@ export class BrevoModule {
   }
 
   public async healthCheck() {
-    const clientHealthy = await this.client.checkHealth();
-    const emailHealthy = await this.emailService.checkConnectivity();
-    const smsHealthy = await this.smsService.checkConnectivity();
+    const [emailHealthy, smsHealthy] = await Promise.all([
+      this.emailService.checkHealth(),
+      this.smsService.checkHealth(),
+    ]);
 
     return {
-      client: clientHealthy,
+      client: this.client.isOperational(),
       email: emailHealthy,
       sms: smsHealthy,
-      overall: clientHealthy && emailHealthy && smsHealthy,
+      simulated: this.client.isSimulated(),
+      overall: (emailHealthy && smsHealthy) || this.client.isSimulated(),
     };
   }
 }

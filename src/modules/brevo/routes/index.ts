@@ -3,11 +3,10 @@ import { BrevoController } from "../controllers/brevo-controller";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
 
 /**
- * Rotas do módulo Brevo - CORRIGIDO
- * API RESTful para comunicação via email e SMS
+ * Rotas simplificadas do módulo Brevo
  *
  * @author Sistema AdvanceMais
- * @version 3.0.3 - Correção de exports
+ * @version 5.0.1 - Adição de teste de SMS
  */
 const router = Router();
 const brevoController = new BrevoController();
@@ -16,21 +15,7 @@ const brevoController = new BrevoController();
  * Informações do módulo
  * GET /brevo
  */
-router.get("/", (req, res) => {
-  res.json({
-    module: "Brevo Communication Module",
-    version: "3.0.3",
-    status: "active",
-    timestamp: new Date().toISOString(),
-    endpoints: {
-      health: "GET /health",
-      config: "GET /config (ADMIN)",
-      stats: "GET /stats (ADMIN/MODERADOR)",
-      testEmail: "POST /test/email (development)",
-      testSMS: "POST /test/sms (development)",
-    },
-  });
-});
+router.get("/", brevoController.getModuleInfo);
 
 /**
  * Health check
@@ -39,17 +24,7 @@ router.get("/", (req, res) => {
 router.get("/health", brevoController.healthCheck);
 
 /**
- * Configurações (apenas ADMIN)
- * GET /brevo/config
- */
-router.get(
-  "/config",
-  supabaseAuthMiddleware(["ADMIN"]),
-  brevoController.getConfig
-);
-
-/**
- * Estatísticas (ADMIN e MODERADOR)
+ * Estatísticas (apenas para admins)
  * GET /brevo/stats
  */
 router.get(
@@ -62,9 +37,17 @@ router.get(
  * Testes de desenvolvimento
  */
 if (process.env.NODE_ENV !== "production") {
+  /**
+   * Teste de email
+   * POST /brevo/test/email
+   */
   router.post("/test/email", brevoController.testEmail);
+
+  /**
+   * Teste de SMS
+   * POST /brevo/test/sms
+   */
   router.post("/test/sms", brevoController.testSMS);
 }
 
-// CORREÇÃO: Export nomeado ao invés de default
 export { router as brevoRoutes };

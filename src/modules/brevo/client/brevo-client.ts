@@ -1,36 +1,31 @@
 import * as Brevo from "@getbrevo/brevo";
-import { BrevoConfigManager } from "../config/brevo-config";
-import { IBrevoConfig } from "../types/interfaces";
+import { BrevoConfigManager, BrevoConfiguration } from "../config/brevo-config";
 
 /**
- * Cliente Brevo com tratamento de erro gracioso
- * Health check não-crítico para não quebrar a aplicação
+ * Cliente Brevo simplificado e robusto
+ *
+ * Responsabilidades:
+ * - Gerenciar conexão com API Brevo
+ * - Fornecer APIs configuradas
+ * - Health check não-crítico
  *
  * @author Sistema AdvanceMais
- * @version 3.0.4 - Correção health check gracioso
+ * @version 5.0.1 - Correção TypeScript
  */
 export class BrevoClient {
   private static instance: BrevoClient;
-  private transactionalEmailsApi!: Brevo.TransactionalEmailsApi;
-  private transactionalSMSApi!: Brevo.TransactionalSMSApi;
-  private accountApi!: Brevo.AccountApi;
-  private config: IBrevoConfig;
+  private emailAPI!: Brevo.TransactionalEmailsApi; // Definite assignment assertion
+  private smsAPI!: Brevo.TransactionalSMSApi; // Para uso futuro
+  private accountAPI!: Brevo.AccountApi;
+  private config: BrevoConfiguration;
   private isHealthy: boolean = false;
-  private lastHealthCheck: Date | null = null;
-  private healthCheckError: string | null = null;
 
-  /**
-   * Construtor privado para Singleton
-   */
   private constructor() {
     this.config = BrevoConfigManager.getInstance().getConfig();
     this.initializeAPIs();
-    this.performInitialHealthCheckSilent();
+    this.performHealthCheckAsync(); // Async para não bloquear construtor
   }
 
-  /**
-   * Retorna instância singleton
-   */
   public static getInstance(): BrevoClient {
     if (!BrevoClient.instance) {
       BrevoClient.instance = new BrevoClient();
@@ -39,142 +34,105 @@ export class BrevoClient {
   }
 
   /**
-   * Inicializa APIs do Brevo
+   * Inicializa APIs do Brevo com configuração segura
    */
   private initializeAPIs(): void {
     try {
-      this.transactionalEmailsApi = new Brevo.TransactionalEmailsApi();
-      this.transactionalSMSApi = new Brevo.TransactionalSMSApi();
-      this.accountApi = new Brevo.AccountApi();
+      this.emailAPI = new Brevo.TransactionalEmailsApi();
+      this.smsAPI = new Brevo.TransactionalSMSApi();
+      this.accountAPI = new Brevo.AccountApi();
 
-      // Configura API key para todas as instâncias
-      this.transactionalEmailsApi.setApiKey(
-        Brevo.TransactionalEmailsApiApiKeys.apiKey,
-        this.config.apiKey
-      );
-      this.transactionalSMSApi.setApiKey(
-        Brevo.TransactionalSMSApiApiKeys.apiKey,
-        this.config.apiKey
-      );
-      this.accountApi.setApiKey(
-        Brevo.AccountApiApiKeys.apiKey,
-        this.config.apiKey
-      );
-
-      console.log("✅ APIs do Brevo inicializadas");
-    } catch (error) {
-      console.error("❌ Erro ao inicializar APIs do Brevo:", error);
-      throw new Error(`Falha na inicialização do cliente Brevo: ${error}`);
-    }
-  }
-
-  /**
-   * Health check inicial silencioso (não quebra a aplicação)
-   */
-  private async performInitialHealthCheckSilent(): Promise<void> {
-    try {
-      await this.checkHealth();
-    } catch (error) {
-      // Health check falhou, mas não quebra a aplicação
-      console.warn("⚠️ Brevo health check inicial falhou (não-crítico)");
-    }
-  }
-
-  /**
-   * Verifica saúde do cliente com tratamento de erro gracioso
-   */
-  public async checkHealth(): Promise<boolean> {
-    try {
-      const startTime = Date.now();
-      await this.accountApi.getAccount();
-      const responseTime = Date.now() - startTime;
-
-      this.isHealthy = true;
-      this.lastHealthCheck = new Date();
-      this.healthCheckError = null;
-
-      console.log(`✅ Brevo healthy (${responseTime}ms)`);
-      return true;
-    } catch (error: any) {
-      this.isHealthy = false;
-      this.lastHealthCheck = new Date();
-
-      // Tratamento específico de erros
-      if (error.statusCode === 401) {
-        this.healthCheckError = "API Key inválida ou expirada";
-        console.warn("⚠️ Brevo: API Key inválida - verifique BREVO_API_KEY");
-      } else if (error.statusCode === 403) {
-        this.healthCheckError = "Acesso negado - verifique permissões";
-        console.warn("⚠️ Brevo: Acesso negado");
-      } else if (error.code === "ENOTFOUND") {
-        this.healthCheckError = "Problema de conectividade";
-        console.warn("⚠️ Brevo: Problema de rede");
-      } else {
-        this.healthCheckError = "Erro desconhecido";
-        console.warn("⚠️ Brevo: Health check falhou");
+      if (this.config.apiKey) {
+        // Configura API key para todas as APIs
+        this.emailAPI.setApiKey(
+          Brevo.TransactionalEmailsApiApiKeys.apiKey,
+          this.config.apiKey
+        );
+        this.smsAPI.setApiKey(
+          Brevo.TransactionalSMSApiApiKeys.apiKey,
+          this.config.apiKey
+        );
+        this.accountAPI.setApiKey(
+          Brevo.AccountApiApiKeys.apiKey,
+          this.config.apiKey
+        );
       }
 
+      console.log("✅ Brevo APIs inicializadas");
+    } catch (error) {
+      console.error("❌ Erro ao inicializar Brevo APIs:", error);
+      // Cliente continua funcionando em modo simulado
+    }
+  }
+
+  /**
+   * Health check assíncrono e não-crítico
+   */
+  private async performHealthCheckAsync(): Promise<void> {
+    if (!this.config.isConfigured) {
+      console.log("ℹ️ Brevo em modo simulado (API Key não configurada)");
+      return;
+    }
+
+    // Executa em background sem bloquear
+    setImmediate(async () => {
+      try {
+        // Timeout rápido para não atrasar inicialização
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Health check timeout")), 5000)
+        );
+
+        // Usa accountAPI.getAccount() ao invés de emailAPI.getAccount()
+        await Promise.race([this.accountAPI.getAccount(), timeoutPromise]);
+
+        this.isHealthy = true;
+        console.log("✅ Brevo conectado com sucesso");
+      } catch (error) {
+        console.warn("⚠️ Brevo health check falhou (modo degradado)");
+        // Não quebra a aplicação
+      }
+    });
+  }
+
+  public getEmailAPI(): Brevo.TransactionalEmailsApi {
+    return this.emailAPI;
+  }
+
+  public getSMSAPI(): Brevo.TransactionalSMSApi {
+    return this.smsAPI;
+  }
+
+  public getAccountAPI(): Brevo.AccountApi {
+    return this.accountAPI;
+  }
+
+  public getConfig(): BrevoConfiguration {
+    return this.config;
+  }
+
+  public isOperational(): boolean {
+    return this.config.isConfigured && this.isHealthy;
+  }
+
+  public isSimulated(): boolean {
+    return !this.config.isConfigured;
+  }
+
+  /**
+   * Health check público para verificações externas
+   */
+  public async checkHealth(): Promise<boolean> {
+    if (!this.config.isConfigured) {
+      return true; // Modo simulado é considerado saudável
+    }
+
+    try {
+      await this.accountAPI.getAccount();
+      this.isHealthy = true;
+      return true;
+    } catch (error) {
+      this.isHealthy = false;
       return false;
     }
-  }
-
-  /**
-   * Retorna API de emails transacionais
-   */
-  public getEmailAPI(): Brevo.TransactionalEmailsApi {
-    return this.transactionalEmailsApi;
-  }
-
-  /**
-   * Retorna API de SMS transacionais
-   */
-  public getSMSAPI(): Brevo.TransactionalSMSApi {
-    return this.transactionalSMSApi;
-  }
-
-  /**
-   * Retorna API de conta
-   */
-  public getAccountAPI(): Brevo.AccountApi {
-    return this.accountApi;
-  }
-
-  /**
-   * Verifica se cliente está saudável
-   */
-  public getHealthStatus(): {
-    healthy: boolean;
-    lastCheck: Date | null;
-    error: string | null;
-  } {
-    return {
-      healthy: this.isHealthy,
-      lastCheck: this.lastHealthCheck,
-      error: this.healthCheckError,
-    };
-  }
-
-  /**
-   * Retorna configuração atual
-   */
-  public getConfig(): IBrevoConfig {
-    return { ...this.config };
-  }
-
-  /**
-   * Verifica se está configurado (sem fazer health check)
-   */
-  public async isConfigured(): Promise<boolean> {
-    return !!(this.config.apiKey && this.config.fromEmail);
-  }
-
-  /**
-   * Força reset da instância (apenas para testes)
-   */
-  public static resetInstance(): void {
-    if (process.env.NODE_ENV !== "test") {
-      throw new Error("Reset só permitido em ambiente de teste");
-    }
-    BrevoClient.instance = null as any;
   }
 }

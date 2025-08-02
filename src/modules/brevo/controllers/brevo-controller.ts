@@ -2,18 +2,17 @@ import { Request, Response } from "express";
 import { EmailService } from "../services/email-service";
 import { SMSService } from "../services/sms-service";
 import { BrevoClient } from "../client/brevo-client";
-import {
-  HealthCheckResult,
-  ServiceStatus,
-  IBrevoConfig,
-} from "../types/interfaces";
 
 /**
- * Controller principal do módulo Brevo
- * Implementa endpoints RESTful para comunicação
+ * Controller simplificado do módulo Brevo
+ *
+ * Responsabilidades:
+ * - Health check e status
+ * - Endpoints de teste para desenvolvimento
+ * - Informações básicas do módulo
  *
  * @author Sistema AdvanceMais
- * @version 3.0.1
+ * @version 5.0.1 - Adição de testes de SMS
  */
 export class BrevoController {
   private emailService: EmailService;
@@ -27,31 +26,33 @@ export class BrevoController {
   }
 
   /**
-   * Health check do módulo
+   * Health check completo
    * GET /brevo/health
    */
   public healthCheck = async (req: Request, res: Response): Promise<void> => {
     try {
-      const startTime = Date.now();
-      const healthResult = await this.performHealthCheck();
-      const responseTime = Date.now() - startTime;
+      const config = this.client.getConfig();
+      const [emailHealthy, smsHealthy] = await Promise.all([
+        this.emailService.checkHealth(),
+        this.smsService.checkHealth(),
+      ]);
 
-      const statusCode =
-        healthResult.status === "healthy"
-          ? 200
-          : healthResult.status === "degraded"
-          ? 207
-          : 503;
-
-      res.status(statusCode).json({
-        ...healthResult,
-        responseTime,
+      res.json({
+        status: emailHealthy && smsHealthy ? "healthy" : "degraded",
         module: "brevo",
+        configured: config.isConfigured,
+        simulated: this.client.isSimulated(),
+        operational: this.client.isOperational(),
+        services: {
+          email: emailHealthy ? "operational" : "degraded",
+          sms: smsHealthy ? "operational" : "degraded",
+        },
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       res.status(503).json({
-        module: "brevo",
         status: "unhealthy",
+        module: "brevo",
         error: error instanceof Error ? error.message : "Health check failed",
         timestamp: new Date().toISOString(),
       });
@@ -59,61 +60,26 @@ export class BrevoController {
   };
 
   /**
-   * Configurações do módulo (apenas admins)
-   * GET /brevo/config
+   * Informações do módulo
+   * GET /brevo
    */
-  public getConfig = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const config: IBrevoConfig = this.client.getConfig();
-      const healthStatus = this.client.getHealthStatus();
+  public getModuleInfo = async (req: Request, res: Response): Promise<void> => {
+    const config = this.client.getConfig();
 
-      res.json({
-        message: "Configurações do módulo Brevo",
-        config: {
-          fromEmail: config.fromEmail,
-          fromName: config.fromName,
-          maxRetries: config.maxRetries,
-          timeout: config.timeout,
-          healthy: healthStatus.healthy,
-          lastHealthCheck: healthStatus.lastCheck,
-        },
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      res.status(500).json({
-        message: "Erro ao obter configurações",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
-      });
-    }
-  };
-
-  /**
-   * Estatísticas do módulo
-   * GET /brevo/stats
-   */
-  public getStatistics = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const [emailStats, smsStats] = await Promise.allSettled([
-        this.emailService.getStatistics(),
-        this.smsService.getStatistics(),
-      ]);
-
-      const stats = {
-        email: emailStats.status === "fulfilled" ? emailStats.value : null,
-        sms: smsStats.status === "fulfilled" ? smsStats.value : null,
-        timestamp: new Date().toISOString(),
-      };
-
-      res.json({
-        message: "Estatísticas do módulo Brevo",
-        data: stats,
-      });
-    } catch (error) {
-      res.status(500).json({
-        message: "Erro ao obter estatísticas",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
-      });
-    }
+    res.json({
+      module: "Brevo Communication Module",
+      version: "5.0.1",
+      status: "active",
+      configured: config.isConfigured,
+      simulated: this.client.isSimulated(),
+      services: ["email", "sms"],
+      endpoints: {
+        health: "GET /health",
+        testEmail: "POST /test/email (development only)",
+        testSMS: "POST /test/sms (development only)",
+      },
+      timestamp: new Date().toISOString(),
+    });
   };
 
   /**
@@ -122,45 +88,29 @@ export class BrevoController {
    */
   public testEmail = async (req: Request, res: Response): Promise<void> => {
     if (process.env.NODE_ENV === "production") {
-      res.status(403).json({
-        message: "Testes não disponíveis em produção",
-      });
+      res.status(403).json({ message: "Testes não disponíveis em produção" });
       return;
     }
 
     try {
-      const { email, subject, message, name } = req.body;
+      const { email, name } = req.body;
 
-      if (!email || !subject || !message) {
-        res.status(400).json({
-          message: "Campos obrigatórios: email, subject, message",
-        });
+      if (!email) {
+        res.status(400).json({ message: "Email é obrigatório" });
         return;
       }
 
-      const result = await this.emailService.sendEmail({
-        to: email,
-        toName: name || "Teste",
-        subject: `🧪 ${subject}`,
-        htmlContent: `
-          <div style="font-family: Arial, sans-serif; padding: 20px;">
-            <h2>🧪 Teste de Email - AdvanceMais</h2>
-            <p><strong>Mensagem:</strong> ${message}</p>
-            <hr>
-            <p style="font-size: 12px; color: #666;">
-              Teste enviado em: ${new Date().toLocaleString("pt-BR")}
-            </p>
-          </div>
-        `,
-        textContent: `TESTE DE EMAIL\n\n${message}\n\nEnviado em: ${new Date().toLocaleString(
-          "pt-BR"
-        )}`,
-        tags: ["teste"],
+      const result = await this.emailService.sendWelcomeEmail({
+        id: "test_user",
+        email,
+        nomeCompleto: name || "Usuário Teste",
+        tipoUsuario: "PESSOA_FISICA",
       });
 
       res.json({
         message: "Teste de email executado",
         success: result.success,
+        simulated: result.simulated,
         messageId: result.messageId,
         error: result.error,
       });
@@ -178,33 +128,38 @@ export class BrevoController {
    */
   public testSMS = async (req: Request, res: Response): Promise<void> => {
     if (process.env.NODE_ENV === "production") {
-      res.status(403).json({
-        message: "Testes não disponíveis em produção",
-      });
+      res.status(403).json({ message: "Testes não disponíveis em produção" });
       return;
     }
 
     try {
-      const { phone, message } = req.body;
+      const { phone, message, type } = req.body;
 
-      if (!phone || !message) {
-        res.status(400).json({
-          message: "Campos obrigatórios: phone, message",
-        });
+      if (!phone) {
+        res.status(400).json({ message: "Telefone é obrigatório" });
         return;
       }
 
-      const result = await this.smsService.sendSMS({
-        to: phone,
-        message: `🧪 TESTE: ${message} - ${new Date().toLocaleTimeString(
-          "pt-BR"
-        )}`,
-        sender: "AdvanceMais",
-      });
+      let result;
+
+      if (type === "verification") {
+        // Teste de SMS de verificação
+        const code = SMSService.generateVerificationCode(6);
+        result = await this.smsService.sendVerificationSMS(phone, code);
+      } else {
+        // Teste de SMS genérico
+        const testMessage = message || "🧪 Teste de SMS do AdvanceMais";
+        result = await this.smsService.sendSMS({
+          to: phone,
+          message: testMessage,
+          sender: "AdvanceMais",
+        });
+      }
 
       res.json({
         message: "Teste de SMS executado",
         success: result.success,
+        simulated: result.simulated,
         messageId: result.messageId,
         error: result.error,
       });
@@ -217,117 +172,29 @@ export class BrevoController {
   };
 
   /**
-   * Realiza health check completo
+   * Estatísticas básicas
+   * GET /brevo/stats
    */
-  private async performHealthCheck(): Promise<HealthCheckResult> {
-    const startTime = Date.now();
-
-    const [clientHealth, emailHealth, smsHealth] = await Promise.allSettled([
-      this.checkClientHealth(),
-      this.checkEmailHealth(),
-      this.checkSMSHealth(),
-    ]);
-
-    const services = {
-      client:
-        clientHealth.status === "fulfilled"
-          ? clientHealth.value
-          : { status: "down" as const, error: "Health check failed" },
-      email:
-        emailHealth.status === "fulfilled"
-          ? emailHealth.value
-          : { status: "down" as const, error: "Health check failed" },
-      sms:
-        smsHealth.status === "fulfilled"
-          ? smsHealth.value
-          : { status: "down" as const, error: "Health check failed" },
-    };
-
-    const healthyServices = Object.values(services).filter(
-      (service) => service.status === "up"
-    ).length;
-    const totalServices = Object.keys(services).length;
-
-    let status: "healthy" | "degraded" | "unhealthy";
-    if (healthyServices === totalServices) {
-      status = "healthy";
-    } else if (healthyServices >= totalServices / 2) {
-      status = "degraded";
-    } else {
-      status = "unhealthy";
-    }
-
-    return {
-      status,
-      timestamp: new Date().toISOString(),
-      uptime: Date.now() - startTime,
-      services,
-    };
-  }
-
-  /**
-   * Verifica saúde do cliente
-   */
-  private async checkClientHealth(): Promise<ServiceStatus> {
-    const startTime = Date.now();
+  public getStatistics = async (req: Request, res: Response): Promise<void> => {
     try {
-      const isHealthy = await this.client.checkHealth();
-      return {
-        status: isHealthy ? "up" : "down",
-        responseTime: Date.now() - startTime,
-        lastCheck: new Date().toISOString(),
-      };
-    } catch (error) {
-      return {
-        status: "down",
-        responseTime: Date.now() - startTime,
-        error: error instanceof Error ? error.message : "Client check failed",
-        lastCheck: new Date().toISOString(),
-      };
-    }
-  }
+      const [emailStats, smsStats] = await Promise.all([
+        this.emailService.getStatistics(),
+        this.smsService.getStatistics(),
+      ]);
 
-  /**
-   * Verifica saúde do serviço de email
-   */
-  private async checkEmailHealth(): Promise<ServiceStatus> {
-    const startTime = Date.now();
-    try {
-      const isHealthy = await this.emailService.checkConnectivity();
-      return {
-        status: isHealthy ? "up" : "down",
-        responseTime: Date.now() - startTime,
-        lastCheck: new Date().toISOString(),
-      };
+      res.json({
+        message: "Estatísticas do módulo Brevo",
+        data: {
+          email: emailStats,
+          sms: smsStats,
+        },
+        timestamp: new Date().toISOString(),
+      });
     } catch (error) {
-      return {
-        status: "down",
-        responseTime: Date.now() - startTime,
-        error: error instanceof Error ? error.message : "Email check failed",
-        lastCheck: new Date().toISOString(),
-      };
+      res.status(500).json({
+        message: "Erro ao obter estatísticas",
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      });
     }
-  }
-
-  /**
-   * Verifica saúde do serviço de SMS
-   */
-  private async checkSMSHealth(): Promise<ServiceStatus> {
-    const startTime = Date.now();
-    try {
-      const isHealthy = await this.smsService.checkConnectivity();
-      return {
-        status: isHealthy ? "up" : "down",
-        responseTime: Date.now() - startTime,
-        lastCheck: new Date().toISOString(),
-      };
-    } catch (error) {
-      return {
-        status: "down",
-        responseTime: Date.now() - startTime,
-        error: error instanceof Error ? error.message : "SMS check failed",
-        lastCheck: new Date().toISOString(),
-      };
-    }
-  }
+  };
 }

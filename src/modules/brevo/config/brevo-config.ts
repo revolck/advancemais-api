@@ -1,24 +1,33 @@
 import { brevoConfig } from "../../../config/env";
-import { IBrevoConfig } from "../types/interfaces";
 
 /**
- * Configuração centralizada do módulo Brevo
- * Valida e normaliza as configurações de ambiente
+ * Configuração centralizada e simplificada do módulo Brevo
+ *
+ * Responsabilidades:
+ * - Validar configurações obrigatórias
+ * - Fornecer interface limpa para o módulo
+ * - Implementar fallbacks seguros
  *
  * @author Sistema AdvanceMais
- * @version 3.0.1
+ * @version 5.0.0 - Refatoração para simplicidade
  */
+export interface BrevoConfiguration {
+  apiKey: string;
+  fromEmail: string;
+  fromName: string;
+  maxRetries: number;
+  timeout: number;
+  isConfigured: boolean;
+}
+
 export class BrevoConfigManager {
   private static instance: BrevoConfigManager;
-  private config: IBrevoConfig;
+  private config: BrevoConfiguration;
 
   private constructor() {
-    this.config = this.validateAndNormalizeConfig();
+    this.config = this.buildConfiguration();
   }
 
-  /**
-   * Singleton para configuração
-   */
   public static getInstance(): BrevoConfigManager {
     if (!BrevoConfigManager.instance) {
       BrevoConfigManager.instance = new BrevoConfigManager();
@@ -27,60 +36,37 @@ export class BrevoConfigManager {
   }
 
   /**
-   * Valida e normaliza configurações
+   * Constrói configuração validada com fallbacks seguros
    */
-  private validateAndNormalizeConfig(): IBrevoConfig {
-    // Validações obrigatórias
-    if (!brevoConfig.apiKey) {
-      throw new Error("BREVO_API_KEY é obrigatório");
-    }
+  private buildConfiguration(): BrevoConfiguration {
+    const isConfigured = !!(brevoConfig.apiKey && brevoConfig.fromEmail);
 
-    if (!brevoConfig.fromEmail || !this.isValidEmail(brevoConfig.fromEmail)) {
-      throw new Error("BREVO_FROM_EMAIL deve ser um email válido");
+    if (!isConfigured) {
+      console.warn("⚠️ Brevo não configurado - emails serão simulados");
     }
 
     return {
-      apiKey: brevoConfig.apiKey,
-      fromEmail: brevoConfig.fromEmail,
+      apiKey: brevoConfig.apiKey || "",
+      fromEmail: brevoConfig.fromEmail || "noreply@advancemais.com",
       fromName: brevoConfig.fromName || "AdvanceMais",
-      maxRetries: brevoConfig.sending.maxRetries || 3,
-      retryDelay: brevoConfig.sending.retryDelay || 1000,
-      timeout: brevoConfig.sending.timeout || 30000,
+      maxRetries: Math.min(brevoConfig.sending.maxRetries || 2, 3), // Máximo 3 tentativas
+      timeout: Math.min(brevoConfig.sending.timeout || 15000, 30000), // Máximo 30s
+      isConfigured,
     };
   }
 
-  /**
-   * Valida formato de email
-   */
-  private isValidEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  }
-
-  /**
-   * Retorna configuração validada
-   */
-  public getConfig(): IBrevoConfig {
+  public getConfig(): BrevoConfiguration {
     return { ...this.config };
   }
 
   /**
-   * Atualiza configuração (apenas para testes)
+   * Valida se a configuração é válida para produção
    */
-  public updateConfig(newConfig: Partial<IBrevoConfig>): void {
-    if (process.env.NODE_ENV !== "test") {
-      throw new Error("Configuração só pode ser alterada em ambiente de teste");
-    }
-    this.config = { ...this.config, ...newConfig };
+  public isProductionReady(): boolean {
+    return this.config.isConfigured && this.isValidEmail(this.config.fromEmail);
   }
 
-  /**
-   * Reset para testes
-   */
-  public static resetInstance(): void {
-    if (process.env.NODE_ENV !== "test") {
-      throw new Error("Reset só permitido em ambiente de teste");
-    }
-    BrevoConfigManager.instance = null as any;
+  private isValidEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 }

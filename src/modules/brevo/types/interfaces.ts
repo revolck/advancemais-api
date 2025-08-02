@@ -1,59 +1,24 @@
 /**
- * Interfaces e tipos para o módulo Brevo
- * Centraliza todas as definições de tipos para melhor manutenibilidade
+ * Interfaces simplificadas para o módulo Brevo
  *
  * @author Sistema AdvanceMais
- * @version 3.0.1
+ * @version 5.0.0 - Simplificação
  */
 
 /**
- * Interface base para resposta de serviços
+ * Resultado padrão de operações
  */
 export interface ServiceResponse<T = any> {
   success: boolean;
   data?: T;
   error?: string;
   messageId?: string;
+  simulated?: boolean;
   timestamp?: string;
 }
 
 /**
- * Interface para dados de email básico
- */
-export interface EmailData {
-  to: string;
-  toName?: string;
-  subject: string;
-  htmlContent: string;
-  textContent?: string;
-  templateId?: number;
-  templateParams?: Record<string, any>;
-  attachments?: EmailAttachment[];
-  headers?: Record<string, string>;
-  tags?: string[];
-}
-
-/**
- * Interface para anexos de email
- */
-export interface EmailAttachment {
-  name: string;
-  content: string; // base64
-  contentType?: string;
-}
-
-/**
- * Interface para dados de SMS
- */
-export interface SMSData {
-  to: string;
-  message: string;
-  sender?: string;
-  type?: "transactional" | "promotional";
-}
-
-/**
- * Interface para dados de usuário em templates
+ * Dados básicos de usuário para templates
  */
 export interface UserTemplateData {
   id: string;
@@ -63,80 +28,66 @@ export interface UserTemplateData {
 }
 
 /**
- * Interface para dados de template de boas-vindas
+ * Configuração do módulo Brevo
  */
-export interface WelcomeTemplateData {
-  nomeCompleto: string;
-  tipoUsuario: string;
-  frontendUrl: string;
-  ano: number;
-}
-
-/**
- * Interface para dados de template de recuperação de senha
- */
-export interface PasswordRecoveryTemplateData {
-  nomeCompleto: string;
-  linkRecuperacao: string;
-  token: string;
-  expiracaoMinutos: number;
-  maxTentativas: number;
-  frontendUrl: string;
-  ano: number;
-}
-
-/**
- * Interface para configuração do módulo Brevo
- * RENOMEADA para evitar conflito com a classe
- */
-export interface IBrevoConfig {
+export interface BrevoConfiguration {
   apiKey: string;
   fromEmail: string;
   fromName: string;
   maxRetries: number;
-  retryDelay: number;
   timeout: number;
+  isConfigured: boolean;
 }
 
 /**
- * Interface para health check
+ * Status de health check
  */
-export interface HealthCheckResult {
+export interface HealthStatus {
   status: "healthy" | "degraded" | "unhealthy";
   timestamp: string;
-  uptime: number;
-  services: {
-    client: ServiceStatus;
-    email: ServiceStatus;
-    sms: ServiceStatus;
-  };
-  metrics?: HealthMetrics;
+  module: string;
+  configured: boolean;
+  simulated: boolean;
+  operational: boolean;
 }
 
 /**
- * Interface para status de serviço
+ * Dados para email de boas-vindas
  */
-export interface ServiceStatus {
-  status: "up" | "down";
-  responseTime?: number;
+export interface WelcomeEmailData {
+  nomeCompleto: string;
+  tipoUsuario: string;
+  email: string;
+  frontendUrl: string;
+}
+
+/**
+ * Dados para email de recuperação de senha
+ */
+export interface PasswordRecoveryData {
+  nomeCompleto: string;
+  token: string;
+  linkRecuperacao: string;
+  expiracaoMinutos: number;
+}
+
+/**
+ * Dados para SMS
+ */
+export interface SMSData {
+  to: string;
+  message: string;
+  sender?: string;
+}
+
+/**
+ * Resultado de operação de SMS
+ */
+export interface SMSResult {
+  success: boolean;
+  messageId?: string;
   error?: string;
-  lastCheck?: string;
-}
-
-/**
- * Interface para métricas de health check
- */
-export interface HealthMetrics {
-  email: {
-    totalSent: number;
-    successRate: number;
-    lastSent?: string;
-  };
-  sms: {
-    totalSent: number;
-    successRate: number;
-    lastSent?: string;
-  };
+  simulated?: boolean;
 }
 
 /**
@@ -159,16 +110,10 @@ export enum SendStatus {
 }
 
 /**
- * Interface para log de envio
+ * Enums para tipos de SMS
  */
-export interface SendLog {
-  id?: string;
-  usuarioId?: string;
-  type: EmailType;
-  status: SendStatus;
-  recipient: string;
-  attempts: number;
-  messageId?: string;
-  error?: string;
-  createdAt: Date;
+export enum SMSType {
+  VERIFICATION = "VERIFICACAO",
+  NOTIFICATION = "NOTIFICACAO",
+  MARKETING = "MARKETING",
 }

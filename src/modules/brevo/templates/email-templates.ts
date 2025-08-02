@@ -1,196 +1,205 @@
+import * as fs from "fs";
+import * as path from "path";
+
 /**
- * Gerador de templates de email otimizado
- * REFATORAÇÃO: Carrega templates HTML de arquivos separados ao invés de hardcode
+ * Sistema de templates simplificado e eficiente
  *
- * Benefícios da refatoração:
- * - Separação de responsabilidades (HTML vs lógica)
- * - Melhor manutenibilidade dos templates
- * - Facilita edição por designers
- * - Cache inteligente para performance
- * - Fallbacks robustos
+ * Responsabilidades:
+ * - Gerar emails personalizados
+ * - Carregar templates HTML de forma síncrona
+ * - Fornecer fallbacks robustos
  *
  * @author Sistema AdvanceMais
- * @version 4.0.0 - Refatoração para arquivos HTML externos
+ * @version 5.0.0 - Simplificação total
  */
+export interface WelcomeEmailData {
+  nomeCompleto: string;
+  tipoUsuario: string;
+  email: string;
+  frontendUrl: string;
+}
 
-import * as fs from "fs/promises";
-import * as path from "path";
-import {
-  WelcomeTemplateData,
-  PasswordRecoveryTemplateData,
-} from "../types/interfaces";
+export interface PasswordRecoveryData {
+  nomeCompleto: string;
+  token: string;
+  linkRecuperacao: string;
+  expiracaoMinutos: number;
+}
 
 export class EmailTemplates {
-  private static templateCache = new Map<string, string>();
-  private static readonly TEMPLATES_DIR = path.join(__dirname, "html");
+  private static templatesDir = path.join(__dirname, "html");
 
   /**
-   * Gera template de boas-vindas carregando de arquivo HTML
+   * Gera email de boas-vindas com template dinâmico
    */
-  public static async generateWelcomeTemplate(
-    data: WelcomeTemplateData
-  ): Promise<string> {
-    try {
-      const cacheKey = `welcome_${data.tipoUsuario}`;
+  public static generateWelcomeEmail(data: WelcomeEmailData): {
+    subject: string;
+    html: string;
+    text: string;
+  } {
+    const firstName = data.nomeCompleto.split(" ")[0];
+    const userType =
+      data.tipoUsuario === "PESSOA_JURIDICA" ? "empresa" : "pessoa física";
 
-      // Verifica cache primeiro
-      if (this.templateCache.has(cacheKey)) {
-        return this.replaceVariables(this.templateCache.get(cacheKey)!, data);
-      }
-
-      // Carrega template do arquivo HTML
-      const template = await this.loadHTMLTemplate("welcome-email.html");
-      this.templateCache.set(cacheKey, template);
-
-      return this.replaceVariables(template, data);
-    } catch (error) {
-      console.error("❌ Erro ao carregar template de boas-vindas:", error);
-      return this.getFallbackWelcomeTemplate(data);
-    }
+    return {
+      subject: `🎉 Bem-vind${
+        userType === "empresa" ? "a" : "o"
+      } ao AdvanceMais, ${firstName}!`,
+      html: this.loadWelcomeHTML(data),
+      text: this.generateWelcomeText(data),
+    };
   }
 
   /**
-   * Gera template de recuperação de senha carregando de arquivo HTML
+   * Gera email de recuperação de senha
    */
-  public static async generatePasswordRecoveryTemplate(
-    data: PasswordRecoveryTemplateData
-  ): Promise<string> {
+  public static generatePasswordRecoveryEmail(data: PasswordRecoveryData): {
+    subject: string;
+    html: string;
+    text: string;
+  } {
+    return {
+      subject: "🔐 Recuperação de Senha - AdvanceMais",
+      html: this.loadPasswordRecoveryHTML(data),
+      text: this.generatePasswordRecoveryText(data),
+    };
+  }
+
+  /**
+   * Carrega template HTML de boas-vindas com fallback
+   */
+  private static loadWelcomeHTML(data: WelcomeEmailData): string {
     try {
-      const cacheKey = "password_recovery";
+      const templatePath = path.join(this.templatesDir, "welcome-email.html");
 
-      // Verifica cache primeiro
-      if (this.templateCache.has(cacheKey)) {
-        return this.replaceVariables(this.templateCache.get(cacheKey)!, data);
+      if (fs.existsSync(templatePath)) {
+        const template = fs.readFileSync(templatePath, "utf-8");
+        return this.replaceVariables(template, {
+          nomeCompleto: data.nomeCompleto,
+          tipoUsuario: this.formatUserType(data.tipoUsuario),
+          frontendUrl: data.frontendUrl,
+          ano: new Date().getFullYear().toString(),
+          primeiroNome: data.nomeCompleto.split(" ")[0],
+        });
       }
+    } catch (error) {
+      console.warn("⚠️ Template HTML não encontrado, usando fallback");
+    }
 
-      // Carrega template do arquivo HTML
-      const template = await this.loadHTMLTemplate(
+    return this.getFallbackWelcomeHTML(data);
+  }
+
+  /**
+   * Carrega template HTML de recuperação com fallback
+   */
+  private static loadPasswordRecoveryHTML(data: PasswordRecoveryData): string {
+    try {
+      const templatePath = path.join(
+        this.templatesDir,
         "password-recovery-email.html"
       );
-      this.templateCache.set(cacheKey, template);
 
-      return this.replaceVariables(template, data);
-    } catch (error) {
-      console.error("❌ Erro ao carregar template de recuperação:", error);
-      return this.getFallbackPasswordRecoveryTemplate(data);
-    }
-  }
-
-  /**
-   * Carrega template HTML de arquivo
-   * Implementa cache e tratamento de erro robusto
-   */
-  private static async loadHTMLTemplate(filename: string): Promise<string> {
-    try {
-      const filePath = path.join(this.TEMPLATES_DIR, filename);
-
-      // Verifica se arquivo existe
-      await fs.access(filePath);
-
-      // Carrega conteúdo do arquivo
-      const content = await fs.readFile(filePath, "utf-8");
-
-      if (!content || content.trim().length === 0) {
-        throw new Error(`Template vazio: ${filename}`);
+      if (fs.existsSync(templatePath)) {
+        const template = fs.readFileSync(templatePath, "utf-8");
+        return this.replaceVariables(template, {
+          nomeCompleto: data.nomeCompleto,
+          token: data.token,
+          linkRecuperacao: data.linkRecuperacao,
+          expiracaoMinutos: data.expiracaoMinutos.toString(),
+          frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
+          ano: new Date().getFullYear().toString(),
+          maxTentativas: "3",
+        });
       }
-
-      console.log(`✅ Template carregado com sucesso: ${filename}`);
-      return content;
     } catch (error) {
-      console.error(`❌ Erro ao carregar template ${filename}:`, error);
-      throw error;
+      console.warn(
+        "⚠️ Template de recuperação não encontrado, usando fallback"
+      );
     }
+
+    return this.getFallbackPasswordRecoveryHTML(data);
   }
 
   /**
-   * Gera versão texto do template de boas-vindas
-   */
-  public static generateWelcomeText(data: WelcomeTemplateData): string {
-    const firstName = data.nomeCompleto.split(" ")[0];
-
-    return `
-Bem-vindo ao AdvanceMais, ${data.nomeCompleto}!
-
-Olá ${firstName},
-
-É com grande satisfação que te damos as boas-vindas ao AdvanceMais!
-
-Sua conta como ${data.tipoUsuario} foi criada com sucesso e você já pode começar a explorar nossa plataforma.
-
-Para começar, acesse: ${data.frontendUrl}/login
-
-Atenciosamente,
-Equipe AdvanceMais
-
-© ${data.ano} AdvanceMais. Todos os direitos reservados.
-    `.trim();
-  }
-
-  /**
-   * Gera versão texto do template de recuperação
-   */
-  public static generatePasswordRecoveryText(
-    data: PasswordRecoveryTemplateData
-  ): string {
-    const firstName = data.nomeCompleto.split(" ")[0];
-
-    return `
-Recuperação de Senha - AdvanceMais
-
-Olá, ${firstName}!
-
-Para redefinir sua senha, acesse: ${data.linkRecuperacao}
-
-Ou use o código: ${data.token}
-
-IMPORTANTE:
-- Válido por ${data.expiracaoMinutos} minutos
-- Máximo ${data.maxTentativas} tentativas
-- Se não solicitou, ignore este email
-
-Atenciosamente,
-Equipe AdvanceMais
-
-© ${data.ano} AdvanceMais. Todos os direitos reservados.
-    `.trim();
-  }
-
-  /**
-   * Substitui variáveis no template
+   * Substitui variáveis no template de forma segura
    */
   private static replaceVariables(
     template: string,
-    variables: Record<string, any>
+    variables: Record<string, string>
   ): string {
     let result = template;
 
     Object.entries(variables).forEach(([key, value]) => {
       const regex = new RegExp(`{{${key}}}`, "g");
-      const safeValue = this.sanitizeValue(value);
-      result = result.replace(regex, safeValue);
+      result = result.replace(regex, this.escapeHtml(value));
     });
 
     return result;
   }
 
   /**
-   * Sanitiza valores para HTML
+   * Formata tipo de usuário para exibição
    */
-  private static sanitizeValue(value: any): string {
-    if (value === null || value === undefined) return "";
-
-    return String(value)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
+  private static formatUserType(userType: string): string {
+    const types: Record<string, string> = {
+      PESSOA_FISICA: "pessoa física",
+      PESSOA_JURIDICA: "empresa",
+    };
+    return types[userType] || "usuário";
   }
 
   /**
-   * Template de fallback para boas-vindas (caso arquivo não carregue)
+   * Gera versão texto do email de boas-vindas
    */
-  private static getFallbackWelcomeTemplate(data: WelcomeTemplateData): string {
+  private static generateWelcomeText(data: WelcomeEmailData): string {
+    const firstName = data.nomeCompleto.split(" ")[0];
+
+    return `
+Bem-vindo ao AdvanceMais!
+
+Olá ${firstName},
+
+Sua conta foi criada com sucesso em nossa plataforma.
+
+Para começar, acesse: ${data.frontendUrl}/login
+
+Atenciosamente,
+Equipe AdvanceMais
+    `.trim();
+  }
+
+  /**
+   * Gera versão texto do email de recuperação
+   */
+  private static generatePasswordRecoveryText(
+    data: PasswordRecoveryData
+  ): string {
+    const firstName = data.nomeCompleto.split(" ")[0];
+
+    return `
+Recuperação de Senha - AdvanceMais
+
+Olá ${firstName},
+
+Para redefinir sua senha, acesse: ${data.linkRecuperacao}
+
+Ou use o código: ${data.token}
+
+Válido por ${data.expiracaoMinutos} minutos.
+
+Atenciosamente,
+Equipe AdvanceMais
+    `.trim();
+  }
+
+  /**
+   * Template HTML de fallback para boas-vindas
+   */
+  private static getFallbackWelcomeHTML(data: WelcomeEmailData): string {
+    const firstName = data.nomeCompleto.split(" ")[0];
+    const userType =
+      data.tipoUsuario === "PESSOA_JURIDICA" ? "empresa" : "pessoa";
+
     return `
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -199,42 +208,49 @@ Equipe AdvanceMais
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bem-vindo ao AdvanceMais</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
-    .container { max-width: 600px; margin: 0 auto; background-color: white; padding: 40px; border-radius: 8px; }
-    .header { text-align: center; color: #4CAF50; margin-bottom: 30px; }
-    .button { display: inline-block; background: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; }
+    .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+    .header { background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; padding: 40px 20px; text-align: center; }
+    .content { padding: 30px; }
+    .button { display: inline-block; background: #4CAF50; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0; }
+    .footer { background: #f8f9fa; padding: 20px; text-align: center; font-size: 14px; color: #666; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>🎉 Bem-vindo ao AdvanceMais!</h1>
+      <h1>🎉 Bem-vind${userType === "empresa" ? "a" : "o"} ao AdvanceMais!</h1>
+      <p>Sua jornada de crescimento profissional começa aqui</p>
     </div>
-    <p>Olá, <strong>${this.sanitizeValue(data.nomeCompleto)}</strong>!</p>
-    <p>Sua conta como <strong>${this.sanitizeValue(
-      data.tipoUsuario
-    )}</strong> foi criada com sucesso!</p>
-    <p style="text-align: center;">
-      <a href="${this.sanitizeValue(
-        data.frontendUrl
-      )}/login" class="button">Acessar Plataforma</a>
-    </p>
-    <p>Atenciosamente,<br><strong>Equipe AdvanceMais</strong></p>
-    <hr>
-    <p style="font-size: 12px; color: #666;">© ${
-      data.ano
-    } AdvanceMais. Todos os direitos reservados.</p>
+    <div class="content">
+      <h2>Olá, ${firstName}!</h2>
+      <p>É com grande satisfação que te damos as boas-vindas ao <strong>AdvanceMais</strong>!</p>
+      <p>Sua conta como <strong>${this.formatUserType(
+        data.tipoUsuario
+      )}</strong> foi criada com sucesso.</p>
+      <div style="text-align: center;">
+        <a href="${
+          data.frontendUrl
+        }/login" class="button">🚀 Acessar Plataforma</a>
+      </div>
+      <p>Atenciosamente,<br><strong>Equipe AdvanceMais</strong> 💚</p>
+    </div>
+    <div class="footer">
+      <p>© ${new Date().getFullYear()} AdvanceMais. Todos os direitos reservados.</p>
+    </div>
   </div>
 </body>
 </html>`;
   }
 
   /**
-   * Template de fallback para recuperação
+   * Template HTML de fallback para recuperação de senha
    */
-  private static getFallbackPasswordRecoveryTemplate(
-    data: PasswordRecoveryTemplateData
+  private static getFallbackPasswordRecoveryHTML(
+    data: PasswordRecoveryData
   ): string {
+    const firstName = data.nomeCompleto.split(" ")[0];
+
     return `
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -243,129 +259,57 @@ Equipe AdvanceMais
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Recuperação de Senha</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
-    .container { max-width: 600px; margin: 0 auto; background-color: white; padding: 40px; border-radius: 8px; }
-    .header { text-align: center; color: #ff9800; margin-bottom: 30px; }
-    .button { display: inline-block; background: #ff9800; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; }
-    .token { background: #f5f5f5; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 18px; text-align: center; margin: 20px 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; }
+    .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+    .header { background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); color: white; padding: 40px 20px; text-align: center; }
+    .content { padding: 30px; }
+    .button { display: inline-block; background: #ff9800; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0; }
+    .token { background: #f5f5f5; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 18px; text-align: center; letter-spacing: 2px; margin: 20px 0; border: 2px dashed #ddd; }
+    .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px; }
+    .footer { background: #f8f9fa; padding: 20px; text-align: center; font-size: 14px; color: #666; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
       <h1>🔐 Recuperação de Senha</h1>
+      <p>Redefina sua senha de forma segura</p>
     </div>
-    <p>Olá, <strong>${this.sanitizeValue(data.nomeCompleto)}</strong>!</p>
-    <p>Para recuperar sua senha, use o código:</p>
-    <div class="token">${this.sanitizeValue(data.token)}</div>
-    <p style="text-align: center;">
-      <a href="${this.sanitizeValue(
-        data.linkRecuperacao
-      )}" class="button">Redefinir Senha</a>
-    </p>
-    <p style="color: #d32f2f;"><strong>Válido por ${
-      data.expiracaoMinutos
-    } minutos!</strong></p>
-    <p>Atenciosamente,<br><strong>Equipe AdvanceMais</strong></p>
-    <hr>
-    <p style="font-size: 12px; color: #666;">© ${
-      data.ano
-    } AdvanceMais. Todos os direitos reservados.</p>
+    <div class="content">
+      <h2>Olá, ${firstName}!</h2>
+      <p>Para recuperar sua senha, use o código abaixo:</p>
+      <div class="token">${data.token}</div>
+      <div style="text-align: center;">
+        <a href="${data.linkRecuperacao}" class="button">🔑 Redefinir Senha</a>
+      </div>
+      <div class="warning">
+        <p><strong>⚠️ Importante:</strong></p>
+        <p>Este código é válido por apenas <strong>${
+          data.expiracaoMinutos
+        } minutos</strong>.</p>
+      </div>
+      <p>Se você não solicitou esta recuperação, ignore este email.</p>
+      <p>Atenciosamente,<br><strong>Equipe AdvanceMais</strong> 🔒</p>
+    </div>
+    <div class="footer">
+      <p>© ${new Date().getFullYear()} AdvanceMais. Todos os direitos reservados.</p>
+    </div>
   </div>
 </body>
 </html>`;
   }
 
   /**
-   * Precarrega templates para cache
-   * Útil para inicialização da aplicação
+   * Escapa HTML para prevenir XSS
    */
-  public static async preloadTemplates(): Promise<void> {
-    try {
-      console.log("🔄 Precarregando templates de email...");
-
-      const templates = ["welcome-email.html", "password-recovery-email.html"];
-
-      const loadPromises = templates.map(async (template) => {
-        try {
-          const content = await this.loadHTMLTemplate(template);
-          this.templateCache.set(template, content);
-          console.log(`✅ Template precarregado: ${template}`);
-        } catch (error) {
-          console.warn(`⚠️ Falha ao precarregar template ${template}:`, error);
-        }
-      });
-
-      await Promise.allSettled(loadPromises);
-      console.log("✅ Precarregamento de templates concluído");
-    } catch (error) {
-      console.error("❌ Erro no precarregamento de templates:", error);
-    }
-  }
-
-  /**
-   * Limpa cache de templates
-   */
-  public static clearCache(): void {
-    this.templateCache.clear();
-    console.log("🗑️ Cache de templates limpo");
-  }
-
-  /**
-   * Obtém estatísticas do cache
-   */
-  public static getCacheStats(): {
-    size: number;
-    templates: string[];
-    memoryUsage: string;
-  } {
-    const templates = Array.from(this.templateCache.keys());
-    const memoryUsage = templates.reduce((total, key) => {
-      return total + (this.templateCache.get(key)?.length || 0);
-    }, 0);
-
-    return {
-      size: this.templateCache.size,
-      templates,
-      memoryUsage: `${Math.round(memoryUsage / 1024)} KB`,
+  private static escapeHtml(text: string): string {
+    const map: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
     };
-  }
-
-  /**
-   * Valida se todos os templates necessários existem
-   */
-  public static async validateTemplates(): Promise<{
-    valid: boolean;
-    missing: string[];
-    errors: string[];
-  }> {
-    const requiredTemplates = [
-      "welcome-email.html",
-      "password-recovery-email.html",
-    ];
-
-    const missing: string[] = [];
-    const errors: string[] = [];
-
-    for (const template of requiredTemplates) {
-      try {
-        const filePath = path.join(this.TEMPLATES_DIR, template);
-        await fs.access(filePath);
-
-        // Tenta carregar para validar conteúdo
-        const content = await fs.readFile(filePath, "utf-8");
-        if (!content || content.trim().length === 0) {
-          errors.push(`Template vazio: ${template}`);
-        }
-      } catch (error) {
-        missing.push(template);
-      }
-    }
-
-    return {
-      valid: missing.length === 0 && errors.length === 0,
-      missing,
-      errors,
-    };
+    return text.replace(/[&<>"']/g, (m) => map[m]);
   }
 }

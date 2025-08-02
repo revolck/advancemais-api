@@ -5,161 +5,235 @@ dotenv.config();
 
 /**
  * Configurações de ambiente centralizadas e validadas
- * Inclui todas as configurações necessárias para o sistema AdvanceMais
+ * Implementa padrões de microserviços para configuração segura
  *
- * Módulos configurados:
- * - Supabase (Autenticação e Banco)
- * - JWT (Tokens de acesso)
- * - Brevo (Email e SMS) - ATUALIZADO
- * - MercadoPago (Pagamentos)
- * - Servidor e Segurança
+ * Características:
+ * - Validação rigorosa de variáveis obrigatórias
+ * - Configuração específica por ambiente
+ * - Validações de segurança para produção
+ * - Logs estruturados de configuração
+ * - Fallbacks seguros para desenvolvimento
  *
  * @author Sistema AdvanceMais
- * @version 2.1.0
+ * @version 4.0.0 - Refatoração para microserviços
  */
 
 // =============================================
-// VALIDAÇÃO DE VARIÁVEIS OBRIGATÓRIAS
+// CLASSES DE VALIDAÇÃO
 // =============================================
 
-const requiredEnvVars = [
-  "SUPABASE_URL",
-  "SUPABASE_KEY",
+class ConfigurationError extends Error {
+  constructor(message: string, public missingVars?: string[]) {
+    super(message);
+    this.name = "ConfigurationError";
+  }
+}
+
+class EnvironmentValidator {
+  /**
+   * Valida variáveis obrigatórias com feedback detalhado
+   */
+  static validateRequired(vars: string[]): {
+    isValid: boolean;
+    missing: string[];
+  } {
+    const missing = vars.filter((varName) => !process.env[varName]);
+    return {
+      isValid: missing.length === 0,
+      missing,
+    };
+  }
+
+  /**
+   * Valida formato de URL
+   */
+  static isValidUrl(url: string): boolean {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Valida formato de email
+   */
+  static isValidEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  /**
+   * Valida se é número válido
+   */
+  static isValidNumber(value: string, min?: number, max?: number): boolean {
+    const num = parseInt(value, 10);
+    if (isNaN(num)) return false;
+    if (min !== undefined && num < min) return false;
+    if (max !== undefined && num > max) return false;
+    return true;
+  }
+}
+
+// =============================================
+// CONFIGURAÇÃO DO AMBIENTE
+// =============================================
+
+const NODE_ENV = process.env.NODE_ENV || "development";
+const isDevelopment = NODE_ENV === "development";
+const isProduction = NODE_ENV === "production";
+const isTest = NODE_ENV === "test";
+
+console.log(`🌍 Ambiente: ${NODE_ENV}`);
+
+// =============================================
+// VALIDAÇÃO DE VARIÁVEIS CRÍTICAS
+// =============================================
+
+// Variáveis obrigatórias para todos os ambientes
+const coreRequiredVars = [
   "DATABASE_URL",
   "DIRECT_URL",
   "JWT_SECRET",
   "JWT_REFRESH_SECRET",
 ];
 
-// Variáveis específicas do Brevo (atualizadas)
-const brevoRequiredVars = ["BREVO_API_KEY"];
+// Validação específica por ambiente
+const environmentSpecificVars = {
+  production: [
+    ...coreRequiredVars,
+    "SUPABASE_URL",
+    "SUPABASE_KEY",
+    "BREVO_API_KEY",
+    "MERCADOPAGO_ACCESS_TOKEN",
+    "MERCADOPAGO_PUBLIC_KEY",
+    "FRONTEND_URL",
+  ],
+  development: coreRequiredVars,
+  test: coreRequiredVars,
+};
 
-// Variáveis do MercadoPago
-const mercadoPagoRequiredVars = [
-  "MERCADOPAGO_ACCESS_TOKEN",
-  "MERCADOPAGO_PUBLIC_KEY",
-];
+// Valida variáveis obrigatórias
+const requiredVars =
+  environmentSpecificVars[NODE_ENV as keyof typeof environmentSpecificVars] ||
+  coreRequiredVars;
+const validation = EnvironmentValidator.validateRequired(requiredVars);
 
-// Combinar todas as variáveis obrigatórias
-const allRequiredVars = [
-  ...requiredEnvVars,
-  ...brevoRequiredVars,
-  ...mercadoPagoRequiredVars,
-];
+if (!validation.isValid) {
+  const errorMessage = `Variáveis de ambiente obrigatórias não encontradas para ${NODE_ENV}: ${validation.missing.join(
+    ", "
+  )}`;
 
-// Verifica variáveis obrigatórias
-const missingVars = allRequiredVars.filter((varName) => !process.env[varName]);
-if (missingVars.length > 0) {
-  console.warn(
-    `⚠️  Variáveis de ambiente não encontradas: ${missingVars.join(", ")}`
-  );
-  console.warn("⚠️  Alguns módulos podem não funcionar corretamente");
+  if (isProduction) {
+    console.error(`❌ ${errorMessage}`);
+    process.exit(1); // Falha crítica em produção
+  } else {
+    console.warn(`⚠️ ${errorMessage}`);
+    console.warn("⚠️ Alguns módulos podem não funcionar corretamente");
+  }
 }
 
 // =============================================
 // CONFIGURAÇÕES DO SUPABASE
 // =============================================
 
-/**
- * Configurações do Supabase para autenticação e banco de dados
- */
 export const supabaseConfig = {
-  url: process.env.SUPABASE_URL!,
-  key: process.env.SUPABASE_KEY!,
+  url: process.env.SUPABASE_URL || "",
+  key: process.env.SUPABASE_KEY || "",
   jwksUri:
     process.env.SUPABASE_JWKS_URI ||
     `${process.env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`,
+
+  // Validação da configuração
+  isValid(): boolean {
+    return !!(
+      this.url &&
+      this.key &&
+      EnvironmentValidator.isValidUrl(this.url)
+    );
+  },
+
+  // Status da configuração
+  getStatus(): { configured: boolean; issues: string[] } {
+    const issues: string[] = [];
+
+    if (!this.url) issues.push("SUPABASE_URL não configurada");
+    if (!this.key) issues.push("SUPABASE_KEY não configurada");
+    if (this.url && !EnvironmentValidator.isValidUrl(this.url)) {
+      issues.push("SUPABASE_URL tem formato inválido");
+    }
+
+    return {
+      configured: issues.length === 0,
+      issues,
+    };
+  },
 } as const;
 
 // =============================================
 // CONFIGURAÇÕES JWT
 // =============================================
 
-/**
- * Configurações JWT para tokens de acesso e refresh
- * Tipos compatíveis com a biblioteca jsonwebtoken
- */
 export const jwtConfig = {
-  secret: process.env.JWT_SECRET!,
-  refreshSecret: process.env.JWT_REFRESH_SECRET!,
-  expiresIn: (process.env.JWT_EXPIRATION || "1h") as
-    | "1h"
-    | "15m"
-    | "30m"
-    | "2h"
-    | "12h"
-    | "24h"
-    | "7d"
-    | "30d",
-  refreshExpiresIn: (process.env.JWT_REFRESH_EXPIRATION || "30d") as
-    | "1d"
-    | "7d"
-    | "30d"
-    | "90d",
+  secret: process.env.JWT_SECRET || "",
+  refreshSecret: process.env.JWT_REFRESH_SECRET || "",
+  expiresIn: (process.env.JWT_EXPIRATION || "1h") as string,
+  refreshExpiresIn: (process.env.JWT_REFRESH_EXPIRATION || "30d") as string,
+
+  // Validação da configuração
+  isValid(): boolean {
+    return (
+      !!(this.secret && this.refreshSecret) &&
+      this.secret.length >= 32 &&
+      this.refreshSecret.length >= 32
+    );
+  },
+
+  // Status da configuração
+  getStatus(): { configured: boolean; issues: string[] } {
+    const issues: string[] = [];
+
+    if (!this.secret) issues.push("JWT_SECRET não configurado");
+    if (!this.refreshSecret) issues.push("JWT_REFRESH_SECRET não configurado");
+    if (this.secret && this.secret.length < 32) {
+      issues.push("JWT_SECRET deve ter pelo menos 32 caracteres");
+    }
+    if (this.refreshSecret && this.refreshSecret.length < 32) {
+      issues.push("JWT_REFRESH_SECRET deve ter pelo menos 32 caracteres");
+    }
+
+    return {
+      configured: issues.length === 0,
+      issues,
+    };
+  },
 } as const;
 
 // =============================================
-// CONFIGURAÇÕES DO SERVIDOR
+// CONFIGURAÇÕES DO BREVO
 // =============================================
 
-/**
- * Configurações gerais do servidor Express
- */
-export const serverConfig = {
-  port: parseInt(process.env.PORT || "3000", 10),
-  nodeEnv: process.env.NODE_ENV || "development",
-  corsOrigin: process.env.CORS_ORIGIN || "*",
-} as const;
-
-// =============================================
-// CONFIGURAÇÕES DO BANCO DE DADOS
-// =============================================
-
-/**
- * Configurações de conexão com PostgreSQL via Prisma
- */
-export const databaseConfig = {
-  url: process.env.DATABASE_URL!,
-  directUrl: process.env.DIRECT_URL!,
-} as const;
-
-// =============================================
-// CONFIGURAÇÕES DO BREVO (ATUALIZADO)
-// =============================================
-
-/**
- * Configurações do Brevo (ex-Sendinblue) para email e SMS
- *
- * Credenciais atualizadas:
- * - API Key: 851JKC36h92VRfbk
- * - SMTP Server: smtp-relay.brevo.com:587
- * - SMTP User: 93713f002@smtp-brevo.com
- * - SMTP Pass: 8G2CrnFRt4EpNUbs
- */
 export const brevoConfig = {
-  // API Key principal para todas as operações
-  apiKey: process.env.BREVO_API_KEY || "851JKC36h92VRfbk",
-
-  // Configurações de remetente para emails
+  // Configurações básicas
+  apiKey: process.env.BREVO_API_KEY || "",
   fromEmail: process.env.BREVO_FROM_EMAIL || "noreply@advancemais.com",
   fromName: process.env.BREVO_FROM_NAME || "AdvanceMais",
 
-  // Configurações SMTP (backup/alternativa)
+  // Configurações SMTP (backup)
   smtp: {
     host: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
     port: parseInt(process.env.BREVO_SMTP_PORT || "587", 10),
     secure: false, // true para 465, false para 587
     auth: {
-      user: process.env.BREVO_SMTP_USER || "93713f002@smtp-brevo.com",
-      pass: process.env.BREVO_SMTP_PASSWORD || "8G2CrnFRt4EpNUbs",
+      user: process.env.BREVO_SMTP_USER || "",
+      pass: process.env.BREVO_SMTP_PASSWORD || "",
     },
-    // Configurações adicionais do Postfix
-    connectionTimeout: 60000, // 60 segundos
-    greetingTimeout: 30000, // 30 segundos
-    socketTimeout: 60000, // 60 segundos
+    connectionTimeout: 60000,
+    greetingTimeout: 30000,
+    socketTimeout: 60000,
   },
 
-  // URLs da API Brevo
+  // URLs da API
   apiUrls: {
     base: "https://api.brevo.com/v3",
     email: "https://api.brevo.com/v3/smtp/email",
@@ -167,7 +241,7 @@ export const brevoConfig = {
     account: "https://api.brevo.com/v3/account",
   },
 
-  // Configurações específicas para recuperação de senha
+  // Configurações de recuperação de senha
   passwordRecovery: {
     tokenExpirationMinutes: parseInt(
       process.env.PASSWORD_RECOVERY_EXPIRATION_MINUTES || "30",
@@ -187,9 +261,9 @@ export const brevoConfig = {
   sending: {
     maxRetries: parseInt(process.env.BREVO_MAX_RETRIES || "3", 10),
     retryDelay: parseInt(process.env.BREVO_RETRY_DELAY || "1000", 10),
-    timeout: parseInt(process.env.BREVO_TIMEOUT || "30000", 10), // 30 segundos
+    timeout: parseInt(process.env.BREVO_TIMEOUT || "30000", 10),
 
-    // Limites diários (ajuste conforme seu plano Brevo)
+    // Limites diários (ajuste conforme seu plano)
     dailyEmailLimit: parseInt(
       process.env.BREVO_DAILY_EMAIL_LIMIT || "10000",
       10
@@ -207,24 +281,48 @@ export const brevoConfig = {
     preloadOnStart: process.env.BREVO_PRELOAD_TEMPLATES !== "false",
     customTemplateDir: process.env.BREVO_CUSTOM_TEMPLATE_DIR || "",
   },
+
+  // Validação da configuração
+  isValid(): boolean {
+    return !!(this.apiKey && EnvironmentValidator.isValidEmail(this.fromEmail));
+  },
+
+  // Status da configuração
+  getStatus(): { configured: boolean; issues: string[] } {
+    const issues: string[] = [];
+
+    if (!this.apiKey) issues.push("BREVO_API_KEY não configurado");
+    if (!EnvironmentValidator.isValidEmail(this.fromEmail)) {
+      issues.push("BREVO_FROM_EMAIL deve ser um email válido");
+    }
+
+    // Verifica se não está usando credenciais de desenvolvimento em produção
+    if (isProduction) {
+      if (this.fromEmail.includes("test") || this.fromEmail.includes("dev")) {
+        issues.push("Email de produção parece ser de desenvolvimento");
+      }
+    }
+
+    return {
+      configured: issues.length === 0,
+      issues,
+    };
+  },
 } as const;
 
 // =============================================
 // CONFIGURAÇÕES DO MERCADOPAGO
 // =============================================
 
-/**
- * Configurações do MercadoPago para pagamentos
- */
 export const mercadoPagoConfig = {
-  // Chaves de API do MercadoPago
+  // Chaves de API
   accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN || "",
   publicKey: process.env.MERCADOPAGO_PUBLIC_KEY || "",
 
-  // Ambiente (sandbox ou production)
+  // Ambiente
   environment: process.env.MERCADOPAGO_ENVIRONMENT || "sandbox",
 
-  // Secret para validação de webhooks (opcional mas recomendado)
+  // Secret para webhooks
   webhookSecret: process.env.MERCADOPAGO_WEBHOOK_SECRET || "",
 
   // Configurações de timeout e retry
@@ -269,53 +367,132 @@ export const mercadoPagoConfig = {
     defaultFrequencyType:
       process.env.MERCADOPAGO_DEFAULT_FREQUENCY_TYPE || "months",
   },
+
+  // Validação da configuração
+  isValid(): boolean {
+    return !!(this.accessToken && this.publicKey);
+  },
+
+  // Status da configuração
+  getStatus(): { configured: boolean; issues: string[] } {
+    const issues: string[] = [];
+
+    if (!this.accessToken)
+      issues.push("MERCADOPAGO_ACCESS_TOKEN não configurado");
+    if (!this.publicKey) issues.push("MERCADOPAGO_PUBLIC_KEY não configurado");
+
+    // Validações específicas para produção
+    if (isProduction) {
+      if (this.accessToken.includes("TEST")) {
+        issues.push('Access Token de produção não deve conter "TEST"');
+      }
+      if (this.publicKey.includes("TEST")) {
+        issues.push('Public Key de produção não deve conter "TEST"');
+      }
+      if (this.environment !== "production") {
+        issues.push('Environment deve ser "production" em produção');
+      }
+      if (!this.webhookSecret) {
+        issues.push("MERCADOPAGO_WEBHOOK_SECRET recomendado em produção");
+      }
+    }
+
+    return {
+      configured: issues.length === 0,
+      issues,
+    };
+  },
 } as const;
 
 // =============================================
-// CONFIGURAÇÕES DE RATE LIMITING
+// CONFIGURAÇÕES DO SERVIDOR
 // =============================================
 
-/**
- * Configurações para controle de taxa de requisições
- */
+export const serverConfig = {
+  port: parseInt(process.env.PORT || "3000", 10),
+  nodeEnv: NODE_ENV,
+  corsOrigin:
+    process.env.CORS_ORIGIN ||
+    (isDevelopment ? "*" : "https://advancemais.com"),
+  frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
+
+  // Validação da configuração
+  isValid(): boolean {
+    return (
+      EnvironmentValidator.isValidNumber(this.port.toString(), 1, 65535) &&
+      EnvironmentValidator.isValidUrl(this.frontendUrl)
+    );
+  },
+
+  // Status da configuração
+  getStatus(): { configured: boolean; issues: string[] } {
+    const issues: string[] = [];
+
+    if (!EnvironmentValidator.isValidNumber(this.port.toString(), 1, 65535)) {
+      issues.push("PORT deve ser um número válido entre 1 e 65535");
+    }
+    if (!EnvironmentValidator.isValidUrl(this.frontendUrl)) {
+      issues.push("FRONTEND_URL deve ser uma URL válida");
+    }
+
+    return {
+      configured: issues.length === 0,
+      issues,
+    };
+  },
+} as const;
+
+// =============================================
+// CONFIGURAÇÕES DE BANCO DE DADOS
+// =============================================
+
+export const databaseConfig = {
+  url: process.env.DATABASE_URL || "",
+  directUrl: process.env.DIRECT_URL || "",
+
+  // Validação da configuração
+  isValid(): boolean {
+    return !!(this.url && this.directUrl);
+  },
+
+  // Status da configuração
+  getStatus(): { configured: boolean; issues: string[] } {
+    const issues: string[] = [];
+
+    if (!this.url) issues.push("DATABASE_URL não configurada");
+    if (!this.directUrl) issues.push("DIRECT_URL não configurada");
+
+    return {
+      configured: issues.length === 0,
+      issues,
+    };
+  },
+} as const;
+
+// =============================================
+// CONFIGURAÇÕES AUXILIARES
+// =============================================
+
+export const securityConfig = {
+  bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || "12", 10),
+  sessionSecret:
+    process.env.SESSION_SECRET || "default-session-secret-change-in-production",
+  cookieMaxAge: parseInt(process.env.COOKIE_MAX_AGE || "86400000", 10),
+} as const;
+
 export const rateLimitConfig = {
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000", 10), // 15 minutos
-  maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || "100", 10), // 100 requests por janela
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000", 10),
+  maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || "100", 10),
 } as const;
 
-// =============================================
-// CONFIGURAÇÕES DE UPLOAD
-// =============================================
-
-/**
- * Configurações para upload de arquivos
- */
 export const uploadConfig = {
-  maxFileSize: parseInt(process.env.MAX_FILE_SIZE || "10485760", 10), // 10MB
+  maxFileSize: parseInt(process.env.MAX_FILE_SIZE || "10485760", 10),
   allowedMimeTypes: (
     process.env.ALLOWED_MIME_TYPES ||
     "image/jpeg,image/png,image/gif,application/pdf"
   ).split(","),
 } as const;
 
-// =============================================
-// CONFIGURAÇÕES DE AMBIENTE
-// =============================================
-
-/**
- * Helpers para verificar ambiente atual
- */
-export const isDevelopment = serverConfig.nodeEnv === "development";
-export const isProduction = serverConfig.nodeEnv === "production";
-export const isTest = serverConfig.nodeEnv === "test";
-
-// =============================================
-// CONFIGURAÇÕES DE LOGGING
-// =============================================
-
-/**
- * Configurações de sistema de logs
- */
 export const logConfig = {
   level: process.env.LOG_LEVEL || (isDevelopment ? "debug" : "info"),
   enableConsole: process.env.ENABLE_CONSOLE_LOG !== "false",
@@ -323,216 +500,101 @@ export const logConfig = {
 } as const;
 
 // =============================================
-// CONFIGURAÇÕES DE SEGURANÇA
+// VALIDAÇÃO GERAL DA CONFIGURAÇÃO
 // =============================================
 
 /**
- * Configurações de segurança da aplicação
+ * Classe para validação centralizada de todas as configurações
  */
-export const securityConfig = {
-  bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || "12", 10),
-  sessionSecret:
-    process.env.SESSION_SECRET || "default-session-secret-change-in-production",
-  cookieMaxAge: parseInt(process.env.COOKIE_MAX_AGE || "86400000", 10), // 24 horas
-} as const;
+export class ConfigurationManager {
+  /**
+   * Valida todas as configurações
+   */
+  static validateAll(): {
+    isValid: boolean;
+    errors: string[];
+    warnings: string[];
+    modules: Record<string, { configured: boolean; issues: string[] }>;
+  } {
+    const errors: string[] = [];
+    const warnings: string[] = [];
 
-// =============================================
-// VALIDAÇÕES ESPECÍFICAS PARA PRODUÇÃO
-// =============================================
+    const modules = {
+      server: serverConfig.getStatus(),
+      database: databaseConfig.getStatus(),
+      supabase: supabaseConfig.getStatus(),
+      jwt: jwtConfig.getStatus(),
+      brevo: brevoConfig.getStatus(),
+      mercadopago: mercadoPagoConfig.getStatus(),
+    };
 
-/**
- * Validação específica para produção do Brevo
- */
-export const validateBrevoProductionConfig = (): void => {
-  if (isProduction) {
-    // Verifica se a API key não está usando valor padrão em produção
-    if (!process.env.BREVO_API_KEY) {
-      console.warn("⚠️  BREVO_API_KEY não configurada - usando valor padrão");
-    }
+    // Coleta erros e warnings
+    Object.entries(modules).forEach(([moduleName, status]) => {
+      if (!status.configured) {
+        if (["server", "database", "jwt"].includes(moduleName)) {
+          errors.push(
+            `Módulo crítico ${moduleName}: ${status.issues.join(", ")}`
+          );
+        } else {
+          warnings.push(`Módulo ${moduleName}: ${status.issues.join(", ")}`);
+        }
+      }
+    });
 
-    // Verifica configurações de email
-    if (!brevoConfig.fromEmail.includes("@")) {
-      throw new Error("BREVO_FROM_EMAIL deve ser um email válido em produção");
-    }
-
-    // Verifica se não está usando credenciais de desenvolvimento
-    if (
-      brevoConfig.fromEmail.includes("test") ||
-      brevoConfig.fromEmail.includes("dev")
-    ) {
-      console.warn(
-        "⚠️  Email remetente parece ser de desenvolvimento em produção"
-      );
-    }
-
-    console.log("✅ Configuração do Brevo validada para produção");
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings,
+      modules,
+    };
   }
-};
 
-/**
- * Validação específica para produção do MercadoPago
- */
-export const validateMercadoPagoProductionConfig = (): void => {
-  if (isProduction) {
-    // Verifica se não está usando chaves de teste em produção
-    if (mercadoPagoConfig.accessToken.includes("TEST")) {
-      throw new Error('ACCESS_TOKEN de produção não deve conter "TEST"');
+  /**
+   * Executa validação com logs estruturados
+   */
+  static validateWithLogging(): boolean {
+    const result = this.validateAll();
+
+    if (result.errors.length > 0) {
+      console.error("❌ Erros críticos de configuração:");
+      result.errors.forEach((error) => console.error(`   - ${error}`));
+
+      if (isProduction) {
+        console.error(
+          "🚨 Aplicação não pode iniciar em produção com erros críticos"
+        );
+        process.exit(1);
+      }
     }
 
-    if (mercadoPagoConfig.publicKey.includes("TEST")) {
-      throw new Error('PUBLIC_KEY de produção não deve conter "TEST"');
+    if (result.warnings.length > 0) {
+      console.warn("⚠️ Avisos de configuração:");
+      result.warnings.forEach((warning) => console.warn(`   - ${warning}`));
     }
 
-    // Verifica se o ambiente está correto
-    if (mercadoPagoConfig.environment !== "production") {
-      throw new Error(
-        'MERCADOPAGO_ENVIRONMENT deve ser "production" em ambiente de produção'
-      );
+    // Log de módulos configurados
+    const configuredModules = Object.entries(result.modules)
+      .filter(([_, status]) => status.configured)
+      .map(([name]) => name);
+
+    if (configuredModules.length > 0) {
+      console.log("✅ Módulos configurados:", configuredModules.join(", "));
     }
 
-    // Verifica se o webhook secret está configurado
-    if (!mercadoPagoConfig.webhookSecret) {
-      console.warn(
-        "⚠️  MERCADOPAGO_WEBHOOK_SECRET não configurado - webhooks não serão validados"
-      );
-    }
-
-    // Verifica se a URL de notificação está configurada
-    if (!mercadoPagoConfig.notificationUrl) {
-      console.warn(
-        "⚠️  MERCADOPAGO_NOTIFICATION_URL não configurado - webhooks podem não funcionar"
-      );
-    }
-  }
-};
-
-/**
- * Helper para validar configurações críticas em produção
- */
-export const validateProductionConfig = (): void => {
-  if (isProduction) {
-    const productionRequiredVars = [
-      "JWT_SECRET",
-      "JWT_REFRESH_SECRET",
-      "SESSION_SECRET",
-      "BREVO_API_KEY",
-    ];
-
-    const missingProductionVars = productionRequiredVars.filter(
-      (varName) =>
-        !process.env[varName] ||
-        process.env[varName] === "default-session-secret-change-in-production"
-    );
-
-    if (missingProductionVars.length > 0) {
-      throw new Error(
-        `Configurações críticas para produção não encontradas ou usando valores padrão: ${missingProductionVars.join(
-          ", "
-        )}`
-      );
-    }
-
-    // Verifica se as chaves têm tamanho mínimo
-    if (jwtConfig.secret.length < 32) {
-      throw new Error(
-        "JWT_SECRET deve ter pelo menos 32 caracteres em produção"
-      );
-    }
-
-    if (jwtConfig.refreshSecret.length < 32) {
-      throw new Error(
-        "JWT_REFRESH_SECRET deve ter pelo menos 32 caracteres em produção"
-      );
-    }
-
-    // Executa validações específicas dos módulos
-    validateBrevoProductionConfig();
-    validateMercadoPagoProductionConfig();
-  }
-};
-
-// =============================================
-// EXECUÇÃO DE VALIDAÇÕES
-// =============================================
-
-/**
- * Executa validação de produção se necessário
- */
-if (isProduction) {
-  try {
-    validateProductionConfig();
-    console.log("✅ Todas as configurações de produção validadas com sucesso");
-  } catch (error) {
-    console.error("❌ Erro na configuração:", error);
-    process.exit(1);
+    return result.isValid;
   }
 }
 
 // =============================================
-// LOGS DE CONFIGURAÇÃO (DESENVOLVIMENTO)
+// HELPERS DE AMBIENTE
 // =============================================
 
-/**
- * Log das configurações carregadas (sem dados sensíveis)
- */
-if (isDevelopment) {
-  console.log("🔧 Configurações carregadas:", {
-    nodeEnv: serverConfig.nodeEnv,
-    port: serverConfig.port,
-    supabaseUrl: supabaseConfig.url ? "✅ Configurado" : "❌ Não configurado",
-    databaseUrl: databaseConfig.url ? "✅ Configurado" : "❌ Não configurado",
-    jwtConfigured: jwtConfig.secret ? "✅ Configurado" : "❌ Não configurado",
-    brevoConfigured: brevoConfig.apiKey
-      ? "✅ Configurado"
-      : "❌ Não configurado",
-    mercadoPagoConfigured: mercadoPagoConfig.accessToken
-      ? "✅ Configurado"
-      : "❌ Não configurado",
-  });
-
-  console.log("📧 Configurações do Brevo:", {
-    apiKey: brevoConfig.apiKey
-      ? `${brevoConfig.apiKey.substring(0, 8)}...`
-      : "❌ Não configurado",
-    fromEmail: brevoConfig.fromEmail,
-    fromName: brevoConfig.fromName,
-    smtpHost: brevoConfig.smtp.host,
-    smtpPort: brevoConfig.smtp.port,
-    smtpUser: brevoConfig.smtp.auth.user,
-    dailyEmailLimit: brevoConfig.sending.dailyEmailLimit,
-    dailySMSLimit: brevoConfig.sending.dailySMSLimit,
-    maxRetries: brevoConfig.sending.maxRetries,
-    templatesEnabled: brevoConfig.templates.cacheEnabled,
-  });
-
-  console.log("🏦 Configurações do MercadoPago:", {
-    environment: mercadoPagoConfig.environment,
-    locale: mercadoPagoConfig.locale,
-    accessTokenConfigured: mercadoPagoConfig.accessToken
-      ? "✅ Configurado"
-      : "❌ Não configurado",
-    publicKeyConfigured: mercadoPagoConfig.publicKey
-      ? "✅ Configurado"
-      : "❌ Não configurado",
-    webhookSecretConfigured: mercadoPagoConfig.webhookSecret
-      ? "✅ Configurado"
-      : "❌ Não configurado",
-    notificationUrlConfigured: mercadoPagoConfig.notificationUrl
-      ? "✅ Configurado"
-      : "❌ Não configurado",
-    timeout: mercadoPagoConfig.timeout,
-    defaultCurrency: mercadoPagoConfig.defaultCurrency,
-    defaultProcessingMode: mercadoPagoConfig.defaultProcessingMode,
-  });
-}
+export { isDevelopment, isProduction, isTest };
 
 // =============================================
-// EXPORTAÇÕES FINAIS
+// CONFIGURAÇÃO CONSOLIDADA
 // =============================================
 
-/**
- * Configuração consolidada para fácil acesso
- */
 export const appConfig = {
   server: serverConfig,
   database: databaseConfig,
@@ -548,8 +610,21 @@ export const appConfig = {
     isDevelopment,
     isProduction,
     isTest,
-    nodeEnv: serverConfig.nodeEnv,
+    nodeEnv: NODE_ENV,
   },
 } as const;
+
+// =============================================
+// EXECUÇÃO DE VALIDAÇÃO
+// =============================================
+
+// Executa validação na inicialização
+const isConfigValid = ConfigurationManager.validateWithLogging();
+
+if (isDevelopment && !isConfigValid) {
+  console.warn(
+    "⚠️ Configuração incompleta - alguns recursos podem não funcionar"
+  );
+}
 
 export default appConfig;

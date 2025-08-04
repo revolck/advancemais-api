@@ -36,10 +36,17 @@ model Usuario {
   tentativasRecuperacao      Int       @default(0)
   ultimaTentativaRecuperacao DateTime?
   
+  // CAMPOS PARA VERIFICAÇÃO DE EMAIL (NOVOS)
+  emailVerificado              Boolean   @default(false)
+  emailVerificadoEm            DateTime?
+  emailVerificationToken       String?   @unique
+  emailVerificationTokenExp    DateTime?
+  emailVerificationAttempts    Int       @default(0)
+  ultimaTentativaVerificacao   DateTime?
+  
   // CAMPOS PARA AUDITORIA DE EMAILS
-  emailVerificado      Boolean   @default(false)
-  emailBoasVindasEnviado Boolean @default(false)
-  dataEmailBoasVindas  DateTime?
+  emailBoasVindasEnviado Boolean   @default(false)
+  dataEmailBoasVindas    DateTime?
   
   // RELACIONAMENTOS EXISTENTES
   enderecos     Endereco[]
@@ -53,6 +60,7 @@ model Usuario {
   mercadoPagoTransactions       MercadoPagoTransaction[]
   
   @@index([tokenRecuperacao])
+  @@index([emailVerificationToken])
 }
 
 model Empresa {

@@ -12,28 +12,20 @@ import { WelcomeEmailMiddleware } from "../../brevo/middlewares/welcome-email-mi
 import passwordRecoveryRoutes from "./password-recovery";
 
 /**
- * Rotas básicas de usuário - CRUD e autenticação
- * Implementa padrões de microserviços com tratamento robusto
- *
- * Características:
- * - Middleware de email não-bloqueante
- * - Logs estruturados para auditoria
- * - Validação de entrada robusta
- * - Tratamento de erro gracioso
- * - Rate limiting inteligente
+ * Rotas de usuário atualizadas com sistema de verificação de email
+ * Implementa middleware de email corrigido e funcional
  *
  * @author Sistema AdvanceMais
- * @version 4.0.1 - Correção do middleware de email
+ * @version 7.0.0 - Sistema de verificação de email implementado
  */
 const router = Router();
 
-// =============================================
-// MIDDLEWARES GLOBAIS DE MONITORAMENTO
-// =============================================
+// ===========================
+// MIDDLEWARES GLOBAIS
+// ===========================
 
 /**
- * Middleware de logging para todas as rotas de usuário
- * Implementa observabilidade para microserviços
+ * Middleware de logging e correlation ID
  */
 router.use((req, res, next) => {
   const startTime = Date.now();
@@ -41,7 +33,7 @@ router.use((req, res, next) => {
     req.headers["x-correlation-id"] ||
     `user-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`;
 
-  // Adiciona correlation ID ao request para rastreamento
+  // Adiciona correlation ID ao request
   req.headers["x-correlation-id"] = correlationId;
 
   console.log(`🌐 [${correlationId}] ${req.method} ${req.path} - Iniciado`);
@@ -60,10 +52,12 @@ router.use((req, res, next) => {
 });
 
 /**
- * Rate limiting específico para rotas de autenticação
- * Implementa proteção contra brute force
+ * Rate limiting inteligente para autenticação
  */
-const authRateLimit = (maxRequests: number = 5, windowMinutes: number = 15) => {
+const createAuthRateLimit = (
+  maxRequests: number = 5,
+  windowMinutes: number = 15
+) => {
   const attempts = new Map<string, { count: number; resetTime: number }>();
 
   return (req: any, res: any, next: any) => {
@@ -92,6 +86,7 @@ const authRateLimit = (maxRequests: number = 5, windowMinutes: number = 15) => {
         success: false,
         message: `Muitas tentativas. Tente novamente em ${resetInMinutes} minutos`,
         retryAfter: resetInMinutes * 60,
+        code: "RATE_LIMIT_EXCEEDED",
       });
     }
 
@@ -107,9 +102,9 @@ const authRateLimit = (maxRequests: number = 5, windowMinutes: number = 15) => {
   };
 };
 
-// =============================================
-// ROTAS PÚBLICAS - Sem autenticação
-// =============================================
+// ===========================
+// ROTAS PÚBLICAS
+// ===========================
 
 /**
  * Informações da API de usuários
@@ -118,9 +113,16 @@ const authRateLimit = (maxRequests: number = 5, windowMinutes: number = 15) => {
 router.get("/", (req, res) => {
   res.json({
     module: "Usuários API",
-    version: "4.0.1",
+    version: "7.0.0",
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
+    features: {
+      emailVerification: process.env.EMAIL_VERIFICATION_REQUIRED !== "false",
+      registration: true,
+      authentication: true,
+      profileManagement: true,
+      passwordRecovery: true,
+    },
     endpoints: {
       auth: {
         register: "POST /registrar",
@@ -137,6 +139,11 @@ router.get("/", (req, res) => {
         validate: "GET /recuperar-senha/validar/:token",
         reset: "POST /recuperar-senha/redefinir",
       },
+      verification: {
+        verify: "GET /verificar-email?token=xxx",
+        resend: "POST /reenviar-verificacao",
+        status: "GET /status-verificacao/:userId",
+      },
     },
     status: "operational",
   });
@@ -146,66 +153,57 @@ router.get("/", (req, res) => {
  * Registro de novo usuário com middleware de email CORRIGIDO
  * POST /registrar
  *
- * FLUXO CORRIGIDO:
- * 1. criarUsuario -> cria usuário e define res.locals.usuarioCriado
- * 2. Middleware de debug -> verifica se dados foram definidos
- * 3. WelcomeEmailMiddleware -> envia email de boas-vindas de forma assíncrona
+ * FLUXO ATUALIZADO:
+ * 1. Rate limiting (3 tentativas por 10 minutos)
+ * 2. Log de início do processo
+ * 3. criarUsuario -> cria usuário e define res.locals.usuarioCriado
+ * 4. Middleware de debug -> verifica dados
+ * 5. WelcomeEmailMiddleware -> envia email/verificação de forma assíncrona
  */
 router.post(
   "/registrar",
-  authRateLimit(3, 10), // Máximo 3 tentativas de registro por 10 minutos
+  createAuthRateLimit(3, 10), // 3 tentativas por 10 minutos
   async (req, res, next) => {
     const correlationId = req.headers["x-correlation-id"];
     console.log(`📝 [${correlationId}] Iniciando processo de registro`);
     next();
   },
-  criarUsuario, // Controller que cria o usuário e define res.locals.usuarioCriado
+  criarUsuario, // Controller principal que cria usuário
   async (req, res, next) => {
-    // Middleware de debug MELHORADO para verificar se dados foram definidos
+    // Middleware de debug para verificar dados
     const correlationId = req.headers["x-correlation-id"];
 
     console.log(
       `🔍 [${correlationId}] Verificando dados para middleware de email`
     );
-    console.log(`🔍 [${correlationId}] res.locals existe:`, !!res.locals);
-    console.log(
-      `🔍 [${correlationId}] res.locals.usuarioCriado existe:`,
-      !!res.locals?.usuarioCriado
-    );
 
     if (res.locals?.usuarioCriado?.usuario) {
       const user = res.locals.usuarioCriado.usuario;
-      console.log(
-        `✅ [${correlationId}] Dados do usuário prontos para email:`,
-        {
-          id: user.id,
-          email: user.email,
-          nome: user.nomeCompleto,
-          tipo: user.tipoUsuario,
-        }
-      );
+      console.log(`✅ [${correlationId}] Dados prontos para email:`, {
+        id: user.id,
+        email: user.email,
+        nome: user.nomeCompleto,
+        tipo: user.tipoUsuario,
+      });
     } else {
       console.warn(
-        `⚠️ [${correlationId}] res.locals.usuarioCriado NÃO está definido corretamente`
+        `⚠️ [${correlationId}] Dados não encontrados em res.locals.usuarioCriado`
       );
-      console.warn(
-        `⚠️ [${correlationId}] Estrutura atual do res.locals:`,
-        res.locals
-      );
+      console.warn(`⚠️ [${correlationId}] res.locals:`, res.locals);
     }
 
     next();
   },
-  WelcomeEmailMiddleware.create() // Middleware de email que lê res.locals.usuarioCriado
+  WelcomeEmailMiddleware.create() // Middleware de email assíncrono
 );
 
 /**
- * Login de usuário com rate limiting
+ * Login de usuário
  * POST /login
  */
 router.post(
   "/login",
-  authRateLimit(5, 15), // Máximo 5 tentativas de login por 15 minutos
+  createAuthRateLimit(5, 15), // 5 tentativas por 15 minutos
   async (req, res, next) => {
     const correlationId = req.headers["x-correlation-id"];
     console.log(
@@ -219,18 +217,18 @@ router.post(
 );
 
 /**
- * Validação de refresh token
+ * Refresh token
  * POST /refresh
  */
 router.post(
   "/refresh",
-  authRateLimit(10, 15), // Máximo 10 tentativas de refresh por 15 minutos
+  createAuthRateLimit(10, 15), // 10 tentativas por 15 minutos
   refreshToken
 );
 
-// =============================================
-// ROTAS PROTEGIDAS - Requerem autenticação
-// =============================================
+// ===========================
+// ROTAS PROTEGIDAS
+// ===========================
 
 /**
  * Logout de usuário
@@ -261,7 +259,7 @@ router.get(
   async (req, res, next) => {
     const correlationId = req.headers["x-correlation-id"];
     console.log(
-      `👤 [${correlationId}] Solicitação de perfil do usuário: ${
+      `👤 [${correlationId}] Solicitação de perfil: ${
         req.user?.id || "ID não disponível"
       }`
     );
@@ -270,17 +268,16 @@ router.get(
   obterPerfil
 );
 
-// =============================================
-// RECUPERAÇÃO DE SENHA - REGISTRO DEDICADO
-// =============================================
+// ===========================
+// ROTAS DE RECUPERAÇÃO DE SENHA
+// ===========================
 
 /**
  * Rotas de recuperação de senha
- * Registradas com seu próprio rate limiting
  */
 router.use(
   "/recuperar-senha",
-  authRateLimit(3, 60), // Máximo 3 tentativas de recuperação por hora
+  createAuthRateLimit(3, 60), // 3 tentativas por hora
   async (req, res, next) => {
     const correlationId = req.headers["x-correlation-id"];
     console.log(`🔑 [${correlationId}] Solicitação de recuperação de senha`);
@@ -289,85 +286,58 @@ router.use(
   passwordRecoveryRoutes
 );
 
-// =============================================
+// ===========================
 // MIDDLEWARE DE TRATAMENTO DE ERROS
-// =============================================
+// ===========================
 
 /**
- * Middleware de tratamento de erros específico para rotas de usuário
+ * Middleware de tratamento de erros para rotas de usuário
  */
 router.use((err: any, req: any, res: any, next: any) => {
-  const correlationId = req.headers["x-correlation-id"];
-  const errorId = `err-${Date.now()}-${Math.random()
+  const correlationId = req.headers["x-correlation-id"] || "unknown";
+  const errorId = `user-err-${Date.now()}-${Math.random()
     .toString(36)
     .substr(2, 6)}`;
 
-  console.error(`❌ [${correlationId}] Erro na rota de usuário [${errorId}]:`, {
-    error: err.message,
-    stack: err.stack,
-    path: req.path,
+  console.error(`❌ [${correlationId}] Erro na rota de usuário:`, {
+    errorId,
     method: req.method,
-    body: req.body,
-    user: req.user?.id || "não autenticado",
+    path: req.path,
+    error: err.message || err,
+    stack: err.stack?.substring(0, 500), // Limita stack trace
   });
 
-  // Resposta baseada no ambiente
-  if (process.env.NODE_ENV === "production") {
-    res.status(500).json({
-      success: false,
-      message: "Erro interno do servidor",
-      errorId,
-      correlationId,
-      timestamp: new Date().toISOString(),
-    });
-  } else {
-    res.status(500).json({
-      success: false,
-      message: "Erro interno do servidor",
+  // Determina status code apropriado
+  let statusCode = 500;
+  let message = "Erro interno do servidor";
+  let code = "INTERNAL_ERROR";
+
+  if (err.name === "ValidationError") {
+    statusCode = 400;
+    message = "Dados inválidos fornecidos";
+    code = "VALIDATION_ERROR";
+  } else if (err.name === "UnauthorizedError") {
+    statusCode = 401;
+    message = "Não autorizado";
+    code = "UNAUTHORIZED";
+  } else if (err.message?.includes("duplicate")) {
+    statusCode = 409;
+    message = "Dados já existem no sistema";
+    code = "DUPLICATE_ERROR";
+  }
+
+  res.status(statusCode).json({
+    success: false,
+    message,
+    code,
+    errorId,
+    correlationId,
+    timestamp: new Date().toISOString(),
+    ...(process.env.NODE_ENV === "development" && {
       error: err.message,
       stack: err.stack,
-      errorId,
-      correlationId,
-      timestamp: new Date().toISOString(),
-    });
-  }
+    }),
+  });
 });
 
-// =============================================
-// HEALTH CHECK ESPECÍFICO
-// =============================================
-
-/**
- * Health check específico do módulo de usuários
- * GET /health
- */
-router.get("/health", async (req, res) => {
-  try {
-    const { prisma } = await import("../../../config/prisma.js");
-
-    // Testa conectividade com banco (query simples)
-    await prisma.$queryRaw`SELECT 1`;
-
-    res.json({
-      status: "healthy",
-      module: "usuarios",
-      version: "4.0.1",
-      timestamp: new Date().toISOString(),
-      database: "connected",
-      environment: process.env.NODE_ENV,
-      uptime: Math.floor(process.uptime()),
-    });
-  } catch (error) {
-    res.status(503).json({
-      status: "unhealthy",
-      module: "usuarios",
-      version: "4.0.1",
-      timestamp: new Date().toISOString(),
-      database: "disconnected",
-      error:
-        error instanceof Error ? error.message : "Database connection failed",
-    });
-  }
-});
-
-export { router as usuarioRoutes };
+export default router;

@@ -1,85 +1,93 @@
 import { Request, Response } from "express";
-import { EmailVerificationService } from "../../brevo/services/email-verification-service";
+import { EmailService } from "../services/email-service";
+import { prisma } from "../../../config/prisma";
 
 /**
  * Controller para verificação de email
- * Implementa endpoints para confirmar email e reenviar verificação
- *
- * Responsabilidades:
- * - Verificar tokens de verificação
- * - Reenviar emails de verificação
- * - Validar estado da conta
- * - Logs de auditoria
+ * Endpoints simples e seguros para confirmar email dos usuários
  *
  * @author Sistema AdvanceMais
- * @version 6.0.0 - Sistema completo de verificação
+ * @version 7.1.0 - CORRIGIDO - Nomes de métodos consistentes
  */
 export class EmailVerificationController {
-  private emailVerificationService: EmailVerificationService;
+  private emailService: EmailService;
 
   constructor() {
-    this.emailVerificationService = new EmailVerificationService();
+    this.emailService = new EmailService();
   }
 
   /**
    * Verifica token de verificação de email
    * GET /verificar-email?token=xxx
    */
-  public verifyEmail = async (req: Request, res: Response) => {
+  public verifyEmail = async (req: Request, res: Response): Promise<void> => {
     try {
       const { token } = req.query;
 
+      // Validação do token
       if (!token || typeof token !== "string") {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: "Token de verificação é obrigatório",
+          code: "MISSING_TOKEN",
         });
+        return;
       }
 
       console.log(`🔍 Verificando token: ${token.substring(0, 8)}...`);
 
-      const result = await this.emailVerificationService.verifyEmailToken(
-        token
-      );
+      // Verifica o token
+      const result = await this.emailService.verifyEmailToken(token);
 
       if (result.valid) {
         console.log(
           `✅ Email verificado com sucesso para usuário ${result.userId}`
         );
 
-        return res.json({
+        res.json({
           success: true,
           message:
-            "Email verificado com sucesso! Agora você pode fazer login na plataforma.",
+            "Email verificado com sucesso! Agora você pode acessar sua conta na plataforma.",
+          code: "EMAIL_VERIFIED",
           userId: result.userId,
         });
-      } else if (result.alreadyVerified) {
-        return res.status(400).json({
+        return;
+      }
+
+      // Trata diferentes tipos de erro
+      if (result.alreadyVerified) {
+        res.status(400).json({
           success: false,
           message: "Este email já foi verificado anteriormente.",
           code: "ALREADY_VERIFIED",
           userId: result.userId,
         });
-      } else if (result.expired) {
-        return res.status(400).json({
+        return;
+      }
+
+      if (result.expired) {
+        res.status(400).json({
           success: false,
           message:
             "Token de verificação expirado. Solicite um novo email de verificação.",
           code: "TOKEN_EXPIRED",
           userId: result.userId,
         });
-      } else {
-        return res.status(400).json({
-          success: false,
-          message: result.error || "Token de verificação inválido",
-          code: "INVALID_TOKEN",
-        });
+        return;
       }
+
+      // Token inválido
+      res.status(400).json({
+        success: false,
+        message: result.error || "Token de verificação inválido",
+        code: "INVALID_TOKEN",
+      });
     } catch (error) {
-      console.error("Erro na verificação de email:", error);
+      console.error("❌ Erro na verificação de email:", error);
       res.status(500).json({
         success: false,
         message: "Erro interno do servidor",
+        code: "INTERNAL_ERROR",
         error: error instanceof Error ? error.message : "Erro desconhecido",
       });
     }
@@ -88,114 +96,190 @@ export class EmailVerificationController {
   /**
    * Reenvia email de verificação
    * POST /reenviar-verificacao
+   * Body: { email: string }
    */
-  public resendVerification = async (req: Request, res: Response) => {
+  public resendVerification = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
     try {
       const { email } = req.body;
 
+      // Validação do email
       if (!email || typeof email !== "string") {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: "Email é obrigatório",
+          code: "MISSING_EMAIL",
         });
+        return;
+      }
+
+      if (!this.isValidEmail(email)) {
+        res.status(400).json({
+          success: false,
+          message: "Formato de email inválido",
+          code: "INVALID_EMAIL",
+        });
+        return;
       }
 
       console.log(`🔄 Reenviando verificação para: ${email}`);
 
-      const result =
-        await this.emailVerificationService.resendVerificationEmail(email);
+      // Busca usuário
+      const usuario = await prisma.usuario.findUnique({
+        where: { email: email.toLowerCase().trim() },
+        select: {
+          id: true,
+          email: true,
+          nomeCompleto: true,
+          tipoUsuario: true,
+          emailVerificado: true,
+          status: true,
+        },
+      });
+
+      if (!usuario) {
+        res.status(404).json({
+          success: false,
+          message: "Usuário não encontrado com este email",
+          code: "USER_NOT_FOUND",
+        });
+        return;
+      }
+
+      if (usuario.emailVerificado) {
+        res.status(400).json({
+          success: false,
+          message: "Este email já foi verificado",
+          code: "ALREADY_VERIFIED",
+        });
+        return;
+      }
+
+      if (usuario.status === "INATIVO") {
+        res.status(403).json({
+          success: false,
+          message: "Conta inativa. Entre em contato com o suporte",
+          code: "ACCOUNT_INACTIVE",
+        });
+        return;
+      }
+
+      // Reenvia email de verificação
+      const result = await this.emailService.sendWelcomeEmail({
+        id: usuario.id,
+        email: usuario.email,
+        nomeCompleto: usuario.nomeCompleto,
+        tipoUsuario: usuario.tipoUsuario,
+      });
 
       if (result.success) {
-        const responseMessage = result.simulated
-          ? "Email de verificação reenviado (simulado)."
-          : "Email de verificação reenviado com sucesso. Verifique sua caixa de entrada.";
+        const message = result.simulated
+          ? "Email de verificação reenviado (simulado para desenvolvimento)"
+          : "Email de verificação reenviado com sucesso. Verifique sua caixa de entrada";
 
-        return res.json({
+        res.json({
           success: true,
-          message: responseMessage,
+          message,
           simulated: result.simulated,
           messageId: result.messageId,
         });
       } else {
-        const statusCode = result.error?.includes("não encontrado")
-          ? 404
-          : result.error?.includes("já verificado")
-          ? 400
-          : result.error?.includes("inativa")
-          ? 403
-          : result.error?.includes("limite")
-          ? 429
-          : 400;
-
-        return res.status(statusCode).json({
+        res.status(500).json({
           success: false,
           message: result.error || "Erro ao reenviar email de verificação",
+          code: "SEND_ERROR",
         });
       }
     } catch (error) {
-      console.error("Erro ao reenviar verificação:", error);
+      console.error("❌ Erro ao reenviar verificação:", error);
       res.status(500).json({
         success: false,
         message: "Erro interno do servidor",
+        code: "INTERNAL_ERROR",
         error: error instanceof Error ? error.message : "Erro desconhecido",
       });
     }
   };
 
   /**
-   * Verifica status de verificação de um email
-   * GET /status-verificacao/:email
+   * Status de verificação de um usuário
+   * GET /status-verificacao/:userId
+   * ✅ CORREÇÃO: Renomeado de checkVerificationStatus para getVerificationStatus
    */
-  public checkVerificationStatus = async (req: Request, res: Response) => {
+  public getVerificationStatus = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
     try {
-      const { email } = req.params;
+      const { userId } = req.params;
 
-      if (!email) {
-        return res.status(400).json({
+      if (!userId) {
+        res.status(400).json({
           success: false,
-          message: "Email é obrigatório",
+          message: "ID do usuário é obrigatório",
+          code: "MISSING_USER_ID",
         });
+        return;
       }
 
-      const { prisma } = await import("../../../config/prisma.js");
-
       const usuario = await prisma.usuario.findUnique({
-        where: { email: email.toLowerCase().trim() },
+        where: { id: userId },
         select: {
           id: true,
           email: true,
           emailVerificado: true,
-          emailVerificadoEm: true,
           status: true,
-          criadoEm: true,
+          emailVerificationTokenExp: true,
         },
       });
 
       if (!usuario) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           message: "Usuário não encontrado",
+          code: "USER_NOT_FOUND",
         });
+        return;
       }
 
-      return res.json({
+      const hasValidToken = usuario.emailVerificationTokenExp
+        ? usuario.emailVerificationTokenExp > new Date()
+        : false;
+
+      res.json({
         success: true,
         data: {
+          userId: usuario.id,
           email: usuario.email,
-          verified: usuario.emailVerificado,
-          verifiedAt: usuario.emailVerificadoEm,
+          emailVerified: usuario.emailVerificado,
           accountStatus: usuario.status,
-          createdAt: usuario.criadoEm,
-          canLogin: usuario.emailVerificado && usuario.status === "ATIVO",
+          hasValidToken,
+          tokenExpiration: usuario.emailVerificationTokenExp,
         },
       });
     } catch (error) {
-      console.error("Erro ao verificar status:", error);
+      console.error("❌ Erro ao buscar status de verificação:", error);
       res.status(500).json({
         success: false,
         message: "Erro interno do servidor",
+        code: "INTERNAL_ERROR",
         error: error instanceof Error ? error.message : "Erro desconhecido",
       });
     }
   };
+
+  /**
+   * ✅ ADICIONADO: Alias para compatibilidade (se necessário)
+   * Método com nome alternativo para manter compatibilidade
+   */
+  public checkVerificationStatus = this.getVerificationStatus;
+
+  /**
+   * Valida formato de email
+   */
+  private isValidEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
 }

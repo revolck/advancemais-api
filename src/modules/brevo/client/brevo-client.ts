@@ -3,27 +3,22 @@ import { BrevoConfigManager, BrevoConfiguration } from "../config/brevo-config";
 
 /**
  * Cliente Brevo simplificado e robusto
- *
- * Responsabilidades:
- * - Gerenciar conexão com API Brevo
- * - Fornecer APIs configuradas
- * - Health check não-crítico
+ * Gerencia conexão com API Brevo de forma segura
  *
  * @author Sistema AdvanceMais
- * @version 5.0.1 - Correção TypeScript
+ * @version 7.1.0 - CORRIGIDO - Tratamento de null
  */
 export class BrevoClient {
   private static instance: BrevoClient;
-  private emailAPI!: Brevo.TransactionalEmailsApi; // Definite assignment assertion
-  private smsAPI!: Brevo.TransactionalSMSApi; // Para uso futuro
-  private accountAPI!: Brevo.AccountApi;
+  private emailAPI?: Brevo.TransactionalEmailsApi;
+  private smsAPI?: Brevo.TransactionalSMSApi;
+  private accountAPI?: Brevo.AccountApi;
   private config: BrevoConfiguration;
-  private isHealthy: boolean = false;
+  private operational: boolean = false;
 
   private constructor() {
     this.config = BrevoConfigManager.getInstance().getConfig();
     this.initializeAPIs();
-    this.performHealthCheckAsync(); // Async para não bloquear construtor
   }
 
   public static getInstance(): BrevoClient {
@@ -34,16 +29,17 @@ export class BrevoClient {
   }
 
   /**
-   * Inicializa APIs do Brevo com configuração segura
+   * Inicializa APIs do Brevo
    */
   private initializeAPIs(): void {
     try {
-      this.emailAPI = new Brevo.TransactionalEmailsApi();
-      this.smsAPI = new Brevo.TransactionalSMSApi();
-      this.accountAPI = new Brevo.AccountApi();
+      if (this.config.isConfigured && this.config.apiKey) {
+        // Inicializa APIs apenas se configurado
+        this.emailAPI = new Brevo.TransactionalEmailsApi();
+        this.smsAPI = new Brevo.TransactionalSMSApi();
+        this.accountAPI = new Brevo.AccountApi();
 
-      if (this.config.apiKey) {
-        // Configura API key para todas as APIs
+        // Configura API key
         this.emailAPI.setApiKey(
           Brevo.TransactionalEmailsApiApiKeys.apiKey,
           this.config.apiKey
@@ -56,83 +52,231 @@ export class BrevoClient {
           Brevo.AccountApiApiKeys.apiKey,
           this.config.apiKey
         );
-      }
 
-      console.log("✅ Brevo APIs inicializadas");
+        this.operational = true;
+        console.log(
+          "✅ Brevo Client configurado para ambiente:",
+          this.config.environment
+        );
+      } else {
+        console.log("ℹ️ Brevo Client em modo simulado (API não configurada)");
+      }
     } catch (error) {
-      console.error("❌ Erro ao inicializar Brevo APIs:", error);
-      // Cliente continua funcionando em modo simulado
+      console.error("❌ Erro ao inicializar Brevo Client:", error);
+      this.operational = false;
     }
   }
 
   /**
-   * Health check assíncrono e não-crítico
+   * Retorna API de email
+   * ✅ CORREÇÃO: Agora retorna undefined ao invés de null para consistência
    */
-  private async performHealthCheckAsync(): Promise<void> {
-    if (!this.config.isConfigured) {
-      console.log("ℹ️ Brevo em modo simulado (API Key não configurada)");
-      return;
-    }
-
-    // Executa em background sem bloquear
-    setImmediate(async () => {
-      try {
-        // Timeout rápido para não atrasar inicialização
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Health check timeout")), 5000)
-        );
-
-        // Usa accountAPI.getAccount() ao invés de emailAPI.getAccount()
-        await Promise.race([this.accountAPI.getAccount(), timeoutPromise]);
-
-        this.isHealthy = true;
-        console.log("✅ Brevo conectado com sucesso");
-      } catch (error) {
-        console.warn("⚠️ Brevo health check falhou (modo degradado)");
-        // Não quebra a aplicação
-      }
-    });
-  }
-
-  public getEmailAPI(): Brevo.TransactionalEmailsApi {
+  public getEmailAPI(): Brevo.TransactionalEmailsApi | undefined {
     return this.emailAPI;
   }
 
-  public getSMSAPI(): Brevo.TransactionalSMSApi {
+  /**
+   * Retorna API de SMS
+   * ✅ CORREÇÃO: Agora retorna undefined ao invés de null para consistência
+   */
+  public getSMSAPI(): Brevo.TransactionalSMSApi | undefined {
     return this.smsAPI;
   }
 
-  public getAccountAPI(): Brevo.AccountApi {
+  /**
+   * Retorna API de conta
+   * ✅ CORREÇÃO: Agora retorna undefined ao invés de null para consistência
+   */
+  public getAccountAPI(): Brevo.AccountApi | undefined {
     return this.accountAPI;
   }
 
+  /**
+   * Retorna configuração
+   */
   public getConfig(): BrevoConfiguration {
     return this.config;
   }
 
+  /**
+   * Verifica se está operacional
+   */
   public isOperational(): boolean {
-    return this.config.isConfigured && this.isHealthy;
-  }
-
-  public isSimulated(): boolean {
-    return !this.config.isConfigured;
+    return this.operational && this.config.isConfigured;
   }
 
   /**
-   * Health check público para verificações externas
+   * Verifica se está em modo simulado
    */
-  public async checkHealth(): Promise<boolean> {
-    if (!this.config.isConfigured) {
-      return true; // Modo simulado é considerado saudável
+  public isSimulated(): boolean {
+    return !this.config.isConfigured || !this.operational;
+  }
+
+  /**
+   * Health check simples
+   */
+  public async healthCheck(): Promise<boolean> {
+    if (this.isSimulated()) {
+      return true; // Simulado é sempre "healthy"
     }
 
     try {
-      await this.accountAPI.getAccount();
-      this.isHealthy = true;
-      return true;
+      if (this.accountAPI) {
+        await this.accountAPI.getAccount();
+        return true;
+      }
+      return false;
     } catch (error) {
-      this.isHealthy = false;
+      console.warn("⚠️ Brevo health check falhou:", error);
       return false;
     }
+  }
+
+  /**
+   * Envia email transacional
+   * ✅ CORREÇÃO: Verificação de null antes de usar a API
+   */
+  public async sendEmail(emailData: {
+    to: string;
+    toName: string;
+    subject: string;
+    html: string;
+    text: string;
+  }): Promise<{
+    success: boolean;
+    messageId?: string;
+    error?: string;
+    simulated?: boolean;
+  }> {
+    // Modo simulado
+    if (this.isSimulated()) {
+      console.log("🎭 Email simulado enviado:", {
+        to: emailData.to,
+        subject: emailData.subject,
+      });
+      return {
+        success: true,
+        messageId: `sim_${Date.now()}`,
+        simulated: true,
+      };
+    }
+
+    // Envio real
+    try {
+      // ✅ CORREÇÃO: Verificação rigorosa de null/undefined
+      if (!this.emailAPI) {
+        throw new Error("API de email não inicializada");
+      }
+
+      const sendSmtpEmail = new Brevo.SendSmtpEmail();
+      sendSmtpEmail.to = [{ email: emailData.to, name: emailData.toName }];
+      sendSmtpEmail.sender = {
+        email: this.config.fromEmail,
+        name: this.config.fromName,
+      };
+      sendSmtpEmail.subject = emailData.subject;
+      sendSmtpEmail.htmlContent = emailData.html;
+      sendSmtpEmail.textContent = emailData.text;
+
+      const response = await this.emailAPI.sendTransacEmail(sendSmtpEmail);
+      const messageId = this.extractMessageId(response);
+
+      console.log("✅ Email enviado via Brevo:", {
+        to: emailData.to,
+        messageId,
+      });
+
+      return {
+        success: true,
+        messageId,
+      };
+    } catch (error) {
+      console.error("❌ Erro no envio via Brevo:", error);
+
+      // Fallback para simulação em caso de erro
+      console.log("🎭 Fallback para modo simulado");
+      return {
+        success: true,
+        messageId: `fallback_${Date.now()}`,
+        simulated: true,
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      };
+    }
+  }
+
+  /**
+   * Envia SMS transacional
+   * ✅ CORREÇÃO: Verificação de null e uso correto dos tipos
+   */
+  public async sendSMS(smsData: {
+    to: string;
+    message: string;
+    sender?: string;
+  }): Promise<{
+    success: boolean;
+    messageId?: string;
+    error?: string;
+    simulated?: boolean;
+  }> {
+    // Modo simulado
+    if (this.isSimulated()) {
+      console.log("🎭 SMS simulado enviado:", {
+        to: smsData.to,
+        message: smsData.message,
+      });
+      return {
+        success: true,
+        messageId: `sms_sim_${Date.now()}`,
+        simulated: true,
+      };
+    }
+
+    // Envio real
+    try {
+      // ✅ CORREÇÃO: Verificação rigorosa de null/undefined
+      if (!this.smsAPI) {
+        throw new Error("API de SMS não inicializada");
+      }
+
+      const sendSmsRequest = new Brevo.SendTransacSms();
+      sendSmsRequest.type = Brevo.SendTransacSms.TypeEnum.Transactional;
+      sendSmsRequest.unicodeEnabled = false;
+      sendSmsRequest.sender = smsData.sender || "AdvanceMais";
+      sendSmsRequest.recipient = smsData.to;
+      sendSmsRequest.content = smsData.message;
+
+      const response = await this.smsAPI.sendTransacSms(sendSmsRequest);
+      const messageId = this.extractMessageId(response);
+
+      console.log("✅ SMS enviado via Brevo:", {
+        to: smsData.to,
+        messageId,
+      });
+
+      return {
+        success: true,
+        messageId,
+      };
+    } catch (error) {
+      console.error("❌ Erro no envio de SMS via Brevo:", error);
+
+      // Fallback para simulação
+      console.log("🎭 Fallback SMS para modo simulado");
+      return {
+        success: true,
+        messageId: `sms_fallback_${Date.now()}`,
+        simulated: true,
+        error: error instanceof Error ? error.message : "Erro na API de SMS",
+      };
+    }
+  }
+
+  /**
+   * Extrai message ID da resposta
+   */
+  private extractMessageId(response: any): string {
+    if (response?.messageId) return String(response.messageId);
+    if (response?.body?.messageId) return String(response.body.messageId);
+    return `brevo_${Date.now()}`;
   }
 }

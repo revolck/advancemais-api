@@ -2,16 +2,17 @@ import { Request, Response, NextFunction } from "express";
 import { EmailService } from "../services/email-service";
 
 /**
- * Middleware robusto para envio de email de boas-vindas
+ * Middleware simplificado e robusto para envio de email de boas-vindas
  *
- * Responsabilidades:
- * - Enviar email de forma assíncrona e não-bloqueante
- * - Nunca falhar o processo de registro
+ * Características:
+ * - Execução assíncrona não-bloqueante
+ * - Nunca falha o processo de registro
  * - Logs detalhados para debugging
  * - Validação rigorosa de dados
+ * - Compatível com sistema de verificação de email
  *
  * @author Sistema AdvanceMais
- * @version 5.0.2 - Correção de tipagem TypeScript
+ * @version 7.0.0 - Simplificação completa
  */
 export class WelcomeEmailMiddleware {
   private emailService: EmailService;
@@ -21,52 +22,41 @@ export class WelcomeEmailMiddleware {
   }
 
   /**
-   * Middleware principal - robusto e com logs detalhados
+   * Middleware principal - simples e eficiente
    */
   public sendWelcomeEmail = async (
     req: Request,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
-    // CORREÇÃO: Garantir que correlationId seja sempre string
-    const rawCorrelationId = req.headers["x-correlation-id"];
-    const correlationId: string = Array.isArray(rawCorrelationId)
-      ? rawCorrelationId[0] || "unknown"
-      : rawCorrelationId || "unknown";
+    const correlationId = this.getCorrelationId(req);
 
     try {
       console.log(
         `📧 [${correlationId}] WelcomeEmailMiddleware: Iniciando processamento`
       );
 
-      // Verifica se a resposta já foi enviada
-      if (res.headersSent) {
-        console.log(
-          `📧 [${correlationId}] Headers já enviados, processando email em background`
-        );
-      }
-
-      // Extrai dados do usuário
+      // Extrai dados do usuário criado
       const userData = this.extractUserData(res, correlationId);
 
       if (userData) {
         console.log(
-          `📧 [${correlationId}] Dados extraídos com sucesso para: ${userData.email}`
+          `📧 [${correlationId}] Dados válidos extraídos para: ${userData.email}`
         );
 
-        // Execução assíncrona sem await para não bloquear
+        // Executa envio de email de forma assíncrona (não bloqueia resposta)
         this.processEmailAsync(userData, correlationId);
 
         console.log(
-          `📧 [${correlationId}] Email de boas-vindas agendado para: ${userData.email}`
+          `📧 [${correlationId}] Email agendado para envio: ${userData.email}`
         );
       } else {
         console.warn(
-          `⚠️ [${correlationId}] Dados insuficientes para email de boas-vindas`
+          `⚠️ [${correlationId}] Dados insuficientes para envio de email`
         );
         console.warn(
-          `⚠️ [${correlationId}] res.locals disponível:`,
-          Object.keys(res.locals)
+          `⚠️ [${correlationId}] res.locals keys:`,
+          Object.keys(res.locals || {})
         );
       }
     } catch (error) {
@@ -77,49 +67,45 @@ export class WelcomeEmailMiddleware {
       // Nunca falha o fluxo principal
     }
 
-    // SEMPRE continua o fluxo, mesmo se houver erro
+    // SEMPRE continua o fluxo
     next();
   };
 
   /**
-   * Extrai dados do usuário de forma segura com logs detalhados
+   * Extrai dados do usuário de forma segura
    */
   private extractUserData(res: Response, correlationId: string): any {
     try {
       console.log(`🔍 [${correlationId}] Extraindo dados do res.locals`);
 
+      // Verifica se res.locals existe
       if (!res.locals) {
         console.warn(`⚠️ [${correlationId}] res.locals não existe`);
         return null;
       }
 
+      // Verifica se usuarioCriado existe
       if (!res.locals.usuarioCriado) {
         console.warn(
           `⚠️ [${correlationId}] res.locals.usuarioCriado não existe`
-        );
-        console.log(
-          `🔍 [${correlationId}] res.locals keys:`,
-          Object.keys(res.locals)
         );
         return null;
       }
 
       const usuarioCriado = res.locals.usuarioCriado;
-      console.log(`🔍 [${correlationId}] usuarioCriado encontrado:`, {
-        hasUsuario: !!usuarioCriado.usuario,
-        source: usuarioCriado.source,
-        emailShouldBeSent: usuarioCriado.emailShouldBeSent,
-      });
 
-      const userData = usuarioCriado.usuario;
-
-      if (!userData) {
-        console.warn(`⚠️ [${correlationId}] usuarioCriado.usuario não existe`);
+      // Verifica se dados do usuário existem
+      if (!usuarioCriado.usuario) {
+        console.warn(
+          `⚠️ [${correlationId}] res.locals.usuarioCriado.usuario não existe`
+        );
         return null;
       }
 
-      // Validação rigorosa dos campos obrigatórios
-      const requiredFields = ["id", "email", "nomeCompleto"];
+      const userData = usuarioCriado.usuario;
+
+      // Validação dos campos obrigatórios
+      const requiredFields = ["id", "email", "nomeCompleto", "tipoUsuario"];
       const missingFields = requiredFields.filter((field) => !userData[field]);
 
       if (missingFields.length > 0) {
@@ -136,11 +122,12 @@ export class WelcomeEmailMiddleware {
         return null;
       }
 
+      // Dados processados e validados
       const processedData = {
         id: userData.id,
         email: userData.email.toLowerCase().trim(),
         nomeCompleto: userData.nomeCompleto.trim(),
-        tipoUsuario: userData.tipoUsuario || "PESSOA_FISICA",
+        tipoUsuario: userData.tipoUsuario,
       };
 
       console.log(`✅ [${correlationId}] Dados válidos extraídos:`, {
@@ -158,14 +145,14 @@ export class WelcomeEmailMiddleware {
   }
 
   /**
-   * Processa email de forma completamente assíncrona com logs detalhados
+   * Processa email de forma completamente assíncrona
    */
   private processEmailAsync(userData: any, correlationId: string): void {
-    // Usa setImmediate para garantir execução assíncrona
+    // Executa em background sem bloquear
     setImmediate(async () => {
       try {
         console.log(
-          `📧 [${correlationId}] Iniciando envio assíncrono de email para: ${userData.email}`
+          `📧 [${correlationId}] Iniciando envio assíncrono para: ${userData.email}`
         );
 
         const startTime = Date.now();
@@ -179,24 +166,36 @@ export class WelcomeEmailMiddleware {
             );
           } else {
             console.log(
-              `✅ [${correlationId}] Email de boas-vindas enviado: ${userData.email} (${duration}ms)`
+              `✅ [${correlationId}] Email enviado com sucesso para: ${userData.email} (${duration}ms)`
             );
-            console.log(
-              `📧 [${correlationId}] Message ID: ${result.messageId}`
-            );
+            if (result.messageId) {
+              console.log(
+                `📧 [${correlationId}] Message ID: ${result.messageId}`
+              );
+            }
           }
         } else {
           console.error(
-            `❌ [${correlationId}] Falha no email para ${userData.email}: ${result.error}`
+            `❌ [${correlationId}] Falha no envio para ${userData.email}: ${result.error}`
           );
         }
       } catch (error) {
         console.error(
-          `❌ [${correlationId}] Erro crítico no email assíncrono para ${userData.email}:`,
+          `❌ [${correlationId}] Erro crítico no envio assíncrono para ${userData.email}:`,
           error instanceof Error ? error.message : error
         );
       }
     });
+  }
+
+  /**
+   * Obtém correlation ID do request
+   */
+  private getCorrelationId(req: Request): string {
+    const rawCorrelationId = req.headers["x-correlation-id"];
+    return Array.isArray(rawCorrelationId)
+      ? rawCorrelationId[0] || "unknown"
+      : rawCorrelationId || "unknown";
   }
 
   /**
@@ -207,7 +206,7 @@ export class WelcomeEmailMiddleware {
   }
 
   /**
-   * Factory method com logs aprimorados
+   * Factory method para uso nas rotas
    */
   public static create() {
     console.log("🏭 WelcomeEmailMiddleware: Criando instância do middleware");

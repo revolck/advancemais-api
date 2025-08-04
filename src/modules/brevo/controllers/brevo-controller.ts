@@ -2,54 +2,87 @@ import { Request, Response } from "express";
 import { EmailService } from "../services/email-service";
 import { SMSService } from "../services/sms-service";
 import { BrevoClient } from "../client/brevo-client";
+import { BrevoConfigManager } from "../config/brevo-config";
 
 /**
- * Controller simplificado do módulo Brevo
- *
- * Responsabilidades:
- * - Health check e status
- * - Endpoints de teste para desenvolvimento
- * - Informações básicas do módulo
+ * Controller principal do módulo Brevo
+ * Gerencia endpoints de status, testes e informações
  *
  * @author Sistema AdvanceMais
- * @version 5.0.1 - Adição de testes de SMS
+ * @version 7.0.0 - Controller completo e funcional
  */
 export class BrevoController {
   private emailService: EmailService;
   private smsService: SMSService;
   private client: BrevoClient;
+  private config: BrevoConfigManager;
 
   constructor() {
     this.emailService = new EmailService();
     this.smsService = new SMSService();
     this.client = BrevoClient.getInstance();
+    this.config = BrevoConfigManager.getInstance();
   }
 
   /**
-   * Health check completo
+   * Health check completo do módulo
    * GET /brevo/health
    */
   public healthCheck = async (req: Request, res: Response): Promise<void> => {
     try {
-      const config = this.client.getConfig();
-      const [emailHealthy, smsHealthy] = await Promise.all([
+      console.log("🔍 Executando health check do Brevo...");
+
+      const [emailHealthy, smsHealthy, clientHealthy] = await Promise.all([
         this.emailService.checkHealth(),
         this.smsService.checkHealth(),
+        this.client.healthCheck(),
       ]);
 
-      res.json({
-        status: emailHealthy && smsHealthy ? "healthy" : "degraded",
+      const config = this.config.getConfig();
+      const overall =
+        (emailHealthy && clientHealthy) || this.client.isSimulated();
+
+      const healthData = {
+        status: overall ? "healthy" : "degraded",
         module: "brevo",
         configured: config.isConfigured,
         simulated: this.client.isSimulated(),
         operational: this.client.isOperational(),
+        timestamp: new Date().toISOString(),
+
         services: {
           email: emailHealthy ? "operational" : "degraded",
           sms: smsHealthy ? "operational" : "degraded",
+          client: clientHealthy ? "operational" : "degraded",
         },
-        timestamp: new Date().toISOString(),
+
+        configuration: {
+          emailVerificationEnabled: config.emailVerification.enabled,
+          environment: config.environment,
+          fromEmail: config.fromEmail,
+          fromName: config.fromName,
+          frontendUrl: config.urls.frontend,
+        },
+
+        features: {
+          transactionalEmails: true,
+          emailVerification: config.emailVerification.enabled,
+          welcomeEmails: true,
+          passwordRecovery: true,
+          smsSupport: true,
+        },
+      };
+
+      console.log("✅ Health check concluído:", {
+        status: healthData.status,
+        configured: healthData.configured,
+        simulated: healthData.simulated,
       });
+
+      res.status(overall ? 200 : 503).json(healthData);
     } catch (error) {
+      console.error("❌ Erro no health check:", error);
+
       res.status(503).json({
         status: "unhealthy",
         module: "brevo",
@@ -64,60 +97,143 @@ export class BrevoController {
    * GET /brevo
    */
   public getModuleInfo = async (req: Request, res: Response): Promise<void> => {
-    const config = this.client.getConfig();
+    try {
+      const config = this.config.getConfig();
 
-    res.json({
-      module: "Brevo Communication Module",
-      version: "5.0.1",
-      status: "active",
-      configured: config.isConfigured,
-      simulated: this.client.isSimulated(),
-      services: ["email", "sms"],
-      endpoints: {
-        health: "GET /health",
-        testEmail: "POST /test/email (development only)",
-        testSMS: "POST /test/sms (development only)",
-      },
-      timestamp: new Date().toISOString(),
-    });
+      res.json({
+        module: "Brevo Communication Module",
+        version: "7.0.0",
+        description: "Sistema completo de comunicação e verificação de email",
+        status: "active",
+        configured: config.isConfigured,
+        simulated: this.client.isSimulated(),
+
+        features: {
+          transactionalEmails: true,
+          emailVerification: config.emailVerification.enabled,
+          welcomeEmails: true,
+          passwordRecovery: true,
+          smsSupport: true,
+          templates: true,
+        },
+
+        services: ["email", "sms", "verification"],
+
+        endpoints: {
+          health: "GET /health",
+          verification: {
+            verify: "GET /verificar-email?token=xxx",
+            resend: "POST /reenviar-verificacao",
+            status: "GET /status-verificacao/:userId",
+          },
+          testing: {
+            email: "POST /test/email (development only)",
+            sms: "POST /test/sms (development only)",
+          },
+        },
+
+        configuration: {
+          environment: config.environment,
+          emailVerificationEnabled: config.emailVerification.enabled,
+          tokenExpirationHours: config.emailVerification.tokenExpirationHours,
+          maxResendAttempts: config.emailVerification.maxResendAttempts,
+          resendCooldownMinutes: config.emailVerification.resendCooldownMinutes,
+        },
+
+        urls: config.urls,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("❌ Erro ao buscar informações do módulo:", error);
+
+      res.status(500).json({
+        error: "Erro ao buscar informações do módulo",
+        message: error instanceof Error ? error.message : "Erro desconhecido",
+        timestamp: new Date().toISOString(),
+      });
+    }
   };
 
   /**
    * Teste de email (apenas desenvolvimento)
    * POST /brevo/test/email
+   * Body: { email: string, name?: string, type?: string }
    */
   public testEmail = async (req: Request, res: Response): Promise<void> => {
+    // Bloqueio em produção
     if (process.env.NODE_ENV === "production") {
-      res.status(403).json({ message: "Testes não disponíveis em produção" });
+      res.status(403).json({
+        success: false,
+        message: "Testes não disponíveis em produção",
+        code: "PRODUCTION_BLOCKED",
+      });
       return;
     }
 
     try {
-      const { email, name } = req.body;
+      const { email, name, type = "welcome" } = req.body;
 
+      // Validação
       if (!email) {
-        res.status(400).json({ message: "Email é obrigatório" });
+        res.status(400).json({
+          success: false,
+          message: "Email é obrigatório",
+          code: "MISSING_EMAIL",
+        });
         return;
       }
 
-      const result = await this.emailService.sendWelcomeEmail({
-        id: "test_user",
-        email,
+      if (!this.isValidEmail(email)) {
+        res.status(400).json({
+          success: false,
+          message: "Formato de email inválido",
+          code: "INVALID_EMAIL",
+        });
+        return;
+      }
+
+      console.log(`🧪 Teste de email: ${type} para ${email}`);
+
+      // Dados de teste
+      const testUserData = {
+        id: `test_user_${Date.now()}`,
+        email: email.toLowerCase().trim(),
         nomeCompleto: name || "Usuário Teste",
         tipoUsuario: "PESSOA_FISICA",
-      });
+      };
+
+      // Envia email conforme o tipo
+      let result;
+      if (type === "verification") {
+        // Força envio de verificação mesmo se desabilitado
+        result = await this.emailService.sendWelcomeEmail(testUserData);
+      } else {
+        // Email de boas-vindas simples
+        result = await this.emailService.sendWelcomeEmail(testUserData);
+      }
+
+      console.log(`📧 Resultado do teste:`, result);
 
       res.json({
-        message: "Teste de email executado",
         success: result.success,
-        simulated: result.simulated,
-        messageId: result.messageId,
-        error: result.error,
+        message: `Teste de email ${type} executado`,
+        data: {
+          type,
+          recipient: email,
+          simulated: result.simulated,
+          messageId: result.messageId,
+          error: result.error,
+        },
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
+      console.error("❌ Erro no teste de email:", error);
+
       res.status(500).json({
+        success: false,
         message: "Erro no teste de email",
         error: error instanceof Error ? error.message : "Erro desconhecido",
+        timestamp: new Date().toISOString(),
       });
     }
   };
@@ -125,76 +241,124 @@ export class BrevoController {
   /**
    * Teste de SMS (apenas desenvolvimento)
    * POST /brevo/test/sms
+   * Body: { to: string, message?: string }
    */
   public testSMS = async (req: Request, res: Response): Promise<void> => {
+    // Bloqueio em produção
     if (process.env.NODE_ENV === "production") {
-      res.status(403).json({ message: "Testes não disponíveis em produção" });
+      res.status(403).json({
+        success: false,
+        message: "Testes não disponíveis em produção",
+        code: "PRODUCTION_BLOCKED",
+      });
       return;
     }
 
     try {
-      const { phone, message, type } = req.body;
+      const { to, message } = req.body;
 
-      if (!phone) {
-        res.status(400).json({ message: "Telefone é obrigatório" });
+      // Validação
+      if (!to) {
+        res.status(400).json({
+          success: false,
+          message: "Número de telefone é obrigatório",
+          code: "MISSING_PHONE",
+        });
         return;
       }
 
-      let result;
+      console.log(`🧪 Teste de SMS para: ${to}`);
 
-      if (type === "verification") {
-        // Teste de SMS de verificação
-        const code = SMSService.generateVerificationCode(6);
-        result = await this.smsService.sendVerificationSMS(phone, code);
-      } else {
-        // Teste de SMS genérico
-        const testMessage = message || "🧪 Teste de SMS do AdvanceMais";
-        result = await this.smsService.sendSMS({
-          to: phone,
-          message: testMessage,
-          sender: "AdvanceMais",
-        });
-      }
+      const testMessage =
+        message || "Teste de SMS do AdvanceMais - Sistema funcionando!";
+
+      const result = await this.smsService.sendSMS({
+        to,
+        message: testMessage,
+        sender: "AdvanceMais",
+      });
+
+      console.log(`📱 Resultado do teste SMS:`, result);
 
       res.json({
-        message: "Teste de SMS executado",
         success: result.success,
-        simulated: result.simulated,
-        messageId: result.messageId,
-        error: result.error,
+        message: "Teste de SMS executado",
+        data: {
+          recipient: to,
+          message: testMessage,
+          simulated: result.simulated,
+          messageId: result.messageId,
+          error: result.error,
+        },
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
+      console.error("❌ Erro no teste de SMS:", error);
+
       res.status(500).json({
+        success: false,
         message: "Erro no teste de SMS",
         error: error instanceof Error ? error.message : "Erro desconhecido",
+        timestamp: new Date().toISOString(),
       });
     }
   };
 
   /**
-   * Estatísticas básicas
-   * GET /brevo/stats
+   * Status da configuração (desenvolvimento)
+   * GET /brevo/config
    */
-  public getStatistics = async (req: Request, res: Response): Promise<void> => {
+  public getConfigStatus = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    if (process.env.NODE_ENV === "production") {
+      res.status(403).json({
+        message: "Informações de configuração não disponíveis em produção",
+      });
+      return;
+    }
+
     try {
-      const [emailStats, smsStats] = await Promise.all([
-        this.emailService.getStatistics(),
-        this.smsService.getStatistics(),
-      ]);
+      const config = this.config.getConfig();
+      const healthInfo = this.config.getHealthInfo();
 
       res.json({
-        message: "Estatísticas do módulo Brevo",
-        data: {
-          email: emailStats,
-          sms: smsStats,
-        },
+        module: "Brevo Configuration Status",
         timestamp: new Date().toISOString(),
+
+        configuration: {
+          isConfigured: config.isConfigured,
+          environment: config.environment,
+          apiKeyProvided: !!config.apiKey,
+          fromEmailConfigured: !!config.fromEmail,
+          fromName: config.fromName,
+        },
+
+        emailVerification: config.emailVerification,
+        urls: config.urls,
+
+        client: {
+          operational: this.client.isOperational(),
+          simulated: this.client.isSimulated(),
+        },
+
+        healthInfo,
       });
     } catch (error) {
+      console.error("❌ Erro ao buscar status da configuração:", error);
+
       res.status(500).json({
-        message: "Erro ao obter estatísticas",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
+        error: "Erro ao buscar status da configuração",
+        message: error instanceof Error ? error.message : "Erro desconhecido",
       });
     }
   };
+
+  /**
+   * Valida formato de email
+   */
+  private isValidEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
 }

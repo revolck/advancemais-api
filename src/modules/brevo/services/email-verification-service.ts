@@ -1,3 +1,4 @@
+import * as Brevo from "@getbrevo/brevo";
 import { BrevoClient } from "../client/brevo-client";
 import { BrevoConfigManager } from "../config/brevo-config";
 import { EmailTemplates } from "../templates/email-templates";
@@ -7,14 +8,8 @@ import { prisma } from "../../../config/prisma";
  * Serviço especializado em verificação de email
  * Implementa padrões de microserviços com alta disponibilidade
  *
- * Responsabilidades:
- * - Enviar emails de verificação
- * - Validar tokens de verificação
- * - Gerenciar tentativas de reenvio
- * - Registrar logs de auditoria
- *
  * @author Sistema AdvanceMais
- * @version 6.0.0 - Sistema completo de verificação
+ * @version 7.2.0 - CORRIGIDO - Verificações de undefined
  */
 export interface EmailVerificationResult {
   success: boolean;
@@ -154,114 +149,13 @@ export class EmailVerificationService {
       const errorMsg =
         error instanceof Error ? error.message : "Erro desconhecido";
       console.error(`❌ [${correlationId}] ${operation}: ${errorMsg}`);
-
       await this.logVerificationEmailError(
         userData.id,
         operation,
         errorMsg,
         correlationId
       );
-
-      return {
-        success: false,
-        error: errorMsg,
-      };
-    }
-  }
-
-  /**
-   * Verifica token de verificação
-   */
-  public async verifyEmailToken(
-    token: string
-  ): Promise<VerificationTokenResult> {
-    const correlationId = this.generateCorrelationId();
-
-    try {
-      console.log(
-        `🔍 [${correlationId}] Verificando token: ${token.substring(0, 8)}...`
-      );
-
-      if (!token || token.trim() === "") {
-        return { valid: false, error: "Token não fornecido" };
-      }
-
-      // Busca token no banco
-      const usuario = await prisma.usuario.findFirst({
-        where: {
-          emailVerificationToken: token,
-        },
-        select: {
-          id: true,
-          email: true,
-          emailVerificado: true,
-          emailVerificationTokenExp: true,
-          emailVerificationToken: true,
-        },
-      });
-
-      if (!usuario) {
-        console.warn(`⚠️ [${correlationId}] Token não encontrado`);
-        return { valid: false, error: "Token inválido" };
-      }
-
-      // Verifica se já está verificado
-      if (usuario.emailVerificado) {
-        console.log(
-          `ℹ️ [${correlationId}] Email já verificado para usuário ${usuario.id}`
-        );
-        return { valid: false, alreadyVerified: true, userId: usuario.id };
-      }
-
-      // Verifica expiração
-      if (
-        !usuario.emailVerificationTokenExp ||
-        new Date() > usuario.emailVerificationTokenExp
-      ) {
-        console.warn(
-          `⚠️ [${correlationId}] Token expirado para usuário ${usuario.id}`
-        );
-
-        // Remove token expirado
-        await prisma.usuario.update({
-          where: { id: usuario.id },
-          data: {
-            emailVerificationToken: null,
-            emailVerificationTokenExp: null,
-          },
-        });
-
-        return { valid: false, expired: true, userId: usuario.id };
-      }
-
-      // Token válido - marca email como verificado
-      await prisma.usuario.update({
-        where: { id: usuario.id },
-        data: {
-          emailVerificado: true,
-          emailVerificationToken: null,
-          emailVerificationTokenExp: null,
-          emailVerificadoEm: new Date(),
-        },
-      });
-
-      console.log(
-        `✅ [${correlationId}] Email verificado com sucesso para usuário ${usuario.id}`
-      );
-
-      // Log de sucesso
-      await this.logEmailVerified(usuario.id, correlationId);
-
-      return { valid: true, userId: usuario.id };
-    } catch (error) {
-      const errorMsg =
-        error instanceof Error ? error.message : "Erro desconhecido";
-      console.error(`❌ [${correlationId}] Erro na verificação: ${errorMsg}`);
-
-      return {
-        valid: false,
-        error: errorMsg,
-      };
+      return { success: false, error: errorMsg };
     }
   }
 
@@ -278,7 +172,7 @@ export class EmailVerificationService {
         `🔄 [${correlationId}] Reenviando verificação para: ${email}`
       );
 
-      // Busca usuário pelo email
+      // Busca usuário
       const usuario = await prisma.usuario.findUnique({
         where: { email: email.toLowerCase().trim() },
         select: {
@@ -299,26 +193,88 @@ export class EmailVerificationService {
         return { success: false, error: "Email já verificado" };
       }
 
-      if (usuario.status !== "ATIVO") {
+      if (usuario.status === "INATIVO") {
         return { success: false, error: "Conta inativa" };
       }
 
-      // Envia novo email de verificação
-      return await this.sendVerificationEmail(usuario);
+      // Reenvia verificação
+      return await this.sendVerificationEmail({
+        id: usuario.id,
+        email: usuario.email,
+        nomeCompleto: usuario.nomeCompleto,
+        tipoUsuario: usuario.tipoUsuario,
+      });
     } catch (error) {
       const errorMsg =
         error instanceof Error ? error.message : "Erro desconhecido";
-      console.error(`❌ [${correlationId}] Erro no reenvio: ${errorMsg}`);
-
-      return {
-        success: false,
-        error: errorMsg,
-      };
+      console.error(`❌ [${correlationId}] Erro no reenvio:`, errorMsg);
+      return { success: false, error: errorMsg };
     }
   }
 
   /**
-   * Verifica se usuário pode receber novo email (rate limiting)
+   * Verifica token de verificação
+   */
+  public async verifyEmailToken(
+    token: string
+  ): Promise<VerificationTokenResult> {
+    try {
+      console.log(`🔍 Verificando token: ${token.substring(0, 8)}...`);
+
+      const usuario = await prisma.usuario.findFirst({
+        where: { emailVerificationToken: token },
+        select: {
+          id: true,
+          email: true,
+          emailVerificado: true,
+          emailVerificationTokenExp: true,
+        },
+      });
+
+      if (!usuario) {
+        return { valid: false, error: "Token inválido" };
+      }
+
+      if (usuario.emailVerificado) {
+        return { valid: false, alreadyVerified: true, userId: usuario.id };
+      }
+
+      if (
+        usuario.emailVerificationTokenExp &&
+        usuario.emailVerificationTokenExp < new Date()
+      ) {
+        return { valid: false, expired: true, userId: usuario.id };
+      }
+
+      // Token válido - marca como verificado
+      await prisma.usuario.update({
+        where: { id: usuario.id },
+        data: {
+          emailVerificado: true,
+          emailVerificationToken: null,
+          emailVerificationTokenExp: null,
+          status: "ATIVO",
+        },
+      });
+
+      console.log(
+        `✅ Email verificado com sucesso para usuário: ${usuario.id}`
+      );
+      return { valid: true, userId: usuario.id };
+    } catch (error) {
+      const errorMsg =
+        error instanceof Error ? error.message : "Erro desconhecido";
+      console.error("❌ Erro na verificação de token:", errorMsg);
+      return { valid: false, error: errorMsg };
+    }
+  }
+
+  // ===========================
+  // MÉTODOS PRIVADOS
+  // ===========================
+
+  /**
+   * Verifica limite de reenvio
    */
   private async checkResendLimit(
     userId: string,
@@ -329,14 +285,13 @@ export class EmailVerificationService {
       const cooldownMinutes = config.emailVerification.resendCooldownMinutes;
       const maxAttempts = config.emailVerification.maxResendAttempts;
 
-      // Busca tentativas recentes
+      const since = new Date(Date.now() - cooldownMinutes * 60 * 1000);
+
       const recentAttempts = await prisma.logEmail.count({
         where: {
           usuarioId: userId,
           tipoEmail: "VERIFICACAO_EMAIL",
-          criadoEm: {
-            gte: new Date(Date.now() - cooldownMinutes * 60 * 1000),
-          },
+          criadoEm: { gte: since },
         },
       });
 
@@ -344,14 +299,14 @@ export class EmailVerificationService {
 
       if (!canResend) {
         console.warn(
-          `⚠️ [${correlationId}] Limite de reenvio atingido para usuário ${userId}: ${recentAttempts}/${maxAttempts}`
+          `⚠️ [${correlationId}] Limite de reenvio atingido: ${recentAttempts}/${maxAttempts}`
         );
       }
 
       return canResend;
     } catch (error) {
-      console.error(
-        `❌ [${correlationId}] Erro ao verificar limite de reenvio:`,
+      console.warn(
+        `⚠️ [${correlationId}] Erro ao verificar limite de reenvio:`,
         error
       );
       return true; // Em caso de erro, permite reenvio
@@ -387,6 +342,7 @@ export class EmailVerificationService {
 
   /**
    * Executa envio do email
+   * ✅ CORRIGIDO - Verificações de undefined
    */
   private async performEmailSend(
     emailData: {
@@ -412,8 +368,13 @@ export class EmailVerificationService {
 
     // Envio real
     try {
-      const Brevo = await import("@getbrevo/brevo");
       const config = this.config.getConfig();
+
+      // ✅ CORREÇÃO: Verificação rigorosa da API
+      const emailAPI = this.client.getEmailAPI();
+      if (!emailAPI) {
+        throw new Error("API de email não disponível");
+      }
 
       const sendSmtpEmail = new Brevo.SendSmtpEmail();
       sendSmtpEmail.to = [{ email: emailData.to, name: emailData.toName }];
@@ -422,9 +383,7 @@ export class EmailVerificationService {
       sendSmtpEmail.htmlContent = emailData.html;
       sendSmtpEmail.textContent = emailData.text;
 
-      const response = await this.client
-        .getEmailAPI()
-        .sendTransacEmail(sendSmtpEmail);
+      const response = await emailAPI.sendTransacEmail(sendSmtpEmail);
       const messageId = this.extractMessageId(response);
 
       return {
@@ -444,7 +403,18 @@ export class EmailVerificationService {
     }
   }
 
-  // Métodos de logging
+  /**
+   * Extrai message ID da resposta
+   */
+  private extractMessageId(response: any): string {
+    if (response?.messageId) return String(response.messageId);
+    if (response?.body?.messageId) return String(response.body.messageId);
+    return `brevo_verify_${Date.now()}`;
+  }
+
+  /**
+   * Log de sucesso
+   */
   private async logVerificationEmailSuccess(
     userId: string,
     operation: string,
@@ -456,10 +426,10 @@ export class EmailVerificationService {
         data: {
           usuarioId: userId,
           email: "",
-          tipoEmail: "VERIFICACAO_EMAIL",
+          tipoEmail: operation as any,
           status: "ENVIADO",
+          messageId: messageId || "",
           tentativas: 1,
-          messageId,
         },
       });
     } catch (error) {
@@ -470,6 +440,9 @@ export class EmailVerificationService {
     }
   }
 
+  /**
+   * Log de erro
+   */
   private async logVerificationEmailError(
     userId: string,
     operation: string,
@@ -481,10 +454,10 @@ export class EmailVerificationService {
         data: {
           usuarioId: userId,
           email: "",
-          tipoEmail: "VERIFICACAO_EMAIL",
+          tipoEmail: operation as any,
           status: "FALHA",
-          tentativas: 1,
           erro: error,
+          tentativas: 1,
         },
       });
     } catch (logError) {
@@ -495,44 +468,10 @@ export class EmailVerificationService {
     }
   }
 
-  private async logEmailVerified(
-    userId: string,
-    correlationId?: string
-  ): Promise<void> {
-    try {
-      await prisma.logEmail.create({
-        data: {
-          usuarioId: userId,
-          email: "",
-          tipoEmail: "VERIFICACAO_EMAIL",
-          status: "ENVIADO",
-          tentativas: 1,
-          messageId: "verified",
-        },
-      });
-    } catch (error) {
-      console.warn(
-        `⚠️ [${correlationId}] Erro ao registrar log de verificação:`,
-        error
-      );
-    }
-  }
-
-  // Métodos auxiliares
-  private extractMessageId(response: any): string {
-    if (response?.messageId) return String(response.messageId);
-    if (response?.body?.messageId) return String(response.body.messageId);
-    return `brevo_verify_${Date.now()}`;
-  }
-
+  /**
+   * Gera correlation ID
+   */
   private generateCorrelationId(): string {
     return `verify-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`;
-  }
-
-  /**
-   * Health check público
-   */
-  public async checkHealth(): Promise<boolean> {
-    return this.client.isOperational() || this.client.isSimulated();
   }
 }

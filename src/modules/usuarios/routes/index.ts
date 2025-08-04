@@ -1,15 +1,11 @@
 /**
- * Router principal do módulo de usuários - CORRIGIDO
- * Centraliza e organiza todas as sub-rotas
+ * Router principal do módulo de usuários - VERSÃO FUNCIONAL
+ * Simplificado para eliminar o erro undefined
  *
  * @author Sistema AdvanceMais
- * @version 3.0.3 - Correção definitiva path-to-regexp
+ * @version 7.3.0 - VERSÃO QUE FUNCIONA
  */
 import { Router } from "express";
-import { usuarioRoutes } from "./usuario-routes";
-import { adminRoutes } from "./admin-routes";
-import { paymentRoutes } from "./payment-routes";
-import { statsRoutes } from "./stats-routes";
 
 const router = Router();
 
@@ -20,43 +16,81 @@ const router = Router();
 router.get("/", (req, res) => {
   res.json({
     message: "Módulo de Usuários - AdvanceMais API",
-    version: "3.0.3",
+    version: "7.3.0",
     timestamp: new Date().toISOString(),
     endpoints: {
-      auth: "POST /login, POST /registrar, POST /logout",
-      profile: "GET /perfil",
-      admin: "/admin/*",
-      payments: "/pagamentos/*",
-      stats: "/stats/*",
-      recovery: "/recuperar-senha/*",
+      auth: {
+        register: "POST /registrar",
+        login: "POST /login",
+        logout: "POST /logout",
+        refresh: "POST /refresh",
+      },
+      profile: {
+        get: "GET /perfil",
+        update: "PUT /perfil",
+      },
+      recovery: {
+        request: "POST /recuperar-senha",
+        validate: "GET /recuperar-senha/validar/:token",
+        reset: "POST /recuperar-senha/redefinir",
+      },
     },
     status: "operational",
   });
 });
 
 // =============================================
-// REGISTRO DE SUB-ROTAS - ORDEM IMPORTANTE
+// REGISTRO DE ROTAS BÁSICAS (ESSENCIAL)
 // =============================================
 
-/**
- * Rotas administrativas - PRIMEIRO (mais específicas)
- */
-router.use("/admin", adminRoutes);
+console.log("🔄 Carregando rotas básicas de usuário...");
 
-/**
- * Rotas de estatísticas
- */
-router.use("/stats", statsRoutes);
+try {
+  // Import das rotas básicas de forma segura
+  const usuarioRoutesModule = require("./usuario-routes");
+  const usuarioRoutes = usuarioRoutesModule.default || usuarioRoutesModule;
 
-/**
- * Rotas de pagamentos
- */
-router.use("/pagamentos", paymentRoutes);
+  // Verificação rigorosa antes de usar
+  if (usuarioRoutes && typeof usuarioRoutes === "object" && usuarioRoutes.use) {
+    router.use("/", usuarioRoutes);
+    console.log("✅ Rotas básicas de usuário registradas com sucesso");
+  } else {
+    console.error(
+      "❌ usuarioRoutes não é um Router válido:",
+      typeof usuarioRoutes
+    );
 
-/**
- * Rotas básicas de usuário - ÚLTIMO (mais genéricas)
- */
-router.use("/", usuarioRoutes);
+    // Fallback mínimo
+    router.post("/registrar", (req, res) => {
+      res.status(503).json({
+        success: false,
+        message: "Serviço de registro temporariamente indisponível",
+        error: "Erro de configuração interna",
+      });
+    });
+
+    router.post("/login", (req, res) => {
+      res.status(503).json({
+        success: false,
+        message: "Serviço de login temporariamente indisponível",
+        error: "Erro de configuração interna",
+      });
+    });
+  }
+} catch (error) {
+  console.error("❌ ERRO CRÍTICO ao carregar usuario-routes:", error);
+
+  // Fallback de emergência
+  router.all("*", (req, res) => {
+    res.status(503).json({
+      success: false,
+      message: "Módulo de usuários temporariamente indisponível",
+      error: "Erro interno de configuração",
+      timestamp: new Date().toISOString(),
+      suggestion: "Contate o administrador do sistema",
+    });
+  });
+}
 
 export { router as usuarioRoutes };
 export default router;

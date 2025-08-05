@@ -220,13 +220,13 @@ export class EmailTemplates {
     const currentYear = this.getCurrentYear();
 
     return {
-      subject: `Confirme sua conta na AdvanceMais`,
+      subject: `Advance+ - Confirme sua conta`,
       html: `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Confirmar Conta - AdvanceMais</title>
+  <title>Confirmar Conta - Advance+</title>
   ${this.getBaseStyles()}
 </head>
 <body>
@@ -235,7 +235,7 @@ export class EmailTemplates {
       
       <div class="header">
         <div class="logo">
-          <img src="https://advancemais.vercel.app/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Flogo_branco.78c50915.webp&w=256&q=75" alt="AdvanceMais" />
+          <img src="https://Advance+.vercel.app/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Flogo_branco.78c50915.webp&w=256&q=75" alt="Advance+" />
         </div>
       </div>
       
@@ -243,7 +243,7 @@ export class EmailTemplates {
         <div class="greeting">Olá, ${firstName}!</div>
         
         <div class="message">
-          Obrigado por se cadastrar na AdvanceMais. Para começar a usar nossa plataforma, 
+          Obrigado por se cadastrar na Advance+. Para começar a usar nossa plataforma, 
           você precisa confirmar seu endereço de email.
         </div>
         
@@ -276,7 +276,7 @@ export class EmailTemplates {
       
       <div class="footer">
         <div class="footer-text">
-          © ${currentYear} AdvanceMais - Todos os direitos reservados
+          © ${currentYear} Advance+ - Todos os direitos reservados
         </div>
       </div>
       
@@ -284,11 +284,11 @@ export class EmailTemplates {
   </div>
 </body>
 </html>`,
-      text: `Confirme sua conta na AdvanceMais\n\nOlá, ${firstName}!\n\nObrigado por se cadastrar na AdvanceMais. Para começar a usar nossa plataforma, confirme seu endereço de email através do link abaixo:\n\n${
+      text: `Confirme sua conta na Advance+\n\nOlá, ${firstName}!\n\nObrigado por se cadastrar na Advance+. Para começar a usar nossa plataforma, confirme seu endereço de email através do link abaixo:\n\n${
         data.verificationUrl
       }\n\nEste link expira em ${
         data.expirationHours ?? 72
-      } horas. Se não confirmar até lá, você precisará fazer um novo cadastro.\n\n© ${currentYear} AdvanceMais - Todos os direitos reservados`,
+      } horas. Se não confirmar até lá, você precisará fazer um novo cadastro.\n\n© ${currentYear} Advance+ - Todos os direitos reservados`,
     };
   }
 
@@ -302,13 +302,13 @@ export class EmailTemplates {
     const currentYear = this.getCurrentYear();
 
     return {
-      subject: `Redefinir senha da sua conta AdvanceMais`,
+      subject: `Advance+ - Redefinir senha da sua conta`,
       html: `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Redefinir Senha - AdvanceMais</title>
+  <title>Redefinir Senha - Advance+</title>
   ${this.getBaseStyles()}
 </head>
 <body>
@@ -317,7 +317,7 @@ export class EmailTemplates {
       
       <div class="header">
         <div class="logo">
-          <img src="https://advancemais.vercel.app/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Flogo_branco.78c50915.webp&w=256&q=75" alt="AdvanceMais" />
+          <img src="https://Advance+.vercel.app/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Flogo_branco.78c50915.webp&w=256&q=75" alt="Advance+" />
         </div>
       </div>
       
@@ -370,7 +370,7 @@ export class EmailTemplates {
       
       <div class="footer">
         <div class="footer-text">
-          © ${currentYear} AdvanceMais - Todos os direitos reservados
+          © ${currentYear} Advance+ - Todos os direitos reservados
         </div>
       </div>
       
@@ -378,7 +378,7 @@ export class EmailTemplates {
   </div>
 </body>
 </html>`,
-      text: `Redefinir senha da sua conta AdvanceMais\n\nOlá, ${firstName}\n\nRecebemos uma solicitação para redefinir a senha da sua conta. Se foi você quem solicitou, use o link abaixo para criar uma nova senha:\n\n${data.linkRecuperacao}\n\nEste link expira em ${data.expiracaoHoras} horas por motivos de segurança. Você pode realizar até ${data.maxTentativas} tentativas de recuperação.\n\nSe você não solicitou esta alteração, pode ignorar este email. Sua senha não será alterada.\n\n© ${currentYear} AdvanceMais - Todos os direitos reservados`,
+      text: `Redefinir senha da sua conta Advance+\n\nOlá, ${firstName}\n\nRecebemos uma solicitação para redefinir a senha da sua conta. Se foi você quem solicitou, use o link abaixo para criar uma nova senha:\n\n${data.linkRecuperacao}\n\nEste link expira em ${data.expiracaoHoras} horas por motivos de segurança. Você pode realizar até ${data.maxTentativas} tentativas de recuperação.\n\nSe você não solicitou esta alteração, pode ignorar este email. Sua senha não será alterada.\n\n© ${currentYear} Advance+ - Todos os direitos reservados`,
     };
   }
 

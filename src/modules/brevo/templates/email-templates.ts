@@ -101,22 +101,93 @@ export class EmailTemplates {
 
     return `<!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Confirme seu e-mail - AdvanceMais</title>
-</head>
-<body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
-  <p>Olá ${firstName},</p>
-  <p>Recebemos sua solicitação de cadastro e precisamos confirmar o seu e-mail.</p>
-  <p>Para isto, basta clicar no botão abaixo:</p>
-  <p style="text-align: center; margin: 24px 0;">
-    <a href="${data.verificationUrl}" style="display: inline-block; padding: 12px 24px; background-color: #4caf50; color: #fff; text-decoration: none; border-radius: 4px;">Confirmar cadastro</a>
-  </p>
-  <p>ou copie o endereço abaixo e cole no seu navegador:</p>
-  <p><a href="${data.verificationUrl}">${data.verificationUrl}</a></p>
-  <p>Se você não se inscreveu na AdvanceMais, ignore este email.</p>
-  <p>Atenciosamente,<br/>Equipe AdvanceMais</p>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Confirme seu e-mail - AdvanceMais</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #f4f4f4;
+        font-family: 'Roboto', Arial, sans-serif;
+        line-height: 1.6;
+        color: #333333;
+      }
+      .container {
+        width: 100%;
+        max-width: 600px;
+        margin: 0 auto;
+        background: #ffffff;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .header {
+        background: #00257d;
+        color: #ffffff;
+        text-align: center;
+        padding: 24px;
+      }
+      .header h1 {
+        margin: 0;
+        font-size: 24px;
+      }
+      .content {
+        padding: 32px 24px;
+      }
+      .button {
+        display: inline-block;
+        padding: 14px 32px;
+        background-color: #dc2626;
+        color: #ffffff !important;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 600;
+      }
+      .footer {
+        text-align: center;
+        font-size: 12px;
+        color: #777777;
+        padding: 24px;
+        background: #f4f4f4;
+      }
+      a {
+        color: #00257d;
+      }
+    </style>
+  </head>
+  <body>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;">
+      <tr>
+        <td align="center">
+          <table class="container" role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td class="header">
+                <h1>Confirme seu cadastro</h1>
+              </td>
+            </tr>
+            <tr>
+              <td class="content">
+                <p>Olá ${firstName},</p>
+                <p>Recebemos sua solicitação de cadastro e precisamos confirmar o seu e-mail.</p>
+                <p>Para isto, basta clicar no botão abaixo:</p>
+                <p style="text-align:center; margin:32px 0;">
+                  <a href="${data.verificationUrl}" class="button">Confirmar cadastro</a>
+                </p>
+                <p>ou copie o endereço abaixo e cole no seu navegador:</p>
+                <p style="word-break: break-all;"><a href="${data.verificationUrl}">${data.verificationUrl}</a></p>
+                <p>Se você não se inscreveu na AdvanceMais, ignore este email.</p>
+                <p>Atenciosamente,<br/>Equipe AdvanceMais</p>
+              </td>
+            </tr>
+            <tr>
+              <td class="footer">© ${new Date().getFullYear()} AdvanceMais. Todos os direitos reservados.</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
 </html>`;
   }
 

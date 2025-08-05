@@ -1,4 +1,4 @@
-import jwt from "jsonwebtoken";
+import jwt, { SignOptions } from "jsonwebtoken";
 import { jwtConfig } from "../../../config/env";
 
 /**
@@ -31,17 +31,14 @@ export const generateToken = (id: string, role: string): string => {
     type: 'access'
   };
   
-  return jwt.sign(
-    payload, 
-    jwtConfig.secret, 
-    { 
-      expiresIn: jwtConfig.expiresIn,
-      issuer: 'advancemais-api',
-      audience: 'advancemais-users',
-      subject: id,
-      jwtid: `access_${id}_${Date.now()}`
-    }
-  );
+  const options: SignOptions = {
+    expiresIn: jwtConfig.expiresIn as any,
+    issuer: 'advancemais-api',
+    audience: 'advancemais-users',
+    subject: id,
+    jwtid: `access_${id}_${Date.now()}`
+  };
+  return jwt.sign(payload, jwtConfig.secret, options);
 };
 
 /**
@@ -55,17 +52,14 @@ export const generateRefreshToken = (id: string): string => {
     type: 'refresh'
   };
   
-  return jwt.sign(
-    payload, 
-    jwtConfig.refreshSecret, 
-    { 
-      expiresIn: jwtConfig.refreshExpiresIn,
-      issuer: 'advancemais-api',
-      audience: 'advancemais-refresh',
-      subject: id,
-      jwtid: `refresh_${id}_${Date.now()}`
-    }
-  );
+  const options: SignOptions = {
+    expiresIn: jwtConfig.refreshExpiresIn as any,
+    issuer: 'advancemais-api',
+    audience: 'advancemais-refresh',
+    subject: id,
+    jwtid: `refresh_${id}_${Date.now()}`
+  };
+  return jwt.sign(payload, jwtConfig.refreshSecret, options);
 };
 
 /**

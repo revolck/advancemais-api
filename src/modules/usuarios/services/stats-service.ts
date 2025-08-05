@@ -117,14 +117,20 @@ export class StatsService {
       periodo: {
         diasConsiderados: diasAtras,
         usuariosNoPeriodo: usuariosPorPeriodo.reduce(
-          (sum, item) => sum + item._count.id,
+          (
+            sum: number,
+            item: { _count: { id: number } }
+          ) => sum + item._count.id,
           0
         ),
         mediaPorDia:
           usuariosPorPeriodo.length > 0
             ? (
                 usuariosPorPeriodo.reduce(
-                  (sum, item) => sum + item._count.id,
+                  (
+                    sum: number,
+                    item: { _count: { id: number } }
+                  ) => sum + item._count.id,
                   0
                 ) / diasAtras
               ).toFixed(1)
@@ -171,7 +177,10 @@ export class StatsService {
       ]);
 
     const receitaPeriodo = ordersPorPeriodo.reduce(
-      (sum, item) => sum + (item._sum.paidAmount || 0),
+      (
+        sum: number,
+        item: { _sum: { paidAmount: number | null } }
+      ) => sum + (item._sum.paidAmount || 0),
       0
     );
 
@@ -179,7 +188,10 @@ export class StatsService {
       periodo: {
         diasConsiderados: diasAtras,
         ordersPeriodo: ordersPorPeriodo.reduce(
-          (sum, item) => sum + item._count.id,
+          (
+            sum: number,
+            item: { _count: { id: number } }
+          ) => sum + item._count.id,
           0
         ),
         receitaPeriodo,
@@ -187,7 +199,13 @@ export class StatsService {
           ordersPorPeriodo.length > 0
             ? (
                 receitaPeriodo /
-                ordersPorPeriodo.reduce((sum, item) => sum + item._count.id, 0)
+                ordersPorPeriodo.reduce(
+                  (
+                    sum: number,
+                    item: { _count: { id: number } }
+                  ) => sum + item._count.id,
+                  0
+                )
               ).toFixed(2)
             : 0,
       },

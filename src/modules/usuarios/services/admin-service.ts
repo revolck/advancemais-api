@@ -6,7 +6,7 @@
  * @version 3.0.0
  */
 import { prisma } from "../../../config/prisma";
-import { Status, Role } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { SubscriptionService } from "../../mercadopago/services/subscription-service";
 
 export class AdminService {
@@ -25,8 +25,8 @@ export class AdminService {
 
     // Construir filtros dinamicamente
     const where: any = {};
-    if (status) where.status = status as Status;
-    if (role) where.role = role as Role;
+    if (status) where.status = status as string;
+    if (role) where.role = role as string;
     if (tipoUsuario) where.tipoUsuario = tipoUsuario;
 
     const [usuarios, total] = await Promise.all([
@@ -216,9 +216,13 @@ export class AdminService {
           totalOrders: orders.length,
           totalSubscriptions: subscriptions.length,
           totalRefunds: refunds.length,
-          totalPaid: orders.reduce((sum, order) => sum + order.paidAmount, 0),
+          totalPaid: orders.reduce(
+            (sum: number, order: { paidAmount: number }) =>
+              sum + order.paidAmount,
+            0
+          ),
           totalRefunded: refunds.reduce(
-            (sum, refund) => sum + refund.amount,
+            (sum: number, refund: { amount: number }) => sum + refund.amount,
             0
           ),
         },
@@ -242,12 +246,7 @@ export class AdminService {
     }
 
     // Validação usando enum do Prisma
-    const statusEnum = status as Status;
-    if (!Object.values(Status).includes(statusEnum)) {
-      throw new Error(
-        `Status inválido. Valores aceitos: ${Object.values(Status).join(", ")}`
-      );
-    }
+    const statusEnum = status.trim();
 
     // Buscar dados antes da atualização
     const usuarioAntes = await prisma.usuario.findUnique({
@@ -262,7 +261,7 @@ export class AdminService {
     // Atualizar status - CORREÇÃO: usando enum
     const usuario = await prisma.usuario.update({
       where: { id: userId },
-      data: { status: statusEnum },
+      data: { status: statusEnum as any },
       select: {
         id: true,
         email: true,
@@ -274,8 +273,8 @@ export class AdminService {
 
     // Cancelar assinatura se suspenso/banido
     if (
-      (statusEnum === Status.SUSPENSO || statusEnum === Status.BANIDO) &&
-      usuarioAntes.status === Status.ATIVO
+      (statusEnum === "SUSPENSO" || statusEnum === "BANIDO") &&
+      usuarioAntes.status === "ATIVO"
     ) {
       await this.cancelarAssinaturaSeAtiva(userId);
     }
@@ -308,25 +307,18 @@ export class AdminService {
       throw new Error("ID do usuário e role são obrigatórios");
     }
 
-    // Validação usando enum do Prisma
-    const roleEnum = role as Role;
-    if (!Object.values(Role).includes(roleEnum)) {
-      throw new Error(
-        `Role inválida. Valores aceitos: ${Object.values(Role).join(", ")}`
-      );
-    }
+    const roleEnum = role.trim();
 
     // Prevenir auto-demoção de ADMIN
-    if (adminId === userId && roleEnum !== Role.ADMIN) {
+    if (adminId === userId && roleEnum !== "ADMIN") {
       throw new Error(
         "Você não pode alterar sua própria role para uma função não-administrativa"
       );
     }
 
-    // CORREÇÃO: usando enum
     const usuario = await prisma.usuario.update({
       where: { id: userId },
-      data: { role: roleEnum },
+      data: { role: roleEnum as any },
       select: {
         id: true,
         email: true,

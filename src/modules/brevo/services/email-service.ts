@@ -2,6 +2,7 @@ import { BrevoClient } from "../client/brevo-client";
 import { BrevoConfigManager } from "../config/brevo-config";
 import { EmailTemplates } from "../templates/email-templates";
 import { prisma } from "../../../config/prisma"; // ✅ REMOVER .js
+import { brevoConfig } from "../../../config/env";
 
 export interface EmailResult {
   success: boolean;
@@ -192,6 +193,59 @@ export class EmailService {
       const errorMsg =
         error instanceof Error ? error.message : "Erro desconhecido";
       throw error;
+    }
+  }
+
+  public async enviarEmailRecuperacaoSenha(
+    usuario: { id: string; email: string; nomeCompleto: string },
+    token: string
+  ): Promise<EmailResult> {
+    const correlationId = this.generateCorrelationId();
+
+    try {
+      const linkRecuperacao = `${this.config.getConfig().urls.passwordRecovery}?token=${token}`;
+      const templateData = {
+        nomeCompleto: usuario.nomeCompleto,
+        token,
+        linkRecuperacao,
+        expiracaoMinutos: brevoConfig.passwordRecovery.tokenExpirationMinutes,
+      };
+
+      const emailContent =
+        EmailTemplates.generatePasswordRecoveryEmail(templateData);
+
+      const result = await this.client.sendEmail({
+        to: usuario.email,
+        toName: usuario.nomeCompleto,
+        subject: emailContent.subject,
+        html: emailContent.html,
+        text: emailContent.text,
+      });
+
+      if (result.success) {
+        await this.logEmailSuccess(
+          usuario.id,
+          "RECUPERACAO_SENHA",
+          result.messageId
+        );
+      } else {
+        await this.logEmailError(
+          usuario.id,
+          "RECUPERACAO_SENHA",
+          result.error || "Erro desconhecido"
+        );
+      }
+
+      return result;
+    } catch (error) {
+      const errorMsg =
+        error instanceof Error ? error.message : "Erro desconhecido";
+      await this.logEmailError(
+        usuario.id,
+        "RECUPERACAO_SENHA",
+        errorMsg
+      );
+      return { success: false, error: errorMsg };
     }
   }
 

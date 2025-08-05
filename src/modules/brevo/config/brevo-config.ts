@@ -133,7 +133,7 @@ export class BrevoConfigManager {
       emailVerification: {
         enabled: process.env.EMAIL_VERIFICATION_REQUIRED !== "false",
         tokenExpirationHours: parseInt(
-          process.env.EMAIL_VERIFICATION_EXPIRATION_HOURS || "24",
+          process.env.EMAIL_VERIFICATION_EXPIRATION_HOURS || "72",
           10
         ),
         maxResendAttempts: parseInt(

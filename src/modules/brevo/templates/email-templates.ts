@@ -263,7 +263,9 @@ export class EmailTemplates {
         
         <div class="info-box">
           <p class="info-text">
-            <strong>Importante:</strong> Este link expira em 24 horas. 
+            <strong>Importante:</strong> Este link expira em ${
+              data.expirationHours ?? 72
+            } horas.
             Se não confirmar até lá, você precisará fazer um novo cadastro.
           </p>
         </div>
@@ -280,7 +282,7 @@ export class EmailTemplates {
   </div>
 </body>
 </html>`,
-      text: `Confirme sua conta na AdvanceMais\n\nOlá, ${firstName}!\n\nObrigado por se cadastrar na AdvanceMais. Para começar a usar nossa plataforma, confirme seu endereço de email através do link abaixo:\n\n${data.verificationUrl}\n\nEste link expira em 24 horas. Se não confirmar até lá, você precisará fazer um novo cadastro.\n\n© ${currentYear} AdvanceMais - Todos os direitos reservados`,
+      text: `Confirme sua conta na AdvanceMais\n\nOlá, ${firstName}!\n\nObrigado por se cadastrar na AdvanceMais. Para começar a usar nossa plataforma, confirme seu endereço de email através do link abaixo:\n\n${data.verificationUrl}\n\nEste link expira em ${data.expirationHours ?? 72} horas. Se não confirmar até lá, você precisará fazer um novo cadastro.\n\n© ${currentYear} AdvanceMais - Todos os direitos reservados`,
     };
   }
 

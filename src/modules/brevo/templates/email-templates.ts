@@ -48,12 +48,8 @@ export class EmailTemplates {
   public static generateVerificationEmail(
     data: EmailVerificationData
   ): EmailTemplate {
-    const firstName = data.nomeCompleto.split(" ")[0];
-    const userType =
-      data.tipoUsuario === "PESSOA_JURIDICA" ? "empresa" : "pessoa física";
-
     return {
-      subject: `🔐 Confirme seu email - AdvanceMais`,
+      subject: `Confirme seu email - AdvanceMais`,
       html: this.getVerificationHTML(data),
       text: this.getVerificationText(data),
     };
@@ -103,88 +99,26 @@ export class EmailTemplates {
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Confirme seu e-mail - AdvanceMais</title>
-    <style>
-      body {
-        margin: 0;
-        padding: 0;
-        background-color: #f4f4f4;
-        font-family: 'Roboto', Arial, sans-serif;
-        line-height: 1.6;
-        color: #333333;
-      }
-      .container {
-        width: 100%;
-        max-width: 600px;
-        margin: 0 auto;
-        background: #ffffff;
-        border-radius: 8px;
-        overflow: hidden;
-      }
-      .header {
-        background: #00257d;
-        color: #ffffff;
-        text-align: center;
-        padding: 24px;
-      }
-      .header h1 {
-        margin: 0;
-        font-size: 24px;
-      }
-      .content {
-        padding: 32px 24px;
-      }
-      .button {
-        display: inline-block;
-        padding: 14px 32px;
-        background-color: #dc2626;
-        color: #ffffff !important;
-        text-decoration: none;
-        border-radius: 8px;
-        font-weight: 600;
-      }
-      .footer {
-        text-align: center;
-        font-size: 12px;
-        color: #777777;
-        padding: 24px;
-        background: #f4f4f4;
-      }
-      a {
-        color: #00257d;
-      }
-    </style>
   </head>
-  <body>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;">
+  <body style="margin:0;padding:0;background-color:#f4f4f4;font-family:Arial, sans-serif;color:#333333;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #eaeaea;">
       <tr>
-        <td align="center">
-          <table class="container" role="presentation" cellpadding="0" cellspacing="0">
-            <tr>
-              <td class="header">
-                <h1>Confirme seu cadastro</h1>
-              </td>
-            </tr>
-            <tr>
-              <td class="content">
-                <p>Olá ${firstName},</p>
-                <p>Recebemos sua solicitação de cadastro e precisamos confirmar o seu e-mail.</p>
-                <p>Para isto, basta clicar no botão abaixo:</p>
-                <p style="text-align:center; margin:32px 0;">
-                  <a href="${data.verificationUrl}" class="button">Confirmar cadastro</a>
-                </p>
-                <p>ou copie o endereço abaixo e cole no seu navegador:</p>
-                <p style="word-break: break-all;"><a href="${data.verificationUrl}">${data.verificationUrl}</a></p>
-                <p>Se você não se inscreveu na AdvanceMais, ignore este email.</p>
-                <p>Atenciosamente,<br/>Equipe AdvanceMais</p>
-              </td>
-            </tr>
-            <tr>
-              <td class="footer">© ${new Date().getFullYear()} AdvanceMais. Todos os direitos reservados.</td>
-            </tr>
-          </table>
+        <td style="padding:24px;font-size:16px;">
+          <p>Olá ${firstName},</p>
+          <p>Recebemos sua solicitação de cadastro e precisamos confirmar o seu e-mail.</p>
+          <p>Para isto, basta clicar no botão abaixo:</p>
+          <p style="text-align:center;margin:32px 0;">
+            <a href="${data.verificationUrl}" style="background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:4px;display:inline-block;">Confirmar cadastro</a>
+          </p>
+          <p>ou copie o endereço abaixo e cole no seu navegador:</p>
+          <p style="word-break:break-all;"><a href="${data.verificationUrl}">${data.verificationUrl}</a></p>
+          <p>Se você não se inscreveu na AdvanceMais, ignore este email.</p>
+          <p>Atenciosamente,<br/>Equipe AdvanceMais</p>
         </td>
+      </tr>
+      <tr>
+        <td style="padding:16px;text-align:center;font-size:12px;color:#777777;background:#f4f4f4;">© ${new Date().getFullYear()} AdvanceMais. Todos os direitos reservados.</td>
       </tr>
     </table>
   </body>

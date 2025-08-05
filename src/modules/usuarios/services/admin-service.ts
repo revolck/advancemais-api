@@ -41,7 +41,6 @@ export class AdminService {
           tipoUsuario: true,
           criadoEm: true,
           ultimoLogin: true,
-          emailBoasVindasEnviado: true,
           _count: {
             select: {
               mercadoPagoOrders: true,
@@ -95,8 +94,6 @@ export class AdminService {
         ultimoLogin: true,
         criadoEm: true,
         atualizadoEm: true,
-        emailBoasVindasEnviado: true,
-        dataEmailBoasVindas: true,
         empresa: {
           select: { id: true, nome: true },
         },

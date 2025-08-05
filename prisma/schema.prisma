@@ -43,11 +43,7 @@ model Usuario {
   emailVerificationTokenExp    DateTime?
   emailVerificationAttempts    Int       @default(0)
   ultimaTentativaVerificacao   DateTime?
-  
-  // CAMPOS PARA AUDITORIA DE EMAILS
-  emailBoasVindasEnviado Boolean   @default(false)
-  dataEmailBoasVindas    DateTime?
-  
+
   // RELACIONAMENTOS EXISTENTES
   enderecos     Endereco[]
   empresa       Empresa?    @relation(fields: [codEmpresa], references: [id])

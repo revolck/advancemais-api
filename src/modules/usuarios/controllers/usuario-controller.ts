@@ -541,8 +541,6 @@ export const obterPerfil = async (req: Request, res: Response) => {
         supabaseId: true,
         emailVerificado: true,
         emailVerificadoEm: true,
-        emailBoasVindasEnviado: true,
-        dataEmailBoasVindas: true,
         ultimoLogin: true,
         criadoEm: true,
         atualizadoEm: true,
@@ -599,8 +597,6 @@ export const obterPerfil = async (req: Request, res: Response) => {
       emailVerificationStatus: {
         verified: usuario.emailVerificado,
         verifiedAt: usuario.emailVerificadoEm,
-        welcomeEmailSent: usuario.emailBoasVindasEnviado,
-        welcomeEmailSentAt: usuario.dataEmailBoasVindas,
       },
     };
 

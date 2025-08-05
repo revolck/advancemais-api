@@ -2,6 +2,7 @@ import { Router } from "express";
 import { usuarioRoutes } from "../modules/usuarios";
 import { mercadoPagoRoutes } from "../modules/mercadopago";
 import { brevoRoutes } from "../modules/brevo/routes";
+import { EmailVerificationController } from "../modules/brevo/controllers/email-verification-controller";
 
 /**
  * Router principal da aplicação - VERSÃO BLINDADA
@@ -11,6 +12,7 @@ import { brevoRoutes } from "../modules/brevo/routes";
  * @version 3.0.3 - Correção definitiva Express 4.x
  */
 const router = Router();
+const emailVerificationController = new EmailVerificationController();
 
 /**
  * Rota raiz da API
@@ -55,6 +57,9 @@ router.get("/health", (req, res) => {
     },
   });
 });
+
+// Rota pública para verificação de email
+router.get("/verificar-email", emailVerificationController.verifyEmail);
 
 // =============================================
 // REGISTRO DE MÓDULOS - COM ERROR HANDLING

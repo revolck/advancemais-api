@@ -152,6 +152,9 @@ const server = app.listen(serverConfig.port, () => {
   console.log(
     `   📧 Brevo: http://localhost:${serverConfig.port}/api/v1/brevo`
   );
+  console.log(
+    `   🌐 Website: http://localhost:${serverConfig.port}/api/v1/website`
+  );
   console.log("");
   console.log("🧪 Testes Rápidos:");
   console.log(`   curl http://localhost:${serverConfig.port}/health`);

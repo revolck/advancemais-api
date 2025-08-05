@@ -94,10 +94,8 @@ export class PasswordRecoveryController {
       });
 
       if (!usuario) {
-        // Por segurança, sempre retorna sucesso mesmo se usuário não existe
-        return res.json({
-          message:
-            "Se o identificador estiver correto, você receberá um email com instruções para recuperação",
+        return res.status(404).json({
+          message: "Usuário não encontrado com este identificador",
         });
       }
 

@@ -1,4 +1,4 @@
-import jwt from "jsonwebtoken";
+import jwt, { SignOptions } from "jsonwebtoken";
 import { jwtConfig } from "../../../config/env";
 
 /**
@@ -7,7 +7,7 @@ import { jwtConfig } from "../../../config/env";
 interface AccessTokenPayload {
   id: string;
   role: string;
-  type: 'access';
+  type: "access";
 }
 
 /**
@@ -15,7 +15,7 @@ interface AccessTokenPayload {
  */
 interface RefreshTokenPayload {
   id: string;
-  type: 'refresh';
+  type: "refresh";
 }
 
 /**
@@ -25,23 +25,20 @@ interface RefreshTokenPayload {
  * @returns Token JWT válido conforme configuração
  */
 export const generateToken = (id: string, role: string): string => {
-  const payload: AccessTokenPayload = { 
-    id, 
+  const payload: AccessTokenPayload = {
+    id,
     role,
-    type: 'access'
+    type: "access",
   };
-  
-  return jwt.sign(
-    payload, 
-    jwtConfig.secret, 
-    { 
-      expiresIn: jwtConfig.expiresIn,
-      issuer: 'advancemais-api',
-      audience: 'advancemais-users',
-      subject: id,
-      jwtid: `access_${id}_${Date.now()}`
-    }
-  );
+
+  const options: SignOptions = {
+    expiresIn: jwtConfig.expiresIn as any,
+    issuer: "advancemais-api",
+    audience: "advancemais-users",
+    subject: id,
+    jwtid: `access_${id}_${Date.now()}`,
+  };
+  return jwt.sign(payload, jwtConfig.secret, options);
 };
 
 /**
@@ -50,22 +47,19 @@ export const generateToken = (id: string, role: string): string => {
  * @returns Refresh token válido conforme configuração
  */
 export const generateRefreshToken = (id: string): string => {
-  const payload: RefreshTokenPayload = { 
+  const payload: RefreshTokenPayload = {
     id,
-    type: 'refresh'
+    type: "refresh",
   };
-  
-  return jwt.sign(
-    payload, 
-    jwtConfig.refreshSecret, 
-    { 
-      expiresIn: jwtConfig.refreshExpiresIn,
-      issuer: 'advancemais-api',
-      audience: 'advancemais-refresh',
-      subject: id,
-      jwtid: `refresh_${id}_${Date.now()}`
-    }
-  );
+
+  const options: SignOptions = {
+    expiresIn: jwtConfig.refreshExpiresIn as any,
+    issuer: "advancemais-api",
+    audience: "advancemais-refresh",
+    subject: id,
+    jwtid: `refresh_${id}_${Date.now()}`,
+  };
+  return jwt.sign(payload, jwtConfig.refreshSecret, options);
 };
 
 /**
@@ -76,19 +70,19 @@ export const generateRefreshToken = (id: string): string => {
 export const verifyToken = (token: string): AccessTokenPayload | null => {
   try {
     const decoded = jwt.verify(token, jwtConfig.secret, {
-      issuer: 'advancemais-api',
-      audience: 'advancemais-users'
+      issuer: "advancemais-api",
+      audience: "advancemais-users",
     }) as AccessTokenPayload;
-    
+
     // Validação adicional do tipo
-    if (decoded.type !== 'access') {
-      console.error('Token inválido: não é um token de acesso');
+    if (decoded.type !== "access") {
+      console.error("Token inválido: não é um token de acesso");
       return null;
     }
-    
+
     return decoded;
   } catch (error) {
-    console.error('Erro ao verificar token de acesso:', error);
+    console.error("Erro ao verificar token de acesso:", error);
     return null;
   }
 };
@@ -98,22 +92,24 @@ export const verifyToken = (token: string): AccessTokenPayload | null => {
  * @param refreshToken - Refresh token para verificar
  * @returns Dados decodificados do token ou null se inválido
  */
-export const verifyRefreshToken = (refreshToken: string): RefreshTokenPayload | null => {
+export const verifyRefreshToken = (
+  refreshToken: string
+): RefreshTokenPayload | null => {
   try {
     const decoded = jwt.verify(refreshToken, jwtConfig.refreshSecret, {
-      issuer: 'advancemais-api',
-      audience: 'advancemais-refresh'
+      issuer: "advancemais-api",
+      audience: "advancemais-refresh",
     }) as RefreshTokenPayload;
-    
+
     // Validação adicional do tipo
-    if (decoded.type !== 'refresh') {
-      console.error('Token inválido: não é um refresh token');
+    if (decoded.type !== "refresh") {
+      console.error("Token inválido: não é um refresh token");
       return null;
     }
-    
+
     return decoded;
   } catch (error) {
-    console.error('Erro ao verificar refresh token:', error);
+    console.error("Erro ao verificar refresh token:", error);
     return null;
   }
 };
@@ -127,7 +123,7 @@ export const decodeToken = (token: string): any | null => {
   try {
     return jwt.decode(token);
   } catch (error) {
-    console.error('Erro ao decodificar token:', error);
+    console.error("Erro ao decodificar token:", error);
     return null;
   }
 };
@@ -152,16 +148,19 @@ export const extractUserIdFromToken = (token: string): string | null => {
  * @param thresholdMinutes - Limite em minutos (padrão: 5)
  * @returns true se o token vence em menos que o threshold
  */
-export const isTokenNearExpiry = (token: string, thresholdMinutes: number = 5): boolean => {
+export const isTokenNearExpiry = (
+  token: string,
+  thresholdMinutes: number = 5
+): boolean => {
   try {
     const decoded = jwt.decode(token) as any;
     if (!decoded?.exp) return false;
-    
+
     const expirationTime = decoded.exp * 1000; // Convert to milliseconds
     const currentTime = Date.now();
     const timeToExpiry = expirationTime - currentTime;
     const thresholdMs = thresholdMinutes * 60 * 1000;
-    
+
     return timeToExpiry <= thresholdMs;
   } catch (error) {
     return true; // Se não conseguir decodificar, considera como próximo do vencimento
@@ -178,7 +177,7 @@ export const generateTokenPair = (id: string, role: string) => {
   return {
     accessToken: generateToken(id, role),
     refreshToken: generateRefreshToken(id),
-    tokenType: 'Bearer',
+    tokenType: "Bearer",
     expiresIn: jwtConfig.expiresIn,
   };
 };

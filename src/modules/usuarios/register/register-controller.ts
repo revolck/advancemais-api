@@ -1,6 +1,7 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcrypt";
 import { prisma } from "../../../config/prisma";
+import { Prisma } from "@prisma/client";
 import { TipoUsuario, Role } from "../enums";
 import {
   validarCPF,
@@ -75,7 +76,11 @@ type CriarUsuarioData = CriarPessoaFisicaData | CriarPessoaJuridicaData;
  * @param req - Request object com dados do usuário
  * @param res - Response object
  */
-export const criarUsuario = async (req: Request, res: Response) => {
+export const criarUsuario = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   // Gera ID de correlação para rastreamento
   const correlationId = generateCorrelationId();
   const startTime = Date.now();
@@ -236,6 +241,9 @@ export const criarUsuario = async (req: Request, res: Response) => {
     console.log(
       `🔄 [${correlationId}] Resposta enviada, aguardando middleware`
     );
+
+    // Continua para o próximo middleware (ex: envio de email)
+    next();
   } catch (error) {
     const duration = Date.now() - startTime;
     const errorMessage =
@@ -580,7 +588,7 @@ function buildUserDataForDatabase(params: {
  */
 async function createUserWithTransaction(userData: any, correlationId: string) {
   try {
-    return await prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       console.log(`💾 [${correlationId}] Inserindo usuário no banco`);
 
       const usuario = await tx.usuario.create({

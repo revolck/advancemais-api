@@ -27,7 +27,7 @@ export class WelcomeEmailMiddleware {
   public sendWelcomeEmail = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    _next: NextFunction
   ): Promise<void> => {
     const correlationId = this.getCorrelationId(req);
 
@@ -67,8 +67,8 @@ export class WelcomeEmailMiddleware {
       // Nunca falha o fluxo principal
     }
 
-    // SEMPRE continua o fluxo
-    next();
+    // Não chamamos next() pois a resposta já foi enviada pelo controller
+    // e continuar a cadeia resultaria em 404 ou erros de headers enviados
   };
 
   /**

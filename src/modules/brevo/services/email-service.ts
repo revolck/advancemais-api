@@ -205,12 +205,14 @@ export class EmailService {
     try {
       const linkRecuperacao = `${
         this.config.getConfig().urls.passwordRecovery
-      }?token=${token}`;
+      }?tp=${token}&ep=${encodeURIComponent(usuario.email)}`;
       const templateData = {
         nomeCompleto: usuario.nomeCompleto,
         token,
         linkRecuperacao,
-        expiracaoMinutos: brevoConfig.passwordRecovery.tokenExpirationMinutes,
+        expiracaoHoras:
+          brevoConfig.passwordRecovery.tokenExpirationMinutes / 60,
+        maxTentativas: brevoConfig.passwordRecovery.maxAttempts,
       };
 
       const emailContent =

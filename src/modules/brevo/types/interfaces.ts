@@ -68,7 +68,8 @@ export interface PasswordRecoveryData {
   nomeCompleto: string;
   token: string;
   linkRecuperacao: string;
-  expiracaoMinutos: number;
+  expiracaoHoras: number;
+  maxTentativas: number;
 }
 
 /**

@@ -243,16 +243,17 @@ export const brevoConfig = {
 
   // Configurações de recuperação de senha
   passwordRecovery: {
-    tokenExpirationMinutes: parseInt(
-      process.env.PASSWORD_RECOVERY_EXPIRATION_MINUTES || "30",
-      10
-    ),
+    tokenExpirationMinutes:
+      parseInt(
+        process.env.BREVO_PASSWORD_RECOVERY_EXPIRATION_HOURS || "72",
+        10
+      ) * 60,
     maxAttempts: parseInt(
-      process.env.PASSWORD_RECOVERY_MAX_ATTEMPTS || "3",
+      process.env.BREVO_PASSWORD_RECOVERY_MAX_ATTEMPTS || "3",
       10
     ),
     cooldownMinutes: parseInt(
-      process.env.PASSWORD_RECOVERY_COOLDOWN_MINUTES || "15",
+      process.env.BREVO_PASSWORD_RECOVERY_COOLDOWN_MINUTES || "15",
       10
     ),
   },

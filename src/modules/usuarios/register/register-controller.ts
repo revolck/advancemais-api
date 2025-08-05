@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcrypt";
 import { prisma } from "../../../config/prisma";
-import { Prisma } from "@prisma/client";
+import { Prisma, CodigoTipo } from "@prisma/client";
 import { TipoUsuario, Role } from "../enums";
 import {
   validarCPF,
@@ -200,6 +200,7 @@ export const criarUsuario = async (
         role: usuario.role,
         status: usuario.status,
         criadoEm: usuario.criadoEm,
+        codigoUsuario: usuario.codigoUsuario,
       },
       // Metadados para debugging
       correlationId,
@@ -232,6 +233,7 @@ export const criarUsuario = async (
         role: usuario.role,
         status: usuario.status,
         criadoEm: usuario.criadoEm,
+        codigoUsuario: usuario.codigoUsuario,
       },
       correlationId,
       duration: `${duration}ms`,
@@ -614,7 +616,18 @@ async function createUserWithTransaction(userData: any, correlationId: string) {
       console.log(
         `✅ [${correlationId}] Usuário inserido com ID: ${usuario.id}`
       );
-      return usuario;
+
+      const codigo = await tx.codigoUsuario.create({
+        data: {
+          usuarioId: usuario.id,
+          tipo:
+            userData.tipoUsuario === TipoUsuario.PESSOA_JURIDICA
+              ? CodigoTipo.EMPRESA
+              : CodigoTipo.USUARIO,
+        },
+      });
+
+      return { ...usuario, codigoUsuario: codigo.codigo };
     });
   } catch (error) {
     console.error(`❌ [${correlationId}] Erro na transação de banco:`, error);

@@ -127,13 +127,13 @@ export class BrevoConfigManager {
       urls: {
         frontend: frontendUrl,
         verification: `${serverUrl}/verificar-email`,
-        passwordRecovery: `${serverUrl}/recuperar-senha`,
+        passwordRecovery: `${frontendUrl}/recuperar-senha`,
       },
 
       emailVerification: {
         enabled: process.env.EMAIL_VERIFICATION_REQUIRED !== "false",
         tokenExpirationHours: parseInt(
-          process.env.EMAIL_VERIFICATION_EXPIRATION_HOURS || "24",
+          process.env.EMAIL_VERIFICATION_EXPIRATION_HOURS || "72",
           10
         ),
         maxResendAttempts: parseInt(

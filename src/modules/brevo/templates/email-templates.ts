@@ -2,7 +2,7 @@ export interface AccountConfirmationEmailData {
   /** Nome completo do destinatário */
   nomeCompleto: string;
   /** URL completa para validação do token de confirmação */
-  verificationUrl: string;
+  verificationUrl?: string;
   // Campos adicionais são ignorados mas mantidos por compatibilidade
   token?: string;
   expirationHours?: number;
@@ -16,8 +16,10 @@ export interface PasswordRecoveryData {
   nomeCompleto: string;
   /** Link completo para recuperação de senha */
   linkRecuperacao: string;
-  /** Tempo de expiração do link em minutos */
-  expiracaoMinutos: number;
+  /** Tempo de expiração do link em horas */
+  expiracaoHoras: number;
+  /** Número máximo de tentativas permitidas */
+  maxTentativas: number;
   // Token opcional apenas para compatibilidade
   token?: string;
 }
@@ -263,7 +265,9 @@ export class EmailTemplates {
         
         <div class="info-box">
           <p class="info-text">
-            <strong>Importante:</strong> Este link expira em 24 horas. 
+            <strong>Importante:</strong> Este link expira em ${
+              data.expirationHours ?? 72
+            } horas.
             Se não confirmar até lá, você precisará fazer um novo cadastro.
           </p>
         </div>
@@ -280,7 +284,11 @@ export class EmailTemplates {
   </div>
 </body>
 </html>`,
-      text: `Confirme sua conta na AdvanceMais\n\nOlá, ${firstName}!\n\nObrigado por se cadastrar na AdvanceMais. Para começar a usar nossa plataforma, confirme seu endereço de email através do link abaixo:\n\n${data.verificationUrl}\n\nEste link expira em 24 horas. Se não confirmar até lá, você precisará fazer um novo cadastro.\n\n© ${currentYear} AdvanceMais - Todos os direitos reservados`,
+      text: `Confirme sua conta na AdvanceMais\n\nOlá, ${firstName}!\n\nObrigado por se cadastrar na AdvanceMais. Para começar a usar nossa plataforma, confirme seu endereço de email através do link abaixo:\n\n${
+        data.verificationUrl
+      }\n\nEste link expira em ${
+        data.expirationHours ?? 72
+      } horas. Se não confirmar até lá, você precisará fazer um novo cadastro.\n\n© ${currentYear} AdvanceMais - Todos os direitos reservados`,
     };
   }
 
@@ -340,8 +348,13 @@ export class EmailTemplates {
         <div class="info-box">
           <p class="info-text">
             <strong>Este link expira em ${
-              data.expiracaoMinutos
-            } minutos</strong> por motivos de segurança.
+              data.expiracaoHoras
+            } horas</strong> por motivos de segurança.
+          </p>
+          <p class="info-text">
+            Você pode realizar até ${
+              data.maxTentativas
+            } tentativas de recuperação.
           </p>
         </div>
         
@@ -365,7 +378,7 @@ export class EmailTemplates {
   </div>
 </body>
 </html>`,
-      text: `Redefinir senha da sua conta AdvanceMais\n\nOlá, ${firstName}\n\nRecebemos uma solicitação para redefinir a senha da sua conta. Se foi você quem solicitou, use o link abaixo para criar uma nova senha:\n\n${data.linkRecuperacao}\n\nEste link expira em ${data.expiracaoMinutos} minutos por motivos de segurança.\n\nSe você não solicitou esta alteração, pode ignorar este email. Sua senha não será alterada.\n\n© ${currentYear} AdvanceMais - Todos os direitos reservados`,
+      text: `Redefinir senha da sua conta AdvanceMais\n\nOlá, ${firstName}\n\nRecebemos uma solicitação para redefinir a senha da sua conta. Se foi você quem solicitou, use o link abaixo para criar uma nova senha:\n\n${data.linkRecuperacao}\n\nEste link expira em ${data.expiracaoHoras} horas por motivos de segurança. Você pode realizar até ${data.maxTentativas} tentativas de recuperação.\n\nSe você não solicitou esta alteração, pode ignorar este email. Sua senha não será alterada.\n\n© ${currentYear} AdvanceMais - Todos os direitos reservados`,
     };
   }
 

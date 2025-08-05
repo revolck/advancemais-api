@@ -47,6 +47,7 @@ model Usuario {
   // RELACIONAMENTOS EXISTENTES
   enderecos     Endereco[]
   empresa       Empresa?    @relation(fields: [codEmpresa], references: [id])
+  codigoUsuario CodigoUsuario?
   
   // RELACIONAMENTOS COM MERCADOPAGO
   mercadoPagoOrders             MercadoPagoOrder[]
@@ -114,6 +115,17 @@ model LogSMS {
   @@index([telefone])
   @@index([tipoSMS])
   @@index([criadoEm])
+}
+
+model CodigoUsuario {
+  codigo    Int        @id @default(autoincrement())
+  usuarioId String     @unique
+  tipo      CodigoTipo @default(USUARIO)
+  criadoEm  DateTime   @default(now())
+
+  usuario   Usuario    @relation(fields: [usuarioId], references: [id])
+
+  @@map("codigo_usuario")
 }
 
 // =============================================
@@ -388,4 +400,9 @@ enum StatusSMS {
   ENVIADO
   FALHA
   PENDENTE
+}
+
+enum CodigoTipo {
+  USUARIO
+  EMPRESA
 }

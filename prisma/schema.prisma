@@ -348,6 +348,16 @@ model MercadoPagoTransaction {
   @@map("mercadopago_transactions")
 }
 
+model WebsiteSobre {
+  id           String   @id @default(uuid())
+  imagemUrl    String
+  imagemTitulo String
+  titulo       String
+  descricao    String
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
 // =============================================
 // ENUMS EXISTENTES
 // =============================================

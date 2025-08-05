@@ -2,6 +2,7 @@ import { Router } from "express";
 import { usuarioRoutes } from "../modules/usuarios";
 import { mercadoPagoRoutes } from "../modules/mercadopago";
 import { brevoRoutes } from "../modules/brevo/routes";
+import { websiteRoutes } from "../modules/website";
 import { EmailVerificationController } from "../modules/brevo/controllers/email-verification-controller";
 
 /**
@@ -30,6 +31,7 @@ router.get("/", (req, res) => {
       usuarios: "/api/v1/usuarios",
       mercadopago: "/api/v1/mercadopago",
       brevo: "/api/v1/brevo",
+      website: "/api/v1/website",
       health: "/health",
     },
   });
@@ -54,6 +56,7 @@ router.get("/health", (req, res) => {
       usuarios: "✅ active",
       mercadopago: "✅ active",
       brevo: "✅ active",
+      website: "✅ active",
     },
   });
 });
@@ -108,6 +111,21 @@ if (brevoRoutes) {
   }
 } else {
   console.error("❌ brevoRoutes não está definido");
+}
+
+/**
+ * Módulo Website - COM VALIDAÇÃO
+ * /api/v1/website/*
+ */
+if (websiteRoutes) {
+  try {
+    router.use("/api/v1/website", websiteRoutes);
+    console.log("✅ Módulo Website registrado com sucesso");
+  } catch (error) {
+    console.error("❌ ERRO - Módulo Website:", error);
+  }
+} else {
+  console.error("❌ websiteRoutes não está definido");
 }
 
 /**

@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { EmailService } from "../services/email-service";
 import { prisma } from "../../../config/prisma";
+import { BrevoConfigManager } from "../config/brevo-config";
 
 /**
  * Controller para verificação de email
@@ -11,9 +12,11 @@ import { prisma } from "../../../config/prisma";
  */
 export class EmailVerificationController {
   private emailService: EmailService;
+  private config: BrevoConfigManager;
 
   constructor() {
     this.emailService = new EmailService();
+    this.config = BrevoConfigManager.getInstance();
   }
 
   /**
@@ -44,13 +47,8 @@ export class EmailVerificationController {
           `✅ Email verificado com sucesso para usuário ${result.userId}`
         );
 
-        res.json({
-          success: true,
-          message:
-            "Email verificado com sucesso! Agora você pode acessar sua conta na plataforma.",
-          code: "EMAIL_VERIFIED",
-          userId: result.userId,
-        });
+        const redirectUrl = this.config.getConfig().urls.frontend;
+        res.redirect(redirectUrl);
         return;
       }
 

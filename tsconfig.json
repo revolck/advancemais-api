@@ -7,7 +7,9 @@
     "outDir": "./dist",
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "types": ["node", "jest"]
   },
   "exclude": ["node_modules", "**/*.test.ts"]
 }

@@ -220,7 +220,7 @@ export class EmailTemplates {
     const currentYear = this.getCurrentYear();
 
     return {
-      subject: `Advance+ - Confirme sua conta`,
+      subject: `Confirme sua conta`,
       html: `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -276,7 +276,7 @@ export class EmailTemplates {
       
       <div class="footer">
         <div class="footer-text">
-          © ${currentYear} Advance+ - Todos os direitos reservados
+          Advance+ © ${currentYear} todos os direitos reservados.
         </div>
       </div>
       
@@ -302,7 +302,7 @@ export class EmailTemplates {
     const currentYear = this.getCurrentYear();
 
     return {
-      subject: `Advance+ - Redefinir senha da sua conta`,
+      subject: `Redefinir senha da sua conta`,
       html: `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -370,7 +370,7 @@ export class EmailTemplates {
       
       <div class="footer">
         <div class="footer-text">
-          © ${currentYear} Advance+ - Todos os direitos reservados
+         Advance+ © ${currentYear} todos os direitos reservados.
         </div>
       </div>
       

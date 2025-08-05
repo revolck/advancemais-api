@@ -1,76 +1,26 @@
 import { Router } from "express";
 import { BrevoController } from "../controllers/brevo-controller";
 import { EmailVerificationController } from "../controllers/email-verification-controller";
-import { prisma } from "../../../config/prisma";
+import { prisma } from "../../../config/prisma"; // ✅ REMOVER .js
 
-/**
- * Rotas do módulo Brevo
- * Endpoints para email, verificação e testes
- *
- * @author Sistema AdvanceMais
- * @version 7.2.0 - CORRIGIDO - Import com extensão .js
- */
 const router = Router();
 
-// Instâncias dos controllers
 const brevoController = new BrevoController();
 const emailVerificationController = new EmailVerificationController();
 
-// ===========================
-// ROTAS DE STATUS E HEALTH
-// ===========================
-
-/**
- * Informações do módulo
- * GET /brevo
- */
 router.get("/", brevoController.getModuleInfo);
-
-/**
- * Health check do módulo
- * GET /brevo/health
- */
 router.get("/health", brevoController.healthCheck);
-
-/**
- * Status da configuração (desenvolvimento)
- * GET /brevo/config
- */
 router.get("/config", brevoController.getConfigStatus);
-
-// ===========================
-// ROTAS DE VERIFICAÇÃO DE EMAIL
-// ===========================
-
-/**
- * Verifica token de email
- * GET /brevo/verificar-email?token=xxx
- */
 router.get("/verificar-email", emailVerificationController.verifyEmail);
-
-/**
- * Reenvia email de verificação
- * POST /brevo/reenviar-verificacao
- * Body: { email: string }
- */
 router.post(
   "/reenviar-verificacao",
   emailVerificationController.resendVerification
 );
-
-/**
- * Status de verificação do usuário
- * GET /brevo/status-verificacao/:userId
- */
 router.get(
   "/status-verificacao/:userId",
   emailVerificationController.getVerificationStatus
 );
 
-/**
- * Rota alternativa para compatibilidade
- * GET /brevo/status/:email
- */
 router.get("/status/:email", async (req, res) => {
   try {
     const { email } = req.params;
@@ -83,7 +33,6 @@ router.get("/status/:email", async (req, res) => {
       });
     }
 
-    // Busca usuário pelo email
     const usuario = await prisma.usuario.findUnique({
       where: { email: email.toLowerCase().trim() },
       select: {
@@ -129,47 +78,11 @@ router.get("/status/:email", async (req, res) => {
   }
 });
 
-// ===========================
-// ROTAS DE TESTE (APENAS DESENVOLVIMENTO)
-// ===========================
-
-/**
- * Teste de email (apenas desenvolvimento)
- * POST /brevo/test/email
- * Body: { email: string, name?: string, type?: string }
- */
 router.post("/test/email", brevoController.testEmail);
-
-/**
- * Teste de SMS (apenas desenvolvimento)
- * POST /brevo/test/sms
- * Body: { to: string, message?: string }
- */
 router.post("/test/sms", brevoController.testSMS);
-
-// ===========================
-// ROTAS DE CONVENIÊNCIA
-// ===========================
-
-/**
- * Rota simplificada para verificação (sem /brevo/)
- * GET /verificar?token=xxx
- */
 router.get("/verificar", emailVerificationController.verifyEmail);
-
-/**
- * Rota simplificada para reenvio (sem /brevo/)
- * POST /reenviar
- */
 router.post("/reenviar", emailVerificationController.resendVerification);
 
-// ===========================
-// MIDDLEWARE DE TRATAMENTO DE ERROS
-// ===========================
-
-/**
- * Middleware de tratamento de erros específico para Brevo
- */
 router.use((err: any, req: any, res: any, next: any) => {
   const correlationId = req.headers["x-correlation-id"] || "unknown";
   const errorId = `brevo-err-${Date.now()}-${Math.random()
@@ -181,10 +94,8 @@ router.use((err: any, req: any, res: any, next: any) => {
     method: req.method,
     path: req.path,
     error: err.message || err,
-    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
   });
 
-  // Resposta de erro padronizada
   res.status(err.status || 500).json({
     success: false,
     message: err.message || "Erro interno no módulo Brevo",
@@ -192,9 +103,6 @@ router.use((err: any, req: any, res: any, next: any) => {
     errorId,
     correlationId,
     timestamp: new Date().toISOString(),
-    ...(process.env.NODE_ENV === "development" && {
-      stack: err.stack,
-    }),
   });
 });
 

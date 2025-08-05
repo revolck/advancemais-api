@@ -9,7 +9,7 @@ import { BrevoConfigManager } from "../config/brevo-config";
  * Gerencia endpoints de status, testes e informações
  *
  * @author Sistema AdvanceMais
- * @version 7.0.0 - Controller completo e funcional
+ * @version 7.3.0 - CORRIGIDO - Testes sem salvar no banco
  */
 export class BrevoController {
   private emailService: EmailService;
@@ -102,7 +102,7 @@ export class BrevoController {
 
       res.json({
         module: "Brevo Communication Module",
-        version: "7.0.0",
+        version: "7.3.0",
         description: "Sistema completo de comunicação e verificação de email",
         status: "active",
         configured: config.isConfigured,
@@ -155,7 +155,7 @@ export class BrevoController {
   };
 
   /**
-   * Teste de email (apenas desenvolvimento)
+   * ✅ CORRIGIDO: Teste de email (apenas desenvolvimento)
    * POST /brevo/test/email
    * Body: { email: string, name?: string, type?: string }
    */
@@ -194,23 +194,18 @@ export class BrevoController {
 
       console.log(`🧪 Teste de email: ${type} para ${email}`);
 
-      // Dados de teste
+      // ✅ CORREÇÃO: Dados de teste que NÃO tentam salvar no banco
       const testUserData = {
-        id: `test_user_${Date.now()}`,
+        id: `test_user_${Date.now()}`, // Prefixo especial para detecção
         email: email.toLowerCase().trim(),
         nomeCompleto: name || "Usuário Teste",
         tipoUsuario: "PESSOA_FISICA",
       };
 
-      // Envia email conforme o tipo
-      let result;
-      if (type === "verification") {
-        // Força envio de verificação mesmo se desabilitado
-        result = await this.emailService.sendWelcomeEmail(testUserData);
-      } else {
-        // Email de boas-vindas simples
-        result = await this.emailService.sendWelcomeEmail(testUserData);
-      }
+      console.log(`🧪 Enviando teste para usuário: ${testUserData.id}`);
+
+      // Envia email usando o sistema normal (mas detectará como teste)
+      const result = await this.emailService.sendWelcomeEmail(testUserData);
 
       console.log(`📧 Resultado do teste:`, result);
 
@@ -223,6 +218,7 @@ export class BrevoController {
           simulated: result.simulated,
           messageId: result.messageId,
           error: result.error,
+          testUser: testUserData.id, // Para debug
         },
         timestamp: new Date().toISOString(),
       });

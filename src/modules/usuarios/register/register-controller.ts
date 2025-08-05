@@ -44,7 +44,7 @@ interface CriarPessoaFisicaData {
   confirmarSenha: string;
   aceitarTermos: boolean;
   supabaseId: string;
-  role: Role;
+  role?: Role;
   tipoUsuario: TipoUsuario.PESSOA_FISICA;
 }
 
@@ -60,7 +60,7 @@ interface CriarPessoaJuridicaData {
   confirmarSenha: string;
   aceitarTermos: boolean;
   supabaseId: string;
-  role: Role;
+  role?: Role;
   tipoUsuario: TipoUsuario.PESSOA_JURIDICA;
 }
 
@@ -122,6 +122,14 @@ export const criarUsuario = async (
       role,
     } = dadosUsuario;
 
+    // Normaliza role: se inválida ou não fornecida, define padrão
+    const normalizedRole =
+      role && Object.values(Role).includes(role)
+        ? role
+        : tipoUsuario === TipoUsuario.PESSOA_JURIDICA
+        ? Role.EMPRESA
+        : Role.ALUNO_CANDIDATO;
+
     // Processa dados específicos por tipo de usuário
     const processedData = await processUserTypeSpecificData(
       dadosUsuario,
@@ -166,8 +174,14 @@ export const criarUsuario = async (
 
     // Prepara dados para inserção no banco
     const userData = buildUserDataForDatabase({
-      ...dadosUsuario,
+      nomeCompleto,
+      email,
       senha: senhaHash,
+      telefone,
+      tipoUsuario,
+      role: normalizedRole,
+      aceitarTermos,
+      supabaseId,
       cpfLimpo: processedData.cpfLimpo,
       cnpjLimpo: processedData.cnpjLimpo,
       dataNascimento: processedData.dataNascimento,

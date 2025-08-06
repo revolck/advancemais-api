@@ -1,7 +1,7 @@
 import { BrevoClient } from "../client/brevo-client";
 import { BrevoConfigManager } from "../config/brevo-config";
 import { EmailTemplates } from "../templates/email-templates";
-import { prisma } from "../../../config/prisma"; // ✅ REMOVER .js
+import { prisma } from "../../../config/prisma";
 import { brevoConfig } from "../../../config/env";
 
 export interface EmailResult {

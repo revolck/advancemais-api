@@ -358,6 +358,16 @@ model WebsiteSobre {
   atualizadoEm DateTime @updatedAt
 }
 
+model WebsiteSlide {
+  id           String   @id @default(uuid())
+  imagemUrl    String
+  imagemTitulo String
+  link         String?
+  ordem        Int
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
 // =============================================
 // ENUMS EXISTENTES
 // =============================================

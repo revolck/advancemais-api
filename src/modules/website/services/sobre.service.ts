@@ -3,6 +3,7 @@ import { WebsiteSobre } from "@prisma/client";
 
 export const sobreService = {
   list: () => prisma.websiteSobre.findMany(),
+  get: (id: string) => prisma.websiteSobre.findUnique({ where: { id } }),
   create: (data: Omit<WebsiteSobre, "id" | "criadoEm" | "atualizadoEm">) =>
     prisma.websiteSobre.create({ data }),
   update: (id: string, data: Partial<WebsiteSobre>) =>

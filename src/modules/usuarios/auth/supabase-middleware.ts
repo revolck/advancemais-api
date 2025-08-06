@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import jwksRsa from "jwks-rsa";
 import { prisma } from "../../../config/prisma";
-import { supabaseConfig } from "../../../config/env";
+import { supabaseConfig, jwtConfig } from "../../../config/env";
 
 /**
  * Cliente JWKS para validação de tokens Supabase
@@ -20,6 +20,11 @@ const jwksClient = jwksRsa({
  * @param callback - Callback para retornar a chave
  */
 function getKey(header: any, callback: any) {
+  // Tokens assinados com HS256 usam segredo local em vez de JWKS
+  if (header.alg === "HS256") {
+    return callback(null, jwtConfig.secret);
+  }
+
   jwksClient.getSigningKey(header.kid, function (err, key) {
     if (err) {
       callback(err);
@@ -60,9 +65,14 @@ export const supabaseAuthMiddleware =
         }
 
         try {
-          // Busca usuário no banco usando supabaseId
-          const usuario = await prisma.usuario.findUnique({
-            where: { supabaseId: decoded.sub },
+          // Busca usuário no banco usando supabaseId ou ID local
+          const usuario = await prisma.usuario.findFirst({
+            where: {
+              OR: [
+                { supabaseId: decoded.sub as string },
+                { id: decoded.sub as string },
+              ],
+            },
             select: {
               id: true,
               email: true,

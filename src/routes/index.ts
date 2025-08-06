@@ -20,7 +20,7 @@ const emailVerificationController = new EmailVerificationController();
  * GET /
  */
 router.get("/", (req, res) => {
-  res.json({
+  const data = {
     message: "AdvanceMais API",
     version: "v3.0.3",
     timestamp: new Date().toISOString(),
@@ -34,7 +34,47 @@ router.get("/", (req, res) => {
       website: "/api/v1/website",
       health: "/health",
     },
-  });
+  };
+
+  if (req.headers["accept"]?.includes("application/json")) {
+    return res.json(data);
+  }
+
+  const html = `<!DOCTYPE html>
+  <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8" />
+      <title>${data.message}</title>
+      <style>
+        body { font-family: Arial, Helvetica, sans-serif; background: #f5f6fa; color: #2f3640; padding: 2rem; }
+        h1 { margin-top: 0; }
+        code { background: #dcdde1; padding: 2px 4px; border-radius: 4px; }
+        ul { list-style: none; padding: 0; }
+        li { margin: 0.5rem 0; }
+        footer { margin-top: 2rem; font-size: 0.9rem; color: #718093; }
+      </style>
+    </head>
+    <body>
+      <h1>${data.message}</h1>
+      <p><strong>Versão:</strong> ${data.version}</p>
+      <p><strong>Ambiente:</strong> ${data.environment}</p>
+      <p><strong>Status:</strong> ${data.status}</p>
+      <h2>Endpoints</h2>
+      <ul>
+        <li>👥 Usuários: <code>${data.endpoints.usuarios}</code></li>
+        <li>🏦 MercadoPago: <code>${data.endpoints.mercadopago}</code></li>
+        <li>📧 Brevo: <code>${data.endpoints.brevo}</code></li>
+        <li>🌐 Website: <code>${data.endpoints.website}</code></li>
+        <li>💚 Health: <code>${data.endpoints.health}</code></li>
+      </ul>
+      <footer>
+        <p>Express ${data.express_version} • ${data.timestamp}</p>
+      </footer>
+    </body>
+  </html>`;
+
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.send(html);
 });
 
 /**

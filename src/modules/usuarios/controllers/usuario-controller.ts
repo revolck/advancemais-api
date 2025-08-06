@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import { prisma } from "../../../config/prisma";
+import { generateTokenPair } from "../utils/auth";
 
 /**
  * Controllers para autenticação e gestão de usuários
@@ -185,7 +186,10 @@ export const loginUsuario = async (req: Request, res: Response) => {
       });
     }
 
-    // Atualiza último login e incrementa contador de logins
+    // Gera tokens de acesso e refresh
+    const tokens = generateTokenPair(usuario.id, usuario.role);
+
+    // Atualiza último login e armazena refresh token
     console.log(
       `💾 [${correlationId}] Atualizando último login para usuário ${usuario.id}`
     );
@@ -193,6 +197,7 @@ export const loginUsuario = async (req: Request, res: Response) => {
       where: { id: usuario.id },
       data: {
         ultimoLogin: new Date(),
+        refreshToken: tokens.refreshToken,
         atualizadoEm: new Date(),
       },
     });
@@ -226,11 +231,15 @@ export const loginUsuario = async (req: Request, res: Response) => {
       duration: `${duration}ms`,
     });
 
-    // Retorna dados do usuário autenticado
+    // Retorna dados do usuário autenticado com tokens
     res.json({
       success: true,
       message: "Login realizado com sucesso",
       usuario: responseData,
+      token: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      tokenType: tokens.tokenType,
+      expiresIn: tokens.expiresIn,
       correlationId,
       timestamp: new Date().toISOString(),
     });

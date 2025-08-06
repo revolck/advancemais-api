@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import path from "path";
 import { supabase } from "../../superbase/client";
-import { sobreService } from "../services/sobre.service";
+import { slideService } from "../services/slide.service";
 
 function generateImageTitle(url: string): string {
   try {
@@ -14,43 +14,44 @@ function generateImageTitle(url: string): string {
 
 async function uploadImage(file: Express.Multer.File): Promise<string> {
   const fileExt = path.extname(file.originalname);
-  const fileName = `sobre-${Date.now()}${fileExt}`;
+  const fileName = `slide-${Date.now()}${fileExt}`;
   const { error } = await supabase.storage
     .from("website")
-    .upload(`sobre/${fileName}`, file.buffer, {
+    .upload(`slides/${fileName}`, file.buffer, {
       contentType: file.mimetype,
     });
   if (error) throw error;
   const { data } = supabase.storage
     .from("website")
-    .getPublicUrl(`sobre/${fileName}`);
+    .getPublicUrl(`slides/${fileName}`);
   return data.publicUrl;
 }
 
-export class SobreController {
+export class SlideController {
   static list = async (req: Request, res: Response) => {
-    const itens = await sobreService.list();
+    const itens = await slideService.list();
     res.json(itens);
   };
 
   static get = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const sobre = await sobreService.get(id);
-      if (!sobre) {
-        return res.status(404).json({ message: "Sobre não encontrado" });
+      const slide = await slideService.get(id);
+      if (!slide) {
+        return res.status(404).json({ message: "Slide não encontrado" });
       }
-      res.json(sobre);
+      res.json(slide);
     } catch (error: any) {
-      res
-        .status(500)
-        .json({ message: "Erro ao buscar sobre", error: error.message });
+      res.status(500).json({
+        message: "Erro ao buscar slide",
+        error: error.message,
+      });
     }
   };
 
   static create = async (req: Request, res: Response) => {
     try {
-      const { titulo, descricao } = req.body;
+      const { link, ordem } = req.body;
       let imagemUrl = "";
       if (req.file) {
         imagemUrl = await uploadImage(req.file);
@@ -58,45 +59,58 @@ export class SobreController {
         imagemUrl = req.body.imagemUrl;
       }
       const imagemTitulo = imagemUrl ? generateImageTitle(imagemUrl) : "";
-      const sobre = await sobreService.create({
+      const slide = await slideService.create({
         imagemUrl,
         imagemTitulo,
-        titulo,
-        descricao,
+        link,
+        ordem: ordem ? parseInt(ordem, 10) : 0,
       });
-      res.status(201).json(sobre);
+      res.status(201).json(slide);
     } catch (error: any) {
-      res.status(500).json({ message: "Erro ao criar sobre", error: error.message });
+      res.status(500).json({
+        message: "Erro ao criar slide",
+        error: error.message,
+      });
     }
   };
 
   static update = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { titulo, descricao } = req.body;
+      const { link, ordem } = req.body;
       let imagemUrl = req.body.imagemUrl as string | undefined;
       if (req.file) {
         imagemUrl = await uploadImage(req.file);
       }
-      const data: any = { titulo, descricao };
+      const data: any = { link };
+      if (ordem !== undefined) {
+        data.ordem = parseInt(ordem, 10);
+      }
       if (imagemUrl) {
         data.imagemUrl = imagemUrl;
         data.imagemTitulo = generateImageTitle(imagemUrl);
       }
-      const sobre = await sobreService.update(id, data);
-      res.json(sobre);
+      const slide = await slideService.update(id, data);
+      res.json(slide);
     } catch (error: any) {
-      res.status(500).json({ message: "Erro ao atualizar sobre", error: error.message });
+      res.status(500).json({
+        message: "Erro ao atualizar slide",
+        error: error.message,
+      });
     }
   };
 
   static remove = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      await sobreService.remove(id);
+      await slideService.remove(id);
       res.status(204).send();
     } catch (error: any) {
-      res.status(500).json({ message: "Erro ao remover sobre", error: error.message });
+      res.status(500).json({
+        message: "Erro ao remover slide",
+        error: error.message,
+      });
     }
   };
 }
+

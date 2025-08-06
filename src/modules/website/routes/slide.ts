@@ -1,29 +1,30 @@
 import { Router } from "express";
 import multer from "multer";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
-import { SobreController } from "../controllers/sobre.controller";
+import { SlideController } from "../controllers/slide.controller";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-router.get("/", SobreController.list);
-router.get("/:id", SobreController.get);
+router.get("/", SlideController.list);
+router.get("/:id", SlideController.get);
 router.post(
   "/",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
   upload.single("imagem"),
-  SobreController.create
+  SlideController.create
 );
 router.put(
   "/:id",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
   upload.single("imagem"),
-  SobreController.update
+  SlideController.update
 );
 router.delete(
   "/:id",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  SobreController.remove
+  SlideController.remove
 );
 
-export { router as sobreRoutes };
+export { router as slideRoutes };
+

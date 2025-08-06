@@ -6,7 +6,6 @@ import {
   refreshToken,
   obterPerfil,
 } from "../controllers";
-import { authMiddleware } from "../middlewares";
 import { supabaseAuthMiddleware } from "../auth";
 import { WelcomeEmailMiddleware } from "../../brevo/middlewares/welcome-email-middleware";
 import passwordRecoveryRoutes from "./password-recovery";
@@ -236,7 +235,7 @@ router.post(
  */
 router.post(
   "/logout",
-  authMiddleware(),
+  supabaseAuthMiddleware(),
   async (req, res, next) => {
     const correlationId = req.headers["x-correlation-id"];
     console.log(

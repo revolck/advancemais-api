@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { BrevoController } from "../controllers/brevo-controller";
 import { EmailVerificationController } from "../controllers/email-verification-controller";
-import { prisma } from "../../../config/prisma"; // ✅ REMOVER .js
+import { prisma } from "../../../config/prisma";
+import { supabaseAuthMiddleware } from "../../usuarios/auth";
 
 const router = Router();
 
@@ -10,7 +11,11 @@ const emailVerificationController = new EmailVerificationController();
 
 router.get("/", brevoController.getModuleInfo);
 router.get("/health", brevoController.healthCheck);
-router.get("/config", brevoController.getConfigStatus);
+router.get(
+  "/config",
+  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
+  brevoController.getConfigStatus
+);
 router.get("/verificar-email", emailVerificationController.verifyEmail);
 router.post(
   "/reenviar-verificacao",
@@ -21,65 +26,77 @@ router.get(
   emailVerificationController.getVerificationStatus
 );
 
-router.get("/status/:email", async (req, res) => {
-  try {
-    const { email } = req.params;
+router.get(
+  "/status/:email",
+  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
+  async (req, res) => {
+    try {
+      const { email } = req.params;
 
-    if (!email) {
-      return res.status(400).json({
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          message: "Email é obrigatório",
+          code: "MISSING_EMAIL",
+        });
+      }
+
+      const usuario = await prisma.usuario.findUnique({
+        where: { email: email.toLowerCase().trim() },
+        select: {
+          id: true,
+          email: true,
+          emailVerificado: true,
+          status: true,
+          emailVerificationTokenExp: true,
+        },
+      });
+
+      if (!usuario) {
+        return res.status(404).json({
+          success: false,
+          message: "Usuário não encontrado",
+          code: "USER_NOT_FOUND",
+        });
+      }
+
+      const hasValidToken = usuario.emailVerificationTokenExp
+        ? usuario.emailVerificationTokenExp > new Date()
+        : false;
+
+      res.json({
+        success: true,
+        data: {
+          userId: usuario.id,
+          email: usuario.email,
+          emailVerified: usuario.emailVerificado,
+          accountStatus: usuario.status,
+          hasValidToken,
+          tokenExpiration: usuario.emailVerificationTokenExp,
+        },
+      });
+    } catch (error) {
+      console.error("❌ Erro ao buscar status por email:", error);
+      res.status(500).json({
         success: false,
-        message: "Email é obrigatório",
-        code: "MISSING_EMAIL",
+        message: "Erro interno do servidor",
+        code: "INTERNAL_ERROR",
+        error: error instanceof Error ? error.message : "Erro desconhecido",
       });
     }
-
-    const usuario = await prisma.usuario.findUnique({
-      where: { email: email.toLowerCase().trim() },
-      select: {
-        id: true,
-        email: true,
-        emailVerificado: true,
-        status: true,
-        emailVerificationTokenExp: true,
-      },
-    });
-
-    if (!usuario) {
-      return res.status(404).json({
-        success: false,
-        message: "Usuário não encontrado",
-        code: "USER_NOT_FOUND",
-      });
-    }
-
-    const hasValidToken = usuario.emailVerificationTokenExp
-      ? usuario.emailVerificationTokenExp > new Date()
-      : false;
-
-    res.json({
-      success: true,
-      data: {
-        userId: usuario.id,
-        email: usuario.email,
-        emailVerified: usuario.emailVerificado,
-        accountStatus: usuario.status,
-        hasValidToken,
-        tokenExpiration: usuario.emailVerificationTokenExp,
-      },
-    });
-  } catch (error) {
-    console.error("❌ Erro ao buscar status por email:", error);
-    res.status(500).json({
-      success: false,
-      message: "Erro interno do servidor",
-      code: "INTERNAL_ERROR",
-      error: error instanceof Error ? error.message : "Erro desconhecido",
-    });
   }
-});
+);
 
-router.post("/test/email", brevoController.testEmail);
-router.post("/test/sms", brevoController.testSMS);
+router.post(
+  "/test/email",
+  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
+  brevoController.testEmail
+);
+router.post(
+  "/test/sms",
+  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
+  brevoController.testSMS
+);
 router.get("/verificar", emailVerificationController.verifyEmail);
 router.post("/reenviar", emailVerificationController.resendVerification);
 

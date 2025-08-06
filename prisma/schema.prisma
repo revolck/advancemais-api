@@ -368,6 +368,45 @@ model WebsiteSlide {
   atualizadoEm DateTime @updatedAt
 }
 
+model WebsiteBanner {
+  id           String   @id @default(uuid())
+  imagemUrl    String
+  imagemTitulo String
+  link         String?
+  ordem        Int
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
+model WebsiteBusinessGroupInformation {
+  id         String   @id @default(uuid())
+  slug       String   @unique
+  titulo     String
+  descricao  String
+  botaoLabel String
+  botaoUrl   String
+  imagemUrl  String
+  imagemAlt  String
+  reverse    Boolean  @default(false)
+  ordem      Int
+  ativo      Boolean  @default(true)
+  criadoEm   DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
+model WebsiteLogoEnterprise {
+  id         String   @id @default(uuid())
+  nome       String
+  imagemUrl  String
+  imagemAlt  String
+  website    String
+  categoria  String
+  ordem      Int
+  ativo      Boolean  @default(true)
+  criadoEm   DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
 // =============================================
 // ENUMS EXISTENTES
 // =============================================

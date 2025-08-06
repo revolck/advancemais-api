@@ -448,8 +448,10 @@ export const serverConfig = {
 // =============================================
 
 export const databaseConfig = {
-  url: process.env.DATABASE_URL || "",
-  directUrl: process.env.DIRECT_URL || "",
+  // Allow overriding the connection string with an IPv4 friendly version
+  url: process.env.DATABASE_POOL_URL || process.env.DATABASE_URL || "",
+  directUrl:
+    process.env.DIRECT_POOL_URL || process.env.DIRECT_URL || "",
 
   // Validação da configuração
   isValid(): boolean {
@@ -460,8 +462,10 @@ export const databaseConfig = {
   getStatus(): { configured: boolean; issues: string[] } {
     const issues: string[] = [];
 
-    if (!this.url) issues.push("DATABASE_URL não configurada");
-    if (!this.directUrl) issues.push("DIRECT_URL não configurada");
+    if (!this.url)
+      issues.push("DATABASE_URL/DATABASE_POOL_URL não configurada");
+    if (!this.directUrl)
+      issues.push("DIRECT_URL/DIRECT_POOL_URL não configurada");
 
     return {
       configured: issues.length === 0,

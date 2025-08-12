@@ -112,8 +112,6 @@ export class BrevoConfigManager {
   private buildConfiguration(): BrevoConfiguration {
     const isConfigured = !!(brevoConfig.apiKey && brevoConfig.fromEmail);
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-    const serverUrl =
-      process.env.SERVER_URL || `http://localhost:${process.env.PORT || 3000}`;
 
     return {
       apiKey: brevoConfig.apiKey || "",
@@ -126,7 +124,7 @@ export class BrevoConfigManager {
 
       urls: {
         frontend: frontendUrl,
-        verification: `${serverUrl}/verificar-email`,
+        verification: `${frontendUrl}/auth/verify-email`,
         passwordRecovery: `${frontendUrl}/recuperar-senha`,
       },
 

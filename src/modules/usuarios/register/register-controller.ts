@@ -36,9 +36,9 @@ import {
 interface CriarPessoaFisicaData {
   nomeCompleto: string;
   cpf: string;
-  dataNasc: string;
+  dataNasc?: string;
   telefone: string;
-  genero: string;
+  genero?: string;
   email: string;
   senha: string;
   confirmarSenha: string;
@@ -400,11 +400,10 @@ async function processUserTypeSpecificData(
       const dadosPF = dadosUsuario as CriarPessoaFisicaData;
 
       // Validações específicas para Pessoa Física
-      if (!dadosPF.cpf || !dadosPF.dataNasc || !dadosPF.genero) {
+      if (!dadosPF.cpf) {
         return {
           success: false,
-          error:
-            "Para pessoa física são obrigatórios: CPF, data de nascimento e gênero",
+          error: "Para pessoa física é obrigatório: CPF",
         };
       }
 
@@ -417,21 +416,30 @@ async function processUserTypeSpecificData(
         };
       }
 
-      // Valida data de nascimento
-      const validacaoData = validarDataNascimento(dadosPF.dataNasc);
-      if (!validacaoData.valida) {
-        return {
-          success: false,
-          error: validacaoData.mensagem,
-        };
+      // Valida data de nascimento se fornecida
+      let dataNascimento: Date | undefined;
+      if (dadosPF.dataNasc) {
+        const validacaoData = validarDataNascimento(dadosPF.dataNasc);
+        if (!validacaoData.valida) {
+          return {
+            success: false,
+            error: validacaoData.mensagem,
+          };
+        }
+        dataNascimento = new Date(dadosPF.dataNasc);
       }
 
-      // Valida gênero
-      if (!validarGenero(dadosPF.genero)) {
-        return {
-          success: false,
-          error: "Gênero deve ser: MASCULINO, FEMININO, OUTRO ou NAO_INFORMAR",
-        };
+      // Valida gênero se fornecido
+      let generoValidado: string | undefined;
+      if (dadosPF.genero) {
+        if (!validarGenero(dadosPF.genero)) {
+          return {
+            success: false,
+            error:
+              "Gênero deve ser: MASCULINO, FEMININO, OUTRO ou NAO_INFORMAR",
+          };
+        }
+        generoValidado = dadosPF.genero.toUpperCase();
       }
 
       console.log(`✅ [${correlationId}] Dados de pessoa física validados`);
@@ -439,8 +447,8 @@ async function processUserTypeSpecificData(
       return {
         success: true,
         cpfLimpo,
-        dataNascimento: new Date(dadosPF.dataNasc),
-        generoValidado: dadosPF.genero.toUpperCase(),
+        dataNascimento,
+        generoValidado,
       };
     } else if (tipoUsuario === TipoUsuario.PESSOA_JURIDICA) {
       const dadosPJ = dadosUsuario as CriarPessoaJuridicaData;

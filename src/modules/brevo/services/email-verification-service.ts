@@ -25,6 +25,7 @@ export interface VerificationTokenResult {
   expired?: boolean;
   alreadyVerified?: boolean;
   error?: string;
+  deleted?: boolean;
 }
 
 export class EmailVerificationService {
@@ -243,7 +244,8 @@ export class EmailVerificationService {
         usuario.emailVerificationTokenExp &&
         usuario.emailVerificationTokenExp < new Date()
       ) {
-        return { valid: false, expired: true, userId: usuario.id };
+        await prisma.usuario.delete({ where: { id: usuario.id } });
+        return { valid: false, expired: true, userId: usuario.id, deleted: true };
       }
 
       // Token válido - marca como verificado

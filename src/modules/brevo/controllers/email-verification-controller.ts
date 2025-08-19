@@ -48,7 +48,12 @@ export class EmailVerificationController {
         );
 
         const redirectUrl = this.config.getConfig().urls.frontend;
-        res.redirect(redirectUrl);
+        res.json({
+          success: true,
+          message: "Email verificado com sucesso",
+          redirectUrl,
+          userId: result.userId,
+        });
         return;
       }
 

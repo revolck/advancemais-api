@@ -5,6 +5,7 @@ import cors from "cors";
 import helmet from "helmet";
 import { serverConfig } from "./config/env";
 import { appRoutes } from "./routes";
+import { startExpiredUserCleanupJob } from "./modules/usuarios/services/user-cleanup-service";
 
 /**
  * Aplicação principal - AdvanceMais API
@@ -62,6 +63,7 @@ app.use(express.urlencoded({ extended: true }));
 try {
   app.use("/", appRoutes);
   console.log("✅ Router principal carregado com sucesso");
+  startExpiredUserCleanupJob();
 } catch (error) {
   console.error("❌ Erro crítico ao carregar router principal:", error);
 

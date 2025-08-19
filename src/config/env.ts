@@ -412,12 +412,23 @@ export const mercadoPagoConfig = {
 export const serverConfig = {
   port: parseInt(process.env.PORT || "3000", 10),
   nodeEnv: NODE_ENV,
-  corsOrigin:
-    process.env.CORS_ORIGIN
-      ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim())
-      : isDevelopment
-      ? "*"
-      : ["https://advancemais.com", "https://auth.advancemais.com"],
+  corsOrigin: (() => {
+    const defaultOrigins = [
+      "https://advancemais.com",
+      "https://auth.advancemais.com",
+    ];
+
+    if (process.env.CORS_ORIGIN) {
+      const envOrigins = process.env.CORS_ORIGIN.split(",")
+        .map((o) => o.trim())
+        .filter(Boolean);
+      if (envOrigins.length > 0) {
+        return Array.from(new Set([...envOrigins, ...defaultOrigins]));
+      }
+    }
+
+    return isDevelopment ? "*" : defaultOrigins;
+  })(),
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
 
   // Validação da configuração

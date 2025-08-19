@@ -235,7 +235,7 @@ export class EmailTemplates {
       
       <div class="header">
         <div class="logo">
-          <img src="https://Advance+.vercel.app/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Flogo_branco.78c50915.webp&w=256&q=75" alt="Advance+" />
+          <img src="https://advancemais.com/images/logos/logo_branco.webp" alt="Advance+" />
         </div>
       </div>
       
@@ -248,9 +248,13 @@ export class EmailTemplates {
         </div>
         
         <div style="text-align: center;">
-          <a href="${
-            data.verificationUrl
-          }" class="cta-button">Confirmar minha conta</a>
+          <a
+            href="${data.verificationUrl}"
+            class="cta-button"
+            style="color: #ffffff !important;"
+          >
+            Confirmar minha conta
+          </a>
         </div>
         
         <div class="fallback-section">
@@ -317,7 +321,7 @@ export class EmailTemplates {
       
       <div class="header">
         <div class="logo">
-          <img src="https://Advance+.vercel.app/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Flogo_branco.78c50915.webp&w=256&q=75" alt="Advance+" />
+          <img src="https://advancemais.com/images/logos/logo_branco.webp" alt="Advance+" />
         </div>
       </div>
       
@@ -330,9 +334,13 @@ export class EmailTemplates {
         </div>
         
         <div style="text-align: center;">
-          <a href="${
-            data.linkRecuperacao
-          }" class="cta-button">Redefinir minha senha</a>
+          <a
+            href="${data.linkRecuperacao}"
+            class="cta-button"
+            style="color: #ffffff !important;"
+          >
+            Redefinir minha senha
+          </a>
         </div>
         
         <div class="fallback-section">

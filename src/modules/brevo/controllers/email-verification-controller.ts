@@ -67,9 +67,10 @@ export class EmailVerificationController {
         res.status(400).json({
           success: false,
           message:
-            "Token de verificação expirado. Solicite um novo email de verificação.",
+            "Token de verificação expirado. Seu cadastro foi removido. Por favor, realize um novo cadastro.",
           code: "TOKEN_EXPIRED",
           userId: result.userId,
+          deleted: result.deleted,
         });
         return;
       }

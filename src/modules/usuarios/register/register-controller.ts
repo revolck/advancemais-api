@@ -535,14 +535,29 @@ async function checkForDuplicates(
     const usuarioExistente = await prisma.usuario.findFirst({
       where: { OR: orConditions },
       select: {
+        id: true,
         email: true,
         cpf: true,
         cnpj: true,
         supabaseId: true,
+        emailVerificado: true,
+        emailVerificationTokenExp: true,
       },
     });
 
     if (usuarioExistente) {
+      if (
+        !usuarioExistente.emailVerificado &&
+        usuarioExistente.emailVerificationTokenExp &&
+        usuarioExistente.emailVerificationTokenExp < new Date()
+      ) {
+        await prisma.usuario.delete({ where: { id: usuarioExistente.id } });
+        console.log(
+          `🧹 [${correlationId}] Usuário com verificação expirada removido: ${usuarioExistente.email}`
+        );
+        return { found: false };
+      }
+
       let reason = "Já existe usuário cadastrado com ";
 
       // Verifica qual campo causou a duplicata

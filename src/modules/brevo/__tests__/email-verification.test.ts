@@ -3,8 +3,9 @@ import request from "supertest";
 import { EmailVerificationController } from "../controllers/email-verification-controller";
 
 describe("Email verification flow", () => {
-  it("redirects to frontend on valid token", async () => {
+  it("returns success JSON on valid token", async () => {
     process.env.FRONTEND_URL = "http://app.advancemais.com";
+    process.env.AUTH_FRONTEND_URL = "http://auth.advancemais.com";
     const controller = new EmailVerificationController();
     // @ts-ignore accessing private property for test
     controller["emailService"] = {
@@ -17,8 +18,10 @@ describe("Email verification flow", () => {
     app.get("/verificar-email", controller.verifyEmail);
 
     const res = await request(app).get("/verificar-email?token=test");
-    expect(res.status).toBe(302);
-    expect(res.headers.location).toBe("http://app.advancemais.com");
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.redirectUrl).toBe("http://app.advancemais.com");
+    expect(res.body.userId).toBe("1");
   });
 
   it("returns 400 for invalid token", async () => {

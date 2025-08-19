@@ -413,8 +413,11 @@ export const serverConfig = {
   port: parseInt(process.env.PORT || "3000", 10),
   nodeEnv: NODE_ENV,
   corsOrigin:
-    process.env.CORS_ORIGIN ||
-    (isDevelopment ? "*" : "https://advancemais.com"),
+    process.env.CORS_ORIGIN
+      ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim())
+      : isDevelopment
+      ? "*"
+      : ["https://advancemais.com", "https://auth.advancemais.com"],
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
 
   // Validação da configuração

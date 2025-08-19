@@ -273,7 +273,8 @@ export class EmailService {
         usuario.emailVerificationTokenExp &&
         usuario.emailVerificationTokenExp < new Date()
       ) {
-        return { valid: false, expired: true, userId: usuario.id };
+        await prisma.usuario.delete({ where: { id: usuario.id } });
+        return { valid: false, expired: true, userId: usuario.id, deleted: true };
       }
 
       await prisma.usuario.update({

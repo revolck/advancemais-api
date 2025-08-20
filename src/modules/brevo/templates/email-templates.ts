@@ -235,7 +235,7 @@ export class EmailTemplates {
       
       <div class="header">
         <div class="logo">
-          <img src="https://advancemais.com/images/logos/logo_branco.webp" alt="Advance+" />
+          <img src="https://advancemais.com/images/logos/logo_branco.png" alt="Advance+" />
         </div>
       </div>
       
@@ -321,7 +321,7 @@ export class EmailTemplates {
       
       <div class="header">
         <div class="logo">
-          <img src="https://advancemais.com/images/logos/logo_branco.webp" alt="Advance+" />
+          <img src="https://advancemais.com/images/logos/logo_branco.png" alt="Advance+" />
         </div>
       </div>
       

@@ -416,6 +416,7 @@ export const serverConfig = {
     const defaultOrigins = [
       "https://advancemais.com",
       "https://auth.advancemais.com",
+      "https://app.advancemais.com",
     ];
 
     if (process.env.CORS_ORIGIN) {

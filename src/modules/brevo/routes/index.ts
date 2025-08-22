@@ -90,15 +90,15 @@ router.get(
  *   get:
  *     summary: Consultar status de verificação de email
  *     tags: [Brevo]
-     parameters:
-       - in: path
-         name: userId
-         required: true
-         schema:
-           type: string
-     responses:
-       200:
-         description: Status retornado
+  *     parameters:
+  *       - in: path
+  *         name: userId
+  *         required: true
+  *         schema:
+  *           type: string
+  *     responses:
+  *       200:
+  *         description: Status retornado
  */
 
 router.get(

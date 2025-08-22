@@ -17,6 +17,12 @@ const controller = new AuditController();
  *     responses:
  *       200:
  *         description: Lista de logs
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/audit/logs" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 router.get("/", authMiddlewareWithDB([Role.ADMIN]), controller.getLogs);
 

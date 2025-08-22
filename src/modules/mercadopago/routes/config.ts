@@ -16,6 +16,16 @@ const configController = new ConfigController();
  * Informações sobre configurações
  * GET /config
  */
+/**
+ * @openapi
+ * /api/v1/mercadopago/config:
+ *   get:
+ *     summary: Informações de configuração do MercadoPago
+ *     tags: [MercadoPago]
+ *     responses:
+ *       200:
+ *         description: Detalhes das rotas de configuração
+ */
 router.get("/", (req, res) => {
   res.json({
     message: "MercadoPago Config API",
@@ -32,11 +42,31 @@ router.get("/", (req, res) => {
  * Obter chave pública (rota pública para frontend)
  * GET /config/public-key
  */
+/**
+ * @openapi
+ * /api/v1/mercadopago/config/public-key:
+ *   get:
+ *     summary: Obter chave pública
+ *     tags: [MercadoPago]
+ *     responses:
+ *       200:
+ *         description: Chave pública retornada
+ */
 router.get("/public-key", configController.getPublicKey);
 
 /**
  * Obter métodos de pagamento (rota pública)
  * GET /config/payment-methods
+ */
+/**
+ * @openapi
+ * /api/v1/mercadopago/config/payment-methods:
+ *   get:
+ *     summary: Listar métodos de pagamento
+ *     tags: [MercadoPago]
+ *     responses:
+ *       200:
+ *         description: Métodos de pagamento
  */
 router.get("/payment-methods", configController.getPaymentMethods);
 
@@ -49,6 +79,18 @@ router.get(
   supabaseAuthMiddleware(["ADMIN", "FINANCEIRO"]),
   configController.getAccountInfo
 );
+/**
+ * @openapi
+ * /api/v1/mercadopago/config/account-info:
+ *   get:
+ *     summary: Obter informações da conta MercadoPago
+ *     tags: [MercadoPago]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Informações da conta
+ */
 
 /**
  * Testar conexão (apenas ADMIN/FINANCEIRO)
@@ -59,5 +101,17 @@ router.get(
   supabaseAuthMiddleware(["ADMIN", "FINANCEIRO"]),
   configController.testConnection
 );
+/**
+ * @openapi
+ * /api/v1/mercadopago/config/test-connection:
+ *   get:
+ *     summary: Testar conexão com MercadoPago
+ *     tags: [MercadoPago]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Conexão bem-sucedida
+ */
 
 export { router as configRoutes };

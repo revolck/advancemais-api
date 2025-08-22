@@ -29,17 +29,53 @@ router.use(supabaseAuthMiddleware(["ADMIN", "MODERADOR"]));
  * Dashboard principal - estatísticas gerais
  * GET /stats/dashboard
  */
+/**
+ * @openapi
+ * /api/v1/usuarios/stats/dashboard:
+ *   get:
+ *     summary: Estatísticas gerais do sistema
+ *     tags: [Usuários - Stats]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dados de dashboard
+ */
 router.get("/dashboard", statsController.getDashboardStats);
 
 /**
  * Estatísticas de usuários
  * GET /stats/usuarios
  */
+/**
+ * @openapi
+ * /api/v1/usuarios/stats/usuarios:
+ *   get:
+ *     summary: Estatísticas de usuários
+ *     tags: [Usuários - Stats]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Estatísticas retornadas
+ */
 router.get("/usuarios", statsController.getUserStats);
 
 /**
  * Estatísticas de pagamentos
  * GET /stats/pagamentos
+ */
+/**
+ * @openapi
+ * /api/v1/usuarios/stats/pagamentos:
+ *   get:
+ *     summary: Estatísticas de pagamentos
+ *     tags: [Usuários - Stats]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Estatísticas de pagamentos
  */
 router.get(
   "/pagamentos",

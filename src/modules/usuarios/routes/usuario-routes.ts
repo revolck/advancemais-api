@@ -109,6 +109,16 @@ const createAuthRateLimit = (
  * Informações da API de usuários
  * GET /usuarios
  */
+/**
+ * @openapi
+ * /api/v1/usuarios:
+ *   get:
+ *     summary: Informações do módulo de usuários
+ *     tags: [Usuários]
+ *     responses:
+ *       200:
+ *         description: Detalhes do módulo
+ */
 router.get("/", (req, res) => {
   res.json({
     module: "Usuários API",
@@ -159,6 +169,16 @@ router.get("/", (req, res) => {
  * 4. Middleware de debug -> verifica dados
  * 5. WelcomeEmailMiddleware -> envia email/verificação de forma assíncrona
  */
+/**
+ * @openapi
+ * /api/v1/usuarios/registrar:
+ *   post:
+ *     summary: Registrar novo usuário
+ *     tags: [Usuários]
+ *     responses:
+ *       201:
+ *         description: Usuário criado
+ */
 router.post(
   "/registrar",
   createAuthRateLimit(3, 10), // 3 tentativas por 10 minutos
@@ -200,6 +220,16 @@ router.post(
  * Login de usuário
  * POST /login
  */
+/**
+ * @openapi
+ * /api/v1/usuarios/login:
+ *   post:
+ *     summary: Login de usuário
+ *     tags: [Usuários]
+ *     responses:
+ *       200:
+ *         description: Login realizado
+ */
 router.post(
   "/login",
   createAuthRateLimit(5, 15), // 5 tentativas por 15 minutos
@@ -219,6 +249,16 @@ router.post(
  * Refresh token
  * POST /refresh
  */
+/**
+ * @openapi
+ * /api/v1/usuarios/refresh:
+ *   post:
+ *     summary: Atualizar token JWT
+ *     tags: [Usuários]
+ *     responses:
+ *       200:
+ *         description: Token renovado
+ */
 router.post(
   "/refresh",
   createAuthRateLimit(10, 15), // 10 tentativas por 15 minutos
@@ -232,6 +272,18 @@ router.post(
 /**
  * Logout de usuário
  * POST /logout
+ */
+/**
+ * @openapi
+ * /api/v1/usuarios/logout:
+ *   post:
+ *     summary: Logout do usuário
+ *     tags: [Usuários]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logout efetuado
  */
 router.post(
   "/logout",
@@ -251,6 +303,18 @@ router.post(
 /**
  * Perfil do usuário autenticado
  * GET /perfil
+ */
+/**
+ * @openapi
+ * /api/v1/usuarios/perfil:
+ *   get:
+ *     summary: Obter perfil do usuário autenticado
+ *     tags: [Usuários]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Perfil retornado
  */
 router.get(
   "/perfil",

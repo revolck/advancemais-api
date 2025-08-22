@@ -15,6 +15,16 @@ const webhookController = new WebhookController();
  * Informações sobre webhooks
  * GET /webhooks
  */
+/**
+ * @openapi
+ * /api/v1/mercadopago/webhooks:
+ *   get:
+ *     summary: Informações sobre endpoints de webhook
+ *     tags: [MercadoPago]
+ *     responses:
+ *       200:
+ *         description: Detalhes dos webhooks
+ */
 router.get("/", (req, res) => {
   res.json({
     message: "MercadoPago Webhooks API",
@@ -30,11 +40,31 @@ router.get("/", (req, res) => {
  * Receber notificações do MercadoPago
  * POST /webhooks
  */
+/**
+ * @openapi
+ * /api/v1/mercadopago/webhooks:
+ *   post:
+ *     summary: Receber notificações do MercadoPago
+ *     tags: [MercadoPago]
+ *     responses:
+ *       200:
+ *         description: Notificação recebida
+ */
 router.post("/", webhookController.processWebhook);
 
 /**
  * Endpoint de teste para validar configuração
  * GET /webhooks/test
+ */
+/**
+ * @openapi
+ * /api/v1/mercadopago/webhooks/test:
+ *   get:
+ *     summary: Testar configuração de webhook
+ *     tags: [MercadoPago]
+ *     responses:
+ *       200:
+ *         description: Teste bem-sucedido
  */
 router.get("/test", webhookController.testWebhook);
 

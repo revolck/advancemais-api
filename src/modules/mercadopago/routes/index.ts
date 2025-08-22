@@ -17,6 +17,16 @@ const router = Router();
  * Informações do módulo
  * GET /mercadopago
  */
+/**
+ * @openapi
+ * /api/v1/mercadopago:
+ *   get:
+ *     summary: Informações do módulo MercadoPago
+ *     tags: [MercadoPago]
+ *     responses:
+ *       200:
+ *         description: Detalhes do módulo
+ */
 router.get("/", (req, res) => {
   res.json({
     message: "MercadoPago Module API",
@@ -35,6 +45,16 @@ router.get("/", (req, res) => {
 /**
  * Health check do módulo
  * GET /mercadopago/health
+ */
+/**
+ * @openapi
+ * /api/v1/mercadopago/health:
+ *   get:
+ *     summary: Health check do módulo MercadoPago
+ *     tags: [MercadoPago]
+ *     responses:
+ *       200:
+ *         description: Status de saúde
  */
 router.get("/health", (req, res) => {
   res.json({

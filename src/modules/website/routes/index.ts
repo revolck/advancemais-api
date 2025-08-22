@@ -7,6 +7,16 @@ import { logoEnterpriseRoutes } from "./logo-enterprises";
 
 const router = Router();
 
+/**
+ * @openapi
+ * /api/v1/website:
+ *   get:
+ *     summary: Informações do módulo Website
+ *     tags: [Website]
+ *     responses:
+ *       200:
+ *         description: Detalhes do módulo
+ */
 router.get("/", (req, res) => {
   res.json({
     message: "Website Module API",

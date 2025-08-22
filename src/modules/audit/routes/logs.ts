@@ -6,6 +6,18 @@ import { Role } from "../../usuarios/enums/Role";
 const router = Router();
 const controller = new AuditController();
 
+/**
+ * @openapi
+ * /api/v1/audit/logs:
+ *   get:
+ *     summary: Listar logs de auditoria
+ *     tags: [Audit]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de logs
+ */
 router.get("/", authMiddlewareWithDB([Role.ADMIN]), controller.getLogs);
 
 export { router as logsRoutes };

@@ -3,6 +3,8 @@ import { usuarioRoutes } from "../modules/usuarios";
 import { mercadoPagoRoutes } from "../modules/mercadopago";
 import { brevoRoutes } from "../modules/brevo/routes";
 import { websiteRoutes } from "../modules/website";
+import { empresaRoutes } from "../modules/empresa";
+import { auditRoutes } from "../modules/audit";
 import { EmailVerificationController } from "../modules/brevo/controllers/email-verification-controller";
 
 /**
@@ -32,6 +34,8 @@ router.get("/", (req, res) => {
       mercadopago: "/api/v1/mercadopago",
       brevo: "/api/v1/brevo",
       website: "/api/v1/website",
+      empresa: "/api/v1/empresa",
+      audit: "/api/v1/audit",
       health: "/health",
     },
   };
@@ -65,6 +69,8 @@ router.get("/", (req, res) => {
         <li>🏦 MercadoPago: <code>${data.endpoints.mercadopago}</code></li>
         <li>📧 Brevo: <code>${data.endpoints.brevo}</code></li>
         <li>🌐 Website: <code>${data.endpoints.website}</code></li>
+      <li>🏢 Empresa: <code>${data.endpoints.empresa}</code></li>
+        <li>📜 Audit: <code>${data.endpoints.audit}</code></li>
         <li>💚 Health: <code>${data.endpoints.health}</code></li>
       </ul>
       <footer>
@@ -97,6 +103,8 @@ router.get("/health", (req, res) => {
       mercadopago: "✅ active",
       brevo: "✅ active",
       website: "✅ active",
+      empresa: "✅ active",
+      audit: "✅ active",
     },
   });
 });
@@ -166,6 +174,36 @@ if (websiteRoutes) {
   }
 } else {
   console.error("❌ websiteRoutes não está definido");
+}
+
+/**
+ * Módulo Empresa - COM VALIDAÇÃO
+ * /api/v1/empresa/*
+ */
+if (empresaRoutes) {
+  try {
+    router.use("/api/v1/empresa", empresaRoutes);
+    console.log("✅ Módulo Empresa registrado com sucesso");
+  } catch (error) {
+    console.error("❌ ERRO - Módulo Empresa:", error);
+  }
+} else {
+  console.error("❌ empresaRoutes não está definido");
+}
+
+/**
+ * Módulo de Auditoria - COM VALIDAÇÃO
+ * /api/v1/audit/*
+ */
+if (auditRoutes) {
+  try {
+    router.use("/api/v1/audit", auditRoutes);
+    console.log("✅ Módulo Auditoria registrado com sucesso");
+  } catch (error) {
+    console.error("❌ ERRO - Módulo Auditoria:", error);
+  }
+} else {
+  console.error("❌ auditRoutes não está definido");
 }
 
 /**

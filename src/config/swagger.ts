@@ -11,6 +11,12 @@ const options: Options = {
       description: "Documentação da API AdvanceMais",
     },
     components: {
+      schemas: {},
+      responses: {},
+      parameters: {},
+      examples: {},
+      requestBodies: {},
+      headers: {},
       securitySchemes: {
         bearerAuth: {
           type: "http",
@@ -18,6 +24,8 @@ const options: Options = {
           bearerFormat: "JWT",
         },
       },
+      links: {},
+      callbacks: {},
     },
     servers: [
       {

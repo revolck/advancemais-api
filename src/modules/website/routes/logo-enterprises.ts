@@ -15,6 +15,11 @@ const upload = multer({ storage: multer.memoryStorage() });
  *     responses:
  *       200:
  *         description: Lista de logos
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/website/logo-enterprises"
  */
 router.get("/", LogoEnterpriseController.list);
 
@@ -33,6 +38,11 @@ router.get("/", LogoEnterpriseController.list);
  *     responses:
  *       200:
  *         description: Logo encontrada
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/website/logo-enterprises/{id}"
  */
 router.get("/:id", LogoEnterpriseController.get);
 
@@ -47,6 +57,14 @@ router.get("/:id", LogoEnterpriseController.get);
  *     responses:
  *       201:
  *         description: Logo criada
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/website/logo-enterprises" \\
+ *            -H "Authorization: Bearer <TOKEN>" \\
+ *            -F "imagem=@logo.png" \\
+ *            -F "empresa=Minha Empresa"
  */
 router.post(
   "/",
@@ -72,6 +90,14 @@ router.post(
  *     responses:
  *       200:
  *         description: Logo atualizada
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X PUT "http://localhost:3000/api/v1/website/logo-enterprises/{id}" \\
+ *            -H "Authorization: Bearer <TOKEN>" \\
+ *            -F "imagem=@logo.png" \\
+ *            -F "empresa=Atualizada"
  */
 router.put(
   "/:id",
@@ -97,6 +123,12 @@ router.put(
  *     responses:
  *       200:
  *         description: Logo removida
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X DELETE "http://localhost:3000/api/v1/website/logo-enterprises/{id}" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 router.delete(
   "/:id",

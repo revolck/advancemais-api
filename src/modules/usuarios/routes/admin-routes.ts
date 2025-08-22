@@ -40,6 +40,12 @@ router.use(supabaseAuthMiddleware(["ADMIN", "MODERADOR"]));
  *     responses:
  *       200:
  *         description: Detalhes do painel
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/usuarios/admin" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 router.get("/", adminController.getAdminInfo);
 
@@ -58,6 +64,12 @@ router.get("/", adminController.getAdminInfo);
  *     responses:
  *       200:
  *         description: Lista de usuários
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/usuarios/admin/usuarios" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 router.get("/usuarios", adminController.listarUsuarios);
 
@@ -82,6 +94,12 @@ router.get("/usuarios", adminController.listarUsuarios);
  *     responses:
  *       200:
  *         description: Usuário encontrado
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/usuarios/admin/usuarios/{userId}" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 router.get("/usuarios/:userId", adminController.buscarUsuario);
 
@@ -111,6 +129,12 @@ router.get(
  *     responses:
  *       200:
  *         description: Histórico retornado
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/usuarios/admin/usuarios/{userId}/pagamentos" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 
 // =============================================
@@ -143,6 +167,14 @@ router.patch(
  *     responses:
  *       200:
  *         description: Status atualizado
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X PATCH "http://localhost:3000/api/v1/usuarios/admin/usuarios/{userId}/status" \\
+ *            -H "Authorization: Bearer <TOKEN>" \\
+ *            -H "Content-Type: application/json" \\
+ *            -d '{"status":"ATIVO"}'
  */
 
 /**
@@ -171,6 +203,14 @@ router.patch(
  *     responses:
  *       200:
  *         description: Role atualizada
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X PATCH "http://localhost:3000/api/v1/usuarios/admin/usuarios/{userId}/role" \\
+ *            -H "Authorization: Bearer <TOKEN>" \\
+ *            -H "Content-Type: application/json" \\
+ *            -d '{"role":"MODERADOR"}'
  */
 
 export { router as adminRoutes };

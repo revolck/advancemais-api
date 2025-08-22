@@ -1,4 +1,5 @@
 import { prisma } from "../../../config/prisma";
+import { Prisma } from "@prisma/client";
 import {
   CreatePlanRequest,
   UpdatePlanRequest,
@@ -76,11 +77,18 @@ export class PlanService {
         data,
       });
 
+      const detalhes: Prisma.JsonObject = {
+        id,
+        ...Object.fromEntries(
+          Object.entries(data).filter(([, value]) => value !== undefined)
+        ),
+      };
+
       await prisma.auditLog.create({
         data: {
           usuarioId,
           acao: "UPDATE_PLAN",
-          detalhes: { id, data },
+          detalhes,
         },
       });
 

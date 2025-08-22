@@ -6,6 +6,7 @@ import helmet from "helmet";
 import { serverConfig } from "./config/env";
 import { appRoutes } from "./routes";
 import { startExpiredUserCleanupJob } from "./modules/usuarios/services/user-cleanup-service";
+import { setupSwagger } from "./config/swagger";
 
 /**
  * Aplicação principal - AdvanceMais API
@@ -53,6 +54,11 @@ app.use(express.json({ limit: "10mb" }));
  * Para formulários HTML tradicionais
  */
 app.use(express.urlencoded({ extended: true }));
+
+// =============================================
+// SWAGGER DOCS
+// =============================================
+setupSwagger(app);
 
 // =============================================
 // ROUTER PRINCIPAL
@@ -158,6 +164,12 @@ const server = app.listen(serverConfig.port, () => {
   );
   console.log(
     `   🌐 Website: http://localhost:${serverConfig.port}/api/v1/website`
+  );
+  console.log(
+    `   🏢 Empresa: http://localhost:${serverConfig.port}/api/v1/empresa`
+  );
+  console.log(
+    `   📊 Auditoria: http://localhost:${serverConfig.port}/api/v1/audit`
   );
   console.log("");
   console.log("🧪 Testes Rápidos:");

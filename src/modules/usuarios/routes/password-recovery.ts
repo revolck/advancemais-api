@@ -15,11 +15,37 @@ const passwordRecoveryController = new PasswordRecoveryController();
  * Solicita recuperação de senha
  * POST /recuperar-senha
  */
+/**
+ * @openapi
+ * /api/v1/usuarios/recuperar-senha:
+ *   post:
+ *     summary: Solicitar recuperação de senha
+ *     tags: [Usuários]
+ *     responses:
+ *       200:
+ *         description: Solicitação enviada
+ */
 router.post("/", passwordRecoveryController.solicitarRecuperacao);
 
 /**
  * Valida token de recuperação - ROTA CORRIGIDA
  * GET /recuperar-senha/validar/:token
+ */
+/**
+ * @openapi
+ * /api/v1/usuarios/recuperar-senha/validar/{token}:
+ *   get:
+ *     summary: Validar token de recuperação
+ *     tags: [Usuários]
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Token válido
  */
 router.get(
   "/validar/:token([a-fA-F0-9]{64})",
@@ -29,6 +55,16 @@ router.get(
 /**
  * Redefine senha com token
  * POST /recuperar-senha/redefinir
+ */
+/**
+ * @openapi
+ * /api/v1/usuarios/recuperar-senha/redefinir:
+ *   post:
+ *     summary: Redefinir senha utilizando token
+ *     tags: [Usuários]
+ *     responses:
+ *       200:
+ *         description: Senha redefinida
  */
 router.post("/redefinir", passwordRecoveryController.redefinirSenha);
 

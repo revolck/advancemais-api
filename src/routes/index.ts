@@ -18,8 +18,13 @@ const router = Router();
 const emailVerificationController = new EmailVerificationController();
 
 /**
- * Rota raiz da API
- * GET /
+ * @openapi
+ * /:
+ *   get:
+ *     summary: Rota raiz da API
+ *     responses:
+ *       200:
+ *         description: Informações básicas e endpoints disponíveis
  */
 router.get("/", (req, res) => {
   const data = {
@@ -84,8 +89,13 @@ router.get("/", (req, res) => {
 });
 
 /**
- * Health check global
- * GET /health
+ * @openapi
+ * /health:
+ *   get:
+ *     summary: Health check global
+ *     responses:
+ *       200:
+ *         description: Status do servidor
  */
 router.get("/health", (req, res) => {
   res.json({

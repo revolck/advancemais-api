@@ -25,6 +25,11 @@ const ordersController = new OrdersController();
  *     responses:
  *       200:
  *         description: Detalhes das rotas de orders
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/mercadopago/orders"
  */
 router.get("/", (req, res) => {
   res.json({
@@ -50,9 +55,48 @@ router.get("/", (req, res) => {
  *     tags: [MercadoPago]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               total_amount:
+ *                 type: number
+ *                 example: 100
+ *               items:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: string, example: "1" }
+ *                     title: { type: string, example: "Produto" }
+ *                     quantity: { type: integer, example: 1 }
+ *                     unit_price: { type: number, example: 100 }
+ *                     currency_id: { type: string, example: "BRL" }
+ *               payments:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     payment_method_id: { type: string, example: "pix" }
+ *                     payment_type_id: { type: string, example: "instant_payment" }
+ *                     payer:
+ *                       type: object
+ *                       properties:
+ *                         email: { type: string, example: "user@example.com" }
  *     responses:
  *       201:
  *         description: Order criada
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/mercadopago/orders" \\
+ *            -H "Authorization: Bearer <TOKEN>" \\
+ *            -H "Content-Type: application/json" \\
+ *            -d '{"total_amount":100,"items":[{"id":"1","title":"Produto","quantity":1,"unit_price":100,"currency_id":"BRL"}],"payments":[{"payment_method_id":"pix","payment_type_id":"instant_payment","payer":{"email":"user@example.com"}}]}'
  */
 router.post("/", supabaseAuthMiddleware(), ordersController.createOrder);
 
@@ -77,6 +121,12 @@ router.post("/", supabaseAuthMiddleware(), ordersController.createOrder);
  *     responses:
  *       200:
  *         description: Dados da order
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/mercadopago/orders/{orderId}" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 router.get("/:orderId", supabaseAuthMiddleware(), ordersController.getOrder);
 
@@ -101,6 +151,12 @@ router.get("/:orderId", supabaseAuthMiddleware(), ordersController.getOrder);
  *     responses:
  *       200:
  *         description: Order cancelada
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X PUT "http://localhost:3000/api/v1/mercadopago/orders/{orderId}/cancel" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 router.put(
   "/:orderId/cancel",
@@ -129,6 +185,14 @@ router.put(
  *     responses:
  *       200:
  *         description: Reembolso processado
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/mercadopago/orders/{orderId}/refund" \\
+ *            -H "Authorization: Bearer <TOKEN>" \\
+ *            -H "Content-Type: application/json" \\
+ *            -d '{"amount":100}'
  */
 router.post(
   "/:orderId/refund",

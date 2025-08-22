@@ -12,6 +12,11 @@ const router = Router();
  *     responses:
  *       200:
  *         description: Detalhes do módulo
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/audit"
  */
 router.get("/", (req, res) => {
   res.json({

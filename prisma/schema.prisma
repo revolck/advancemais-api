@@ -55,6 +55,7 @@ model Usuario {
   mercadoPagoSubscriptions      MercadoPagoSubscription[]
   mercadoPagoSubscriptionPayments MercadoPagoSubscriptionPayment[]
   mercadoPagoTransactions       MercadoPagoTransaction[]
+  auditLogs                     AuditLog[]
   
   @@index([tokenRecuperacao])
   @@index([emailVerificationToken])
@@ -65,6 +66,8 @@ model Empresa {
   nome     String
   criadoEm DateTime  @default(now())
   usuarios Usuario[]
+  planos   EmpresaPlano[]
+  auditLogs AuditLog[]
 }
 
 model Endereco {
@@ -348,6 +351,66 @@ model MercadoPagoTransaction {
   @@map("mercadopago_transactions")
 }
 
+// Plano de assinaturas disponíveis para empresas
+model MercadoPagoPlan {
+  id          String   @id @default(uuid())
+  nome        String
+  valor       Float
+  descricao   String
+  recursos    String[]
+  ativo       Boolean  @default(true)
+  mercadoPagoPlanId String? @unique
+  frequency   Int
+  frequencyType PlanFrequencyType
+  repetitions Int?
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+  empresaPlanos EmpresaPlano[]
+
+  @@map("mercadopago_plans")
+}
+
+// Associação de planos com empresas
+model EmpresaPlano {
+  id             String             @id @default(uuid())
+  empresaId      String
+  planoId        String
+  metodoPagamento PlanPaymentMethod
+  tipo           CompanyPlanType    @default(STANDARD)
+  validade       PlanValidity?
+  inicio         DateTime           @default(now())
+  fim            DateTime?
+  criadoEm       DateTime           @default(now())
+  atualizadoEm   DateTime           @updatedAt
+
+  empresa        Empresa            @relation(fields: [empresaId], references: [id])
+  plano          MercadoPagoPlan    @relation(fields: [planoId], references: [id])
+
+  @@index([empresaId])
+  @@index([planoId])
+  @@index([metodoPagamento])
+  @@unique([empresaId])
+  @@map("empresa_planos")
+}
+
+// Logs de auditoria para rastrear ações administrativas
+model AuditLog {
+  id        String   @id @default(uuid())
+  usuarioId String
+  empresaId String?
+  acao      String
+  detalhes  Json?
+  criadoEm  DateTime @default(now())
+
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+  empresa   Empresa? @relation(fields: [empresaId], references: [id])
+
+  @@index([usuarioId])
+  @@index([empresaId])
+  @@index([acao])
+  @@map("audit_logs")
+}
+
 model WebsiteSobre {
   id           String   @id @default(uuid())
   imagemUrl    String
@@ -464,4 +527,34 @@ enum StatusSMS {
 enum CodigoTipo {
   USUARIO
   EMPRESA
+}
+
+// Métodos de pagamento aceitos para planos
+enum PlanPaymentMethod {
+  PIX
+  BOLETO
+  CARTAO_CREDITO
+  CARTAO_DEBITO
+  DINHEIRO
+}
+
+// Indica se o plano foi atribuído como padrão ou para empresa parceira
+enum CompanyPlanType {
+  STANDARD
+  PARTNER
+}
+
+// Tipo de frequência para recorrência de planos
+enum PlanFrequencyType {
+  DIAS
+  MESES
+}
+
+// Validades permitidas para planos atribuídos a empresas
+enum PlanValidity {
+  DIAS_15
+  DIAS_30
+  DIAS_90
+  DIAS_120
+  SEM_VALIDADE
 }

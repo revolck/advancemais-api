@@ -3,6 +3,16 @@ import { logsRoutes } from "./logs";
 
 const router = Router();
 
+/**
+ * @openapi
+ * /api/v1/audit:
+ *   get:
+ *     summary: Informações do módulo de auditoria
+ *     tags: [Audit]
+ *     responses:
+ *       200:
+ *         description: Detalhes do módulo
+ */
 router.get("/", (req, res) => {
   res.json({
     message: "Audit Module API",

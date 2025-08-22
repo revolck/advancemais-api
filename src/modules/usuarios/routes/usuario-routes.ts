@@ -175,9 +175,32 @@ router.get("/", (req, res) => {
  *   post:
  *     summary: Registrar novo usuário
  *     tags: [Usuários]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UserRegisterRequest'
  *     responses:
  *       201:
  *         description: Usuário criado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UserRegisterResponse'
+ *       400:
+ *         description: Dados inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/usuarios/registrar" \
+ *            -H "Content-Type: application/json" \
+ *            -d '{"nomeCompleto":"João da Silva","documento":"12345678900","telefone":"11999999999","email":"joao@example.com","senha":"senha123","confirmarSenha":"senha123","aceitarTermos":true,"supabaseId":"uuid","tipoUsuario":"PESSOA_FISICA"}'
  */
 router.post(
   "/registrar",
@@ -226,9 +249,32 @@ router.post(
  *   post:
  *     summary: Login de usuário
  *     tags: [Usuários]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UserLoginRequest'
  *     responses:
  *       200:
  *         description: Login realizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UserLoginResponse'
+ *       401:
+ *         description: Credenciais inválidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/usuarios/login" \
+ *            -H "Content-Type: application/json" \
+ *            -d '{"documento":"12345678900","senha":"senha123"}'
  */
 router.post(
   "/login",
@@ -255,9 +301,32 @@ router.post(
  *   post:
  *     summary: Atualizar token JWT
  *     tags: [Usuários]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/RefreshTokenRequest'
  *     responses:
  *       200:
  *         description: Token renovado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/RefreshTokenResponse'
+ *       400:
+ *         description: Refresh token ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/usuarios/refresh" \\
+ *            -H "Content-Type: application/json" \\
+ *            -d '{"refreshToken":"<TOKEN>"}'
  */
 router.post(
   "/refresh",
@@ -284,6 +353,16 @@ router.post(
  *     responses:
  *       200:
  *         description: Logout efetuado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/LogoutResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/usuarios/logout" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 router.post(
   "/logout",
@@ -315,6 +394,16 @@ router.post(
  *     responses:
  *       200:
  *         description: Perfil retornado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UserProfile'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/usuarios/perfil" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 router.get(
   "/perfil",

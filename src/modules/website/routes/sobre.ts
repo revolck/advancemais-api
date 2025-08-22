@@ -15,6 +15,11 @@ const upload = multer({ storage: multer.memoryStorage() });
  *     responses:
  *       200:
  *         description: Lista de conteúdos
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/website/sobre"
  */
 router.get("/", SobreController.list);
 
@@ -33,6 +38,11 @@ router.get("/", SobreController.list);
  *     responses:
  *       200:
  *         description: Conteúdo encontrado
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/website/sobre/{id}"
  */
 router.get("/:id", SobreController.get);
 
@@ -47,6 +57,14 @@ router.get("/:id", SobreController.get);
  *     responses:
  *       201:
  *         description: Conteúdo criado
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/website/sobre" \\
+ *            -H "Authorization: Bearer <TOKEN>" \\
+ *            -F "imagem=@sobre.png" \\
+ *            -F "titulo=Novo"
  */
 router.post(
   "/",
@@ -72,6 +90,14 @@ router.post(
  *     responses:
  *       200:
  *         description: Conteúdo atualizado
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X PUT "http://localhost:3000/api/v1/website/sobre/{id}" \\
+ *            -H "Authorization: Bearer <TOKEN>" \\
+ *            -F "imagem=@sobre.png" \\
+ *            -F "titulo=Atualizado"
  */
 router.put(
   "/:id",
@@ -97,6 +123,12 @@ router.put(
  *     responses:
  *       200:
  *         description: Conteúdo removido
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X DELETE "http://localhost:3000/api/v1/website/sobre/{id}" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 router.delete(
   "/:id",

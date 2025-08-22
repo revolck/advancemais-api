@@ -15,6 +15,11 @@ const upload = multer({ storage: multer.memoryStorage() });
  *     responses:
  *       200:
  *         description: Lista de banners
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/website/banner"
  */
 router.get("/", BannerController.list);
 
@@ -33,6 +38,11 @@ router.get("/", BannerController.list);
  *     responses:
  *       200:
  *         description: Banner encontrado
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/website/banner/{id}"
  */
 router.get("/:id", BannerController.get);
 
@@ -47,6 +57,14 @@ router.get("/:id", BannerController.get);
  *     responses:
  *       201:
  *         description: Banner criado
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/website/banner" \\
+ *            -H "Authorization: Bearer <TOKEN>" \\
+ *            -F "imagem=@banner.png" \\
+ *            -F "titulo=Novo Banner"
  */
 router.post(
   "/",
@@ -72,6 +90,14 @@ router.post(
  *     responses:
  *       200:
  *         description: Banner atualizado
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X PUT "http://localhost:3000/api/v1/website/banner/{id}" \\
+ *            -H "Authorization: Bearer <TOKEN>" \\
+ *            -F "imagem=@banner.png" \\
+ *            -F "titulo=Atualizado"
  */
 router.put(
   "/:id",
@@ -97,6 +123,12 @@ router.put(
  *     responses:
  *       200:
  *         description: Banner removido
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X DELETE "http://localhost:3000/api/v1/website/banner/{id}" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 router.delete(
   "/:id",

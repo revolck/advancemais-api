@@ -21,9 +21,24 @@ const passwordRecoveryController = new PasswordRecoveryController();
  *   post:
  *     summary: Solicitar recuperação de senha
  *     tags: [Usuários]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email: { type: string, example: "user@example.com" }
  *     responses:
  *       200:
  *         description: Solicitação enviada
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/usuarios/recuperar-senha" \\
+ *            -H "Content-Type: application/json" \\
+ *            -d '{"email":"user@example.com"}'
  */
 router.post("/", passwordRecoveryController.solicitarRecuperacao);
 
@@ -46,6 +61,11 @@ router.post("/", passwordRecoveryController.solicitarRecuperacao);
  *     responses:
  *       200:
  *         description: Token válido
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/usuarios/recuperar-senha/validar/{token}"
  */
 router.get(
   "/validar/:token([a-fA-F0-9]{64})",
@@ -62,9 +82,25 @@ router.get(
  *   post:
  *     summary: Redefinir senha utilizando token
  *     tags: [Usuários]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               token: { type: string, example: "<token>" }
+ *               novaSenha: { type: string, example: "senha123" }
  *     responses:
  *       200:
  *         description: Senha redefinida
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/usuarios/recuperar-senha/redefinir" \\
+ *            -H "Content-Type: application/json" \\
+ *            -d '{"token":"<token>","novaSenha":"senha123"}'
  */
 router.post("/redefinir", passwordRecoveryController.redefinirSenha);
 

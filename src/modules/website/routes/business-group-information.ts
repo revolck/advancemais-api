@@ -15,6 +15,11 @@ const upload = multer({ storage: multer.memoryStorage() });
  *     responses:
  *       200:
  *         description: Lista de informações
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/website/business-group-information"
  */
 router.get("/", BusinessGroupInformationController.list);
 
@@ -33,6 +38,11 @@ router.get("/", BusinessGroupInformationController.list);
  *     responses:
  *       200:
  *         description: Informação encontrada
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/website/business-group-information/{id}"
  */
 router.get("/:id", BusinessGroupInformationController.get);
 
@@ -47,6 +57,14 @@ router.get("/:id", BusinessGroupInformationController.get);
  *     responses:
  *       201:
  *         description: Informação criada
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/website/business-group-information" \\
+ *            -H "Authorization: Bearer <TOKEN>" \\
+ *            -F "imagem=@info.png" \\
+ *            -F "titulo=Novo"
  */
 router.post(
   "/",
@@ -72,6 +90,14 @@ router.post(
  *     responses:
  *       200:
  *         description: Informação atualizada
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X PUT "http://localhost:3000/api/v1/website/business-group-information/{id}" \\
+ *            -H "Authorization: Bearer <TOKEN>" \\
+ *            -F "imagem=@info.png" \\
+ *            -F "titulo=Atualizado"
  */
 router.put(
   "/:id",
@@ -97,6 +123,12 @@ router.put(
  *     responses:
  *       200:
  *         description: Informação removida
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X DELETE "http://localhost:3000/api/v1/website/business-group-information/{id}" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 router.delete(
   "/:id",

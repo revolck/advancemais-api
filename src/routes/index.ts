@@ -25,6 +25,19 @@ const emailVerificationController = new EmailVerificationController();
  *     responses:
  *       200:
  *         description: Informações básicas e endpoints disponíveis
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "AdvanceMais API"
+ *               version: "v3.0.3"
+ *               status: "operational"
+ *               endpoints:
+ *                 usuarios: "/api/v1/usuarios"
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/"
  */
 router.get("/", (req, res) => {
   const data = {
@@ -96,6 +109,17 @@ router.get("/", (req, res) => {
  *     responses:
  *       200:
  *         description: Status do servidor
+ *         content:
+ *           application/json:
+ *             example:
+ *               status: "OK"
+ *               uptime: 1
+ *               version: "v3.0.3"
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/health"
  */
 router.get("/health", (req, res) => {
   res.json({

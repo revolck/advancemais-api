@@ -40,6 +40,12 @@ router.use(supabaseAuthMiddleware(["ADMIN", "MODERADOR"]));
  *     responses:
  *       200:
  *         description: Dados de dashboard
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/usuarios/stats/dashboard" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 router.get("/dashboard", statsController.getDashboardStats);
 
@@ -58,6 +64,12 @@ router.get("/dashboard", statsController.getDashboardStats);
  *     responses:
  *       200:
  *         description: Estatísticas retornadas
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/usuarios/stats/usuarios" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 router.get("/usuarios", statsController.getUserStats);
 
@@ -76,6 +88,12 @@ router.get("/usuarios", statsController.getUserStats);
  *     responses:
  *       200:
  *         description: Estatísticas de pagamentos
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/usuarios/stats/pagamentos" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 router.get(
   "/pagamentos",

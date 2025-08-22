@@ -18,6 +18,11 @@ const emailVerificationController = new EmailVerificationController();
  *     responses:
  *       200:
  *         description: Detalhes do módulo
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/brevo"
  */
 router.get("/", brevoController.getModuleInfo);
 
@@ -30,6 +35,11 @@ router.get("/", brevoController.getModuleInfo);
  *     responses:
  *       200:
  *         description: Status de saúde
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/brevo/health"
  */
 router.get("/health", brevoController.healthCheck);
 /**
@@ -43,6 +53,12 @@ router.get("/health", brevoController.healthCheck);
  *     responses:
  *       200:
  *         description: Configurações do Brevo
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/brevo/config" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 router.get(
   "/config",
@@ -63,6 +79,11 @@ router.get(
  *     responses:
  *       200:
  *         description: Email verificado
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/brevo/verificar-email?token=TOKEN"
  */
 router.get("/verificar-email", emailVerificationController.verifyEmail);
 /**
@@ -74,6 +95,13 @@ router.get("/verificar-email", emailVerificationController.verifyEmail);
  *     responses:
  *       200:
  *         description: Email reenviado
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/brevo/reenviar-verificacao" \\
+ *            -H "Content-Type: application/json" \\
+ *            -d '{"email":"user@example.com"}'
  */
 router.post(
   "/reenviar-verificacao",

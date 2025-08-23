@@ -32,14 +32,24 @@ router.use(supabaseAuthMiddleware(["ADMIN", "MODERADOR"]));
 /**
  * @openapi
  * /api/v1/usuarios/stats/dashboard:
- *   get:
- *     summary: Estatísticas gerais do sistema
- *     tags: [Usuários - Stats]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Dados de dashboard
+  *   get:
+  *     summary: Estatísticas gerais do sistema
+  *     tags: [Usuários - Stats]
+  *     security:
+  *       - bearerAuth: []
+  *     responses:
+  *       200:
+  *         description: Dados de dashboard
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/DashboardStatsResponse'
+  *       500:
+  *         description: Erro ao obter estatísticas
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -56,14 +66,30 @@ router.get("/dashboard", statsController.getDashboardStats);
 /**
  * @openapi
  * /api/v1/usuarios/stats/usuarios:
- *   get:
- *     summary: Estatísticas de usuários
- *     tags: [Usuários - Stats]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Estatísticas retornadas
+  *   get:
+  *     summary: Estatísticas de usuários
+  *     tags: [Usuários - Stats]
+  *     security:
+  *       - bearerAuth: []
+  *     parameters:
+  *       - in: query
+  *         name: periodo
+  *         schema:
+  *           type: string
+  *           example: 30d
+  *     responses:
+  *       200:
+  *         description: Estatísticas retornadas
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/UserStatsResponse'
+  *       500:
+  *         description: Erro ao obter estatísticas
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -80,14 +106,30 @@ router.get("/usuarios", statsController.getUserStats);
 /**
  * @openapi
  * /api/v1/usuarios/stats/pagamentos:
- *   get:
- *     summary: Estatísticas de pagamentos
- *     tags: [Usuários - Stats]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Estatísticas de pagamentos
+  *   get:
+  *     summary: Estatísticas de pagamentos
+  *     tags: [Usuários - Stats]
+  *     security:
+  *       - bearerAuth: []
+  *     parameters:
+  *       - in: query
+  *         name: periodo
+  *         schema:
+  *           type: string
+  *           example: 30d
+  *     responses:
+  *       200:
+  *         description: Estatísticas de pagamentos
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/PaymentStatsResponse'
+  *       500:
+  *         description: Erro ao obter estatísticas
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo

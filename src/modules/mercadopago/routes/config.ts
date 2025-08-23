@@ -25,6 +25,15 @@ const configController = new ConfigController();
  *     responses:
  *       200:
  *         description: Detalhes das rotas de configuração
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BasicMessage'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/mercadopago/config"
  */
 router.get("/", (req, res) => {
   res.json({
@@ -51,6 +60,19 @@ router.get("/", (req, res) => {
  *     responses:
  *       200:
  *         description: Chave pública retornada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 publicKey:
+ *                   type: string
+ *                   example: "APP_USR-xxx"
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/mercadopago/config/public-key"
  */
 router.get("/public-key", configController.getPublicKey);
 
@@ -67,6 +89,20 @@ router.get("/public-key", configController.getPublicKey);
  *     responses:
  *       200:
  *         description: Métodos de pagamento
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id: { type: string, example: "pix" }
+ *                   name: { type: string, example: "Pix" }
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/mercadopago/config/payment-methods"
  */
 router.get("/payment-methods", configController.getPaymentMethods);
 
@@ -90,6 +126,16 @@ router.get(
  *     responses:
  *       200:
  *         description: Informações da conta
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/mercadopago/config/account-info" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 
 /**
@@ -112,6 +158,16 @@ router.get(
  *     responses:
  *       200:
  *         description: Conexão bem-sucedida
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BasicMessage'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/mercadopago/config/test-connection" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 
 export { router as configRoutes };

@@ -26,6 +26,15 @@ const router = Router();
  *     responses:
  *       200:
  *         description: Detalhes do módulo
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BasicMessage'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/mercadopago"
  */
 router.get("/", (req, res) => {
   res.json({
@@ -55,6 +64,15 @@ router.get("/", (req, res) => {
  *     responses:
  *       200:
  *         description: Status de saúde
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BasicMessage'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/mercadopago/health"
  */
 router.get("/health", (req, res) => {
   res.json({

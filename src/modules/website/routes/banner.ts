@@ -15,6 +15,18 @@ const upload = multer({ storage: multer.memoryStorage() });
  *     responses:
  *       200:
  *         description: Lista de banners
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/WebsiteBanner'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -38,6 +50,22 @@ router.get("/", BannerController.list);
  *     responses:
  *       200:
  *         description: Banner encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WebsiteBanner'
+ *       404:
+ *         description: Banner não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -54,9 +82,25 @@ router.get("/:id", BannerController.get);
  *     tags: [Website - Banner]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             $ref: '#/components/schemas/WebsiteBannerCreateInput'
  *     responses:
  *       201:
  *         description: Banner criado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WebsiteBanner'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -64,7 +108,8 @@ router.get("/:id", BannerController.get);
  *           curl -X POST "http://localhost:3000/api/v1/website/banner" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -F "imagem=@banner.png" \\
- *            -F "titulo=Novo Banner"
+ *            -F "link=https://example.com" \\
+ *            -F "ordem=1"
  */
 router.post(
   "/",
@@ -87,17 +132,39 @@ router.post(
  *         required: true
  *         schema:
  *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             $ref: '#/components/schemas/WebsiteBannerUpdateInput'
  *     responses:
  *       200:
  *         description: Banner atualizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WebsiteBanner'
+ *       404:
+ *         description: Banner não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
  *           curl -X PUT "http://localhost:3000/api/v1/website/banner/{id}" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
- *            -F "imagem=@banner.png" \\
- *            -F "titulo=Atualizado"
+ *            -F "link=https://example.com" \\
+ *            -F "ordem=2"
  */
 router.put(
   "/:id",
@@ -121,8 +188,20 @@ router.put(
  *         schema:
  *           type: string
  *     responses:
- *       200:
+ *       204:
  *         description: Banner removido
+ *       404:
+ *         description: Banner não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo

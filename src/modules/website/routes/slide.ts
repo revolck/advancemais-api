@@ -15,6 +15,18 @@ const upload = multer({ storage: multer.memoryStorage() });
  *     responses:
  *       200:
  *         description: Lista de slides
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/WebsiteSlide'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -38,6 +50,22 @@ router.get("/", SlideController.list);
  *     responses:
  *       200:
  *         description: Slide encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WebsiteSlide'
+ *       404:
+ *         description: Slide não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -54,9 +82,25 @@ router.get("/:id", SlideController.get);
  *     tags: [Website - Slide]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             $ref: '#/components/schemas/WebsiteSlideCreateInput'
  *     responses:
  *       201:
  *         description: Slide criado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WebsiteSlide'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -64,8 +108,9 @@ router.get("/:id", SlideController.get);
  *           curl -X POST "http://localhost:3000/api/v1/website/slide" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -F "imagem=@slide.png" \\
- *            -F "titulo=Novo Slide"
- */
+ *            -F "link=https://example.com" \\
+ *            -F "ordem=1"
+*/
 router.post(
   "/",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
@@ -87,9 +132,31 @@ router.post(
  *         required: true
  *         schema:
  *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             $ref: '#/components/schemas/WebsiteSlideUpdateInput'
  *     responses:
  *       200:
  *         description: Slide atualizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WebsiteSlide'
+ *       404:
+ *         description: Slide não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -97,8 +164,9 @@ router.post(
  *           curl -X PUT "http://localhost:3000/api/v1/website/slide/{id}" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -F "imagem=@slide.png" \\
- *            -F "titulo=Atualizado"
- */
+ *            -F "link=https://example.com" \\
+ *            -F "ordem=2"
+*/
 router.put(
   "/:id",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
@@ -121,15 +189,27 @@ router.put(
  *         schema:
  *           type: string
  *     responses:
- *       200:
+ *       204:
  *         description: Slide removido
+ *       404:
+ *         description: Slide não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
  *           curl -X DELETE "http://localhost:3000/api/v1/website/slide/{id}" \\
  *            -H "Authorization: Bearer <TOKEN>"
- */
+*/
 router.delete(
   "/:id",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),

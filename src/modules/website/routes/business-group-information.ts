@@ -15,6 +15,18 @@ const upload = multer({ storage: multer.memoryStorage() });
  *     responses:
  *       200:
  *         description: Lista de informações
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/WebsiteBusinessGroupInformation'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -38,6 +50,22 @@ router.get("/", BusinessGroupInformationController.list);
  *     responses:
  *       200:
  *         description: Informação encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WebsiteBusinessGroupInformation'
+ *       404:
+ *         description: Informação não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -54,17 +82,37 @@ router.get("/:id", BusinessGroupInformationController.get);
  *     tags: [Website - BusinessGroupInformation]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             $ref: '#/components/schemas/WebsiteBusinessGroupInformationCreateInput'
  *     responses:
  *       201:
  *         description: Informação criada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WebsiteBusinessGroupInformation'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
  *           curl -X POST "http://localhost:3000/api/v1/website/business-group-information" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
- *            -F "imagem=@info.png" \\
- *            -F "titulo=Novo"
+ *            -F "slug=grupo-x" \\
+ *            -F "titulo=Grupo X" \\
+ *            -F "descricao=Descricao" \\
+ *            -F "botaoLabel=Saiba mais" \\
+ *            -F "botaoUrl=https://example.com" \\
+ *            -F "imagem=@info.png"
  */
 router.post(
   "/",
@@ -87,16 +135,37 @@ router.post(
  *         required: true
  *         schema:
  *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             $ref: '#/components/schemas/WebsiteBusinessGroupInformationUpdateInput'
  *     responses:
  *       200:
  *         description: Informação atualizada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WebsiteBusinessGroupInformation'
+ *       404:
+ *         description: Informação não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
  *           curl -X PUT "http://localhost:3000/api/v1/website/business-group-information/{id}" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
- *            -F "imagem=@info.png" \\
  *            -F "titulo=Atualizado"
  */
 router.put(
@@ -121,8 +190,20 @@ router.put(
  *         schema:
  *           type: string
  *     responses:
- *       200:
+ *       204:
  *         description: Informação removida
+ *       404:
+ *         description: Informação não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo

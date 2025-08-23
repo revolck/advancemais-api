@@ -32,14 +32,24 @@ router.use(supabaseAuthMiddleware(["ADMIN", "MODERADOR"]));
 /**
  * @openapi
  * /api/v1/usuarios/admin:
- *   get:
- *     summary: Informações do painel administrativo
- *     tags: [Usuários - Admin]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Detalhes do painel
+  *   get:
+  *     summary: Informações do painel administrativo
+  *     tags: [Usuários - Admin]
+  *     security:
+  *       - bearerAuth: []
+  *     responses:
+  *       200:
+  *         description: Detalhes do painel
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/AdminModuleInfo'
+  *       500:
+  *         description: Erro interno
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -56,14 +66,50 @@ router.get("/", adminController.getAdminInfo);
 /**
  * @openapi
  * /api/v1/usuarios/admin/usuarios:
- *   get:
- *     summary: Listar usuários
- *     tags: [Usuários - Admin]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Lista de usuários
+  *   get:
+  *     summary: Listar usuários
+  *     tags: [Usuários - Admin]
+  *     security:
+  *       - bearerAuth: []
+  *     parameters:
+  *       - in: query
+  *         name: page
+  *         schema:
+  *           type: integer
+  *           example: 1
+  *       - in: query
+  *         name: limit
+  *         schema:
+  *           type: integer
+  *           example: 50
+  *       - in: query
+  *         name: status
+  *         schema:
+  *           type: string
+  *           example: ATIVO
+  *       - in: query
+  *         name: role
+  *         schema:
+  *           type: string
+  *           example: ADMIN
+  *       - in: query
+  *         name: tipoUsuario
+  *         schema:
+  *           type: string
+  *           example: PESSOA_FISICA
+  *     responses:
+  *       200:
+  *         description: Lista de usuários
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/AdminUserListResponse'
+  *       500:
+  *         description: Erro ao listar usuários
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -79,21 +125,37 @@ router.get("/usuarios", adminController.listarUsuarios);
  */
 /**
  * @openapi
- * /api/v1/usuarios/admin/usuarios/{userId}:
- *   get:
- *     summary: Buscar usuário por ID
- *     tags: [Usuários - Admin]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Usuário encontrado
+  * /api/v1/usuarios/admin/usuarios/{userId}:
+  *   get:
+  *     summary: Buscar usuário por ID
+  *     tags: [Usuários - Admin]
+  *     security:
+  *       - bearerAuth: []
+  *     parameters:
+  *       - in: path
+  *         name: userId
+  *         required: true
+  *         schema:
+  *           type: string
+  *     responses:
+  *       200:
+  *         description: Usuário encontrado
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/AdminUserDetailResponse'
+  *       404:
+  *         description: Usuário não encontrado
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
+  *       500:
+  *         description: Erro interno
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -107,11 +169,6 @@ router.get("/usuarios/:userId", adminController.buscarUsuario);
  * Histórico de pagamentos de usuário
  * GET /admin/usuarios/:userId/pagamentos
  */
-router.get(
-  "/usuarios/:userId/pagamentos",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR", "FINANCEIRO"]),
-  adminController.historicoPagamentosUsuario
-);
 /**
  * @openapi
  * /api/v1/usuarios/admin/usuarios/{userId}/pagamentos:
@@ -126,16 +183,47 @@ router.get(
  *         required: true
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           example: 20
  *     responses:
  *       200:
  *         description: Histórico retornado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminPaymentHistoryResponse'
+ *       404:
+ *         description: Usuário não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro ao buscar histórico
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X GET "http://localhost:3000/api/v1/usuarios/admin/usuarios/{userId}/pagamentos" \\
+ *           curl -X GET "http://localhost:3000/api/v1/usuarios/admin/usuarios/{userId}/pagamentos?page=1&limit=20" \\
  *            -H "Authorization: Bearer <TOKEN>"
  */
+router.get(
+  "/usuarios/:userId/pagamentos",
+  supabaseAuthMiddleware(["ADMIN", "MODERADOR", "FINANCEIRO"]),
+  adminController.historicoPagamentosUsuario
+);
 
 // =============================================
 // ROTAS DE MODIFICAÇÃO (APENAS ADMIN)
@@ -145,11 +233,6 @@ router.get(
  * Atualizar status de usuário
  * PATCH /admin/usuarios/:userId/status
  */
-router.patch(
-  "/usuarios/:userId/status",
-  supabaseAuthMiddleware(["ADMIN"]),
-  adminController.atualizarStatus
-);
 /**
  * @openapi
  * /api/v1/usuarios/admin/usuarios/{userId}/status:
@@ -164,9 +247,31 @@ router.patch(
  *         required: true
  *         schema:
  *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AdminStatusUpdateRequest'
  *     responses:
  *       200:
  *         description: Status atualizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminStatusUpdateResponse'
+ *       400:
+ *         description: Erro de validação
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Usuário não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -176,16 +281,16 @@ router.patch(
  *            -H "Content-Type: application/json" \\
  *            -d '{"status":"ATIVO"}'
  */
+router.patch(
+  "/usuarios/:userId/status",
+  supabaseAuthMiddleware(["ADMIN"]),
+  adminController.atualizarStatus
+);
 
 /**
  * Atualizar role de usuário
  * PATCH /admin/usuarios/:userId/role
  */
-router.patch(
-  "/usuarios/:userId/role",
-  supabaseAuthMiddleware(["ADMIN"]),
-  adminController.atualizarRole
-);
 /**
  * @openapi
  * /api/v1/usuarios/admin/usuarios/{userId}/role:
@@ -200,9 +305,31 @@ router.patch(
  *         required: true
  *         schema:
  *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AdminRoleUpdateRequest'
  *     responses:
  *       200:
  *         description: Role atualizada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminRoleUpdateResponse'
+ *       400:
+ *         description: Erro de validação
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Usuário não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -212,5 +339,10 @@ router.patch(
  *            -H "Content-Type: application/json" \\
  *            -d '{"role":"MODERADOR"}'
  */
+router.patch(
+  "/usuarios/:userId/role",
+  supabaseAuthMiddleware(["ADMIN"]),
+  adminController.atualizarRole
+);
 
 export { router as adminRoutes };

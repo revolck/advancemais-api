@@ -18,6 +18,10 @@ const emailVerificationController = new EmailVerificationController();
  *     responses:
  *       200:
  *         description: Detalhes do módulo
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/BrevoModuleInfo"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -35,6 +39,16 @@ router.get("/", brevoController.getModuleInfo);
  *     responses:
  *       200:
  *         description: Status de saúde
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/BrevoHealthResponse"
+ *       503:
+ *         description: Serviço indisponível
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/BrevoHealthResponse"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -53,6 +67,16 @@ router.get("/health", brevoController.healthCheck);
  *     responses:
  *       200:
  *         description: Configurações do Brevo
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/BrevoConfigStatus"
+ *       403:
+ *         description: Acesso negado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -76,9 +100,20 @@ router.get(
  *         name: token
  *         schema:
  *           type: string
+ *         required: true
  *     responses:
  *       200:
  *         description: Email verificado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/BrevoVerifyEmailResponse"
+ *       400:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -92,9 +127,31 @@ router.get("/verificar-email", emailVerificationController.verifyEmail);
  *   post:
  *     summary: Reenviar email de verificação
  *     tags: [Brevo]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: "#/components/schemas/BrevoResendVerificationRequest"
  *     responses:
  *       200:
  *         description: Email reenviado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/BrevoResendVerificationResponse"
+ *       400:
+ *         description: Requisição inválida
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *       404:
+ *         description: Usuário não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -118,16 +175,31 @@ router.get(
  *   get:
  *     summary: Consultar status de verificação de email
  *     tags: [Brevo]
-  *     parameters:
-  *       - in: path
-  *         name: userId
-  *         required: true
-  *         schema:
-  *           type: string
-  *     responses:
-  *       200:
-  *         description: Status retornado
- */
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Status retornado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/BrevoVerificationStatusResponse"
+ *       404:
+ *         description: Usuário não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/brevo/status-verificacao/USER_ID"
+*/
 
 router.get(
   "/status/:email",
@@ -207,7 +279,23 @@ router.get(
  *     responses:
  *       200:
  *         description: Status do usuário
- */
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/BrevoVerificationStatusResponse"
+ *       404:
+ *         description: Usuário não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/brevo/status/user%40example.com" \\
+ *            -H "Authorization: Bearer <TOKEN>"
+*/
 
 router.post(
   "/test/email",
@@ -223,10 +311,40 @@ router.post(
  *     tags: [Brevo]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: "#/components/schemas/BrevoTestEmailRequest"
  *     responses:
  *       200:
  *         description: Email enviado
- */
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/BrevoTestEmailResponse"
+ *       400:
+ *         description: Requisição inválida
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *       403:
+ *         description: Bloqueado em produção
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/brevo/test/email" \\
+ *            -H "Authorization: Bearer <TOKEN>" \\
+ *            -H "Content-Type: application/json" \\
+ *            -d '{"email":"user@example.com"}'
+*/
 router.post(
   "/test/sms",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
@@ -241,10 +359,40 @@ router.post(
  *     tags: [Brevo]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: "#/components/schemas/BrevoTestSMSRequest"
  *     responses:
  *       200:
  *         description: SMS enviado
- */
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/BrevoTestSMSResponse"
+ *       400:
+ *         description: Requisição inválida
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *       403:
+ *         description: Bloqueado em produção
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/brevo/test/sms" \\
+ *            -H "Authorization: Bearer <TOKEN>" \\
+ *            -H "Content-Type: application/json" \\
+ *            -d '{"to":"+5511999999999"}'
+*/
 router.get("/verificar", emailVerificationController.verifyEmail);
 router.post("/reenviar", emailVerificationController.resendVerification);
 
@@ -257,18 +405,63 @@ router.post("/reenviar", emailVerificationController.resendVerification);
  *     parameters:
  *       - in: query
  *         name: token
+ *         required: true
  *         schema:
  *           type: string
  *     responses:
  *       200:
  *         description: Email verificado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/BrevoVerifyEmailResponse"
+ *       400:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/brevo/verificar?token=TOKEN"
  * /api/v1/brevo/reenviar:
  *   post:
  *     summary: Reenviar verificação (alias)
  *     tags: [Brevo]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: "#/components/schemas/BrevoResendVerificationRequest"
  *     responses:
  *       200:
  *         description: Reenvio realizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/BrevoResendVerificationResponse"
+ *       400:
+ *         description: Requisição inválida
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *       404:
+ *         description: Usuário não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/ErrorResponse"
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/brevo/reenviar" \\
+ *            -H "Content-Type: application/json" \\
+ *            -d '{"email":"user@example.com"}'
  */
 
 router.use((err: any, req: any, res: any, next: any) => {

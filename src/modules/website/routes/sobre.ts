@@ -15,6 +15,18 @@ const upload = multer({ storage: multer.memoryStorage() });
  *     responses:
  *       200:
  *         description: Lista de conteúdos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/WebsiteSobre'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -38,6 +50,22 @@ router.get("/", SobreController.list);
  *     responses:
  *       200:
  *         description: Conteúdo encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WebsiteSobre'
+ *       404:
+ *         description: Conteúdo não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -54,9 +82,25 @@ router.get("/:id", SobreController.get);
  *     tags: [Website - Sobre]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             $ref: '#/components/schemas/WebsiteSobreCreateInput'
  *     responses:
  *       201:
  *         description: Conteúdo criado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WebsiteSobre'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -64,8 +108,9 @@ router.get("/:id", SobreController.get);
  *           curl -X POST "http://localhost:3000/api/v1/website/sobre" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -F "imagem=@sobre.png" \\
- *            -F "titulo=Novo"
- */
+ *            -F "titulo=Novo" \\
+ *            -F "descricao=Conteudo"
+*/
 router.post(
   "/",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
@@ -87,9 +132,31 @@ router.post(
  *         required: true
  *         schema:
  *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             $ref: '#/components/schemas/WebsiteSobreUpdateInput'
  *     responses:
  *       200:
  *         description: Conteúdo atualizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WebsiteSobre'
+ *       404:
+ *         description: Conteúdo não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -97,8 +164,9 @@ router.post(
  *           curl -X PUT "http://localhost:3000/api/v1/website/sobre/{id}" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -F "imagem=@sobre.png" \\
- *            -F "titulo=Atualizado"
- */
+ *            -F "titulo=Atualizado" \\
+ *            -F "descricao=Atualizada"
+*/
 router.put(
   "/:id",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
@@ -121,15 +189,27 @@ router.put(
  *         schema:
  *           type: string
  *     responses:
- *       200:
+ *       204:
  *         description: Conteúdo removido
+ *       404:
+ *         description: Conteúdo não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
  *           curl -X DELETE "http://localhost:3000/api/v1/website/sobre/{id}" \\
  *            -H "Authorization: Bearer <TOKEN>"
- */
+*/
 router.delete(
   "/:id",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),

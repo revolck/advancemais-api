@@ -12,6 +12,10 @@ const router = Router();
  *     responses:
  *       200:
  *         description: Detalhes do módulo
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuditModuleInfo'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo

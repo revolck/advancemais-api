@@ -19,20 +19,26 @@ const controller = new PlanController();
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               nome: { type: string, example: "Plano Básico" }
- *               valor: { type: number, example: 49.9 }
- *               descricao: { type: string, example: "Acesso básico" }
- *               recursos:
- *                 type: array
- *                 items: { type: string }
- *               frequency: { type: number, example: 1 }
- *               frequencyType: { type: string, example: "months" }
- *               repetitions: { type: integer, nullable: true }
+ *             $ref: '#/components/schemas/EmpresaPlanCreateRequest'
  *     responses:
  *       201:
  *         description: Plano criado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/EmpresaPlanCreateResponse'
+ *       400:
+ *         description: Erro ao criar plano
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -40,8 +46,8 @@ const controller = new PlanController();
  *           curl -X POST "http://localhost:3000/api/v1/empresa/plans" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -H "Content-Type: application/json" \\
- *            -d '{"nome":"Plano Básico","valor":49.9,"descricao":"Acesso básico","recursos":["feature"],"frequency":1,"frequencyType":"months"}'
- */
+ *            -d '{"nome":"Plano Básico","valor":49.9,"descricao":"Acesso básico","recursos":["feature"],"frequency":1,"frequencyType":"MESES"}'
+*/
 router.post("/", authMiddlewareWithDB([Role.ADMIN]), controller.createPlan);
 
 /**
@@ -53,6 +59,22 @@ router.post("/", authMiddlewareWithDB([Role.ADMIN]), controller.createPlan);
  *     responses:
  *       200:
  *         description: Lista de planos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/EmpresaPlansResponse'
+ *       400:
+ *         description: Erro ao buscar planos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -75,20 +97,32 @@ router.get("/", controller.getPlans);
  *         required: true
  *         schema:
  *           type: string
+ *         description: ID do plano
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               nome: { type: string, example: "Plano Atualizado" }
- *               valor: { type: number, example: 59.9 }
- *               descricao: { type: string, example: "Descrição" }
- *               ativo: { type: boolean, example: true }
+ *             $ref: '#/components/schemas/EmpresaPlanUpdateRequest'
  *     responses:
  *       200:
  *         description: Plano atualizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/EmpresaPlanUpdateResponse'
+ *       400:
+ *         description: Erro ao atualizar plano
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -118,20 +152,32 @@ router.put(
  *         required: true
  *         schema:
  *           type: string
+ *         description: ID do plano
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               empresaId: { type: string, example: "empresa-uuid" }
- *               metodoPagamento: { type: string, example: "CREDIT" }
- *               tipo: { type: string, example: "STANDARD" }
- *               validade: { type: string, example: "DIAS_30" }
+ *             $ref: '#/components/schemas/EmpresaPlanAssignRequest'
  *     responses:
  *       200:
  *         description: Plano atribuído
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/EmpresaPlanAssignResponse'
+ *       400:
+ *         description: Erro ao atribuir plano
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -139,8 +185,8 @@ router.put(
  *           curl -X POST "http://localhost:3000/api/v1/empresa/plans/{planId}/assign" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -H "Content-Type: application/json" \\
- *            -d '{"empresaId":"empresa-uuid","metodoPagamento":"CREDIT"}'
- */
+ *            -d '{"empresaId":"empresa-uuid","metodoPagamento":"PIX","tipo":"STANDARD","validade":"DIAS_30"}'
+*/
 router.post(
   "/:planId/assign",
   authMiddlewareWithDB([Role.ADMIN]),
@@ -161,9 +207,26 @@ router.post(
  *         required: true
  *         schema:
  *           type: string
+ *         description: ID da empresa
  *     responses:
  *       200:
  *         description: Plano removido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/EmpresaPlanUnassignResponse'
+ *       400:
+ *         description: Erro ao remover plano
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo

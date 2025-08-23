@@ -32,26 +32,30 @@ router.use(supabaseAuthMiddleware());
 /**
  * @openapi
  * /api/v1/usuarios/pagamentos/curso:
- *   post:
- *     summary: Processar pagamento de curso
- *     tags: [Usuários - Pagamentos]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               cursoId: { type: string, example: "curso-uuid" }
- *               paymentToken: { type: string, example: "tok_123" }
- *               paymentMethodId: { type: string, example: "visa" }
- *               installments: { type: integer, example: 1 }
- *               issuerId: { type: string, example: "issuer" }
- *     responses:
- *       200:
- *         description: Pagamento processado
+  *   post:
+  *     summary: Processar pagamento de curso
+  *     tags: [Usuários - Pagamentos]
+  *     security:
+  *       - bearerAuth: []
+  *     requestBody:
+  *       required: true
+  *       content:
+  *         application/json:
+  *           schema:
+  *             $ref: '#/components/schemas/UserCoursePaymentRequest'
+  *     responses:
+  *       201:
+  *         description: Pagamento processado
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/UserCoursePaymentResponse'
+  *       400:
+  *         description: Erro ao processar pagamento
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -70,25 +74,30 @@ router.post("/curso", paymentController.processarPagamentoCurso);
 /**
  * @openapi
  * /api/v1/usuarios/pagamentos/assinatura:
- *   post:
- *     summary: Criar assinatura premium
- *     tags: [Usuários - Pagamentos]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               plano: { type: string, example: "plano-premium" }
- *               cardToken: { type: string, example: "tok_123" }
- *               frequencia: { type: integer, example: 1 }
- *               periodo: { type: string, example: "months" }
- *     responses:
- *       201:
- *         description: Assinatura criada
+  *   post:
+  *     summary: Criar assinatura premium
+  *     tags: [Usuários - Pagamentos]
+  *     security:
+  *       - bearerAuth: []
+  *     requestBody:
+  *       required: true
+  *       content:
+  *         application/json:
+  *           schema:
+  *             $ref: '#/components/schemas/UserSubscriptionCreateRequest'
+  *     responses:
+  *       201:
+  *         description: Assinatura criada
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/UserSubscriptionCreateResponse'
+  *       400:
+  *         description: Erro ao criar assinatura
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -107,23 +116,30 @@ router.post("/assinatura", paymentController.criarAssinaturaPremium);
 /**
  * @openapi
  * /api/v1/usuarios/pagamentos/assinatura/cancelar:
- *   put:
- *     summary: Cancelar assinatura
- *     tags: [Usuários - Pagamentos]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               subscriptionId: { type: string, example: "sub-123" }
- *               motivo: { type: string, example: "Opção" }
- *     responses:
- *       200:
- *         description: Assinatura cancelada
+  *   put:
+  *     summary: Cancelar assinatura
+  *     tags: [Usuários - Pagamentos]
+  *     security:
+  *       - bearerAuth: []
+  *     requestBody:
+  *       required: true
+  *       content:
+  *         application/json:
+  *           schema:
+  *             $ref: '#/components/schemas/UserSubscriptionCancelRequest'
+  *     responses:
+  *       200:
+  *         description: Assinatura cancelada
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/UserSubscriptionCancelResponse'
+  *       404:
+  *         description: Assinatura não encontrada
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -142,14 +158,24 @@ router.put("/assinatura/cancelar", paymentController.cancelarAssinatura);
 /**
  * @openapi
  * /api/v1/usuarios/pagamentos/historico:
- *   get:
- *     summary: Listar histórico de pagamentos
- *     tags: [Usuários - Pagamentos]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Histórico de pagamentos
+  *   get:
+  *     summary: Listar histórico de pagamentos
+  *     tags: [Usuários - Pagamentos]
+  *     security:
+  *       - bearerAuth: []
+  *     responses:
+  *       200:
+  *         description: Histórico de pagamentos
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/UserPaymentHistoryResponse'
+  *       500:
+  *         description: Erro ao listar histórico
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo

@@ -24,6 +24,15 @@ const webhookController = new WebhookController();
  *     responses:
  *       200:
  *         description: Detalhes dos webhooks
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BasicMessage'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/mercadopago/webhooks"
  */
 router.get("/", (req, res) => {
   res.json({
@@ -46,9 +55,26 @@ router.get("/", (req, res) => {
  *   post:
  *     summary: Receber notificações do MercadoPago
  *     tags: [MercadoPago]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/MercadoPagoWebhookNotification'
  *     responses:
  *       200:
  *         description: Notificação recebida
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BasicMessage'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/mercadopago/webhooks" \\
+ *            -H "Content-Type: application/json" \\
+ *            -d '{"id":"123","type":"payment","action":"payment.created","data":{"id":"999"}}'
  */
 router.post("/", webhookController.processWebhook);
 
@@ -65,6 +91,15 @@ router.post("/", webhookController.processWebhook);
  *     responses:
  *       200:
  *         description: Teste bem-sucedido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BasicMessage'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/mercadopago/webhooks/test"
  */
 router.get("/test", webhookController.testWebhook);
 

@@ -15,7 +15,11 @@ const options: Options = {
         "Documentação detalhada da API Advance+. Todas as rotas protegidas exigem o header `Authorization: Bearer <token>` obtido via login. O acesso ao Swagger é restrito a administradores.",
     },
     tags: [
-      { name: "Usuários", description: "Gerenciamento de contas e autenticação" },
+      {
+        name: "Usuários",
+        description:
+          "Gerenciamento de contas e autenticação: registro, login, refresh, logout, perfil e recuperação de senha",
+      },
       { name: "MercadoPago", description: "Integração de pagamentos" },
       { name: "Audit", description: "Registros de auditoria" },
       { name: "Brevo", description: "Serviços de e-mail" },
@@ -257,5 +261,25 @@ export function setupSwagger(app: Application): void {
     "/docs.json",
     supabaseAuthMiddleware(["ADMIN"]),
     (req, res) => res.json(swaggerSpec)
+  );
+
+  app.get(
+    "/redoc",
+    supabaseAuthMiddleware(["ADMIN"]),
+    (req, res) => {
+      res.send(`<!DOCTYPE html>
+<html>
+  <head>
+    <title>Advance+ API - ReDoc</title>
+    <meta charset="utf-8" />
+    <style>body { margin: 0; padding: 0; }</style>
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <redoc spec-url="/docs.json"></redoc>
+    <script src="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"></script>
+  </body>
+</html>`);
+    }
   );
 }

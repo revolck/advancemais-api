@@ -27,11 +27,66 @@ const passwordRecoveryController = new PasswordRecoveryController();
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - email
  *             properties:
- *               email: { type: string, example: "user@example.com" }
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "user@example.com"
  *     responses:
  *       200:
  *         description: Solicitação enviada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: {
+ *                   type: string,
+ *                   example: "E-mail de recuperação enviado"
+ *                 }
+ *       400:
+ *         description: Dados inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "E-mail inválido"
+ *               code: "VALIDATION_ERROR"
+ *       404:
+ *         description: Usuário não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Usuário não encontrado"
+ *               code: "NOT_FOUND"
+ *       429:
+ *         description: Muitas tentativas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Muitas tentativas. Tente novamente mais tarde"
+ *               code: "RATE_LIMIT_EXCEEDED"
+ *       500:
+ *         description: Erro interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Erro interno do servidor"
+ *               code: "INTERNAL_ERROR"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -58,9 +113,47 @@ router.post("/", passwordRecoveryController.solicitarRecuperacao);
  *         required: true
  *         schema:
  *           type: string
+ *         example: "<token>"
  *     responses:
  *       200:
  *         description: Token válido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string, example: "Token válido" }
+ *       400:
+ *         description: Token em formato inválido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Token inválido"
+ *               code: "VALIDATION_ERROR"
+ *       404:
+ *         description: Token não encontrado ou expirado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Token não encontrado"
+ *               code: "NOT_FOUND"
+ *       500:
+ *         description: Erro interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Erro interno do servidor"
+ *               code: "INTERNAL_ERROR"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -88,12 +181,57 @@ router.get(
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - token
+ *               - novaSenha
  *             properties:
- *               token: { type: string, example: "<token>" }
- *               novaSenha: { type: string, example: "senha123" }
+ *               token:
+ *                 type: string
+ *                 example: "<token>"
+ *               novaSenha:
+ *                 type: string
+ *                 format: password
+ *                 example: "senha123"
  *     responses:
  *       200:
  *         description: Senha redefinida
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string, example: "Senha alterada com sucesso" }
+ *       400:
+ *         description: Dados inválidos ou token incorreto
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Token inválido"
+ *               code: "VALIDATION_ERROR"
+ *       404:
+ *         description: Token não encontrado ou expirado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Token não encontrado"
+ *               code: "NOT_FOUND"
+ *       500:
+ *         description: Erro interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Erro interno do servidor"
+ *               code: "INTERNAL_ERROR"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo

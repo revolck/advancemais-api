@@ -1,5 +1,12 @@
 (function () {
+  function hasToken() {
+    return document.cookie.split(';').some(function (c) {
+      return c.trim().startsWith('token=');
+    });
+  }
+
   window.addEventListener('load', function () {
+    if (!hasToken()) return;
     var btn = document.createElement('button');
     btn.textContent = 'Logout';
     btn.style.position = 'fixed';
@@ -14,7 +21,10 @@
     btn.style.cursor = 'pointer';
     btn.onclick = async function () {
       try {
-        await fetch('/api/v1/usuarios/logout', { method: 'POST', credentials: 'include' });
+        await fetch('/api/v1/usuarios/logout', {
+          method: 'POST',
+          credentials: 'include',
+        });
       } catch (e) {
         console.error('Erro ao fazer logout', e);
       }

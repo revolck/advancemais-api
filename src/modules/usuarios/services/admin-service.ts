@@ -2,7 +2,7 @@
  * Service administrativo - Lógica de negócio
  * Responsabilidade única: operações administrativas no banco
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 3.0.0
  */
 import { prisma } from "../../../config/prisma";

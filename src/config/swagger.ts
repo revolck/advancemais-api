@@ -1,16 +1,18 @@
 import type { Application, RequestHandler } from "express";
 import swaggerJsdoc, { Options } from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
+import fs from "fs";
+import path from "path";
 import { supabaseAuthMiddleware } from "../modules/usuarios/auth";
 
 const options: Options = {
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "AdvanceMais API",
+      title: "Advance+ API",
       version: "1.0.0",
       description:
-        "Documentação detalhada da API AdvanceMais. Todas as rotas protegidas exigem o header `Authorization: Bearer <token>` obtido via login. O acesso ao Swagger é restrito a administradores.",
+        "Documentação detalhada da API Advance+. Todas as rotas protegidas exigem o header `Authorization: Bearer <token>` obtido via login. O acesso ao Swagger é restrito a administradores.",
     },
     tags: [
       { name: "Usuários", description: "Gerenciamento de contas e autenticação" },
@@ -36,7 +38,7 @@ const options: Options = {
           properties: {
             documento: {
               type: "string",
-              description: "CPF ou CNPJ do usuário",
+              description: "CPF do usuário",
               example: "12345678900",
             },
             senha: {
@@ -222,6 +224,14 @@ const swaggerSpec = swaggerJsdoc(options);
 export function setupSwagger(app: Application): void {
   const swaggerServeHandlers = swaggerUi.serve as RequestHandler[];
 
+  app.get("/swagger-custom.js", (req, res) => {
+    res
+      .type("application/javascript")
+      .send(
+        fs.readFileSync(path.join(__dirname, "swagger-custom.js"), "utf8")
+      );
+  });
+
   app.use(
     "/docs",
     (req, res, next) => {
@@ -237,7 +247,9 @@ export function setupSwagger(app: Application): void {
     ),
     ((req, res, next) => {
       if (req.path === "/login") return next();
-      return swaggerUi.setup(swaggerSpec)(req, res, next);
+      return swaggerUi.setup(swaggerSpec, {
+        customJs: "/swagger-custom.js",
+      })(req, res, next);
     }) as RequestHandler
   );
 

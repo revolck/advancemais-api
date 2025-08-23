@@ -7,7 +7,7 @@ router.get("/docs/login", (req, res) => {
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8" />
-<title>Login - AdvanceMais</title>
+<title>Login - Advance+</title>
 <style>
   body { font-family: Arial, sans-serif; background:#f3f2ef; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; }
   .container { background:#fff; padding:2rem; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.1); width:300px; }
@@ -19,19 +19,28 @@ router.get("/docs/login", (req, res) => {
 </head>
 <body>
 <div class="container">
-  <h1>AdvanceMais</h1>
+  <h1>Advance+</h1>
   <form id="loginForm">
-    <input type="text" id="documento" placeholder="CPF ou CNPJ" required />
+    <input type="text" id="cpf" placeholder="CPF" maxlength="14" required />
     <input type="password" id="senha" placeholder="Senha" required />
     <button type="submit">Entrar</button>
     <p class="error" id="error"></p>
   </form>
 </div>
 <script>
+  const cpfInput = document.getElementById('cpf');
+  cpfInput.addEventListener('input', () => {
+    let value = cpfInput.value.replace(/\D/g, '').slice(0,11);
+    value = value.replace(/(\d{3})(\d)/, '$1.$2');
+    value = value.replace(/(\d{3})(\d)/, '$1.$2');
+    value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    cpfInput.value = value;
+  });
+
   const form = document.getElementById('loginForm');
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const documento = document.getElementById('documento').value;
+    const documento = cpfInput.value.replace(/\D/g, '');
     const senha = document.getElementById('senha').value;
     const res = await fetch('/api/v1/usuarios/login', {
       method: 'POST',

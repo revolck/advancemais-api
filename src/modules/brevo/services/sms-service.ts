@@ -7,7 +7,7 @@ import { prisma } from "../../../config/prisma";
  * Serviço de SMS simplificado para uso futuro
  * Preparado para integração com Brevo SMS API
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 7.1.0 - CORRIGIDO - Tipos do Brevo
  */
 export interface SMSResult {
@@ -88,12 +88,12 @@ export class SMSService {
     phoneNumber: string,
     code: string
   ): Promise<SMSResult> {
-    const message = `Seu código de verificação AdvanceMais: ${code}. Válido por 10 minutos. Não compartilhe este código.`;
+    const message = `Seu código de verificação Advance+: ${code}. Válido por 10 minutos. Não compartilhe este código.`;
 
     return await this.sendSMS({
       to: phoneNumber,
       message,
-      sender: "AdvanceMais",
+      sender: "Advance+",
     });
   }
 
@@ -106,8 +106,8 @@ export class SMSService {
   ): Promise<SMSResult> {
     return await this.sendSMS({
       to: phoneNumber,
-      message: `AdvanceMais: ${message}`,
-      sender: "AdvanceMais",
+      message: `Advance+: ${message}`,
+      sender: "Advance+",
     });
   }
 
@@ -163,7 +163,7 @@ export class SMSService {
       const sendSmsRequest = new Brevo.SendTransacSms();
       sendSmsRequest.type = Brevo.SendTransacSms.TypeEnum.Transactional; // Enum correto
       sendSmsRequest.unicodeEnabled = false;
-      sendSmsRequest.sender = smsData.sender || "AdvanceMais";
+      sendSmsRequest.sender = smsData.sender || "Advance+";
       sendSmsRequest.recipient = smsData.to;
       sendSmsRequest.content = smsData.message;
 
@@ -274,7 +274,7 @@ export class SMSService {
           mensagem: smsData.message,
           status: "ENVIADO",
           messageId: messageId || "",
-          remetente: smsData.sender || "AdvanceMais",
+          remetente: smsData.sender || "Advance+",
         },
       });
       */
@@ -309,7 +309,7 @@ export class SMSService {
           mensagem: smsData.message,
           status: "FALHA",
           erro: error,
-          remetente: smsData.sender || "AdvanceMais",
+          remetente: smsData.sender || "Advance+",
         },
       });
       */

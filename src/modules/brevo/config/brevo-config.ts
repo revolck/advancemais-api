@@ -4,7 +4,7 @@ import { brevoConfig } from "../../../config/env";
  * Configuração simplificada e robusta do módulo Brevo
  * Implementa configuração centralizada com validação
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 7.0.0 - Refatoração completa para simplicidade
  */
 export interface BrevoConfiguration {
@@ -118,7 +118,7 @@ export class BrevoConfigManager {
     return {
       apiKey: brevoConfig.apiKey || "",
       fromEmail: brevoConfig.fromEmail || "noreply@advancemais.com",
-      fromName: brevoConfig.fromName || "AdvanceMais",
+      fromName: brevoConfig.fromName || "Advance+",
       maxRetries: 3,
       timeout: 30000,
       isConfigured,

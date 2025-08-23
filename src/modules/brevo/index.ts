@@ -2,7 +2,7 @@
  * Módulo Brevo - Exportações principais
  * Sistema completo de email e verificação
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 7.0.0 - Sistema de verificação de email completo
  */
 

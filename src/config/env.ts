@@ -14,7 +14,7 @@ dotenv.config();
  * - Logs estruturados de configuração
  * - Fallbacks seguros para desenvolvimento
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 4.0.0 - Refatoração para microserviços
  */
 
@@ -217,7 +217,7 @@ export const brevoConfig = {
   // Configurações básicas
   apiKey: process.env.BREVO_API_KEY || "",
   fromEmail: process.env.BREVO_FROM_EMAIL || "noreply@advancemais.com",
-  fromName: process.env.BREVO_FROM_NAME || "AdvanceMais",
+  fromName: process.env.BREVO_FROM_NAME || "Advance+",
 
   // Configurações SMTP (backup)
   smtp: {
@@ -272,7 +272,7 @@ export const brevoConfig = {
     dailySMSLimit: parseInt(process.env.BREVO_DAILY_SMS_LIMIT || "1000", 10),
 
     // Configurações de SMS
-    defaultSMSSender: process.env.BREVO_SMS_SENDER || "AdvanceMais",
+    defaultSMSSender: process.env.BREVO_SMS_SENDER || "Advance+",
     smsUnicodeEnabled: process.env.BREVO_SMS_UNICODE === "true",
   },
 

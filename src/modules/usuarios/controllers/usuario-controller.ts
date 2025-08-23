@@ -21,7 +21,7 @@ import { generateTokenPair } from "../utils/auth";
  * - Tratamento robusto de erros
  * - Compatibilidade com Supabase Auth
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 6.0.0 - Sistema completo com verificação de email
  */
 
@@ -29,7 +29,7 @@ import { generateTokenPair } from "../utils/auth";
  * Interface para dados de login
  */
 interface LoginData {
-  documento: string; // CPF ou CNPJ
+  documento: string; // CPF
   senha: string;
 }
 
@@ -63,31 +63,24 @@ export const loginUsuario = async (req: Request, res: Response) => {
     // Remove caracteres especiais do documento para comparação
     const documentoLimpo = documento.replace(/\D/g, "");
 
-    // Determina se é CPF (11 dígitos) ou CNPJ (14 dígitos)
-    const isCpf = documentoLimpo.length === 11;
-    const isCnpj = documentoLimpo.length === 14;
-
-    if (!isCpf && !isCnpj) {
+    if (documentoLimpo.length !== 11) {
       console.warn(
-        `⚠️ [${correlationId}] Formato de documento inválido: ${documentoLimpo.length} dígitos`
+        `⚠️ [${correlationId}] CPF inválido: ${documentoLimpo.length} dígitos`
       );
       return res.status(400).json({
         success: false,
-        message:
-          "Documento deve ser um CPF (11 dígitos) ou CNPJ (14 dígitos) válido",
+        message: "Documento deve ser um CPF válido com 11 dígitos",
         correlationId,
       });
     }
 
     console.log(
-      `🔍 [${correlationId}] Buscando usuário por ${
-        isCpf ? "CPF" : "CNPJ"
-      }: ${documentoLimpo.substring(0, 3)}***`
+      `🔍 [${correlationId}] Buscando usuário por CPF: ${documentoLimpo.substring(0, 3)}***`
     );
 
     // Busca usuário no banco com todos os campos necessários
     const usuario = await prisma.usuario.findUnique({
-      where: isCpf ? { cpf: documentoLimpo } : { cnpj: documentoLimpo },
+      where: { cpf: documentoLimpo },
       select: {
         id: true,
         email: true,

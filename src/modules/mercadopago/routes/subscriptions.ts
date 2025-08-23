@@ -6,7 +6,7 @@ import { supabaseAuthMiddleware } from "../../usuarios/auth";
  * Rotas para Assinaturas do MercadoPago - CORRIGIDO
  * Endpoints para gerenciamento de pagamentos recorrentes
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 3.0.2
  */
 const router = Router();

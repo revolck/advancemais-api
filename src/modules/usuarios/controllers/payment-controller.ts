@@ -211,7 +211,7 @@ export class PaymentController {
 
       // Prepara dados da assinatura
       const subscriptionData = {
-        reason: `Assinatura ${planoPremium.nome} - AdvanceMais`,
+        reason: `Assinatura ${planoPremium.nome} - Advance+`,
         external_reference: `subscription_${plano}_user_${userId}_${Date.now()}`,
         payer_email: usuario.email,
         card_token_id: cardToken,

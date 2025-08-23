@@ -7,7 +7,7 @@ import { BrevoConfigManager } from "../config/brevo-config";
  * Controller para verificação de email
  * Endpoints simples e seguros para confirmar email dos usuários
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 7.1.0 - CORRIGIDO - Nomes de métodos consistentes
  */
 export class EmailVerificationController {

@@ -36,6 +36,8 @@ router.get("/docs/login", (req, res) => {
   </form>
 </div>
 <script>
+  const params = new URLSearchParams(window.location.search);
+  const redirect = params.get('redirect') || '/docs';
   const cpfInput = document.getElementById('cpf');
 
   const formatCPF = (value) =>
@@ -63,7 +65,7 @@ router.get("/docs/login", (req, res) => {
     const data = await res.json();
     if (res.ok && data.token) {
       document.cookie = 'token=' + data.token + '; path=/';
-      window.location.href = '/docs';
+      window.location.href = redirect;
     } else {
       document.getElementById('error').textContent = data.message || 'Falha no login';
     }

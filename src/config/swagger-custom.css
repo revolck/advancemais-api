@@ -1,0 +1,18 @@
+/* Custom styles for Swagger UI to keep the sidebar visible
+   and improve navigation. These rules target Swagger UI v5
+   classes and expand the sidebar on load. */
+
+.swagger-ui .sidebar {
+  width: 320px;
+  transform: translateX(0);
+}
+
+.swagger-ui .sidebar .nav {
+  width: 100%;
+}
+
+/* Hide the collapse button so the sidebar remains open */
+.swagger-ui .sidebar-toggle {
+  display: none !important;
+}
+

@@ -15,6 +15,18 @@ const upload = multer({ storage: multer.memoryStorage() });
  *     responses:
  *       200:
  *         description: Lista de logos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/WebsiteLogoEnterprise'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -38,6 +50,22 @@ router.get("/", LogoEnterpriseController.list);
  *     responses:
  *       200:
  *         description: Logo encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WebsiteLogoEnterprise'
+ *       404:
+ *         description: Logo não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -54,9 +82,25 @@ router.get("/:id", LogoEnterpriseController.get);
  *     tags: [Website - LogoEnterprises]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             $ref: '#/components/schemas/WebsiteLogoEnterpriseCreateInput'
  *     responses:
  *       201:
  *         description: Logo criada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WebsiteLogoEnterprise'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -64,8 +108,11 @@ router.get("/:id", LogoEnterpriseController.get);
  *           curl -X POST "http://localhost:3000/api/v1/website/logo-enterprises" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -F "imagem=@logo.png" \\
- *            -F "empresa=Minha Empresa"
- */
+ *            -F "nome=Minha Empresa" \\
+ *            -F "website=https://empresa.com" \\
+ *            -F "categoria=tech" \\
+ *            -F "ordem=1"
+*/
 router.post(
   "/",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
@@ -87,9 +134,31 @@ router.post(
  *         required: true
  *         schema:
  *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             $ref: '#/components/schemas/WebsiteLogoEnterpriseUpdateInput'
  *     responses:
  *       200:
  *         description: Logo atualizada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WebsiteLogoEnterprise'
+ *       404:
+ *         description: Logo não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -97,8 +166,11 @@ router.post(
  *           curl -X PUT "http://localhost:3000/api/v1/website/logo-enterprises/{id}" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -F "imagem=@logo.png" \\
- *            -F "empresa=Atualizada"
- */
+ *            -F "nome=Atualizada" \\
+ *            -F "website=https://empresa.com" \\
+ *            -F "categoria=tech" \\
+ *            -F "ordem=2"
+*/
 router.put(
   "/:id",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
@@ -121,15 +193,27 @@ router.put(
  *         schema:
  *           type: string
  *     responses:
- *       200:
+ *       204:
  *         description: Logo removida
+ *       404:
+ *         description: Logo não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
  *           curl -X DELETE "http://localhost:3000/api/v1/website/logo-enterprises/{id}" \\
  *            -H "Authorization: Bearer <TOKEN>"
- */
+*/
 router.delete(
   "/:id",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),

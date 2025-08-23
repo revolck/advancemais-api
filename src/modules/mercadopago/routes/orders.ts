@@ -60,35 +60,20 @@ router.get("/", (req, res) => {
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               total_amount:
- *                 type: number
- *                 example: 100
- *               items:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     id: { type: string, example: "1" }
- *                     title: { type: string, example: "Produto" }
- *                     quantity: { type: integer, example: 1 }
- *                     unit_price: { type: number, example: 100 }
- *                     currency_id: { type: string, example: "BRL" }
- *               payments:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     payment_method_id: { type: string, example: "pix" }
- *                     payment_type_id: { type: string, example: "instant_payment" }
- *                     payer:
- *                       type: object
- *                       properties:
- *                         email: { type: string, example: "user@example.com" }
+ *             $ref: '#/components/schemas/MercadoPagoOrderRequest'
  *     responses:
  *       201:
  *         description: Order criada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MercadoPagoOrderResponse'
+ *       400:
+ *         description: Erro de validação
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -121,6 +106,16 @@ router.post("/", supabaseAuthMiddleware(), ordersController.createOrder);
  *     responses:
  *       200:
  *         description: Dados da order
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MercadoPagoOrderResponse'
+ *       404:
+ *         description: Order não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -151,6 +146,16 @@ router.get("/:orderId", supabaseAuthMiddleware(), ordersController.getOrder);
  *     responses:
  *       200:
  *         description: Order cancelada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MercadoPagoOrderResponse'
+ *       400:
+ *         description: Erro ao cancelar
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -182,9 +187,25 @@ router.put(
  *         required: true
  *         schema:
  *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/MercadoPagoRefundRequest'
  *     responses:
  *       200:
  *         description: Reembolso processado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MercadoPagoRefundResponse'
+ *       400:
+ *         description: Erro no reembolso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo

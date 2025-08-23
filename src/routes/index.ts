@@ -23,17 +23,20 @@ const emailVerificationController = new EmailVerificationController();
  * /:
  *   get:
  *     summary: Rota raiz da API
+ *     tags: [Default]
  *     responses:
  *       200:
  *         description: Informações básicas e endpoints disponíveis
  *         content:
  *           application/json:
- *             example:
- *               message: "Advance+ API"
- *               version: "v3.0.3"
- *               status: "operational"
- *               endpoints:
- *                 usuarios: "/api/v1/usuarios"
+ *             schema:
+ *               $ref: '#/components/schemas/ApiRootInfo'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -107,15 +110,20 @@ router.get("/", (req, res) => {
  * /health:
  *   get:
  *     summary: Health check global
+ *     tags: [Default]
  *     responses:
  *       200:
  *         description: Status do servidor
  *         content:
  *           application/json:
- *             example:
- *               status: "OK"
- *               uptime: 1
- *               version: "v3.0.3"
+ *             schema:
+ *               $ref: '#/components/schemas/GlobalHealthStatus'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo

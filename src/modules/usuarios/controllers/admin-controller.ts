@@ -2,7 +2,7 @@
  * Controller administrativo - Operações de gestão
  * Responsabilidade única: lógica administrativa
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 3.0.0
  */
 import { Request, Response } from "express";

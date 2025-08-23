@@ -2,7 +2,7 @@
  * Service de estatísticas - Lógica de negócio para métricas
  * Responsabilidade única: cálculo de estatísticas do sistema
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 3.0.0
  */
 import { prisma } from "../../../config/prisma";

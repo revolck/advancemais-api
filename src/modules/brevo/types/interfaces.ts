@@ -1,7 +1,7 @@
 /**
  * Interfaces simplificadas para o módulo Brevo
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 5.0.0 - Simplificação
  */
 

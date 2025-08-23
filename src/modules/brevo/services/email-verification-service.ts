@@ -8,7 +8,7 @@ import { prisma } from "../../../config/prisma";
  * Serviço especializado em verificação de email
  * Implementa padrões de microserviços com alta disponibilidade
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 7.2.0 - CORRIGIDO - Verificações de undefined
  */
 export interface EmailVerificationResult {

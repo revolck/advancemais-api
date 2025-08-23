@@ -2,7 +2,7 @@
  * Rotas de recuperação de senha - CORRIGIDO
  * Responsabilidade única: reset de senha via email
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 3.0.3 - Correção path-to-regexp
  */
 import { Router } from "express";

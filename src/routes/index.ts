@@ -12,7 +12,7 @@ import { EmailVerificationController } from "../modules/brevo/controllers/email-
  * Router principal da aplicação - VERSÃO BLINDADA
  * Elimina problemas de path-to-regexp definitivamente
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 3.0.3 - Correção definitiva Express 4.x
  */
 const router = Router();
@@ -29,7 +29,7 @@ const emailVerificationController = new EmailVerificationController();
  *         content:
  *           application/json:
  *             example:
- *               message: "AdvanceMais API"
+ *               message: "Advance+ API"
  *               version: "v3.0.3"
  *               status: "operational"
  *               endpoints:
@@ -42,7 +42,7 @@ const emailVerificationController = new EmailVerificationController();
  */
 router.get("/", (req, res) => {
   const data = {
-    message: "AdvanceMais API",
+    message: "Advance+ API",
     version: "v3.0.3",
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,

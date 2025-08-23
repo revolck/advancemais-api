@@ -42,7 +42,18 @@ app.use(
  * Middleware de segurança Helmet
  * Adiciona headers de segurança às respostas
  */
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https:"],
+      },
+    },
+  })
+);
 
 /**
  * Parser de JSON com limite configurável

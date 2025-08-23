@@ -40,7 +40,7 @@ router.get("/docs/login", (req, res) => {
     });
     const data = await res.json();
     if (res.ok && data.token) {
-      document.cookie = `token=${data.token}; path=/`;
+      document.cookie = 'token=' + data.token + '; path=/';
       window.location.href = '/docs';
     } else {
       document.getElementById('error').textContent = data.message || 'Falha no login';

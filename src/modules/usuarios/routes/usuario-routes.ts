@@ -118,6 +118,63 @@ const createAuthRateLimit = (
  *     responses:
  *       200:
  *         description: Detalhes do módulo
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 module: { type: string, example: "Usuários API" }
+ *                 version: { type: string, example: "7.0.0" }
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2024-01-01T12:00:00Z"
+ *                 environment: { type: string, example: "development" }
+ *                 features:
+ *                   type: object
+ *                   properties:
+ *                     emailVerification: { type: boolean, example: true }
+ *                     registration: { type: boolean, example: true }
+ *                     authentication: { type: boolean, example: true }
+ *                     profileManagement: { type: boolean, example: true }
+ *                     passwordRecovery: { type: boolean, example: true }
+ *                 endpoints:
+ *                   type: object
+ *                   properties:
+ *                     auth:
+ *                       type: object
+ *                       properties:
+ *                         register: { type: string, example: "POST /registrar" }
+ *                         login: { type: string, example: "POST /login" }
+ *                         logout: { type: string, example: "POST /logout" }
+ *                         refresh: { type: string, example: "POST /refresh" }
+ *                     profile:
+ *                       type: object
+ *                       properties:
+ *                         get: { type: string, example: "GET /perfil" }
+ *                         update: { type: string, example: "PUT /perfil" }
+ *                     recovery:
+ *                       type: object
+ *                       properties:
+ *                         request: { type: string, example: "POST /recuperar-senha" }
+ *                         validate: { type: string, example: "GET /recuperar-senha/validar/:token" }
+ *                         reset: { type: string, example: "POST /recuperar-senha/redefinir" }
+ *                     verification:
+ *                       type: object
+ *                       properties:
+ *                         verify: { type: string, example: "GET /verificar-email?token=xxx" }
+ *                         resend: { type: string, example: "POST /reenviar-verificacao" }
+ *                         status: { type: string, example: "GET /status-verificacao/:userId" }
+ *       500:
+ *         description: Erro interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Erro interno do servidor"
+ *               code: "INTERNAL_ERROR"
  */
 router.get("/", (req, res) => {
   res.json({
@@ -188,12 +245,52 @@ router.get("/", (req, res) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/UserRegisterResponse'
+ *             example:
+ *               success: true
+ *               usuario:
+ *                 id: "b9e1d9b0-7c9f-4d1a-8f2a-1234567890ab"
+ *                 email: "joao@example.com"
+ *                 nomeCompleto: "João da Silva"
  *       400:
  *         description: Dados inválidos
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+  *             example:
+  *               success: false
+  *               message: "Dados inválidos fornecidos"
+  *               code: "VALIDATION_ERROR"
+  *       409:
+  *         description: Usuário já existe
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
+  *             example:
+  *               success: false
+  *               message: "Usuário já cadastrado"
+  *               code: "DUPLICATE_ERROR"
+  *       429:
+  *         description: Muitas tentativas
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
+  *             example:
+  *               success: false
+  *               message: "Muitas tentativas. Tente novamente mais tarde"
+  *               code: "RATE_LIMIT_EXCEEDED"
+  *       500:
+  *         description: Erro interno
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
+  *             example:
+  *               success: false
+  *               message: "Erro interno do servidor"
+  *               code: "INTERNAL_ERROR"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -262,12 +359,50 @@ router.post(
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/UserLoginResponse'
- *       401:
- *         description: Credenciais inválidas
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: true
+ *               token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *               refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  *       400:
+  *         description: Dados ausentes ou inválidos
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
+  *             example:
+  *               success: false
+  *               message: "Documento ou senha inválidos"
+  *               code: "VALIDATION_ERROR"
+  *       401:
+  *         description: Credenciais inválidas
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
+  *             example:
+  *               success: false
+  *               message: "Credenciais inválidas"
+  *               code: "UNAUTHORIZED"
+  *       429:
+  *         description: Muitas tentativas
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
+  *             example:
+  *               success: false
+  *               message: "Muitas tentativas. Tente novamente mais tarde"
+  *               code: "RATE_LIMIT_EXCEEDED"
+  *       500:
+  *         description: Erro interno
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
+  *             example:
+  *               success: false
+  *               message: "Erro interno do servidor"
+  *               code: "INTERNAL_ERROR"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -314,12 +449,53 @@ router.post(
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/RefreshTokenResponse'
+ *             example:
+ *               success: true
+ *               message: "Token renovado com sucesso"
+ *               usuario:
+ *                 id: "b9e1d9b0-7c9f-4d1a-8f2a-1234567890ab"
+ *                 email: "joao@example.com"
+ *                 nomeCompleto: "João da Silva"
  *       400:
  *         description: Refresh token ausente
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+  *             example:
+  *               success: false
+  *               message: "Refresh token não informado"
+  *               code: "VALIDATION_ERROR"
+  *       401:
+  *         description: Refresh token inválido ou expirado
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
+  *             example:
+  *               success: false
+  *               message: "Token inválido"
+  *               code: "UNAUTHORIZED"
+  *       429:
+  *         description: Muitas tentativas
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
+  *             example:
+  *               success: false
+  *               message: "Muitas tentativas. Tente novamente mais tarde"
+  *               code: "RATE_LIMIT_EXCEEDED"
+  *       500:
+  *         description: Erro interno
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
+  *             example:
+  *               success: false
+  *               message: "Erro interno do servidor"
+  *               code: "INTERNAL_ERROR"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -357,6 +533,29 @@ router.post(
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/LogoutResponse'
+ *             example:
+ *               success: true
+ *               message: "Logout realizado"
+  *       401:
+  *         description: Não autenticado
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
+  *             example:
+  *               success: false
+  *               message: "Token inválido ou ausente"
+  *               code: "UNAUTHORIZED"
+  *       500:
+  *         description: Erro interno
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
+  *             example:
+  *               success: false
+  *               message: "Erro interno do servidor"
+  *               code: "INTERNAL_ERROR"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -398,6 +597,35 @@ router.post(
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/UserProfile'
+ *             example:
+ *               id: "b9e1d9b0-7c9f-4d1a-8f2a-1234567890ab"
+ *               email: "joao@example.com"
+ *               nomeCompleto: "João da Silva"
+ *               role: "ADMIN"
+ *               tipoUsuario: "PESSOA_FISICA"
+ *               supabaseId: "uuid-supabase"
+ *               emailVerificado: true
+ *               ultimoLogin: "2024-01-01T12:00:00Z"
+  *       401:
+  *         description: Não autenticado
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
+  *             example:
+  *               success: false
+  *               message: "Token inválido ou ausente"
+  *               code: "UNAUTHORIZED"
+  *       500:
+  *         description: Erro interno
+  *         content:
+  *           application/json:
+  *             schema:
+  *               $ref: '#/components/schemas/ErrorResponse'
+  *             example:
+  *               success: false
+  *               message: "Erro interno do servidor"
+  *               code: "INTERNAL_ERROR"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo

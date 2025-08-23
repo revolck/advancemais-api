@@ -1,4 +1,4 @@
-import type { Application } from "express";
+import type { Application, RequestHandler } from "express";
 import swaggerJsdoc, { Options } from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 import { supabaseAuthMiddleware } from "../modules/usuarios/auth";
@@ -220,7 +220,7 @@ const options: Options = {
 const swaggerSpec = swaggerJsdoc(options);
 
 export function setupSwagger(app: Application): void {
-  const swaggerUiSetup = swaggerUi.setup(swaggerSpec);
+  const swaggerServeHandlers = swaggerUi.serve as RequestHandler[];
 
   app.use(
     "/docs",
@@ -228,15 +228,19 @@ export function setupSwagger(app: Application): void {
       if (req.path === "/login") return next();
       return supabaseAuthMiddleware(["ADMIN"])(req, res, next);
     },
-    (req, res, next) => {
+    ...swaggerServeHandlers.map(
+      (handler): RequestHandler =>
+        (req, res, next) => {
+          if (req.path === "/login") return next();
+          return handler(req, res, next);
+        }
+    ),
+    ((req, res, next) => {
       if (req.path === "/login") return next();
-      return swaggerUi.serve(req, res, next);
-    },
-    (req, res, next) => {
-      if (req.path === "/login") return next();
-      return swaggerUiSetup(req, res, next);
-    }
+      return swaggerUi.setup(swaggerSpec)(req, res, next);
+    }) as RequestHandler
   );
+
   app.get(
     "/docs.json",
     supabaseAuthMiddleware(["ADMIN"]),

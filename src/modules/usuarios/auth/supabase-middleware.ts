@@ -44,11 +44,15 @@ function getKey(header: any, callback: any) {
 export const supabaseAuthMiddleware =
   (roles?: string[]) =>
   async (req: Request, res: Response, next: NextFunction) => {
+    if (req.originalUrl.startsWith("/docs/login")) {
+      return next();
+    }
+
     const token =
       req.headers.authorization?.split(" ")[1] || req.cookies?.token;
 
     if (!token) {
-      if (req.originalUrl.startsWith("/docs")) {
+      if (req.originalUrl.startsWith("/docs") && !req.originalUrl.startsWith("/docs/login")) {
         return res.redirect("/docs/login");
       }
       return res

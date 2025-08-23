@@ -66,6 +66,14 @@ export const supabaseAuthMiddleware =
       { algorithms: ["RS256", "ES256", "HS256"] },
       async (err: any, decoded: any) => {
         if (err) {
+          if (
+            req.originalUrl.startsWith("/docs") &&
+            !req.originalUrl.startsWith("/docs/login")
+          ) {
+            res.clearCookie("token");
+            return res.redirect("/docs/login");
+          }
+
           return res.status(401).json({
             message: "Token inválido ou expirado",
             error: err.message,

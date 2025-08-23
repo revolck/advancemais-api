@@ -5,6 +5,7 @@ import { brevoRoutes } from "../modules/brevo/routes";
 import { websiteRoutes } from "../modules/website";
 import { empresaRoutes } from "../modules/empresa";
 import { auditRoutes } from "../modules/audit";
+import { docsRoutes } from "../modules/docs";
 import { EmailVerificationController } from "../modules/brevo/controllers/email-verification-controller";
 
 /**
@@ -238,6 +239,21 @@ if (auditRoutes) {
   }
 } else {
   console.error("❌ auditRoutes não está definido");
+}
+
+/**
+ * Módulo de Documentação - COM VALIDAÇÃO
+ * /docs/login
+ */
+if (docsRoutes) {
+  try {
+    router.use("/", docsRoutes);
+    console.log("✅ Módulo Documentação registrado com sucesso");
+  } catch (error) {
+    console.error("❌ ERRO - Módulo Documentação:", error);
+  }
+} else {
+  console.error("❌ docsRoutes não está definido");
 }
 
 /**

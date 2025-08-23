@@ -1756,6 +1756,14 @@ export function setupSwagger(app: Application): void {
       );
   });
 
+  app.get("/swagger-custom.css", (req, res) => {
+    res
+      .type("text/css")
+      .send(
+        fs.readFileSync(path.join(__dirname, "swagger-custom.css"), "utf8")
+      );
+  });
+
   app.use(
     "/docs",
     (req, res, next) => {
@@ -1773,6 +1781,7 @@ export function setupSwagger(app: Application): void {
       if (req.path === "/login") return next();
       return swaggerUi.setup(swaggerSpec, {
         customJs: "/swagger-custom.js",
+        customCssUrl: "/swagger-custom.css",
         swaggerOptions: {
           layout: "BaseLayout",
         },

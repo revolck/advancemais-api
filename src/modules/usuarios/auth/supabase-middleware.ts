@@ -48,12 +48,18 @@ export const supabaseAuthMiddleware =
       return next();
     }
 
+    const isDocsRoute = (url: string) =>
+      (url.startsWith("/docs") && !url.startsWith("/docs/login")) ||
+      url.startsWith("/redoc");
+
     const token =
       req.headers.authorization?.split(" ")[1] || req.cookies?.token;
 
     if (!token) {
-      if (req.originalUrl.startsWith("/docs") && !req.originalUrl.startsWith("/docs/login")) {
-        return res.redirect("/docs/login");
+      if (isDocsRoute(req.originalUrl)) {
+        return res.redirect(
+          `/docs/login?redirect=${encodeURIComponent(req.originalUrl)}`
+        );
       }
       return res
         .status(401)
@@ -66,12 +72,11 @@ export const supabaseAuthMiddleware =
       { algorithms: ["RS256", "ES256", "HS256"] },
       async (err: any, decoded: any) => {
         if (err) {
-          if (
-            req.originalUrl.startsWith("/docs") &&
-            !req.originalUrl.startsWith("/docs/login")
-          ) {
+          if (isDocsRoute(req.originalUrl)) {
             res.clearCookie("token");
-            return res.redirect("/docs/login");
+            return res.redirect(
+              `/docs/login?redirect=${encodeURIComponent(req.originalUrl)}`
+            );
           }
 
           return res.status(401).json({

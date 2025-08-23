@@ -21,7 +21,14 @@ router.get("/docs/login", (req, res) => {
 <div class="container">
   <h1>Advance+</h1>
   <form id="loginForm">
-    <input type="text" id="cpf" placeholder="CPF" maxlength="14" required />
+    <input
+      type="text"
+      id="cpf"
+      placeholder="000.000.000-00"
+      inputmode="numeric"
+      maxlength="14"
+      required
+    />
     <input type="password" id="senha" placeholder="Senha" required />
     <button type="submit">Entrar</button>
     <p class="error" id="error"></p>
@@ -29,12 +36,17 @@ router.get("/docs/login", (req, res) => {
 </div>
 <script>
   const cpfInput = document.getElementById('cpf');
+
+  const formatCPF = (value) =>
+    value
+      .replace(/\D/g, '')
+      .slice(0, 11)
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+
   cpfInput.addEventListener('input', () => {
-    let value = cpfInput.value.replace(/\D/g, '').slice(0,11);
-    value = value.replace(/(\d{3})(\d)/, '$1.$2');
-    value = value.replace(/(\d{3})(\d)/, '$1.$2');
-    value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-    cpfInput.value = value;
+    cpfInput.value = formatCPF(cpfInput.value);
   });
 
   const form = document.getElementById('loginForm');

@@ -1773,7 +1773,9 @@ export function setupSwagger(app: Application): void {
       if (req.path === "/login") return next();
       return swaggerUi.setup(swaggerSpec, {
         customJs: "/swagger-custom.js",
-        layout: "BaseLayout",
+        swaggerOptions: {
+          layout: "BaseLayout",
+        },
       })(req, res, next);
     }) as RequestHandler
   );

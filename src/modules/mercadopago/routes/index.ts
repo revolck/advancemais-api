@@ -8,7 +8,7 @@ import { configRoutes } from "./config";
  * Router principal do módulo MercadoPago - CORRIGIDO
  * Centraliza todas as rotas dos submódulos
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 3.0.2 - Correção de path-to-regexp
  */
 const router = Router();

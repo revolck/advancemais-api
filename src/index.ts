@@ -10,12 +10,12 @@ import { startExpiredUserCleanupJob } from "./modules/usuarios/services/user-cle
 import { setupSwagger } from "./config/swagger";
 
 /**
- * Aplicação principal - AdvanceMais API
+ * Aplicação principal - Advance+ API
  *
  * Configuração centralizada de middlewares e rotas
  * usando padrão de router centralizado para melhor organização
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 2.1.0
  */
 
@@ -161,7 +161,7 @@ app.use(
 const server = app.listen(serverConfig.port, () => {
   console.clear();
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log("🚀 AdvanceMais API - Servidor Iniciado");
+  console.log("🚀 Advance+ API - Servidor Iniciado");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log(`📍 URL Base: http://localhost:${serverConfig.port}`);
   console.log(`🌍 Ambiente: ${serverConfig.nodeEnv}`);

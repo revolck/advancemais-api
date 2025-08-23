@@ -8,7 +8,7 @@ import { BrevoConfigManager } from "../config/brevo-config";
  * Controller principal do módulo Brevo
  * Gerencia endpoints de status, testes e informações
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 7.3.0 - CORRIGIDO - Testes sem salvar no banco
  */
 export class BrevoController {
@@ -266,12 +266,12 @@ export class BrevoController {
       console.log(`🧪 Teste de SMS para: ${to}`);
 
       const testMessage =
-        message || "Teste de SMS do AdvanceMais - Sistema funcionando!";
+        message || "Teste de SMS do Advance+ - Sistema funcionando!";
 
       const result = await this.smsService.sendSMS({
         to,
         message: testMessage,
-        sender: "AdvanceMais",
+        sender: "Advance+",
       });
 
       console.log(`📱 Resultado do teste SMS:`, result);

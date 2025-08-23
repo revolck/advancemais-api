@@ -5,7 +5,7 @@ import { WebhookController } from "../controllers";
  * Rotas para Webhooks do MercadoPago - CORRIGIDO
  * Endpoints públicos para recebimento de notificações
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 3.0.2
  */
 const router = Router();

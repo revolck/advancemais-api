@@ -14,7 +14,7 @@ import passwordRecoveryRoutes from "./password-recovery";
  * Rotas de usuário atualizadas com sistema de verificação de email
  * Implementa middleware de email corrigido e funcional
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 7.0.0 - Sistema de verificação de email implementado
  */
 const router = Router();

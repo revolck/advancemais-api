@@ -1,7 +1,7 @@
 {
   "name": "advancemais-api",
   "version": "1.0.0",
-  "description": "API do sistema AdvanceMais - Gestão de usuários e autenticação",
+  "description": "API do sistema Advance+ - Gestão de usuários e autenticação",
   "main": "dist/index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only --ignore-watch node_modules src/index.ts",

@@ -2,7 +2,7 @@
  * Controller de estatísticas - Dashboard e métricas
  * Responsabilidade única: coleta e apresentação de estatísticas
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 3.0.0
  */
 import { Request, Response } from "express";

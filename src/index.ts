@@ -63,6 +63,7 @@ app.use(
           "https://fonts.gstatic.com",
           "data:",
         ],
+        workerSrc: ["'self'", "blob:"],
       },
     },
   })

@@ -12,7 +12,7 @@ import { EmailVerificationService } from "../services/email-verification-service
  * - Validação rigorosa de dados
  * - Execução em background
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 6.0.0 - Sistema completo de verificação
  */
 export class EmailVerificationMiddleware {

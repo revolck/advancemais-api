@@ -2,7 +2,7 @@
  * Router principal do módulo de usuários - ESTRUTURA ORIGINAL
  * Centraliza e organiza todas as sub-rotas
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 3.0.4 - ESTRUTURA ORIGINAL com verificações de segurança
  */
 import { Router } from "express";
@@ -15,7 +15,7 @@ const router = Router();
  */
 router.get("/", (req, res) => {
   res.json({
-    message: "Módulo de Usuários - AdvanceMais API",
+    message: "Módulo de Usuários - Advance+ API",
     version: "3.0.4",
     timestamp: new Date().toISOString(),
     endpoints: {

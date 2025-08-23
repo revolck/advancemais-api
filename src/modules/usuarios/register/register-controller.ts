@@ -26,7 +26,7 @@ import {
  * - Preparação de dados para middlewares
  * - Rollback automático em caso de erro
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 4.0.2 - Correção de tipagem TypeScript
  */
 

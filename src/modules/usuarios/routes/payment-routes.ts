@@ -2,7 +2,7 @@
  * Rotas de pagamento - Integração com MercadoPago
  * Responsabilidade única: operações de pagamento do usuário
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 3.0.0
  */
 import { Router } from "express";

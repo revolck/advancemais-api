@@ -5,7 +5,7 @@ import { BrevoConfigManager, BrevoConfiguration } from "../config/brevo-config";
  * Cliente Brevo simplificado e robusto
  * Gerencia conexão com API Brevo de forma segura
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 7.1.0 - CORRIGIDO - Tratamento de null
  */
 export class BrevoClient {
@@ -241,7 +241,7 @@ export class BrevoClient {
       const sendSmsRequest = new Brevo.SendTransacSms();
       sendSmsRequest.type = Brevo.SendTransacSms.TypeEnum.Transactional;
       sendSmsRequest.unicodeEnabled = false;
-      sendSmsRequest.sender = smsData.sender || "AdvanceMais";
+      sendSmsRequest.sender = smsData.sender || "Advance+";
       sendSmsRequest.recipient = smsData.to;
       sendSmsRequest.content = smsData.message;
 

@@ -2,7 +2,7 @@
  * Rotas de estatísticas e dashboard
  * Responsabilidade única: métricas e relatórios
  *
- * @author Sistema AdvanceMais
+ * @author Sistema Advance+
  * @version 3.0.0
  */
 import { Router } from "express";

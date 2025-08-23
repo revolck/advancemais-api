@@ -3,7 +3,8 @@ import { Router } from "express";
 const router = Router();
 
 router.get("/docs/login", (req, res) => {
-  res.send(`<!DOCTYPE html>
+  res.send(
+    String.raw`<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8" />
@@ -39,11 +40,11 @@ router.get("/docs/login", (req, res) => {
 
   const formatCPF = (value) =>
     value
-      .replace(/\D/g, '')
+      .replace(/[^0-9]/g, '')
       .slice(0, 11)
-      .replace(/(\d{3})(\d)/, '$1.$2')
-      .replace(/(\d{3})(\d)/, '$1.$2')
-      .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+      .replace(/([0-9]{3})([0-9])/, '$1.$2')
+      .replace(/([0-9]{3})([0-9])/, '$1.$2')
+      .replace(/([0-9]{3})([0-9]{1,2})$/, '$1-$2');
 
   cpfInput.addEventListener('input', () => {
     cpfInput.value = formatCPF(cpfInput.value);
@@ -52,7 +53,7 @@ router.get("/docs/login", (req, res) => {
   const form = document.getElementById('loginForm');
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const documento = cpfInput.value.replace(/\D/g, '');
+    const documento = cpfInput.value.replace(/[^0-9]/g, '');
     const senha = document.getElementById('senha').value;
     const res = await fetch('/api/v1/usuarios/login', {
       method: 'POST',
@@ -69,7 +70,8 @@ router.get("/docs/login", (req, res) => {
   });
 </script>
 </body>
-</html>`);
+</html>`
+  );
 });
 
 export { router as docsRoutes };

@@ -220,11 +220,22 @@ const options: Options = {
 const swaggerSpec = swaggerJsdoc(options);
 
 export function setupSwagger(app: Application): void {
+  const swaggerUiSetup = swaggerUi.setup(swaggerSpec);
+
   app.use(
     "/docs",
-    supabaseAuthMiddleware(["ADMIN"]),
-    swaggerUi.serve,
-    swaggerUi.setup(swaggerSpec)
+    (req, res, next) => {
+      if (req.path === "/login") return next();
+      return supabaseAuthMiddleware(["ADMIN"])(req, res, next);
+    },
+    (req, res, next) => {
+      if (req.path === "/login") return next();
+      return swaggerUi.serve(req, res, next);
+    },
+    (req, res, next) => {
+      if (req.path === "/login") return next();
+      return swaggerUiSetup(req, res, next);
+    }
   );
   app.get(
     "/docs.json",

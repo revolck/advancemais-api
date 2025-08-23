@@ -3,6 +3,7 @@ import "./config/env";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import cookieParser from "cookie-parser";
 import { serverConfig } from "./config/env";
 import { appRoutes } from "./routes";
 import { startExpiredUserCleanupJob } from "./modules/usuarios/services/user-cleanup-service";
@@ -54,6 +55,12 @@ app.use(express.json({ limit: "10mb" }));
  * Para formulários HTML tradicionais
  */
 app.use(express.urlencoded({ extended: true }));
+
+/**
+ * Parser de cookies
+ * Necessário para autenticação via cookies no Swagger
+ */
+app.use(cookieParser());
 
 // =============================================
 // SWAGGER DOCS

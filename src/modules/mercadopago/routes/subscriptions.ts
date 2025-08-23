@@ -27,6 +27,16 @@ const subscriptionController = new SubscriptionController();
  *     responses:
  *       200:
  *         description: Lista de assinaturas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MercadoPagoSubscriptionListResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/mercadopago/subscriptions" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 router.get(
   "/",
@@ -46,9 +56,33 @@ router.get(
  *     tags: [MercadoPago]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/MercadoPagoSubscriptionRequest'
  *     responses:
  *       201:
  *         description: Assinatura criada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MercadoPagoSubscriptionResponse'
+ *       400:
+ *         description: Erro de validação
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/mercadopago/subscriptions" \\
+ *            -H "Authorization: Bearer <TOKEN>" \\
+ *            -H "Content-Type: application/json" \\
+ *            -d '{"reason":"Plano Mensal","payer_email":"user@example.com","auto_recurring":{"frequency":1,"frequency_type":"months","transaction_amount":50,"currency_id":"BRL"}}'
  */
 router.post(
   "/",
@@ -77,6 +111,22 @@ router.post(
  *     responses:
  *       200:
  *         description: Dados da assinatura
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MercadoPagoSubscriptionResponse'
+ *       404:
+ *         description: Assinatura não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/mercadopago/subscriptions/{subscriptionId}" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 router.get(
   "/:subscriptionId",
@@ -105,6 +155,22 @@ router.get(
  *     responses:
  *       200:
  *         description: Assinatura pausada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MercadoPagoSubscriptionResponse'
+ *       400:
+ *         description: Erro ao pausar
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X PUT "http://localhost:3000/api/v1/mercadopago/subscriptions/{subscriptionId}/pause" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 router.put(
   "/:subscriptionId/pause",
@@ -133,6 +199,22 @@ router.put(
  *     responses:
  *       200:
  *         description: Assinatura cancelada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MercadoPagoSubscriptionResponse'
+ *       400:
+ *         description: Erro ao cancelar
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X PUT "http://localhost:3000/api/v1/mercadopago/subscriptions/{subscriptionId}/cancel" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 router.put(
   "/:subscriptionId/cancel",
@@ -161,6 +243,22 @@ router.put(
  *     responses:
  *       200:
  *         description: Assinatura reativada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MercadoPagoSubscriptionResponse'
+ *       400:
+ *         description: Erro ao reativar
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X PUT "http://localhost:3000/api/v1/mercadopago/subscriptions/{subscriptionId}/reactivate" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
 router.put(
   "/:subscriptionId/reactivate",

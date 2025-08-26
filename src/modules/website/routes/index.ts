@@ -8,6 +8,13 @@ import { recrutamentoRoutes } from "./recrutamento";
 import { sobreEmpresaRoutes } from "./sobre-empresa";
 import { teamRoutes } from "./team";
 import { diferenciaisRoutes } from "./diferenciais";
+import { planinhasRoutes } from "./planinhas";
+import { adanceAjudaRoutes } from "./adance-ajuda";
+import { recrutamentoSelecaoRoutes } from "./recrutamento-selecao";
+import { sistemaRoutes } from "./sistema";
+import { treinamentoCompanyRoutes } from "./treinamento-company";
+import { conexaoForteRoutes } from "./conexao-forte";
+import { treinamentosInCompanyRoutes } from "./treinamentos-in-company";
 
 const router = Router();
 
@@ -51,6 +58,13 @@ router.get("/", (req, res) => {
       sobreEmpresa: "/sobre-empresa",
       team: "/team",
       diferenciais: "/diferenciais",
+      planinhas: "/planinhas",
+      adanceAjuda: "/adance-ajuda",
+      recrutamentoSelecao: "/recrutamento-selecao",
+      sistema: "/sistema",
+      treinamentoCompany: "/treinamento-company",
+      conexaoForte: "/conexao-forte",
+      treinamentosInCompany: "/treinamentos-in-company",
     },
     status: "operational",
   });
@@ -65,5 +79,12 @@ router.use("/recrutamento", recrutamentoRoutes);
 router.use("/sobre-empresa", sobreEmpresaRoutes);
 router.use("/team", teamRoutes);
 router.use("/diferenciais", diferenciaisRoutes);
+router.use("/planinhas", planinhasRoutes);
+router.use("/adance-ajuda", adanceAjudaRoutes);
+router.use("/recrutamento-selecao", recrutamentoSelecaoRoutes);
+router.use("/sistema", sistemaRoutes);
+router.use("/treinamento-company", treinamentoCompanyRoutes);
+router.use("/conexao-forte", conexaoForteRoutes);
+router.use("/treinamentos-in-company", treinamentosInCompanyRoutes);
 
 export { router as websiteRoutes };

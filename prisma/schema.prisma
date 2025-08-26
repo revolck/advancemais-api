@@ -531,6 +531,123 @@ model WebsiteLogoEnterprise {
   atualizadoEm DateTime @updatedAt
 }
 
+model WebsitePlaninhas {
+  id        String @id @default(uuid())
+  titulo    String
+  descricao String
+  icone1    String
+  titulo1   String
+  descricao1 String
+  icone2    String
+  titulo2   String
+  descricao2 String
+  icone3    String
+  titulo3   String
+  descricao3 String
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
+model WebsiteAdanceAjuda {
+  id         String @id @default(uuid())
+  titulo     String
+  descricao  String
+  imagemUrl  String
+  imagemTitulo String
+  titulo1    String
+  descricao1 String
+  titulo2    String
+  descricao2 String
+  titulo3    String
+  descricao3 String
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
+model WebsiteRecrutamentoSelecao {
+  id         String @id @default(uuid())
+  titulo     String
+  descricao  String
+  imagemUrl  String
+  imagemTitulo String
+  titulo1    String
+  descricao1 String
+  titulo2    String
+  descricao2 String
+  titulo3    String
+  descricao3 String
+  titulo4    String
+  descricao4 String
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
+model WebsiteSistema {
+  id             String @id @default(uuid())
+  titulo         String
+  descricao      String
+  subtitulo      String
+  etapa1Titulo   String
+  etapa1Descricao String
+  etapa2Titulo   String
+  etapa2Descricao String
+  etapa3Titulo   String
+  etapa3Descricao String
+  criadoEm       DateTime @default(now())
+  atualizadoEm   DateTime @updatedAt
+}
+
+model WebsiteTreinamentoCompany {
+  id         String @id @default(uuid())
+  titulo     String
+  icone1     String
+  descricao1 String
+  icone2     String
+  descricao2 String
+  icone3     String
+  descricao3 String
+  icone4     String
+  descricao4 String
+  icone5     String
+  descricao5 String
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
+model WebsiteConexaoForte {
+  id           String @id @default(uuid())
+  titulo       String
+  descricao    String
+  imagemUrl1   String
+  imagemTitulo1 String
+  imagemUrl2   String
+  imagemTitulo2 String
+  imagemUrl3   String
+  imagemTitulo3 String
+  imagemUrl4   String
+  imagemTitulo4 String
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
+model WebsiteTreinamentosInCompany {
+  id         String @id @default(uuid())
+  titulo     String
+  descricao  String
+  imagemUrl  String
+  imagemTitulo String
+  titulo1    String
+  descricao1 String
+  titulo2    String
+  descricao2 String
+  titulo3    String
+  descricao3 String
+  titulo4    String
+  descricao4 String
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
 // =============================================
 // ENUMS EXISTENTES
 // =============================================

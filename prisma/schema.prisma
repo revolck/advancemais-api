@@ -421,6 +421,69 @@ model WebsiteSobre {
   atualizadoEm DateTime @updatedAt
 }
 
+model WebsiteConsultoria {
+  id           String   @id @default(uuid())
+  imagemUrl    String
+  imagemTitulo String
+  titulo       String
+  descricao    String
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
+model WebsiteRecrutamento {
+  id           String   @id @default(uuid())
+  imagemUrl    String
+  imagemTitulo String
+  titulo       String
+  descricao    String
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
+model WebsiteSobreEmpresa {
+  id               String   @id @default(uuid())
+  titulo           String
+  descricao        String
+  descricaoVisao   String
+  descricaoMissao  String
+  descricaoValores String
+  videoUrl         String
+  criadoEm         DateTime @default(now())
+  atualizadoEm     DateTime @updatedAt
+}
+
+model WebsiteTeam {
+  id        String   @id @default(uuid())
+  photoUrl  String
+  nome      String
+  cargo     String
+  criadoEm  DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
+model WebsiteDiferenciais {
+  id           String   @id @default(uuid())
+  icone1       String
+  titulo1      String
+  descricao1   String
+  icone2       String
+  titulo2      String
+  descricao2   String
+  icone3       String
+  titulo3      String
+  descricao3   String
+  icone4       String
+  titulo4      String
+  descricao4   String
+  titulo       String
+  descricao    String
+  botaoUrl     String
+  botaoLabel   String
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
 model WebsiteSlider {
   id          String   @id @default(uuid())
   sliderName  String

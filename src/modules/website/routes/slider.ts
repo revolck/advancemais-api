@@ -1,26 +1,26 @@
 import { Router } from "express";
 import multer from "multer";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
-import { SlideController } from "../controllers/slide.controller";
+import { SliderController } from "../controllers/slider.controller";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 /**
  * @openapi
- * /api/v1/website/slide:
+ * /api/v1/website/slider:
  *   get:
- *     summary: Listar slides
- *     tags: [Website - Slide]
+ *     summary: Listar sliders
+ *     tags: [Website - Slider]
  *     responses:
  *       200:
- *         description: Lista de slides
+ *         description: Lista de sliders
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/WebsiteSlide'
+ *                 $ref: '#/components/schemas/WebsiteSlider'
  *       500:
  *         description: Erro interno do servidor
  *         content:
@@ -31,16 +31,16 @@ const upload = multer({ storage: multer.memoryStorage() });
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X GET "http://localhost:3000/api/v1/website/slide"
- */
-router.get("/", SlideController.list);
+ *           curl -X GET "http://localhost:3000/api/v1/website/slider"
+*/
+router.get("/", SliderController.list);
 
 /**
  * @openapi
- * /api/v1/website/slide/{id}:
+ * /api/v1/website/slider/{id}:
  *   get:
- *     summary: Obter slide por ID
- *     tags: [Website - Slide]
+ *     summary: Obter slider por ID
+ *     tags: [Website - Slider]
  *     parameters:
  *       - in: path
  *         name: id
@@ -49,13 +49,13 @@ router.get("/", SlideController.list);
  *           type: string
  *     responses:
  *       200:
- *         description: Slide encontrado
+ *         description: Slider encontrado
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/WebsiteSlide'
+ *               $ref: '#/components/schemas/WebsiteSlider'
  *       404:
- *         description: Slide não encontrado
+ *         description: Slider não encontrado
  *         content:
  *           application/json:
  *             schema:
@@ -70,16 +70,16 @@ router.get("/", SlideController.list);
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X GET "http://localhost:3000/api/v1/website/slide/{id}"
- */
-router.get("/:id", SlideController.get);
+ *           curl -X GET "http://localhost:3000/api/v1/website/slider/{id}"
+*/
+router.get("/:id", SliderController.get);
 
 /**
  * @openapi
- * /api/v1/website/slide:
+ * /api/v1/website/slider:
  *   post:
- *     summary: Criar slide
- *     tags: [Website - Slide]
+ *     summary: Criar slider
+ *     tags: [Website - Slider]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -87,14 +87,14 @@ router.get("/:id", SlideController.get);
  *       content:
  *         multipart/form-data:
  *           schema:
- *             $ref: '#/components/schemas/WebsiteSlideCreateInput'
+ *             $ref: '#/components/schemas/WebsiteSliderCreateInput'
  *     responses:
  *       201:
- *         description: Slide criado
+ *         description: Slider criado
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/WebsiteSlide'
+ *               $ref: '#/components/schemas/WebsiteSlider'
  *       500:
  *         description: Erro interno do servidor
  *         content:
@@ -105,25 +105,28 @@ router.get("/:id", SlideController.get);
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X POST "http://localhost:3000/api/v1/website/slide" \\
+ *           curl -X POST "http://localhost:3000/api/v1/website/slider" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -F "imagem=@slide.png" \\
- *            -F "link=https://example.com" \\
- *            -F "ordem=1"
+ *            -F "sliderName=Meu Slider" \\
+ *            -F "orientacao=DESKTOP" \\
+ *            -F "status=PUBLICADO" \\
+ *            -F "link=https://example.com"
 */
 router.post(
   "/",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
   upload.single("imagem"),
-  SlideController.create
+  SliderController.create
 );
 
 /**
  * @openapi
- * /api/v1/website/slide/{id}:
+ * /api/v1/website/slider/{id}:
  *   put:
- *     summary: Atualizar slide
- *     tags: [Website - Slide]
+ *     summary: Atualizar slider
+ *     description: Atualiza dados do slider e permite alterar a ordem dos banners, reordenando automaticamente os demais.
+ *     tags: [Website - Slider]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -137,16 +140,16 @@ router.post(
  *       content:
  *         multipart/form-data:
  *           schema:
- *             $ref: '#/components/schemas/WebsiteSlideUpdateInput'
+ *             $ref: '#/components/schemas/WebsiteSliderUpdateInput'
  *     responses:
  *       200:
- *         description: Slide atualizado
+ *         description: Slider atualizado
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/WebsiteSlide'
+ *               $ref: '#/components/schemas/WebsiteSlider'
  *       404:
- *         description: Slide não encontrado
+ *         description: Slider não encontrado
  *         content:
  *           application/json:
  *             schema:
@@ -161,9 +164,12 @@ router.post(
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X PUT "http://localhost:3000/api/v1/website/slide/{id}" \\
+ *           curl -X PUT "http://localhost:3000/api/v1/website/slider/{id}" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -F "imagem=@slide.png" \\
+ *            -F "sliderName=Novo Slider" \\
+ *            -F "orientacao=TABLET_MOBILE" \\
+ *            -F "status=RASCUNHO" \\
  *            -F "link=https://example.com" \\
  *            -F "ordem=2"
 */
@@ -171,15 +177,15 @@ router.put(
   "/:id",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
   upload.single("imagem"),
-  SlideController.update
+  SliderController.update
 );
 
 /**
  * @openapi
- * /api/v1/website/slide/{id}:
+ * /api/v1/website/slider/{id}:
  *   delete:
- *     summary: Remover slide
- *     tags: [Website - Slide]
+ *     summary: Remover slider
+ *     tags: [Website - Slider]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -190,9 +196,9 @@ router.put(
  *           type: string
  *     responses:
  *       204:
- *         description: Slide removido
+ *         description: Slider removido
  *       404:
- *         description: Slide não encontrado
+ *         description: Slider não encontrado
  *         content:
  *           application/json:
  *             schema:
@@ -207,13 +213,13 @@ router.put(
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X DELETE "http://localhost:3000/api/v1/website/slide/{id}" \\
+ *           curl -X DELETE "http://localhost:3000/api/v1/website/slider/{id}" \\
  *            -H "Authorization: Bearer <TOKEN>"
 */
 router.delete(
   "/:id",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  SlideController.remove
+  SliderController.remove
 );
 
-export { router as slideRoutes };
+export { router as sliderRoutes };

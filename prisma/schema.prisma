@@ -421,14 +421,28 @@ model WebsiteSobre {
   atualizadoEm DateTime @updatedAt
 }
 
-model WebsiteSlide {
-  id           String   @id @default(uuid())
-  imagemUrl    String
-  imagemTitulo String
-  link         String?
-  ordem        Int
-  criadoEm     DateTime @default(now())
+model WebsiteSlider {
+  id          String   @id @default(uuid())
+  sliderName  String
+  imagemUrl   String
+  link        String?
+  criadoEm    DateTime @default(now())
   atualizadoEm DateTime @updatedAt
+
+  ordem       WebsiteSliderOrdem?
+}
+
+model WebsiteSliderOrdem {
+  id              String             @id @default(uuid())
+  websiteSliderId String             @unique
+  ordem           Int
+  orientacao      SliderOrientation
+  status          SliderStatus       @default(RASCUNHO)
+  criadoEm        DateTime           @default(now())
+
+  slider          WebsiteSlider      @relation(fields: [websiteSliderId], references: [id], onDelete: Cascade)
+
+  @@unique([ordem, orientacao])
 }
 
 model WebsiteBanner {
@@ -558,3 +572,14 @@ enum PlanValidity {
   DIAS_120
   SEM_VALIDADE
 }
+
+enum SliderOrientation {
+  DESKTOP
+  TABLET_MOBILE
+}
+
+enum SliderStatus {
+  PUBLICADO
+  RASCUNHO
+}
+

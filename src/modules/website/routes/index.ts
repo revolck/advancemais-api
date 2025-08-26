@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { sobreRoutes } from "./sobre";
-import { slideRoutes } from "./slide";
+import { sliderRoutes } from "./slider";
 import { bannerRoutes } from "./banner";
 import { businessGroupInformationRoutes } from "./business-group-information";
 import { logoEnterpriseRoutes } from "./logo-enterprises";
@@ -39,7 +39,7 @@ router.get("/", (req, res) => {
     timestamp: new Date().toISOString(),
     endpoints: {
       sobre: "/sobre",
-      slide: "/slide",
+      slider: "/slider",
       banner: "/banner",
       businessGroupInformation: "/business-group-information",
       logoEnterprises: "/logo-enterprises",
@@ -49,7 +49,7 @@ router.get("/", (req, res) => {
 });
 
 router.use("/sobre", sobreRoutes);
-router.use("/slide", slideRoutes);
+router.use("/slider", sliderRoutes);
   router.use("/banner", bannerRoutes);
   router.use("/business-group-information", businessGroupInformationRoutes);
   router.use("/logo-enterprises", logoEnterpriseRoutes);

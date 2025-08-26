@@ -1,15 +1,22 @@
 import { Request, Response } from "express";
 import path from "path";
 import { supabase } from "../../superbase/client";
-import { slideService } from "../services/slide.service";
+import { sliderService } from "../services/slider.service";
 
-function generateImageTitle(url: string): string {
-  try {
-    const pathname = new URL(url).pathname;
-    return path.basename(pathname).split(".")[0];
-  } catch {
-    return "";
-  }
+function mapSlider(ordem: any) {
+  return {
+    id: ordem.slider.id,
+    sliderName: ordem.slider.sliderName,
+    imagemUrl: ordem.slider.imagemUrl,
+    link: ordem.slider.link,
+    criadoEm: ordem.slider.criadoEm,
+    atualizadoEm: ordem.slider.atualizadoEm,
+    ordemId: ordem.id,
+    ordem: ordem.ordem,
+    orientacao: ordem.orientacao,
+    status: ordem.status,
+    ordemCriadoEm: ordem.criadoEm,
+  };
 }
 
 async function uploadImage(file: Express.Multer.File): Promise<string> {
@@ -27,23 +34,23 @@ async function uploadImage(file: Express.Multer.File): Promise<string> {
   return data.publicUrl;
 }
 
-export class SlideController {
+export class SliderController {
   static list = async (req: Request, res: Response) => {
-    const itens = await slideService.list();
-    res.json(itens);
+    const itens = await sliderService.list();
+    res.json(itens.map(mapSlider));
   };
 
   static get = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const slide = await slideService.get(id);
-      if (!slide) {
-        return res.status(404).json({ message: "Slide não encontrado" });
+      const ordem = await sliderService.get(id);
+      if (!ordem) {
+        return res.status(404).json({ message: "Slider não encontrado" });
       }
-      res.json(slide);
+      res.json(mapSlider(ordem));
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao buscar slide",
+        message: "Erro ao buscar slider",
         error: error.message,
       });
     }
@@ -51,24 +58,24 @@ export class SlideController {
 
   static create = async (req: Request, res: Response) => {
     try {
-      const { link, ordem } = req.body;
+      const { sliderName, link, orientacao, status } = req.body;
       let imagemUrl = "";
       if (req.file) {
         imagemUrl = await uploadImage(req.file);
       } else if (req.body.imagemUrl) {
         imagemUrl = req.body.imagemUrl;
       }
-      const imagemTitulo = imagemUrl ? generateImageTitle(imagemUrl) : "";
-      const slide = await slideService.create({
+      const ordem = await sliderService.create({
+        sliderName,
         imagemUrl,
-        imagemTitulo,
         link,
-        ordem: ordem ? parseInt(ordem, 10) : 0,
+        orientacao,
+        status,
       });
-      res.status(201).json(slide);
+      res.status(201).json(mapSlider(ordem));
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao criar slide",
+        message: "Erro ao criar slider",
         error: error.message,
       });
     }
@@ -77,24 +84,23 @@ export class SlideController {
   static update = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { link, ordem } = req.body;
+      const { sliderName, link, orientacao, status, ordem } = req.body;
       let imagemUrl = req.body.imagemUrl as string | undefined;
       if (req.file) {
         imagemUrl = await uploadImage(req.file);
       }
-      const data: any = { link };
+      const data: any = { sliderName, link, orientacao, status };
       if (ordem !== undefined) {
         data.ordem = parseInt(ordem, 10);
       }
       if (imagemUrl) {
         data.imagemUrl = imagemUrl;
-        data.imagemTitulo = generateImageTitle(imagemUrl);
       }
-      const slide = await slideService.update(id, data);
-      res.json(slide);
+      const ordemResult = await sliderService.update(id, data);
+      res.json(mapSlider(ordemResult));
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao atualizar slide",
+        message: "Erro ao atualizar slider",
         error: error.message,
       });
     }
@@ -103,11 +109,11 @@ export class SlideController {
   static remove = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      await slideService.remove(id);
+      await sliderService.remove(id);
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao remover slide",
+        message: "Erro ao remover slider",
         error: error.message,
       });
     }

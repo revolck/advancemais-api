@@ -2,6 +2,7 @@ import "./config/env";
 
 import express from "express";
 import cors from "cors";
+import type { CorsOptions } from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import { serverConfig } from "./config/env";
@@ -29,14 +30,26 @@ const app = express();
  * Configuração de CORS
  * Permite requisições do frontend configurado
  */
-app.use(
-  cors({
-    origin: serverConfig.corsOrigin,
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Authorization", "Content-Type"],
-  })
-);
+const corsOptions: CorsOptions = {
+  origin: (origin, callback) => {
+    const allowedOrigins = Array.isArray(serverConfig.corsOrigin)
+      ? serverConfig.corsOrigin
+      : [serverConfig.corsOrigin];
+
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Authorization", "Content-Type", "X-Requested-With"],
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 /**
  * Middleware de segurança Helmet

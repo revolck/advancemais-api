@@ -47,7 +47,7 @@ const options: Options = {
         description: "Informações de grupos empresariais",
       },
       { name: "Website - LogoEnterprises", description: "Logos de empresas" },
-      { name: "Website - Slide", description: "Gestão de slides" },
+      { name: "Website - Slider", description: "Gestão de sliders" },
       { name: "Website - Sobre", description: "Conteúdos \"Sobre\"" },
     ],
     components: {
@@ -926,7 +926,7 @@ const options: Options = {
               type: "object",
               properties: {
                 sobre: { type: "string", example: "/sobre" },
-                slide: { type: "string", example: "/slide" },
+                slider: { type: "string", example: "/slider" },
                 banner: { type: "string", example: "/banner" },
                 businessGroupInformation: {
                   type: "string",
@@ -1160,18 +1160,34 @@ const options: Options = {
             },
           },
         },
-        WebsiteSlide: {
+        WebsiteSlider: {
           type: "object",
           properties: {
-            id: { type: "string", example: "slide-uuid" },
+            id: { type: "string", example: "slider-uuid" },
+            sliderName: { type: "string", example: "Banner Principal" },
             imagemUrl: {
               type: "string",
               format: "uri",
               example: "https://cdn.example.com/slide.jpg",
             },
-            imagemTitulo: { type: "string", example: "slide" },
             link: { type: "string", nullable: true, example: "https://example.com" },
+            orientacao: {
+              type: "string",
+              enum: ["DESKTOP", "TABLET_MOBILE"],
+              example: "DESKTOP",
+            },
+            status: {
+              type: "string",
+              enum: ["PUBLICADO", "RASCUNHO"],
+              example: "PUBLICADO",
+            },
             ordem: { type: "integer", example: 1 },
+            ordemId: { type: "string", example: "ordem-uuid" },
+            ordemCriadoEm: {
+              type: "string",
+              format: "date-time",
+              example: "2024-01-01T12:00:00Z",
+            },
             criadoEm: {
               type: "string",
               format: "date-time",
@@ -1184,13 +1200,13 @@ const options: Options = {
             },
           },
         },
-        WebsiteSlideCreateInput: {
+        WebsiteSliderCreateInput: {
           type: "object",
           properties: {
             imagem: {
               type: "string",
               format: "binary",
-              description: "Arquivo de imagem do slide",
+              description: "Arquivo de imagem do slider",
             },
             imagemUrl: {
               type: "string",
@@ -1198,11 +1214,21 @@ const options: Options = {
               description: "URL alternativa da imagem",
               example: "https://cdn.example.com/slide.jpg",
             },
+            sliderName: { type: "string", example: "Banner Principal" },
             link: { type: "string", example: "https://example.com" },
-            ordem: { type: "integer", example: 1 },
+            orientacao: {
+              type: "string",
+              enum: ["DESKTOP", "TABLET_MOBILE"],
+              example: "DESKTOP",
+            },
+            status: {
+              type: "string",
+              enum: ["PUBLICADO", "RASCUNHO"],
+              example: "PUBLICADO",
+            },
           },
         },
-        WebsiteSlideUpdateInput: {
+        WebsiteSliderUpdateInput: {
           type: "object",
           properties: {
             imagem: { type: "string", format: "binary" },
@@ -1211,8 +1237,24 @@ const options: Options = {
               format: "uri",
               example: "https://cdn.example.com/slide.jpg",
             },
+            sliderName: { type: "string", example: "Banner Atualizado" },
             link: { type: "string", example: "https://example.com" },
-            ordem: { type: "integer", example: 2 },
+            orientacao: {
+              type: "string",
+              enum: ["DESKTOP", "TABLET_MOBILE"],
+              example: "TABLET_MOBILE",
+            },
+            status: {
+              type: "string",
+              enum: ["PUBLICADO", "RASCUNHO"],
+              example: "RASCUNHO",
+            },
+            ordem: {
+              type: "integer",
+              example: 2,
+              description:
+                "Nova posição do slider; ao mudar este valor os demais serão reordenados automaticamente",
+            },
           },
         },
         WebsiteSobre: {

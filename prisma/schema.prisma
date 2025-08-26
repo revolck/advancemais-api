@@ -455,22 +455,6 @@ model WebsiteBanner {
   atualizadoEm DateTime @updatedAt
 }
 
-model WebsiteBusinessGroupInformation {
-  id         String   @id @default(uuid())
-  slug       String   @unique
-  titulo     String
-  descricao  String
-  botaoLabel String
-  botaoUrl   String
-  imagemUrl  String
-  imagemAlt  String
-  reverse    Boolean  @default(false)
-  ordem      Int
-  ativo      Boolean  @default(true)
-  criadoEm   DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
-}
-
 model WebsiteLogoEnterprise {
   id         String   @id @default(uuid())
   nome       String

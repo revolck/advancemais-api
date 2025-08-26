@@ -3,6 +3,11 @@ import { sobreRoutes } from "./sobre";
 import { sliderRoutes } from "./slider";
 import { bannerRoutes } from "./banner";
 import { logoEnterpriseRoutes } from "./logo-enterprises";
+import { consultoriaRoutes } from "./consultoria";
+import { recrutamentoRoutes } from "./recrutamento";
+import { sobreEmpresaRoutes } from "./sobre-empresa";
+import { teamRoutes } from "./team";
+import { diferenciaisRoutes } from "./diferenciais";
 
 const router = Router();
 
@@ -41,6 +46,11 @@ router.get("/", (req, res) => {
       slider: "/slider",
       banner: "/banner",
       logoEnterprises: "/logo-enterprises",
+      consultoria: "/consultoria",
+      recrutamento: "/recrutamento",
+      sobreEmpresa: "/sobre-empresa",
+      team: "/team",
+      diferenciais: "/diferenciais",
     },
     status: "operational",
   });
@@ -50,5 +60,10 @@ router.use("/sobre", sobreRoutes);
 router.use("/slider", sliderRoutes);
 router.use("/banner", bannerRoutes);
 router.use("/logo-enterprises", logoEnterpriseRoutes);
+router.use("/consultoria", consultoriaRoutes);
+router.use("/recrutamento", recrutamentoRoutes);
+router.use("/sobre-empresa", sobreEmpresaRoutes);
+router.use("/team", teamRoutes);
+router.use("/diferenciais", diferenciaisRoutes);
 
 export { router as websiteRoutes };

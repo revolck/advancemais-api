@@ -2,7 +2,6 @@ import { Router } from "express";
 import { sobreRoutes } from "./sobre";
 import { sliderRoutes } from "./slider";
 import { bannerRoutes } from "./banner";
-import { businessGroupInformationRoutes } from "./business-group-information";
 import { logoEnterpriseRoutes } from "./logo-enterprises";
 
 const router = Router();
@@ -41,7 +40,6 @@ router.get("/", (req, res) => {
       sobre: "/sobre",
       slider: "/slider",
       banner: "/banner",
-      businessGroupInformation: "/business-group-information",
       logoEnterprises: "/logo-enterprises",
     },
     status: "operational",
@@ -50,8 +48,7 @@ router.get("/", (req, res) => {
 
 router.use("/sobre", sobreRoutes);
 router.use("/slider", sliderRoutes);
-  router.use("/banner", bannerRoutes);
-  router.use("/business-group-information", businessGroupInformationRoutes);
-  router.use("/logo-enterprises", logoEnterpriseRoutes);
+router.use("/banner", bannerRoutes);
+router.use("/logo-enterprises", logoEnterpriseRoutes);
 
 export { router as websiteRoutes };

@@ -42,10 +42,6 @@ const options: Options = {
       { name: "Empresa", description: "Gestão de planos de empresa" },
       { name: "Website", description: "Conteúdo público do site" },
       { name: "Website - Banner", description: "Gestão de banners" },
-      {
-        name: "Website - BusinessGroupInformation",
-        description: "Informações de grupos empresariais",
-      },
       { name: "Website - LogoEnterprises", description: "Logos de empresas" },
       { name: "Website - Slider", description: "Gestão de sliders" },
       { name: "Website - Sobre", description: "Conteúdos \"Sobre\"" },
@@ -928,10 +924,6 @@ const options: Options = {
                 sobre: { type: "string", example: "/sobre" },
                 slider: { type: "string", example: "/slider" },
                 banner: { type: "string", example: "/banner" },
-                businessGroupInformation: {
-                  type: "string",
-                  example: "/business-group-information",
-                },
                 logoEnterprises: {
                   type: "string",
                   example: "/logo-enterprises",
@@ -1006,91 +998,6 @@ const options: Options = {
             },
             link: { type: "string", example: "https://example.com" },
             ordem: { type: "integer", example: 2 },
-          },
-        },
-        WebsiteBusinessGroupInformation: {
-          type: "object",
-          properties: {
-            id: { type: "string", example: "info-uuid" },
-            slug: { type: "string", example: "grupo-x" },
-            titulo: { type: "string", example: "Grupo X" },
-            descricao: { type: "string", example: "Descrição do grupo" },
-            botaoLabel: { type: "string", example: "Saiba mais" },
-            botaoUrl: {
-              type: "string",
-              example: "https://example.com/grupo-x",
-            },
-            imagemUrl: {
-              type: "string",
-              format: "uri",
-              example: "https://cdn.example.com/grupo.png",
-            },
-            imagemAlt: { type: "string", example: "Imagem do grupo" },
-            reverse: { type: "boolean", example: false },
-            ordem: { type: "integer", example: 1 },
-            ativo: { type: "boolean", example: true },
-            criadoEm: {
-              type: "string",
-              format: "date-time",
-              example: "2024-01-01T12:00:00Z",
-            },
-            atualizadoEm: {
-              type: "string",
-              format: "date-time",
-              example: "2024-01-01T12:00:00Z",
-            },
-          },
-        },
-        WebsiteBusinessGroupInformationCreateInput: {
-          type: "object",
-          required: ["slug", "titulo", "descricao", "botaoLabel", "botaoUrl"],
-          properties: {
-            slug: { type: "string", example: "grupo-x" },
-            titulo: { type: "string", example: "Grupo X" },
-            descricao: { type: "string", example: "Descrição do grupo" },
-            botaoLabel: { type: "string", example: "Saiba mais" },
-            botaoUrl: {
-              type: "string",
-              example: "https://example.com/grupo-x",
-            },
-            imagem: {
-              type: "string",
-              format: "binary",
-              description: "Arquivo de imagem",
-            },
-            imagemUrl: {
-              type: "string",
-              format: "uri",
-              description: "URL da imagem",
-              example: "https://cdn.example.com/grupo.png",
-            },
-            imagemAlt: { type: "string", example: "Imagem do grupo" },
-            reverse: { type: "boolean", example: false },
-            ordem: { type: "integer", example: 1 },
-            ativo: { type: "boolean", example: true },
-          },
-        },
-        WebsiteBusinessGroupInformationUpdateInput: {
-          type: "object",
-          properties: {
-            slug: { type: "string", example: "grupo-x" },
-            titulo: { type: "string", example: "Grupo X" },
-            descricao: { type: "string", example: "Descrição do grupo" },
-            botaoLabel: { type: "string", example: "Saiba mais" },
-            botaoUrl: {
-              type: "string",
-              example: "https://example.com/grupo-x",
-            },
-            imagem: { type: "string", format: "binary" },
-            imagemUrl: {
-              type: "string",
-              format: "uri",
-              example: "https://cdn.example.com/grupo.png",
-            },
-            imagemAlt: { type: "string", example: "Imagem do grupo" },
-            reverse: { type: "boolean", example: false },
-            ordem: { type: "integer", example: 2 },
-            ativo: { type: "boolean", example: true },
           },
         },
         WebsiteLogoEnterprise: {

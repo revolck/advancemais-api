@@ -45,6 +45,26 @@ const options: Options = {
       { name: "Website - LogoEnterprises", description: "Logos de empresas" },
       { name: "Website - Slider", description: "Gestão de sliders" },
       { name: "Website - Sobre", description: "Conteúdos \"Sobre\"" },
+      {
+        name: "Website - Consultoria",
+        description: "Conteúdos \"Consultoria\"",
+      },
+      {
+        name: "Website - Recrutamento",
+        description: "Conteúdos \"Recrutamento\"",
+      },
+      {
+        name: "Website - SobreEmpresa",
+        description: "Conteúdos \"Sobre Empresa\"",
+      },
+      {
+        name: "Website - Team",
+        description: "Conteúdos \"Team\"",
+      },
+      {
+        name: "Website - Diferenciais",
+        description: "Conteúdos \"Diferenciais\"",
+      },
     ],
     components: {
       schemas: {
@@ -928,6 +948,11 @@ const options: Options = {
                   type: "string",
                   example: "/logo-enterprises",
                 },
+                consultoria: { type: "string", example: "/consultoria" },
+                recrutamento: { type: "string", example: "/recrutamento" },
+                sobreEmpresa: { type: "string", example: "/sobre-empresa" },
+                team: { type: "string", example: "/team" },
+                diferenciais: { type: "string", example: "/diferenciais" },
               },
             },
             status: { type: "string", example: "operational" },
@@ -1227,6 +1252,410 @@ const options: Options = {
               format: "uri",
               example: "https://cdn.example.com/sobre.jpg",
             },
+          },
+        },
+        WebsiteConsultoria: {
+          type: "object",
+          properties: {
+            id: { type: "string", example: "consultoria-uuid" },
+            imagemUrl: {
+              type: "string",
+              format: "uri",
+              example: "https://cdn.example.com/consultoria.jpg",
+            },
+            imagemTitulo: { type: "string", example: "consultoria" },
+            titulo: { type: "string", example: "Serviços de Consultoria" },
+            descricao: {
+              type: "string",
+              example: "Descrição sobre consultoria",
+            },
+            criadoEm: {
+              type: "string",
+              format: "date-time",
+              example: "2024-01-01T12:00:00Z",
+            },
+            atualizadoEm: {
+              type: "string",
+              format: "date-time",
+              example: "2024-01-01T12:00:00Z",
+            },
+          },
+        },
+        WebsiteConsultoriaCreateInput: {
+          type: "object",
+          required: ["titulo", "descricao"],
+          properties: {
+            titulo: {
+              type: "string",
+              example: "Serviços de Consultoria",
+            },
+            descricao: {
+              type: "string",
+              example: "Descrição sobre consultoria",
+            },
+            imagem: {
+              type: "string",
+              format: "binary",
+              description: "Arquivo de imagem do conteúdo",
+            },
+            imagemUrl: {
+              type: "string",
+              format: "uri",
+              description: "URL alternativa da imagem",
+              example: "https://cdn.example.com/consultoria.jpg",
+            },
+          },
+        },
+        WebsiteConsultoriaUpdateInput: {
+          type: "object",
+          properties: {
+            titulo: {
+              type: "string",
+              example: "Serviços de Consultoria",
+            },
+            descricao: {
+              type: "string",
+              example: "Descrição atualizada",
+            },
+            imagem: { type: "string", format: "binary" },
+            imagemUrl: {
+              type: "string",
+              format: "uri",
+              example: "https://cdn.example.com/consultoria.jpg",
+            },
+          },
+        },
+        WebsiteRecrutamento: {
+          type: "object",
+          properties: {
+            id: { type: "string", example: "recrutamento-uuid" },
+            imagemUrl: {
+              type: "string",
+              format: "uri",
+              example: "https://cdn.example.com/recrutamento.jpg",
+            },
+            imagemTitulo: { type: "string", example: "recrutamento" },
+            titulo: { type: "string", example: "Serviços de Recrutamento" },
+            descricao: {
+              type: "string",
+              example: "Descrição sobre recrutamento",
+            },
+            criadoEm: {
+              type: "string",
+              format: "date-time",
+              example: "2024-01-01T12:00:00Z",
+            },
+            atualizadoEm: {
+              type: "string",
+              format: "date-time",
+              example: "2024-01-01T12:00:00Z",
+            },
+          },
+        },
+        WebsiteRecrutamentoCreateInput: {
+          type: "object",
+          required: ["titulo", "descricao"],
+          properties: {
+            titulo: {
+              type: "string",
+              example: "Serviços de Recrutamento",
+            },
+            descricao: {
+              type: "string",
+              example: "Descrição sobre recrutamento",
+            },
+            imagem: {
+              type: "string",
+              format: "binary",
+              description: "Arquivo de imagem do conteúdo",
+            },
+            imagemUrl: {
+              type: "string",
+              format: "uri",
+              description: "URL alternativa da imagem",
+              example: "https://cdn.example.com/recrutamento.jpg",
+            },
+          },
+        },
+        WebsiteRecrutamentoUpdateInput: {
+          type: "object",
+          properties: {
+            titulo: {
+              type: "string",
+              example: "Serviços de Recrutamento",
+            },
+            descricao: {
+              type: "string",
+              example: "Descrição atualizada",
+            },
+            imagem: { type: "string", format: "binary" },
+            imagemUrl: {
+              type: "string",
+              format: "uri",
+              example: "https://cdn.example.com/recrutamento.jpg",
+            },
+          },
+        },
+        WebsiteSobreEmpresa: {
+          type: "object",
+          properties: {
+            id: { type: "string", example: "sobreempresa-uuid" },
+            titulo: { type: "string", example: "Sobre a Empresa" },
+            descricao: {
+              type: "string",
+              example: "Descrição sobre a empresa",
+            },
+            descricaoVisao: {
+              type: "string",
+              example: "Nossa visão",
+            },
+            descricaoMissao: {
+              type: "string",
+              example: "Nossa missão",
+            },
+            descricaoValores: {
+              type: "string",
+              example: "Nossos valores",
+            },
+            videoUrl: {
+              type: "string",
+              format: "uri",
+              example: "https://example.com/video",
+            },
+            criadoEm: {
+              type: "string",
+              format: "date-time",
+              example: "2024-01-01T12:00:00Z",
+            },
+            atualizadoEm: {
+              type: "string",
+              format: "date-time",
+              example: "2024-01-01T12:00:00Z",
+            },
+          },
+        },
+        WebsiteSobreEmpresaCreateInput: {
+          type: "object",
+          required: [
+            "titulo",
+            "descricao",
+            "descricaoVisao",
+            "descricaoMissao",
+            "descricaoValores",
+            "videoUrl",
+          ],
+          properties: {
+            titulo: { type: "string", example: "Sobre a Empresa" },
+            descricao: {
+              type: "string",
+              example: "Descrição sobre a empresa",
+            },
+            descricaoVisao: {
+              type: "string",
+              example: "Nossa visão",
+            },
+            descricaoMissao: {
+              type: "string",
+              example: "Nossa missão",
+            },
+            descricaoValores: {
+              type: "string",
+              example: "Nossos valores",
+            },
+            videoUrl: {
+              type: "string",
+              format: "uri",
+              example: "https://example.com/video",
+            },
+          },
+        },
+        WebsiteSobreEmpresaUpdateInput: {
+          type: "object",
+          properties: {
+            titulo: { type: "string", example: "Sobre a Empresa" },
+            descricao: {
+              type: "string",
+              example: "Descrição sobre a empresa",
+            },
+            descricaoVisao: {
+              type: "string",
+              example: "Nossa visão",
+            },
+            descricaoMissao: {
+              type: "string",
+              example: "Nossa missão",
+            },
+            descricaoValores: {
+              type: "string",
+              example: "Nossos valores",
+            },
+            videoUrl: {
+              type: "string",
+              format: "uri",
+              example: "https://example.com/video",
+            },
+          },
+        },
+        WebsiteTeam: {
+          type: "object",
+          properties: {
+            id: { type: "string", example: "team-uuid" },
+            photoUrl: {
+              type: "string",
+              format: "uri",
+              example: "https://cdn.example.com/team.jpg",
+            },
+            nome: { type: "string", example: "Fulano" },
+            cargo: { type: "string", example: "Desenvolvedor" },
+            criadoEm: {
+              type: "string",
+              format: "date-time",
+              example: "2024-01-01T12:00:00Z",
+            },
+            atualizadoEm: {
+              type: "string",
+              format: "date-time",
+              example: "2024-01-01T12:00:00Z",
+            },
+          },
+        },
+        WebsiteTeamCreateInput: {
+          type: "object",
+          required: ["nome", "cargo"],
+          properties: {
+            nome: { type: "string", example: "Fulano" },
+            cargo: { type: "string", example: "Desenvolvedor" },
+            photo: {
+              type: "string",
+              format: "binary",
+              description: "Arquivo de imagem do membro",
+            },
+            photoUrl: {
+              type: "string",
+              format: "uri",
+              description: "URL alternativa da imagem",
+              example: "https://cdn.example.com/team.jpg",
+            },
+          },
+        },
+        WebsiteTeamUpdateInput: {
+          type: "object",
+          properties: {
+            nome: { type: "string", example: "Fulano" },
+            cargo: { type: "string", example: "Desenvolvedor" },
+            photo: { type: "string", format: "binary" },
+            photoUrl: {
+              type: "string",
+              format: "uri",
+              example: "https://cdn.example.com/team.jpg",
+            },
+          },
+        },
+        WebsiteDiferenciais: {
+          type: "object",
+          properties: {
+            id: { type: "string", example: "diferenciais-uuid" },
+            icone1: { type: "string", example: "icon1" },
+            titulo1: { type: "string", example: "Título 1" },
+            descricao1: { type: "string", example: "Descrição 1" },
+            icone2: { type: "string", example: "icon2" },
+            titulo2: { type: "string", example: "Título 2" },
+            descricao2: { type: "string", example: "Descrição 2" },
+            icone3: { type: "string", example: "icon3" },
+            titulo3: { type: "string", example: "Título 3" },
+            descricao3: { type: "string", example: "Descrição 3" },
+            icone4: { type: "string", example: "icon4" },
+            titulo4: { type: "string", example: "Título 4" },
+            descricao4: { type: "string", example: "Descrição 4" },
+            titulo: { type: "string", example: "Nossos Diferenciais" },
+            descricao: {
+              type: "string",
+              example: "Texto geral dos diferenciais",
+            },
+            botaoUrl: {
+              type: "string",
+              format: "uri",
+              example: "https://example.com",
+            },
+            botaoLabel: { type: "string", example: "Saiba mais" },
+            criadoEm: {
+              type: "string",
+              format: "date-time",
+              example: "2024-01-01T12:00:00Z",
+            },
+            atualizadoEm: {
+              type: "string",
+              format: "date-time",
+              example: "2024-01-01T12:00:00Z",
+            },
+          },
+        },
+        WebsiteDiferenciaisCreateInput: {
+          type: "object",
+          required: [
+            "icone1",
+            "titulo1",
+            "descricao1",
+            "icone2",
+            "titulo2",
+            "descricao2",
+            "icone3",
+            "titulo3",
+            "descricao3",
+            "icone4",
+            "titulo4",
+            "descricao4",
+            "titulo",
+            "descricao",
+            "botaoUrl",
+            "botaoLabel",
+          ],
+          properties: {
+            icone1: { type: "string", example: "icon1" },
+            titulo1: { type: "string", example: "Título 1" },
+            descricao1: { type: "string", example: "Descrição 1" },
+            icone2: { type: "string", example: "icon2" },
+            titulo2: { type: "string", example: "Título 2" },
+            descricao2: { type: "string", example: "Descrição 2" },
+            icone3: { type: "string", example: "icon3" },
+            titulo3: { type: "string", example: "Título 3" },
+            descricao3: { type: "string", example: "Descrição 3" },
+            icone4: { type: "string", example: "icon4" },
+            titulo4: { type: "string", example: "Título 4" },
+            descricao4: { type: "string", example: "Descrição 4" },
+            titulo: { type: "string", example: "Nossos Diferenciais" },
+            descricao: { type: "string", example: "Texto geral" },
+            botaoUrl: {
+              type: "string",
+              format: "uri",
+              example: "https://example.com",
+            },
+            botaoLabel: { type: "string", example: "Saiba mais" },
+          },
+        },
+        WebsiteDiferenciaisUpdateInput: {
+          type: "object",
+          properties: {
+            icone1: { type: "string", example: "icon1" },
+            titulo1: { type: "string", example: "Título 1" },
+            descricao1: { type: "string", example: "Descrição 1" },
+            icone2: { type: "string", example: "icon2" },
+            titulo2: { type: "string", example: "Título 2" },
+            descricao2: { type: "string", example: "Descrição 2" },
+            icone3: { type: "string", example: "icon3" },
+            titulo3: { type: "string", example: "Título 3" },
+            descricao3: { type: "string", example: "Descrição 3" },
+            icone4: { type: "string", example: "icon4" },
+            titulo4: { type: "string", example: "Título 4" },
+            descricao4: { type: "string", example: "Descrição 4" },
+            titulo: { type: "string", example: "Nossos Diferenciais" },
+            descricao: { type: "string", example: "Texto geral" },
+            botaoUrl: {
+              type: "string",
+              format: "uri",
+              example: "https://example.com",
+            },
+            botaoLabel: { type: "string", example: "Saiba mais" },
           },
         },
         AdminModuleInfo: {

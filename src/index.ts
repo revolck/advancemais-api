@@ -21,6 +21,8 @@ import { setupSwagger } from "./config/swagger";
  */
 
 const app = express();
+// Confia no proxy para que req.protocol reflita corretamente HTTPS
+app.set("trust proxy", true);
 
 // =============================================
 // MIDDLEWARES GLOBAIS
@@ -39,13 +41,16 @@ const corsOptionsDelegate: CorsOptionsDelegate<express.Request> = (
   const allowedOrigins = Array.isArray(serverConfig.corsOrigin)
     ? serverConfig.corsOrigin
     : [serverConfig.corsOrigin];
-  const serverOrigin = `${req.protocol}://${req.get("host")}`;
 
-  if (!origin || allowedOrigins.includes(origin) || origin === serverOrigin) {
+  // Determina o host do servidor e compara apenas o host, independente do protocolo
+  const serverHost = req.hostname;
+  const originHost = origin ? new URL(origin).host : null;
+
+  if (!origin || allowedOrigins.includes(origin) || originHost === serverHost) {
     const corsOptions: CorsOptions = {
       origin: true,
       credentials: true,
-      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
       allowedHeaders: [
         "Authorization",
         "Content-Type",
@@ -56,7 +61,8 @@ const corsOptionsDelegate: CorsOptionsDelegate<express.Request> = (
     return callback(null, corsOptions);
   }
 
-  return callback(new Error("Not allowed by CORS"));
+  // Rejeita silenciosamente origens não permitidas para evitar erro 500
+  return callback(null, { origin: false });
 };
 
 app.use(cors(corsOptionsDelegate));

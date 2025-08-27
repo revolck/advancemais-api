@@ -31,7 +31,10 @@ const app = express();
  * Permite requisições do frontend configurado
  * e sempre aceita requisições do mesmo domínio do servidor
  */
-const corsOptionsDelegate: CorsOptionsDelegate = (req, callback) => {
+const corsOptionsDelegate: CorsOptionsDelegate<express.Request> = (
+  req,
+  callback
+) => {
   const origin = req.header("Origin");
   const allowedOrigins = Array.isArray(serverConfig.corsOrigin)
     ? serverConfig.corsOrigin

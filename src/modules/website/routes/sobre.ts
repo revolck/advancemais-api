@@ -1,10 +1,8 @@
 import { Router } from "express";
-import multer from "multer";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
 import { SobreController } from "../controllers/sobre.controller";
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
 
 /**
  * @openapi
@@ -85,7 +83,7 @@ router.get("/:id", SobreController.get);
  *     requestBody:
  *       required: true
  *       content:
- *         multipart/form-data:
+ *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/WebsiteSobreCreateInput'
  *     responses:
@@ -107,14 +105,12 @@ router.get("/:id", SobreController.get);
  *         source: |
  *           curl -X POST "http://localhost:3000/api/v1/website/sobre" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
- *            -F "imagem=@sobre.png" \\
- *            -F "titulo=Novo" \\
- *            -F "descricao=Conteudo"
+ *            -H "Content-Type: application/json" \\
+ *            -d '{"titulo":"Novo","descricao":"Conteudo","imagemUrl":"https://cdn.example.com/sobre.jpg"}'
 */
 router.post(
   "/",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  upload.single("imagem"),
   SobreController.create
 );
 
@@ -135,7 +131,7 @@ router.post(
  *     requestBody:
  *       required: true
  *       content:
- *         multipart/form-data:
+ *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/WebsiteSobreUpdateInput'
  *     responses:
@@ -163,14 +159,12 @@ router.post(
  *         source: |
  *           curl -X PUT "http://localhost:3000/api/v1/website/sobre/{id}" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
- *            -F "imagem=@sobre.png" \\
- *            -F "titulo=Atualizado" \\
- *            -F "descricao=Atualizada"
+ *            -H "Content-Type: application/json" \\
+ *            -d '{"titulo":"Atualizado","descricao":"Atualizada","imagemUrl":"https://cdn.example.com/sobre.jpg"}'
 */
 router.put(
   "/:id",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  upload.single("imagem"),
   SobreController.update
 );
 

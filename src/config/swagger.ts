@@ -1291,6 +1291,15 @@ const options: Options = {
               type: "string",
               example: "Descrição sobre consultoria",
             },
+            buttonUrl: {
+              type: "string",
+              format: "uri",
+              example: "https://example.com/consultoria",
+            },
+            buttonLabel: {
+              type: "string",
+              example: "Saiba mais",
+            },
             criadoEm: {
               type: "string",
               format: "date-time",
@@ -1305,7 +1314,7 @@ const options: Options = {
         },
         WebsiteConsultoriaCreateInput: {
           type: "object",
-          required: ["titulo", "descricao"],
+          required: ["titulo", "descricao", "buttonUrl", "buttonLabel"],
           properties: {
             titulo: {
               type: "string",
@@ -1315,6 +1324,12 @@ const options: Options = {
               type: "string",
               example: "Descrição sobre consultoria",
             },
+            buttonUrl: {
+              type: "string",
+              format: "uri",
+              example: "https://example.com/consultoria",
+            },
+            buttonLabel: { type: "string", example: "Saiba mais" },
             imagem: {
               type: "string",
               format: "binary",
@@ -1339,6 +1354,12 @@ const options: Options = {
               type: "string",
               example: "Descrição atualizada",
             },
+            buttonUrl: {
+              type: "string",
+              format: "uri",
+              example: "https://example.com/consultoria",
+            },
+            buttonLabel: { type: "string", example: "Saiba mais" },
             imagem: { type: "string", format: "binary" },
             imagemUrl: {
               type: "string",
@@ -1362,6 +1383,12 @@ const options: Options = {
               type: "string",
               example: "Descrição sobre recrutamento",
             },
+            buttonUrl: {
+              type: "string",
+              format: "uri",
+              example: "https://example.com/recrutamento",
+            },
+            buttonLabel: { type: "string", example: "Saiba mais" },
             criadoEm: {
               type: "string",
               format: "date-time",
@@ -1376,7 +1403,7 @@ const options: Options = {
         },
         WebsiteRecrutamentoCreateInput: {
           type: "object",
-          required: ["titulo", "descricao"],
+          required: ["titulo", "descricao", "buttonUrl", "buttonLabel"],
           properties: {
             titulo: {
               type: "string",
@@ -1386,6 +1413,12 @@ const options: Options = {
               type: "string",
               example: "Descrição sobre recrutamento",
             },
+            buttonUrl: {
+              type: "string",
+              format: "uri",
+              example: "https://example.com/recrutamento",
+            },
+            buttonLabel: { type: "string", example: "Saiba mais" },
             imagem: {
               type: "string",
               format: "binary",
@@ -1410,6 +1443,12 @@ const options: Options = {
               type: "string",
               example: "Descrição atualizada",
             },
+            buttonUrl: {
+              type: "string",
+              format: "uri",
+              example: "https://example.com/recrutamento",
+            },
+            buttonLabel: { type: "string", example: "Saiba mais" },
             imagem: { type: "string", format: "binary" },
             imagemUrl: {
               type: "string",

@@ -52,12 +52,12 @@ export class RecrutamentoController {
 
   static create = async (req: Request, res: Response) => {
     try {
-      const { titulo, descricao } = req.body;
+      const { titulo, descricao, buttonUrl, buttonLabel } = req.body;
       let imagemUrl = "";
       if (req.file) {
         imagemUrl = await uploadImage(req.file);
-      } else if (req.body.imagemUrl) {
-        imagemUrl = req.body.imagemUrl;
+      } else if (typeof req.body.imagemUrl === "string") {
+        imagemUrl = req.body.imagemUrl.trim();
       }
       const imagemTitulo = imagemUrl ? generateImageTitle(imagemUrl) : "";
       const recrutamento = await recrutamentoService.create({
@@ -65,6 +65,8 @@ export class RecrutamentoController {
         imagemTitulo,
         titulo,
         descricao,
+        buttonUrl,
+        buttonLabel,
       });
       res.status(201).json(recrutamento);
     } catch (error: any) {
@@ -78,13 +80,19 @@ export class RecrutamentoController {
   static update = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { titulo, descricao } = req.body;
-      let imagemUrl = req.body.imagemUrl as string | undefined;
+      const { titulo, descricao, buttonUrl, buttonLabel } = req.body;
+      const imagemUrlRaw = req.body.imagemUrl;
+      let imagemUrl =
+        typeof imagemUrlRaw === "string" ? imagemUrlRaw.trim() : undefined;
       if (req.file) {
         imagemUrl = await uploadImage(req.file);
       }
-      const data: any = { titulo, descricao };
-      if (imagemUrl) {
+      const data: any = {};
+      if (titulo !== undefined) data.titulo = titulo;
+      if (descricao !== undefined) data.descricao = descricao;
+      if (buttonUrl !== undefined) data.buttonUrl = buttonUrl;
+      if (buttonLabel !== undefined) data.buttonLabel = buttonLabel;
+      if (imagemUrl !== undefined) {
         data.imagemUrl = imagemUrl;
         data.imagemTitulo = generateImageTitle(imagemUrl);
       }

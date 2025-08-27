@@ -53,8 +53,10 @@ export class SobreController {
     try {
       const { id } = req.params;
       const { titulo, descricao, imagemUrl } = req.body;
-      const data: any = { titulo, descricao };
-      if (imagemUrl) {
+      const data: any = {};
+      if (titulo !== undefined) data.titulo = titulo;
+      if (descricao !== undefined) data.descricao = descricao;
+      if (imagemUrl !== undefined) {
         data.imagemUrl = imagemUrl;
         data.imagemTitulo = generateImageTitle(imagemUrl);
       }

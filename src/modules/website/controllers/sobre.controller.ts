@@ -35,10 +35,13 @@ export class SobreController {
 
   static create = async (req: Request, res: Response) => {
     try {
-      const { titulo, descricao, imagemUrl } = req.body;
+      const { titulo, descricao } = req.body;
+      const imagemUrlRaw = req.body.imagemUrl;
+      const imagemUrl =
+        typeof imagemUrlRaw === "string" ? imagemUrlRaw.trim() : undefined;
       const imagemTitulo = imagemUrl ? generateImageTitle(imagemUrl) : "";
       const sobre = await sobreService.create({
-        imagemUrl,
+        imagemUrl: imagemUrl ?? "",
         imagemTitulo,
         titulo,
         descricao,
@@ -52,7 +55,10 @@ export class SobreController {
   static update = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { titulo, descricao, imagemUrl } = req.body;
+      const { titulo, descricao } = req.body;
+      const imagemUrlRaw = req.body.imagemUrl;
+      const imagemUrl =
+        typeof imagemUrlRaw === "string" ? imagemUrlRaw.trim() : undefined;
       const data: any = {};
       if (titulo !== undefined) data.titulo = titulo;
       if (descricao !== undefined) data.descricao = descricao;

@@ -2630,20 +2630,27 @@ const swaggerSpec = swaggerJsdoc(options);
 export function setupSwagger(app: Application): void {
   const swaggerServeHandlers = swaggerUi.serve as RequestHandler[];
 
-  app.get("/swagger-custom.js", (req, res) => {
-    res
-      .type("application/javascript")
-      .send(
-        fs.readFileSync(path.join(__dirname, "swagger-custom.js"), "utf8")
-      );
+  const resolveSwaggerAsset = (file: string): string => {
+    const distPath = path.join(__dirname, file);
+    if (fs.existsSync(distPath)) return distPath;
+    return path.join(process.cwd(), "src", "config", file);
+  };
+
+  const swaggerCustomJs = fs.readFileSync(
+    resolveSwaggerAsset("swagger-custom.js"),
+    "utf8"
+  );
+  const swaggerCustomCss = fs.readFileSync(
+    resolveSwaggerAsset("swagger-custom.css"),
+    "utf8"
+  );
+
+  app.get("/swagger-custom.js", (_req, res) => {
+    res.type("application/javascript").send(swaggerCustomJs);
   });
 
-  app.get("/swagger-custom.css", (req, res) => {
-    res
-      .type("text/css")
-      .send(
-        fs.readFileSync(path.join(__dirname, "swagger-custom.css"), "utf8")
-      );
+  app.get("/swagger-custom.css", (_req, res) => {
+    res.type("text/css").send(swaggerCustomCss);
   });
 
   app.use(

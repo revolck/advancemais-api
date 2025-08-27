@@ -16,15 +16,17 @@ describe("SobreController", () => {
   app.post("/sobre", SobreController.create);
   app.put("/sobre/:id", SobreController.update);
 
-  it("should return imagemUrl on create", async () => {
+  it("should return trimmed imagemUrl on create", async () => {
     const payload = {
       titulo: "Title",
       descricao: "Desc",
-      imagemUrl: "https://cdn.example.com/img.png",
+      imagemUrl: " https://cdn.example.com/img.png ",
     };
+    const trimmed = payload.imagemUrl.trim();
     (sobreService.create as jest.Mock).mockResolvedValue({
       id: "1",
       ...payload,
+      imagemUrl: trimmed,
       imagemTitulo: "img",
       criadoEm: new Date().toISOString(),
       atualizadoEm: new Date().toISOString(),
@@ -32,9 +34,9 @@ describe("SobreController", () => {
 
     const res = await request(app).post("/sobre").send(payload);
     expect(res.status).toBe(201);
-    expect(res.body.imagemUrl).toBe(payload.imagemUrl);
+    expect(res.body.imagemUrl).toBe(trimmed);
     expect(sobreService.create).toHaveBeenCalledWith({
-      imagemUrl: payload.imagemUrl,
+      imagemUrl: trimmed,
       imagemTitulo: "img",
       titulo: payload.titulo,
       descricao: payload.descricao,
@@ -45,11 +47,13 @@ describe("SobreController", () => {
     const payload = {
       titulo: "Title",
       descricao: "Desc",
-      imagemUrl: "https://cdn.example.com/new.png",
+      imagemUrl: " https://cdn.example.com/new.png ",
     };
+    const trimmed = payload.imagemUrl.trim();
     (sobreService.update as jest.Mock).mockResolvedValue({
       id: "1",
       ...payload,
+      imagemUrl: trimmed,
       imagemTitulo: "new",
       criadoEm: new Date().toISOString(),
       atualizadoEm: new Date().toISOString(),
@@ -57,11 +61,11 @@ describe("SobreController", () => {
 
     const res = await request(app).put("/sobre/1").send(payload);
     expect(res.status).toBe(200);
-    expect(res.body.imagemUrl).toBe(payload.imagemUrl);
+    expect(res.body.imagemUrl).toBe(trimmed);
     expect(sobreService.update).toHaveBeenCalledWith("1", {
       titulo: payload.titulo,
       descricao: payload.descricao,
-      imagemUrl: payload.imagemUrl,
+      imagemUrl: trimmed,
       imagemTitulo: "new",
     });
   });

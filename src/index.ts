@@ -2,7 +2,7 @@ import "./config/env";
 
 import express from "express";
 import cors from "cors";
-import type { CorsOptions } from "cors";
+import type { CorsOptions, CorsOptionsDelegate } from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import { serverConfig } from "./config/env";
@@ -29,27 +29,35 @@ const app = express();
 /**
  * Configuração de CORS
  * Permite requisições do frontend configurado
+ * e sempre aceita requisições do mesmo domínio do servidor
  */
-const corsOptions: CorsOptions = {
-  origin: (origin, callback) => {
-    const allowedOrigins = Array.isArray(serverConfig.corsOrigin)
-      ? serverConfig.corsOrigin
-      : [serverConfig.corsOrigin];
+const corsOptionsDelegate: CorsOptionsDelegate = (req, callback) => {
+  const origin = req.header("Origin");
+  const allowedOrigins = Array.isArray(serverConfig.corsOrigin)
+    ? serverConfig.corsOrigin
+    : [serverConfig.corsOrigin];
+  const serverOrigin = `${req.protocol}://${req.get("host")}`;
 
-    if (!origin || allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
+  if (!origin || allowedOrigins.includes(origin) || origin === serverOrigin) {
+    const corsOptions: CorsOptions = {
+      origin: true,
+      credentials: true,
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowedHeaders: [
+        "Authorization",
+        "Content-Type",
+        "X-Requested-With",
+      ],
+      optionsSuccessStatus: 204,
+    };
+    return callback(null, corsOptions);
+  }
 
-    return callback(new Error("Not allowed by CORS"));
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Authorization", "Content-Type", "X-Requested-With"],
-  optionsSuccessStatus: 204,
+  return callback(new Error("Not allowed by CORS"));
 };
 
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+app.use(cors(corsOptionsDelegate));
+app.options("*", cors(corsOptionsDelegate));
 
 /**
  * Middleware de segurança Helmet

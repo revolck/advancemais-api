@@ -1253,15 +1253,10 @@ const options: Options = {
               type: "string",
               example: "Descrição sobre a empresa",
             },
-            imagem: {
-              type: "string",
-              format: "binary",
-              description: "Arquivo de imagem do conteúdo",
-            },
             imagemUrl: {
               type: "string",
               format: "uri",
-              description: "URL alternativa da imagem",
+              description: "URL da imagem",
               example: "https://cdn.example.com/sobre.jpg",
             },
           },
@@ -1274,7 +1269,6 @@ const options: Options = {
               type: "string",
               example: "Descrição atualizada",
             },
-            imagem: { type: "string", format: "binary" },
             imagemUrl: {
               type: "string",
               format: "uri",

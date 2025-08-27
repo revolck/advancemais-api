@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import path from "path";
-import { supabase } from "../../superbase/client";
 import { sobreService } from "../services/sobre.service";
 
 function generateImageTitle(url: string): string {
@@ -12,20 +11,6 @@ function generateImageTitle(url: string): string {
   }
 }
 
-async function uploadImage(file: Express.Multer.File): Promise<string> {
-  const fileExt = path.extname(file.originalname);
-  const fileName = `sobre-${Date.now()}${fileExt}`;
-  const { error } = await supabase.storage
-    .from("website")
-    .upload(`sobre/${fileName}`, file.buffer, {
-      contentType: file.mimetype,
-    });
-  if (error) throw error;
-  const { data } = supabase.storage
-    .from("website")
-    .getPublicUrl(`sobre/${fileName}`);
-  return data.publicUrl;
-}
 
 export class SobreController {
   static list = async (req: Request, res: Response) => {
@@ -50,13 +35,7 @@ export class SobreController {
 
   static create = async (req: Request, res: Response) => {
     try {
-      const { titulo, descricao } = req.body;
-      let imagemUrl = "";
-      if (req.file) {
-        imagemUrl = await uploadImage(req.file);
-      } else if (req.body.imagemUrl) {
-        imagemUrl = req.body.imagemUrl;
-      }
+      const { titulo, descricao, imagemUrl } = req.body;
       const imagemTitulo = imagemUrl ? generateImageTitle(imagemUrl) : "";
       const sobre = await sobreService.create({
         imagemUrl,
@@ -73,11 +52,7 @@ export class SobreController {
   static update = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { titulo, descricao } = req.body;
-      let imagemUrl = req.body.imagemUrl as string | undefined;
-      if (req.file) {
-        imagemUrl = await uploadImage(req.file);
-      }
+      const { titulo, descricao, imagemUrl } = req.body;
       const data: any = { titulo, descricao };
       if (imagemUrl) {
         data.imagemUrl = imagemUrl;

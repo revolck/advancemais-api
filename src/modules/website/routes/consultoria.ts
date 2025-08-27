@@ -109,7 +109,9 @@ router.get("/:id", ConsultoriaController.get);
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -F "imagem=@consultoria.png" \\
  *            -F "titulo=Novo" \\
- *            -F "descricao=Conteudo"
+ *            -F "descricao=Conteudo" \\
+ *            -F "buttonUrl=https://example.com" \\
+ *            -F "buttonLabel=Saiba mais"
 */
 router.post(
   "/",
@@ -165,7 +167,9 @@ router.post(
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -F "imagem=@consultoria.png" \\
  *            -F "titulo=Atualizado" \\
- *            -F "descricao=Atualizada"
+ *            -F "descricao=Atualizada" \\
+ *            -F "buttonUrl=https://example.com" \\
+ *            -F "buttonLabel=Saiba mais"
 */
 router.put(
   "/:id",

@@ -427,6 +427,8 @@ model WebsiteConsultoria {
   imagemTitulo String
   titulo       String
   descricao    String
+  buttonUrl    String
+  buttonLabel  String
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 }
@@ -437,6 +439,8 @@ model WebsiteRecrutamento {
   imagemTitulo String
   titulo       String
   descricao    String
+  buttonUrl    String
+  buttonLabel  String
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 }

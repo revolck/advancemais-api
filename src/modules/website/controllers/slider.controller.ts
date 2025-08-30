@@ -58,7 +58,13 @@ export class SliderController {
 
   static create = async (req: Request, res: Response) => {
     try {
-      const { sliderName, link, orientacao, status } = req.body;
+      const { sliderName, link, orientacao } = req.body;
+      let { status } = req.body;
+      if (typeof status === "boolean") {
+        status = status ? "PUBLICADO" : "RASCUNHO";
+      } else if (typeof status === "string") {
+        status = status.toUpperCase();
+      }
       let imagemUrl = "";
       if (req.file) {
         imagemUrl = await uploadImage(req.file);
@@ -84,12 +90,22 @@ export class SliderController {
   static update = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { sliderName, link, orientacao, status, ordem } = req.body;
+      const { sliderName, link, orientacao, ordem } = req.body;
+      let { status } = req.body as any;
+      if (typeof status === "boolean") {
+        status = status ? "PUBLICADO" : "RASCUNHO";
+      } else if (typeof status === "string") {
+        status = status.toUpperCase();
+      }
       let imagemUrl = req.body.imagemUrl as string | undefined;
       if (req.file) {
         imagemUrl = await uploadImage(req.file);
       }
-      const data: any = { sliderName, link, orientacao, status };
+      const data: any = {};
+      if (sliderName !== undefined) data.sliderName = sliderName;
+      if (link !== undefined) data.link = link;
+      if (orientacao !== undefined) data.orientacao = orientacao;
+      if (status !== undefined) data.status = status;
       if (ordem !== undefined) {
         data.ordem = parseInt(ordem, 10);
       }

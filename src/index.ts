@@ -9,6 +9,7 @@ import { serverConfig } from "./config/env";
 import { appRoutes } from "./routes";
 import { startExpiredUserCleanupJob } from "./modules/usuarios/services/user-cleanup-service";
 import { setupSwagger } from "./config/swagger";
+import { startKeepAlive } from "./utils/keep-alive";
 
 /**
  * Aplicação principal - Advance+ API
@@ -240,6 +241,9 @@ const server = app.listen(serverConfig.port, () => {
     `   curl http://localhost:${serverConfig.port}/api/v1/brevo/health`
   );
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+  // Inicia keep-alive para evitar hibernação da instância
+  startKeepAlive();
 });
 
 // =============================================

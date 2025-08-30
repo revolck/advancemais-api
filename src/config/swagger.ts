@@ -1160,11 +1160,11 @@ const options: Options = {
             },
           },
         },
-        WebsiteSliderCreateInput: {
-          type: "object",
-          properties: {
-            imagem: {
-              type: "string",
+          WebsiteSliderCreateInput: {
+            type: "object",
+            properties: {
+              imagem: {
+                type: "string",
               format: "binary",
               description: "Arquivo de imagem do slider",
             },
@@ -1176,45 +1176,60 @@ const options: Options = {
             },
             sliderName: { type: "string", example: "Banner Principal" },
             link: { type: "string", example: "https://example.com" },
-            orientacao: {
-              type: "string",
-              enum: ["DESKTOP", "TABLET_MOBILE"],
-              example: "DESKTOP",
-            },
-            status: {
-              type: "string",
-              enum: ["PUBLICADO", "RASCUNHO"],
-              example: "PUBLICADO",
+              orientacao: {
+                type: "string",
+                enum: ["DESKTOP", "TABLET_MOBILE"],
+                example: "DESKTOP",
+              },
+              status: {
+                description:
+                  "Estado de publicação. Aceita boolean (true = PUBLICADO, false = RASCUNHO) ou string.",
+                oneOf: [
+                  {
+                    type: "string",
+                    enum: ["PUBLICADO", "RASCUNHO"],
+                  },
+                  { type: "boolean" },
+                ],
+                example: true,
+              },
             },
           },
-        },
-        WebsiteSliderUpdateInput: {
-          type: "object",
-          properties: {
-            imagem: { type: "string", format: "binary" },
-            imagemUrl: {
-              type: "string",
-              format: "uri",
-              example: "https://cdn.example.com/slide.jpg",
-            },
-            sliderName: { type: "string", example: "Banner Atualizado" },
-            link: { type: "string", example: "https://example.com" },
-            orientacao: {
-              type: "string",
-              enum: ["DESKTOP", "TABLET_MOBILE"],
-              example: "TABLET_MOBILE",
-            },
-            status: {
-              type: "string",
-              enum: ["PUBLICADO", "RASCUNHO"],
-              example: "RASCUNHO",
-            },
-            ordem: {
-              type: "integer",
-              example: 2,
-              description:
-                "Nova posição do slider; ao mudar este valor os demais serão reordenados automaticamente",
-            },
+          WebsiteSliderUpdateInput: {
+            type: "object",
+            description: "Envie apenas os campos que deseja atualizar.",
+            properties: {
+              imagem: { type: "string", format: "binary" },
+              imagemUrl: {
+                type: "string",
+                format: "uri",
+                example: "https://cdn.example.com/slide.jpg",
+              },
+              sliderName: { type: "string", example: "Banner Atualizado" },
+              link: { type: "string", example: "https://example.com" },
+              orientacao: {
+                type: "string",
+                enum: ["DESKTOP", "TABLET_MOBILE"],
+                example: "TABLET_MOBILE",
+              },
+              status: {
+                description:
+                  "Estado de publicação. Aceita boolean (true = PUBLICADO, false = RASCUNHO) ou string.",
+                oneOf: [
+                  {
+                    type: "string",
+                    enum: ["PUBLICADO", "RASCUNHO"],
+                  },
+                  { type: "boolean" },
+                ],
+                example: false,
+              },
+              ordem: {
+                type: "integer",
+                example: 2,
+                description:
+                  "Nova posição do slider; ao mudar este valor os demais serão reordenados automaticamente",
+              },
           },
         },
         WebsiteSobre: {

@@ -79,6 +79,7 @@ router.get("/:id", SliderController.get);
  * /api/v1/website/slider:
  *   post:
  *     summary: Criar slider
+ *     description: Cria um novo slider. O campo `status` aceita booleano (true = PUBLICADO, false = RASCUNHO) ou string.
  *     tags: [Website - Slider]
  *     security:
  *       - bearerAuth: []
@@ -110,7 +111,7 @@ router.get("/:id", SliderController.get);
  *            -F "imagem=@slide.png" \\
  *            -F "sliderName=Meu Slider" \\
  *            -F "orientacao=DESKTOP" \\
- *            -F "status=PUBLICADO" \\
+ *            -F "status=true" \\
  *            -F "link=https://example.com"
 */
 router.post(
@@ -125,7 +126,7 @@ router.post(
  * /api/v1/website/slider/{id}:
  *   put:
  *     summary: Atualizar slider
- *     description: Atualiza dados do slider e permite alterar a ordem dos banners, reordenando automaticamente os demais.
+ *     description: Atualiza dados do slider e permite alterar a ordem dos banners, reordenando automaticamente os demais. Apenas campos enviados serão modificados. O campo `status` aceita booleano (true = PUBLICADO, false = RASCUNHO) ou string.
  *     tags: [Website - Slider]
  *     security:
  *       - bearerAuth: []
@@ -169,7 +170,7 @@ router.post(
  *            -F "imagem=@slide.png" \\
  *            -F "sliderName=Novo Slider" \\
  *            -F "orientacao=TABLET_MOBILE" \\
- *            -F "status=RASCUNHO" \\
+ *            -F "status=false" \\
  *            -F "link=https://example.com" \\
  *            -F "ordem=2"
 */

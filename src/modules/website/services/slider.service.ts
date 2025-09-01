@@ -138,6 +138,11 @@ export const sliderService = {
       if (!current) throw new Error("Slider não encontrado");
 
       if (novaOrdem !== current.ordem) {
+        await tx.websiteSliderOrdem.update({
+          where: { id: ordemId },
+          data: { ordem: 0 },
+        });
+
         if (novaOrdem > current.ordem) {
           await tx.websiteSliderOrdem.updateMany({
             where: {

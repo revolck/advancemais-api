@@ -128,6 +128,23 @@ export class SliderController {
     }
   };
 
+  static reorder = async (req: Request, res: Response) => {
+    try {
+      const { id: ordemId } = req.params;
+      const { ordem } = req.body;
+      const ordemResult = await sliderService.reorder(
+        ordemId,
+        parseInt(ordem, 10)
+      );
+      res.json(mapSlider(ordemResult));
+    } catch (error: any) {
+      res.status(500).json({
+        message: "Erro ao reordenar slider",
+        error: error.message,
+      });
+    }
+  };
+
   static remove = async (req: Request, res: Response) => {
     try {
       const { id: sliderId } = req.params;

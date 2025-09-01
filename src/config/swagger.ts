@@ -1195,11 +1195,11 @@ const options: Options = {
               },
             },
           },
-          WebsiteSliderUpdateInput: {
-            type: "object",
-            description: "Envie apenas os campos que deseja atualizar.",
-            properties: {
-              imagem: { type: "string", format: "binary" },
+        WebsiteSliderUpdateInput: {
+          type: "object",
+          description: "Envie apenas os campos que deseja atualizar.",
+          properties: {
+            imagem: { type: "string", format: "binary" },
               imagemUrl: {
                 type: "string",
                 format: "uri",
@@ -1230,6 +1230,17 @@ const options: Options = {
                 description:
                   "Nova posição do slider; ao mudar este valor os demais serão reordenados automaticamente",
               },
+          },
+        },
+        WebsiteSliderReorderInput: {
+          type: "object",
+          required: ["ordem"],
+          properties: {
+            ordem: {
+              type: "integer",
+              example: 2,
+              description: "Nova posição do slider",
+            },
           },
         },
         WebsiteSobre: {

@@ -129,6 +129,43 @@ export const sliderService = {
       });
     }),
 
+  reorder: async (ordemId: string, novaOrdem: number) =>
+    prisma.$transaction(async (tx) => {
+      const current = await tx.websiteSliderOrdem.findUnique({
+        where: { id: ordemId },
+        include: { slider: true },
+      });
+      if (!current) throw new Error("Slider não encontrado");
+
+      if (novaOrdem !== current.ordem) {
+        if (novaOrdem > current.ordem) {
+          await tx.websiteSliderOrdem.updateMany({
+            where: {
+              orientacao: current.orientacao,
+              ordem: { gt: current.ordem, lte: novaOrdem },
+            },
+            data: { ordem: { decrement: 1 } },
+          });
+        } else {
+          await tx.websiteSliderOrdem.updateMany({
+            where: {
+              orientacao: current.orientacao,
+              ordem: { gte: novaOrdem, lt: current.ordem },
+            },
+            data: { ordem: { increment: 1 } },
+          });
+        }
+
+        return tx.websiteSliderOrdem.update({
+          where: { id: ordemId },
+          data: { ordem: novaOrdem },
+          include: { slider: true },
+        });
+      }
+
+      return current;
+    }),
+
   remove: async (sliderId: string) => {
     await prisma.$transaction(async (tx) => {
       const ordem = await tx.websiteSliderOrdem.findUnique({

@@ -188,7 +188,7 @@ router.put(
  * /api/v1/website/slider/{id}/reorder:
  *   put:
  *     summary: Reordenar slider
- *     description: Altera a posição do slider utilizando o ID da ordem.
+ *     description: Altera a posição do slider utilizando o ID da ordem. Caso a nova posição esteja ocupada, os demais sliders serão ajustados automaticamente.
  *     tags: [Website - Slider]
  *     security:
  *       - bearerAuth: []

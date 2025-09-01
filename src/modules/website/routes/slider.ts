@@ -185,6 +185,62 @@ router.put(
 
 /**
  * @openapi
+ * /api/v1/website/slider/{id}/reorder:
+ *   put:
+ *     summary: Reordenar slider
+ *     description: Altera a posição do slider utilizando o ID da ordem.
+ *     tags: [Website - Slider]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         description: ID da ordem do slider
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/WebsiteSliderReorderInput'
+ *     responses:
+ *       200:
+ *         description: Slider reordenado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WebsiteSlider'
+ *       404:
+ *         description: Slider não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X PUT "http://localhost:3000/api/v1/website/slider/{ordemId}/reorder" \\
+ *            -H "Authorization: Bearer <TOKEN>" \\
+ *            -H "Content-Type: application/json" \\
+ *            -d '{"ordem":2}'
+ */
+router.put(
+  "/:id/reorder",
+  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
+  SliderController.reorder
+);
+
+/**
+ * @openapi
  * /api/v1/website/slider/{id}:
  *   delete:
  *     summary: Remover slider

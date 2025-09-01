@@ -1239,7 +1239,8 @@ const options: Options = {
             ordem: {
               type: "integer",
               example: 2,
-              description: "Nova posição do slider",
+              description:
+                "Nova posição desejada do slider. Se já houver outro na posição, os demais serão reordenados automaticamente",
             },
           },
         },

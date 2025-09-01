@@ -39,11 +39,12 @@ router.get("/", SliderController.list);
  * @openapi
  * /api/v1/website/slider/{id}:
  *   get:
- *     summary: Obter slider por ID
+ *     summary: Obter slider por ID da ordem
  *     tags: [Website - Slider]
  *     parameters:
  *       - in: path
  *         name: id
+ *         description: ID da ordem do slider
  *         required: true
  *         schema:
  *           type: string
@@ -70,7 +71,7 @@ router.get("/", SliderController.list);
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X GET "http://localhost:3000/api/v1/website/slider/{id}"
+ *           curl -X GET "http://localhost:3000/api/v1/website/slider/{ordemId}"
 */
 router.get("/:id", SliderController.get);
 
@@ -126,13 +127,14 @@ router.post(
  * /api/v1/website/slider/{id}:
  *   put:
  *     summary: Atualizar slider
- *     description: Atualiza dados do slider e permite alterar a ordem dos banners, reordenando automaticamente os demais. Apenas campos enviados serão modificados. O campo `status` aceita booleano (true = PUBLICADO, false = RASCUNHO) ou string.
+ *     description: Atualiza dados do slider utilizando o ID do slider. Permite alterar a ordem dos banners, reordenando automaticamente os demais. Apenas campos enviados serão modificados. O campo `status` aceita booleano (true = PUBLICADO, false = RASCUNHO) ou string.
  *     tags: [Website - Slider]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
+ *         description: ID do slider
  *         required: true
  *         schema:
  *           type: string
@@ -165,7 +167,7 @@ router.post(
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X PUT "http://localhost:3000/api/v1/website/slider/{id}" \\
+ *           curl -X PUT "http://localhost:3000/api/v1/website/slider/{sliderId}" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -F "imagem=@slide.png" \\
  *            -F "sliderName=Novo Slider" \\
@@ -192,6 +194,7 @@ router.put(
  *     parameters:
  *       - in: path
  *         name: id
+ *         description: ID do slider
  *         required: true
  *         schema:
  *           type: string
@@ -214,7 +217,7 @@ router.put(
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X DELETE "http://localhost:3000/api/v1/website/slider/{id}" \\
+ *           curl -X DELETE "http://localhost:3000/api/v1/website/slider/{sliderId}" \\
  *            -H "Authorization: Bearer <TOKEN>"
 */
 router.delete(

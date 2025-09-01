@@ -1123,7 +1123,8 @@ const options: Options = {
         WebsiteSlider: {
           type: "object",
           properties: {
-            id: { type: "string", example: "slider-uuid" },
+            id: { type: "string", example: "ordem-uuid" },
+            sliderId: { type: "string", example: "slider-uuid" },
             sliderName: { type: "string", example: "Banner Principal" },
             imagemUrl: {
               type: "string",
@@ -1142,7 +1143,6 @@ const options: Options = {
               example: "PUBLICADO",
             },
             ordem: { type: "integer", example: 1 },
-            ordemId: { type: "string", example: "ordem-uuid" },
             ordemCriadoEm: {
               type: "string",
               format: "date-time",

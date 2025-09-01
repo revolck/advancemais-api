@@ -45,7 +45,7 @@ export const sliderService = {
   },
 
   update: async (
-    id: string,
+    sliderId: string,
     data: {
       sliderName?: string;
       imagemUrl?: string;
@@ -56,8 +56,12 @@ export const sliderService = {
     }
   ) =>
     prisma.$transaction(async (tx) => {
-      const current = await tx.websiteSliderOrdem.findUnique({ where: { id } });
+      const current = await tx.websiteSliderOrdem.findUnique({
+        where: { websiteSliderId: sliderId },
+      });
       if (!current) throw new Error("Slider não encontrado");
+
+      const ordemId = current.id;
 
       const orientacao = data.orientacao ?? current.orientacao;
       let ordem = data.ordem ?? current.ordem;
@@ -103,7 +107,7 @@ export const sliderService = {
       }
 
       return tx.websiteSliderOrdem.update({
-        where: { id },
+        where: { id: ordemId },
         data: {
           ordem,
           orientacao,
@@ -125,12 +129,14 @@ export const sliderService = {
       });
     }),
 
-  remove: async (id: string) => {
+  remove: async (sliderId: string) => {
     await prisma.$transaction(async (tx) => {
-      const ordem = await tx.websiteSliderOrdem.findUnique({ where: { id } });
+      const ordem = await tx.websiteSliderOrdem.findUnique({
+        where: { websiteSliderId: sliderId },
+      });
       if (!ordem) return;
-      await tx.websiteSliderOrdem.delete({ where: { id } });
-      await tx.websiteSlider.delete({ where: { id: ordem.websiteSliderId } });
+      await tx.websiteSliderOrdem.delete({ where: { id: ordem.id } });
+      await tx.websiteSlider.delete({ where: { id: sliderId } });
       await tx.websiteSliderOrdem.updateMany({
         where: { orientacao: ordem.orientacao, ordem: { gt: ordem.ordem } },
         data: { ordem: { decrement: 1 } },

@@ -3,15 +3,21 @@ import path from "path";
 import { supabase } from "../../superbase/client";
 import { sliderService } from "../services/slider.service";
 
+/**
+ * Mapeia uma ordem de slider para o formato exposto na API.
+ *
+ * `id`        → identificador da ordem do slider
+ * `sliderId`  → identificador do slider propriamente dito
+ */
 function mapSlider(ordem: any) {
   return {
-    id: ordem.slider.id,
+    id: ordem.id,
+    sliderId: ordem.slider.id,
     sliderName: ordem.slider.sliderName,
     imagemUrl: ordem.slider.imagemUrl,
     link: ordem.slider.link,
     criadoEm: ordem.slider.criadoEm,
     atualizadoEm: ordem.slider.atualizadoEm,
-    ordemId: ordem.id,
     ordem: ordem.ordem,
     orientacao: ordem.orientacao,
     status: ordem.status,
@@ -42,8 +48,8 @@ export class SliderController {
 
   static get = async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
-      const ordem = await sliderService.get(id);
+      const { id: ordemId } = req.params;
+      const ordem = await sliderService.get(ordemId);
       if (!ordem) {
         return res.status(404).json({ message: "Slider não encontrado" });
       }
@@ -89,7 +95,7 @@ export class SliderController {
 
   static update = async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const { id: sliderId } = req.params;
       const { sliderName, link, orientacao, ordem } = req.body;
       let { status } = req.body as any;
       if (typeof status === "boolean") {
@@ -112,7 +118,7 @@ export class SliderController {
       if (imagemUrl) {
         data.imagemUrl = imagemUrl;
       }
-      const ordemResult = await sliderService.update(id, data);
+      const ordemResult = await sliderService.update(sliderId, data);
       res.json(mapSlider(ordemResult));
     } catch (error: any) {
       res.status(500).json({
@@ -124,8 +130,8 @@ export class SliderController {
 
   static remove = async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
-      await sliderService.remove(id);
+      const { id: sliderId } = req.params;
+      await sliderService.remove(sliderId);
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({

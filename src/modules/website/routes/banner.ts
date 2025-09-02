@@ -39,11 +39,12 @@ router.get("/", BannerController.list);
  * @openapi
  * /api/v1/website/banner/{id}:
  *   get:
- *     summary: Obter banner por ID
+ *     summary: Obter banner por ID da ordem
  *     tags: [Website - Banner]
  *     parameters:
  *       - in: path
  *         name: id
+ *         description: ID da ordem do banner
  *         required: true
  *         schema:
  *           type: string
@@ -70,7 +71,7 @@ router.get("/", BannerController.list);
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X GET "http://localhost:3000/api/v1/website/banner/{id}"
+ *           curl -X GET "http://localhost:3000/api/v1/website/banner/{ordemId}"
  */
 router.get("/:id", BannerController.get);
 
@@ -109,7 +110,7 @@ router.get("/:id", BannerController.get);
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -F "imagem=@banner.png" \\
  *            -F "link=https://example.com" \\
- *            -F "ordem=1"
+ *            -F "status=true"
  */
 router.post(
   "/",
@@ -129,6 +130,7 @@ router.post(
  *     parameters:
  *       - in: path
  *         name: id
+ *         description: ID do banner
  *         required: true
  *         schema:
  *           type: string
@@ -161,9 +163,10 @@ router.post(
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X PUT "http://localhost:3000/api/v1/website/banner/{id}" \\
+ *           curl -X PUT "http://localhost:3000/api/v1/website/banner/{bannerId}" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -F "link=https://example.com" \\
+ *            -F "status=false" \\
  *            -F "ordem=2"
  */
 router.put(
@@ -171,6 +174,62 @@ router.put(
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
   upload.single("imagem"),
   BannerController.update
+);
+
+/**
+ * @openapi
+ * /api/v1/website/banner/{id}/reorder:
+ *   put:
+ *     summary: Reordenar banner
+ *     description: Altera a posição do banner utilizando o ID da ordem. Caso a nova posição esteja ocupada, os demais banners serão ajustados automaticamente.
+ *     tags: [Website - Banner]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         description: ID da ordem do banner
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/WebsiteBannerReorderInput'
+ *     responses:
+ *       200:
+ *         description: Banner reordenado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WebsiteBanner'
+ *       404:
+ *         description: Banner não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X PUT "http://localhost:3000/api/v1/website/banner/{ordemId}/reorder" \\
+ *            -H "Authorization: Bearer <TOKEN>" \\
+ *            -H "Content-Type: application/json" \\
+ *            -d '{"ordem":2}'
+ */
+router.put(
+  "/:id/reorder",
+  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
+  BannerController.reorder
 );
 
 /**
@@ -206,7 +265,7 @@ router.put(
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X DELETE "http://localhost:3000/api/v1/website/banner/{id}" \\
+ *           curl -X DELETE "http://localhost:3000/api/v1/website/banner/{bannerId}" \\
  *            -H "Authorization: Bearer <TOKEN>"
  */
 router.delete(

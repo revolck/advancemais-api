@@ -504,7 +504,7 @@ model WebsiteSliderOrdem {
   websiteSliderId String             @unique
   ordem           Int
   orientacao      SliderOrientation
-  status          SliderStatus       @default(RASCUNHO)
+  status          WebsiteStatus      @default(RASCUNHO)
   criadoEm        DateTime           @default(now())
 
   slider          WebsiteSlider      @relation(fields: [websiteSliderId], references: [id], onDelete: Cascade)
@@ -517,9 +517,22 @@ model WebsiteBanner {
   imagemUrl    String
   imagemTitulo String
   link         String?
-  ordem        Int
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
+
+  ordem        WebsiteBannerOrdem?
+}
+
+model WebsiteBannerOrdem {
+  id              String       @id @default(uuid())
+  websiteBannerId String       @unique
+  ordem           Int
+  status          WebsiteStatus @default(RASCUNHO)
+  criadoEm        DateTime     @default(now())
+
+  banner          WebsiteBanner @relation(fields: [websiteBannerId], references: [id], onDelete: Cascade)
+
+  @@unique([ordem])
 }
 
 model WebsiteLogoEnterprise {
@@ -746,7 +759,7 @@ enum SliderOrientation {
   TABLET_MOBILE
 }
 
-enum SliderStatus {
+enum WebsiteStatus {
   PUBLICADO
   RASCUNHO
 }

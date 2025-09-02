@@ -1,10 +1,8 @@
 import { Router } from "express";
-import multer from "multer";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
 import { TeamController } from "../controllers/team.controller";
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
 
 /**
  * @openapi
@@ -85,7 +83,7 @@ router.get("/:id", TeamController.get);
  *     requestBody:
  *       required: true
  *       content:
- *         multipart/form-data:
+ *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/WebsiteTeamCreateInput'
  *     responses:
@@ -107,14 +105,12 @@ router.get("/:id", TeamController.get);
  *         source: |
  *           curl -X POST "http://localhost:3000/api/v1/website/team" \
  *            -H "Authorization: Bearer <TOKEN>" \
- *            -F "photo=@team.png" \
- *            -F "nome=Fulano" \
- *            -F "cargo=Dev"
+ *            -H "Content-Type: application/json" \
+ *            -d '{"nome":"Fulano","cargo":"Dev","photoUrl":"https://cdn.example.com/team.jpg"}'
  */
 router.post(
   "/",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  upload.single("photo"),
   TeamController.create
 );
 
@@ -135,7 +131,7 @@ router.post(
  *     requestBody:
  *       required: true
  *       content:
- *         multipart/form-data:
+ *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/WebsiteTeamUpdateInput'
  *     responses:
@@ -163,14 +159,12 @@ router.post(
  *         source: |
  *           curl -X PUT "http://localhost:3000/api/v1/website/team/{id}" \
  *            -H "Authorization: Bearer <TOKEN>" \
- *            -F "photo=@team.png" \
- *            -F "nome=Fulano" \
- *            -F "cargo=Dev"
+ *            -H "Content-Type: application/json" \
+ *            -d '{"nome":"Fulano","cargo":"Dev","photoUrl":"https://cdn.example.com/team.jpg"}'
  */
 router.put(
   "/:id",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  upload.single("photo"),
   TeamController.update
 );
 

@@ -1718,19 +1718,14 @@ const options: Options = {
         },
         WebsiteTeamCreateInput: {
           type: "object",
-          required: ["nome", "cargo"],
+          required: ["nome", "cargo", "photoUrl"],
           properties: {
             nome: { type: "string", example: "Fulano" },
             cargo: { type: "string", example: "Desenvolvedor" },
-            photo: {
-              type: "string",
-              format: "binary",
-              description: "Arquivo de imagem do membro",
-            },
             photoUrl: {
               type: "string",
               format: "uri",
-              description: "URL alternativa da imagem",
+              description: "URL da imagem do membro",
               example: "https://cdn.example.com/team.jpg",
             },
           },
@@ -1740,7 +1735,6 @@ const options: Options = {
           properties: {
             nome: { type: "string", example: "Fulano" },
             cargo: { type: "string", example: "Desenvolvedor" },
-            photo: { type: "string", format: "binary" },
             photoUrl: {
               type: "string",
               format: "uri",

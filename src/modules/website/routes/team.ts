@@ -43,11 +43,12 @@ router.get("/", TeamController.list);
  * @openapi
  * /api/v1/website/team/{id}:
  *   get:
- *     summary: Obter membro da equipe por ID
+ *     summary: Obter membro da equipe por ID da ordem
  *     tags: [Website - Team]
  *     parameters:
  *       - in: path
  *         name: id
+ *         description: ID da ordem do membro
  *         required: true
  *         schema:
  *           type: string
@@ -74,7 +75,7 @@ router.get("/", TeamController.list);
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X GET "http://localhost:3000/api/v1/website/team/{id}"
+ *           curl -X GET "http://localhost:3000/api/v1/website/team/{ordemId}"
  */
 router.get("/:id", TeamController.get);
 
@@ -83,7 +84,7 @@ router.get("/:id", TeamController.get);
  * /api/v1/website/team:
  *   post:
  *     summary: Criar membro da equipe
- *     description: Cria um novo membro da equipe. O campo `status` aceita booleano (true = PUBLICADO, false = RASCUNHO) ou string.
+ *     description: Cria um novo membro da equipe. O campo `status` representa o estado de publicação do membro e aceita booleano (true = PUBLICADO, false = RASCUNHO) ou string.
  *     tags: [Website - Team]
  *     security:
  *       - bearerAuth: []
@@ -126,13 +127,14 @@ router.post(
  * /api/v1/website/team/{id}:
  *   put:
  *     summary: Atualizar membro da equipe
- *     description: Atualiza um membro da equipe. O campo `status` aceita booleano (true = PUBLICADO, false = RASCUNHO) ou string.
+ *     description: Atualiza um membro da equipe. O campo `status` representa o estado de publicação do membro e aceita booleano (true = PUBLICADO, false = RASCUNHO) ou string.
  *     tags: [Website - Team]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
+ *         description: ID do membro da equipe
  *         required: true
  *         schema:
  *           type: string
@@ -165,7 +167,7 @@ router.post(
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X PUT "http://localhost:3000/api/v1/website/team/{id}" \
+ *           curl -X PUT "http://localhost:3000/api/v1/website/team/{teamId}" \
  *            -H "Authorization: Bearer <TOKEN>" \
  *            -H "Content-Type: application/json" \
  *            -d '{"nome":"Fulano","cargo":"Dev","photoUrl":"https://cdn.example.com/team.jpg","status":"RASCUNHO"}'
@@ -174,6 +176,62 @@ router.put(
   "/:id",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
   TeamController.update
+);
+
+/**
+ * @openapi
+ * /api/v1/website/team/{id}/reorder:
+ *   put:
+ *     summary: Reordenar membro da equipe
+ *     description: Altera a posição do membro utilizando o ID da ordem. Caso a nova posição esteja ocupada, os demais membros serão ajustados automaticamente.
+ *     tags: [Website - Team]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         description: ID da ordem do membro
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/WebsiteTeamReorderInput'
+ *     responses:
+ *       200:
+ *         description: Membro reordenado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WebsiteTeam'
+ *       404:
+ *         description: Membro não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X PUT "http://localhost:3000/api/v1/website/team/{ordemId}/reorder" \\
+ *            -H "Authorization: Bearer <TOKEN>" \\
+ *            -H "Content-Type: application/json" \\
+ *            -d '{"ordem":2}'
+ */
+router.put(
+  "/:id/reorder",
+  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
+  TeamController.reorder
 );
 
 /**

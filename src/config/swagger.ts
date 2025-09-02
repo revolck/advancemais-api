@@ -1696,7 +1696,16 @@ const options: Options = {
         WebsiteTeam: {
           type: "object",
           properties: {
-            id: { type: "string", example: "team-uuid" },
+            id: {
+              type: "string",
+              description: "ID da ordem do membro",
+              example: "ordem-uuid",
+            },
+            teamId: {
+              type: "string",
+              description: "ID do membro",
+              example: "team-uuid",
+            },
             photoUrl: {
               type: "string",
               format: "uri",
@@ -1706,16 +1715,29 @@ const options: Options = {
             cargo: { type: "string", example: "Desenvolvedor" },
             status: {
               $ref: '#/components/schemas/WebsiteStatus',
-              description: "Estado de publicação",
+              description: "Estado de publicação do membro",
+            },
+            ordem: {
+              type: "integer",
+              description: "Posição do membro",
+              example: 1,
+            },
+            ordemCriadoEm: {
+              type: "string",
+              format: "date-time",
+              description: "Data de criação da ordem",
+              example: "2024-01-01T12:00:00Z",
             },
             criadoEm: {
               type: "string",
               format: "date-time",
+              description: "Data de criação do membro",
               example: "2024-01-01T12:00:00Z",
             },
             atualizadoEm: {
               type: "string",
               format: "date-time",
+              description: "Data da última atualização",
               example: "2024-01-01T12:00:00Z",
             },
           },
@@ -1733,13 +1755,19 @@ const options: Options = {
               example: "https://cdn.example.com/team.jpg",
             },
             status: {
-              $ref: '#/components/schemas/WebsiteStatus',
-              description: "Estado de publicação",
+              description:
+                "Estado de publicação. Aceita boolean (true = PUBLICADO, false = RASCUNHO) ou string.",
+              oneOf: [
+                { $ref: '#/components/schemas/WebsiteStatus' },
+                { type: "boolean" },
+              ],
+              example: true,
             },
           },
         },
         WebsiteTeamUpdateInput: {
           type: "object",
+          description: "Envie apenas os campos que deseja atualizar.",
           properties: {
             nome: { type: "string", example: "Fulano" },
             cargo: { type: "string", example: "Desenvolvedor" },
@@ -1749,8 +1777,31 @@ const options: Options = {
               example: "https://cdn.example.com/team.jpg",
             },
             status: {
-              $ref: '#/components/schemas/WebsiteStatus',
-              description: "Estado de publicação",
+              description:
+                "Estado de publicação. Aceita boolean (true = PUBLICADO, false = RASCUNHO) ou string.",
+              oneOf: [
+                { $ref: '#/components/schemas/WebsiteStatus' },
+                { type: "boolean" },
+              ],
+              example: false,
+            },
+            ordem: {
+              type: "integer",
+              example: 2,
+              description:
+                "Nova posição do membro; ao mudar este valor os demais serão reordenados automaticamente",
+            },
+          },
+        },
+        WebsiteTeamReorderInput: {
+          type: "object",
+          required: ["ordem"],
+          properties: {
+            ordem: {
+              type: "integer",
+              example: 2,
+              description:
+                "Nova posição desejada do membro. Se já houver outro na posição, os demais serão reordenados automaticamente",
             },
           },
         },

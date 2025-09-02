@@ -1704,6 +1704,10 @@ const options: Options = {
             },
             nome: { type: "string", example: "Fulano" },
             cargo: { type: "string", example: "Desenvolvedor" },
+            status: {
+              $ref: '#/components/schemas/WebsiteStatus',
+              description: "Estado de publicação",
+            },
             criadoEm: {
               type: "string",
               format: "date-time",
@@ -1728,6 +1732,10 @@ const options: Options = {
               description: "URL da imagem do membro",
               example: "https://cdn.example.com/team.jpg",
             },
+            status: {
+              $ref: '#/components/schemas/WebsiteStatus',
+              description: "Estado de publicação",
+            },
           },
         },
         WebsiteTeamUpdateInput: {
@@ -1739,6 +1747,10 @@ const options: Options = {
               type: "string",
               format: "uri",
               example: "https://cdn.example.com/team.jpg",
+            },
+            status: {
+              $ref: '#/components/schemas/WebsiteStatus',
+              description: "Estado de publicação",
             },
           },
         },

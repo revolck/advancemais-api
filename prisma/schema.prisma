@@ -462,6 +462,7 @@ model WebsiteTeam {
   photoUrl  String
   nome      String
   cargo     String
+  status    WebsiteStatus @default(RASCUNHO)
   criadoEm  DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 }

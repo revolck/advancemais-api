@@ -1,13 +1,34 @@
 import { prisma } from "../../../config/prisma";
-import { WebsiteTeam } from "@prisma/client";
+import { WebsiteStatus } from "@prisma/client";
 
 export const teamService = {
-  list: () => prisma.websiteTeam.findMany(),
+  list: (status?: WebsiteStatus) =>
+    prisma.websiteTeam.findMany({
+      where: status ? { status } : undefined,
+    }),
   get: (id: string) => prisma.websiteTeam.findUnique({ where: { id } }),
-  create: (
-    data: Omit<WebsiteTeam, "id" | "criadoEm" | "atualizadoEm">
-  ) => prisma.websiteTeam.create({ data }),
-  update: (id: string, data: Partial<WebsiteTeam>) =>
-    prisma.websiteTeam.update({ where: { id }, data }),
+  create: (data: {
+    photoUrl: string;
+    nome: string;
+    cargo: string;
+    status?: WebsiteStatus;
+  }) =>
+    prisma.websiteTeam.create({
+      data: {
+        photoUrl: data.photoUrl,
+        nome: data.nome,
+        cargo: data.cargo,
+        status: data.status ?? "RASCUNHO",
+      },
+    }),
+  update: (
+    id: string,
+    data: {
+      photoUrl?: string;
+      nome?: string;
+      cargo?: string;
+      status?: WebsiteStatus;
+    }
+  ) => prisma.websiteTeam.update({ where: { id }, data }),
   remove: (id: string) => prisma.websiteTeam.delete({ where: { id } }),
 };

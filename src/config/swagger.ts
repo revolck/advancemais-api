@@ -986,30 +986,66 @@ const options: Options = {
             status: { type: "string", example: "operational" },
           },
         },
+        WebsiteStatus: {
+          type: "string",
+          enum: ["PUBLICADO", "RASCUNHO"],
+          example: "PUBLICADO",
+        },
         WebsiteBanner: {
           type: "object",
           properties: {
-            id: { type: "string", example: "banner-uuid" },
+            id: {
+              type: "string",
+              description: "ID da ordem do banner",
+              example: "ordem-uuid",
+            },
+            bannerId: {
+              type: "string",
+              description: "ID do banner associado",
+              example: "banner-uuid",
+            },
             imagemUrl: {
               type: "string",
               format: "uri",
+              description: "URL pública da imagem",
               example: "https://cdn.example.com/banner.jpg",
             },
-            imagemTitulo: { type: "string", example: "banner" },
+            imagemTitulo: {
+              type: "string",
+              description: "Título da imagem gerado a partir do arquivo",
+              example: "banner",
+            },
             link: {
               type: "string",
+              description: "URL opcional de redirecionamento",
               nullable: true,
               example: "https://example.com",
             },
-            ordem: { type: "integer", example: 1 },
+            status: {
+              $ref: '#/components/schemas/WebsiteStatus',
+              description: "Estado de publicação",
+            },
+            ordem: {
+              type: "integer",
+              description: "Posição do banner",
+              example: 1,
+            },
+            ordemCriadoEm: {
+              type: "string",
+              format: "date-time",
+              description: "Data de criação da ordem",
+              example: "2024-01-01T12:00:00Z",
+            },
             criadoEm: {
               type: "string",
               format: "date-time",
+              description: "Data de criação do banner",
               example: "2024-01-01T12:00:00Z",
             },
             atualizadoEm: {
               type: "string",
               format: "date-time",
+              description: "Data da última atualização",
               example: "2024-01-01T12:00:00Z",
             },
           },
@@ -1033,10 +1069,14 @@ const options: Options = {
               description: "Link de redirecionamento",
               example: "https://example.com",
             },
-            ordem: {
-              type: "integer",
-              description: "Ordem de exibição",
-              example: 1,
+            status: {
+              description:
+                "Estado de publicação. Aceita boolean (true = PUBLICADO, false = RASCUNHO) ou string.",
+              oneOf: [
+                { $ref: '#/components/schemas/WebsiteStatus' },
+                { type: "boolean" },
+              ],
+              example: true,
             },
           },
         },
@@ -1050,7 +1090,33 @@ const options: Options = {
               example: "https://cdn.example.com/banner.jpg",
             },
             link: { type: "string", example: "https://example.com" },
-            ordem: { type: "integer", example: 2 },
+            status: {
+              description:
+                "Estado de publicação. Aceita boolean (true = PUBLICADO, false = RASCUNHO) ou string.",
+              oneOf: [
+                { $ref: '#/components/schemas/WebsiteStatus' },
+                { type: "boolean" },
+              ],
+              example: false,
+            },
+            ordem: {
+              type: "integer",
+              example: 2,
+              description:
+                "Nova posição do banner; ao mudar este valor os demais serão reordenados automaticamente",
+            },
+          },
+        },
+        WebsiteBannerReorderInput: {
+          type: "object",
+          required: ["ordem"],
+          properties: {
+            ordem: {
+              type: "integer",
+              example: 2,
+              description:
+                "Nova posição desejada do banner. Se já houver outro na posição, os demais serão reordenados automaticamente",
+            },
           },
         },
         WebsiteLogoEnterprise: {
@@ -1123,48 +1189,74 @@ const options: Options = {
         WebsiteSlider: {
           type: "object",
           properties: {
-            id: { type: "string", example: "ordem-uuid" },
-            sliderId: { type: "string", example: "slider-uuid" },
-            sliderName: { type: "string", example: "Banner Principal" },
+            id: {
+              type: "string",
+              description: "ID da ordem do slider",
+              example: "ordem-uuid",
+            },
+            sliderId: {
+              type: "string",
+              description: "ID do slider associado",
+              example: "slider-uuid",
+            },
+            sliderName: {
+              type: "string",
+              description: "Nome identificador do slider",
+              example: "Banner Principal",
+            },
             imagemUrl: {
               type: "string",
               format: "uri",
+              description: "URL pública da imagem",
               example: "https://cdn.example.com/slide.jpg",
             },
-            link: { type: "string", nullable: true, example: "https://example.com" },
+            link: {
+              type: "string",
+              description: "URL opcional de redirecionamento",
+              nullable: true,
+              example: "https://example.com",
+            },
             orientacao: {
               type: "string",
               enum: ["DESKTOP", "TABLET_MOBILE"],
+              description: "Orientação em que o slider será exibido",
               example: "DESKTOP",
             },
             status: {
-              type: "string",
-              enum: ["PUBLICADO", "RASCUNHO"],
-              example: "PUBLICADO",
+              $ref: '#/components/schemas/WebsiteStatus',
+              description: "Estado de publicação",
             },
-            ordem: { type: "integer", example: 1 },
+            ordem: {
+              type: "integer",
+              description: "Posição do slider",
+              example: 1,
+            },
             ordemCriadoEm: {
               type: "string",
               format: "date-time",
+              description: "Data de criação da ordem",
               example: "2024-01-01T12:00:00Z",
             },
             criadoEm: {
               type: "string",
               format: "date-time",
+              description: "Data de criação do slider",
               example: "2024-01-01T12:00:00Z",
             },
             atualizadoEm: {
               type: "string",
               format: "date-time",
+              description: "Data da última atualização",
               example: "2024-01-01T12:00:00Z",
             },
           },
         },
-          WebsiteSliderCreateInput: {
-            type: "object",
-            properties: {
-              imagem: {
-                type: "string",
+        WebsiteSliderCreateInput: {
+          type: "object",
+          required: ["sliderName", "orientacao"],
+          properties: {
+            imagem: {
+              type: "string",
               format: "binary",
               description: "Arquivo de imagem do slider",
             },
@@ -1174,62 +1266,79 @@ const options: Options = {
               description: "URL alternativa da imagem",
               example: "https://cdn.example.com/slide.jpg",
             },
-            sliderName: { type: "string", example: "Banner Principal" },
-            link: { type: "string", example: "https://example.com" },
-              orientacao: {
-                type: "string",
-                enum: ["DESKTOP", "TABLET_MOBILE"],
-                example: "DESKTOP",
-              },
-              status: {
-                description:
-                  "Estado de publicação. Aceita boolean (true = PUBLICADO, false = RASCUNHO) ou string.",
-                oneOf: [
-                  {
-                    type: "string",
-                    enum: ["PUBLICADO", "RASCUNHO"],
-                  },
-                  { type: "boolean" },
-                ],
-                example: true,
-              },
+            sliderName: {
+              type: "string",
+              description: "Nome identificador do slider",
+              example: "Banner Principal",
+            },
+            link: {
+              type: "string",
+              description: "URL opcional de redirecionamento",
+              example: "https://example.com",
+            },
+            orientacao: {
+              type: "string",
+              enum: ["DESKTOP", "TABLET_MOBILE"],
+              description: "Orientação em que o slider será exibido",
+              example: "DESKTOP",
+            },
+            status: {
+              description:
+                "Estado de publicação. Aceita boolean (true = PUBLICADO, false = RASCUNHO) ou string.",
+              oneOf: [
+                { $ref: '#/components/schemas/WebsiteStatus' },
+                { type: "boolean" },
+              ],
+              example: true,
             },
           },
+        },
         WebsiteSliderUpdateInput: {
           type: "object",
           description: "Envie apenas os campos que deseja atualizar.",
           properties: {
-            imagem: { type: "string", format: "binary" },
-              imagemUrl: {
-                type: "string",
-                format: "uri",
-                example: "https://cdn.example.com/slide.jpg",
-              },
-              sliderName: { type: "string", example: "Banner Atualizado" },
-              link: { type: "string", example: "https://example.com" },
-              orientacao: {
-                type: "string",
-                enum: ["DESKTOP", "TABLET_MOBILE"],
-                example: "TABLET_MOBILE",
-              },
-              status: {
-                description:
-                  "Estado de publicação. Aceita boolean (true = PUBLICADO, false = RASCUNHO) ou string.",
-                oneOf: [
-                  {
-                    type: "string",
-                    enum: ["PUBLICADO", "RASCUNHO"],
-                  },
-                  { type: "boolean" },
-                ],
-                example: false,
-              },
-              ordem: {
-                type: "integer",
-                example: 2,
-                description:
-                  "Nova posição do slider; ao mudar este valor os demais serão reordenados automaticamente",
-              },
+            imagem: {
+              type: "string",
+              format: "binary",
+              description: "Arquivo de imagem do slider",
+            },
+            imagemUrl: {
+              type: "string",
+              format: "uri",
+              description: "URL alternativa da imagem",
+              example: "https://cdn.example.com/slide.jpg",
+            },
+            sliderName: {
+              type: "string",
+              description: "Nome identificador do slider",
+              example: "Banner Atualizado",
+            },
+            link: {
+              type: "string",
+              description: "URL opcional de redirecionamento",
+              example: "https://example.com",
+            },
+            orientacao: {
+              type: "string",
+              enum: ["DESKTOP", "TABLET_MOBILE"],
+              description: "Orientação em que o slider será exibido",
+              example: "TABLET_MOBILE",
+            },
+            status: {
+              description:
+                "Estado de publicação. Aceita boolean (true = PUBLICADO, false = RASCUNHO) ou string.",
+              oneOf: [
+                { $ref: '#/components/schemas/WebsiteStatus' },
+                { type: "boolean" },
+              ],
+              example: false,
+            },
+            ordem: {
+              type: "integer",
+              description:
+                "Nova posição do slider; ao mudar este valor os demais serão reordenados automaticamente",
+              example: 2,
+            },
           },
         },
         WebsiteSliderReorderInput: {

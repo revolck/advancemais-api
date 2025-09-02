@@ -10,6 +10,12 @@ const router = Router();
  *   get:
  *     summary: Listar membros da equipe
  *     tags: [Website - Team]
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           $ref: '#/components/schemas/WebsiteStatus'
+ *         description: Filtra membros por status (PUBLICADO ou RASCUNHO)
  *     responses:
  *       200:
  *         description: Lista de membros
@@ -77,6 +83,7 @@ router.get("/:id", TeamController.get);
  * /api/v1/website/team:
  *   post:
  *     summary: Criar membro da equipe
+ *     description: Cria um novo membro da equipe. O campo `status` aceita booleano (true = PUBLICADO, false = RASCUNHO) ou string.
  *     tags: [Website - Team]
  *     security:
  *       - bearerAuth: []
@@ -106,7 +113,7 @@ router.get("/:id", TeamController.get);
  *           curl -X POST "http://localhost:3000/api/v1/website/team" \
  *            -H "Authorization: Bearer <TOKEN>" \
  *            -H "Content-Type: application/json" \
- *            -d '{"nome":"Fulano","cargo":"Dev","photoUrl":"https://cdn.example.com/team.jpg"}'
+ *            -d '{"nome":"Fulano","cargo":"Dev","photoUrl":"https://cdn.example.com/team.jpg","status":"PUBLICADO"}'
  */
 router.post(
   "/",
@@ -119,6 +126,7 @@ router.post(
  * /api/v1/website/team/{id}:
  *   put:
  *     summary: Atualizar membro da equipe
+ *     description: Atualiza um membro da equipe. O campo `status` aceita booleano (true = PUBLICADO, false = RASCUNHO) ou string.
  *     tags: [Website - Team]
  *     security:
  *       - bearerAuth: []
@@ -160,7 +168,7 @@ router.post(
  *           curl -X PUT "http://localhost:3000/api/v1/website/team/{id}" \
  *            -H "Authorization: Bearer <TOKEN>" \
  *            -H "Content-Type: application/json" \
- *            -d '{"nome":"Fulano","cargo":"Dev","photoUrl":"https://cdn.example.com/team.jpg"}'
+ *            -d '{"nome":"Fulano","cargo":"Dev","photoUrl":"https://cdn.example.com/team.jpg","status":"RASCUNHO"}'
  */
 router.put(
   "/:id",

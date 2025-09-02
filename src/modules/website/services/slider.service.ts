@@ -1,5 +1,5 @@
 import { prisma } from "../../../config/prisma";
-import { SliderOrientation, SliderStatus } from "@prisma/client";
+import { SliderOrientation, WebsiteStatus } from "@prisma/client";
 
 export const sliderService = {
   list: () =>
@@ -19,7 +19,7 @@ export const sliderService = {
     imagemUrl: string;
     link?: string;
     orientacao: SliderOrientation;
-    status?: SliderStatus;
+    status?: WebsiteStatus;
   }) => {
     const max = await prisma.websiteSliderOrdem.aggregate({
       _max: { ordem: true },
@@ -51,7 +51,7 @@ export const sliderService = {
       imagemUrl?: string;
       link?: string;
       orientacao?: SliderOrientation;
-      status?: SliderStatus;
+      status?: WebsiteStatus;
       ordem?: number;
     }
   ) =>

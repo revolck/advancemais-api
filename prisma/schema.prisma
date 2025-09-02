@@ -665,6 +665,19 @@ model WebsiteTreinamentosInCompany {
   atualizadoEm DateTime @updatedAt
 }
 
+model WebsiteHeaderPage {
+  id          String               @id @default(uuid())
+  subtitulo   String
+  titulo      String
+  descricao   String
+  imagemUrl   String
+  buttonLabel String
+  buttonLink  String
+  page        WebsiteHeaderPageType @unique
+  criadoEm    DateTime              @default(now())
+  atualizadoEm DateTime             @updatedAt
+}
+
 // =============================================
 // ENUMS EXISTENTES
 // =============================================
@@ -762,5 +775,17 @@ enum SliderOrientation {
 enum WebsiteStatus {
   PUBLICADO
   RASCUNHO
+}
+
+enum WebsiteHeaderPageType {
+  SOBRE
+  RECRUTAMENTO
+  TREINAMENTO
+  CONTATO
+  BLOG
+  VAGAS
+  CURSOS
+  POLITICA_PRIVACIDADE
+  OUVIDORIA
 }
 

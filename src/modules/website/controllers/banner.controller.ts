@@ -2,6 +2,22 @@ import { Request, Response } from "express";
 import path from "path";
 import { supabase } from "../../superbase/client";
 import { bannerService } from "../services/banner.service";
+import { WebsiteStatus } from "@prisma/client";
+
+function mapBanner(ordem: any) {
+  return {
+    id: ordem.id,
+    bannerId: ordem.banner.id,
+    imagemUrl: ordem.banner.imagemUrl,
+    imagemTitulo: ordem.banner.imagemTitulo,
+    link: ordem.banner.link,
+    criadoEm: ordem.banner.criadoEm,
+    atualizadoEm: ordem.banner.atualizadoEm,
+    ordem: ordem.ordem,
+    status: ordem.status,
+    ordemCriadoEm: ordem.criadoEm,
+  };
+}
 
 function generateImageTitle(url: string): string {
   try {
@@ -30,17 +46,17 @@ async function uploadImage(file: Express.Multer.File): Promise<string> {
 export class BannerController {
   static list = async (req: Request, res: Response) => {
     const itens = await bannerService.list();
-    res.json(itens);
+    res.json(itens.map(mapBanner));
   };
 
   static get = async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
-      const banner = await bannerService.get(id);
-      if (!banner) {
+      const { id: ordemId } = req.params;
+      const ordem = await bannerService.get(ordemId);
+      if (!ordem) {
         return res.status(404).json({ message: "Banner não encontrado" });
       }
-      res.json(banner);
+      res.json(mapBanner(ordem));
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao buscar banner",
@@ -51,7 +67,13 @@ export class BannerController {
 
   static create = async (req: Request, res: Response) => {
     try {
-      const { link, ordem } = req.body;
+      const { link } = req.body;
+      let { status } = req.body as any;
+      if (typeof status === "boolean") {
+        status = status ? "PUBLICADO" : "RASCUNHO";
+      } else if (typeof status === "string") {
+        status = status.toUpperCase();
+      }
       let imagemUrl = "";
       if (req.file) {
         imagemUrl = await uploadImage(req.file);
@@ -59,13 +81,13 @@ export class BannerController {
         imagemUrl = req.body.imagemUrl;
       }
       const imagemTitulo = imagemUrl ? generateImageTitle(imagemUrl) : "";
-      const banner = await bannerService.create({
+      const ordem = await bannerService.create({
         imagemUrl,
         imagemTitulo,
         link,
-        ordem: ordem ? parseInt(ordem, 10) : 0,
+        status,
       });
-      res.status(201).json(banner);
+      res.status(201).json(mapBanner(ordem));
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao criar banner",
@@ -76,13 +98,20 @@ export class BannerController {
 
   static update = async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const { id: bannerId } = req.params;
       const { link, ordem } = req.body;
+      let { status } = req.body as any;
+      if (typeof status === "boolean") {
+        status = status ? "PUBLICADO" : "RASCUNHO";
+      } else if (typeof status === "string") {
+        status = status.toUpperCase();
+      }
       let imagemUrl = req.body.imagemUrl as string | undefined;
       if (req.file) {
         imagemUrl = await uploadImage(req.file);
       }
       const data: any = { link };
+      if (status !== undefined) data.status = status as WebsiteStatus;
       if (ordem !== undefined) {
         data.ordem = parseInt(ordem, 10);
       }
@@ -90,8 +119,8 @@ export class BannerController {
         data.imagemUrl = imagemUrl;
         data.imagemTitulo = generateImageTitle(imagemUrl);
       }
-      const banner = await bannerService.update(id, data);
-      res.json(banner);
+      const ordemResult = await bannerService.update(bannerId, data);
+      res.json(mapBanner(ordemResult));
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao atualizar banner",
@@ -100,10 +129,24 @@ export class BannerController {
     }
   };
 
+  static reorder = async (req: Request, res: Response) => {
+    try {
+      const { id: ordemId } = req.params;
+      const { ordem } = req.body;
+      const ordemResult = await bannerService.reorder(ordemId, parseInt(ordem, 10));
+      res.json(mapBanner(ordemResult));
+    } catch (error: any) {
+      res.status(500).json({
+        message: "Erro ao reordenar banner",
+        error: error.message,
+      });
+    }
+  };
+
   static remove = async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
-      await bannerService.remove(id);
+      const { id: bannerId } = req.params;
+      await bannerService.remove(bannerId);
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({

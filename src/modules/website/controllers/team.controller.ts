@@ -2,6 +2,21 @@ import { Request, Response } from "express";
 import { WebsiteStatus } from "@prisma/client";
 import { teamService } from "../services/team.service";
 
+function mapTeam(ordem: any) {
+  return {
+    id: ordem.id,
+    teamId: ordem.team.id,
+    photoUrl: ordem.team.photoUrl,
+    nome: ordem.team.nome,
+    cargo: ordem.team.cargo,
+    status: ordem.status,
+    ordem: ordem.ordem,
+    criadoEm: ordem.team.criadoEm,
+    atualizadoEm: ordem.team.atualizadoEm,
+    ordemCriadoEm: ordem.criadoEm,
+  };
+}
+
 export class TeamController {
   static list = async (req: Request, res: Response) => {
     let { status } = req.query as any;
@@ -11,17 +26,17 @@ export class TeamController {
       else status = status.toUpperCase();
     }
     const itens = await teamService.list(status as WebsiteStatus | undefined);
-    res.json(itens);
+    res.json(itens.map(mapTeam));
   };
 
   static get = async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
-      const team = await teamService.get(id);
-      if (!team) {
+      const { id: ordemId } = req.params;
+      const ordem = await teamService.get(ordemId);
+      if (!ordem) {
         return res.status(404).json({ message: "Team member não encontrado" });
       }
-      res.json(team);
+      res.json(mapTeam(ordem));
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao buscar team member",
@@ -39,13 +54,13 @@ export class TeamController {
       } else if (typeof status === "string") {
         status = status.toUpperCase();
       }
-      const team = await teamService.create({
+      const ordem = await teamService.create({
         photoUrl,
         nome,
         cargo,
         status: status as WebsiteStatus,
       });
-      res.status(201).json(team);
+      res.status(201).json(mapTeam(ordem));
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao criar team member",
@@ -56,8 +71,8 @@ export class TeamController {
 
   static update = async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
-      const { nome, cargo, photoUrl } = req.body;
+      const { id: teamId } = req.params;
+      const { nome, cargo, photoUrl, ordem } = req.body;
       let { status } = req.body as any;
       if (typeof status === "boolean") {
         status = status ? "PUBLICADO" : "RASCUNHO";
@@ -69,8 +84,9 @@ export class TeamController {
         data.photoUrl = photoUrl;
       }
       if (status !== undefined) data.status = status as WebsiteStatus;
-      const team = await teamService.update(id, data);
-      res.json(team);
+      if (ordem !== undefined) data.ordem = parseInt(ordem, 10);
+      const ordemResult = await teamService.update(teamId, data);
+      res.json(mapTeam(ordemResult));
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao atualizar team member",
@@ -79,10 +95,24 @@ export class TeamController {
     }
   };
 
+  static reorder = async (req: Request, res: Response) => {
+    try {
+      const { id: ordemId } = req.params;
+      const { ordem } = req.body;
+      const ordemResult = await teamService.reorder(ordemId, parseInt(ordem, 10));
+      res.json(mapTeam(ordemResult));
+    } catch (error: any) {
+      res.status(500).json({
+        message: "Erro ao reordenar team member",
+        error: error.message,
+      });
+    }
+  };
+
   static remove = async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
-      await teamService.remove(id);
+      const { id: teamId } = req.params;
+      await teamService.remove(teamId);
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({

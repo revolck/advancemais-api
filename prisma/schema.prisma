@@ -462,9 +462,22 @@ model WebsiteTeam {
   photoUrl  String
   nome      String
   cargo     String
-  status    WebsiteStatus @default(RASCUNHO)
   criadoEm  DateTime @default(now())
   atualizadoEm DateTime @updatedAt
+
+  ordem     WebsiteTeamOrdem?
+}
+
+model WebsiteTeamOrdem {
+  id            String       @id @default(uuid())
+  websiteTeamId String       @unique
+  ordem         Int
+  status        WebsiteStatus @default(RASCUNHO)
+  criadoEm      DateTime     @default(now())
+
+  team          WebsiteTeam  @relation(fields: [websiteTeamId], references: [id], onDelete: Cascade)
+
+  @@unique([ordem])
 }
 
 model WebsiteDiferenciais {

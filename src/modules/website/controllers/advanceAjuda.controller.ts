@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import path from "path";
 import { supabase } from "../../superbase/client";
-import { adanceAjudaService } from "../services/adanceAjuda.service";
+import { advanceAjudaService } from "../services/advanceAjuda.service";
 
 function generateImageTitle(url: string): string {
   try {
@@ -14,38 +14,38 @@ function generateImageTitle(url: string): string {
 
 async function uploadImage(file: Express.Multer.File): Promise<string> {
   const fileExt = path.extname(file.originalname);
-  const fileName = `adance-ajuda-${Date.now()}${fileExt}`;
+  const fileName = `advance-ajuda-${Date.now()}${fileExt}`;
   const { error } = await supabase.storage
     .from("website")
-    .upload(`adance-ajuda/${fileName}`, file.buffer, {
+    .upload(`advance-ajuda/${fileName}`, file.buffer, {
       contentType: file.mimetype,
     });
   if (error) throw error;
   const { data } = supabase.storage
     .from("website")
-    .getPublicUrl(`adance-ajuda/${fileName}`);
+    .getPublicUrl(`advance-ajuda/${fileName}`);
   return data.publicUrl;
 }
 
-export class AdanceAjudaController {
+export class AdvanceAjudaController {
   static list = async (req: Request, res: Response) => {
-    const itens = await adanceAjudaService.list();
+    const itens = await advanceAjudaService.list();
     res.json(itens);
   };
 
   static get = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const item = await adanceAjudaService.get(id);
+      const item = await advanceAjudaService.get(id);
       if (!item) {
         return res
           .status(404)
-          .json({ message: "AdanceAjuda não encontrado" });
+          .json({ message: "Advance Ajuda não encontrado" });
       }
       res.json(item);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao buscar AdanceAjuda",
+        message: "Erro ao buscar Advance Ajuda",
         error: error.message,
       });
     }
@@ -70,7 +70,7 @@ export class AdanceAjudaController {
         imagemUrl = req.body.imagemUrl;
       }
       const imagemTitulo = imagemUrl ? generateImageTitle(imagemUrl) : "";
-      const item = await adanceAjudaService.create({
+      const item = await advanceAjudaService.create({
         titulo,
         descricao,
         imagemUrl,
@@ -85,7 +85,7 @@ export class AdanceAjudaController {
       res.status(201).json(item);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao criar AdanceAjuda",
+        message: "Erro ao criar Advance Ajuda",
         error: error.message,
       });
     }
@@ -122,11 +122,11 @@ export class AdanceAjudaController {
         data.imagemUrl = imagemUrl;
         data.imagemTitulo = generateImageTitle(imagemUrl);
       }
-      const item = await adanceAjudaService.update(id, data);
+      const item = await advanceAjudaService.update(id, data);
       res.json(item);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao atualizar AdanceAjuda",
+        message: "Erro ao atualizar Advance Ajuda",
         error: error.message,
       });
     }
@@ -135,11 +135,11 @@ export class AdanceAjudaController {
   static remove = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      await adanceAjudaService.remove(id);
+      await advanceAjudaService.remove(id);
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao remover AdanceAjuda",
+        message: "Erro ao remover Advance Ajuda",
         error: error.message,
       });
     }

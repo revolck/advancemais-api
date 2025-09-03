@@ -579,7 +579,7 @@ model WebsitePlaninhas {
   atualizadoEm DateTime @updatedAt
 }
 
-model WebsiteAdanceAjuda {
+model WebsiteAdvanceAjuda {
   id         String @id @default(uuid())
   titulo     String
   descricao  String

@@ -602,13 +602,9 @@ model WebsiteRecrutamentoSelecao {
   imagemUrl  String
   imagemTitulo String
   titulo1    String
-  descricao1 String
   titulo2    String
-  descricao2 String
   titulo3    String
-  descricao3 String
   titulo4    String
-  descricao4 String
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 }
@@ -668,13 +664,9 @@ model WebsiteTreinamentosInCompany {
   imagemUrl  String
   imagemTitulo String
   titulo1    String
-  descricao1 String
   titulo2    String
-  descricao2 String
   titulo3    String
-  descricao3 String
   titulo4    String
-  descricao4 String
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 }

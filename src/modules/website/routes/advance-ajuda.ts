@@ -1,17 +1,17 @@
 import { Router } from "express";
 import multer from "multer";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
-import { AdanceAjudaController } from "../controllers/adanceAjuda.controller";
+import { AdvanceAjudaController } from "../controllers/advanceAjuda.controller";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 /**
  * @openapi
- * /api/v1/website/adance-ajuda:
+ * /api/v1/website/advance-ajuda:
  *   get:
- *     summary: Listar conteúdos "AdanceAjuda"
- *     tags: [Website - AdanceAjuda]
+ *     summary: Listar conteúdos "Advance Ajuda"
+ *     tags: [Website - Advance Ajuda]
  *     responses:
  *       200:
  *         description: Lista de conteúdos
@@ -20,7 +20,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/WebsiteAdanceAjuda'
+ *                 $ref: '#/components/schemas/WebsiteAdvanceAjuda'
  *       500:
  *         description: Erro interno do servidor
  *         content:
@@ -31,16 +31,16 @@ const upload = multer({ storage: multer.memoryStorage() });
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X GET "http://localhost:3000/api/v1/website/adance-ajuda"
+ *           curl -X GET "http://localhost:3000/api/v1/website/advance-ajuda"
  */
-router.get("/", AdanceAjudaController.list);
+router.get("/", AdvanceAjudaController.list);
 
 /**
  * @openapi
- * /api/v1/website/adance-ajuda/{id}:
+ * /api/v1/website/advance-ajuda/{id}:
  *   get:
  *     summary: Obter conteúdo por ID
- *     tags: [Website - AdanceAjuda]
+ *     tags: [Website - Advance Ajuda]
  *     parameters:
  *       - in: path
  *         name: id
@@ -53,7 +53,7 @@ router.get("/", AdanceAjudaController.list);
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/WebsiteAdanceAjuda'
+ *               $ref: '#/components/schemas/WebsiteAdvanceAjuda'
  *       404:
  *         description: Conteúdo não encontrado
  *         content:
@@ -70,16 +70,16 @@ router.get("/", AdanceAjudaController.list);
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X GET "http://localhost:3000/api/v1/website/adance-ajuda/{id}"
+ *           curl -X GET "http://localhost:3000/api/v1/website/advance-ajuda/{id}"
  */
-router.get("/:id", AdanceAjudaController.get);
+router.get("/:id", AdvanceAjudaController.get);
 
 /**
  * @openapi
- * /api/v1/website/adance-ajuda:
+ * /api/v1/website/advance-ajuda:
  *   post:
- *     summary: Criar conteúdo "AdanceAjuda"
- *     tags: [Website - AdanceAjuda]
+ *     summary: Criar conteúdo "Advance Ajuda"
+ *     tags: [Website - Advance Ajuda]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -87,14 +87,14 @@ router.get("/:id", AdanceAjudaController.get);
  *       content:
  *         multipart/form-data:
  *           schema:
- *             $ref: '#/components/schemas/WebsiteAdanceAjudaCreateInput'
+ *             $ref: '#/components/schemas/WebsiteAdvanceAjudaCreateInput'
  *     responses:
  *       201:
  *         description: Conteúdo criado
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/WebsiteAdanceAjuda'
+ *               $ref: '#/components/schemas/WebsiteAdvanceAjuda'
  *       500:
  *         description: Erro interno do servidor
  *         content:
@@ -105,7 +105,7 @@ router.get("/:id", AdanceAjudaController.get);
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X POST "http://localhost:3000/api/v1/website/adance-ajuda" \
+ *           curl -X POST "http://localhost:3000/api/v1/website/advance-ajuda" \
  *            -H "Authorization: Bearer <TOKEN>" \
  *            -F "imagem=@image.png" \
  *            -F "titulo=Novo" \
@@ -115,15 +115,15 @@ router.post(
   "/",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
   upload.single("imagem"),
-  AdanceAjudaController.create
+  AdvanceAjudaController.create
 );
 
 /**
  * @openapi
- * /api/v1/website/adance-ajuda/{id}:
+ * /api/v1/website/advance-ajuda/{id}:
  *   put:
- *     summary: Atualizar conteúdo "AdanceAjuda"
- *     tags: [Website - AdanceAjuda]
+ *     summary: Atualizar conteúdo "Advance Ajuda"
+ *     tags: [Website - Advance Ajuda]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -137,14 +137,14 @@ router.post(
  *       content:
  *         multipart/form-data:
  *           schema:
- *             $ref: '#/components/schemas/WebsiteAdanceAjudaUpdateInput'
+ *             $ref: '#/components/schemas/WebsiteAdvanceAjudaUpdateInput'
  *     responses:
  *       200:
  *         description: Conteúdo atualizado
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/WebsiteAdanceAjuda'
+ *               $ref: '#/components/schemas/WebsiteAdvanceAjuda'
  *       404:
  *         description: Conteúdo não encontrado
  *         content:
@@ -161,7 +161,7 @@ router.post(
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X PUT "http://localhost:3000/api/v1/website/adance-ajuda/{id}" \
+ *           curl -X PUT "http://localhost:3000/api/v1/website/advance-ajuda/{id}" \
  *            -H "Authorization: Bearer <TOKEN>" \
  *            -F "titulo=Atual" \
  *            -F "descricao=Atual"
@@ -170,15 +170,15 @@ router.put(
   "/:id",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
   upload.single("imagem"),
-  AdanceAjudaController.update
+  AdvanceAjudaController.update
 );
 
 /**
  * @openapi
- * /api/v1/website/adance-ajuda/{id}:
+ * /api/v1/website/advance-ajuda/{id}:
  *   delete:
- *     summary: Remover conteúdo "AdanceAjuda"
- *     tags: [Website - AdanceAjuda]
+ *     summary: Remover conteúdo "Advance Ajuda"
+ *     tags: [Website - Advance Ajuda]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -206,14 +206,14 @@ router.put(
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X DELETE "http://localhost:3000/api/v1/website/adance-ajuda/{id}" \
+ *           curl -X DELETE "http://localhost:3000/api/v1/website/advance-ajuda/{id}" \
  *            -H "Authorization: Bearer <TOKEN>"
  */
 router.delete(
   "/:id",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  AdanceAjudaController.remove
+  AdvanceAjudaController.remove
 );
 
-export { router as adanceAjudaRoutes };
+export { router as advanceAjudaRoutes };
 

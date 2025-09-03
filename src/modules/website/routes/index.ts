@@ -9,7 +9,7 @@ import { sobreEmpresaRoutes } from "./sobre-empresa";
 import { teamRoutes } from "./team";
 import { diferenciaisRoutes } from "./diferenciais";
 import { planinhasRoutes } from "./planinhas";
-import { adanceAjudaRoutes } from "./adance-ajuda";
+import { advanceAjudaRoutes } from "./advance-ajuda";
 import { recrutamentoSelecaoRoutes } from "./recrutamento-selecao";
 import { sistemaRoutes } from "./sistema";
 import { treinamentoCompanyRoutes } from "./treinamento-company";
@@ -60,7 +60,7 @@ router.get("/", (req, res) => {
       team: "/team",
       diferenciais: "/diferenciais",
       planinhas: "/planinhas",
-      adanceAjuda: "/adance-ajuda",
+      advanceAjuda: "/advance-ajuda",
       recrutamentoSelecao: "/recrutamento-selecao",
       sistema: "/sistema",
       treinamentoCompany: "/treinamento-company",
@@ -82,7 +82,7 @@ router.use("/sobre-empresa", sobreEmpresaRoutes);
 router.use("/team", teamRoutes);
 router.use("/diferenciais", diferenciaisRoutes);
 router.use("/planinhas", planinhasRoutes);
-router.use("/adance-ajuda", adanceAjudaRoutes);
+router.use("/advance-ajuda", advanceAjudaRoutes);
 router.use("/recrutamento-selecao", recrutamentoSelecaoRoutes);
 router.use("/sistema", sistemaRoutes);
 router.use("/treinamento-company", treinamentoCompanyRoutes);

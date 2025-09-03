@@ -70,8 +70,8 @@ const options: Options = {
         description: "Conteúdos \"Planinhas\"",
       },
       {
-        name: "Website - AdanceAjuda",
-        description: "Conteúdos \"AdanceAjuda\"",
+        name: "Website - Advance Ajuda",
+        description: "Conteúdos \"Advance Ajuda\"",
       },
       {
         name: "Website - RecrutamentoSelecao",
@@ -1984,10 +1984,10 @@ const options: Options = {
             descricao3: { type: "string", example: "Descrição 3" },
           },
         },
-        WebsiteAdanceAjuda: {
+        WebsiteAdvanceAjuda: {
           type: "object",
           properties: {
-            id: { type: "string", example: "adanceajuda-uuid" },
+            id: { type: "string", example: "advanceajuda-uuid" },
             titulo: { type: "string", example: "Título" },
             descricao: { type: "string", example: "Descrição" },
             imagemUrl: {
@@ -2014,7 +2014,7 @@ const options: Options = {
             },
           },
         },
-        WebsiteAdanceAjudaCreateInput: {
+        WebsiteAdvanceAjudaCreateInput: {
           type: "object",
           required: ["titulo", "descricao", "titulo1", "descricao1", "titulo2", "descricao2", "titulo3", "descricao3"],
           properties: {
@@ -2030,7 +2030,7 @@ const options: Options = {
             descricao3: { type: "string", example: "Descrição 3" },
           },
         },
-        WebsiteAdanceAjudaUpdateInput: {
+        WebsiteAdvanceAjudaUpdateInput: {
           type: "object",
           properties: {
             titulo: { type: "string", example: "Título" },

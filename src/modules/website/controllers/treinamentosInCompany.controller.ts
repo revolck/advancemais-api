@@ -57,13 +57,9 @@ export class TreinamentosInCompanyController {
         titulo,
         descricao,
         titulo1,
-        descricao1,
         titulo2,
-        descricao2,
         titulo3,
-        descricao3,
         titulo4,
-        descricao4,
       } = req.body;
       let imagemUrl = "";
       if (req.file) {
@@ -78,13 +74,9 @@ export class TreinamentosInCompanyController {
         imagemUrl,
         imagemTitulo,
         titulo1,
-        descricao1,
         titulo2,
-        descricao2,
         titulo3,
-        descricao3,
         titulo4,
-        descricao4,
       });
       res.status(201).json(item);
     } catch (error: any) {
@@ -102,13 +94,9 @@ export class TreinamentosInCompanyController {
         titulo,
         descricao,
         titulo1,
-        descricao1,
         titulo2,
-        descricao2,
         titulo3,
-        descricao3,
         titulo4,
-        descricao4,
       } = req.body;
       let imagemUrl = req.body.imagemUrl as string | undefined;
       if (req.file) {
@@ -118,13 +106,9 @@ export class TreinamentosInCompanyController {
         titulo,
         descricao,
         titulo1,
-        descricao1,
         titulo2,
-        descricao2,
         titulo3,
-        descricao3,
         titulo4,
-        descricao4,
       };
       if (imagemUrl) {
         data.imagemUrl = imagemUrl;

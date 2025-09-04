@@ -1,8 +1,10 @@
 import { Router } from "express";
+import multer from "multer";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
 import { TreinamentoCompanyController } from "../controllers/treinamentoCompany.controller";
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 /**
  * @openapi
@@ -83,7 +85,7 @@ router.get("/:id", TreinamentoCompanyController.get);
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             $ref: '#/components/schemas/WebsiteTreinamentoCompanyCreateInput'
  *     responses:
@@ -105,12 +107,14 @@ router.get("/:id", TreinamentoCompanyController.get);
  *         source: |
  *           curl -X POST "http://localhost:3000/api/v1/website/treinamento-company" \
  *            -H "Authorization: Bearer <TOKEN>" \
- *            -H "Content-Type: application/json" \
- *            -d '{"titulo":"T","icone1":"i1","descricao1":"d1","icone2":"i2","descricao2":"d2","icone3":"i3","descricao3":"d3","icone4":"i4","descricao4":"d4","icone5":"i5","descricao5":"d5"}'
+ *            -F "imagem=@image.png" \
+ *            -F "titulo=Novo" \
+ *            -F "descricao=Desc"
  */
 router.post(
   "/",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
+  upload.single("imagem"),
   TreinamentoCompanyController.create
 );
 
@@ -131,7 +135,7 @@ router.post(
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             $ref: '#/components/schemas/WebsiteTreinamentoCompanyUpdateInput'
  *     responses:
@@ -159,12 +163,13 @@ router.post(
  *         source: |
  *           curl -X PUT "http://localhost:3000/api/v1/website/treinamento-company/{id}" \
  *            -H "Authorization: Bearer <TOKEN>" \
- *            -H "Content-Type: application/json" \
- *            -d '{"titulo":"Atual"}'
+ *            -F "titulo=Atual" \
+ *            -F "descricao=Atual"
  */
 router.put(
   "/:id",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
+  upload.single("imagem"),
   TreinamentoCompanyController.update
 );
 
@@ -211,4 +216,3 @@ router.delete(
 );
 
 export { router as treinamentoCompanyRoutes };
-

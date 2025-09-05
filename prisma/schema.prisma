@@ -555,11 +555,22 @@ model WebsiteLogoEnterprise {
   imagemUrl  String
   imagemAlt  String
   website    String
-  categoria  String
-  ordem      Int
-  ativo      Boolean  @default(true)
   criadoEm   DateTime @default(now())
   atualizadoEm DateTime @updatedAt
+
+  ordem      WebsiteLogoEnterpriseOrdem?
+}
+
+model WebsiteLogoEnterpriseOrdem {
+  id                     String       @id @default(uuid())
+  websiteLogoEnterpriseId String       @unique
+  ordem                  Int
+  status                 WebsiteStatus @default(RASCUNHO)
+  criadoEm               DateTime     @default(now())
+
+  logo WebsiteLogoEnterprise @relation(fields: [websiteLogoEnterpriseId], references: [id], onDelete: Cascade)
+
+  @@unique([ordem])
 }
 
 model WebsitePlaninhas {

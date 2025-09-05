@@ -1,10 +1,8 @@
 import { Router } from "express";
-import multer from "multer";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
 import { TreinamentosInCompanyController } from "../controllers/treinamentosInCompany.controller";
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
 
 /**
  * @openapi
@@ -85,7 +83,7 @@ router.get("/:id", TreinamentosInCompanyController.get);
  *     requestBody:
  *       required: true
  *       content:
- *         multipart/form-data:
+ *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/WebsiteTreinamentosInCompanyCreateInput'
  *     responses:
@@ -107,14 +105,12 @@ router.get("/:id", TreinamentosInCompanyController.get);
  *         source: |
  *           curl -X POST "http://localhost:3000/api/v1/website/treinamentos-in-company" \
  *            -H "Authorization: Bearer <TOKEN>" \
- *            -F "imagem=@img.png" \
- *            -F "titulo=Novo" \
- *            -F "descricao=Desc"
- */
+ *            -H "Content-Type: application/json" \
+ *            -d '{"titulo":"Novo","icone1":"icon1","descricao1":"Desc1","icone2":"icon2","descricao2":"Desc2","icone3":"icon3","descricao3":"Desc3","icone4":"icon4","descricao4":"Desc4","icone5":"icon5","descricao5":"Desc5"}'
+*/
 router.post(
   "/",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  upload.single("imagem"),
   TreinamentosInCompanyController.create
 );
 
@@ -135,7 +131,7 @@ router.post(
  *     requestBody:
  *       required: true
  *       content:
- *         multipart/form-data:
+ *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/WebsiteTreinamentosInCompanyUpdateInput'
  *     responses:
@@ -163,13 +159,12 @@ router.post(
  *         source: |
  *           curl -X PUT "http://localhost:3000/api/v1/website/treinamentos-in-company/{id}" \
  *            -H "Authorization: Bearer <TOKEN>" \
- *            -F "titulo=Atual" \
- *            -F "descricao=Atual"
- */
+ *            -H "Content-Type: application/json" \
+ *            -d '{"titulo":"Atual"}'
+*/
 router.put(
   "/:id",
   supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  upload.single("imagem"),
   TreinamentosInCompanyController.update
 );
 

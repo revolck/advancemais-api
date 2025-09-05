@@ -1167,7 +1167,7 @@ const options: Options = {
         },
         WebsiteLogoEnterpriseCreateInput: {
           type: "object",
-          required: ["nome", "website"],
+          required: ["nome"],
           properties: {
             imagem: {
               type: "string",
@@ -1181,7 +1181,11 @@ const options: Options = {
               example: "https://cdn.example.com/logo.png",
             },
             nome: { type: "string", example: "Empresa X" },
-            website: { type: "string", example: "https://empresa.com" },
+            website: {
+              type: "string",
+              example: "https://empresa.com",
+              description: "URL do site da empresa (opcional)",
+            },
             status: {
               description:
                 "Estado de publicação. Aceita boolean (true = PUBLICADO, false = RASCUNHO) ou string.",

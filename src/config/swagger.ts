@@ -1122,7 +1122,16 @@ const options: Options = {
         WebsiteLogoEnterprise: {
           type: "object",
           properties: {
-            id: { type: "string", example: "logo-uuid" },
+            id: {
+              type: "string",
+              description: "ID da ordem do logo",
+              example: "ordem-uuid",
+            },
+            logoId: {
+              type: "string",
+              description: "ID do logo associado",
+              example: "logo-uuid",
+            },
             nome: { type: "string", example: "Empresa X" },
             imagemUrl: {
               type: "string",
@@ -1131,31 +1140,35 @@ const options: Options = {
             },
             imagemAlt: { type: "string", example: "Logo da Empresa X" },
             website: { type: "string", example: "https://empresa.com" },
-            categoria: { type: "string", example: "tecnologia" },
-            ordem: { type: "integer", example: 1 },
-            ativo: { type: "boolean", example: true },
+            status: {
+              $ref: '#/components/schemas/WebsiteStatus',
+              description: "Estado de publicação",
+            },
+            ordem: { type: "integer", example: 1, description: "Posição do logo" },
+            ordemCriadoEm: {
+              type: "string",
+              format: "date-time",
+              description: "Data de criação da ordem",
+              example: "2024-01-01T12:00:00Z",
+            },
             criadoEm: {
               type: "string",
               format: "date-time",
+              description: "Data de criação do logo",
               example: "2024-01-01T12:00:00Z",
             },
             atualizadoEm: {
               type: "string",
               format: "date-time",
+              description: "Data da última atualização",
               example: "2024-01-01T12:00:00Z",
             },
           },
         },
         WebsiteLogoEnterpriseCreateInput: {
           type: "object",
-          required: ["nome", "website", "categoria"],
+          required: ["nome", "website"],
           properties: {
-            nome: { type: "string", example: "Empresa X" },
-            website: { type: "string", example: "https://empresa.com" },
-            categoria: { type: "string", example: "tecnologia" },
-            ordem: { type: "integer", example: 1 },
-            ativo: { type: "boolean", example: true },
-            imagemAlt: { type: "string", example: "Logo da Empresa X" },
             imagem: {
               type: "string",
               format: "binary",
@@ -1167,22 +1180,58 @@ const options: Options = {
               description: "URL alternativa da imagem",
               example: "https://cdn.example.com/logo.png",
             },
+            nome: { type: "string", example: "Empresa X" },
+            website: { type: "string", example: "https://empresa.com" },
+            status: {
+              description:
+                "Estado de publicação. Aceita boolean (true = PUBLICADO, false = RASCUNHO) ou string.",
+              oneOf: [
+                { $ref: '#/components/schemas/WebsiteStatus' },
+                { type: "boolean" },
+              ],
+              example: true,
+            },
+            imagemAlt: { type: "string", example: "Logo da Empresa X" },
           },
         },
         WebsiteLogoEnterpriseUpdateInput: {
           type: "object",
           properties: {
-            nome: { type: "string", example: "Empresa X" },
-            website: { type: "string", example: "https://empresa.com" },
-            categoria: { type: "string", example: "tecnologia" },
-            ordem: { type: "integer", example: 2 },
-            ativo: { type: "boolean", example: true },
-            imagemAlt: { type: "string", example: "Logo da Empresa X" },
             imagem: { type: "string", format: "binary" },
             imagemUrl: {
               type: "string",
               format: "uri",
               example: "https://cdn.example.com/logo.png",
+            },
+            nome: { type: "string", example: "Empresa X" },
+            website: { type: "string", example: "https://empresa.com" },
+            status: {
+              description:
+                "Estado de publicação. Aceita boolean (true = PUBLICADO, false = RASCUNHO) ou string.",
+              oneOf: [
+                { $ref: '#/components/schemas/WebsiteStatus' },
+                { type: "boolean" },
+              ],
+              example: false,
+            },
+            imagemAlt: { type: "string", example: "Logo da Empresa X" },
+            ordem: {
+              type: "integer",
+              example: 2,
+              description:
+                "Nova posição do logo; ao mudar este valor os demais serão reordenados automaticamente",
+            },
+          },
+        },
+        WebsiteLogoEnterpriseReorderInput: {
+          type: "object",
+          required: ["ordem"],
+          properties: {
+            ordem: {
+              type: "integer",
+              example: 2,
+              description:
+                "Nova posição desejada do logo. Se já houver outro na posição, os demais serão reordenados automaticamente",
             },
           },
         },

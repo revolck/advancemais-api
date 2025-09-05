@@ -554,7 +554,7 @@ model WebsiteLogoEnterprise {
   nome       String
   imagemUrl  String
   imagemAlt  String
-  website    String
+  website    String?
   criadoEm   DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 

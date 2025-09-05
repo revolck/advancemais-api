@@ -18,7 +18,7 @@ export const logoEnterpriseService = {
     nome: string;
     imagemUrl: string;
     imagemAlt: string;
-    website: string;
+    website?: string;
     status?: WebsiteStatus;
   }) =>
     prisma.$transaction(async (tx) => {
@@ -36,7 +36,7 @@ export const logoEnterpriseService = {
               nome: data.nome,
               imagemUrl: data.imagemUrl,
               imagemAlt: data.imagemAlt,
-              website: data.website,
+              ...(data.website !== undefined && { website: data.website }),
             },
           },
         },
@@ -92,7 +92,9 @@ export const logoEnterpriseService = {
                     nome: data.nome,
                     imagemUrl: data.imagemUrl,
                     imagemAlt: data.imagemAlt,
-                    website: data.website,
+                    ...(data.website !== undefined && {
+                      website: data.website,
+                    }),
                   },
                 }
               : undefined,

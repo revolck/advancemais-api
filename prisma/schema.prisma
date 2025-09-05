@@ -655,15 +655,18 @@ model WebsiteConexaoForte {
 }
 
 model WebsiteTreinamentosInCompany {
-  id         String @id @default(uuid())
+  id         String   @id @default(uuid())
   titulo     String
-  descricao  String
-  imagemUrl  String
-  imagemTitulo String
-  titulo1    String
-  titulo2    String
-  titulo3    String
-  titulo4    String
+  icone1     String
+  descricao1 String
+  icone2     String
+  descricao2 String
+  icone3     String
+  descricao3 String
+  icone4     String
+  descricao4 String
+  icone5     String
+  descricao5 String
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 }

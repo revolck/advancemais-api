@@ -1,31 +1,5 @@
 import { Request, Response } from "express";
-import path from "path";
-import { supabase } from "../../superbase/client";
 import { treinamentosInCompanyService } from "../services/treinamentosInCompany.service";
-
-function generateImageTitle(url: string): string {
-  try {
-    const pathname = new URL(url).pathname;
-    return path.basename(pathname).split(".")[0];
-  } catch {
-    return "";
-  }
-}
-
-async function uploadImage(file: Express.Multer.File): Promise<string> {
-  const fileExt = path.extname(file.originalname);
-  const fileName = `treinamentos-in-company-${Date.now()}${fileExt}`;
-  const { error } = await supabase.storage
-    .from("website")
-    .upload(`treinamentos-in-company/${fileName}`, file.buffer, {
-      contentType: file.mimetype,
-    });
-  if (error) throw error;
-  const { data } = supabase.storage
-    .from("website")
-    .getPublicUrl(`treinamentos-in-company/${fileName}`);
-  return data.publicUrl;
-}
 
 export class TreinamentosInCompanyController {
   static list = async (req: Request, res: Response) => {
@@ -55,28 +29,30 @@ export class TreinamentosInCompanyController {
     try {
       const {
         titulo,
-        descricao,
-        titulo1,
-        titulo2,
-        titulo3,
-        titulo4,
+        icone1,
+        descricao1,
+        icone2,
+        descricao2,
+        icone3,
+        descricao3,
+        icone4,
+        descricao4,
+        icone5,
+        descricao5,
       } = req.body;
-      let imagemUrl = "";
-      if (req.file) {
-        imagemUrl = await uploadImage(req.file);
-      } else if (req.body.imagemUrl) {
-        imagemUrl = req.body.imagemUrl;
-      }
-      const imagemTitulo = imagemUrl ? generateImageTitle(imagemUrl) : "";
+
       const item = await treinamentosInCompanyService.create({
         titulo,
-        descricao,
-        imagemUrl,
-        imagemTitulo,
-        titulo1,
-        titulo2,
-        titulo3,
-        titulo4,
+        icone1,
+        descricao1,
+        icone2,
+        descricao2,
+        icone3,
+        descricao3,
+        icone4,
+        descricao4,
+        icone5,
+        descricao5,
       });
       res.status(201).json(item);
     } catch (error: any) {
@@ -92,29 +68,31 @@ export class TreinamentosInCompanyController {
       const { id } = req.params;
       const {
         titulo,
-        descricao,
-        titulo1,
-        titulo2,
-        titulo3,
-        titulo4,
+        icone1,
+        descricao1,
+        icone2,
+        descricao2,
+        icone3,
+        descricao3,
+        icone4,
+        descricao4,
+        icone5,
+        descricao5,
       } = req.body;
-      let imagemUrl = req.body.imagemUrl as string | undefined;
-      if (req.file) {
-        imagemUrl = await uploadImage(req.file);
-      }
-      const data: any = {
+
+      const item = await treinamentosInCompanyService.update(id, {
         titulo,
-        descricao,
-        titulo1,
-        titulo2,
-        titulo3,
-        titulo4,
-      };
-      if (imagemUrl) {
-        data.imagemUrl = imagemUrl;
-        data.imagemTitulo = generateImageTitle(imagemUrl);
-      }
-      const item = await treinamentosInCompanyService.update(id, data);
+        icone1,
+        descricao1,
+        icone2,
+        descricao2,
+        icone3,
+        descricao3,
+        icone4,
+        descricao4,
+        icone5,
+        descricao5,
+      });
       res.json(item);
     } catch (error: any) {
       res.status(500).json({

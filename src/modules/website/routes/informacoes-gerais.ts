@@ -106,7 +106,7 @@ router.get("/:id", InformacoesGeraisController.get);
  *           curl -X POST "http://localhost:3000/api/v1/website/informacoes-gerais" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -H "Content-Type: application/json" \\
- *            -d '{"endereco":"Rua A, 123","cep":"12345-678","cidade":"Cidade","estado":"ST","telefone1":"(11) 1234-5678","whatsapp":"(11) 91234-5678","horarioDeFuncionamento":"08 as 18","email":"contato@example.com"}'
+ *            -d '{"endereco":"Rua A, 123","cep":"12345-678","cidade":"Cidade","estado":"ST","telefone1":"(11) 1234-5678","whatsapp":"(11) 91234-5678","email":"contato@example.com","horarios":[{"diaDaSemana":"segunda","horarioInicio":"08:00","horarioFim":"18:00"}]}'
  */
 router.post(
   "/",

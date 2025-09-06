@@ -715,7 +715,6 @@ model WebsiteInformacoes {
   telefone1              String
   telefone2              String?
   whatsapp               String
-  horarioDeFuncionamento String
   linkedin               String?
   facebook               String?
   instagram              String?
@@ -723,6 +722,19 @@ model WebsiteInformacoes {
   email                  String
   criadoEm               DateTime @default(now())
   atualizadoEm           DateTime @updatedAt
+
+  horarios WebsiteHorarioFuncionamento[]
+}
+
+model WebsiteHorarioFuncionamento {
+  id            String   @id @default(uuid())
+  diaDaSemana   String
+  horarioInicio String
+  horarioFim    String
+  informacoes   WebsiteInformacoes @relation(fields: [informacoesId], references: [id], onDelete: Cascade)
+  informacoesId String
+  criadoEm      DateTime @default(now())
+  atualizadoEm  DateTime @updatedAt
 }
 
 model WebsiteHeaderPage {

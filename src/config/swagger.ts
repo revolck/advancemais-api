@@ -2542,6 +2542,14 @@ const options: Options = {
             descricao5: { type: "string", example: "Descrição 5" },
           },
         },
+        WebsiteHorarioFuncionamento: {
+          type: "object",
+          properties: {
+            diaDaSemana: { type: "string", example: "segunda" },
+            horarioInicio: { type: "string", example: "08:00" },
+            horarioFim: { type: "string", example: "18:00" },
+          },
+        },
         WebsiteInformacoes: {
           type: "object",
           properties: {
@@ -2557,9 +2565,11 @@ const options: Options = {
               example: "(11) 9876-5432",
             },
             whatsapp: { type: "string", example: "(11) 91234-5678" },
-            horarioDeFuncionamento: {
-              type: "string",
-              example: "08 as 18",
+            horarios: {
+              type: "array",
+              items: {
+                $ref: '#/components/schemas/WebsiteHorarioFuncionamento',
+              },
             },
             linkedin: {
               type: "string",
@@ -2603,8 +2613,8 @@ const options: Options = {
             "estado",
             "telefone1",
             "whatsapp",
-            "horarioDeFuncionamento",
             "email",
+            "horarios",
           ],
           properties: {
             endereco: { type: "string", example: "Rua A, 123" },
@@ -2614,9 +2624,11 @@ const options: Options = {
             telefone1: { type: "string", example: "(11) 1234-5678" },
             telefone2: { type: "string", example: "(11) 9876-5432" },
             whatsapp: { type: "string", example: "(11) 91234-5678" },
-            horarioDeFuncionamento: {
-              type: "string",
-              example: "08 as 18",
+            horarios: {
+              type: "array",
+              items: {
+                $ref: '#/components/schemas/WebsiteHorarioFuncionamento',
+              },
             },
             linkedin: { type: "string", example: "https://linkedin.com/company/example" },
             facebook: { type: "string", example: "https://facebook.com/example" },
@@ -2635,9 +2647,11 @@ const options: Options = {
             telefone1: { type: "string", example: "(11) 1234-5678" },
             telefone2: { type: "string", example: "(11) 9876-5432" },
             whatsapp: { type: "string", example: "(11) 91234-5678" },
-            horarioDeFuncionamento: {
-              type: "string",
-              example: "08 as 18",
+            horarios: {
+              type: "array",
+              items: {
+                $ref: '#/components/schemas/WebsiteHorarioFuncionamento',
+              },
             },
             linkedin: { type: "string", example: "https://linkedin.com/company/example" },
             facebook: { type: "string", example: "https://facebook.com/example" },

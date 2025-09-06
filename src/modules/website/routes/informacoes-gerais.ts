@@ -81,7 +81,6 @@ router.get("/:id", InformacoesGeraisController.get);
  *     security:
  *       - bearerAuth: []
  *     requestBody:
- *       required: true
  *       content:
  *         application/json:
  *           schema:
@@ -129,7 +128,6 @@ router.post(
  *         schema:
  *           type: string
  *     requestBody:
- *       required: true
  *       content:
  *         application/json:
  *           schema:

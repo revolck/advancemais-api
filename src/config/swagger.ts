@@ -62,6 +62,10 @@ const options: Options = {
         description: "Conteúdos \"Team\"",
       },
       {
+        name: "Website - Depoimentos",
+        description: "Conteúdos \"Depoimentos\"",
+      },
+      {
         name: "Website - Diferenciais",
         description: "Conteúdos \"Diferenciais\"",
       },
@@ -981,6 +985,7 @@ const options: Options = {
                 sobreEmpresa: { type: "string", example: "/sobre-empresa" },
                 team: { type: "string", example: "/team" },
                 diferenciais: { type: "string", example: "/diferenciais" },
+                depoimentos: { type: "string", example: "/depoimentos" },
               },
             },
             status: { type: "string", example: "operational" },
@@ -1855,6 +1860,121 @@ const options: Options = {
               example: 2,
               description:
                 "Nova posição desejada do membro. Se já houver outro na posição, os demais serão reordenados automaticamente",
+            },
+          },
+        },
+        WebsiteDepoimento: {
+          type: "object",
+          properties: {
+            id: {
+              type: "string",
+              description: "ID da ordem do depoimento",
+              example: "ordem-uuid",
+            },
+            depoimentoId: {
+              type: "string",
+              description: "ID do depoimento",
+              example: "depoimento-uuid",
+            },
+            depoimento: { type: "string", example: "Ótimo serviço" },
+            nome: { type: "string", example: "Fulano" },
+            cargo: { type: "string", example: "Gerente" },
+            fotoUrl: {
+              type: "string",
+              format: "uri",
+              example: "https://cdn.example.com/foto.jpg",
+            },
+            status: {
+              $ref: '#/components/schemas/WebsiteStatus',
+              description: "Estado de publicação do depoimento",
+            },
+            ordem: {
+              type: "integer",
+              description: "Posição do depoimento",
+              example: 1,
+            },
+            ordemCriadoEm: {
+              type: "string",
+              format: "date-time",
+              description: "Data de criação da ordem",
+              example: "2024-01-01T12:00:00Z",
+            },
+            criadoEm: {
+              type: "string",
+              format: "date-time",
+              description: "Data de criação do depoimento",
+              example: "2024-01-01T12:00:00Z",
+            },
+            atualizadoEm: {
+              type: "string",
+              format: "date-time",
+              description: "Data da última atualização",
+              example: "2024-01-01T12:00:00Z",
+            },
+          },
+        },
+        WebsiteDepoimentoCreateInput: {
+          type: "object",
+          required: ["depoimento", "nome", "cargo", "fotoUrl"],
+          properties: {
+            depoimento: { type: "string", example: "Ótimo serviço" },
+            nome: { type: "string", example: "Fulano" },
+            cargo: { type: "string", example: "Gerente" },
+            fotoUrl: {
+              type: "string",
+              format: "uri",
+              description: "URL da foto do autor",
+              example: "https://cdn.example.com/foto.jpg",
+            },
+            status: {
+              description:
+                "Estado de publicação. Aceita boolean (true = PUBLICADO, false = RASCUNHO) ou string.",
+              oneOf: [
+                { $ref: '#/components/schemas/WebsiteStatus' },
+                { type: "boolean" },
+              ],
+              example: true,
+            },
+          },
+        },
+        WebsiteDepoimentoUpdateInput: {
+          type: "object",
+          description: "Envie apenas os campos que deseja atualizar.",
+          properties: {
+            depoimento: { type: "string", example: "Ótimo serviço" },
+            nome: { type: "string", example: "Fulano" },
+            cargo: { type: "string", example: "Gerente" },
+            fotoUrl: {
+              type: "string",
+              format: "uri",
+              example: "https://cdn.example.com/foto.jpg",
+            },
+            status: {
+              description:
+                "Estado de publicação. Aceita boolean (true = PUBLICADO, false = RASCUNHO) ou string.",
+              oneOf: [
+                { $ref: '#/components/schemas/WebsiteStatus' },
+                { type: "boolean" },
+              ],
+              example: false,
+            },
+            ordem: {
+              type: "integer",
+              example: 2,
+              description:
+                "Nova posição do depoimento; ao mudar este valor os demais serão reordenados automaticamente",
+            },
+          },
+        },
+        WebsiteDepoimentoReorderInput: {
+          type: "object",
+          required: ["ordem"],
+          properties: {
+            ordem: {
+              type: "integer",
+              example: 2,
+              description:
+                "Nova posição desejada do depoimento. Se já houver outro na posição, os demais serão reordenados automaticamente",
             },
           },
         },

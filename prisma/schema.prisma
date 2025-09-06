@@ -480,6 +480,30 @@ model WebsiteTeamOrdem {
   @@unique([ordem])
 }
 
+model WebsiteDepoimento {
+  id          String   @id @default(uuid())
+  depoimento  String
+  nome        String
+  cargo       String
+  fotoUrl     String
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  ordem       WebsiteDepoimentoOrdem?
+}
+
+model WebsiteDepoimentoOrdem {
+  id                   String       @id @default(uuid())
+  websiteDepoimentoId  String       @unique
+  ordem                Int
+  status               WebsiteStatus @default(RASCUNHO)
+  criadoEm             DateTime     @default(now())
+
+  depoimento           WebsiteDepoimento @relation(fields: [websiteDepoimentoId], references: [id], onDelete: Cascade)
+
+  @@unique([ordem])
+}
+
 model WebsiteDiferenciais {
   id           String   @id @default(uuid())
   icone1       String

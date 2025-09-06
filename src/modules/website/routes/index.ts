@@ -16,6 +16,7 @@ import { treinamentoCompanyRoutes } from "./treinamento-company";
 import { conexaoForteRoutes } from "./conexao-forte";
 import { treinamentosInCompanyRoutes } from "./treinamentos-in-company";
 import { headerPagesRoutes } from "./header-pages";
+import { depoimentosRoutes } from "./depoimentos";
 
 const router = Router();
 
@@ -67,6 +68,7 @@ router.get("/", (req, res) => {
       conexaoForte: "/conexao-forte",
       treinamentosInCompany: "/treinamentos-in-company",
       headerPages: "/header-pages",
+      depoimentos: "/depoimentos",
     },
     status: "operational",
   });
@@ -89,5 +91,6 @@ router.use("/treinamento-company", treinamentoCompanyRoutes);
 router.use("/conexao-forte", conexaoForteRoutes);
 router.use("/treinamentos-in-company", treinamentosInCompanyRoutes);
 router.use("/header-pages", headerPagesRoutes);
+router.use("/depoimentos", depoimentosRoutes);
 
 export { router as websiteRoutes };

@@ -707,21 +707,21 @@ model WebsiteTreinamentosInCompany {
 }
 
 model WebsiteInformacoes {
-  id                     String   @id @default(uuid())
-  endereco               String
-  cep                    String
-  cidade                 String
-  estado                 String
-  telefone1              String
-  telefone2              String?
-  whatsapp               String
-  linkedin               String?
-  facebook               String?
-  instagram              String?
-  youtube                String?
-  email                  String
-  criadoEm               DateTime @default(now())
-  atualizadoEm           DateTime @updatedAt
+  id           String   @id @default(uuid())
+  endereco     String?
+  cep          String?
+  cidade       String?
+  estado       String?
+  telefone1    String?
+  telefone2    String?
+  whatsapp     String?
+  linkedin     String?
+  facebook     String?
+  instagram    String?
+  youtube      String?
+  email        String?
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
 
   horarios WebsiteHorarioFuncionamento[]
 }

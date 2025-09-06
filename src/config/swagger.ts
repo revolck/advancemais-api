@@ -2554,19 +2554,40 @@ const options: Options = {
           type: "object",
           properties: {
             id: { type: "string", example: "info-uuid" },
-            endereco: { type: "string", example: "Rua A, 123" },
-            cep: { type: "string", example: "12345-678" },
-            cidade: { type: "string", example: "São Paulo" },
-            estado: { type: "string", example: "SP" },
-            telefone1: { type: "string", example: "(11) 1234-5678" },
+            endereco: {
+              type: "string",
+              nullable: true,
+              example: "Rua A, 123",
+            },
+            cep: {
+              type: "string",
+              nullable: true,
+              example: "12345-678",
+            },
+            cidade: {
+              type: "string",
+              nullable: true,
+              example: "São Paulo",
+            },
+            estado: { type: "string", nullable: true, example: "SP" },
+            telefone1: {
+              type: "string",
+              nullable: true,
+              example: "(11) 1234-5678",
+            },
             telefone2: {
               type: "string",
               nullable: true,
               example: "(11) 9876-5432",
             },
-            whatsapp: { type: "string", example: "(11) 91234-5678" },
+            whatsapp: {
+              type: "string",
+              nullable: true,
+              example: "(11) 91234-5678",
+            },
             horarios: {
               type: "array",
+              nullable: true,
               items: {
                 $ref: '#/components/schemas/WebsiteHorarioFuncionamento',
               },
@@ -2591,7 +2612,11 @@ const options: Options = {
               nullable: true,
               example: "https://youtube.com/example",
             },
-            email: { type: "string", example: "contato@example.com" },
+            email: {
+              type: "string",
+              nullable: true,
+              example: "contato@example.com",
+            },
             criadoEm: {
               type: "string",
               format: "date-time",
@@ -2606,58 +2631,138 @@ const options: Options = {
         },
         WebsiteInformacoesCreateInput: {
           type: "object",
-          required: [
-            "endereco",
-            "cep",
-            "cidade",
-            "estado",
-            "telefone1",
-            "whatsapp",
-            "email",
-            "horarios",
-          ],
           properties: {
-            endereco: { type: "string", example: "Rua A, 123" },
-            cep: { type: "string", example: "12345-678" },
-            cidade: { type: "string", example: "São Paulo" },
-            estado: { type: "string", example: "SP" },
-            telefone1: { type: "string", example: "(11) 1234-5678" },
-            telefone2: { type: "string", example: "(11) 9876-5432" },
-            whatsapp: { type: "string", example: "(11) 91234-5678" },
+            endereco: {
+              type: "string",
+              nullable: true,
+              example: "Rua A, 123",
+            },
+            cep: {
+              type: "string",
+              nullable: true,
+              example: "12345-678",
+            },
+            cidade: {
+              type: "string",
+              nullable: true,
+              example: "São Paulo",
+            },
+            estado: { type: "string", nullable: true, example: "SP" },
+            telefone1: {
+              type: "string",
+              nullable: true,
+              example: "(11) 1234-5678",
+            },
+            telefone2: {
+              type: "string",
+              nullable: true,
+              example: "(11) 9876-5432",
+            },
+            whatsapp: {
+              type: "string",
+              nullable: true,
+              example: "(11) 91234-5678",
+            },
             horarios: {
               type: "array",
+              nullable: true,
               items: {
                 $ref: '#/components/schemas/WebsiteHorarioFuncionamento',
               },
             },
-            linkedin: { type: "string", example: "https://linkedin.com/company/example" },
-            facebook: { type: "string", example: "https://facebook.com/example" },
-            instagram: { type: "string", example: "https://instagram.com/example" },
-            youtube: { type: "string", example: "https://youtube.com/example" },
-            email: { type: "string", example: "contato@example.com" },
+            linkedin: {
+              type: "string",
+              nullable: true,
+              example: "https://linkedin.com/company/example",
+            },
+            facebook: {
+              type: "string",
+              nullable: true,
+              example: "https://facebook.com/example",
+            },
+            instagram: {
+              type: "string",
+              nullable: true,
+              example: "https://instagram.com/example",
+            },
+            youtube: {
+              type: "string",
+              nullable: true,
+              example: "https://youtube.com/example",
+            },
+            email: {
+              type: "string",
+              nullable: true,
+              example: "contato@example.com",
+            },
           },
         },
         WebsiteInformacoesUpdateInput: {
           type: "object",
           properties: {
-            endereco: { type: "string", example: "Rua A, 123" },
-            cep: { type: "string", example: "12345-678" },
-            cidade: { type: "string", example: "São Paulo" },
-            estado: { type: "string", example: "SP" },
-            telefone1: { type: "string", example: "(11) 1234-5678" },
-            telefone2: { type: "string", example: "(11) 9876-5432" },
-            whatsapp: { type: "string", example: "(11) 91234-5678" },
+            endereco: {
+              type: "string",
+              nullable: true,
+              example: "Rua A, 123",
+            },
+            cep: {
+              type: "string",
+              nullable: true,
+              example: "12345-678",
+            },
+            cidade: {
+              type: "string",
+              nullable: true,
+              example: "São Paulo",
+            },
+            estado: { type: "string", nullable: true, example: "SP" },
+            telefone1: {
+              type: "string",
+              nullable: true,
+              example: "(11) 1234-5678",
+            },
+            telefone2: {
+              type: "string",
+              nullable: true,
+              example: "(11) 9876-5432",
+            },
+            whatsapp: {
+              type: "string",
+              nullable: true,
+              example: "(11) 91234-5678",
+            },
             horarios: {
               type: "array",
+              nullable: true,
               items: {
                 $ref: '#/components/schemas/WebsiteHorarioFuncionamento',
               },
             },
-            linkedin: { type: "string", example: "https://linkedin.com/company/example" },
-            facebook: { type: "string", example: "https://facebook.com/example" },
-            instagram: { type: "string", example: "https://instagram.com/example" },
-            youtube: { type: "string", example: "https://youtube.com/example" },
-            email: { type: "string", example: "contato@example.com" },
+            linkedin: {
+              type: "string",
+              nullable: true,
+              example: "https://linkedin.com/company/example",
+            },
+            facebook: {
+              type: "string",
+              nullable: true,
+              example: "https://facebook.com/example",
+            },
+            instagram: {
+              type: "string",
+              nullable: true,
+              example: "https://instagram.com/example",
+            },
+            youtube: {
+              type: "string",
+              nullable: true,
+              example: "https://youtube.com/example",
+            },
+            email: {
+              type: "string",
+              nullable: true,
+              example: "contato@example.com",
+            },
           },
         },
         WebsiteHeaderPage: {

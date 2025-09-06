@@ -25,7 +25,11 @@ export class InformacoesGeraisController {
 
   static create = async (req: Request, res: Response) => {
     try {
-      const info = await informacoesGeraisService.create(req.body);
+      const { horarios = [], ...data } = req.body;
+      const info = await informacoesGeraisService.create({
+        ...data,
+        horarios: { create: horarios },
+      });
       res.status(201).json(info);
     } catch (error: any) {
       res.status(500).json({
@@ -38,7 +42,13 @@ export class InformacoesGeraisController {
   static update = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const info = await informacoesGeraisService.update(id, req.body);
+      const { horarios, ...data } = req.body;
+      const info = await informacoesGeraisService.update(id, {
+        ...data,
+        ...(horarios && {
+          horarios: { deleteMany: {}, create: horarios },
+        }),
+      });
       res.json(info);
     } catch (error: any) {
       res.status(500).json({

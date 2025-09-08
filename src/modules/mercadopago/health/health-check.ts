@@ -3,6 +3,7 @@
  */
 
 import { MercadoPagoClient } from "../client/mercadopago-client";
+import { ClientType } from "../enums";
 import { prisma } from "../../../config/prisma";
 
 export interface HealthCheckResult {
@@ -75,7 +76,7 @@ export class MercadoPagoHealthCheck {
   }> {
     try {
       const startTime = Date.now();
-      const client = MercadoPagoClient.getInstance();
+      const client = MercadoPagoClient.getInstance(ClientType.SUBSCRIPTIONS);
 
       const isConnected = await client.testConnection();
       const responseTime = Date.now() - startTime;
@@ -136,7 +137,12 @@ export class MercadoPagoHealthCheck {
     status: "valid" | "invalid";
     missing_vars?: string[];
   } {
-    const requiredVars = ["MERCADOPAGO_ACCESS_TOKEN", "MERCADOPAGO_PUBLIC_KEY"];
+    const requiredVars = [
+      "MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN",
+      "MERCADOPAGO_SUBSCRIPTIONS_PUBLIC_KEY",
+      "MERCADOPAGO_CHECKOUT_TRANSPARENT_ACCESS_TOKEN",
+      "MERCADOPAGO_CHECKOUT_TRANSPARENT_PUBLIC_KEY",
+    ];
 
     const missingVars = requiredVars.filter((varName) => !process.env[varName]);
 
@@ -148,7 +154,7 @@ export class MercadoPagoHealthCheck {
     }
 
     try {
-      const client = MercadoPagoClient.getInstance();
+      const client = MercadoPagoClient.getInstance(ClientType.SUBSCRIPTIONS);
       const isValidConfig = client.validateConfiguration();
 
       return {

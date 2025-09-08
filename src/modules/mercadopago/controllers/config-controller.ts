@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { MercadoPagoClient } from "../client/mercadopago-client";
+import { ClientType } from "../enums";
 
 /**
  * Controller para configurações e informações do MercadoPago
@@ -9,7 +10,7 @@ export class ConfigController {
   private client: MercadoPagoClient;
 
   constructor() {
-    this.client = MercadoPagoClient.getInstance();
+    this.client = MercadoPagoClient.getInstance(ClientType.SUBSCRIPTIONS);
   }
 
   /**

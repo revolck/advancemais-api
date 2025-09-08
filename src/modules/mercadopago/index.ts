@@ -26,6 +26,7 @@ export { MercadoPagoClient } from "./client/mercadopago-client";
 export { OrdersService } from "./services/orders-service";
 export { SubscriptionService } from "./services/subscription-service";
 export { WebhookService } from "./services/webhook-service";
+export { PlanService } from "./services/plan-service";
 
 // Controllers
 export {
@@ -33,6 +34,7 @@ export {
   SubscriptionController,
   WebhookController,
   ConfigController,
+  PlanController,
 } from "./controllers";
 
 // Middlewares

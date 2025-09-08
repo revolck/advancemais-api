@@ -105,8 +105,10 @@ const environmentSpecificVars = {
     "SUPABASE_URL",
     "SUPABASE_KEY",
     "BREVO_API_KEY",
-    "MERCADOPAGO_ACCESS_TOKEN",
-    "MERCADOPAGO_PUBLIC_KEY",
+    "MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN",
+    "MERCADOPAGO_SUBSCRIPTIONS_PUBLIC_KEY",
+    "MERCADOPAGO_CHECKOUT_TRANSPARENT_ACCESS_TOKEN",
+    "MERCADOPAGO_CHECKOUT_TRANSPARENT_PUBLIC_KEY",
     "FRONTEND_URL",
   ],
   development: coreRequiredVars,
@@ -316,85 +318,141 @@ export const brevoConfig = {
 // =============================================
 
 export const mercadoPagoConfig = {
-  // Chaves de API
-  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN || "",
-  publicKey: process.env.MERCADOPAGO_PUBLIC_KEY || "",
+  subscriptions: {
+    prod: {
+      accessToken: process.env.MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN || "",
+      publicKey: process.env.MERCADOPAGO_SUBSCRIPTIONS_PUBLIC_KEY || "",
+      webhookSecret:
+        process.env.MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET || "",
+      clientId: process.env.MERCADOPAGO_SUBSCRIPTIONS_CLIENT_ID || "",
+      clientSecret:
+        process.env.MERCADOPAGO_SUBSCRIPTIONS_CLIENT_SECRET || "",
+    },
+    test: {
+      accessToken:
+        process.env.MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN_TEST ||
+        process.env.MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN ||
+        "",
+      publicKey:
+        process.env.MERCADOPAGO_SUBSCRIPTIONS_PUBLIC_KEY_TEST ||
+        process.env.MERCADOPAGO_SUBSCRIPTIONS_PUBLIC_KEY ||
+        "",
+      webhookSecret:
+        process.env.MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET_TEST || "",
+    },
+  },
 
-  // Ambiente
+  checkoutTransparent: {
+    prod: {
+      accessToken:
+        process.env.MERCADOPAGO_CHECKOUT_TRANSPARENT_ACCESS_TOKEN || "",
+      publicKey:
+        process.env.MERCADOPAGO_CHECKOUT_TRANSPARENT_PUBLIC_KEY || "",
+      webhookSecret:
+        process.env.MERCADOPAGO_CHECKOUT_TRANSPARENT_WEBHOOK_SECRET || "",
+      clientId: process.env.MERCADOPAGO_CHECKOUT_TRANSPARENT_CLIENT_ID || "",
+      clientSecret:
+        process.env.MERCADOPAGO_CHECKOUT_TRANSPARENT_CLIENT_SECRET || "",
+    },
+    test: {
+      accessToken:
+        process.env.MERCADOPAGO_CHECKOUT_TRANSPARENT_ACCESS_TOKEN_TEST ||
+        process.env.MERCADOPAGO_CHECKOUT_TRANSPARENT_ACCESS_TOKEN ||
+        "",
+      publicKey:
+        process.env.MERCADOPAGO_CHECKOUT_TRANSPARENT_PUBLIC_KEY_TEST ||
+        process.env.MERCADOPAGO_CHECKOUT_TRANSPARENT_PUBLIC_KEY ||
+        "",
+      webhookSecret:
+        process.env.MERCADOPAGO_CHECKOUT_TRANSPARENT_WEBHOOK_SECRET_TEST ||
+        "",
+    },
+  },
+
   environment: process.env.MERCADOPAGO_ENVIRONMENT || "sandbox",
-
-  // Secret para webhooks
-  webhookSecret: process.env.MERCADOPAGO_WEBHOOK_SECRET || "",
-
-  // Configurações de timeout e retry
-  timeout: parseInt(process.env.MERCADOPAGO_TIMEOUT || "5000", 10),
-  retryAttempts: parseInt(process.env.MERCADOPAGO_RETRY_ATTEMPTS || "3", 10),
-
-  // IDs opcionais para integração avançada
-  integratorId: process.env.MERCADOPAGO_INTEGRATOR_ID || "",
-  platformId: process.env.MERCADOPAGO_PLATFORM_ID || "",
-  corporationId: process.env.MERCADOPAGO_CORPORATION_ID || "",
-
-  // Configurações de notificação
   notificationUrl: process.env.MERCADOPAGO_NOTIFICATION_URL || "",
 
-  // Configurações de experiência do usuário
-  locale: process.env.MERCADOPAGO_LOCALE || "pt-BR",
-
-  // Configurações de processamento
-  defaultProcessingMode:
-    process.env.MERCADOPAGO_DEFAULT_PROCESSING_MODE || "automatic",
-  defaultCurrency: process.env.MERCADOPAGO_DEFAULT_CURRENCY || "BRL",
-
-  // Configurações de reembolso
-  refundConfig: {
-    allowPartialRefunds:
-      process.env.MERCADOPAGO_ALLOW_PARTIAL_REFUNDS === "true",
-    maxRefundDays: parseInt(
-      process.env.MERCADOPAGO_MAX_REFUND_DAYS || "180",
-      10
-    ),
-    autoRefundOnCancel:
-      process.env.MERCADOPAGO_AUTO_REFUND_ON_CANCEL === "true",
-  },
-
-  // Configurações de assinatura
   subscriptionConfig: {
-    maxFrequencyDays: parseInt(
-      process.env.MERCADOPAGO_MAX_FREQUENCY_DAYS || "365",
+    defaultBillingDay: parseInt(
+      process.env.MERCADOPAGO_DEFAULT_BILLING_DAY || "1",
       10
     ),
-    allowFreeTrials: process.env.MERCADOPAGO_ALLOW_FREE_TRIALS === "true",
-    defaultFrequencyType:
-      process.env.MERCADOPAGO_DEFAULT_FREQUENCY_TYPE || "months",
+    billingDayProportional:
+      process.env.MERCADOPAGO_BILLING_DAY_PROPORTIONAL !== "false",
   },
 
-  // Validação da configuração
   isValid(): boolean {
-    return !!(this.accessToken && this.publicKey);
+    const envKey = this.environment === "production" ? "prod" : "test";
+    const subs = this.subscriptions[envKey];
+    const checkout = this.checkoutTransparent[envKey];
+    return !!(
+      subs.accessToken &&
+      subs.publicKey &&
+      checkout.accessToken &&
+      checkout.publicKey
+    );
   },
 
-  // Status da configuração
   getStatus(): { configured: boolean; issues: string[] } {
     const issues: string[] = [];
+    const envKey = this.environment === "production" ? "prod" : "test";
+    const subs = this.subscriptions[envKey];
+    const checkout = this.checkoutTransparent[envKey];
 
-    if (!this.accessToken)
-      issues.push("MERCADOPAGO_ACCESS_TOKEN não configurado");
-    if (!this.publicKey) issues.push("MERCADOPAGO_PUBLIC_KEY não configurado");
+    if (!subs.accessToken)
+      issues.push(
+        `MERCADOPAGO_SUBSCRIPTIONS_ACCESS_TOKEN${
+          envKey === "test" ? "_TEST" : ""
+        } não configurado`
+      );
+    if (!subs.publicKey)
+      issues.push(
+        `MERCADOPAGO_SUBSCRIPTIONS_PUBLIC_KEY${
+          envKey === "test" ? "_TEST" : ""
+        } não configurado`
+      );
+    if (!checkout.accessToken)
+      issues.push(
+        `MERCADOPAGO_CHECKOUT_TRANSPARENT_ACCESS_TOKEN${
+          envKey === "test" ? "_TEST" : ""
+        } não configurado`
+      );
+    if (!checkout.publicKey)
+      issues.push(
+        `MERCADOPAGO_CHECKOUT_TRANSPARENT_PUBLIC_KEY${
+          envKey === "test" ? "_TEST" : ""
+        } não configurado`
+      );
 
-    // Validações específicas para produção
     if (isProduction) {
-      if (this.accessToken.includes("TEST")) {
+      if (subs.accessToken.includes("TEST")) {
         issues.push('Access Token de produção não deve conter "TEST"');
       }
-      if (this.publicKey.includes("TEST")) {
+      if (subs.publicKey.includes("TEST")) {
         issues.push('Public Key de produção não deve conter "TEST"');
+      }
+      if (checkout.accessToken.includes("TEST")) {
+        issues.push(
+          'Checkout Transparent Access Token de produção não deve conter "TEST"'
+        );
+      }
+      if (checkout.publicKey.includes("TEST")) {
+        issues.push(
+          'Checkout Transparent Public Key de produção não deve conter "TEST"'
+        );
       }
       if (this.environment !== "production") {
         issues.push('Environment deve ser "production" em produção');
       }
-      if (!this.webhookSecret) {
-        issues.push("MERCADOPAGO_WEBHOOK_SECRET recomendado em produção");
+      if (!this.subscriptions.prod.webhookSecret) {
+        issues.push(
+          "MERCADOPAGO_SUBSCRIPTIONS_WEBHOOK_SECRET recomendado em produção"
+        );
+      }
+      if (!this.checkoutTransparent.prod.webhookSecret) {
+        issues.push(
+          "MERCADOPAGO_CHECKOUT_TRANSPARENT_WEBHOOK_SECRET recomendado em produção"
+        );
       }
     }
 

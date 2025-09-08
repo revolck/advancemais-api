@@ -91,6 +91,43 @@ router.post(
 );
 
 /**
+ * Buscar assinaturas
+ * GET /subscriptions/search
+ */
+/**
+ * @openapi
+ * /api/v1/mercadopago/subscriptions/search:
+ *   get:
+ *     summary: Buscar assinaturas no MercadoPago
+ *     tags: [MercadoPago]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *         required: false
+ *       - in: query
+ *         name: preapproval_plan_id
+ *         schema:
+ *           type: string
+ *         required: false
+ *     responses:
+ *       200:
+ *         description: Lista de assinaturas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MercadoPagoSubscriptionListResponse'
+ */
+router.get(
+  "/search",
+  supabaseAuthMiddleware(),
+  subscriptionController.searchSubscriptions
+);
+
+/**
  * Obter informações de uma assinatura
  * GET /subscriptions/:subscriptionId
  */
@@ -132,6 +169,44 @@ router.get(
   "/:subscriptionId",
   supabaseAuthMiddleware(),
   subscriptionController.getSubscription
+);
+
+/**
+ * Atualizar assinatura
+ * PUT /subscriptions/:subscriptionId
+ */
+/**
+ * @openapi
+ * /api/v1/mercadopago/subscriptions/{subscriptionId}:
+ *   put:
+ *     summary: Atualizar assinatura
+ *     tags: [MercadoPago]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: subscriptionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/MercadoPagoSubscriptionRequest'
+ *     responses:
+ *       200:
+ *         description: Assinatura atualizada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MercadoPagoSubscriptionResponse'
+ */
+router.put(
+  "/:subscriptionId",
+  supabaseAuthMiddleware(),
+  subscriptionController.updateSubscription
 );
 
 /**

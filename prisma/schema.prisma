@@ -355,14 +355,21 @@ model MercadoPagoTransaction {
 model MercadoPagoPlan {
   id          String   @id @default(uuid())
   nome        String
+  icone       String?
+  categoria   PlanCategory
   valor       Float
+  desconto    Float?  @default(0)
   descricao   String
   recursos    String[]
   ativo       Boolean  @default(true)
+  limiteVagasAtivas    Int?
+  limiteVagasDestaque  Int?    @default(0)
   mercadoPagoPlanId String? @unique
   frequency   Int
   frequencyType PlanFrequencyType
   repetitions Int?
+  billingDay Int?
+  billingDayProportional Boolean @default(false)
   criadoEm    DateTime @default(now())
   atualizadoEm DateTime @updatedAt
   empresaPlanos EmpresaPlano[]
@@ -816,6 +823,7 @@ enum PlanPaymentMethod {
   CARTAO_CREDITO
   CARTAO_DEBITO
   DINHEIRO
+  GRATUITO
 }
 
 // Indica se o plano foi atribuído como padrão ou para empresa parceira
@@ -834,9 +842,25 @@ enum PlanFrequencyType {
 enum PlanValidity {
   DIAS_15
   DIAS_30
+  DIAS_60
   DIAS_90
   DIAS_120
+  ANO_1
   SEM_VALIDADE
+}
+
+enum PlanCategory {
+  INICIAL
+  INTERMEDIARIO
+  AVANCADO
+  DESTAQUE
+}
+
+enum VagaStatus {
+  RASCUNHO
+  EM_ANALISE
+  PUBLICADO
+  REVISAO
 }
 
 enum SliderOrientation {

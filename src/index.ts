@@ -232,6 +232,9 @@ const server = app.listen(serverConfig.port, () => {
     `   🏢 Empresa: http://localhost:${serverConfig.port}/api/v1/empresa`
   );
   console.log(
+    `   📦 Plano Empresa: http://localhost:${serverConfig.port}/api/v1/plano-empresa`
+  );
+  console.log(
     `   📊 Auditoria: http://localhost:${serverConfig.port}/api/v1/audit`
   );
   console.log("");

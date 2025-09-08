@@ -286,6 +286,10 @@ export interface SubscriptionData {
   external_reference?: string;
   payer_email: string;
   card_token_id?: string;
+  /** Token do cartão secundário */
+  card_token_id_secondary?: string;
+  /** ID do meio de pagamento secundário */
+  payment_method_id_secondary?: string;
   auto_recurring: {
     frequency: number;
     frequency_type: FrequencyType;
@@ -293,6 +297,12 @@ export interface SubscriptionData {
     currency_id: CurrencyId;
     repetitions?: number;
     debit_date?: string;
+    /** Dia fixo para cobrança mensal (1-28) */
+    billing_day?: number;
+    /** Define se o valor é proporcional ao primeiro mês */
+    billing_day_proportional?: boolean;
+    start_date?: string;
+    end_date?: string;
     free_trial?: {
       frequency: number;
       frequency_type: FrequencyType;
@@ -343,5 +353,6 @@ export interface SubscriptionResponse {
   };
   next_payment_date?: string;
   payment_method_id?: string;
+  payment_method_id_secondary?: string;
   first_invoice_offset?: number;
 }

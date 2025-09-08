@@ -4,7 +4,7 @@ import {
   ServiceResponse,
 } from "../types/order";
 import { MercadoPagoClient } from "../client/mercadopago-client";
-import { SubscriptionStatus, FrequencyType } from "../enums";
+import { SubscriptionStatus, FrequencyType, ClientType } from "../enums";
 import { prisma } from "../../../config/prisma";
 
 /**
@@ -15,7 +15,7 @@ export class SubscriptionService {
   private client: MercadoPagoClient;
 
   constructor() {
-    this.client = MercadoPagoClient.getInstance();
+    this.client = MercadoPagoClient.getInstance(ClientType.SUBSCRIPTIONS);
   }
 
   /**
@@ -222,20 +222,47 @@ export class SubscriptionService {
         apiData.external_reference = updateData.external_reference;
       if (updateData.back_url) apiData.back_url = updateData.back_url;
 
+      if (updateData.card_token_id) apiData.card_token_id = updateData.card_token_id;
+      if (updateData.card_token_id_secondary)
+        apiData.card_token_id_secondary = updateData.card_token_id_secondary;
+      if (updateData.payment_method_id_secondary)
+        apiData.payment_method_id_secondary =
+          updateData.payment_method_id_secondary;
+
       // Campos de auto_recurring que podem ser atualizados
       if (updateData.auto_recurring) {
         apiData.auto_recurring = {};
-        if (updateData.auto_recurring.transaction_amount) {
-          apiData.auto_recurring.transaction_amount =
-            updateData.auto_recurring.transaction_amount;
+        const ar = updateData.auto_recurring;
+        if (ar.transaction_amount) {
+          apiData.auto_recurring.transaction_amount = ar.transaction_amount;
         }
-        if (updateData.auto_recurring.frequency) {
-          apiData.auto_recurring.frequency =
-            updateData.auto_recurring.frequency;
+        if (ar.currency_id) {
+          apiData.auto_recurring.currency_id = ar.currency_id;
         }
-        if (updateData.auto_recurring.frequency_type) {
-          apiData.auto_recurring.frequency_type =
-            updateData.auto_recurring.frequency_type;
+        if (ar.frequency) {
+          apiData.auto_recurring.frequency = ar.frequency;
+        }
+        if (ar.frequency_type) {
+          apiData.auto_recurring.frequency_type = ar.frequency_type;
+        }
+        if (ar.debit_date) {
+          apiData.auto_recurring.debit_date = ar.debit_date;
+        }
+        if (ar.billing_day) {
+          apiData.auto_recurring.billing_day = ar.billing_day;
+        }
+        if (ar.billing_day_proportional !== undefined) {
+          apiData.auto_recurring.billing_day_proportional =
+            ar.billing_day_proportional;
+        }
+        if (ar.start_date) {
+          apiData.auto_recurring.start_date = ar.start_date;
+        }
+        if (ar.end_date) {
+          apiData.auto_recurring.end_date = ar.end_date;
+        }
+        if (ar.free_trial) {
+          apiData.auto_recurring.free_trial = ar.free_trial;
         }
       }
 
@@ -333,6 +360,58 @@ export class SubscriptionService {
       { status: SubscriptionStatus.AUTHORIZED },
       usuarioId
     );
+  }
+
+  /**
+   * Busca assinaturas diretamente na API do MercadoPago
+   * @param params Parâmetros de busca
+   */
+  public async searchSubscriptions(
+    params: Record<string, string>
+  ): Promise<ServiceResponse<SubscriptionResponse[]>> {
+    try {
+      const headers = {
+        Authorization: `Bearer ${this.client.getClient().accessToken}`,
+        "Content-Type": "application/json",
+      };
+
+      const query = new URLSearchParams(params).toString();
+      const response = await fetch(
+        `https://api.mercadopago.com/preapproval/search?${query}`,
+        {
+          method: "GET",
+          headers,
+        }
+      );
+
+      const responseData = await response.json();
+
+      if (response.ok) {
+        return {
+          success: true,
+          data: (responseData.results || []) as SubscriptionResponse[],
+        };
+      }
+
+      return {
+        success: false,
+        error: {
+          message: "Erro ao buscar assinaturas no MercadoPago",
+          details: responseData,
+          code: "MP_SEARCH_SUBSCRIPTIONS_ERROR",
+        },
+      };
+    } catch (error) {
+      console.error("Erro ao buscar assinaturas:", error);
+      return {
+        success: false,
+        error: {
+          message: "Erro interno ao buscar assinaturas",
+          details: error instanceof Error ? error.message : "Erro desconhecido",
+          code: "INTERNAL_ERROR",
+        },
+      };
+    }
   }
 
   /**

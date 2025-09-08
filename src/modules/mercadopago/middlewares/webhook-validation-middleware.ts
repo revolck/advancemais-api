@@ -18,14 +18,19 @@ export class WebhookValidationMiddleware {
     res: Response,
     next: NextFunction
   ) => {
-    try {
-      // Se não há secret configurado, pula a validação (não recomendado para produção)
-      if (!mercadoPagoConfig.webhookSecret) {
-        console.warn(
-          "⚠️  Webhook secret não configurado - validação de assinatura desabilitada"
-        );
-        return next();
-      }
+      try {
+        const webhookSecret =
+          mercadoPagoConfig.environment === "production"
+            ? mercadoPagoConfig.subscriptions.prod.webhookSecret
+            : mercadoPagoConfig.subscriptions.test.webhookSecret;
+
+        // Se não há secret configurado, pula a validação (não recomendado para produção)
+        if (!webhookSecret) {
+          console.warn(
+            "⚠️  Webhook secret não configurado - validação de assinatura desabilitada"
+          );
+          return next();
+        }
 
       // Obtém a assinatura do header
       const signature = req.headers["x-signature"] as string;
@@ -80,10 +85,10 @@ export class WebhookValidationMiddleware {
       const payloadToSign = `id:${requestId};request-id:${requestId};ts:${ts};`;
 
       // Calcula a assinatura esperada
-      const expectedSignature = crypto
-        .createHmac("sha256", mercadoPagoConfig.webhookSecret)
-        .update(payloadToSign)
-        .digest("hex");
+        const expectedSignature = crypto
+          .createHmac("sha256", webhookSecret)
+          .update(payloadToSign)
+          .digest("hex");
 
       // Compara as assinaturas usando comparação segura
       if (

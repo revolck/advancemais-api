@@ -5,6 +5,7 @@ import {
   WebhookAction,
   PaymentStatus,
   OrderStatus,
+  ClientType,
 } from "../enums";
 import { prisma } from "../../../config/prisma";
 import { EmailService } from "../../brevo/services/email-service";
@@ -18,7 +19,7 @@ export class WebhookService {
   private emailService: EmailService;
 
   constructor() {
-    this.client = MercadoPagoClient.getInstance();
+    this.client = MercadoPagoClient.getInstance(ClientType.SUBSCRIPTIONS);
     this.emailService = new EmailService();
   }
 

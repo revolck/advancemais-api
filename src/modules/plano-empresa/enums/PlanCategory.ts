@@ -1,0 +1,6 @@
+export enum PlanCategory {
+  INICIAL = "INICIAL",
+  INTERMEDIARIO = "INTERMEDIARIO",
+  AVANCADO = "AVANCADO",
+  DESTAQUE = "DESTAQUE",
+}

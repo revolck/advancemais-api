@@ -11,7 +11,6 @@ import { generateTokenPair } from "../utils/auth";
  * - Autenticação de usuários com verificação de email
  * - Gestão de sessões e tokens
  * - Validação de credenciais
- * - Logs de auditoria
  * - Rate limiting integrado
  *
  * Características:
@@ -213,16 +212,6 @@ export const loginUsuario = async (req: Request, res: Response) => {
       ultimoLogin: new Date().toISOString(),
     };
 
-    // Log de auditoria para login bem-sucedido
-    console.log(`📊 [${correlationId}] Auditoria - Login bem-sucedido:`, {
-      userId: usuario.id,
-      email: usuario.email,
-      role: usuario.role,
-      tipoUsuario: usuario.tipoUsuario,
-      ip: req.ip,
-      userAgent: req.headers["user-agent"],
-      duration: `${duration}ms`,
-    });
 
     // Retorna dados do usuário autenticado com tokens
     res.json({
@@ -307,12 +296,6 @@ export const logoutUsuario = async (req: Request, res: Response) => {
       `✅ [${correlationId}] Logout realizado com sucesso para usuário: ${userId}`
     );
 
-    // Log de auditoria
-    console.log(`📊 [${correlationId}] Auditoria - Logout:`, {
-      userId,
-      ip: req.ip,
-      userAgent: req.headers["user-agent"],
-    });
 
     res.json({
       success: true,
@@ -464,13 +447,6 @@ export const refreshToken = async (req: Request, res: Response) => {
       ultimoLogin: usuario.ultimoLogin,
     };
 
-    // Log de auditoria
-    console.log(`📊 [${correlationId}] Auditoria - Token refresh:`, {
-      userId: usuario.id,
-      email: usuario.email,
-      ip: req.ip,
-    });
-
     res.json({
       success: true,
       message: "Token renovado com sucesso",
@@ -564,13 +540,7 @@ export const obterPerfil = async (req: Request, res: Response) => {
             cep: true,
           },
         },
-        // Estatísticas de pagamentos (resumo)
-        _count: {
-          select: {
-            mercadoPagoOrders: true,
-            mercadoPagoSubscriptions: true,
-          },
-        },
+        // Estatísticas de pagamentos removidas
       },
     });
 
@@ -594,20 +564,13 @@ export const obterPerfil = async (req: Request, res: Response) => {
       ),
       hasCompletedProfile: !!(usuario.telefone && usuario.nomeCompleto),
       hasAddress: usuario.enderecos.length > 0,
-      totalOrders: usuario._count.mercadoPagoOrders,
-      totalSubscriptions: usuario._count.mercadoPagoSubscriptions,
+      totalOrders: 0,
+      totalSubscriptions: 0,
       emailVerificationStatus: {
         verified: usuario.emailVerificado,
         verifiedAt: usuario.emailVerificadoEm,
       },
     };
-
-    // Log de auditoria
-    console.log(`📊 [${correlationId}] Auditoria - Perfil acessado:`, {
-      userId: usuario.id,
-      email: usuario.email,
-      ip: req.ip,
-    });
 
     // Retorna perfil completo
     res.json({
@@ -648,7 +611,6 @@ export const getControllerStats = () => {
     features: {
       emailVerificationRequired: true,
       rateLimitingIntegrated: true,
-      auditLogging: true,
       correlationIdTracking: true,
       securePasswordHandling: true,
     },

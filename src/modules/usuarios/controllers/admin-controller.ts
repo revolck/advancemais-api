@@ -78,26 +78,6 @@ export class AdminController {
   };
 
   /**
-   * Histórico de pagamentos do usuário
-   */
-  public historicoPagamentosUsuario = async (req: Request, res: Response) => {
-    try {
-      const { userId } = req.params;
-      const result = await this.adminService.historicoPagamentos(
-        userId,
-        req.query
-      );
-      res.json(result);
-    } catch (error) {
-      console.error("Erro ao buscar histórico:", error);
-      res.status(500).json({
-        message: "Erro ao buscar histórico de pagamentos",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
-      });
-    }
-  };
-
-  /**
    * Atualiza status do usuário
    */
   public atualizarStatus = async (req: Request, res: Response) => {

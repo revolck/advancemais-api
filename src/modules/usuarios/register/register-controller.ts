@@ -22,7 +22,7 @@ import {
  * Características:
  * - Validação rigorosa de dados
  * - Transações de banco seguras
- * - Logs estruturados para auditoria
+ * - Logs estruturados
  * - Preparação de dados para middlewares
  * - Rollback automático em caso de erro
  *

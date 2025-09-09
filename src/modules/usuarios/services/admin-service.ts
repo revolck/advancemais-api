@@ -6,15 +6,8 @@
  * @version 3.0.0
  */
 import { prisma } from "../../../config/prisma";
-import { Prisma } from "@prisma/client";
-import { SubscriptionService } from "../../mercadopago/services/subscription-service";
-
 export class AdminService {
-  private subscriptionService: SubscriptionService;
-
-  constructor() {
-    this.subscriptionService = new SubscriptionService();
-  }
+  constructor() {}
 
   /**
    * Lista usuários com filtros e paginação
@@ -41,12 +34,6 @@ export class AdminService {
           tipoUsuario: true,
           criadoEm: true,
           ultimoLogin: true,
-          _count: {
-            select: {
-              mercadoPagoOrders: true,
-              mercadoPagoSubscriptions: true,
-            },
-          },
         },
         orderBy: { criadoEm: "desc" },
         skip,
@@ -108,129 +95,8 @@ export class AdminService {
             cep: true,
           },
         },
-        mercadoPagoOrders: {
-          select: {
-            id: true,
-            mercadoPagoOrderId: true,
-            status: true,
-            totalAmount: true,
-            paidAmount: true,
-            criadoEm: true,
-          },
-          orderBy: { criadoEm: "desc" },
-          take: 10,
-        },
-        mercadoPagoSubscriptions: {
-          select: {
-            id: true,
-            mercadoPagoSubscriptionId: true,
-            status: true,
-            reason: true,
-            transactionAmount: true,
-            criadoEm: true,
-          },
-          orderBy: { criadoEm: "desc" },
-          take: 5,
-        },
       },
     });
-  }
-
-  /**
-   * Histórico de pagamentos do usuário
-   */
-  async historicoPagamentos(userId: string, query: any) {
-    const { page = 1, limit = 20 } = query;
-    const skip = (Number(page) - 1) * Number(limit);
-
-    if (!userId) {
-      throw new Error("ID do usuário é obrigatório");
-    }
-
-    const [orders, subscriptions, refunds, totalOrders] = await Promise.all([
-      // Orders
-      prisma.mercadoPagoOrder.findMany({
-        where: { usuarioId: userId },
-        orderBy: { criadoEm: "desc" },
-        skip,
-        take: Number(limit),
-        select: {
-          id: true,
-          mercadoPagoOrderId: true,
-          status: true,
-          totalAmount: true,
-          paidAmount: true,
-          refundedAmount: true,
-          externalReference: true,
-          processingMode: true,
-          criadoEm: true,
-          dateCreated: true,
-          dateClosed: true,
-        },
-      }),
-      // Subscriptions
-      prisma.mercadoPagoSubscription.findMany({
-        where: { usuarioId: userId },
-        orderBy: { criadoEm: "desc" },
-        select: {
-          id: true,
-          mercadoPagoSubscriptionId: true,
-          status: true,
-          reason: true,
-          transactionAmount: true,
-          frequency: true,
-          frequencyType: true,
-          nextPaymentDate: true,
-          criadoEm: true,
-          dateCreated: true,
-        },
-      }),
-      // Refunds
-      prisma.mercadoPagoRefund.findMany({
-        where: { usuarioId: userId },
-        orderBy: { criadoEm: "desc" },
-        take: 10,
-        select: {
-          id: true,
-          mercadoPagoRefundId: true,
-          amount: true,
-          status: true,
-          reason: true,
-          criadoEm: true,
-        },
-      }),
-      // Total count
-      prisma.mercadoPagoOrder.count({ where: { usuarioId: userId } }),
-    ]);
-
-    return {
-      message: "Histórico de pagamentos do usuário",
-      data: {
-        orders,
-        subscriptions,
-        refunds,
-        summary: {
-          totalOrders: orders.length,
-          totalSubscriptions: subscriptions.length,
-          totalRefunds: refunds.length,
-          totalPaid: orders.reduce(
-            (sum: number, order: { paidAmount: number }) =>
-              sum + order.paidAmount,
-            0
-          ),
-          totalRefunded: refunds.reduce(
-            (sum: number, refund: { amount: number }) => sum + refund.amount,
-            0
-          ),
-        },
-        pagination: {
-          page: Number(page),
-          limit: Number(limit),
-          total: totalOrders,
-          pages: Math.ceil(totalOrders / Number(limit)),
-        },
-      },
-    };
   }
 
   /**
@@ -268,13 +134,7 @@ export class AdminService {
       },
     });
 
-    // Cancelar assinatura se suspenso/banido
-    if (
-      (statusEnum === "SUSPENSO" || statusEnum === "BANIDO") &&
-      usuarioAntes.status === "ATIVO"
-    ) {
-      await this.cancelarAssinaturaSeAtiva(userId);
-    }
+    // Cancelamento de assinatura removido após retirada do provedor de pagamentos
 
     // Log da alteração
     console.log(
@@ -337,31 +197,4 @@ export class AdminService {
     };
   }
 
-  /**
-   * Cancela assinatura ativa (método privado)
-   */
-  private async cancelarAssinaturaSeAtiva(userId: string) {
-    try {
-      const assinaturaAtiva = await prisma.mercadoPagoSubscription.findFirst({
-        where: {
-          usuarioId: userId,
-          status: "authorized",
-        },
-      });
-
-      if (assinaturaAtiva) {
-        await this.subscriptionService.cancelSubscription(
-          assinaturaAtiva.mercadoPagoSubscriptionId,
-          userId
-        );
-
-        console.log(
-          `Assinatura ${assinaturaAtiva.mercadoPagoSubscriptionId} cancelada devido à suspensão/banimento do usuário ${userId}`
-        );
-      }
-    } catch (error) {
-      console.error("Erro ao cancelar assinatura:", error);
-      // Não falha o processo principal
-    }
-  }
 }

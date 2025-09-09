@@ -1,6 +1,0 @@
-export enum VagaStatus {
-  RASCUNHO = "RASCUNHO",
-  EM_ANALISE = "EM_ANALISE",
-  PUBLICADO = "PUBLICADO",
-  REVISAO = "REVISAO",
-}

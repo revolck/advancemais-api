@@ -16,14 +16,7 @@ export class StatsService {
       totalUsuarios,
       usuariosAtivos,
       usuariosHoje,
-      totalOrders,
-      ordersAprovadas,
-      totalAssinaturas,
-      assinaturasAtivas,
-      receitaOrders,
-      receitaAssinaturas,
     ] = await Promise.all([
-      // Usuários
       prisma.usuario.count(),
       prisma.usuario.count({ where: { status: "ATIVO" } }),
       prisma.usuario.count({
@@ -32,24 +25,6 @@ export class StatsService {
             gte: new Date(new Date().setHours(0, 0, 0, 0)),
           },
         },
-      }),
-
-      // Orders
-      prisma.mercadoPagoOrder.count(),
-      prisma.mercadoPagoOrder.count({ where: { status: "closed" } }),
-
-      // Assinaturas
-      prisma.mercadoPagoSubscription.count(),
-      prisma.mercadoPagoSubscription.count({ where: { status: "authorized" } }),
-
-      // Receita
-      prisma.mercadoPagoOrder.aggregate({
-        where: { status: "closed" },
-        _sum: { paidAmount: true },
-      }),
-      prisma.mercadoPagoSubscription.aggregate({
-        where: { status: "authorized" },
-        _sum: { transactionAmount: true },
       }),
     ]);
 
@@ -64,24 +39,19 @@ export class StatsService {
             : 0,
       },
       pagamentos: {
-        totalOrders,
-        ordersAprovadas,
-        totalAssinaturas,
-        assinaturasAtivas,
-        taxaConversao:
-          totalOrders > 0
-            ? ((ordersAprovadas / totalOrders) * 100).toFixed(1)
-            : 0,
+        totalOrders: 0,
+        ordersAprovadas: 0,
+        totalAssinaturas: 0,
+        assinaturasAtivas: 0,
+        taxaConversao: 0,
       },
       receita: {
-        orders: receitaOrders._sum.paidAmount || 0,
-        assinaturas: receitaAssinaturas._sum.transactionAmount || 0,
-        total:
-          (receitaOrders._sum.paidAmount || 0) +
-          (receitaAssinaturas._sum.transactionAmount || 0),
+        orders: 0,
+        assinaturas: 0,
+        total: 0,
       },
-    };
-  }
+  };
+}
 
   /**
    * Estatísticas específicas de usuários
@@ -135,73 +105,6 @@ export class StatsService {
       distribuicao: {
         porStatus: usuariosPorStatus,
         porTipo: usuariosPorTipo,
-      },
-    };
-  }
-
-  /**
-   * Estatísticas de pagamentos
-   */
-  async getPaymentStats(periodo: string) {
-    const diasAtras = this.getPeriodoDays(periodo);
-    const dataInicio = new Date();
-    dataInicio.setDate(dataInicio.getDate() - diasAtras);
-
-    const [ordersPorPeriodo, ordersPorStatus, assinaturasPorStatus] =
-      await Promise.all([
-        // Orders no período
-        prisma.mercadoPagoOrder.groupBy({
-          by: ["status"],
-          where: { criadoEm: { gte: dataInicio } },
-          _count: { id: true },
-          _sum: { paidAmount: true },
-        }),
-
-        // Todas as orders por status
-        prisma.mercadoPagoOrder.groupBy({
-          by: ["status"],
-          _count: { id: true },
-          _sum: { totalAmount: true, paidAmount: true },
-        }),
-
-        // Assinaturas por status
-        prisma.mercadoPagoSubscription.groupBy({
-          by: ["status"],
-          _count: { id: true },
-          _sum: { transactionAmount: true },
-        }),
-      ]);
-
-    const receitaPeriodo = ordersPorPeriodo.reduce(
-      (sum: number, item: { _sum: { paidAmount: number | null } }) =>
-        sum + (item._sum.paidAmount || 0),
-      0
-    );
-
-    return {
-      periodo: {
-        diasConsiderados: diasAtras,
-        ordersPeriodo: ordersPorPeriodo.reduce(
-          (sum: number, item: { _count: { id: number } }) =>
-            sum + item._count.id,
-          0
-        ),
-        receitaPeriodo,
-        ticketMedio:
-          ordersPorPeriodo.length > 0
-            ? (
-                receitaPeriodo /
-                ordersPorPeriodo.reduce(
-                  (sum: number, item: { _count: { id: number } }) =>
-                    sum + item._count.id,
-                  0
-                )
-              ).toFixed(2)
-            : 0,
-      },
-      distribuicao: {
-        ordersPorStatus,
-        assinaturasPorStatus,
       },
     };
   }

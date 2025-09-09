@@ -56,17 +56,22 @@ model Usuario {
   mercadoPagoSubscriptionPayments MercadoPagoSubscriptionPayment[]
   mercadoPagoTransactions       MercadoPagoTransaction[]
   auditLogs                     AuditLog[]
+  candidaturas                  VagaCandidatura[]
   
   @@index([tokenRecuperacao])
   @@index([emailVerificationToken])
 }
 
 model Empresa {
-  id       String    @id @default(uuid())
-  nome     String
-  criadoEm DateTime  @default(now())
-  usuarios Usuario[]
-  planos   EmpresaPlano[]
+  id        String    @id @default(uuid())
+  nome      String
+  logoUrl   String?
+  cidade    String?
+  estado    String?
+  criadoEm  DateTime  @default(now())
+  usuarios  Usuario[]
+  planos    EmpresaPlano[]
+  vagas     Vaga[]
   auditLogs AuditLog[]
 }
 
@@ -416,6 +421,46 @@ model AuditLog {
   @@index([empresaId])
   @@index([acao])
   @@map("audit_logs")
+}
+
+model Vaga {
+  id             String     @id @default(uuid())
+  empresaId      String
+  nome           String
+  cidade         String
+  estado         String
+  tipoContrato   String
+  regimeTrabalho String
+  pcd            Boolean    @default(false)
+  requisitos     String
+  atividades     String
+  beneficios     String
+  observacoes    String?
+  dataPublicacao DateTime   @default(now())
+  publicadaAte   DateTime
+  status         VagaStatus @default(RASCUNHO)
+  criadoEm       DateTime   @default(now())
+  atualizadoEm   DateTime   @updatedAt
+
+  empresa        Empresa    @relation(fields: [empresaId], references: [id])
+  candidatos     VagaCandidatura[]
+
+  @@index([empresaId])
+}
+
+model VagaCandidatura {
+  id             String   @id @default(uuid())
+  vagaId         String
+  usuarioId      String
+  curriculoUrl   String?
+  candidaturaEm  DateTime @default(now())
+
+  vaga           Vaga     @relation(fields: [vagaId], references: [id])
+  usuario        Usuario  @relation(fields: [usuarioId], references: [id])
+
+  @@unique([vagaId, usuarioId])
+  @@index([vagaId])
+  @@index([usuarioId])
 }
 
 model WebsiteSobre {

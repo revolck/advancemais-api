@@ -8,6 +8,7 @@ import { planoEmpresaRoutes } from "../modules/plano-empresa";
 import { auditRoutes } from "../modules/audit";
 import { docsRoutes } from "../modules/docs";
 import { EmailVerificationController } from "../modules/brevo/controllers/email-verification-controller";
+import { vagaRoutes } from "../modules/vaga";
 
 /**
  * Router principal da aplicação - VERSÃO BLINDADA
@@ -60,6 +61,7 @@ router.get("/", (req, res) => {
       empresa: "/api/v1/empresa",
       planoEmpresa: "/api/v1/plano-empresa",
       audit: "/api/v1/audit",
+      vagas: "/api/v1/vagas",
       health: "/health",
     },
   };
@@ -249,6 +251,21 @@ if (planoEmpresaRoutes) {
   }
 } else {
   console.error("❌ planoEmpresaRoutes não está definido");
+}
+
+/**
+ * Módulo Vagas - COM VALIDAÇÃO
+ * /api/v1/vagas/*
+ */
+if (vagaRoutes) {
+  try {
+    router.use("/api/v1/vagas", vagaRoutes);
+    console.log("✅ Módulo Vagas registrado com sucesso");
+  } catch (error) {
+    console.error("❌ ERRO - Módulo Vagas:", error);
+  }
+} else {
+  console.error("❌ vagaRoutes não está definido");
 }
 
 /**

@@ -13,4 +13,3 @@ export {
 
 export { AdminController } from "./admin-controller";
 export { StatsController } from "./stats-controller";
-export { PaymentController } from "./payment-controller";

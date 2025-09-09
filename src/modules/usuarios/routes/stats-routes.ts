@@ -99,48 +99,4 @@ router.get("/dashboard", statsController.getDashboardStats);
  */
 router.get("/usuarios", statsController.getUserStats);
 
-/**
- * Estatísticas de pagamentos
- * GET /stats/pagamentos
- */
-/**
- * @openapi
- * /api/v1/usuarios/stats/pagamentos:
-  *   get:
-  *     summary: Estatísticas de pagamentos
-  *     tags: [Usuários - Stats]
-  *     security:
-  *       - bearerAuth: []
-  *     parameters:
-  *       - in: query
-  *         name: periodo
-  *         schema:
-  *           type: string
-  *           example: 30d
-  *     responses:
-  *       200:
-  *         description: Estatísticas de pagamentos
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/PaymentStatsResponse'
-  *       500:
-  *         description: Erro ao obter estatísticas
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/ErrorResponse'
- *     x-codeSamples:
- *       - lang: cURL
- *         label: Exemplo
- *         source: |
- *           curl -X GET "http://localhost:3000/api/v1/usuarios/stats/pagamentos" \\
- *            -H "Authorization: Bearer <TOKEN>"
- */
-router.get(
-  "/pagamentos",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR", "FINANCEIRO"]),
-  statsController.getPaymentStats
-);
-
 export { router as statsRoutes };

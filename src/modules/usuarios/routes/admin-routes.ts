@@ -213,18 +213,6 @@ router.get("/usuarios/:userId", adminController.buscarUsuario);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
- *       - lang: cURL
- *         label: Exemplo
- *         source: |
- *           curl -X GET "http://localhost:3000/api/v1/usuarios/admin/usuarios/{userId}/pagamentos?page=1&limit=20" \\
- *            -H "Authorization: Bearer <TOKEN>"
- */
-router.get(
-  "/usuarios/:userId/pagamentos",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR", "FINANCEIRO"]),
-  adminController.historicoPagamentosUsuario
-);
-
 // =============================================
 // ROTAS DE MODIFICAÇÃO (APENAS ADMIN)
 // =============================================

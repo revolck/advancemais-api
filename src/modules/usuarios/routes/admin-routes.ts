@@ -165,54 +165,6 @@ router.get("/usuarios", adminController.listarUsuarios);
  */
 router.get("/usuarios/:userId", adminController.buscarUsuario);
 
-/**
- * Histórico de pagamentos de usuário
- * GET /admin/usuarios/:userId/pagamentos
- */
-/**
- * @openapi
- * /api/v1/usuarios/admin/usuarios/{userId}/pagamentos:
- *   get:
- *     summary: Histórico de pagamentos do usuário
- *     tags: [Usuários - Admin]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           example: 1
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           example: 20
- *     responses:
- *       200:
- *         description: Histórico retornado
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AdminPaymentHistoryResponse'
- *       404:
- *         description: Usuário não encontrado
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       500:
- *         description: Erro ao buscar histórico
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *     x-codeSamples:
 // =============================================
 // ROTAS DE MODIFICAÇÃO (APENAS ADMIN)
 // =============================================

@@ -36,15 +36,7 @@ const options: Options = {
         name: "Usuários - Stats",
         description: "Métricas e relatórios de usuários",
       },
-      { name: "MercadoPago", description: "Integração de pagamentos" },
-      { name: "Audit", description: "Registros de auditoria" },
       { name: "Brevo", description: "Serviços de e-mail" },
-      { name: "Empresa", description: "Gestão de planos de empresa" },
-      {
-        name: "PlanoEmpresa",
-        description: "Gestão pública de planos empresariais",
-      },
-      { name: "Vagas", description: "Gestão de vagas de emprego" },
       { name: "Website", description: "Conteúdo público do site" },
       { name: "Website - Banner", description: "Gestão de banners" },
       { name: "Website - LogoEnterprises", description: "Logos de empresas" },
@@ -296,11 +288,9 @@ const options: Options = {
               additionalProperties: { type: "string" },
               example: {
                 usuarios: "/api/v1/usuarios",
-                mercadopago: "/api/v1/mercadopago",
                 brevo: "/api/v1/brevo",
                 website: "/api/v1/website",
                 empresa: "/api/v1/empresa",
-                audit: "/api/v1/audit",
                 health: "/health",
               },
             },
@@ -316,240 +306,6 @@ const options: Options = {
               type: "string",
               format: "date-time",
               example: "2024-01-01T12:00:00Z",
-            },
-          },
-        },
-        AuditModuleInfo: {
-          type: "object",
-          properties: {
-            message: { type: "string", example: "Audit Module API" },
-            version: { type: "string", example: "v1" },
-            timestamp: {
-              type: "string",
-              format: "date-time",
-              example: "2024-01-01T12:00:00Z",
-            },
-            endpoints: {
-              type: "object",
-              properties: {
-                logs: { type: "string", example: "/logs" },
-              },
-            },
-            status: { type: "string", example: "operational" },
-          },
-        },
-        AuditLog: {
-          type: "object",
-          properties: {
-            id: {
-              type: "string",
-              example: "b9e1d9b0-7c9f-4d1a-8f2a-1234567890ab",
-            },
-            usuarioId: {
-              type: "string",
-              example: "usuario-uuid",
-            },
-            empresaId: {
-              type: "string",
-              nullable: true,
-              example: "empresa-uuid",
-            },
-            acao: { type: "string", example: "CREATE_ORDER" },
-            detalhes: {
-              type: "object",
-              nullable: true,
-              example: { campo: "valor" },
-            },
-            criadoEm: {
-              type: "string",
-              format: "date-time",
-              example: "2024-01-01T12:00:00Z",
-            },
-          },
-        },
-        AuditLogsResponse: {
-          type: "object",
-          properties: {
-            logs: {
-              type: "array",
-              items: { $ref: "#/components/schemas/AuditLog" },
-            },
-          },
-        },
-        MercadoPagoOrderRequest: {
-          type: "object",
-          properties: {
-            total_amount: { type: "number", example: 100 },
-            items: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  id: { type: "string", example: "1" },
-                  title: { type: "string", example: "Produto" },
-                  quantity: { type: "integer", example: 1 },
-                  unit_price: { type: "number", example: 100 },
-                  currency_id: { type: "string", example: "BRL" },
-                },
-              },
-            },
-            payments: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  payment_method_id: { type: "string", example: "pix" },
-                  payment_type_id: {
-                    type: "string",
-                    example: "instant_payment",
-                  },
-                  payer: {
-                    type: "object",
-                    properties: {
-                      email: { type: "string", example: "user@example.com" },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-        MercadoPagoOrderResponse: {
-          type: "object",
-          properties: {
-            message: {
-              type: "string",
-              example: "Order criada com sucesso",
-            },
-            order: {
-              type: "object",
-              properties: {
-                id: { type: "string", example: "123456" },
-                status: { type: "string", example: "approved" },
-                total_amount: { type: "number", example: 100 },
-              },
-            },
-          },
-        },
-        MercadoPagoRefundRequest: {
-          type: "object",
-          properties: {
-            amount: { type: "number", example: 100 },
-            reason: { type: "string", example: "Produto defeituoso" },
-          },
-        },
-        MercadoPagoRefundResponse: {
-          type: "object",
-          properties: {
-            message: {
-              type: "string",
-              example: "Reembolso processado com sucesso",
-            },
-            refund: {
-              type: "object",
-              properties: {
-                id: { type: "string", example: "r123" },
-                amount: { type: "number", example: 100 },
-              },
-            },
-          },
-        },
-        MercadoPagoSubscriptionRequest: {
-          type: "object",
-          properties: {
-            reason: { type: "string", example: "Plano Mensal" },
-            payer_email: {
-              type: "string",
-              example: "user@example.com",
-            },
-            card_token_id: { type: "string", example: "tok_123" },
-            card_token_id_secondary: { type: "string", example: "tok_456" },
-            payment_method_id_secondary: {
-              type: "string",
-              example: "visa",
-            },
-            auto_recurring: {
-              type: "object",
-              properties: {
-                frequency: { type: "integer", example: 1 },
-                frequency_type: { type: "string", example: "months" },
-                transaction_amount: { type: "number", example: 50 },
-                currency_id: { type: "string", example: "BRL" },
-                billing_day: { type: "integer", example: 10 },
-                billing_day_proportional: { type: "boolean", example: true },
-                debit_date: { type: "string", example: "2024-01-05T00:00:00Z" },
-                start_date: { type: "string", example: "2024-01-05T00:00:00Z" },
-                end_date: { type: "string", example: "2024-12-05T00:00:00Z" },
-                free_trial: {
-                  type: "object",
-                  properties: {
-                    frequency: { type: "integer", example: 1 },
-                    frequency_type: { type: "string", example: "months" },
-                  },
-                },
-              },
-            },
-          },
-        },
-        MercadoPagoSubscription: {
-          type: "object",
-          properties: {
-            id: { type: "string", example: "sub_123" },
-            status: { type: "string", example: "authorized" },
-            reason: { type: "string", example: "Plano Mensal" },
-            payer_email: { type: "string", example: "user@example.com" },
-            next_payment_date: {
-              type: "string",
-              example: "2024-02-10T00:00:00Z",
-            },
-            payment_method_id_secondary: {
-              type: "string",
-              example: "visa",
-            },
-          },
-        },
-        MercadoPagoSubscriptionResponse: {
-          type: "object",
-          properties: {
-            message: {
-              type: "string",
-              example: "Assinatura criada com sucesso",
-            },
-            subscription: { $ref: "#/components/schemas/MercadoPagoSubscription" },
-          },
-        },
-        MercadoPagoSubscriptionListResponse: {
-          type: "object",
-          properties: {
-            message: {
-              type: "string",
-              example: "Lista de assinaturas",
-            },
-            subscriptions: {
-              type: "array",
-              items: { $ref: "#/components/schemas/MercadoPagoSubscription" },
-            },
-          },
-        },
-        MercadoPagoFreeTrialRequest: {
-          type: "object",
-          required: ["frequency", "frequency_type"],
-          properties: {
-            frequency: { type: "integer", example: 1 },
-            frequency_type: { type: "string", example: "months" },
-          },
-        },
-        MercadoPagoWebhookNotification: {
-          type: "object",
-          properties: {
-            id: { type: "string", example: "123456789" },
-            type: { type: "string", example: "payment" },
-            action: { type: "string", example: "payment.created" },
-            data: {
-              type: "object",
-              properties: {
-                id: { type: "string", example: "999999" },
-              },
             },
           },
         },
@@ -798,26 +554,6 @@ const options: Options = {
               example: ["feature1", "feature2"],
             },
             ativo: { type: "boolean", example: true },
-            limiteVagasAtivas: {
-              type: "integer",
-              nullable: true,
-              example: 3,
-              description:
-                "Limite de vagas ativas (null para ilimitado). Somente vagas em análise, publicadas ou em revisão são contabilizadas",
-            },
-            limiteVagasDestaque: {
-              type: "integer",
-              nullable: true,
-              example: 0,
-              description:
-                "Limite de vagas em destaque (null para ilimitado). Vagas em rascunho não são contabilizadas",
-            },
-            mercadoPagoPlanId: {
-              type: "string",
-              nullable: true,
-              description: "Identificador do plano no MercadoPago",
-              example: "mp-plan-123",
-            },
             frequency: { type: "integer", example: 1 },
             frequencyType: {
               type: "string",
@@ -879,20 +615,6 @@ const options: Options = {
               items: { type: "string" },
               example: ["feature1", "feature2"],
             },
-            limiteVagasAtivas: {
-              type: "integer",
-              nullable: true,
-              example: 3,
-              description:
-                "Somente vagas em análise, publicadas ou em revisão são contabilizadas",
-            },
-            limiteVagasDestaque: {
-              type: "integer",
-              nullable: true,
-              example: 0,
-              description:
-                "Vagas em rascunho não são contabilizadas para este limite",
-            },
             frequency: { type: "integer", example: 1 },
             frequencyType: {
               type: "string",
@@ -935,26 +657,6 @@ const options: Options = {
               items: { type: "string" },
             },
             ativo: { type: "boolean", example: true },
-            limiteVagasAtivas: {
-              type: "integer",
-              nullable: true,
-              example: 3,
-              description:
-                "Somente vagas em análise, publicadas ou em revisão são contabilizadas",
-            },
-            limiteVagasDestaque: {
-              type: "integer",
-              nullable: true,
-              example: 0,
-              description:
-                "Vagas em rascunho não são contabilizadas para este limite",
-            },
-            mercadoPagoPlanId: {
-              type: "string",
-              nullable: true,
-              description: "Identificador do plano no MercadoPago",
-              example: "mp-plan-123",
-            },
             frequency: { type: "integer", example: 1 },
             frequencyType: {
               type: "string",
@@ -2944,7 +2646,6 @@ const options: Options = {
                 "TREINAMENTO",
                 "CONTATO",
                 "BLOG",
-                "VAGAS",
                 "CURSOS",
                 "POLITICA_PRIVACIDADE",
                 "OUVIDORIA",
@@ -2997,7 +2698,6 @@ const options: Options = {
                 "TREINAMENTO",
                 "CONTATO",
                 "BLOG",
-                "VAGAS",
                 "CURSOS",
                 "POLITICA_PRIVACIDADE",
                 "OUVIDORIA",
@@ -3031,7 +2731,6 @@ const options: Options = {
                 "TREINAMENTO",
                 "CONTATO",
                 "BLOG",
-                "VAGAS",
                 "CURSOS",
                 "POLITICA_PRIVACIDADE",
                 "OUVIDORIA",
@@ -3078,10 +2777,7 @@ const options: Options = {
             },
             _count: {
               type: "object",
-              properties: {
-                mercadoPagoOrders: { type: "integer", example: 3 },
-                mercadoPagoSubscriptions: { type: "integer", example: 1 },
-              },
+              properties: {},
             },
           },
         },
@@ -3143,48 +2839,6 @@ const options: Options = {
                     },
                   },
                 },
-                mercadoPagoOrders: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      id: { type: "string", example: "order-1" },
-                      mercadoPagoOrderId: {
-                        type: "string",
-                        example: "123456",
-                      },
-                      status: { type: "string", example: "paid" },
-                      totalAmount: { type: "number", example: 100 },
-                      paidAmount: { type: "number", example: 100 },
-                      criadoEm: {
-                        type: "string",
-                        format: "date-time",
-                        example: "2024-01-01T12:00:00Z",
-                      },
-                    },
-                  },
-                },
-                mercadoPagoSubscriptions: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      id: { type: "string", example: "sub-1" },
-                      mercadoPagoSubscriptionId: {
-                        type: "string",
-                        example: "7890",
-                      },
-                      status: { type: "string", example: "authorized" },
-                      reason: { type: "string", example: "Plano premium" },
-                      transactionAmount: { type: "number", example: 99.9 },
-                      criadoEm: {
-                        type: "string",
-                        format: "date-time",
-                        example: "2024-01-01T12:00:00Z",
-                      },
-                    },
-                  },
-                },
               },
             },
           ],
@@ -3194,90 +2848,6 @@ const options: Options = {
           properties: {
             message: { type: "string", example: "Usuário encontrado" },
             usuario: { $ref: "#/components/schemas/AdminUserDetail" },
-          },
-        },
-        AdminPaymentHistoryResponse: {
-          type: "object",
-          properties: {
-            message: {
-              type: "string",
-              example: "Histórico de pagamentos do usuário",
-            },
-            data: {
-              type: "object",
-              properties: {
-                orders: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      id: { type: "string", example: "order-1" },
-                      status: { type: "string", example: "paid" },
-                      totalAmount: { type: "number", example: 100 },
-                      paidAmount: { type: "number", example: 100 },
-                      criadoEm: {
-                        type: "string",
-                        format: "date-time",
-                        example: "2024-01-01T12:00:00Z",
-                      },
-                    },
-                  },
-                },
-                subscriptions: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      id: { type: "string", example: "sub-1" },
-                      status: { type: "string", example: "authorized" },
-                      reason: { type: "string", example: "Plano premium" },
-                      transactionAmount: { type: "number", example: 99.9 },
-                      criadoEm: {
-                        type: "string",
-                        format: "date-time",
-                        example: "2024-01-01T12:00:00Z",
-                      },
-                    },
-                  },
-                },
-                refunds: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      id: { type: "string", example: "ref-1" },
-                      amount: { type: "number", example: 10 },
-                      status: { type: "string", example: "refunded" },
-                      reason: { type: "string", example: "Produto" },
-                      criadoEm: {
-                        type: "string",
-                        format: "date-time",
-                        example: "2024-01-01T12:00:00Z",
-                      },
-                    },
-                  },
-                },
-                summary: {
-                  type: "object",
-                  properties: {
-                    totalOrders: { type: "integer", example: 5 },
-                    totalSubscriptions: { type: "integer", example: 1 },
-                    totalRefunds: { type: "integer", example: 0 },
-                    totalPaid: { type: "number", example: 500 },
-                    totalRefunded: { type: "number", example: 0 },
-                  },
-                },
-                pagination: {
-                  type: "object",
-                  properties: {
-                    page: { type: "integer", example: 1 },
-                    limit: { type: "integer", example: 20 },
-                    total: { type: "integer", example: 20 },
-                    pages: { type: "integer", example: 1 },
-                  },
-                },
-              },
-            },
           },
         },
         AdminStatusUpdateRequest: {
@@ -3387,81 +2957,6 @@ const options: Options = {
           type: "object",
           properties: {
             message: { type: "string", example: "Assinatura cancelada" },
-          },
-        },
-        Vaga: {
-          type: "object",
-          properties: {
-            id: { type: "string", example: "vaga-uuid" },
-            nome: { type: "string", example: "Desenvolvedor" },
-            cidade: { type: "string", example: "São Paulo" },
-            estado: { type: "string", example: "SP" },
-            tipoContrato: { type: "string", example: "CLT" },
-            regimeTrabalho: { type: "string", example: "Presencial" },
-            pcd: { type: "boolean", example: false },
-            requisitos: { type: "string", example: "Conhecimentos em TS" },
-            atividades: { type: "string", example: "Desenvolver APIs" },
-            beneficios: { type: "string", example: "Vale refeição" },
-            observacoes: { type: "string", example: "Enviar portfólio" },
-            dataPublicacao: {
-              type: "string",
-              format: "date-time",
-              example: "2024-01-01T12:00:00Z",
-            },
-            publicadaAte: {
-              type: "string",
-              format: "date-time",
-              example: "2024-01-31T12:00:00Z",
-            },
-            status: {
-              type: "string",
-              enum: ["RASCUNHO", "EM_ANALISE", "PUBLICADO", "REVISAO"],
-              example: "RASCUNHO",
-            },
-            empresa: {
-              type: "object",
-              properties: {
-                nome: { type: "string", example: "Empresa X" },
-                logoUrl: { type: "string", format: "uri" },
-              },
-            },
-          },
-        },
-        VagaCreateRequest: {
-          type: "object",
-          required: [
-            "empresaId",
-            "nome",
-            "tipoContrato",
-            "regimeTrabalho",
-            "requisitos",
-            "atividades",
-            "beneficios",
-            "publicadaAte",
-          ],
-          properties: {
-            empresaId: { type: "string" },
-            nome: { type: "string" },
-            cidade: { type: "string" },
-            estado: { type: "string" },
-            tipoContrato: { type: "string" },
-            regimeTrabalho: { type: "string" },
-            pcd: { type: "boolean" },
-            requisitos: { type: "string" },
-            atividades: { type: "string" },
-            beneficios: { type: "string" },
-            observacoes: { type: "string" },
-            publicadaAte: { type: "string", format: "date-time" },
-            status: {
-              type: "string",
-              enum: ["RASCUNHO", "EM_ANALISE", "PUBLICADO", "REVISAO"],
-            },
-          },
-        },
-        VagaApplyRequest: {
-          type: "object",
-          properties: {
-            curriculoUrl: { type: "string", format: "uri" },
           },
         },
         UserPaymentHistoryResponse: {

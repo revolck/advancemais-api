@@ -61,27 +61,4 @@ export class StatsController {
     }
   };
 
-  /**
-   * Estatísticas de pagamentos
-   * GET /stats/pagamentos
-   */
-  public getPaymentStats = async (req: Request, res: Response) => {
-    try {
-      const { periodo = "30d" } = req.query;
-      const stats = await this.statsService.getPaymentStats(periodo as string);
-
-      res.json({
-        message: "Estatísticas de pagamentos",
-        stats,
-        periodo,
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error("Erro ao obter estatísticas de pagamentos:", error);
-      res.status(500).json({
-        message: "Erro ao obter estatísticas de pagamentos",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
-      });
-    }
-  };
 }

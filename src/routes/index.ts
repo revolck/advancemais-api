@@ -1,14 +1,9 @@
 import { Router } from "express";
 import { usuarioRoutes } from "../modules/usuarios";
-import { mercadoPagoRoutes } from "../modules/mercadopago";
 import { brevoRoutes } from "../modules/brevo/routes";
 import { websiteRoutes } from "../modules/website";
-import { empresaRoutes } from "../modules/empresa";
-import { planoEmpresaRoutes } from "../modules/plano-empresa";
-import { auditRoutes } from "../modules/audit";
 import { docsRoutes } from "../modules/docs";
 import { EmailVerificationController } from "../modules/brevo/controllers/email-verification-controller";
-import { vagaRoutes } from "../modules/vaga";
 
 /**
  * Router principal da aplicação - VERSÃO BLINDADA
@@ -55,13 +50,8 @@ router.get("/", (req, res) => {
     express_version: "4.x",
     endpoints: {
       usuarios: "/api/v1/usuarios",
-      mercadopago: "/api/v1/mercadopago",
       brevo: "/api/v1/brevo",
       website: "/api/v1/website",
-      empresa: "/api/v1/empresa",
-      planoEmpresa: "/api/v1/plano-empresa",
-      audit: "/api/v1/audit",
-      vagas: "/api/v1/vagas",
       health: "/health",
     },
   };
@@ -92,11 +82,8 @@ router.get("/", (req, res) => {
       <h2>Endpoints</h2>
       <ul>
         <li>👥 Usuários: <code>${data.endpoints.usuarios}</code></li>
-        <li>🏦 MercadoPago: <code>${data.endpoints.mercadopago}</code></li>
         <li>📧 Brevo: <code>${data.endpoints.brevo}</code></li>
         <li>🌐 Website: <code>${data.endpoints.website}</code></li>
-      <li>🏢 Empresa: <code>${data.endpoints.empresa}</code></li>
-        <li>📜 Audit: <code>${data.endpoints.audit}</code></li>
         <li>💚 Health: <code>${data.endpoints.health}</code></li>
       </ul>
       <footer>
@@ -147,11 +134,8 @@ router.get("/health", (req, res) => {
     },
     modules: {
       usuarios: "✅ active",
-      mercadopago: "✅ active",
       brevo: "✅ active",
       website: "✅ active",
-      empresa: "✅ active",
-      audit: "✅ active",
     },
   });
 });
@@ -178,20 +162,6 @@ if (usuarioRoutes) {
   console.error("❌ usuarioRoutes não está definido");
 }
 
-/**
- * Módulo MercadoPago - COM VALIDAÇÃO
- * /api/v1/mercadopago/*
- */
-if (mercadoPagoRoutes) {
-  try {
-    router.use("/api/v1/mercadopago", mercadoPagoRoutes);
-    console.log("✅ Módulo MercadoPago registrado com sucesso");
-  } catch (error) {
-    console.error("❌ ERRO - Módulo MercadoPago:", error);
-  }
-} else {
-  console.error("❌ mercadoPagoRoutes não está definido");
-}
 
 /**
  * Módulo Brevo - COM VALIDAÇÃO
@@ -227,61 +197,7 @@ if (websiteRoutes) {
  * Módulo Empresa - COM VALIDAÇÃO
  * /api/v1/empresa/*
  */
-if (empresaRoutes) {
-  try {
-    router.use("/api/v1/empresa", empresaRoutes);
-    console.log("✅ Módulo Empresa registrado com sucesso");
-  } catch (error) {
-    console.error("❌ ERRO - Módulo Empresa:", error);
-  }
-} else {
-  console.error("❌ empresaRoutes não está definido");
-}
 
-/**
- * Módulo PlanoEmpresa - COM VALIDAÇÃO
- * /api/v1/plano-empresa/*
- */
-if (planoEmpresaRoutes) {
-  try {
-    router.use("/api/v1/plano-empresa", planoEmpresaRoutes);
-    console.log("✅ Módulo PlanoEmpresa registrado com sucesso");
-  } catch (error) {
-    console.error("❌ ERRO - Módulo PlanoEmpresa:", error);
-  }
-} else {
-  console.error("❌ planoEmpresaRoutes não está definido");
-}
-
-/**
- * Módulo Vagas - COM VALIDAÇÃO
- * /api/v1/vagas/*
- */
-if (vagaRoutes) {
-  try {
-    router.use("/api/v1/vagas", vagaRoutes);
-    console.log("✅ Módulo Vagas registrado com sucesso");
-  } catch (error) {
-    console.error("❌ ERRO - Módulo Vagas:", error);
-  }
-} else {
-  console.error("❌ vagaRoutes não está definido");
-}
-
-/**
- * Módulo de Auditoria - COM VALIDAÇÃO
- * /api/v1/audit/*
- */
-if (auditRoutes) {
-  try {
-    router.use("/api/v1/audit", auditRoutes);
-    console.log("✅ Módulo Auditoria registrado com sucesso");
-  } catch (error) {
-    console.error("❌ ERRO - Módulo Auditoria:", error);
-  }
-} else {
-  console.error("❌ auditRoutes não está definido");
-}
 
 /**
  * Módulo de Documentação - COM VALIDAÇÃO

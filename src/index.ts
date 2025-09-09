@@ -129,7 +129,7 @@ setupSwagger(app);
 
 /**
  * Carrega todas as rotas através do router centralizado
- * Inclui automaticamente: usuários, mercadopago, brevo, health checks
+ * Inclui automaticamente: usuários, brevo, health checks
  */
 try {
   app.use("/", appRoutes);
@@ -220,22 +220,10 @@ const server = app.listen(serverConfig.port, () => {
     `   👥 Usuários: http://localhost:${serverConfig.port}/api/v1/usuarios`
   );
   console.log(
-    `   🏦 MercadoPago: http://localhost:${serverConfig.port}/api/v1/mercadopago`
-  );
-  console.log(
     `   📧 Brevo: http://localhost:${serverConfig.port}/api/v1/brevo`
   );
   console.log(
     `   🌐 Website: http://localhost:${serverConfig.port}/api/v1/website`
-  );
-  console.log(
-    `   🏢 Empresa: http://localhost:${serverConfig.port}/api/v1/empresa`
-  );
-  console.log(
-    `   📦 Plano Empresa: http://localhost:${serverConfig.port}/api/v1/plano-empresa`
-  );
-  console.log(
-    `   📊 Auditoria: http://localhost:${serverConfig.port}/api/v1/audit`
   );
   console.log("");
   console.log("🧪 Testes Rápidos:");

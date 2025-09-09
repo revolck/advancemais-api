@@ -22,7 +22,6 @@ router.get("/", (req, res) => {
       auth: "POST /login, POST /registrar, POST /logout",
       profile: "GET /perfil",
       admin: "/admin/*",
-      payments: "/pagamentos/*",
       stats: "/stats/*",
       recovery: "/recuperar-senha/*",
     },
@@ -36,7 +35,6 @@ router.get("/", (req, res) => {
 
 let usuarioRoutes: Router | undefined;
 let adminRoutes: Router | undefined;
-let paymentRoutes: Router | undefined;
 let statsRoutes: Router | undefined;
 
 // Import das rotas básicas (ESSENCIAL)
@@ -55,15 +53,6 @@ try {
   console.log("✅ admin-routes carregado");
 } catch (error) {
   console.warn("⚠️ admin-routes não disponível:", error);
-}
-
-// Import das rotas de pagamento (OPCIONAL)
-try {
-  const { default: routes } = require("./payment-routes");
-  paymentRoutes = routes;
-  console.log("✅ payment-routes carregado");
-} catch (error) {
-  console.warn("⚠️ payment-routes não disponível:", error);
 }
 
 // Import das rotas de estatísticas (OPCIONAL)
@@ -93,14 +82,6 @@ if (adminRoutes) {
 if (statsRoutes) {
   router.use("/stats", statsRoutes);
   console.log("✅ Rotas de estatísticas registradas");
-}
-
-/**
- * Rotas de pagamentos
- */
-if (paymentRoutes) {
-  router.use("/pagamentos", paymentRoutes);
-  console.log("✅ Rotas de pagamentos registradas");
 }
 
 /**

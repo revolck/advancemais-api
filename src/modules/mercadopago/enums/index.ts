@@ -13,3 +13,4 @@ export { FrequencyType } from "./FrequencyType";
 export { IdentificationType } from "./IdentificationType";
 export { CurrencyId } from "./CurrencyId";
 export { Environment } from "./Environment";
+export { ClientType } from "./ClientType";

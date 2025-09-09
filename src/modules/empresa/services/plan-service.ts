@@ -128,8 +128,10 @@ export class PlanService {
       const diasMap: Record<PlanValidity, number> = {
         [PlanValidity.DIAS_15]: 15,
         [PlanValidity.DIAS_30]: 30,
+        [PlanValidity.DIAS_60]: 60,
         [PlanValidity.DIAS_90]: 90,
         [PlanValidity.DIAS_120]: 120,
+        [PlanValidity.ANO_1]: 365,
         [PlanValidity.SEM_VALIDADE]: 0,
       };
 

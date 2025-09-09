@@ -3,26 +3,29 @@
  * Execute com: npm test ou pnpm test
  */
 
-import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
+import { describe, test, expect, beforeAll } from "@jest/globals";
 import { MercadoPagoClient } from "../client/mercadopago-client";
 import { OrdersService } from "../services/orders-service";
 import { SubscriptionService } from "../services/subscription-service";
 import { WebhookService } from "../services/webhook-service";
+import { ClientType } from "../enums";
 import {
   formatCurrency,
   validateDocument,
   generateExternalReference,
   isValidAmount,
 } from "../utils";
+import { mercadoPagoConfig } from "../../../config/env";
 
-describe("MercadoPago Module Integration Tests", () => {
+const run = mercadoPagoConfig.isValid() ? describe : describe.skip;
+run("MercadoPago Module Integration Tests", () => {
   let client: MercadoPagoClient;
   let ordersService: OrdersService;
   let subscriptionService: SubscriptionService;
   let webhookService: WebhookService;
 
   beforeAll(() => {
-    client = MercadoPagoClient.getInstance();
+    client = MercadoPagoClient.getInstance(ClientType.SUBSCRIPTIONS);
     ordersService = new OrdersService();
     subscriptionService = new SubscriptionService();
     webhookService = new WebhookService();

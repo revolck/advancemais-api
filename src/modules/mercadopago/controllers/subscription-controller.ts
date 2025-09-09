@@ -109,6 +109,87 @@ export class SubscriptionController {
   };
 
   /**
+   * Atualiza uma assinatura
+   * PUT /mercadopago/subscriptions/:subscriptionId
+   */
+  public updateSubscription = async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Usuário não autenticado" });
+      }
+
+      const { subscriptionId } = req.params;
+      if (!subscriptionId) {
+        return res.status(400).json({
+          message: "ID da assinatura é obrigatório",
+        });
+      }
+
+      const updateData: Partial<SubscriptionData> = req.body;
+
+      const result = await this.subscriptionService.updateSubscription(
+        subscriptionId,
+        updateData,
+        userId
+      );
+
+      if (result.success) {
+        res.json({
+          message: "Assinatura atualizada com sucesso",
+          subscription: result.data,
+        });
+      } else {
+        res.status(400).json({
+          message: result.error?.message || "Erro ao atualizar assinatura",
+          error: result.error,
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar assinatura:", error);
+      res.status(500).json({
+        message: "Erro interno do servidor",
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  };
+
+  /**
+   * Busca assinaturas na API do MercadoPago
+   * GET /mercadopago/subscriptions/search
+   */
+  public searchSubscriptions = async (req: Request, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Usuário não autenticado" });
+      }
+
+      const params = req.query as Record<string, string>;
+      const result = await this.subscriptionService.searchSubscriptions(params);
+
+      if (result.success) {
+        res.json({
+          message: "Assinaturas encontradas",
+          subscriptions: result.data,
+          total: result.data?.length || 0,
+        });
+      } else {
+        res.status(400).json({
+          message: result.error?.message || "Erro ao buscar assinaturas",
+          error: result.error,
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao buscar assinaturas:", error);
+      res.status(500).json({
+        message: "Erro interno do servidor",
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      });
+    }
+  };
+
+  /**
    * Lista assinaturas do usuário
    * GET /mercadopago/subscriptions
    */

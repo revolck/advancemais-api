@@ -3,6 +3,7 @@ import { ordersRoutes } from "./orders";
 import { subscriptionsRoutes } from "./subscriptions";
 import { webhooksRoutes } from "./webhooks";
 import { configRoutes } from "./config";
+import { plansRoutes } from "./plans";
 
 /**
  * Router principal do módulo MercadoPago - CORRIGIDO
@@ -88,5 +89,6 @@ router.use("/orders", ordersRoutes);
 router.use("/subscriptions", subscriptionsRoutes);
 router.use("/webhooks", webhooksRoutes);
 router.use("/config", configRoutes);
+router.use("/plans", plansRoutes);
 
 export { router as mercadoPagoRoutes };

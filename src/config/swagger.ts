@@ -40,6 +40,11 @@ const options: Options = {
       { name: "Audit", description: "Registros de auditoria" },
       { name: "Brevo", description: "Serviços de e-mail" },
       { name: "Empresa", description: "Gestão de planos de empresa" },
+      {
+        name: "PlanoEmpresa",
+        description: "Gestão pública de planos empresariais",
+      },
+      { name: "Vagas", description: "Gestão de vagas e candidaturas" },
       { name: "Website", description: "Conteúdo público do site" },
       { name: "Website - Banner", description: "Gestão de banners" },
       { name: "Website - LogoEnterprises", description: "Logos de empresas" },
@@ -457,6 +462,12 @@ const options: Options = {
               type: "string",
               example: "user@example.com",
             },
+            card_token_id: { type: "string", example: "tok_123" },
+            card_token_id_secondary: { type: "string", example: "tok_456" },
+            payment_method_id_secondary: {
+              type: "string",
+              example: "visa",
+            },
             auto_recurring: {
               type: "object",
               properties: {
@@ -464,6 +475,18 @@ const options: Options = {
                 frequency_type: { type: "string", example: "months" },
                 transaction_amount: { type: "number", example: 50 },
                 currency_id: { type: "string", example: "BRL" },
+                billing_day: { type: "integer", example: 10 },
+                billing_day_proportional: { type: "boolean", example: true },
+                debit_date: { type: "string", example: "2024-01-05T00:00:00Z" },
+                start_date: { type: "string", example: "2024-01-05T00:00:00Z" },
+                end_date: { type: "string", example: "2024-12-05T00:00:00Z" },
+                free_trial: {
+                  type: "object",
+                  properties: {
+                    frequency: { type: "integer", example: 1 },
+                    frequency_type: { type: "string", example: "months" },
+                  },
+                },
               },
             },
           },
@@ -474,6 +497,15 @@ const options: Options = {
             id: { type: "string", example: "sub_123" },
             status: { type: "string", example: "authorized" },
             reason: { type: "string", example: "Plano Mensal" },
+            payer_email: { type: "string", example: "user@example.com" },
+            next_payment_date: {
+              type: "string",
+              example: "2024-02-10T00:00:00Z",
+            },
+            payment_method_id_secondary: {
+              type: "string",
+              example: "visa",
+            },
           },
         },
         MercadoPagoSubscriptionResponse: {
@@ -497,6 +529,14 @@ const options: Options = {
               type: "array",
               items: { $ref: "#/components/schemas/MercadoPagoSubscription" },
             },
+          },
+        },
+        MercadoPagoFreeTrialRequest: {
+          type: "object",
+          required: ["frequency", "frequency_type"],
+          properties: {
+            frequency: { type: "integer", example: 1 },
+            frequency_type: { type: "string", example: "months" },
           },
         },
         MercadoPagoWebhookNotification: {
@@ -738,7 +778,19 @@ const options: Options = {
           properties: {
             id: { type: "string", example: "plan-uuid" },
             nome: { type: "string", example: "Plano Básico" },
+            icone: { type: "string", nullable: true, example: "icone.png" },
+            categoria: {
+              type: "string",
+              enum: ["INICIAL", "INTERMEDIARIO", "AVANCADO", "DESTAQUE"],
+              example: "INICIAL",
+            },
             valor: { type: "number", example: 49.9 },
+            desconto: {
+              type: "number",
+              nullable: true,
+              example: 10,
+              description: "Desconto percentual aplicado ao plano",
+            },
             descricao: { type: "string", example: "Acesso básico" },
             recursos: {
               type: "array",
@@ -746,9 +798,24 @@ const options: Options = {
               example: ["feature1", "feature2"],
             },
             ativo: { type: "boolean", example: true },
+            limiteVagasAtivas: {
+              type: "integer",
+              nullable: true,
+              example: 3,
+              description:
+                "Limite de vagas ativas (null para ilimitado). Somente vagas em análise, publicadas ou em revisão são contabilizadas",
+            },
+            limiteVagasDestaque: {
+              type: "integer",
+              nullable: true,
+              example: 0,
+              description:
+                "Limite de vagas em destaque (null para ilimitado). Vagas em rascunho não são contabilizadas",
+            },
             mercadoPagoPlanId: {
               type: "string",
               nullable: true,
+              description: "Identificador do plano no MercadoPago",
               example: "mp-plan-123",
             },
             frequency: { type: "integer", example: 1 },
@@ -758,6 +825,17 @@ const options: Options = {
               example: "MESES",
             },
             repetitions: { type: "integer", nullable: true, example: null },
+            billingDay: {
+              type: "integer",
+              nullable: true,
+              example: 1,
+              description: "Dia de cobrança mensal (1-28)",
+            },
+            billingDayProportional: {
+              type: "boolean",
+              example: true,
+              description: "Define se a primeira cobrança será proporcional",
+            },
             criadoEm: {
               type: "string",
               format: "date-time",
@@ -774,6 +852,7 @@ const options: Options = {
           type: "object",
           required: [
             "nome",
+            "categoria",
             "valor",
             "descricao",
             "recursos",
@@ -782,17 +861,37 @@ const options: Options = {
           ],
           properties: {
             nome: { type: "string", example: "Plano Básico" },
+            icone: { type: "string", nullable: true, example: "icone.png" },
+            categoria: {
+              type: "string",
+              enum: ["INICIAL", "INTERMEDIARIO", "AVANCADO", "DESTAQUE"],
+              example: "INICIAL",
+            },
             valor: { type: "number", example: 49.9 },
+            desconto: {
+              type: "number",
+              nullable: true,
+              example: 0,
+            },
             descricao: { type: "string", example: "Acesso básico" },
             recursos: {
               type: "array",
               items: { type: "string" },
               example: ["feature1", "feature2"],
             },
-            mercadoPagoPlanId: {
-              type: "string",
+            limiteVagasAtivas: {
+              type: "integer",
               nullable: true,
-              example: "mp-plan-123",
+              example: 3,
+              description:
+                "Somente vagas em análise, publicadas ou em revisão são contabilizadas",
+            },
+            limiteVagasDestaque: {
+              type: "integer",
+              nullable: true,
+              example: 0,
+              description:
+                "Vagas em rascunho não são contabilizadas para este limite",
             },
             frequency: { type: "integer", example: 1 },
             frequencyType: {
@@ -801,22 +900,59 @@ const options: Options = {
               example: "MESES",
             },
             repetitions: { type: "integer", nullable: true, example: null },
+            billingDay: {
+              type: "integer",
+              nullable: true,
+              example: 1,
+              description: "Dia de cobrança mensal (1-28)",
+            },
+            billingDayProportional: {
+              type: "boolean",
+              example: true,
+              description: "Define se a primeira cobrança será proporcional",
+            },
           },
         },
         EmpresaPlanUpdateRequest: {
           type: "object",
           properties: {
             nome: { type: "string", example: "Plano Atualizado" },
+            icone: { type: "string", nullable: true, example: "icone.png" },
+            categoria: {
+              type: "string",
+              enum: ["INICIAL", "INTERMEDIARIO", "AVANCADO", "DESTAQUE"],
+              example: "INICIAL",
+            },
             valor: { type: "number", example: 59.9 },
+            desconto: {
+              type: "number",
+              nullable: true,
+              example: 0,
+            },
             descricao: { type: "string", example: "Descrição" },
             recursos: {
               type: "array",
               items: { type: "string" },
             },
             ativo: { type: "boolean", example: true },
+            limiteVagasAtivas: {
+              type: "integer",
+              nullable: true,
+              example: 3,
+              description:
+                "Somente vagas em análise, publicadas ou em revisão são contabilizadas",
+            },
+            limiteVagasDestaque: {
+              type: "integer",
+              nullable: true,
+              example: 0,
+              description:
+                "Vagas em rascunho não são contabilizadas para este limite",
+            },
             mercadoPagoPlanId: {
               type: "string",
               nullable: true,
+              description: "Identificador do plano no MercadoPago",
               example: "mp-plan-123",
             },
             frequency: { type: "integer", example: 1 },
@@ -826,6 +962,17 @@ const options: Options = {
               example: "MESES",
             },
             repetitions: { type: "integer", nullable: true, example: null },
+            billingDay: {
+              type: "integer",
+              nullable: true,
+              example: 1,
+              description: "Dia de cobrança mensal (1-28)",
+            },
+            billingDayProportional: {
+              type: "boolean",
+              example: true,
+              description: "Define se a primeira cobrança será proporcional",
+            },
           },
         },
         EmpresaPlanCreateResponse: {
@@ -864,6 +1011,7 @@ const options: Options = {
                 "CARTAO_CREDITO",
                 "CARTAO_DEBITO",
                 "DINHEIRO",
+                "GRATUITO",
               ],
               example: "PIX",
             },
@@ -877,8 +1025,10 @@ const options: Options = {
               enum: [
                 "DIAS_15",
                 "DIAS_30",
+                "DIAS_60",
                 "DIAS_90",
                 "DIAS_120",
+                "ANO_1",
                 "SEM_VALIDADE",
               ],
               nullable: true,
@@ -900,6 +1050,7 @@ const options: Options = {
                 "CARTAO_CREDITO",
                 "CARTAO_DEBITO",
                 "DINHEIRO",
+                "GRATUITO",
               ],
               example: "PIX",
             },
@@ -913,8 +1064,10 @@ const options: Options = {
               enum: [
                 "DIAS_15",
                 "DIAS_30",
+                "DIAS_60",
                 "DIAS_90",
                 "DIAS_120",
+                "ANO_1",
                 "SEM_VALIDADE",
               ],
               nullable: true,
@@ -962,6 +1115,105 @@ const options: Options = {
               type: "string",
               example: "Plano desvinculado da empresa",
             },
+          },
+        },
+        Vaga: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            empresaId: { type: "string" },
+            empresaNome: { type: "string" },
+            empresaLogoUrl: { type: "string", nullable: true },
+            nome: { type: "string" },
+            localizacao: { type: "string" },
+            tipoContrato: {
+              type: "string",
+              enum: ["CLT", "PJ", "ESTAGIO"],
+            },
+            regimeTrabalho: {
+              type: "string",
+              enum: ["PRESENCIAL", "REMOTO", "HIBRIDO"],
+            },
+            pcd: { type: "boolean" },
+            requisitos: { type: "string", nullable: true },
+            atividades: { type: "string", nullable: true },
+            beneficios: { type: "string", nullable: true },
+            observacoes: { type: "string", nullable: true },
+            destaque: { type: "boolean" },
+            status: {
+              type: "string",
+              enum: ["RASCUNHO", "EM_ANALISE", "PUBLICADO", "REVISAO"],
+            },
+            publicadoEm: { type: "string", format: "date-time", nullable: true },
+            expiraEm: { type: "string", format: "date", nullable: true },
+            criadoEm: { type: "string", format: "date-time" },
+            atualizadoEm: { type: "string", format: "date-time" },
+          },
+        },
+        VagaCreateRequest: {
+          type: "object",
+          required: [
+            "empresaId",
+            "nome",
+            "tipoContrato",
+            "regimeTrabalho",
+          ],
+          properties: {
+            empresaId: { type: "string" },
+            nome: { type: "string" },
+            localizacao: { type: "string" },
+            tipoContrato: {
+              type: "string",
+              enum: ["CLT", "PJ", "ESTAGIO"],
+            },
+            regimeTrabalho: {
+              type: "string",
+              enum: ["PRESENCIAL", "REMOTO", "HIBRIDO"],
+            },
+            pcd: { type: "boolean" },
+            requisitos: { type: "string" },
+            atividades: { type: "string" },
+            beneficios: { type: "string" },
+            observacoes: { type: "string" },
+            destaque: { type: "boolean" },
+            status: {
+              type: "string",
+              enum: ["RASCUNHO", "EM_ANALISE", "PUBLICADO", "REVISAO"],
+            },
+            expiraEm: { type: "string", format: "date" },
+          },
+        },
+        VagaUpdateRequest: {
+          type: "object",
+          properties: {
+            nome: { type: "string" },
+            localizacao: { type: "string" },
+            tipoContrato: {
+              type: "string",
+              enum: ["CLT", "PJ", "ESTAGIO"],
+            },
+            regimeTrabalho: {
+              type: "string",
+              enum: ["PRESENCIAL", "REMOTO", "HIBRIDO"],
+            },
+            pcd: { type: "boolean" },
+            requisitos: { type: "string" },
+            atividades: { type: "string" },
+            beneficios: { type: "string" },
+            observacoes: { type: "string" },
+            destaque: { type: "boolean" },
+            status: {
+              type: "string",
+              enum: ["RASCUNHO", "EM_ANALISE", "PUBLICADO", "REVISAO"],
+            },
+            expiraEm: { type: "string", format: "date" },
+          },
+        },
+        VagaApplyRequest: {
+          type: "object",
+          required: ["usuarioId"],
+          properties: {
+            usuarioId: { type: "string" },
           },
         },
         WebsiteModuleInfo: {

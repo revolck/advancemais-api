@@ -1,5 +1,5 @@
 import { MercadoPagoConfig } from "mercadopago";
-import { Environment } from "../enums";
+import { ClientType, Environment } from "../enums";
 import { mercadoPagoConfig } from "../../../config/env";
 
 /**
@@ -7,28 +7,41 @@ import { mercadoPagoConfig } from "../../../config/env";
  * Centraliza a configuração da API do MercadoPago usando o SDK oficial
  */
 export class MercadoPagoClient {
-  private static instance: MercadoPagoClient;
+  private static instances: Partial<Record<ClientType, MercadoPagoClient>> = {};
+  private clientType: ClientType;
   private client: MercadoPagoConfig;
   private accessToken: string;
   private publicKey: string;
   private environment: Environment;
 
-  private constructor() {
-    this.accessToken = mercadoPagoConfig.accessToken;
-    this.publicKey = mercadoPagoConfig.publicKey;
-    this.environment = mercadoPagoConfig.environment as Environment;
+  private constructor(type: ClientType) {
+    this.clientType = type;
+
+      const envKey =
+        mercadoPagoConfig.environment === "production" ? "prod" : "test";
+
+      if (type === ClientType.CHECKOUT_TRANSPARENT) {
+        this.accessToken =
+          mercadoPagoConfig.checkoutTransparent[envKey].accessToken;
+        this.publicKey =
+          mercadoPagoConfig.checkoutTransparent[envKey].publicKey;
+      } else {
+        this.accessToken = mercadoPagoConfig.subscriptions[envKey].accessToken;
+        this.publicKey = mercadoPagoConfig.subscriptions[envKey].publicKey;
+      }
+      this.environment = mercadoPagoConfig.environment as Environment;
 
     // Configura o cliente do MercadoPago
     this.client = new MercadoPagoConfig({
       accessToken: this.accessToken,
       options: {
-        timeout: mercadoPagoConfig.timeout || 5000,
+        timeout: 5000,
         idempotencyKey: this.generateIdempotencyKey(),
       },
     });
 
     console.log(
-      `🏦 MercadoPago Client configurado para ambiente: ${this.environment}`
+      `🏦 MercadoPago Client (${type}) configurado para ambiente: ${this.environment}`
     );
   }
 
@@ -36,11 +49,11 @@ export class MercadoPagoClient {
    * Retorna a instância singleton do cliente MercadoPago
    * @returns Instância configurada do cliente
    */
-  public static getInstance(): MercadoPagoClient {
-    if (!MercadoPagoClient.instance) {
-      MercadoPagoClient.instance = new MercadoPagoClient();
+  public static getInstance(type: ClientType = ClientType.SUBSCRIPTIONS): MercadoPagoClient {
+    if (!MercadoPagoClient.instances[type]) {
+      MercadoPagoClient.instances[type] = new MercadoPagoClient(type);
     }
-    return MercadoPagoClient.instance;
+    return MercadoPagoClient.instances[type]!;
   }
 
   /**
@@ -170,22 +183,25 @@ export class MercadoPagoClient {
    * Reinicializa o cliente com novas configurações
    * @param newConfig Novas configurações
    */
-  public reinitialize(newConfig: Partial<typeof mercadoPagoConfig>): void {
-    if (newConfig.accessToken) {
-      this.accessToken = newConfig.accessToken;
-    }
-    if (newConfig.publicKey) {
-      this.publicKey = newConfig.publicKey;
-    }
-    if (newConfig.environment) {
-      this.environment = newConfig.environment as Environment;
-    }
+    public reinitialize(newConfig: {
+      accessToken?: string;
+      publicKey?: string;
+      environment?: Environment;
+    }): void {
+      if (newConfig.accessToken) {
+        this.accessToken = newConfig.accessToken;
+      }
+      if (newConfig.publicKey) {
+        this.publicKey = newConfig.publicKey;
+      }
+      if (newConfig.environment) {
+        this.environment = newConfig.environment;
+      }
 
-    // Recria o cliente com as novas configurações
     this.client = new MercadoPagoConfig({
       accessToken: this.accessToken,
       options: {
-        timeout: newConfig.timeout || mercadoPagoConfig.timeout || 5000,
+        timeout: 5000,
         idempotencyKey: this.generateIdempotencyKey(),
       },
     });

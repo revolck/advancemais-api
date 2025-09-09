@@ -4,6 +4,8 @@ import { mercadoPagoRoutes } from "../modules/mercadopago";
 import { brevoRoutes } from "../modules/brevo/routes";
 import { websiteRoutes } from "../modules/website";
 import { empresaRoutes } from "../modules/empresa";
+import { planoEmpresaRoutes } from "../modules/plano-empresa";
+import { vagasRoutes } from "../modules/vagas";
 import { auditRoutes } from "../modules/audit";
 import { docsRoutes } from "../modules/docs";
 import { EmailVerificationController } from "../modules/brevo/controllers/email-verification-controller";
@@ -57,6 +59,8 @@ router.get("/", (req, res) => {
       brevo: "/api/v1/brevo",
       website: "/api/v1/website",
       empresa: "/api/v1/empresa",
+      planoEmpresa: "/api/v1/plano-empresa",
+      vagas: "/api/v1/vagas",
       audit: "/api/v1/audit",
       health: "/health",
     },
@@ -232,6 +236,36 @@ if (empresaRoutes) {
   }
 } else {
   console.error("❌ empresaRoutes não está definido");
+}
+
+/**
+ * Módulo PlanoEmpresa - COM VALIDAÇÃO
+ * /api/v1/plano-empresa/*
+ */
+if (planoEmpresaRoutes) {
+  try {
+    router.use("/api/v1/plano-empresa", planoEmpresaRoutes);
+    console.log("✅ Módulo PlanoEmpresa registrado com sucesso");
+  } catch (error) {
+    console.error("❌ ERRO - Módulo PlanoEmpresa:", error);
+  }
+} else {
+  console.error("❌ planoEmpresaRoutes não está definido");
+}
+
+/**
+ * Módulo Vagas - COM VALIDAÇÃO
+ * /api/v1/vagas/*
+ */
+if (vagasRoutes) {
+  try {
+    router.use("/api/v1/vagas", vagasRoutes);
+    console.log("✅ Módulo Vagas registrado com sucesso");
+  } catch (error) {
+    console.error("❌ ERRO - Módulo Vagas:", error);
+  }
+} else {
+  console.error("❌ vagasRoutes não está definido");
 }
 
 /**

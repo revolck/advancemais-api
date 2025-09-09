@@ -29,45 +29,98 @@ model Usuario {
   atualizadoEm  DateTime    @updatedAt
   ultimoLogin   DateTime?
   refreshToken  String?
-  
+
   // CAMPOS PARA RECUPERAÇÃO DE SENHA
-  tokenRecuperacao           String?   
-  tokenRecuperacaoExp        DateTime? 
+  tokenRecuperacao           String?
+  tokenRecuperacaoExp        DateTime?
   tentativasRecuperacao      Int       @default(0)
   ultimaTentativaRecuperacao DateTime?
-  
+
   // CAMPOS PARA VERIFICAÇÃO DE EMAIL (NOVOS)
-  emailVerificado              Boolean   @default(false)
-  emailVerificadoEm            DateTime?
-  emailVerificationToken       String?   @unique
-  emailVerificationTokenExp    DateTime?
-  emailVerificationAttempts    Int       @default(0)
-  ultimaTentativaVerificacao   DateTime?
+  emailVerificado            Boolean   @default(false)
+  emailVerificadoEm          DateTime?
+  emailVerificationToken     String?   @unique
+  emailVerificationTokenExp  DateTime?
+  emailVerificationAttempts  Int       @default(0)
+  ultimaTentativaVerificacao DateTime?
 
   // RELACIONAMENTOS EXISTENTES
   enderecos     Endereco[]
-  empresa       Empresa?    @relation(fields: [codEmpresa], references: [id])
+  empresa       Empresa?       @relation(fields: [codEmpresa], references: [id])
   codigoUsuario CodigoUsuario?
-  
+
   // RELACIONAMENTOS COM MERCADOPAGO
-  mercadoPagoOrders             MercadoPagoOrder[]
-  mercadoPagoRefunds            MercadoPagoRefund[]
-  mercadoPagoSubscriptions      MercadoPagoSubscription[]
+  mercadoPagoOrders               MercadoPagoOrder[]
+  mercadoPagoRefunds              MercadoPagoRefund[]
+  mercadoPagoSubscriptions        MercadoPagoSubscription[]
   mercadoPagoSubscriptionPayments MercadoPagoSubscriptionPayment[]
-  mercadoPagoTransactions       MercadoPagoTransaction[]
-  auditLogs                     AuditLog[]
-  
+  mercadoPagoTransactions         MercadoPagoTransaction[]
+  auditLogs                       AuditLog[]
+  CandidaturaVaga                 CandidaturaVaga[]
+
   @@index([tokenRecuperacao])
   @@index([emailVerificationToken])
 }
 
 model Empresa {
-  id       String    @id @default(uuid())
-  nome     String
-  criadoEm DateTime  @default(now())
-  usuarios Usuario[]
-  planos   EmpresaPlano[]
+  id        String         @id @default(uuid())
+  nome      String
+  logoUrl   String?
+  cidade    String
+  estado    String
+  criadoEm  DateTime       @default(now())
+  usuarios  Usuario[]
+  planos    EmpresaPlano[]
+  vagas     Vaga[]
   auditLogs AuditLog[]
+}
+
+model Vaga {
+  id             String            @id @default(uuid())
+  empresaId      String
+  empresaNome    String
+  empresaLogoUrl String?
+  nome           String
+  localizacao    String
+  tipoContrato   TipoContrato
+  regimeTrabalho RegimeTrabalho
+  pcd            Boolean           @default(false)
+  requisitos     String?
+  atividades     String?
+  beneficios     String?
+  observacoes    String?
+  destaque       Boolean           @default(false)
+  status         VagaStatus        @default(RASCUNHO)
+  publicadoEm    DateTime?
+  expiraEm       DateTime?
+  criadoEm       DateTime          @default(now())
+  atualizadoEm   DateTime          @updatedAt
+  empresa        Empresa           @relation(fields: [empresaId], references: [id])
+  candidaturas   CandidaturaVaga[]
+}
+
+model CandidaturaVaga {
+  id        String   @id @default(uuid())
+  vagaId    String
+  usuarioId String
+  criadoEm  DateTime @default(now())
+  vaga      Vaga     @relation(fields: [vagaId], references: [id])
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+
+  @@index([vagaId])
+  @@index([usuarioId])
+}
+
+enum TipoContrato {
+  CLT
+  PJ
+  ESTAGIO
+}
+
+enum RegimeTrabalho {
+  PRESENCIAL
+  REMOTO
+  HIBRIDO
 }
 
 model Endereco {
@@ -85,16 +138,16 @@ model Endereco {
 }
 
 model LogEmail {
-  id          String      @id @default(uuid())
-  usuarioId   String?
-  email       String
-  tipoEmail   TipoEmail
-  status      StatusEmail
-  tentativas  Int         @default(1)
-  erro        String?
-  messageId   String?
-  criadoEm    DateTime    @default(now())
-  atualizadoEm DateTime   @updatedAt
+  id           String      @id @default(uuid())
+  usuarioId    String?
+  email        String
+  tipoEmail    TipoEmail
+  status       StatusEmail
+  tentativas   Int         @default(1)
+  erro         String?
+  messageId    String?
+  criadoEm     DateTime    @default(now())
+  atualizadoEm DateTime    @updatedAt
 
   @@index([usuarioId])
   @@index([email])
@@ -103,16 +156,16 @@ model LogEmail {
 }
 
 model LogSMS {
-  id          String    @id @default(uuid())
-  usuarioId   String?
-  telefone    String
-  tipoSMS     TipoSMS
-  status      StatusSMS
-  tentativas  Int       @default(1)
-  erro        String?
-  messageId   String?
-  criadoEm    DateTime  @default(now())
-  atualizadoEm DateTime @updatedAt
+  id           String    @id @default(uuid())
+  usuarioId    String?
+  telefone     String
+  tipoSMS      TipoSMS
+  status       StatusSMS
+  tentativas   Int       @default(1)
+  erro         String?
+  messageId    String?
+  criadoEm     DateTime  @default(now())
+  atualizadoEm DateTime  @updatedAt
 
   @@index([usuarioId])
   @@index([telefone])
@@ -126,7 +179,7 @@ model CodigoUsuario {
   tipo      CodigoTipo @default(USUARIO)
   criadoEm  DateTime   @default(now())
 
-  usuario   Usuario    @relation(fields: [usuarioId], references: [id])
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
 
   @@map("codigo_usuario")
 }
@@ -137,36 +190,36 @@ model CodigoUsuario {
 
 // Modelo para Orders do MercadoPago
 model MercadoPagoOrder {
-  id                    String   @id @default(uuid())
-  mercadoPagoOrderId    String   @unique // ID da order no MercadoPago
-  usuarioId             String   // Referência ao usuário que criou a order
-  status                String   // Status da order (opened, closed, cancelled, expired)
-  totalAmount           Float    // Valor total da order
-  paidAmount            Float    @default(0) // Valor pago
-  refundedAmount        Float    @default(0) // Valor reembolsado
-  cancelledAmount       Float    @default(0) // Valor cancelado
-  externalReference     String?  // Referência externa (geralmente userId)
-  processingMode        String   // automatic ou manual
-  type                  String   @default("online") // online ou offline
-  preferenceId          String?  // ID da preferência se houver
-  
+  id                 String  @id @default(uuid())
+  mercadoPagoOrderId String  @unique // ID da order no MercadoPago
+  usuarioId          String // Referência ao usuário que criou a order
+  status             String // Status da order (opened, closed, cancelled, expired)
+  totalAmount        Float // Valor total da order
+  paidAmount         Float   @default(0) // Valor pago
+  refundedAmount     Float   @default(0) // Valor reembolsado
+  cancelledAmount    Float   @default(0) // Valor cancelado
+  externalReference  String? // Referência externa (geralmente userId)
+  processingMode     String // automatic ou manual
+  type               String  @default("online") // online ou offline
+  preferenceId       String? // ID da preferência se houver
+
   // Dados completos da order em JSON
-  orderData             Json
-  
+  orderData Json
+
   // Metadados adicionais
-  metadata              Json?
-  
+  metadata Json?
+
   // Timestamps
-  criadoEm              DateTime @default(now())
-  atualizadoEm          DateTime @updatedAt
-  dateCreated           DateTime? // Data de criação no MercadoPago
-  dateClosed            DateTime? // Data de fechamento no MercadoPago
-  dateLastUpdated       DateTime? // Última atualização no MercadoPago
-  
+  criadoEm        DateTime  @default(now())
+  atualizadoEm    DateTime  @updatedAt
+  dateCreated     DateTime? // Data de criação no MercadoPago
+  dateClosed      DateTime? // Data de fechamento no MercadoPago
+  dateLastUpdated DateTime? // Última atualização no MercadoPago
+
   // Relacionamentos
-  usuario               Usuario  @relation(fields: [usuarioId], references: [id])
-  refunds               MercadoPagoRefund[]
-  
+  usuario Usuario             @relation(fields: [usuarioId], references: [id])
+  refunds MercadoPagoRefund[]
+
   @@index([usuarioId])
   @@index([status])
   @@index([externalReference])
@@ -176,30 +229,30 @@ model MercadoPagoOrder {
 
 // Modelo para Reembolsos do MercadoPago
 model MercadoPagoRefund {
-  id                    String   @id @default(uuid())
-  mercadoPagoRefundId   String   @unique // ID do reembolso no MercadoPago
-  orderId               String   // ID da order local
-  paymentId             String   // ID do pagamento no MercadoPago
-  usuarioId             String   // Usuário que solicitou o reembolso
-  amount                Float    // Valor do reembolso
-  status                String   // Status do reembolso (pending, approved, rejected)
-  reason                String?  // Motivo do reembolso
-  
+  id                  String  @id @default(uuid())
+  mercadoPagoRefundId String  @unique // ID do reembolso no MercadoPago
+  orderId             String // ID da order local
+  paymentId           String // ID do pagamento no MercadoPago
+  usuarioId           String // Usuário que solicitou o reembolso
+  amount              Float // Valor do reembolso
+  status              String // Status do reembolso (pending, approved, rejected)
+  reason              String? // Motivo do reembolso
+
   // Dados completos do reembolso em JSON
-  refundData            Json
-  
+  refundData Json
+
   // Metadados adicionais
-  metadata              Json?
-  
+  metadata Json?
+
   // Timestamps
-  criadoEm              DateTime @default(now())
-  atualizadoEm          DateTime @updatedAt
-  dateCreated           DateTime? // Data de criação no MercadoPago
-  
+  criadoEm     DateTime  @default(now())
+  atualizadoEm DateTime  @updatedAt
+  dateCreated  DateTime? // Data de criação no MercadoPago
+
   // Relacionamentos
-  order                 MercadoPagoOrder @relation(fields: [orderId], references: [mercadoPagoOrderId])
-  usuario               Usuario  @relation(fields: [usuarioId], references: [id])
-  
+  order   MercadoPagoOrder @relation(fields: [orderId], references: [mercadoPagoOrderId])
+  usuario Usuario          @relation(fields: [usuarioId], references: [id])
+
   @@index([orderId])
   @@index([paymentId])
   @@index([usuarioId])
@@ -210,44 +263,44 @@ model MercadoPagoRefund {
 
 // Modelo para Assinaturas do MercadoPago
 model MercadoPagoSubscription {
-  id                        String   @id @default(uuid())
-  mercadoPagoSubscriptionId String   @unique // ID da assinatura no MercadoPago
-  usuarioId                 String   // Usuário proprietário da assinatura
-  status                    String   // Status da assinatura (pending, authorized, paused, cancelled)
-  reason                    String   // Descrição/motivo da assinatura
-  payerEmail                String   // Email do pagador
-  
+  id                        String @id @default(uuid())
+  mercadoPagoSubscriptionId String @unique // ID da assinatura no MercadoPago
+  usuarioId                 String // Usuário proprietário da assinatura
+  status                    String // Status da assinatura (pending, authorized, paused, cancelled)
+  reason                    String // Descrição/motivo da assinatura
+  payerEmail                String // Email do pagador
+
   // Dados da recorrência
-  transactionAmount         Float    // Valor da transação
-  frequency                 Int      // Frequência (número)
-  frequencyType             String   // Tipo da frequência (days, months)
-  repetitions               Int?     // Número de repetições (null = infinito)
-  
+  transactionAmount Float // Valor da transação
+  frequency         Int // Frequência (número)
+  frequencyType     String // Tipo da frequência (days, months)
+  repetitions       Int? // Número de repetições (null = infinito)
+
   // Datas importantes
-  nextPaymentDate           DateTime? // Data do próximo pagamento
-  startDate                 DateTime? // Data de início
-  endDate                   DateTime? // Data de fim (se houver)
-  
+  nextPaymentDate DateTime? // Data do próximo pagamento
+  startDate       DateTime? // Data de início
+  endDate         DateTime? // Data de fim (se houver)
+
   // Referências
-  externalReference         String?  // Referência externa
-  preapprovalPlanId         String?  // ID do plano se baseado em plano
-  
+  externalReference String? // Referência externa
+  preapprovalPlanId String? // ID do plano se baseado em plano
+
   // Dados completos da assinatura em JSON
-  subscriptionData          Json
-  
+  subscriptionData Json
+
   // Metadados adicionais
-  metadata                  Json?
-  
+  metadata Json?
+
   // Timestamps
-  criadoEm                  DateTime @default(now())
-  atualizadoEm              DateTime @updatedAt
-  dateCreated               DateTime? // Data de criação no MercadoPago
-  lastModified              DateTime? // Última modificação no MercadoPago
-  
+  criadoEm     DateTime  @default(now())
+  atualizadoEm DateTime  @updatedAt
+  dateCreated  DateTime? // Data de criação no MercadoPago
+  lastModified DateTime? // Última modificação no MercadoPago
+
   // Relacionamentos
-  usuario                   Usuario  @relation(fields: [usuarioId], references: [id])
-  payments                  MercadoPagoSubscriptionPayment[]
-  
+  usuario  Usuario                          @relation(fields: [usuarioId], references: [id])
+  payments MercadoPagoSubscriptionPayment[]
+
   @@index([usuarioId])
   @@index([status])
   @@index([payerEmail])
@@ -258,30 +311,30 @@ model MercadoPagoSubscription {
 
 // Modelo para Pagamentos de Assinatura
 model MercadoPagoSubscriptionPayment {
-  id                    String   @id @default(uuid())
-  subscriptionId        String   // ID da assinatura local
-  mercadoPagoPaymentId  String   @unique // ID do pagamento no MercadoPago
-  usuarioId             String   // Usuário da assinatura
-  amount                Float    // Valor do pagamento
-  status                String   // Status do pagamento
-  statusDetail          String?  // Detalhe do status
-  
+  id                   String  @id @default(uuid())
+  subscriptionId       String // ID da assinatura local
+  mercadoPagoPaymentId String  @unique // ID do pagamento no MercadoPago
+  usuarioId            String // Usuário da assinatura
+  amount               Float // Valor do pagamento
+  status               String // Status do pagamento
+  statusDetail         String? // Detalhe do status
+
   // Datas
-  dateCreated           DateTime? // Data de criação no MercadoPago
-  dateApproved          DateTime? // Data de aprovação
-  dateLastUpdated       DateTime? // Última atualização
-  
+  dateCreated     DateTime? // Data de criação no MercadoPago
+  dateApproved    DateTime? // Data de aprovação
+  dateLastUpdated DateTime? // Última atualização
+
   // Dados completos do pagamento em JSON
-  paymentData           Json
-  
+  paymentData Json
+
   // Timestamps
-  criadoEm              DateTime @default(now())
-  atualizadoEm          DateTime @updatedAt
-  
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
   // Relacionamentos
-  subscription          MercadoPagoSubscription @relation(fields: [subscriptionId], references: [mercadoPagoSubscriptionId])
-  usuario               Usuario  @relation(fields: [usuarioId], references: [id])
-  
+  subscription MercadoPagoSubscription @relation(fields: [subscriptionId], references: [mercadoPagoSubscriptionId])
+  usuario      Usuario                 @relation(fields: [usuarioId], references: [id])
+
   @@index([subscriptionId])
   @@index([usuarioId])
   @@index([status])
@@ -291,27 +344,27 @@ model MercadoPagoSubscriptionPayment {
 
 // Modelo para Webhooks do MercadoPago
 model MercadoPagoWebhook {
-  id            String   @id @default(uuid())
-  webhookId     String   @unique // ID do webhook recebido
-  type          String   // Tipo do webhook (payment, subscription, etc.)
-  action        String   // Ação do webhook (created, updated, etc.)
-  dataId        String   // ID do recurso afetado
-  liveMode      Boolean  @default(true) // Se é webhook de produção
-  
+  id        String  @id @default(uuid())
+  webhookId String  @unique // ID do webhook recebido
+  type      String // Tipo do webhook (payment, subscription, etc.)
+  action    String // Ação do webhook (created, updated, etc.)
+  dataId    String // ID do recurso afetado
+  liveMode  Boolean @default(true) // Se é webhook de produção
+
   // Dados completos do webhook em JSON
-  webhookData   Json
-  
+  webhookData Json
+
   // Status do processamento
-  processed     Boolean  @default(false) // Se foi processado
-  processedAt   DateTime? // Quando foi processado
-  success       Boolean? // Se o processamento foi bem-sucedido
-  errorMessage  String?  // Mensagem de erro se houver
-  retryCount    Int      @default(0) // Número de tentativas de processamento
-  
+  processed    Boolean   @default(false) // Se foi processado
+  processedAt  DateTime? // Quando foi processado
+  success      Boolean? // Se o processamento foi bem-sucedido
+  errorMessage String? // Mensagem de erro se houver
+  retryCount   Int       @default(0) // Número de tentativas de processamento
+
   // Timestamps
-  criadoEm      DateTime @default(now())
-  atualizadoEm  DateTime @updatedAt
-  
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
   @@index([type])
   @@index([action])
   @@index([dataId])
@@ -323,26 +376,26 @@ model MercadoPagoWebhook {
 
 // Modelo para Log de transações (opcional, para auditoria)
 model MercadoPagoTransaction {
-  id                    String   @id @default(uuid())
-  usuarioId             String   // Usuário relacionado
-  type                  String   // Tipo da transação (order, subscription, refund)
-  externalId            String   // ID externo (MercadoPago)
-  localId               String?  // ID local se houver
-  amount                Float    // Valor da transação
-  currency              String   @default("BRL") // Moeda
-  status                String   // Status da transação
-  description           String?  // Descrição
-  
+  id          String  @id @default(uuid())
+  usuarioId   String // Usuário relacionado
+  type        String // Tipo da transação (order, subscription, refund)
+  externalId  String // ID externo (MercadoPago)
+  localId     String? // ID local se houver
+  amount      Float // Valor da transação
+  currency    String  @default("BRL") // Moeda
+  status      String // Status da transação
+  description String? // Descrição
+
   // Dados da transação em JSON
-  transactionData       Json
-  
+  transactionData Json
+
   // Timestamps
-  criadoEm              DateTime @default(now())
-  atualizadoEm          DateTime @updatedAt
-  
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
   // Relacionamentos
-  usuario               Usuario  @relation(fields: [usuarioId], references: [id])
-  
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+
   @@index([usuarioId])
   @@index([type])
   @@index([status])
@@ -353,43 +406,50 @@ model MercadoPagoTransaction {
 
 // Plano de assinaturas disponíveis para empresas
 model MercadoPagoPlan {
-  id          String   @id @default(uuid())
-  nome        String
-  valor       Float
-  descricao   String
-  recursos    String[]
-  ativo       Boolean  @default(true)
-  mercadoPagoPlanId String? @unique
-  frequency   Int
-  frequencyType PlanFrequencyType
-  repetitions Int?
-  criadoEm    DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
-  empresaPlanos EmpresaPlano[]
+  id                     String            @id @default(uuid())
+  nome                   String
+  icone                  String?
+  categoria              PlanCategory
+  valor                  Float
+  desconto               Float?            @default(0)
+  descricao              String
+  recursos               String[]
+  ativo                  Boolean           @default(true)
+  limiteVagasAtivas      Int?
+  limiteVagasDestaque    Int?              @default(0)
+  mercadoPagoPlanId      String?           @unique
+  frequency              Int
+  frequencyType          PlanFrequencyType
+  repetitions            Int?
+  billingDay             Int?
+  billingDayProportional Boolean           @default(false)
+  criadoEm               DateTime          @default(now())
+  atualizadoEm           DateTime          @updatedAt
+  empresaPlanos          EmpresaPlano[]
 
   @@map("mercadopago_plans")
 }
 
 // Associação de planos com empresas
 model EmpresaPlano {
-  id             String             @id @default(uuid())
-  empresaId      String
-  planoId        String
+  id              String            @id @default(uuid())
+  empresaId       String
+  planoId         String
   metodoPagamento PlanPaymentMethod
-  tipo           CompanyPlanType    @default(STANDARD)
-  validade       PlanValidity?
-  inicio         DateTime           @default(now())
-  fim            DateTime?
-  criadoEm       DateTime           @default(now())
-  atualizadoEm   DateTime           @updatedAt
+  tipo            CompanyPlanType   @default(STANDARD)
+  validade        PlanValidity?
+  inicio          DateTime          @default(now())
+  fim             DateTime?
+  criadoEm        DateTime          @default(now())
+  atualizadoEm    DateTime          @updatedAt
 
-  empresa        Empresa            @relation(fields: [empresaId], references: [id])
-  plano          MercadoPagoPlan    @relation(fields: [planoId], references: [id])
+  empresa Empresa         @relation(fields: [empresaId], references: [id])
+  plano   MercadoPagoPlan @relation(fields: [planoId], references: [id])
 
+  @@unique([empresaId])
   @@index([empresaId])
   @@index([planoId])
   @@index([metodoPagamento])
-  @@unique([empresaId])
   @@map("empresa_planos")
 }
 
@@ -402,8 +462,8 @@ model AuditLog {
   detalhes  Json?
   criadoEm  DateTime @default(now())
 
-  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
-  empresa   Empresa? @relation(fields: [empresaId], references: [id])
+  usuario Usuario  @relation(fields: [usuarioId], references: [id])
+  empresa Empresa? @relation(fields: [empresaId], references: [id])
 
   @@index([usuarioId])
   @@index([empresaId])
@@ -458,48 +518,48 @@ model WebsiteSobreEmpresa {
 }
 
 model WebsiteTeam {
-  id        String   @id @default(uuid())
-  photoUrl  String
-  nome      String
-  cargo     String
-  criadoEm  DateTime @default(now())
+  id           String   @id @default(uuid())
+  photoUrl     String
+  nome         String
+  cargo        String
+  criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  ordem     WebsiteTeamOrdem?
+  ordem WebsiteTeamOrdem?
 }
 
 model WebsiteTeamOrdem {
-  id            String       @id @default(uuid())
-  websiteTeamId String       @unique
+  id            String        @id @default(uuid())
+  websiteTeamId String        @unique
   ordem         Int
   status        WebsiteStatus @default(RASCUNHO)
-  criadoEm      DateTime     @default(now())
+  criadoEm      DateTime      @default(now())
 
-  team          WebsiteTeam  @relation(fields: [websiteTeamId], references: [id], onDelete: Cascade)
+  team WebsiteTeam @relation(fields: [websiteTeamId], references: [id], onDelete: Cascade)
 
   @@unique([ordem])
 }
 
 model WebsiteDepoimento {
-  id          String   @id @default(uuid())
-  depoimento  String
-  nome        String
-  cargo       String
-  fotoUrl     String
-  criadoEm    DateTime @default(now())
+  id           String   @id @default(uuid())
+  depoimento   String
+  nome         String
+  cargo        String
+  fotoUrl      String
+  criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  ordem       WebsiteDepoimentoOrdem?
+  ordem WebsiteDepoimentoOrdem?
 }
 
 model WebsiteDepoimentoOrdem {
-  id                   String       @id @default(uuid())
-  websiteDepoimentoId  String       @unique
-  ordem                Int
-  status               WebsiteStatus @default(RASCUNHO)
-  criadoEm             DateTime     @default(now())
+  id                  String        @id @default(uuid())
+  websiteDepoimentoId String        @unique
+  ordem               Int
+  status              WebsiteStatus @default(RASCUNHO)
+  criadoEm            DateTime      @default(now())
 
-  depoimento           WebsiteDepoimento @relation(fields: [websiteDepoimentoId], references: [id], onDelete: Cascade)
+  depoimento WebsiteDepoimento @relation(fields: [websiteDepoimentoId], references: [id], onDelete: Cascade)
 
   @@unique([ordem])
 }
@@ -527,25 +587,25 @@ model WebsiteDiferenciais {
 }
 
 model WebsiteSlider {
-  id          String   @id @default(uuid())
-  sliderName  String
-  imagemUrl   String
-  link        String?
-  criadoEm    DateTime @default(now())
+  id           String   @id @default(uuid())
+  sliderName   String
+  imagemUrl    String
+  link         String?
+  criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  ordem       WebsiteSliderOrdem?
+  ordem WebsiteSliderOrdem?
 }
 
 model WebsiteSliderOrdem {
-  id              String             @id @default(uuid())
-  websiteSliderId String             @unique
+  id              String            @id @default(uuid())
+  websiteSliderId String            @unique
   ordem           Int
   orientacao      SliderOrientation
-  status          WebsiteStatus      @default(RASCUNHO)
-  criadoEm        DateTime           @default(now())
+  status          WebsiteStatus     @default(RASCUNHO)
+  criadoEm        DateTime          @default(now())
 
-  slider          WebsiteSlider      @relation(fields: [websiteSliderId], references: [id], onDelete: Cascade)
+  slider WebsiteSlider @relation(fields: [websiteSliderId], references: [id], onDelete: Cascade)
 
   @@unique([ordem, orientacao])
 }
@@ -558,39 +618,39 @@ model WebsiteBanner {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  ordem        WebsiteBannerOrdem?
+  ordem WebsiteBannerOrdem?
 }
 
 model WebsiteBannerOrdem {
-  id              String       @id @default(uuid())
-  websiteBannerId String       @unique
+  id              String        @id @default(uuid())
+  websiteBannerId String        @unique
   ordem           Int
   status          WebsiteStatus @default(RASCUNHO)
-  criadoEm        DateTime     @default(now())
+  criadoEm        DateTime      @default(now())
 
-  banner          WebsiteBanner @relation(fields: [websiteBannerId], references: [id], onDelete: Cascade)
+  banner WebsiteBanner @relation(fields: [websiteBannerId], references: [id], onDelete: Cascade)
 
   @@unique([ordem])
 }
 
 model WebsiteLogoEnterprise {
-  id         String   @id @default(uuid())
-  nome       String
-  imagemUrl  String
-  imagemAlt  String
-  website    String?
-  criadoEm   DateTime @default(now())
+  id           String   @id @default(uuid())
+  nome         String
+  imagemUrl    String
+  imagemAlt    String
+  website      String?
+  criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  ordem      WebsiteLogoEnterpriseOrdem?
+  ordem WebsiteLogoEnterpriseOrdem?
 }
 
 model WebsiteLogoEnterpriseOrdem {
-  id                     String       @id @default(uuid())
-  websiteLogoEnterpriseId String       @unique
-  ordem                  Int
-  status                 WebsiteStatus @default(RASCUNHO)
-  criadoEm               DateTime     @default(now())
+  id                      String        @id @default(uuid())
+  websiteLogoEnterpriseId String        @unique
+  ordem                   Int
+  status                  WebsiteStatus @default(RASCUNHO)
+  criadoEm                DateTime      @default(now())
 
   logo WebsiteLogoEnterprise @relation(fields: [websiteLogoEnterpriseId], references: [id], onDelete: Cascade)
 
@@ -598,65 +658,65 @@ model WebsiteLogoEnterpriseOrdem {
 }
 
 model WebsitePlaninhas {
-  id        String @id @default(uuid())
-  titulo    String
-  descricao String
-  icone1    String
-  titulo1   String
-  descricao1 String
-  icone2    String
-  titulo2   String
-  descricao2 String
-  icone3    String
-  titulo3   String
-  descricao3 String
+  id           String   @id @default(uuid())
+  titulo       String
+  descricao    String
+  icone1       String
+  titulo1      String
+  descricao1   String
+  icone2       String
+  titulo2      String
+  descricao2   String
+  icone3       String
+  titulo3      String
+  descricao3   String
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 }
 
 model WebsiteAdvanceAjuda {
-  id         String @id @default(uuid())
-  titulo     String
-  descricao  String
-  imagemUrl  String
+  id           String   @id @default(uuid())
+  titulo       String
+  descricao    String
+  imagemUrl    String
   imagemTitulo String
-  titulo1    String
-  descricao1 String
-  titulo2    String
-  descricao2 String
-  titulo3    String
-  descricao3 String
+  titulo1      String
+  descricao1   String
+  titulo2      String
+  descricao2   String
+  titulo3      String
+  descricao3   String
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 }
 
 model WebsiteRecrutamentoSelecao {
-  id         String @id @default(uuid())
-  titulo     String
-  descricao  String
-  imagemUrl  String
+  id           String   @id @default(uuid())
+  titulo       String
+  descricao    String
+  imagemUrl    String
   imagemTitulo String
-  titulo1    String
-  titulo2    String
-  titulo3    String
-  titulo4    String
+  titulo1      String
+  titulo2      String
+  titulo3      String
+  titulo4      String
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 }
 
 model WebsiteSistema {
-  id             String @id @default(uuid())
-  titulo         String
-  descricao      String
-  subtitulo      String
-  etapa1Titulo   String
+  id              String   @id @default(uuid())
+  titulo          String
+  descricao       String
+  subtitulo       String
+  etapa1Titulo    String
   etapa1Descricao String
-  etapa2Titulo   String
+  etapa2Titulo    String
   etapa2Descricao String
-  etapa3Titulo   String
+  etapa3Titulo    String
   etapa3Descricao String
-  criadoEm       DateTime @default(now())
-  atualizadoEm   DateTime @updatedAt
+  criadoEm        DateTime @default(now())
+  atualizadoEm    DateTime @updatedAt
 }
 
 model WebsiteTreinamentoCompany {
@@ -674,34 +734,34 @@ model WebsiteTreinamentoCompany {
 }
 
 model WebsiteConexaoForte {
-  id           String @id @default(uuid())
-  titulo       String
-  descricao    String
-  imagemUrl1   String
+  id            String   @id @default(uuid())
+  titulo        String
+  descricao     String
+  imagemUrl1    String
   imagemTitulo1 String
-  imagemUrl2   String
+  imagemUrl2    String
   imagemTitulo2 String
-  imagemUrl3   String
+  imagemUrl3    String
   imagemTitulo3 String
-  imagemUrl4   String
+  imagemUrl4    String
   imagemTitulo4 String
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
+  criadoEm      DateTime @default(now())
+  atualizadoEm  DateTime @updatedAt
 }
 
 model WebsiteTreinamentosInCompany {
-  id         String   @id @default(uuid())
-  titulo     String
-  icone1     String
-  descricao1 String
-  icone2     String
-  descricao2 String
-  icone3     String
-  descricao3 String
-  icone4     String
-  descricao4 String
-  icone5     String
-  descricao5 String
+  id           String   @id @default(uuid())
+  titulo       String
+  icone1       String
+  descricao1   String
+  icone2       String
+  descricao2   String
+  icone3       String
+  descricao3   String
+  icone4       String
+  descricao4   String
+  icone5       String
+  descricao5   String
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 }
@@ -727,27 +787,27 @@ model WebsiteInformacoes {
 }
 
 model WebsiteHorarioFuncionamento {
-  id            String   @id @default(uuid())
+  id            String             @id @default(uuid())
   diaDaSemana   String
   horarioInicio String
   horarioFim    String
   informacoes   WebsiteInformacoes @relation(fields: [informacoesId], references: [id], onDelete: Cascade)
   informacoesId String
-  criadoEm      DateTime @default(now())
-  atualizadoEm  DateTime @updatedAt
+  criadoEm      DateTime           @default(now())
+  atualizadoEm  DateTime           @updatedAt
 }
 
 model WebsiteHeaderPage {
-  id          String               @id @default(uuid())
-  subtitulo   String
-  titulo      String
-  descricao   String
-  imagemUrl   String
-  buttonLabel String
-  buttonLink  String
-  page        WebsiteHeaderPageType @unique
-  criadoEm    DateTime              @default(now())
-  atualizadoEm DateTime             @updatedAt
+  id           String                @id @default(uuid())
+  subtitulo    String
+  titulo       String
+  descricao    String
+  imagemUrl    String
+  buttonLabel  String
+  buttonLink   String
+  page         WebsiteHeaderPageType @unique
+  criadoEm     DateTime              @default(now())
+  atualizadoEm DateTime              @updatedAt
 }
 
 // =============================================
@@ -816,6 +876,7 @@ enum PlanPaymentMethod {
   CARTAO_CREDITO
   CARTAO_DEBITO
   DINHEIRO
+  GRATUITO
 }
 
 // Indica se o plano foi atribuído como padrão ou para empresa parceira
@@ -834,9 +895,25 @@ enum PlanFrequencyType {
 enum PlanValidity {
   DIAS_15
   DIAS_30
+  DIAS_60
   DIAS_90
   DIAS_120
+  ANO_1
   SEM_VALIDADE
+}
+
+enum PlanCategory {
+  INICIAL
+  INTERMEDIARIO
+  AVANCADO
+  DESTAQUE
+}
+
+enum VagaStatus {
+  RASCUNHO
+  EM_ANALISE
+  PUBLICADO
+  REVISAO
 }
 
 enum SliderOrientation {
@@ -860,4 +937,3 @@ enum WebsiteHeaderPageType {
   POLITICA_PRIVACIDADE
   OUVIDORIA
 }
-

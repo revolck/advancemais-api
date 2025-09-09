@@ -6,7 +6,7 @@ import {
   ServiceResponse,
 } from "../types/order";
 import { MercadoPagoClient } from "../client/mercadopago-client";
-import { ProcessingMode, OrderStatus } from "../enums";
+import { ProcessingMode, OrderStatus, ClientType } from "../enums";
 import { prisma } from "../../../config/prisma";
 
 /**
@@ -17,7 +17,9 @@ export class OrdersService {
   private client: MercadoPagoClient;
 
   constructor() {
-    this.client = MercadoPagoClient.getInstance();
+    this.client = MercadoPagoClient.getInstance(
+      ClientType.CHECKOUT_TRANSPARENT
+    );
   }
 
   /**

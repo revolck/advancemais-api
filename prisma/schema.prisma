@@ -541,6 +541,7 @@ enum WebsiteStatus {
 enum WebsiteHeaderPageType {
   SOBRE
   RECRUTAMENTO
+  VAGAS
   TREINAMENTO
   CONTATO
   BLOG

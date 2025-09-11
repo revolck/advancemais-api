@@ -19,6 +19,7 @@ const options: Options = {
         name: "Default",
         description: "Endpoints públicos da API",
       },
+      { name: "Brevo", description: "Serviços de e-mail" },
       {
         name: "Usuários",
         description:
@@ -32,7 +33,6 @@ const options: Options = {
         name: "Usuários - Stats",
         description: "Métricas e relatórios de usuários",
       },
-      { name: "Brevo", description: "Serviços de e-mail" },
       { name: "Website", description: "Conteúdo público do site" },
       { name: "Website - Banner", description: "Gestão de banners" },
       { name: "Website - LogoEnterprises", description: "Logos de empresas" },
@@ -97,6 +97,44 @@ const options: Options = {
       {
         name: "Website - ImagemLogin",
         description: "Imagem exibida na página de login",
+      },
+      {
+        name: "Website - Header Pages",
+        description: "Cabeçalhos de páginas",
+      },
+    ],
+    "x-tagGroups": [
+      { name: "Default", tags: ["Default"] },
+      { name: "Brevo", tags: ["Brevo"] },
+      {
+        name: "Usuários",
+        tags: ["Usuários", "Usuários - Admin", "Usuários - Stats"],
+      },
+      {
+        name: "Websites",
+        tags: [
+          "Website",
+          "Website - Banner",
+          "Website - LogoEnterprises",
+          "Website - Slider",
+          "Website - Sobre",
+          "Website - Consultoria",
+          "Website - Recrutamento",
+          "Website - SobreEmpresa",
+          "Website - Team",
+          "Website - Depoimentos",
+          "Website - Diferenciais",
+          "Website - Planinhas",
+          "Website - Advance Ajuda",
+          "Website - RecrutamentoSelecao",
+          "Website - Sistema",
+          "Website - TreinamentoCompany",
+          "Website - ConexaoForte",
+          "Website - TreinamentosInCompany",
+          "Website - InformacoesGerais",
+          "Website - ImagemLogin",
+          "Website - Header Pages",
+        ],
       },
     ],
     components: {
@@ -3178,6 +3216,37 @@ export function setupSwagger(app: Application): void {
         customCssUrl: "/swagger-custom.css",
         swaggerOptions: {
           layout: "BaseLayout",
+          tagsSorter: (a: string, b: string) => {
+            const order = [
+              "Default",
+              "Brevo",
+              "Usuários",
+              "Usuários - Admin",
+              "Usuários - Stats",
+              "Website",
+              "Website - Banner",
+              "Website - LogoEnterprises",
+              "Website - Slider",
+              "Website - Sobre",
+              "Website - Consultoria",
+              "Website - Recrutamento",
+              "Website - SobreEmpresa",
+              "Website - Team",
+              "Website - Depoimentos",
+              "Website - Diferenciais",
+              "Website - Planinhas",
+              "Website - Advance Ajuda",
+              "Website - RecrutamentoSelecao",
+              "Website - Sistema",
+              "Website - TreinamentoCompany",
+              "Website - ConexaoForte",
+              "Website - TreinamentosInCompany",
+              "Website - InformacoesGerais",
+              "Website - ImagemLogin",
+              "Website - Header Pages",
+            ];
+            return order.indexOf(a) - order.indexOf(b);
+          },
         },
       })(req, res, next);
     }) as RequestHandler

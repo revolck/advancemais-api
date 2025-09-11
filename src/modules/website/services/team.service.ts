@@ -21,7 +21,9 @@ export const teamService = {
         },
       });
     }
-    const cached = await cache.get(CACHE_KEY);
+    const cached = await cache.get<
+      Awaited<ReturnType<typeof prisma.websiteTeamOrdem.findMany>>
+    >(CACHE_KEY);
     if (cached) return cached;
     const result = await prisma.websiteTeamOrdem.findMany({
       orderBy: { ordem: "asc" },

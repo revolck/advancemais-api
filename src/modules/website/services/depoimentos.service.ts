@@ -27,7 +27,9 @@ export const depoimentosService = {
         },
       });
     }
-    const cached = await cache.get(CACHE_KEY);
+    const cached = await cache.get<
+      Awaited<ReturnType<typeof prisma.websiteDepoimentoOrdem.findMany>>
+    >(CACHE_KEY);
     if (cached) return cached;
     const result = await prisma.websiteDepoimentoOrdem.findMany({
       orderBy: { ordem: "asc" },

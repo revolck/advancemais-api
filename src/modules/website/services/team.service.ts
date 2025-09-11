@@ -4,14 +4,29 @@ import { WebsiteStatus } from "@prisma/client";
 export const teamService = {
   list: (status?: WebsiteStatus) =>
     prisma.websiteTeamOrdem.findMany({
-      include: { team: true },
       where: status ? { status } : undefined,
       orderBy: { ordem: "asc" },
+      take: 100,
+      select: {
+        id: true,
+        ordem: true,
+        status: true,
+        team: {
+          select: { id: true, photoUrl: true, nome: true, cargo: true },
+        },
+      },
     }),
   get: (id: string) =>
     prisma.websiteTeamOrdem.findUnique({
       where: { id },
-      include: { team: true },
+      select: {
+        id: true,
+        ordem: true,
+        status: true,
+        team: {
+          select: { id: true, photoUrl: true, nome: true, cargo: true },
+        },
+      },
     }),
   create: async (data: {
     photoUrl: string;
@@ -35,7 +50,14 @@ export const teamService = {
           },
         },
       },
-      include: { team: true },
+      select: {
+        id: true,
+        ordem: true,
+        status: true,
+        team: {
+          select: { id: true, photoUrl: true, nome: true, cargo: true },
+        },
+      },
     });
   },
   update: (
@@ -89,14 +111,25 @@ export const teamService = {
               }
             : {}),
         },
-        include: { team: true },
+        select: {
+          id: true,
+          ordem: true,
+          status: true,
+          team: {
+            select: { id: true, photoUrl: true, nome: true, cargo: true },
+          },
+        },
       });
     }),
   reorder: (ordemId: string, novaOrdem: number) =>
     prisma.$transaction(async (tx) => {
       const current = await tx.websiteTeamOrdem.findUnique({
         where: { id: ordemId },
-        include: { team: true },
+        select: {
+          id: true,
+          ordem: true,
+          team: { select: { id: true, photoUrl: true, nome: true, cargo: true } },
+        },
       });
       if (!current) throw new Error("Team member não encontrado");
 
@@ -121,7 +154,13 @@ export const teamService = {
         return tx.websiteTeamOrdem.update({
           where: { id: ordemId },
           data: { ordem: novaOrdem },
-          include: { team: true },
+          select: {
+            id: true,
+            ordem: true,
+            team: {
+              select: { id: true, photoUrl: true, nome: true, cargo: true },
+            },
+          },
         });
       }
 
@@ -131,6 +170,7 @@ export const teamService = {
     prisma.$transaction(async (tx) => {
       const ordem = await tx.websiteTeamOrdem.findUnique({
         where: { websiteTeamId: teamId },
+        select: { id: true, ordem: true },
       });
       if (!ordem) return;
       await tx.websiteTeamOrdem.delete({ where: { id: ordem.id } });

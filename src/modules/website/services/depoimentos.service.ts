@@ -4,14 +4,41 @@ import { WebsiteStatus } from "@prisma/client";
 export const depoimentosService = {
   list: (status?: WebsiteStatus) =>
     prisma.websiteDepoimentoOrdem.findMany({
-      include: { depoimento: true },
       where: status ? { status } : undefined,
       orderBy: { ordem: "asc" },
+      take: 100,
+      select: {
+        id: true,
+        ordem: true,
+        status: true,
+        depoimento: {
+          select: {
+            id: true,
+            depoimento: true,
+            nome: true,
+            cargo: true,
+            fotoUrl: true,
+          },
+        },
+      },
     }),
   get: (id: string) =>
     prisma.websiteDepoimentoOrdem.findUnique({
       where: { id },
-      include: { depoimento: true },
+      select: {
+        id: true,
+        ordem: true,
+        status: true,
+        depoimento: {
+          select: {
+            id: true,
+            depoimento: true,
+            nome: true,
+            cargo: true,
+            fotoUrl: true,
+          },
+        },
+      },
     }),
   create: async (data: {
     depoimento: string;
@@ -37,7 +64,20 @@ export const depoimentosService = {
           },
         },
       },
-      include: { depoimento: true },
+      select: {
+        id: true,
+        ordem: true,
+        status: true,
+        depoimento: {
+          select: {
+            id: true,
+            depoimento: true,
+            nome: true,
+            cargo: true,
+            fotoUrl: true,
+          },
+        },
+      },
     });
   },
   update: (
@@ -85,7 +125,9 @@ export const depoimentosService = {
             ? {
                 depoimento: {
                   update: {
-                    ...(data.depoimento !== undefined && { depoimento: data.depoimento }),
+                    ...(data.depoimento !== undefined && {
+                      depoimento: data.depoimento,
+                    }),
                     ...(data.nome !== undefined && { nome: data.nome }),
                     ...(data.cargo !== undefined && { cargo: data.cargo }),
                     ...(data.fotoUrl !== undefined && { fotoUrl: data.fotoUrl }),
@@ -94,14 +136,39 @@ export const depoimentosService = {
               }
             : {}),
         },
-        include: { depoimento: true },
+        select: {
+          id: true,
+          ordem: true,
+          status: true,
+          depoimento: {
+            select: {
+              id: true,
+              depoimento: true,
+              nome: true,
+              cargo: true,
+              fotoUrl: true,
+            },
+          },
+        },
       });
     }),
   reorder: (ordemId: string, novaOrdem: number) =>
     prisma.$transaction(async (tx) => {
       const current = await tx.websiteDepoimentoOrdem.findUnique({
         where: { id: ordemId },
-        include: { depoimento: true },
+        select: {
+          id: true,
+          ordem: true,
+          depoimento: {
+            select: {
+              id: true,
+              depoimento: true,
+              nome: true,
+              cargo: true,
+              fotoUrl: true,
+            },
+          },
+        },
       });
       if (!current) throw new Error("Depoimento não encontrado");
 
@@ -126,7 +193,19 @@ export const depoimentosService = {
         return tx.websiteDepoimentoOrdem.update({
           where: { id: ordemId },
           data: { ordem: novaOrdem },
-          include: { depoimento: true },
+          select: {
+            id: true,
+            ordem: true,
+            depoimento: {
+              select: {
+                id: true,
+                depoimento: true,
+                nome: true,
+                cargo: true,
+                fotoUrl: true,
+              },
+            },
+          },
         });
       }
 
@@ -136,6 +215,7 @@ export const depoimentosService = {
     prisma.$transaction(async (tx) => {
       const ordem = await tx.websiteDepoimentoOrdem.findUnique({
         where: { websiteDepoimentoId: depoimentoId },
+        select: { id: true, ordem: true },
       });
       if (!ordem) return;
       await tx.websiteDepoimentoOrdem.delete({ where: { id: ordem.id } });

@@ -94,6 +94,10 @@ const options: Options = {
         name: "Website - InformacoesGerais",
         description: "Informações gerais do site",
       },
+      {
+        name: "Website - ImagemLogin",
+        description: "Imagem exibida na página de login",
+      },
     ],
     components: {
       schemas: {
@@ -845,6 +849,7 @@ const options: Options = {
                   type: "string",
                   example: "/informacoes-gerais",
                 },
+                imagemLogin: { type: "string", example: "/imagem-login" },
               },
             },
             status: { type: "string", example: "operational" },
@@ -1101,6 +1106,62 @@ const options: Options = {
               description:
                 "Nova posição desejada do logo. Se já houver outro na posição, os demais serão reordenados automaticamente",
             },
+          },
+        },
+        WebsiteImagemLogin: {
+          type: "object",
+          properties: {
+            id: { type: "string", example: "login-uuid" },
+            imagemUrl: {
+              type: "string",
+              format: "uri",
+              example: "https://cdn.example.com/login.png",
+            },
+            imagemTitulo: { type: "string", example: "login" },
+            link: { type: "string", nullable: true, example: "https://example.com" },
+            criadoEm: {
+              type: "string",
+              format: "date-time",
+              example: "2024-01-01T12:00:00Z",
+            },
+            atualizadoEm: {
+              type: "string",
+              format: "date-time",
+              example: "2024-01-01T12:00:00Z",
+            },
+          },
+        },
+        WebsiteImagemLoginCreateInput: {
+          type: "object",
+          properties: {
+            imagem: {
+              type: "string",
+              format: "binary",
+              description: "Arquivo de imagem",
+            },
+            imagemUrl: {
+              type: "string",
+              format: "uri",
+              description: "URL alternativa da imagem",
+              example: "https://cdn.example.com/login.png",
+            },
+            link: {
+              type: "string",
+              nullable: true,
+              example: "https://example.com",
+            },
+          },
+        },
+        WebsiteImagemLoginUpdateInput: {
+          type: "object",
+          properties: {
+            imagem: { type: "string", format: "binary" },
+            imagemUrl: {
+              type: "string",
+              format: "uri",
+              example: "https://cdn.example.com/login.png",
+            },
+            link: { type: "string", nullable: true, example: "https://example.com" },
           },
         },
         WebsiteSlider: {

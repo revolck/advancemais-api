@@ -48,11 +48,15 @@ model Usuario {
   enderecos     Endereco[]
   empresa       Empresa?    @relation(fields: [codEmpresa], references: [id])
   codigoUsuario CodigoUsuario?
-  
-  
-  
+
+
+
   @@index([tokenRecuperacao])
   @@index([emailVerificationToken])
+  @@index([status])
+  @@index([role])
+  @@index([tipoUsuario])
+  @@index([criadoEm])
 }
 
 model Empresa {

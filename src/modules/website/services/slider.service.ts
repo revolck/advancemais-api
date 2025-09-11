@@ -4,14 +4,41 @@ import { SliderOrientation, WebsiteStatus } from "@prisma/client";
 export const sliderService = {
   list: () =>
     prisma.websiteSliderOrdem.findMany({
-      include: { slider: true },
       orderBy: { ordem: "asc" },
+      take: 100,
+      select: {
+        id: true,
+        ordem: true,
+        orientacao: true,
+        status: true,
+        slider: {
+          select: {
+            id: true,
+            sliderName: true,
+            imagemUrl: true,
+            link: true,
+          },
+        },
+      },
     }),
 
   get: (id: string) =>
     prisma.websiteSliderOrdem.findUnique({
       where: { id },
-      include: { slider: true },
+      select: {
+        id: true,
+        ordem: true,
+        orientacao: true,
+        status: true,
+        slider: {
+          select: {
+            id: true,
+            sliderName: true,
+            imagemUrl: true,
+            link: true,
+          },
+        },
+      },
     }),
 
   create: async (data: {
@@ -40,7 +67,20 @@ export const sliderService = {
           },
         },
       },
-      include: { slider: true },
+      select: {
+        id: true,
+        ordem: true,
+        orientacao: true,
+        status: true,
+        slider: {
+          select: {
+            id: true,
+            sliderName: true,
+            imagemUrl: true,
+            link: true,
+          },
+        },
+      },
     });
   },
 
@@ -125,7 +165,20 @@ export const sliderService = {
                 }
               : undefined,
         },
-        include: { slider: true },
+        select: {
+          id: true,
+          ordem: true,
+          orientacao: true,
+          status: true,
+          slider: {
+            select: {
+              id: true,
+              sliderName: true,
+              imagemUrl: true,
+              link: true,
+            },
+          },
+        },
       });
     }),
 
@@ -133,7 +186,19 @@ export const sliderService = {
     prisma.$transaction(async (tx) => {
       const current = await tx.websiteSliderOrdem.findUnique({
         where: { id: ordemId },
-        include: { slider: true },
+        select: {
+          id: true,
+          ordem: true,
+          orientacao: true,
+          slider: {
+            select: {
+              id: true,
+              sliderName: true,
+              imagemUrl: true,
+              link: true,
+            },
+          },
+        },
       });
       if (!current) throw new Error("Slider não encontrado");
 
@@ -164,7 +229,19 @@ export const sliderService = {
         return tx.websiteSliderOrdem.update({
           where: { id: ordemId },
           data: { ordem: novaOrdem },
-          include: { slider: true },
+          select: {
+            id: true,
+            ordem: true,
+            orientacao: true,
+            slider: {
+              select: {
+                id: true,
+                sliderName: true,
+                imagemUrl: true,
+                link: true,
+              },
+            },
+          },
         });
       }
 
@@ -175,6 +252,7 @@ export const sliderService = {
     await prisma.$transaction(async (tx) => {
       const ordem = await tx.websiteSliderOrdem.findUnique({
         where: { websiteSliderId: sliderId },
+        select: { id: true, ordem: true, orientacao: true },
       });
       if (!ordem) return;
       await tx.websiteSliderOrdem.delete({ where: { id: ordem.id } });

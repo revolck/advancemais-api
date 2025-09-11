@@ -4,14 +4,41 @@ import { WebsiteStatus } from "@prisma/client";
 export const logoEnterpriseService = {
   list: () =>
     prisma.websiteLogoEnterpriseOrdem.findMany({
-      include: { logo: true },
       orderBy: { ordem: "asc" },
+      take: 100,
+      select: {
+        id: true,
+        ordem: true,
+        status: true,
+        logo: {
+          select: {
+            id: true,
+            nome: true,
+            imagemUrl: true,
+            imagemAlt: true,
+            website: true,
+          },
+        },
+      },
     }),
 
   get: (id: string) =>
     prisma.websiteLogoEnterpriseOrdem.findUnique({
       where: { id },
-      include: { logo: true },
+      select: {
+        id: true,
+        ordem: true,
+        status: true,
+        logo: {
+          select: {
+            id: true,
+            nome: true,
+            imagemUrl: true,
+            imagemAlt: true,
+            website: true,
+          },
+        },
+      },
     }),
 
   create: (data: {
@@ -40,7 +67,20 @@ export const logoEnterpriseService = {
             },
           },
         },
-        include: { logo: true },
+        select: {
+          id: true,
+          ordem: true,
+          status: true,
+          logo: {
+            select: {
+              id: true,
+              nome: true,
+              imagemUrl: true,
+              imagemAlt: true,
+              website: true,
+            },
+          },
+        },
       });
     }),
 
@@ -99,7 +139,20 @@ export const logoEnterpriseService = {
                 }
               : undefined,
         },
-        include: { logo: true },
+        select: {
+          id: true,
+          ordem: true,
+          status: true,
+          logo: {
+            select: {
+              id: true,
+              nome: true,
+              imagemUrl: true,
+              imagemAlt: true,
+              website: true,
+            },
+          },
+        },
       });
     }),
 
@@ -107,7 +160,19 @@ export const logoEnterpriseService = {
     prisma.$transaction(async (tx) => {
       const current = await tx.websiteLogoEnterpriseOrdem.findUnique({
         where: { id: ordemId },
-        include: { logo: true },
+        select: {
+          id: true,
+          ordem: true,
+          logo: {
+            select: {
+              id: true,
+              nome: true,
+              imagemUrl: true,
+              imagemAlt: true,
+              website: true,
+            },
+          },
+        },
       });
       if (!current) throw new Error("Logo não encontrada");
 
@@ -132,7 +197,19 @@ export const logoEnterpriseService = {
         return tx.websiteLogoEnterpriseOrdem.update({
           where: { id: ordemId },
           data: { ordem: novaOrdem },
-          include: { logo: true },
+          select: {
+            id: true,
+            ordem: true,
+            logo: {
+              select: {
+                id: true,
+                nome: true,
+                imagemUrl: true,
+                imagemAlt: true,
+                website: true,
+              },
+            },
+          },
         });
       }
 
@@ -143,6 +220,7 @@ export const logoEnterpriseService = {
     prisma.$transaction(async (tx) => {
       const ordem = await tx.websiteLogoEnterpriseOrdem.findUnique({
         where: { websiteLogoEnterpriseId: logoId },
+        select: { id: true, ordem: true },
       });
       if (!ordem) return;
       await tx.websiteLogoEnterpriseOrdem.delete({ where: { id: ordem.id } });

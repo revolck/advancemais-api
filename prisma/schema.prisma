@@ -313,6 +313,15 @@ model WebsiteLogoEnterpriseOrdem {
   @@unique([ordem])
 }
 
+model WebsiteImagemLogin {
+  id           String   @id @default(uuid())
+  imagemUrl    String
+  imagemTitulo String
+  link         String?
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
 model WebsitePlaninhas {
   id        String @id @default(uuid())
   titulo    String

@@ -29,10 +29,6 @@ const options: Options = {
         description: "Gestão administrativa de usuários",
       },
       {
-        name: "Usuários - Pagamentos",
-        description: "Operações de pagamento do usuário",
-      },
-      {
         name: "Usuários - Stats",
         description: "Métricas e relatórios de usuários",
       },

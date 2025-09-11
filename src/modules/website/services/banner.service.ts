@@ -6,7 +6,9 @@ const CACHE_KEY = "website:banner:list";
 
 export const bannerService = {
   list: async () => {
-    const cached = await cache.get(CACHE_KEY);
+    const cached = await cache.get<Awaited<ReturnType<typeof prisma.websiteBannerOrdem.findMany>>>(
+      CACHE_KEY
+    );
     if (cached) return cached;
     const result = await prisma.websiteBannerOrdem.findMany({
       orderBy: { ordem: "asc" },

@@ -4,14 +4,39 @@ import { WebsiteStatus } from "@prisma/client";
 export const bannerService = {
   list: () =>
     prisma.websiteBannerOrdem.findMany({
-      include: { banner: true },
       orderBy: { ordem: "asc" },
+      take: 100,
+      select: {
+        id: true,
+        ordem: true,
+        status: true,
+        banner: {
+          select: {
+            id: true,
+            imagemUrl: true,
+            imagemTitulo: true,
+            link: true,
+          },
+        },
+      },
     }),
 
   get: (id: string) =>
     prisma.websiteBannerOrdem.findUnique({
       where: { id },
-      include: { banner: true },
+      select: {
+        id: true,
+        ordem: true,
+        status: true,
+        banner: {
+          select: {
+            id: true,
+            imagemUrl: true,
+            imagemTitulo: true,
+            link: true,
+          },
+        },
+      },
     }),
 
   create: (data: {
@@ -36,7 +61,19 @@ export const bannerService = {
             },
           },
         },
-        include: { banner: true },
+        select: {
+          id: true,
+          ordem: true,
+          status: true,
+          banner: {
+            select: {
+              id: true,
+              imagemUrl: true,
+              imagemTitulo: true,
+              link: true,
+            },
+          },
+        },
       });
     }),
 
@@ -90,7 +127,19 @@ export const bannerService = {
                 }
               : undefined,
         },
-        include: { banner: true },
+        select: {
+          id: true,
+          ordem: true,
+          status: true,
+          banner: {
+            select: {
+              id: true,
+              imagemUrl: true,
+              imagemTitulo: true,
+              link: true,
+            },
+          },
+        },
       });
     }),
 
@@ -98,7 +147,18 @@ export const bannerService = {
     prisma.$transaction(async (tx) => {
       const current = await tx.websiteBannerOrdem.findUnique({
         where: { id: ordemId },
-        include: { banner: true },
+        select: {
+          id: true,
+          ordem: true,
+          banner: {
+            select: {
+              id: true,
+              imagemUrl: true,
+              imagemTitulo: true,
+              link: true,
+            },
+          },
+        },
       });
       if (!current) throw new Error("Banner não encontrado");
 
@@ -123,7 +183,18 @@ export const bannerService = {
         return tx.websiteBannerOrdem.update({
           where: { id: ordemId },
           data: { ordem: novaOrdem },
-          include: { banner: true },
+          select: {
+            id: true,
+            ordem: true,
+            banner: {
+              select: {
+                id: true,
+                imagemUrl: true,
+                imagemTitulo: true,
+                link: true,
+              },
+            },
+          },
         });
       }
 
@@ -134,6 +205,7 @@ export const bannerService = {
     prisma.$transaction(async (tx) => {
       const ordem = await tx.websiteBannerOrdem.findUnique({
         where: { websiteBannerId: bannerId },
+        select: { id: true, ordem: true },
       });
       if (!ordem) return;
       await tx.websiteBannerOrdem.delete({ where: { id: ordem.id } });

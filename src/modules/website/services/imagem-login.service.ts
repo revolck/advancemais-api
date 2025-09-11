@@ -1,14 +1,34 @@
 import { prisma } from "../../../config/prisma";
 import { WebsiteImagemLogin } from "@prisma/client";
+import cache from "../../../utils/cache";
+
+const CACHE_KEY = "website:imagemLogin:list";
 
 export const imagemLoginService = {
-  list: () => prisma.websiteImagemLogin.findMany(),
+  list: async () => {
+    const cached = await cache.get(CACHE_KEY);
+    if (cached) return cached;
+    const result = await prisma.websiteImagemLogin.findMany();
+    await cache.set(CACHE_KEY, result);
+    return result;
+  },
   get: (id: string) => prisma.websiteImagemLogin.findUnique({ where: { id } }),
-  create: (
+  create: async (
     data: Omit<WebsiteImagemLogin, "id" | "criadoEm" | "atualizadoEm">
-  ) => prisma.websiteImagemLogin.create({ data }),
-  update: (id: string, data: Partial<WebsiteImagemLogin>) =>
-    prisma.websiteImagemLogin.update({ where: { id }, data }),
-  remove: (id: string) => prisma.websiteImagemLogin.delete({ where: { id } }),
+  ) => {
+    const result = await prisma.websiteImagemLogin.create({ data });
+    await cache.invalidate(CACHE_KEY);
+    return result;
+  },
+  update: async (id: string, data: Partial<WebsiteImagemLogin>) => {
+    const result = await prisma.websiteImagemLogin.update({ where: { id }, data });
+    await cache.invalidate(CACHE_KEY);
+    return result;
+  },
+  remove: async (id: string) => {
+    const result = await prisma.websiteImagemLogin.delete({ where: { id } });
+    await cache.invalidate(CACHE_KEY);
+    return result;
+  },
 };
 

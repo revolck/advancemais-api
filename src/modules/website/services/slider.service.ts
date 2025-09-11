@@ -1,9 +1,14 @@
 import { prisma } from "../../../config/prisma";
 import { SliderOrientation, WebsiteStatus } from "@prisma/client";
+import cache from "../../../utils/cache";
+
+const CACHE_KEY = "website:slider:list";
 
 export const sliderService = {
-  list: () =>
-    prisma.websiteSliderOrdem.findMany({
+  list: async () => {
+    const cached = await cache.get(CACHE_KEY);
+    if (cached) return cached;
+    const result = await prisma.websiteSliderOrdem.findMany({
       orderBy: { ordem: "asc" },
       take: 100,
       select: {
@@ -20,7 +25,10 @@ export const sliderService = {
           },
         },
       },
-    }),
+    });
+    await cache.set(CACHE_KEY, result);
+    return result;
+  },
 
   get: (id: string) =>
     prisma.websiteSliderOrdem.findUnique({
@@ -54,7 +62,7 @@ export const sliderService = {
     });
     const ordem = (max._max.ordem ?? 0) + 1;
 
-    return prisma.websiteSliderOrdem.create({
+    const result = await prisma.websiteSliderOrdem.create({
       data: {
         ordem,
         orientacao: data.orientacao,
@@ -82,6 +90,8 @@ export const sliderService = {
         },
       },
     });
+    await cache.invalidate(CACHE_KEY);
+    return result;
   },
 
   update: async (
@@ -94,8 +104,8 @@ export const sliderService = {
       status?: WebsiteStatus;
       ordem?: number;
     }
-  ) =>
-    prisma.$transaction(async (tx) => {
+  ) => {
+    const result = await prisma.$transaction(async (tx) => {
       const current = await tx.websiteSliderOrdem.findUnique({
         where: { websiteSliderId: sliderId },
       });
@@ -180,10 +190,13 @@ export const sliderService = {
           },
         },
       });
-    }),
+    });
+    await cache.invalidate(CACHE_KEY);
+    return result;
+  },
 
-  reorder: async (ordemId: string, novaOrdem: number) =>
-    prisma.$transaction(async (tx) => {
+  reorder: async (ordemId: string, novaOrdem: number) => {
+    const result = await prisma.$transaction(async (tx) => {
       const current = await tx.websiteSliderOrdem.findUnique({
         where: { id: ordemId },
         select: {
@@ -246,7 +259,10 @@ export const sliderService = {
       }
 
       return current;
-    }),
+    });
+    await cache.invalidate(CACHE_KEY);
+    return result;
+  },
 
   remove: async (sliderId: string) => {
     await prisma.$transaction(async (tx) => {
@@ -262,6 +278,7 @@ export const sliderService = {
         data: { ordem: { decrement: 1 } },
       });
     });
+    await cache.invalidate(CACHE_KEY);
   },
 };
 

@@ -1,9 +1,14 @@
 import { prisma } from "../../../config/prisma";
 import { Prisma } from "@prisma/client";
+import cache from "../../../utils/cache";
+
+const CACHE_KEY = "website:informacoesGerais:list";
 
 export const informacoesGeraisService = {
-  list: () =>
-    prisma.websiteInformacoes.findMany({
+  list: async () => {
+    const cached = await cache.get(CACHE_KEY);
+    if (cached) return cached;
+    const result = await prisma.websiteInformacoes.findMany({
       select: {
         id: true,
         endereco: true,
@@ -27,7 +32,10 @@ export const informacoesGeraisService = {
           },
         },
       },
-    }),
+    });
+    await cache.set(CACHE_KEY, result);
+    return result;
+  },
   get: (id: string) =>
     prisma.websiteInformacoes.findUnique({
       where: { id },
@@ -55,8 +63,8 @@ export const informacoesGeraisService = {
         },
       },
     }),
-  create: (data: Prisma.WebsiteInformacoesCreateInput) =>
-    prisma.websiteInformacoes.create({
+  create: async (data: Prisma.WebsiteInformacoesCreateInput) => {
+    const result = await prisma.websiteInformacoes.create({
       data,
       select: {
         id: true,
@@ -81,9 +89,12 @@ export const informacoesGeraisService = {
           },
         },
       },
-    }),
-  update: (id: string, data: Prisma.WebsiteInformacoesUpdateInput) =>
-    prisma.websiteInformacoes.update({
+    });
+    await cache.invalidate(CACHE_KEY);
+    return result;
+  },
+  update: async (id: string, data: Prisma.WebsiteInformacoesUpdateInput) => {
+    const result = await prisma.websiteInformacoes.update({
       where: { id },
       data,
       select: {
@@ -109,7 +120,16 @@ export const informacoesGeraisService = {
           },
         },
       },
-    }),
-  remove: (id: string) =>
-    prisma.websiteInformacoes.delete({ where: { id }, select: { id: true } }),
+    });
+    await cache.invalidate(CACHE_KEY);
+    return result;
+  },
+  remove: async (id: string) => {
+    const result = await prisma.websiteInformacoes.delete({
+      where: { id },
+      select: { id: true },
+    });
+    await cache.invalidate(CACHE_KEY);
+    return result;
+  },
 };

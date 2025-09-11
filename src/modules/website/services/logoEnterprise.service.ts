@@ -1,9 +1,14 @@
 import { prisma } from "../../../config/prisma";
 import { WebsiteStatus } from "@prisma/client";
+import cache from "../../../utils/cache";
+
+const CACHE_KEY = "website:logoEnterprise:list";
 
 export const logoEnterpriseService = {
-  list: () =>
-    prisma.websiteLogoEnterpriseOrdem.findMany({
+  list: async () => {
+    const cached = await cache.get(CACHE_KEY);
+    if (cached) return cached;
+    const result = await prisma.websiteLogoEnterpriseOrdem.findMany({
       orderBy: { ordem: "asc" },
       take: 100,
       select: {
@@ -20,7 +25,10 @@ export const logoEnterpriseService = {
           },
         },
       },
-    }),
+    });
+    await cache.set(CACHE_KEY, result);
+    return result;
+  },
 
   get: (id: string) =>
     prisma.websiteLogoEnterpriseOrdem.findUnique({
@@ -41,14 +49,14 @@ export const logoEnterpriseService = {
       },
     }),
 
-  create: (data: {
+  create: async (data: {
     nome: string;
     imagemUrl: string;
     imagemAlt: string;
     website?: string;
     status?: WebsiteStatus;
-  }) =>
-    prisma.$transaction(async (tx) => {
+  }) => {
+    const result = await prisma.$transaction(async (tx) => {
       const max = await tx.websiteLogoEnterpriseOrdem.aggregate({
         _max: { ordem: true },
       });
@@ -82,9 +90,12 @@ export const logoEnterpriseService = {
           },
         },
       });
-    }),
+    });
+    await cache.invalidate(CACHE_KEY);
+    return result;
+  },
 
-  update: (
+  update: async (
     logoId: string,
     data: {
       nome?: string;
@@ -94,8 +105,8 @@ export const logoEnterpriseService = {
       status?: WebsiteStatus;
       ordem?: number;
     }
-  ) =>
-    prisma.$transaction(async (tx) => {
+  ) => {
+    const result = await prisma.$transaction(async (tx) => {
       const current = await tx.websiteLogoEnterpriseOrdem.findUnique({
         where: { websiteLogoEnterpriseId: logoId },
       });
@@ -154,10 +165,13 @@ export const logoEnterpriseService = {
           },
         },
       });
-    }),
+    });
+    await cache.invalidate(CACHE_KEY);
+    return result;
+  },
 
-  reorder: (ordemId: string, novaOrdem: number) =>
-    prisma.$transaction(async (tx) => {
+  reorder: async (ordemId: string, novaOrdem: number) => {
+    const result = await prisma.$transaction(async (tx) => {
       const current = await tx.websiteLogoEnterpriseOrdem.findUnique({
         where: { id: ordemId },
         select: {
@@ -214,10 +228,13 @@ export const logoEnterpriseService = {
       }
 
       return current;
-    }),
+    });
+    await cache.invalidate(CACHE_KEY);
+    return result;
+  },
 
-  remove: (logoId: string) =>
-    prisma.$transaction(async (tx) => {
+  remove: async (logoId: string) => {
+    await prisma.$transaction(async (tx) => {
       const ordem = await tx.websiteLogoEnterpriseOrdem.findUnique({
         where: { websiteLogoEnterpriseId: logoId },
         select: { id: true, ordem: true },
@@ -229,5 +246,7 @@ export const logoEnterpriseService = {
         where: { ordem: { gt: ordem.ordem } },
         data: { ordem: { decrement: 1 } },
       });
-    }),
+    });
+    await cache.invalidate(CACHE_KEY);
+  },
 };

@@ -6,7 +6,9 @@ const CACHE_KEY = "website:slider:list";
 
 export const sliderService = {
   list: async () => {
-    const cached = await cache.get(CACHE_KEY);
+    const cached = await cache.get<
+      Awaited<ReturnType<typeof prisma.websiteSliderOrdem.findMany>>
+    >(CACHE_KEY);
     if (cached) return cached;
     const result = await prisma.websiteSliderOrdem.findMany({
       orderBy: { ordem: "asc" },

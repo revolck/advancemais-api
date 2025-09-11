@@ -194,6 +194,7 @@ model WebsiteTeamOrdem {
   team          WebsiteTeam  @relation(fields: [websiteTeamId], references: [id], onDelete: Cascade)
 
   @@unique([ordem])
+  @@index([ordem])
 }
 
 model WebsiteDepoimento {
@@ -218,6 +219,7 @@ model WebsiteDepoimentoOrdem {
   depoimento           WebsiteDepoimento @relation(fields: [websiteDepoimentoId], references: [id], onDelete: Cascade)
 
   @@unique([ordem])
+  @@index([ordem])
 }
 
 model WebsiteDiferenciais {
@@ -264,6 +266,7 @@ model WebsiteSliderOrdem {
   slider          WebsiteSlider      @relation(fields: [websiteSliderId], references: [id], onDelete: Cascade)
 
   @@unique([ordem, orientacao])
+  @@index([ordem])
 }
 
 model WebsiteBanner {
@@ -287,6 +290,7 @@ model WebsiteBannerOrdem {
   banner          WebsiteBanner @relation(fields: [websiteBannerId], references: [id], onDelete: Cascade)
 
   @@unique([ordem])
+  @@index([ordem])
 }
 
 model WebsiteLogoEnterprise {
@@ -311,6 +315,7 @@ model WebsiteLogoEnterpriseOrdem {
   logo WebsiteLogoEnterprise @relation(fields: [websiteLogoEnterpriseId], references: [id], onDelete: Cascade)
 
   @@unique([ordem])
+  @@index([ordem])
 }
 
 model WebsiteImagemLogin {

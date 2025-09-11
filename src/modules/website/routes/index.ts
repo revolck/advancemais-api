@@ -18,6 +18,7 @@ import { treinamentosInCompanyRoutes } from "./treinamentos-in-company";
 import { headerPagesRoutes } from "./header-pages";
 import { depoimentosRoutes } from "./depoimentos";
 import { informacoesGeraisRoutes } from "./informacoes-gerais";
+import { imagemLoginRoutes } from "./imagem-login";
 
 const router = Router();
 
@@ -71,6 +72,7 @@ router.get("/", (req, res) => {
       headerPages: "/header-pages",
       depoimentos: "/depoimentos",
       informacoesGerais: "/informacoes-gerais",
+      imagemLogin: "/imagem-login",
     },
     status: "operational",
   });
@@ -95,5 +97,6 @@ router.use("/treinamentos-in-company", treinamentosInCompanyRoutes);
 router.use("/header-pages", headerPagesRoutes);
 router.use("/depoimentos", depoimentosRoutes);
 router.use("/informacoes-gerais", informacoesGeraisRoutes);
+router.use("/imagem-login", imagemLoginRoutes);
 
 export { router as websiteRoutes };

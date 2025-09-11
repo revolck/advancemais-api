@@ -1,10 +1,29 @@
 import { prisma } from "../../../config/prisma";
 import { WebsiteStatus } from "@prisma/client";
+import cache from "../../../utils/cache";
+
+const CACHE_KEY = "website:team:list";
 
 export const teamService = {
-  list: (status?: WebsiteStatus) =>
-    prisma.websiteTeamOrdem.findMany({
-      where: status ? { status } : undefined,
+  list: async (status?: WebsiteStatus) => {
+    if (status) {
+      return prisma.websiteTeamOrdem.findMany({
+        where: { status },
+        orderBy: { ordem: "asc" },
+        take: 100,
+        select: {
+          id: true,
+          ordem: true,
+          status: true,
+          team: {
+            select: { id: true, photoUrl: true, nome: true, cargo: true },
+          },
+        },
+      });
+    }
+    const cached = await cache.get(CACHE_KEY);
+    if (cached) return cached;
+    const result = await prisma.websiteTeamOrdem.findMany({
       orderBy: { ordem: "asc" },
       take: 100,
       select: {
@@ -15,7 +34,10 @@ export const teamService = {
           select: { id: true, photoUrl: true, nome: true, cargo: true },
         },
       },
-    }),
+    });
+    await cache.set(CACHE_KEY, result);
+    return result;
+  },
   get: (id: string) =>
     prisma.websiteTeamOrdem.findUnique({
       where: { id },
@@ -38,7 +60,7 @@ export const teamService = {
       _max: { ordem: true },
     });
     const ordem = (max._max.ordem ?? 0) + 1;
-    return prisma.websiteTeamOrdem.create({
+    const result = await prisma.websiteTeamOrdem.create({
       data: {
         ordem,
         status: data.status ?? "RASCUNHO",
@@ -59,8 +81,10 @@ export const teamService = {
         },
       },
     });
+    await cache.invalidate(CACHE_KEY);
+    return result;
   },
-  update: (
+  update: async (
     teamId: string,
     data: {
       photoUrl?: string;
@@ -69,8 +93,8 @@ export const teamService = {
       status?: WebsiteStatus;
       ordem?: number;
     }
-  ) =>
-    prisma.$transaction(async (tx) => {
+  ) => {
+    const result = await prisma.$transaction(async (tx) => {
       const current = await tx.websiteTeamOrdem.findUnique({
         where: { websiteTeamId: teamId },
       });
@@ -120,9 +144,12 @@ export const teamService = {
           },
         },
       });
-    }),
-  reorder: (ordemId: string, novaOrdem: number) =>
-    prisma.$transaction(async (tx) => {
+    });
+    await cache.invalidate(CACHE_KEY);
+    return result;
+  },
+  reorder: async (ordemId: string, novaOrdem: number) => {
+    const result = await prisma.$transaction(async (tx) => {
       const current = await tx.websiteTeamOrdem.findUnique({
         where: { id: ordemId },
         select: {
@@ -165,9 +192,12 @@ export const teamService = {
       }
 
       return current;
-    }),
-  remove: (teamId: string) =>
-    prisma.$transaction(async (tx) => {
+    });
+    await cache.invalidate(CACHE_KEY);
+    return result;
+  },
+  remove: async (teamId: string) => {
+    await prisma.$transaction(async (tx) => {
       const ordem = await tx.websiteTeamOrdem.findUnique({
         where: { websiteTeamId: teamId },
         select: { id: true, ordem: true },
@@ -179,6 +209,8 @@ export const teamService = {
         where: { ordem: { gt: ordem.ordem } },
         data: { ordem: { decrement: 1 } },
       });
-    }),
+    });
+    await cache.invalidate(CACHE_KEY);
+  },
 };
 

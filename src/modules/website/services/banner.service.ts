@@ -1,9 +1,14 @@
 import { prisma } from "../../../config/prisma";
 import { WebsiteStatus } from "@prisma/client";
+import cache from "../../../utils/cache";
+
+const CACHE_KEY = "website:banner:list";
 
 export const bannerService = {
-  list: () =>
-    prisma.websiteBannerOrdem.findMany({
+  list: async () => {
+    const cached = await cache.get(CACHE_KEY);
+    if (cached) return cached;
+    const result = await prisma.websiteBannerOrdem.findMany({
       orderBy: { ordem: "asc" },
       take: 100,
       select: {
@@ -19,7 +24,10 @@ export const bannerService = {
           },
         },
       },
-    }),
+    });
+    await cache.set(CACHE_KEY, result);
+    return result;
+  },
 
   get: (id: string) =>
     prisma.websiteBannerOrdem.findUnique({
@@ -39,13 +47,13 @@ export const bannerService = {
       },
     }),
 
-  create: (data: {
+  create: async (data: {
     imagemUrl: string;
     imagemTitulo: string;
     link?: string;
     status?: WebsiteStatus;
-  }) =>
-    prisma.$transaction(async (tx) => {
+  }) => {
+    const result = await prisma.$transaction(async (tx) => {
       const max = await tx.websiteBannerOrdem.aggregate({ _max: { ordem: true } });
       const ordem = (max._max.ordem ?? 0) + 1;
 
@@ -75,9 +83,12 @@ export const bannerService = {
           },
         },
       });
-    }),
+    });
+    await cache.invalidate(CACHE_KEY);
+    return result;
+  },
 
-  update: (
+  update: async (
     bannerId: string,
     data: {
       imagemUrl?: string;
@@ -86,8 +97,8 @@ export const bannerService = {
       status?: WebsiteStatus;
       ordem?: number;
     }
-  ) =>
-    prisma.$transaction(async (tx) => {
+  ) => {
+    const result = await prisma.$transaction(async (tx) => {
       const current = await tx.websiteBannerOrdem.findUnique({
         where: { websiteBannerId: bannerId },
       });
@@ -141,10 +152,13 @@ export const bannerService = {
           },
         },
       });
-    }),
+    });
+    await cache.invalidate(CACHE_KEY);
+    return result;
+  },
 
-  reorder: (ordemId: string, novaOrdem: number) =>
-    prisma.$transaction(async (tx) => {
+  reorder: async (ordemId: string, novaOrdem: number) => {
+    const result = await prisma.$transaction(async (tx) => {
       const current = await tx.websiteBannerOrdem.findUnique({
         where: { id: ordemId },
         select: {
@@ -199,10 +213,13 @@ export const bannerService = {
       }
 
       return current;
-    }),
+    });
+    await cache.invalidate(CACHE_KEY);
+    return result;
+  },
 
-  remove: (bannerId: string) =>
-    prisma.$transaction(async (tx) => {
+  remove: async (bannerId: string) => {
+    await prisma.$transaction(async (tx) => {
       const ordem = await tx.websiteBannerOrdem.findUnique({
         where: { websiteBannerId: bannerId },
         select: { id: true, ordem: true },
@@ -214,6 +231,8 @@ export const bannerService = {
         where: { ordem: { gt: ordem.ordem } },
         data: { ordem: { decrement: 1 } },
       });
-    }),
+    });
+    await cache.invalidate(CACHE_KEY);
+  },
 };
 

@@ -11,6 +11,7 @@ import {
   validarSenha,
   limparDocumento,
 } from "../utils/validation";
+import { invalidateUserCache } from "../utils/cache";
 
 /**
  * Interface para solicitação de recuperação de senha
@@ -129,6 +130,8 @@ export class PasswordRecoveryController {
               tentativasRecuperacao: 0,
             },
           });
+
+          await invalidateUserCache(usuario);
         }
       }
 
@@ -149,6 +152,8 @@ export class PasswordRecoveryController {
           ultimaTentativaRecuperacao: agora,
         },
       });
+
+      await invalidateUserCache(usuario);
 
       // Envia email de recuperação
       const emailResult = await this.emailService.enviarEmailRecuperacaoSenha(
@@ -227,6 +232,8 @@ export class PasswordRecoveryController {
             tokenRecuperacaoExp: null,
           },
         });
+
+        await invalidateUserCache(usuario);
 
         return res.status(400).json({
           message: "Token expirado. Solicite uma nova recuperação",
@@ -315,6 +322,8 @@ export class PasswordRecoveryController {
           },
         });
 
+        await invalidateUserCache(usuario);
+
         return res.status(400).json({
           message: "Token expirado. Solicite uma nova recuperação",
         });
@@ -343,6 +352,8 @@ export class PasswordRecoveryController {
           atualizadoEm: new Date(),
         },
       });
+
+      await invalidateUserCache(usuario);
 
       res.json({
         message: "Senha redefinida com sucesso",

@@ -3,6 +3,7 @@ import { BrevoClient } from "../client/brevo-client";
 import { BrevoConfigManager } from "../config/brevo-config";
 import { EmailTemplates } from "../templates/email-templates";
 import { prisma } from "../../../config/prisma";
+import { invalidateUserCache } from "../../usuarios/utils/cache";
 
 /**
  * Serviço especializado em verificação de email
@@ -259,6 +260,8 @@ export class EmailVerificationService {
         },
       });
 
+      await invalidateUserCache(usuario);
+
       console.log(
         `✅ Email verificado com sucesso para usuário: ${usuario.id}`
       );
@@ -332,6 +335,8 @@ export class EmailVerificationService {
           emailVerificationTokenExp: expiration,
         },
       });
+
+      await invalidateUserCache({ id: userId });
 
       console.log(
         `💾 [${correlationId}] Token de verificação salvo para usuário ${userId}`

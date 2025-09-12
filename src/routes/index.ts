@@ -143,7 +143,11 @@ router.get("/health", rateLimitMiddleware, publicCache, (req, res) => {
 });
 
 // Rota pública para verificação de email
-router.get("/verificar-email", rateLimitMiddleware, emailVerificationController.verifyEmail);
+router.get(
+  "/verificar-email",
+  rateLimitMiddleware,
+  emailVerificationController.verifyEmail
+);
 
 // =============================================
 // REGISTRO DE MÓDULOS - COM ERROR HANDLING
@@ -163,7 +167,6 @@ if (usuarioRoutes) {
 } else {
   console.error("❌ usuarioRoutes não está definido");
 }
-
 
 /**
  * Módulo Brevo - COM VALIDAÇÃO
@@ -194,12 +197,6 @@ if (websiteRoutes) {
 } else {
   console.error("❌ websiteRoutes não está definido");
 }
-
-/**
- * Módulo Empresa - COM VALIDAÇÃO
- * /api/v1/empresa/*
- */
-
 
 /**
  * Módulo de Documentação - COM VALIDAÇÃO

@@ -24,8 +24,9 @@ import { prisma } from "./config/prisma";
  */
 
 const app = express();
-// Confia no proxy para que req.protocol reflita corretamente HTTPS
-app.set("trust proxy", true);
+// Confia apenas no primeiro proxy para que req.protocol reflita corretamente HTTPS
+// evita configuração permissiva que permitiria bypass de rate limiting
+app.set("trust proxy", 1);
 
 // =============================================
 // MIDDLEWARES GLOBAIS

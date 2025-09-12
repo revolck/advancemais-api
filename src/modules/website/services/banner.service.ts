@@ -1,12 +1,12 @@
 import { prisma } from "../../../config/prisma";
 import { WebsiteStatus } from "@prisma/client";
-import cache from "../../../utils/cache";
+import { getCache, setCache, invalidateCache } from "../../../utils/cache";
 
 const CACHE_KEY = "website:banner:list";
 
 export const bannerService = {
   list: async () => {
-    const cached = await cache.get<Awaited<ReturnType<typeof prisma.websiteBannerOrdem.findMany>>>(
+    const cached = await getCache<Awaited<ReturnType<typeof prisma.websiteBannerOrdem.findMany>>>(
       CACHE_KEY
     );
     if (cached) return cached;
@@ -27,7 +27,7 @@ export const bannerService = {
         },
       },
     });
-    await cache.set(CACHE_KEY, result);
+    await setCache(CACHE_KEY, result);
     return result;
   },
 
@@ -86,7 +86,7 @@ export const bannerService = {
         },
       });
     });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
     return result;
   },
 
@@ -155,7 +155,7 @@ export const bannerService = {
         },
       });
     });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
     return result;
   },
 
@@ -216,7 +216,7 @@ export const bannerService = {
 
       return current;
     });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
     return result;
   },
 
@@ -234,7 +234,7 @@ export const bannerService = {
         data: { ordem: { decrement: 1 } },
       });
     });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
   },
 };
 

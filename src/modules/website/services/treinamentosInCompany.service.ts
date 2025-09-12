@@ -1,15 +1,15 @@
 import { prisma } from "../../../config/prisma";
 import { WebsiteTreinamentosInCompany } from "@prisma/client";
-import cache from "../../../utils/cache";
+import { getCache, setCache, invalidateCache } from "../../../utils/cache";
 
 const CACHE_KEY = "website:treinamentosInCompany:list";
 
 export const treinamentosInCompanyService = {
   list: async () => {
-    const cached = await cache.get(CACHE_KEY);
+    const cached = await getCache(CACHE_KEY);
     if (cached) return cached;
     const result = await prisma.websiteTreinamentosInCompany.findMany();
-    await cache.set(CACHE_KEY, result);
+    await setCache(CACHE_KEY, result);
     return result;
   },
   get: (id: string) =>
@@ -18,17 +18,17 @@ export const treinamentosInCompanyService = {
     data: Omit<WebsiteTreinamentosInCompany, "id" | "criadoEm" | "atualizadoEm">
   ) => {
     const result = await prisma.websiteTreinamentosInCompany.create({ data });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
     return result;
   },
   update: async (id: string, data: Partial<WebsiteTreinamentosInCompany>) => {
     const result = await prisma.websiteTreinamentosInCompany.update({ where: { id }, data });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
     return result;
   },
   remove: async (id: string) => {
     const result = await prisma.websiteTreinamentosInCompany.delete({ where: { id } });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
     return result;
   },
 };

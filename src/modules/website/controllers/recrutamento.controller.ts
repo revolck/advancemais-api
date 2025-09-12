@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { setCacheHeaders } from '../../../utils/cache';
 import path from "path";
 import { supabase } from "../../superbase/client";
 import { recrutamentoService } from "../services/recrutamento.service";
@@ -30,7 +31,11 @@ async function uploadImage(file: Express.Multer.File): Promise<string> {
 export class RecrutamentoController {
   static list = async (req: Request, res: Response) => {
     const itens = await recrutamentoService.list();
-    res.json(itens);
+    const response = itens;
+
+    setCacheHeaders(res, response);
+
+    res.json(response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -42,7 +47,11 @@ export class RecrutamentoController {
           .status(404)
           .json({ message: "Recrutamento não encontrado" });
       }
-      res.json(recrutamento);
+      const response = recrutamento;
+
+      setCacheHeaders(res, response);
+
+      res.json(response);
     } catch (error: any) {
       res
         .status(500)

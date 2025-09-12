@@ -1,11 +1,4 @@
 /**
- * Interfaces simplificadas para o módulo Brevo
- *
- * @author Sistema Advance+
- * @version 5.0.0 - Simplificação
- */
-
-/**
  * Resultado padrão de operações
  */
 export interface ServiceResponse<T = any> {

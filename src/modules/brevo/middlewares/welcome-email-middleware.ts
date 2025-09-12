@@ -10,9 +10,6 @@ import { EmailService } from "../services/email-service";
  * - Logs detalhados para debugging
  * - Validação rigorosa de dados
  * - Compatível com sistema de verificação de email
- *
- * @author Sistema Advance+
- * @version 7.0.0 - Simplificação completa
  */
 export class WelcomeEmailMiddleware {
   private emailService: EmailService;

@@ -1,14 +1,10 @@
 import * as Brevo from "@getbrevo/brevo";
 import { BrevoClient } from "../client/brevo-client";
 import { BrevoConfigManager } from "../config/brevo-config";
-import { prisma } from "../../../config/prisma";
 
 /**
  * Serviço de SMS simplificado para uso futuro
  * Preparado para integração com Brevo SMS API
- *
- * @author Sistema Advance+
- * @version 7.1.0 - CORRIGIDO - Tipos do Brevo
  */
 export interface SMSResult {
   success: boolean;
@@ -159,9 +155,8 @@ export class SMSService {
         throw new Error("API de SMS não disponível");
       }
 
-      // ✅ CORREÇÃO: Usando tipos corretos do Brevo
       const sendSmsRequest = new Brevo.SendTransacSms();
-      sendSmsRequest.type = Brevo.SendTransacSms.TypeEnum.Transactional; // Enum correto
+      sendSmsRequest.type = Brevo.SendTransacSms.TypeEnum.Transactional;
       sendSmsRequest.unicodeEnabled = false;
       sendSmsRequest.sender = smsData.sender || "Advance+";
       sendSmsRequest.recipient = smsData.to;

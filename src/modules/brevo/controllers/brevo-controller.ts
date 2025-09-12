@@ -7,9 +7,6 @@ import { BrevoConfigManager } from "../config/brevo-config";
 /**
  * Controller principal do módulo Brevo
  * Gerencia endpoints de status, testes e informações
- *
- * @author Sistema Advance+
- * @version 7.3.0 - CORRIGIDO - Testes sem salvar no banco
  */
 export class BrevoController {
   private emailService: EmailService;
@@ -155,7 +152,6 @@ export class BrevoController {
   };
 
   /**
-   * ✅ CORRIGIDO: Teste de email (apenas desenvolvimento)
    * POST /brevo/test/email
    * Body: { email: string, name?: string, type?: string }
    */
@@ -194,7 +190,6 @@ export class BrevoController {
 
       console.log(`🧪 Teste de email: ${type} para ${email}`);
 
-      // ✅ CORREÇÃO: Dados de teste que NÃO tentam salvar no banco
       const testUserData = {
         id: `test_user_${Date.now()}`, // Prefixo especial para detecção
         email: email.toLowerCase().trim(),

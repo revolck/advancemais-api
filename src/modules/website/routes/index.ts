@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { rateLimitMiddleware } from "../../../middlewares/rate-limit";
+import { publicCache } from "../../../middlewares/cache-control";
 import { sobreRoutes } from "./sobre";
 import { sliderRoutes } from "./slider";
 import { bannerRoutes } from "./banner";
@@ -47,7 +49,7 @@ const router = Router();
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website"
  */
-router.get("/", (req, res) => {
+router.get("/", rateLimitMiddleware, publicCache, (req, res) => {
   res.json({
     message: "Website Module API",
     version: "v1",

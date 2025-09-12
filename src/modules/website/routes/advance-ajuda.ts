@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { rateLimitMiddleware } from "../../../middlewares/rate-limit";
+import { publicCache } from "../../../middlewares/cache-control";
 import multer from "multer";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
 import { AdvanceAjudaController } from "../controllers/advanceAjuda.controller";
@@ -33,7 +35,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/advance-ajuda"
  */
-router.get("/", AdvanceAjudaController.list);
+router.get("/", rateLimitMiddleware, publicCache, AdvanceAjudaController.list);
 
 /**
  * @openapi
@@ -72,7 +74,7 @@ router.get("/", AdvanceAjudaController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/advance-ajuda/{id}"
  */
-router.get("/:id", AdvanceAjudaController.get);
+router.get("/:id", rateLimitMiddleware, publicCache, AdvanceAjudaController.get);
 
 /**
  * @openapi

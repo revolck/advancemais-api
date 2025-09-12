@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { rateLimitMiddleware } from "../../../middlewares/rate-limit";
+import { publicCache } from "../../../middlewares/cache-control";
 import multer from "multer";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
 import { LogoEnterpriseController } from "../controllers/logoEnterprise.controller";
@@ -33,7 +35,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/logo-enterprises"
  */
-router.get("/", LogoEnterpriseController.list);
+router.get("/", rateLimitMiddleware, publicCache, LogoEnterpriseController.list);
 
 /**
  * @openapi
@@ -73,7 +75,7 @@ router.get("/", LogoEnterpriseController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/logo-enterprises/{id}"
  */
-router.get("/:id", LogoEnterpriseController.get);
+router.get("/:id", rateLimitMiddleware, publicCache, LogoEnterpriseController.get);
 
 /**
  * @openapi

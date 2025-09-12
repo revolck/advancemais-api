@@ -10,6 +10,7 @@ import { appRoutes } from "./routes";
 import { startExpiredUserCleanupJob } from "./modules/usuarios/services/user-cleanup-service";
 import { setupSwagger } from "./config/swagger";
 import { startKeepAlive } from "./utils/keep-alive";
+import { prisma } from "./config/prisma";
 
 /**
  * Aplicação principal - Advance+ API
@@ -244,8 +245,14 @@ const server = app.listen(serverConfig.port, () => {
 /**
  * Graceful shutdown em caso de SIGTERM (Docker, PM2, etc.)
  */
-process.on("SIGTERM", () => {
+process.on("SIGTERM", async () => {
   console.log("🔄 SIGTERM recebido, encerrando servidor graciosamente...");
+  try {
+    await prisma.$disconnect();
+    console.log("🔌 Prisma desconectado");
+  } catch (err) {
+    console.error("Erro ao desconectar Prisma", err);
+  }
   server.close(() => {
     console.log("✅ Servidor encerrado com sucesso");
     process.exit(0);
@@ -255,8 +262,14 @@ process.on("SIGTERM", () => {
 /**
  * Graceful shutdown em caso de SIGINT (Ctrl+C)
  */
-process.on("SIGINT", () => {
+process.on("SIGINT", async () => {
   console.log("\n🔄 SIGINT recebido, encerrando servidor graciosamente...");
+  try {
+    await prisma.$disconnect();
+    console.log("🔌 Prisma desconectado");
+  } catch (err) {
+    console.error("Erro ao desconectar Prisma", err);
+  }
   server.close(() => {
     console.log("✅ Servidor encerrado com sucesso");
     process.exit(0);

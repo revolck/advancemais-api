@@ -1,9 +1,11 @@
-import redis from '../config/redis';
+import { createHash } from "crypto";
+import type { Response } from "express";
+import redis from "../config/redis";
 
-const DEFAULT_TTL = Number(process.env.CACHE_TTL || '60');
+export const DEFAULT_TTL = Number(process.env.CACHE_TTL || "60");
 const memoryStore = new Map<string, any>();
 
-async function get<T>(key: string): Promise<T | null> {
+export async function getCache<T>(key: string): Promise<T | null> {
   try {
     if (!process.env.REDIS_URL) {
       return memoryStore.has(key) ? (memoryStore.get(key) as T) : null;
@@ -15,20 +17,26 @@ async function get<T>(key: string): Promise<T | null> {
   }
 }
 
-async function set(key: string, value: any, ttl = DEFAULT_TTL): Promise<void> {
+export async function setCache(
+  key: string,
+  value: any,
+  ttl = DEFAULT_TTL
+): Promise<void> {
   try {
     if (!process.env.REDIS_URL) {
       memoryStore.set(key, value);
       setTimeout(() => memoryStore.delete(key), ttl * 1000);
       return;
     }
-    await redis.set(key, JSON.stringify(value), 'EX', ttl);
+    await redis.set(key, JSON.stringify(value), "EX", ttl);
   } catch {
     // ignore errors
   }
 }
 
-async function invalidate(key: string | string[]): Promise<void> {
+export async function invalidateCache(
+  key: string | string[]
+): Promise<void> {
   try {
     if (!process.env.REDIS_URL) {
       if (Array.isArray(key)) key.forEach((k) => memoryStore.delete(k));
@@ -45,4 +53,15 @@ async function invalidate(key: string | string[]): Promise<void> {
   }
 }
 
-export default { get, set, invalidate };
+export function setCacheHeaders(
+  res: Response,
+  data: unknown,
+  ttl = DEFAULT_TTL
+): void {
+  const etag = createHash("md5")
+    .update(JSON.stringify(data))
+    .digest("hex");
+  res.setHeader("Cache-Control", `public, max-age=${ttl}`);
+  res.setHeader("ETag", etag);
+}
+

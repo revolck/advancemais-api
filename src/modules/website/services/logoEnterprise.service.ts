@@ -1,12 +1,12 @@
 import { prisma } from "../../../config/prisma";
 import { WebsiteStatus } from "@prisma/client";
-import cache from "../../../utils/cache";
+import { getCache, setCache, invalidateCache } from "../../../utils/cache";
 
 const CACHE_KEY = "website:logoEnterprise:list";
 
 export const logoEnterpriseService = {
   list: async () => {
-    const cached = await cache.get<
+    const cached = await getCache<
       Awaited<ReturnType<typeof prisma.websiteLogoEnterpriseOrdem.findMany>>
     >(CACHE_KEY);
     if (cached) return cached;
@@ -28,7 +28,7 @@ export const logoEnterpriseService = {
         },
       },
     });
-    await cache.set(CACHE_KEY, result);
+    await setCache(CACHE_KEY, result);
     return result;
   },
 
@@ -93,7 +93,7 @@ export const logoEnterpriseService = {
         },
       });
     });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
     return result;
   },
 
@@ -168,7 +168,7 @@ export const logoEnterpriseService = {
         },
       });
     });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
     return result;
   },
 
@@ -231,7 +231,7 @@ export const logoEnterpriseService = {
 
       return current;
     });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
     return result;
   },
 
@@ -249,6 +249,6 @@ export const logoEnterpriseService = {
         data: { ordem: { decrement: 1 } },
       });
     });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
   },
 };

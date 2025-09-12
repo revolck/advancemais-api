@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { setCacheHeaders } from '../../../utils/cache';
 import path from "path";
 import { supabase } from "../../superbase/client";
 import { bannerService } from "../services/banner.service";
@@ -46,7 +47,11 @@ async function uploadImage(file: Express.Multer.File): Promise<string> {
 export class BannerController {
   static list = async (req: Request, res: Response) => {
     const itens = await bannerService.list();
-    res.json(itens.map(mapBanner));
+    const response = itens.map(mapBanner);
+
+    setCacheHeaders(res, response);
+
+    res.json(response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -56,7 +61,11 @@ export class BannerController {
       if (!ordem) {
         return res.status(404).json({ message: "Banner não encontrado" });
       }
-      res.json(mapBanner(ordem));
+      const response = mapBanner(ordem);
+
+      setCacheHeaders(res, response);
+
+      res.json(response);
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao buscar banner",

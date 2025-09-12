@@ -1,6 +1,6 @@
 import { prisma } from "../../../config/prisma";
 import { WebsiteStatus } from "@prisma/client";
-import cache from "../../../utils/cache";
+import { getCache, setCache, invalidateCache } from "../../../utils/cache";
 
 const CACHE_KEY = "website:team:list";
 
@@ -21,7 +21,7 @@ export const teamService = {
         },
       });
     }
-    const cached = await cache.get<
+    const cached = await getCache<
       Awaited<ReturnType<typeof prisma.websiteTeamOrdem.findMany>>
     >(CACHE_KEY);
     if (cached) return cached;
@@ -37,7 +37,7 @@ export const teamService = {
         },
       },
     });
-    await cache.set(CACHE_KEY, result);
+    await setCache(CACHE_KEY, result);
     return result;
   },
   get: (id: string) =>
@@ -83,7 +83,7 @@ export const teamService = {
         },
       },
     });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
     return result;
   },
   update: async (
@@ -147,7 +147,7 @@ export const teamService = {
         },
       });
     });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
     return result;
   },
   reorder: async (ordemId: string, novaOrdem: number) => {
@@ -195,7 +195,7 @@ export const teamService = {
 
       return current;
     });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
     return result;
   },
   remove: async (teamId: string) => {
@@ -212,7 +212,7 @@ export const teamService = {
         data: { ordem: { decrement: 1 } },
       });
     });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
   },
 };
 

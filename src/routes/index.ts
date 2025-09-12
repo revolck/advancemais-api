@@ -9,11 +9,7 @@ import { EmailVerificationController } from "../modules/brevo/controllers/email-
 import redis from "../config/redis";
 
 /**
- * Router principal da aplicação - VERSÃO BLINDADA
- * Elimina problemas de path-to-regexp definitivamente
- *
- * @author Sistema Advance+
- * @version 3.0.3 - Correção definitiva Express 4.x
+ * Router principal da aplicação
  */
 const router = Router();
 const emailVerificationController = new EmailVerificationController();

@@ -2,7 +2,6 @@ import { serverConfig } from "../config/env";
 
 /**
  * Inicia um ping periódico para manter a instância ativa.
- * Útil em plataformas que hibernam após inatividade (ex: Render free tier).
  */
 export function startKeepAlive(): void {
   const url =

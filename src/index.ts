@@ -19,14 +19,10 @@ import redis from "./config/redis";
  *
  * Configuração centralizada de middlewares e rotas
  * usando padrão de router centralizado para melhor organização
- *
- * @author Sistema Advance+
- * @version 2.1.0
  */
 
 const app = express();
-// Confia apenas no primeiro proxy para que req.protocol reflita corretamente HTTPS
-// evita configuração permissiva que permitiria bypass de rate limiting
+
 app.set("trust proxy", 1);
 
 // =============================================
@@ -56,11 +52,7 @@ const corsOptionsDelegate: CorsOptionsDelegate<express.Request> = (
       origin: true,
       credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
-      allowedHeaders: [
-        "Authorization",
-        "Content-Type",
-        "X-Requested-With",
-      ],
+      allowedHeaders: ["Authorization", "Content-Type", "X-Requested-With"],
       optionsSuccessStatus: 204,
     };
     return callback(null, corsOptions);
@@ -87,17 +79,9 @@ app.use(
           "'unsafe-inline'",
           "https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js",
         ],
-        styleSrc: [
-          "'self'",
-          "'unsafe-inline'",
-          "https://fonts.googleapis.com",
-        ],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         imgSrc: ["'self'", "data:", "https:"],
-        fontSrc: [
-          "'self'",
-          "https://fonts.gstatic.com",
-          "data:",
-        ],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
         workerSrc: ["'self'", "blob:"],
       },
     },

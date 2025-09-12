@@ -6,6 +6,7 @@ import { brevoRoutes } from "../modules/brevo/routes";
 import { websiteRoutes } from "../modules/website";
 import { docsRoutes } from "../modules/docs";
 import { EmailVerificationController } from "../modules/brevo/controllers/email-verification-controller";
+import redis from "../config/redis";
 
 /**
  * Router principal da aplicação - VERSÃO BLINDADA
@@ -123,7 +124,17 @@ router.get("/", rateLimitMiddleware, publicCache, (req, res) => {
  *         source: |
  *           curl -X GET "http://localhost:3000/health"
  */
-router.get("/health", rateLimitMiddleware, publicCache, (req, res) => {
+router.get("/health", rateLimitMiddleware, publicCache, async (req, res) => {
+  let redisStatus = "⚠️ not configured";
+  if (process.env.REDIS_URL) {
+    try {
+      await redis.ping();
+      redisStatus = "✅ active";
+    } catch {
+      redisStatus = "❌ inactive";
+    }
+  }
+
   res.json({
     status: "OK",
     timestamp: new Date().toISOString(),
@@ -138,6 +149,7 @@ router.get("/health", rateLimitMiddleware, publicCache, (req, res) => {
       usuarios: "✅ active",
       brevo: "✅ active",
       website: "✅ active",
+      redis: redisStatus,
     },
   });
 });

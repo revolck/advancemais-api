@@ -21,6 +21,7 @@ const globalForPrisma = globalThis as unknown as {
 function createPrismaClient() {
   const client = new PrismaClient({
     datasourceUrl,
+    log: [{ emit: "event", level: "error" }],
   });
   if (process.env.NODE_ENV !== "test") {
     client

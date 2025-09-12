@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { rateLimitMiddleware } from "../../../middlewares/rate-limit";
+import { publicCache } from "../../../middlewares/cache-control";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
 import { HeaderPageController } from "../controllers/header-pages.controller";
 
@@ -31,7 +33,7 @@ const router = Router();
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/header-pages"
  */
-router.get("/", HeaderPageController.list);
+router.get("/", rateLimitMiddleware, publicCache, HeaderPageController.list);
 
 /**
  * @openapi
@@ -70,7 +72,7 @@ router.get("/", HeaderPageController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/header-pages/{id}"
  */
-router.get("/:id", HeaderPageController.get);
+router.get("/:id", rateLimitMiddleware, publicCache, HeaderPageController.get);
 
 /**
  * @openapi

@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { rateLimitMiddleware } from "../../../middlewares/rate-limit";
+import { publicCache } from "../../../middlewares/cache-control";
 import multer from "multer";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
 import { ConexaoForteController } from "../controllers/conexaoForte.controller";
@@ -33,7 +35,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/conexao-forte"
  */
-router.get("/", ConexaoForteController.list);
+router.get("/", rateLimitMiddleware, publicCache, ConexaoForteController.list);
 
 /**
  * @openapi
@@ -72,7 +74,7 @@ router.get("/", ConexaoForteController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/conexao-forte/{id}"
  */
-router.get("/:id", ConexaoForteController.get);
+router.get("/:id", rateLimitMiddleware, publicCache, ConexaoForteController.get);
 
 /**
  * @openapi

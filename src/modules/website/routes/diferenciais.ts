@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { rateLimitMiddleware } from "../../../middlewares/rate-limit";
+import { publicCache } from "../../../middlewares/cache-control";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
 import { DiferenciaisController } from "../controllers/diferenciais.controller";
 
@@ -31,7 +33,7 @@ const router = Router();
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/diferenciais"
  */
-router.get("/", DiferenciaisController.list);
+router.get("/", rateLimitMiddleware, publicCache, DiferenciaisController.list);
 
 /**
  * @openapi
@@ -70,7 +72,7 @@ router.get("/", DiferenciaisController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/diferenciais/{id}"
  */
-router.get("/:id", DiferenciaisController.get);
+router.get("/:id", rateLimitMiddleware, publicCache, DiferenciaisController.get);
 
 /**
  * @openapi

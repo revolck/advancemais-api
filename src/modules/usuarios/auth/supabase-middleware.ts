@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import jwksRsa from "jwks-rsa";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../../../config/prisma";
 import { supabaseConfig, jwtConfig } from "../../../config/env";
 import { getCache, setCache } from "../../../utils/cache";
@@ -88,11 +89,28 @@ export const supabaseAuthMiddleware =
 
         try {
           const cacheKey = `user:${decoded.sub}`;
-          type UsuarioCache = Awaited<
-            ReturnType<typeof prisma.usuario.findFirst>
-          >;
 
-          let usuario: UsuarioCache | null = await getCache<UsuarioCache>(cacheKey);
+          const usuarioSelect = {
+            id: true,
+            email: true,
+            nomeCompleto: true,
+            cpf: true,
+            cnpj: true,
+            telefone: true,
+            role: true,
+            status: true,
+            tipoUsuario: true,
+            supabaseId: true,
+            ultimoLogin: true,
+            // Não inclui senha por segurança
+          } as const;
+
+          type UsuarioCache = Prisma.UsuarioGetPayload<{
+            select: typeof usuarioSelect;
+          }>;
+
+          let usuario: UsuarioCache | null =
+            await getCache<UsuarioCache>(cacheKey);
 
           if (!usuario) {
             usuario = await prisma.usuario.findFirst({
@@ -102,20 +120,7 @@ export const supabaseAuthMiddleware =
                   { id: decoded.sub as string },
                 ],
               },
-              select: {
-                id: true,
-                email: true,
-                nomeCompleto: true,
-                cpf: true,
-                cnpj: true,
-                telefone: true,
-                role: true,
-                status: true,
-                tipoUsuario: true,
-                supabaseId: true,
-                ultimoLogin: true,
-                // Não inclui senha por segurança
-              },
+              select: usuarioSelect,
             });
 
             if (usuario) {

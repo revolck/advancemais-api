@@ -199,6 +199,7 @@ model WebsiteTeamOrdem {
 
   @@unique([ordem])
   @@index([ordem])
+  @@index([status])
 }
 
 model WebsiteDepoimento {
@@ -295,6 +296,7 @@ model WebsiteBannerOrdem {
 
   @@unique([ordem])
   @@index([ordem])
+  @@index([status])
 }
 
 model WebsiteLogoEnterprise {
@@ -320,6 +322,7 @@ model WebsiteLogoEnterpriseOrdem {
 
   @@unique([ordem])
   @@index([ordem])
+  @@index([status])
 }
 
 model WebsiteImagemLogin {

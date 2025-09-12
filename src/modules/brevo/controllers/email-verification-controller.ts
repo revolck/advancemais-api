@@ -6,9 +6,6 @@ import { BrevoConfigManager } from "../config/brevo-config";
 /**
  * Controller para verificação de email
  * Endpoints simples e seguros para confirmar email dos usuários
- *
- * @author Sistema Advance+
- * @version 7.1.0 - CORRIGIDO - Nomes de métodos consistentes
  */
 export class EmailVerificationController {
   private emailService: EmailService;
@@ -210,7 +207,6 @@ export class EmailVerificationController {
   /**
    * Status de verificação de um usuário
    * GET /status-verificacao/:userId
-   * ✅ CORREÇÃO: Renomeado de checkVerificationStatus para getVerificationStatus
    */
   public getVerificationStatus = async (
     req: Request,
@@ -275,7 +271,6 @@ export class EmailVerificationController {
   };
 
   /**
-   * ✅ ADICIONADO: Alias para compatibilidade (se necessário)
    * Método com nome alternativo para manter compatibilidade
    */
   public checkVerificationStatus = this.getVerificationStatus;

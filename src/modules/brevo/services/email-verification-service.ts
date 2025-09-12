@@ -8,9 +8,6 @@ import { invalidateUserCache } from "../../usuarios/utils/cache";
 /**
  * Serviço especializado em verificação de email
  * Implementa padrões de microserviços com alta disponibilidade
- *
- * @author Sistema Advance+
- * @version 7.2.0 - CORRIGIDO - Verificações de undefined
  */
 export interface EmailVerificationResult {
   success: boolean;
@@ -246,7 +243,12 @@ export class EmailVerificationService {
         usuario.emailVerificationTokenExp < new Date()
       ) {
         await prisma.usuario.delete({ where: { id: usuario.id } });
-        return { valid: false, expired: true, userId: usuario.id, deleted: true };
+        return {
+          valid: false,
+          expired: true,
+          userId: usuario.id,
+          deleted: true,
+        };
       }
 
       // Token válido - marca como verificado
@@ -349,7 +351,6 @@ export class EmailVerificationService {
 
   /**
    * Executa envio do email
-   * ✅ CORRIGIDO - Verificações de undefined
    */
   private async performEmailSend(
     emailData: {
@@ -377,7 +378,6 @@ export class EmailVerificationService {
     try {
       const config = this.config.getConfig();
 
-      // ✅ CORREÇÃO: Verificação rigorosa da API
       const emailAPI = this.client.getEmailAPI();
       if (!emailAPI) {
         throw new Error("API de email não disponível");

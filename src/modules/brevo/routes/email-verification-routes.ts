@@ -4,9 +4,6 @@ import { EmailVerificationController } from "../controllers/email-verification-c
 /**
  * Rotas para verificação de email
  * Endpoints públicos para confirmação de conta
- *
- * @author Sistema Advance+
- * @version 6.0.0 - Sistema completo de verificação
  */
 const router = Router();
 const emailVerificationController = new EmailVerificationController();

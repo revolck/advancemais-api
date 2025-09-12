@@ -4,9 +4,6 @@ import { BrevoConfigManager, BrevoConfiguration } from "../config/brevo-config";
 /**
  * Cliente Brevo simplificado e robusto
  * Gerencia conexão com API Brevo de forma segura
- *
- * @author Sistema Advance+
- * @version 7.1.0 - CORRIGIDO - Tratamento de null
  */
 export class BrevoClient {
   private static instance: BrevoClient;
@@ -69,7 +66,6 @@ export class BrevoClient {
 
   /**
    * Retorna API de email
-   * ✅ CORREÇÃO: Agora retorna undefined ao invés de null para consistência
    */
   public getEmailAPI(): Brevo.TransactionalEmailsApi | undefined {
     return this.emailAPI;
@@ -77,7 +73,6 @@ export class BrevoClient {
 
   /**
    * Retorna API de SMS
-   * ✅ CORREÇÃO: Agora retorna undefined ao invés de null para consistência
    */
   public getSMSAPI(): Brevo.TransactionalSMSApi | undefined {
     return this.smsAPI;
@@ -85,7 +80,6 @@ export class BrevoClient {
 
   /**
    * Retorna API de conta
-   * ✅ CORREÇÃO: Agora retorna undefined ao invés de null para consistência
    */
   public getAccountAPI(): Brevo.AccountApi | undefined {
     return this.accountAPI;
@@ -134,7 +128,6 @@ export class BrevoClient {
 
   /**
    * Envia email transacional
-   * ✅ CORREÇÃO: Verificação de null antes de usar a API
    */
   public async sendEmail(emailData: {
     to: string;
@@ -163,7 +156,6 @@ export class BrevoClient {
 
     // Envio real
     try {
-      // ✅ CORREÇÃO: Verificação rigorosa de null/undefined
       if (!this.emailAPI) {
         throw new Error("API de email não inicializada");
       }
@@ -206,7 +198,6 @@ export class BrevoClient {
 
   /**
    * Envia SMS transacional
-   * ✅ CORREÇÃO: Verificação de null e uso correto dos tipos
    */
   public async sendSMS(smsData: {
     to: string;
@@ -233,7 +224,6 @@ export class BrevoClient {
 
     // Envio real
     try {
-      // ✅ CORREÇÃO: Verificação rigorosa de null/undefined
       if (!this.smsAPI) {
         throw new Error("API de SMS não inicializada");
       }

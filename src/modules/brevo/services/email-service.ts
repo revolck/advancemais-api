@@ -3,6 +3,7 @@ import { BrevoConfigManager } from "../config/brevo-config";
 import { EmailTemplates } from "../templates/email-templates";
 import { prisma } from "../../../config/prisma";
 import { brevoConfig } from "../../../config/env";
+import { invalidateUserCache } from "../../usuarios/utils/cache";
 
 export interface EmailResult {
   success: boolean;
@@ -287,6 +288,8 @@ export class EmailService {
         },
       });
 
+      await invalidateUserCache(usuario);
+
       return { valid: true, userId: usuario.id };
     } catch (error) {
       const errorMsg =
@@ -316,6 +319,8 @@ export class EmailService {
         status: "PENDENTE",
       },
     });
+
+    await invalidateUserCache({ id: userId });
   }
 
   private async logEmailSuccess(

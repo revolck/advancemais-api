@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import jwksRsa from "jwks-rsa";
 import { prisma } from "../../../config/prisma";
 import { supabaseConfig, jwtConfig } from "../../../config/env";
+import { getCache, setCache } from "../../../utils/cache";
 
 /**
  * Cliente JWKS para validação de tokens Supabase
@@ -86,29 +87,41 @@ export const supabaseAuthMiddleware =
         }
 
         try {
-          // Busca usuário no banco usando supabaseId ou ID local
-          const usuario = await prisma.usuario.findFirst({
-            where: {
-              OR: [
-                { supabaseId: decoded.sub as string },
-                { id: decoded.sub as string },
-              ],
-            },
-            select: {
-              id: true,
-              email: true,
-              nomeCompleto: true,
-              cpf: true,
-              cnpj: true,
-              telefone: true,
-              role: true,
-              status: true,
-              tipoUsuario: true,
-              supabaseId: true,
-              ultimoLogin: true,
-              // Não inclui senha por segurança
-            },
-          });
+          const cacheKey = `user:${decoded.sub}`;
+          type UsuarioCache = Awaited<
+            ReturnType<typeof prisma.usuario.findFirst>
+          >;
+
+          let usuario: UsuarioCache | null = await getCache<UsuarioCache>(cacheKey);
+
+          if (!usuario) {
+            usuario = await prisma.usuario.findFirst({
+              where: {
+                OR: [
+                  { supabaseId: decoded.sub as string },
+                  { id: decoded.sub as string },
+                ],
+              },
+              select: {
+                id: true,
+                email: true,
+                nomeCompleto: true,
+                cpf: true,
+                cnpj: true,
+                telefone: true,
+                role: true,
+                status: true,
+                tipoUsuario: true,
+                supabaseId: true,
+                ultimoLogin: true,
+                // Não inclui senha por segurança
+              },
+            });
+
+            if (usuario) {
+              await setCache(cacheKey, usuario, 300);
+            }
+          }
 
           if (!usuario) {
             return res

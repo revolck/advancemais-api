@@ -6,6 +6,7 @@
  * @version 3.0.0
  */
 import { prisma } from "../../../config/prisma";
+import { invalidateUserCache } from "../utils/cache";
 export class AdminService {
   constructor() {}
 
@@ -131,8 +132,11 @@ export class AdminService {
         nomeCompleto: true,
         status: true,
         atualizadoEm: true,
+        supabaseId: true,
       },
     });
+
+    await invalidateUserCache(usuario);
 
     // Cancelamento de assinatura removido após retirada do provedor de pagamentos
 
@@ -182,8 +186,11 @@ export class AdminService {
         nomeCompleto: true,
         role: true,
         atualizadoEm: true,
+        supabaseId: true,
       },
     });
+
+    await invalidateUserCache(usuario);
 
     console.log(
       `Role do usuário ${userId} alterada para ${roleEnum}${

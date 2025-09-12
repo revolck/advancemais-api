@@ -1,10 +1,15 @@
 import { Request, Response } from "express";
+import { setCacheHeaders } from '../../../utils/cache';
 import { headerPagesService } from "../services/header-pages.service";
 
 export class HeaderPageController {
   static list = async (_req: Request, res: Response) => {
     const items = await headerPagesService.list();
-    res.json(items);
+    const response = items;
+
+    setCacheHeaders(res, response);
+
+    res.json(response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -14,7 +19,11 @@ export class HeaderPageController {
       if (!item) {
         return res.status(404).json({ message: "Header page não encontrado" });
       }
-      res.json(item);
+      const response = item;
+
+      setCacheHeaders(res, response);
+
+      res.json(response);
     } catch (error: any) {
       res
         .status(500)

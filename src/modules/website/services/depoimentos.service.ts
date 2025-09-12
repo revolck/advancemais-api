@@ -1,6 +1,6 @@
 import { prisma } from "../../../config/prisma";
 import { WebsiteStatus } from "@prisma/client";
-import cache from "../../../utils/cache";
+import { getCache, setCache, invalidateCache } from "../../../utils/cache";
 
 const CACHE_KEY = "website:depoimentos:list";
 
@@ -27,7 +27,7 @@ export const depoimentosService = {
         },
       });
     }
-    const cached = await cache.get<
+    const cached = await getCache<
       Awaited<ReturnType<typeof prisma.websiteDepoimentoOrdem.findMany>>
     >(CACHE_KEY);
     if (cached) return cached;
@@ -49,7 +49,7 @@ export const depoimentosService = {
         },
       },
     });
-    await cache.set(CACHE_KEY, result);
+    await setCache(CACHE_KEY, result);
     return result;
   },
   get: (id: string) =>
@@ -109,7 +109,7 @@ export const depoimentosService = {
         },
       },
     });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
     return result;
   },
   update: async (
@@ -184,7 +184,7 @@ export const depoimentosService = {
         },
       });
     });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
     return result;
   },
   reorder: async (ordemId: string, novaOrdem: number) => {
@@ -246,7 +246,7 @@ export const depoimentosService = {
 
       return current;
     });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
     return result;
   },
   remove: async (depoimentoId: string) => {
@@ -263,7 +263,7 @@ export const depoimentosService = {
         data: { ordem: { decrement: 1 } },
       });
     });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
   },
 };
 

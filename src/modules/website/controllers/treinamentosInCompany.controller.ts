@@ -1,10 +1,15 @@
 import { Request, Response } from "express";
+import { setCacheHeaders } from '../../../utils/cache';
 import { treinamentosInCompanyService } from "../services/treinamentosInCompany.service";
 
 export class TreinamentosInCompanyController {
   static list = async (req: Request, res: Response) => {
     const itens = await treinamentosInCompanyService.list();
-    res.json(itens);
+    const response = itens;
+
+    setCacheHeaders(res, response);
+
+    res.json(response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -16,7 +21,11 @@ export class TreinamentosInCompanyController {
           .status(404)
           .json({ message: "TreinamentosInCompany não encontrado" });
       }
-      res.json(item);
+      const response = item;
+
+      setCacheHeaders(res, response);
+
+      res.json(response);
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao buscar TreinamentosInCompany",

@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { setCacheHeaders } from '../../../utils/cache';
 import path from "path";
 import { supabase } from "../../superbase/client";
 import { conexaoForteService } from "../services/conexaoForte.service";
@@ -33,7 +34,11 @@ async function uploadImage(
 export class ConexaoForteController {
   static list = async (req: Request, res: Response) => {
     const itens = await conexaoForteService.list();
-    res.json(itens);
+    const response = itens;
+
+    setCacheHeaders(res, response);
+
+    res.json(response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -45,7 +50,11 @@ export class ConexaoForteController {
           .status(404)
           .json({ message: "ConexaoForte não encontrado" });
       }
-      res.json(item);
+      const response = item;
+
+      setCacheHeaders(res, response);
+
+      res.json(response);
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao buscar ConexaoForte",

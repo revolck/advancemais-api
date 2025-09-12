@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { setCacheHeaders } from '../../../utils/cache';
 import path from "path";
 import { supabase } from "../../superbase/client";
 import { imagemLoginService } from "../services/imagem-login.service";
@@ -30,7 +31,11 @@ async function uploadImage(file: Express.Multer.File): Promise<string> {
 export class ImagemLoginController {
   static list = async (req: Request, res: Response) => {
     const itens = await imagemLoginService.list();
-    res.json(itens);
+    const response = itens;
+
+    setCacheHeaders(res, response);
+
+    res.json(response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -42,7 +47,11 @@ export class ImagemLoginController {
           .status(404)
           .json({ message: "Imagem de login não encontrada" });
       }
-      res.json(item);
+      const response = item;
+
+      setCacheHeaders(res, response);
+
+      res.json(response);
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao buscar imagem de login",

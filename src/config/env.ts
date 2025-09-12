@@ -336,6 +336,7 @@ export const serverConfig = {
     return isDevelopment ? "*" : defaultOrigins;
   })(),
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
+  enableCompression: process.env.ENABLE_COMPRESSION !== "false",
 
   // Validação da configuração
   isValid(): boolean {

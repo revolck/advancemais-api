@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcrypt";
 import { prisma } from "../../../config/prisma";
+import redis from "../../../config/redis";
 import { Prisma, CodigoTipo } from "@prisma/client";
 import { TipoUsuario, Role } from "../enums";
 import {
@@ -191,6 +192,14 @@ export const criarUsuario = async (
     // Cria usuário dentro de transação
     console.log(`💾 [${correlationId}] Iniciando transação de banco`);
     const usuario = await createUserWithTransaction(userData, correlationId);
+    try {
+      await redis.del("dashboard:stats");
+    } catch (cacheError) {
+      console.warn(
+        `⚠️ [${correlationId}] Falha ao invalidar cache do dashboard`,
+        cacheError
+      );
+    }
 
     const duration = Date.now() - startTime;
     console.log(

@@ -12,6 +12,7 @@ import { startExpiredUserCleanupJob } from "./modules/usuarios/services/user-cle
 import { setupSwagger } from "./config/swagger";
 import { startKeepAlive } from "./utils/keep-alive";
 import { prisma } from "./config/prisma";
+import redis from "./config/redis";
 
 /**
  * Aplicação principal - Advance+ API
@@ -210,7 +211,7 @@ app.use(
 /**
  * Inicia o servidor HTTP na porta configurada
  */
-const server = app.listen(serverConfig.port, () => {
+const server = app.listen(serverConfig.port, async () => {
   console.clear();
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log("🚀 Advance+ API - Servidor Iniciado");
@@ -218,6 +219,16 @@ const server = app.listen(serverConfig.port, () => {
   console.log(`📍 URL Base: http://localhost:${serverConfig.port}`);
   console.log(`🌍 Ambiente: ${serverConfig.nodeEnv}`);
   console.log(`⏰ Iniciado em: ${new Date().toLocaleString("pt-BR")}`);
+  if (process.env.REDIS_URL) {
+    try {
+      await redis.ping();
+      console.log("🧠 Redis: ✅ conectado");
+    } catch {
+      console.log("🧠 Redis: ❌ indisponível");
+    }
+  } else {
+    console.log("🧠 Redis: ⚠️ não configurado");
+  }
   console.log("");
   console.log("📋 Endpoints Principais:");
   console.log(

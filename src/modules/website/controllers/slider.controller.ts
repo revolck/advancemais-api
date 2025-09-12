@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { setCacheHeaders } from '../../../utils/cache';
 import path from "path";
 import { supabase } from "../../superbase/client";
 import { sliderService } from "../services/slider.service";
@@ -43,7 +44,11 @@ async function uploadImage(file: Express.Multer.File): Promise<string> {
 export class SliderController {
   static list = async (req: Request, res: Response) => {
     const itens = await sliderService.list();
-    res.json(itens.map(mapSlider));
+    const response = itens.map(mapSlider);
+
+    setCacheHeaders(res, response);
+
+    res.json(response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -53,7 +58,11 @@ export class SliderController {
       if (!ordem) {
         return res.status(404).json({ message: "Slider não encontrado" });
       }
-      res.json(mapSlider(ordem));
+      const response = mapSlider(ordem);
+
+      setCacheHeaders(res, response);
+
+      res.json(response);
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao buscar slider",

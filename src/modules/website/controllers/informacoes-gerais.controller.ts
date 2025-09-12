@@ -1,10 +1,15 @@
 import { Request, Response } from "express";
+import { setCacheHeaders } from '../../../utils/cache';
 import { informacoesGeraisService } from "../services/informacoes-gerais.service";
 
 export class InformacoesGeraisController {
   static list = async (req: Request, res: Response) => {
     const itens = await informacoesGeraisService.list();
-    res.json(itens);
+    const response = itens;
+
+    setCacheHeaders(res, response);
+
+    res.json(response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -14,7 +19,11 @@ export class InformacoesGeraisController {
       if (!info) {
         return res.status(404).json({ message: "Informação não encontrada" });
       }
-      res.json(info);
+      const response = info;
+
+      setCacheHeaders(res, response);
+
+      res.json(response);
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao buscar informação",

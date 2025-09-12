@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { setCacheHeaders } from '../../../utils/cache';
 import path from "path";
 import { supabase } from "../../superbase/client";
 import { logoEnterpriseService } from "../services/logoEnterprise.service";
@@ -47,7 +48,11 @@ async function uploadImage(file: Express.Multer.File): Promise<string> {
 export class LogoEnterpriseController {
   static list = async (req: Request, res: Response) => {
     const itens = await logoEnterpriseService.list();
-    res.json(itens.map(mapLogo));
+    const response = itens.map(mapLogo);
+
+    setCacheHeaders(res, response);
+
+    res.json(response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -57,7 +62,11 @@ export class LogoEnterpriseController {
       if (!item) {
         return res.status(404).json({ message: "Logo não encontrado" });
       }
-      res.json(mapLogo(item));
+      const response = mapLogo(item);
+
+      setCacheHeaders(res, response);
+
+      res.json(response);
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao buscar logo",

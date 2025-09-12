@@ -1,12 +1,12 @@
 import { prisma } from "../../../config/prisma";
 import { SliderOrientation, WebsiteStatus } from "@prisma/client";
-import cache from "../../../utils/cache";
+import { getCache, setCache, invalidateCache } from "../../../utils/cache";
 
 const CACHE_KEY = "website:slider:list";
 
 export const sliderService = {
   list: async () => {
-    const cached = await cache.get<
+    const cached = await getCache<
       Awaited<ReturnType<typeof prisma.websiteSliderOrdem.findMany>>
     >(CACHE_KEY);
     if (cached) return cached;
@@ -28,7 +28,7 @@ export const sliderService = {
         },
       },
     });
-    await cache.set(CACHE_KEY, result);
+    await setCache(CACHE_KEY, result);
     return result;
   },
 
@@ -92,7 +92,7 @@ export const sliderService = {
         },
       },
     });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
     return result;
   },
 
@@ -193,7 +193,7 @@ export const sliderService = {
         },
       });
     });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
     return result;
   },
 
@@ -262,7 +262,7 @@ export const sliderService = {
 
       return current;
     });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
     return result;
   },
 
@@ -280,7 +280,7 @@ export const sliderService = {
         data: { ordem: { decrement: 1 } },
       });
     });
-    await cache.invalidate(CACHE_KEY);
+    await invalidateCache(CACHE_KEY);
   },
 };
 

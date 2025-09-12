@@ -1,10 +1,15 @@
 import { Request, Response } from "express";
+import { setCacheHeaders } from '../../../utils/cache';
 import { sistemaService } from "../services/sistema.service";
 
 export class SistemaController {
   static list = async (req: Request, res: Response) => {
     const itens = await sistemaService.list();
-    res.json(itens);
+    const response = itens;
+
+    setCacheHeaders(res, response);
+
+    res.json(response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -14,7 +19,11 @@ export class SistemaController {
       if (!item) {
         return res.status(404).json({ message: "Sistema não encontrado" });
       }
-      res.json(item);
+      const response = item;
+
+      setCacheHeaders(res, response);
+
+      res.json(response);
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao buscar sistema",

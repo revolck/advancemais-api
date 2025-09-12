@@ -6,12 +6,20 @@
  * @version 3.0.0
  */
 import { prisma } from "../../../config/prisma";
+import redis from "../../../config/redis";
 
 export class StatsService {
   /**
    * Estatísticas gerais do dashboard
    */
   async getDashboardStats() {
+    const cacheKey = "dashboard:stats";
+
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
     const [
       totalUsuarios,
       usuariosAtivos,
@@ -28,7 +36,7 @@ export class StatsService {
       }),
     ]);
 
-    return {
+    const stats = {
       usuarios: {
         total: totalUsuarios,
         ativos: usuariosAtivos,
@@ -50,8 +58,12 @@ export class StatsService {
         assinaturas: 0,
         total: 0,
       },
-  };
-}
+    };
+
+    await redis.set(cacheKey, JSON.stringify(stats), "EX", 60);
+
+    return stats;
+  }
 
   /**
    * Estatísticas específicas de usuários

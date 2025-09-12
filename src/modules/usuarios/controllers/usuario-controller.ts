@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import { prisma } from "../../../config/prisma";
 import { generateTokenPair } from "../utils/auth";
+import { invalidateUserCache } from "../utils/cache";
 
 /**
  * Controllers para autenticação e gestão de usuários
@@ -194,6 +195,8 @@ export const loginUsuario = async (req: Request, res: Response) => {
       },
     });
 
+    await invalidateUserCache(usuario);
+
     const duration = Date.now() - startTime;
     console.log(
       `✅ [${correlationId}] Login realizado com sucesso em ${duration}ms para usuário: ${usuario.email}`
@@ -291,6 +294,8 @@ export const logoutUsuario = async (req: Request, res: Response) => {
         atualizadoEm: new Date(),
       },
     });
+
+    await invalidateUserCache({ id: userId });
 
     console.log(
       `✅ [${correlationId}] Logout realizado com sucesso para usuário: ${userId}`
@@ -393,6 +398,8 @@ export const refreshToken = async (req: Request, res: Response) => {
         data: { refreshToken: null },
       });
 
+      await invalidateUserCache(usuario);
+
       return res.status(403).json({
         success: false,
         message: `Conta ${usuario.status.toLowerCase()}`,
@@ -414,6 +421,8 @@ export const refreshToken = async (req: Request, res: Response) => {
         data: { refreshToken: null },
       });
 
+      await invalidateUserCache(usuario);
+
       return res.status(403).json({
         success: false,
         message: "Email não verificado. Verifique sua caixa de entrada.",
@@ -434,6 +443,8 @@ export const refreshToken = async (req: Request, res: Response) => {
         atualizadoEm: new Date(),
       },
     });
+
+    await invalidateUserCache(usuario);
 
     // Prepara dados de resposta
     const responseData = {

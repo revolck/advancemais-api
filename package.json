@@ -1,6 +1,6 @@
 {
   "name": "advancemais-api",
-  "version": "1.0.0",
+  "version": "3.0.3",
   "description": "API do sistema Advance+ - Gestão de usuários e autenticação",
   "main": "dist/index.js",
   "scripts": {

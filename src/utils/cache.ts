@@ -53,6 +53,33 @@ export async function invalidateCache(
   }
 }
 
+export async function invalidateCacheByPrefix(prefix: string): Promise<void> {
+  try {
+    if (!process.env.REDIS_URL) {
+      for (const key of memoryStore.keys()) {
+        if (key.startsWith(prefix)) memoryStore.delete(key);
+      }
+      return;
+    }
+    let cursor = "0";
+    const keys: string[] = [];
+    do {
+      const [next, found] = await redis.scan(
+        cursor,
+        "MATCH",
+        `${prefix}*`,
+        "COUNT",
+        100
+      );
+      cursor = next;
+      keys.push(...found);
+    } while (cursor !== "0");
+    if (keys.length) await redis.del(...keys);
+  } catch {
+    // ignore errors
+  }
+}
+
 export function setCacheHeaders(
   res: Response,
   data: unknown,

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { setCacheHeaders } from '../../../utils/cache';
 import path from "path";
-import { supabase } from "../../superbase/client";
+import { supabase } from "../../../config/supabase";
 import { sliderService } from "../services/slider.service";
 
 /**

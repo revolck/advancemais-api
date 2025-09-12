@@ -2,7 +2,7 @@ import express from "express";
 import request from "supertest";
 import { consultoriaService } from "../services/consultoria.service";
 
-jest.mock("../../superbase/client", () => ({
+jest.mock("../../../config/supabase", () => ({
   supabase: {
     storage: {
       from: () => ({

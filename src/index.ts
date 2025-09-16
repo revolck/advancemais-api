@@ -6,6 +6,8 @@ import type { CorsOptions, CorsOptionsDelegate } from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import { compressionMiddleware } from "./middlewares/compression";
+import { rateLimitMiddleware } from "./middlewares/rate-limit";
+import { correlationIdMiddleware } from "./middlewares/correlation-id";
 import { serverConfig } from "./config/env";
 import { appRoutes } from "./routes";
 import { startExpiredUserCleanupJob } from "./modules/usuarios/services/user-cleanup-service";
@@ -105,6 +107,9 @@ app.use(express.urlencoded({ extended: true }));
  * Necessário para autenticação via cookies no Swagger
  */
 app.use(cookieParser());
+
+app.use(correlationIdMiddleware);
+app.use(rateLimitMiddleware);
 
 if (serverConfig.enableCompression) {
   app.use(compressionMiddleware);

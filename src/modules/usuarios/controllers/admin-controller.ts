@@ -7,12 +7,20 @@
  */
 import { Request, Response } from "express";
 import { AdminService } from "../services/admin-service";
+import { logger } from "../../../utils/logger";
 
 export class AdminController {
   private adminService: AdminService;
 
   constructor() {
     this.adminService = new AdminService();
+  }
+
+  private getLogger(req: Request) {
+    return logger.child({
+      controller: "AdminController",
+      correlationId: req.id,
+    });
   }
 
   /**
@@ -38,11 +46,12 @@ export class AdminController {
    * Lista usuários com paginação e filtros
    */
   public listarUsuarios = async (req: Request, res: Response) => {
+    const log = this.getLogger(req);
     try {
       const result = await this.adminService.listarUsuarios(req.query);
       res.json(result);
     } catch (error) {
-      console.error("Erro ao listar usuários:", error);
+      log.error({ err: error }, "Erro ao listar usuários");
       res.status(500).json({
         message: "Erro ao listar usuários",
         error: error instanceof Error ? error.message : "Erro desconhecido",
@@ -54,6 +63,7 @@ export class AdminController {
    * Busca usuário específico
    */
   public buscarUsuario = async (req: Request, res: Response) => {
+    const log = this.getLogger(req);
     try {
       const { userId } = req.params;
       const result = await this.adminService.buscarUsuario(userId);
@@ -69,7 +79,7 @@ export class AdminController {
         usuario: result,
       });
     } catch (error) {
-      console.error("Erro ao buscar usuário:", error);
+      log.error({ err: error }, "Erro ao buscar usuário");
       res.status(500).json({
         message: "Erro ao buscar usuário",
         error: error instanceof Error ? error.message : "Erro desconhecido",
@@ -81,6 +91,7 @@ export class AdminController {
    * Atualiza status do usuário
    */
   public atualizarStatus = async (req: Request, res: Response) => {
+    const log = this.getLogger(req);
     try {
       const { userId } = req.params;
       const { status, motivo } = req.body;
@@ -92,7 +103,7 @@ export class AdminController {
       );
       res.json(result);
     } catch (error) {
-      console.error("Erro ao atualizar status:", error);
+      log.error({ err: error }, "Erro ao atualizar status");
       res.status(500).json({
         message: "Erro ao atualizar status do usuário",
         error: error instanceof Error ? error.message : "Erro desconhecido",
@@ -104,6 +115,7 @@ export class AdminController {
    * Atualiza role do usuário
    */
   public atualizarRole = async (req: Request, res: Response) => {
+    const log = this.getLogger(req);
     try {
       const { userId } = req.params;
       const { role, motivo } = req.body;
@@ -117,7 +129,7 @@ export class AdminController {
       );
       res.json(result);
     } catch (error) {
-      console.error("Erro ao atualizar role:", error);
+      log.error({ err: error }, "Erro ao atualizar role");
       res.status(500).json({
         message: "Erro ao atualizar role do usuário",
         error: error instanceof Error ? error.message : "Erro desconhecido",

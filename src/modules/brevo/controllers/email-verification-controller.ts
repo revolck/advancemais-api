@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { EmailService } from "../services/email-service";
 import { prisma } from "../../../config/prisma";
 import { BrevoConfigManager } from "../config/brevo-config";
+import { logger } from "../../../utils/logger";
 
 /**
  * Controller para verificação de email
@@ -16,11 +17,19 @@ export class EmailVerificationController {
     this.config = BrevoConfigManager.getInstance();
   }
 
+  private getLogger(req: Request) {
+    return logger.child({
+      controller: "EmailVerificationController",
+      correlationId: req.id,
+    });
+  }
+
   /**
    * Verifica token de verificação de email
    * GET /verificar-email?token=xxx
    */
   public verifyEmail = async (req: Request, res: Response): Promise<void> => {
+    const log = this.getLogger(req);
     try {
       const { token } = req.query;
 
@@ -34,14 +43,15 @@ export class EmailVerificationController {
         return;
       }
 
-      console.log(`🔍 Verificando token: ${token.substring(0, 8)}...`);
+      log.info({ tokenPrefix: token.substring(0, 8) }, "🔍 Verificando token");
 
       // Verifica o token
       const result = await this.emailService.verifyEmailToken(token);
 
       if (result.valid) {
-        console.log(
-          `✅ Email verificado com sucesso para usuário ${result.userId}`
+        log.info(
+          { userId: result.userId },
+          "✅ Email verificado com sucesso"
         );
 
         const redirectUrl = this.config.getConfig().urls.frontend;
@@ -84,7 +94,7 @@ export class EmailVerificationController {
         code: "INVALID_TOKEN",
       });
     } catch (error) {
-      console.error("❌ Erro na verificação de email:", error);
+      log.error({ err: error }, "❌ Erro na verificação de email");
       res.status(500).json({
         success: false,
         message: "Erro interno do servidor",
@@ -103,6 +113,7 @@ export class EmailVerificationController {
     req: Request,
     res: Response
   ): Promise<void> => {
+    const log = this.getLogger(req);
     try {
       const { email } = req.body;
 
@@ -125,7 +136,7 @@ export class EmailVerificationController {
         return;
       }
 
-      console.log(`🔄 Reenviando verificação para: ${email}`);
+      log.info({ email }, "🔄 Reenviando verificação");
 
       // Busca usuário
       const usuario = await prisma.usuario.findUnique({
@@ -194,7 +205,7 @@ export class EmailVerificationController {
         });
       }
     } catch (error) {
-      console.error("❌ Erro ao reenviar verificação:", error);
+      log.error({ err: error }, "❌ Erro ao reenviar verificação");
       res.status(500).json({
         success: false,
         message: "Erro interno do servidor",
@@ -212,6 +223,7 @@ export class EmailVerificationController {
     req: Request,
     res: Response
   ): Promise<void> => {
+    const log = this.getLogger(req);
     try {
       const { userId } = req.params;
 
@@ -260,7 +272,7 @@ export class EmailVerificationController {
         },
       });
     } catch (error) {
-      console.error("❌ Erro ao buscar status de verificação:", error);
+      log.error({ err: error }, "❌ Erro ao buscar status de verificação");
       res.status(500).json({
         success: false,
         message: "Erro interno do servidor",

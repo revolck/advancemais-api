@@ -29,27 +29,25 @@ model Usuario {
   atualizadoEm  DateTime    @updatedAt
   ultimoLogin   DateTime?
   refreshToken  String?
-  
+
   // CAMPOS PARA RECUPERAÇÃO DE SENHA
-  tokenRecuperacao           String?   
-  tokenRecuperacaoExp        DateTime? 
+  tokenRecuperacao           String?
+  tokenRecuperacaoExp        DateTime?
   tentativasRecuperacao      Int       @default(0)
   ultimaTentativaRecuperacao DateTime?
-  
+
   // CAMPOS PARA VERIFICAÇÃO DE EMAIL (NOVOS)
-  emailVerificado              Boolean   @default(false)
-  emailVerificadoEm            DateTime?
-  emailVerificationToken       String?   @unique
-  emailVerificationTokenExp    DateTime?
-  emailVerificationAttempts    Int       @default(0)
-  ultimaTentativaVerificacao   DateTime?
+  emailVerificado            Boolean   @default(false)
+  emailVerificadoEm          DateTime?
+  emailVerificationToken     String?   @unique
+  emailVerificationTokenExp  DateTime?
+  emailVerificationAttempts  Int       @default(0)
+  ultimaTentativaVerificacao DateTime?
 
   // RELACIONAMENTOS EXISTENTES
   enderecos     Endereco[]
-  empresa       Empresa?    @relation(fields: [codEmpresa], references: [id])
+  empresa       Empresa?       @relation(fields: [codEmpresa], references: [id])
   codigoUsuario CodigoUsuario?
-
-
 
   @@index([tokenRecuperacao])
   @@index([emailVerificationToken])
@@ -65,9 +63,68 @@ model Empresa {
   logoUrl   String?
   cidade    String?
   estado    String?
+  descricao String?   @db.VarChar(500)
   criadoEm  DateTime  @default(now())
   usuarios  Usuario[]
-  
+  vagas     Vaga[]
+}
+
+enum RegimeTrabalho {
+  CLT
+  TEMPORARIO
+  ESTAGIO
+  PJ
+  HOME_OFFICE
+  JOVEM_APRENDIZ
+}
+
+enum ModalidadeVaga {
+  PRESENCIAL
+  REMOTO
+  HIBRIDO
+}
+
+enum StatusVaga {
+  RASCUNHO
+  EM_ANALISE
+  PUBLICADO
+  EXPIRADO
+}
+
+model Vaga {
+  id               String         @id @default(uuid())
+  empresaId        String
+  modoAnonimo      Boolean        @default(false)
+  regimeDeTrabalho RegimeTrabalho
+  modalidade       ModalidadeVaga
+  paraPcd          Boolean        @default(false)
+  requisitos       String         @db.Text
+  atividades       String         @db.Text
+  beneficios       String         @db.Text
+  observacoes      String?        @db.Text
+  cargaHoraria     String
+  inscricoesAte    DateTime?
+  inseridaEm       DateTime       @default(now())
+  atualizadoEm     DateTime       @updatedAt
+  status           StatusVaga     @default(RASCUNHO)
+
+  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@index([empresaId])
+}
+
+model PlanoEmpresarial {
+  id                       String   @id @default(uuid())
+  icon                     String
+  nome                     String
+  descricao                String
+  valor                    String
+  desconto                 Float?
+  quantidadeVagas          Int
+  vagaEmDestaque           Boolean  @default(false)
+  quantidadeVagasDestaque  Int?
+  criadoEm                 DateTime @default(now())
+  atualizadoEm             DateTime @updatedAt
 }
 
 model Endereco {
@@ -85,16 +142,16 @@ model Endereco {
 }
 
 model LogEmail {
-  id          String      @id @default(uuid())
-  usuarioId   String?
-  email       String
-  tipoEmail   TipoEmail
-  status      StatusEmail
-  tentativas  Int         @default(1)
-  erro        String?
-  messageId   String?
-  criadoEm    DateTime    @default(now())
-  atualizadoEm DateTime   @updatedAt
+  id           String      @id @default(uuid())
+  usuarioId    String?
+  email        String
+  tipoEmail    TipoEmail
+  status       StatusEmail
+  tentativas   Int         @default(1)
+  erro         String?
+  messageId    String?
+  criadoEm     DateTime    @default(now())
+  atualizadoEm DateTime    @updatedAt
 
   @@index([usuarioId])
   @@index([email])
@@ -103,16 +160,16 @@ model LogEmail {
 }
 
 model LogSMS {
-  id          String    @id @default(uuid())
-  usuarioId   String?
-  telefone    String
-  tipoSMS     TipoSMS
-  status      StatusSMS
-  tentativas  Int       @default(1)
-  erro        String?
-  messageId   String?
-  criadoEm    DateTime  @default(now())
-  atualizadoEm DateTime @updatedAt
+  id           String    @id @default(uuid())
+  usuarioId    String?
+  telefone     String
+  tipoSMS      TipoSMS
+  status       StatusSMS
+  tentativas   Int       @default(1)
+  erro         String?
+  messageId    String?
+  criadoEm     DateTime  @default(now())
+  atualizadoEm DateTime  @updatedAt
 
   @@index([usuarioId])
   @@index([telefone])
@@ -126,7 +183,7 @@ model CodigoUsuario {
   tipo      CodigoTipo @default(USUARIO)
   criadoEm  DateTime   @default(now())
 
-  usuario   Usuario    @relation(fields: [usuarioId], references: [id])
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
 
   @@map("codigo_usuario")
 }
@@ -178,24 +235,24 @@ model WebsiteSobreEmpresa {
 }
 
 model WebsiteTeam {
-  id        String   @id @default(uuid())
-  photoUrl  String
-  nome      String
-  cargo     String
-  criadoEm  DateTime @default(now())
+  id           String   @id @default(uuid())
+  photoUrl     String
+  nome         String
+  cargo        String
+  criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  ordem     WebsiteTeamOrdem?
+  ordem WebsiteTeamOrdem?
 }
 
 model WebsiteTeamOrdem {
-  id            String       @id @default(uuid())
-  websiteTeamId String       @unique
+  id            String        @id @default(uuid())
+  websiteTeamId String        @unique
   ordem         Int
   status        WebsiteStatus @default(RASCUNHO)
-  criadoEm      DateTime     @default(now())
+  criadoEm      DateTime      @default(now())
 
-  team          WebsiteTeam  @relation(fields: [websiteTeamId], references: [id], onDelete: Cascade)
+  team WebsiteTeam @relation(fields: [websiteTeamId], references: [id], onDelete: Cascade)
 
   @@unique([ordem])
   @@index([ordem])
@@ -203,25 +260,25 @@ model WebsiteTeamOrdem {
 }
 
 model WebsiteDepoimento {
-  id          String   @id @default(uuid())
-  depoimento  String
-  nome        String
-  cargo       String
-  fotoUrl     String
-  criadoEm    DateTime @default(now())
+  id           String   @id @default(uuid())
+  depoimento   String
+  nome         String
+  cargo        String
+  fotoUrl      String
+  criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  ordem       WebsiteDepoimentoOrdem?
+  ordem WebsiteDepoimentoOrdem?
 }
 
 model WebsiteDepoimentoOrdem {
-  id                   String       @id @default(uuid())
-  websiteDepoimentoId  String       @unique
-  ordem                Int
-  status               WebsiteStatus @default(RASCUNHO)
-  criadoEm             DateTime     @default(now())
+  id                  String        @id @default(uuid())
+  websiteDepoimentoId String        @unique
+  ordem               Int
+  status              WebsiteStatus @default(RASCUNHO)
+  criadoEm            DateTime      @default(now())
 
-  depoimento           WebsiteDepoimento @relation(fields: [websiteDepoimentoId], references: [id], onDelete: Cascade)
+  depoimento WebsiteDepoimento @relation(fields: [websiteDepoimentoId], references: [id], onDelete: Cascade)
 
   @@unique([ordem])
   @@index([ordem])
@@ -250,25 +307,25 @@ model WebsiteDiferenciais {
 }
 
 model WebsiteSlider {
-  id          String   @id @default(uuid())
-  sliderName  String
-  imagemUrl   String
-  link        String?
-  criadoEm    DateTime @default(now())
+  id           String   @id @default(uuid())
+  sliderName   String
+  imagemUrl    String
+  link         String?
+  criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  ordem       WebsiteSliderOrdem?
+  ordem WebsiteSliderOrdem?
 }
 
 model WebsiteSliderOrdem {
-  id              String             @id @default(uuid())
-  websiteSliderId String             @unique
+  id              String            @id @default(uuid())
+  websiteSliderId String            @unique
   ordem           Int
   orientacao      SliderOrientation
-  status          WebsiteStatus      @default(RASCUNHO)
-  criadoEm        DateTime           @default(now())
+  status          WebsiteStatus     @default(RASCUNHO)
+  criadoEm        DateTime          @default(now())
 
-  slider          WebsiteSlider      @relation(fields: [websiteSliderId], references: [id], onDelete: Cascade)
+  slider WebsiteSlider @relation(fields: [websiteSliderId], references: [id], onDelete: Cascade)
 
   @@unique([ordem, orientacao])
   @@index([ordem])
@@ -282,17 +339,17 @@ model WebsiteBanner {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  ordem        WebsiteBannerOrdem?
+  ordem WebsiteBannerOrdem?
 }
 
 model WebsiteBannerOrdem {
-  id              String       @id @default(uuid())
-  websiteBannerId String       @unique
+  id              String        @id @default(uuid())
+  websiteBannerId String        @unique
   ordem           Int
   status          WebsiteStatus @default(RASCUNHO)
-  criadoEm        DateTime     @default(now())
+  criadoEm        DateTime      @default(now())
 
-  banner          WebsiteBanner @relation(fields: [websiteBannerId], references: [id], onDelete: Cascade)
+  banner WebsiteBanner @relation(fields: [websiteBannerId], references: [id], onDelete: Cascade)
 
   @@unique([ordem])
   @@index([ordem])
@@ -300,23 +357,23 @@ model WebsiteBannerOrdem {
 }
 
 model WebsiteLogoEnterprise {
-  id         String   @id @default(uuid())
-  nome       String
-  imagemUrl  String
-  imagemAlt  String
-  website    String?
-  criadoEm   DateTime @default(now())
+  id           String   @id @default(uuid())
+  nome         String
+  imagemUrl    String
+  imagemAlt    String
+  website      String?
+  criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  ordem      WebsiteLogoEnterpriseOrdem?
+  ordem WebsiteLogoEnterpriseOrdem?
 }
 
 model WebsiteLogoEnterpriseOrdem {
-  id                     String       @id @default(uuid())
-  websiteLogoEnterpriseId String       @unique
-  ordem                  Int
-  status                 WebsiteStatus @default(RASCUNHO)
-  criadoEm               DateTime     @default(now())
+  id                      String        @id @default(uuid())
+  websiteLogoEnterpriseId String        @unique
+  ordem                   Int
+  status                  WebsiteStatus @default(RASCUNHO)
+  criadoEm                DateTime      @default(now())
 
   logo WebsiteLogoEnterprise @relation(fields: [websiteLogoEnterpriseId], references: [id], onDelete: Cascade)
 
@@ -335,65 +392,65 @@ model WebsiteImagemLogin {
 }
 
 model WebsitePlaninhas {
-  id        String @id @default(uuid())
-  titulo    String
-  descricao String
-  icone1    String
-  titulo1   String
-  descricao1 String
-  icone2    String
-  titulo2   String
-  descricao2 String
-  icone3    String
-  titulo3   String
-  descricao3 String
+  id           String   @id @default(uuid())
+  titulo       String
+  descricao    String
+  icone1       String
+  titulo1      String
+  descricao1   String
+  icone2       String
+  titulo2      String
+  descricao2   String
+  icone3       String
+  titulo3      String
+  descricao3   String
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 }
 
 model WebsiteAdvanceAjuda {
-  id         String @id @default(uuid())
-  titulo     String
-  descricao  String
-  imagemUrl  String
+  id           String   @id @default(uuid())
+  titulo       String
+  descricao    String
+  imagemUrl    String
   imagemTitulo String
-  titulo1    String
-  descricao1 String
-  titulo2    String
-  descricao2 String
-  titulo3    String
-  descricao3 String
+  titulo1      String
+  descricao1   String
+  titulo2      String
+  descricao2   String
+  titulo3      String
+  descricao3   String
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 }
 
 model WebsiteRecrutamentoSelecao {
-  id         String @id @default(uuid())
-  titulo     String
-  descricao  String
-  imagemUrl  String
+  id           String   @id @default(uuid())
+  titulo       String
+  descricao    String
+  imagemUrl    String
   imagemTitulo String
-  titulo1    String
-  titulo2    String
-  titulo3    String
-  titulo4    String
+  titulo1      String
+  titulo2      String
+  titulo3      String
+  titulo4      String
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 }
 
 model WebsiteSistema {
-  id             String @id @default(uuid())
-  titulo         String
-  descricao      String
-  subtitulo      String
-  etapa1Titulo   String
+  id              String   @id @default(uuid())
+  titulo          String
+  descricao       String
+  subtitulo       String
+  etapa1Titulo    String
   etapa1Descricao String
-  etapa2Titulo   String
+  etapa2Titulo    String
   etapa2Descricao String
-  etapa3Titulo   String
+  etapa3Titulo    String
   etapa3Descricao String
-  criadoEm       DateTime @default(now())
-  atualizadoEm   DateTime @updatedAt
+  criadoEm        DateTime @default(now())
+  atualizadoEm    DateTime @updatedAt
 }
 
 model WebsiteTreinamentoCompany {
@@ -411,34 +468,34 @@ model WebsiteTreinamentoCompany {
 }
 
 model WebsiteConexaoForte {
-  id           String @id @default(uuid())
-  titulo       String
-  descricao    String
-  imagemUrl1   String
+  id            String   @id @default(uuid())
+  titulo        String
+  descricao     String
+  imagemUrl1    String
   imagemTitulo1 String
-  imagemUrl2   String
+  imagemUrl2    String
   imagemTitulo2 String
-  imagemUrl3   String
+  imagemUrl3    String
   imagemTitulo3 String
-  imagemUrl4   String
+  imagemUrl4    String
   imagemTitulo4 String
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
+  criadoEm      DateTime @default(now())
+  atualizadoEm  DateTime @updatedAt
 }
 
 model WebsiteTreinamentosInCompany {
-  id         String   @id @default(uuid())
-  titulo     String
-  icone1     String
-  descricao1 String
-  icone2     String
-  descricao2 String
-  icone3     String
-  descricao3 String
-  icone4     String
-  descricao4 String
-  icone5     String
-  descricao5 String
+  id           String   @id @default(uuid())
+  titulo       String
+  icone1       String
+  descricao1   String
+  icone2       String
+  descricao2   String
+  icone3       String
+  descricao3   String
+  icone4       String
+  descricao4   String
+  icone5       String
+  descricao5   String
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 }
@@ -464,27 +521,27 @@ model WebsiteInformacoes {
 }
 
 model WebsiteHorarioFuncionamento {
-  id            String   @id @default(uuid())
+  id            String             @id @default(uuid())
   diaDaSemana   String
   horarioInicio String
   horarioFim    String
   informacoes   WebsiteInformacoes @relation(fields: [informacoesId], references: [id], onDelete: Cascade)
   informacoesId String
-  criadoEm      DateTime @default(now())
-  atualizadoEm  DateTime @updatedAt
+  criadoEm      DateTime           @default(now())
+  atualizadoEm  DateTime           @updatedAt
 }
 
 model WebsiteHeaderPage {
-  id          String               @id @default(uuid())
-  subtitulo   String
-  titulo      String
-  descricao   String
-  imagemUrl   String
-  buttonLabel String
-  buttonLink  String
-  page        WebsiteHeaderPageType @unique
-  criadoEm    DateTime              @default(now())
-  atualizadoEm DateTime             @updatedAt
+  id           String                @id @default(uuid())
+  subtitulo    String
+  titulo       String
+  descricao    String
+  imagemUrl    String
+  buttonLabel  String
+  buttonLink   String
+  page         WebsiteHeaderPageType @unique
+  criadoEm     DateTime              @default(now())
+  atualizadoEm DateTime              @updatedAt
 }
 
 // =============================================
@@ -548,7 +605,6 @@ enum CodigoTipo {
 
 // Métodos de pagamento aceitos para planos
 
-
 enum SliderOrientation {
   DESKTOP
   TABLET_MOBILE
@@ -570,4 +626,3 @@ enum WebsiteHeaderPageType {
   POLITICA_PRIVACIDADE
   OUVIDORIA
 }
-

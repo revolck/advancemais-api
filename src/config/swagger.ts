@@ -102,6 +102,14 @@ const options: Options = {
         name: 'Website - Header Pages',
         description: 'Cabeçalhos de páginas',
       },
+      {
+        name: 'Empresas - Planos Empresariais',
+        description: 'Gestão dos planos empresariais corporativos',
+      },
+      {
+        name: 'Empresas - Vagas',
+        description: 'Administração de vagas corporativas vinculadas às empresas',
+      },
     ],
     'x-tagGroups': [
       { name: 'Default', tags: ['Default'] },
@@ -136,6 +144,10 @@ const options: Options = {
           'Website - Header Pages',
         ],
       },
+      {
+        name: 'Empresas',
+        tags: ['Empresas - Planos Empresariais', 'Empresas - Vagas'],
+      },
     ],
     components: {
       schemas: {
@@ -145,6 +157,28 @@ const options: Options = {
             success: { type: 'boolean', example: false },
             message: { type: 'string', example: 'Erro de validação' },
             code: { type: 'string', example: 'VALIDATION_ERROR' },
+            error: { type: 'string', example: 'Detalhes adicionais do erro' },
+          },
+        },
+        ValidationErrorResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: false },
+            code: { type: 'string', example: 'VALIDATION_ERROR' },
+            message: {
+              type: 'string',
+              example: 'Dados inválidos para criação do recurso',
+            },
+            issues: {
+              type: 'object',
+              additionalProperties: {
+                type: 'array',
+                items: { type: 'string' },
+              },
+              example: {
+                campo: ['Este campo é obrigatório'],
+              },
+            },
           },
         },
         UserLoginRequest: {
@@ -2782,6 +2816,392 @@ const options: Options = {
                 'OUVIDORIA',
               ],
               example: 'SOBRE',
+            },
+          },
+        },
+        PlanoEmpresarial: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', example: 'plano-uuid' },
+            icon: { type: 'string', example: 'ph-buildings' },
+            nome: { type: 'string', example: 'Plano Corporativo' },
+            descricao: {
+              type: 'string',
+              example: 'Soluções completas de RH e treinamento para empresas.',
+            },
+            valor: { type: 'string', example: '199.90' },
+            desconto: {
+              type: 'number',
+              nullable: true,
+              example: 10,
+              description: 'Percentual de desconto aplicado sobre o valor do plano',
+            },
+            quantidadeVagas: {
+              type: 'integer',
+              example: 10,
+              description: 'Quantidade de vagas que a empresa pode manter entre PUBLICADO e EM_ANALISE',
+            },
+            vagaEmDestaque: {
+              type: 'boolean',
+              example: true,
+              description: 'Indica se o plano permite vagas em destaque no site',
+            },
+            quantidadeVagasDestaque: {
+              type: 'integer',
+              nullable: true,
+              example: 2,
+              description: 'Limite de vagas simultâneas com destaque quando habilitado',
+            },
+            criadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-01-01T12:00:00Z',
+            },
+            atualizadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-01-02T12:00:00Z',
+            },
+          },
+        },
+        PlanoEmpresarialCreateInput: {
+          type: 'object',
+          required: ['icon', 'nome', 'descricao', 'valor', 'quantidadeVagas', 'vagaEmDestaque'],
+          properties: {
+            icon: {
+              type: 'string',
+              example: 'ph-buildings',
+              description: 'Identificador do ícone exibido no site',
+            },
+            nome: {
+              type: 'string',
+              example: 'Plano Corporativo',
+              description: 'Nome comercial do plano',
+            },
+            descricao: {
+              type: 'string',
+              example: 'Soluções completas de RH e treinamento para empresas.',
+            },
+            valor: {
+              type: 'string',
+              example: '199.90',
+              description: 'Valor monetário com até duas casas decimais',
+            },
+            desconto: {
+              type: 'number',
+              nullable: true,
+              example: 10,
+              description: 'Percentual de desconto opcional aplicado sobre o valor do plano',
+            },
+            quantidadeVagas: {
+              type: 'integer',
+              example: 10,
+              description: 'Quantidade total de vagas permitidas no plano (PUBLICADO + EM_ANALISE)',
+            },
+            vagaEmDestaque: {
+              type: 'boolean',
+              example: true,
+              description: 'Define se o plano permite cadastrar vagas em destaque',
+            },
+            quantidadeVagasDestaque: {
+              type: 'integer',
+              nullable: true,
+              example: 2,
+              description: 'Quantidade de vagas em destaque permitidas quando habilitado',
+            },
+          },
+        },
+        PlanoEmpresarialUpdateInput: {
+          type: 'object',
+          properties: {
+            icon: { type: 'string', example: 'ph-shield-check' },
+            nome: { type: 'string', example: 'Plano Enterprise' },
+            descricao: {
+              type: 'string',
+              example: 'Atualização do pacote com suporte dedicado para grandes contas.',
+            },
+            valor: {
+              type: 'string',
+              example: '249.90',
+              description: 'Novo valor monetário do plano',
+            },
+            desconto: {
+              type: 'number',
+              nullable: true,
+              example: 15,
+              description: 'Percentual de desconto aplicado sobre o valor do plano',
+            },
+            quantidadeVagas: {
+              type: 'integer',
+              example: 15,
+              description: 'Atualização da quantidade total de vagas permitidas',
+            },
+            vagaEmDestaque: {
+              type: 'boolean',
+              example: false,
+              description: 'Permite habilitar ou desabilitar vagas em destaque',
+            },
+            quantidadeVagasDestaque: {
+              type: 'integer',
+              nullable: true,
+              example: 0,
+              description: 'Limite de vagas em destaque. Deve ser omitido quando vagaEmDestaque for falso',
+            },
+          },
+        },
+        PlanoEmpresarialLimitResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: false },
+            code: {
+              type: 'string',
+              example: 'PLANOS_EMPRESARIAIS_LIMIT_REACHED',
+            },
+            message: {
+              type: 'string',
+              example: 'Limite máximo de 4 planos empresariais atingido',
+            },
+            limite: { type: 'integer', example: 4 },
+          },
+        },
+        StatusVaga: {
+          type: 'string',
+          description: 'Etapas do fluxo de publicação da vaga',
+          enum: ['RASCUNHO', 'EM_ANALISE', 'PUBLICADO', 'EXPIRADO'],
+          example: 'EM_ANALISE',
+        },
+        EmpresaResumo: {
+          type: 'object',
+          description: 'Informações públicas da empresa vinculada à vaga',
+          properties: {
+            id: { type: 'string', example: 'empresa-uuid' },
+            nome: { type: 'string', example: 'Advance Tech Consultoria' },
+            logoUrl: {
+              type: 'string',
+              nullable: true,
+              example: 'https://cdn.advance.com.br/assets/empresa/logo.png',
+            },
+            cidade: { type: 'string', nullable: true, example: 'São Paulo' },
+            estado: { type: 'string', nullable: true, example: 'SP' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Consultoria em RH e tecnologia especializada em recrutamento.',
+            },
+            criadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-01-05T12:00:00Z',
+            },
+          },
+        },
+        Vaga: {
+          type: 'object',
+          description: 'Representação completa da vaga cadastrada pela empresa',
+          properties: {
+            id: { type: 'string', example: 'vaga-uuid' },
+            empresaId: { type: 'string', example: 'empresa-uuid' },
+            empresa: {
+              allOf: [{ $ref: '#/components/schemas/EmpresaResumo' }],
+              nullable: true,
+            },
+            modoAnonimo: { type: 'boolean', example: true },
+            regimeDeTrabalho: {
+              type: 'string',
+              enum: ['CLT', 'TEMPORARIO', 'ESTAGIO', 'PJ', 'HOME_OFFICE', 'JOVEM_APRENDIZ'],
+              example: 'CLT',
+            },
+            modalidade: {
+              type: 'string',
+              enum: ['PRESENCIAL', 'REMOTO', 'HIBRIDO'],
+              example: 'PRESENCIAL',
+            },
+            paraPcd: { type: 'boolean', example: false },
+            requisitos: {
+              type: 'string',
+              example: 'Experiência com atendimento ao cliente e pacote Office avançado.',
+            },
+            atividades: {
+              type: 'string',
+              example: 'Atendimento a clientes, elaboração de relatórios e acompanhamento de indicadores.',
+            },
+            beneficios: {
+              type: 'string',
+              example: 'Vale transporte, vale alimentação, plano de saúde e day-off no aniversário.',
+            },
+            observacoes: {
+              type: 'string',
+              nullable: true,
+              example: 'Processo seletivo confidencial com etapas online.',
+            },
+            cargaHoraria: {
+              type: 'string',
+              example: '44 horas semanais (segunda a sexta-feira)',
+            },
+            inscricoesAte: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              example: '2024-12-20T23:59:59Z',
+            },
+            inseridaEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-10-01T09:00:00Z',
+            },
+            atualizadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-10-05T09:00:00Z',
+            },
+            status: {
+              allOf: [{ $ref: '#/components/schemas/StatusVaga' }],
+              description: 'Status atual da vaga dentro do fluxo de aprovação',
+            },
+            nomeExibicao: {
+              type: 'string',
+              nullable: true,
+              example: 'Oportunidade Confidencial #A1B2C',
+            },
+            logoExibicao: {
+              type: 'string',
+              nullable: true,
+              example: null,
+            },
+            mensagemAnonimato: {
+              type: 'string',
+              nullable: true,
+              example:
+                'Esta empresa optou por manter suas informações confidenciais até avançar nas etapas do processo seletivo.',
+            },
+            descricaoExibicao: {
+              type: 'string',
+              nullable: true,
+              example: 'Consultoria em RH e tecnologia especializada em recrutamento.',
+            },
+          },
+        },
+        VagaCreateInput: {
+          type: 'object',
+          description: 'Dados necessários para cadastrar uma vaga. O status inicial é definido automaticamente como EM_ANALISE.',
+          required: [
+            'empresaId',
+            'regimeDeTrabalho',
+            'modalidade',
+            'requisitos',
+            'atividades',
+            'beneficios',
+            'cargaHoraria',
+          ],
+          properties: {
+            empresaId: {
+              type: 'string',
+              format: 'uuid',
+              example: 'f1d7a9c2-4e0b-4f6d-90ad-8c6b84a0f1a1',
+            },
+            modoAnonimo: {
+              type: 'boolean',
+              example: true,
+              description: 'Quando verdadeiro, oculta o nome e a logo da empresa nas listagens públicas',
+            },
+            regimeDeTrabalho: {
+              type: 'string',
+              enum: ['CLT', 'TEMPORARIO', 'ESTAGIO', 'PJ', 'HOME_OFFICE', 'JOVEM_APRENDIZ'],
+              example: 'CLT',
+            },
+            modalidade: {
+              type: 'string',
+              enum: ['PRESENCIAL', 'REMOTO', 'HIBRIDO'],
+              example: 'PRESENCIAL',
+            },
+            paraPcd: { type: 'boolean', example: false },
+            requisitos: {
+              type: 'string',
+              example: 'Experiência com atendimento ao cliente e pacote Office avançado.',
+            },
+            atividades: {
+              type: 'string',
+              example: 'Atendimento a clientes, elaboração de relatórios e acompanhamento de indicadores.',
+            },
+            beneficios: {
+              type: 'string',
+              example: 'Vale transporte, vale alimentação, plano de saúde e day-off no aniversário.',
+            },
+            observacoes: {
+              type: 'string',
+              example: 'Processo seletivo confidencial com etapas online.',
+            },
+            cargaHoraria: {
+              type: 'string',
+              example: '44 horas semanais (segunda a sexta-feira)',
+            },
+            inscricoesAte: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-12-20T23:59:59Z',
+            },
+            inseridaEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-10-01T09:00:00Z',
+            },
+          },
+        },
+        VagaUpdateInput: {
+          type: 'object',
+          description: 'Campos permitidos para atualização da vaga, inclusive o status do fluxo de aprovação.',
+          properties: {
+            empresaId: {
+              type: 'string',
+              format: 'uuid',
+              example: 'f1d7a9c2-4e0b-4f6d-90ad-8c6b84a0f1a1',
+            },
+            modoAnonimo: { type: 'boolean', example: false },
+            regimeDeTrabalho: {
+              type: 'string',
+              enum: ['CLT', 'TEMPORARIO', 'ESTAGIO', 'PJ', 'HOME_OFFICE', 'JOVEM_APRENDIZ'],
+              example: 'PJ',
+            },
+            modalidade: {
+              type: 'string',
+              enum: ['PRESENCIAL', 'REMOTO', 'HIBRIDO'],
+              example: 'HIBRIDO',
+            },
+            paraPcd: { type: 'boolean', example: true },
+            requisitos: {
+              type: 'string',
+              example: 'Vivência em rotinas administrativas e atendimento ao cliente.',
+            },
+            atividades: {
+              type: 'string',
+              example: 'Gestão de indicadores, acompanhamento de metas e organização de agendas.',
+            },
+            beneficios: {
+              type: 'string',
+              example: 'Vale transporte, auxílio home office e plano odontológico.',
+            },
+            observacoes: {
+              type: 'string',
+              example: 'Processo seletivo com etapas online.',
+            },
+            cargaHoraria: {
+              type: 'string',
+              example: '30 horas semanais (segunda a sexta-feira)',
+            },
+            inscricoesAte: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              example: '2024-11-15T23:59:59Z',
+            },
+            inseridaEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-10-05T09:00:00Z',
+            },
+            status: {
+              allOf: [{ $ref: '#/components/schemas/StatusVaga' }],
+              description: 'Atualização manual do status da vaga',
             },
           },
         },

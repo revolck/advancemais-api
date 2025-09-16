@@ -7,6 +7,7 @@ import { brevoRoutes } from '@/modules/brevo/routes';
 import { EmailVerificationController } from '@/modules/brevo/controllers/email-verification-controller';
 import { usuarioRoutes } from '@/modules/usuarios';
 import { websiteRoutes } from '@/modules/website';
+import { empresasRoutes } from '@/modules/empresas';
 import { setCacheHeaders, DEFAULT_TTL } from '@/utils/cache';
 import { logger } from '@/utils/logger';
 
@@ -73,6 +74,9 @@ router.get('/', publicCache, (req, res) => {
       usuarios: '/api/v1/usuarios',
       brevo: '/api/v1/brevo',
       website: '/api/v1/website',
+      empresas: '/api/v1/empresas',
+      planosEmpresariais: '/api/v1/empresas/planos-empresarial',
+      vagasEmpresariais: '/api/v1/empresas/vagas',
       health: '/health',
     },
   };
@@ -110,6 +114,9 @@ router.get('/', publicCache, (req, res) => {
         <li>👥 Usuários: <code>${data.endpoints.usuarios}</code></li>
         <li>📧 Brevo: <code>${data.endpoints.brevo}</code></li>
         <li>🌐 Website: <code>${data.endpoints.website}</code></li>
+        <li>🏢 Empresas: <code>${data.endpoints.empresas}</code></li>
+        <li>📦 Planos empresariais: <code>${data.endpoints.planosEmpresariais}</code></li>
+        <li>💼 Vagas empresariais: <code>${data.endpoints.vagasEmpresariais}</code></li>
         <li>💚 Health: <code>${data.endpoints.health}</code></li>
       </ul>
       <footer>
@@ -175,6 +182,7 @@ router.get('/health', publicCache, async (req, res) => {
       usuarios: '✅ active',
       brevo: '✅ active',
       website: '✅ active',
+      empresas: '✅ active',
       redis: redisStatus,
     },
   };
@@ -237,6 +245,21 @@ if (websiteRoutes) {
   }
 } else {
   routesLogger.error({ feature: 'WebsiteModule' }, '❌ websiteRoutes não está definido');
+}
+
+/**
+ * Módulo Empresas - COM VALIDAÇÃO
+ * /api/v1/empresas/*
+ */
+if (empresasRoutes) {
+  try {
+    router.use('/api/v1/empresas', empresasRoutes);
+    routesLogger.info({ feature: 'EmpresasModule' }, '✅ Módulo Empresas registrado com sucesso');
+  } catch (error) {
+    routesLogger.error({ feature: 'EmpresasModule', err: error }, '❌ ERRO - Módulo Empresas');
+  }
+} else {
+  routesLogger.error({ feature: 'EmpresasModule' }, '❌ empresasRoutes não está definido');
 }
 
 /**

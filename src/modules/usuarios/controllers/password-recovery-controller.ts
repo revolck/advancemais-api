@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { prisma } from "../../../config/prisma";
 import { EmailService } from "../../brevo/services/email-service";
 import { brevoConfig } from "../../../config/env";
+import { logger } from "../../../utils/logger";
 import {
   validarCPF,
   validarCNPJ,
@@ -40,12 +41,20 @@ export class PasswordRecoveryController {
     this.emailService = new EmailService();
   }
 
+  private getLogger(req: Request) {
+    return logger.child({
+      controller: "PasswordRecoveryController",
+      correlationId: req.id,
+    });
+  }
+
   /**
    * Solicita recuperação de senha via CPF, CNPJ ou email
    * @param req - Request com identificador
    * @param res - Response com resultado
    */
   public solicitarRecuperacao = async (req: Request, res: Response) => {
+    const log = this.getLogger(req);
     try {
       const { identificador }: SolicitarRecuperacaoData = req.body;
 
@@ -162,9 +171,9 @@ export class PasswordRecoveryController {
       );
 
       if (!emailResult.success) {
-        console.error(
-          "Erro ao enviar email de recuperação:",
-          emailResult.error
+        log.error(
+          { error: emailResult.error },
+          "Erro ao enviar email de recuperação"
         );
         return res.status(500).json({
           message: "Erro interno ao enviar email de recuperação",
@@ -176,7 +185,7 @@ export class PasswordRecoveryController {
           "Se o identificador estiver correto, você receberá um email com instruções para recuperação",
       });
     } catch (error) {
-      console.error("Erro na solicitação de recuperação:", error);
+      log.error({ err: error }, "Erro na solicitação de recuperação");
       res.status(500).json({
         message: "Erro interno do servidor",
         error: error instanceof Error ? error.message : "Erro desconhecido",
@@ -190,6 +199,7 @@ export class PasswordRecoveryController {
    * @param res - Response com validação
    */
   public validarToken = async (req: Request, res: Response) => {
+    const log = this.getLogger(req);
     try {
       const { token } = req.params;
 
@@ -248,7 +258,7 @@ export class PasswordRecoveryController {
         },
       });
     } catch (error) {
-      console.error("Erro na validação do token:", error);
+      log.error({ err: error }, "Erro na validação do token");
       res.status(500).json({
         message: "Erro interno do servidor",
         error: error instanceof Error ? error.message : "Erro desconhecido",
@@ -262,6 +272,7 @@ export class PasswordRecoveryController {
    * @param res - Response com resultado
    */
   public redefinirSenha = async (req: Request, res: Response) => {
+    const log = this.getLogger(req);
     try {
       const { token, novaSenha, confirmarSenha }: RedefinirSenhaData = req.body;
 
@@ -359,7 +370,7 @@ export class PasswordRecoveryController {
         message: "Senha redefinida com sucesso",
       });
     } catch (error) {
-      console.error("Erro na redefinição de senha:", error);
+      log.error({ err: error }, "Erro na redefinição de senha");
       res.status(500).json({
         message: "Erro interno do servidor",
         error: error instanceof Error ? error.message : "Erro desconhecido",

@@ -1,22 +1,17 @@
-import { SliderOrientation, WebsiteStatus } from "@prisma/client";
-import { prisma } from "@/config/prisma";
-import {
-  getCache,
-  setCache,
-  invalidateCache,
-} from "@/utils/cache";
-import { WEBSITE_CACHE_TTL } from "@/modules/website/config";
+import { SliderOrientation, WebsiteStatus } from '@prisma/client';
+import { prisma } from '@/config/prisma';
+import { getCache, setCache, invalidateCache } from '@/utils/cache';
+import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
 
-const CACHE_KEY = "website:slider:list";
+const CACHE_KEY = 'website:slider:list';
 
 export const sliderService = {
   list: async () => {
-    const cached = await getCache<
-      Awaited<ReturnType<typeof prisma.websiteSliderOrdem.findMany>>
-    >(CACHE_KEY);
+    const cached =
+      await getCache<Awaited<ReturnType<typeof prisma.websiteSliderOrdem.findMany>>>(CACHE_KEY);
     if (cached) return cached;
     const result = await prisma.websiteSliderOrdem.findMany({
-      orderBy: { ordem: "asc" },
+      orderBy: { ordem: 'asc' },
       take: 100,
       select: {
         id: true,
@@ -73,7 +68,7 @@ export const sliderService = {
       data: {
         ordem,
         orientacao: data.orientacao,
-        status: data.status ?? "RASCUNHO",
+        status: data.status ?? 'RASCUNHO',
         slider: {
           create: {
             sliderName: data.sliderName,
@@ -110,13 +105,13 @@ export const sliderService = {
       orientacao?: SliderOrientation;
       status?: WebsiteStatus;
       ordem?: number;
-    }
+    },
   ) => {
     const result = await prisma.$transaction(async (tx) => {
       const current = await tx.websiteSliderOrdem.findUnique({
         where: { websiteSliderId: sliderId },
       });
-      if (!current) throw new Error("Slider não encontrado");
+      if (!current) throw new Error('Slider não encontrado');
 
       const ordemId = current.id;
 
@@ -170,9 +165,7 @@ export const sliderService = {
           orientacao,
           status: data.status,
           slider:
-            data.sliderName !== undefined ||
-            data.imagemUrl !== undefined ||
-            data.link !== undefined
+            data.sliderName !== undefined || data.imagemUrl !== undefined || data.link !== undefined
               ? {
                   update: {
                     sliderName: data.sliderName,
@@ -220,7 +213,7 @@ export const sliderService = {
           },
         },
       });
-      if (!current) throw new Error("Slider não encontrado");
+      if (!current) throw new Error('Slider não encontrado');
 
       if (novaOrdem !== current.ordem) {
         await tx.websiteSliderOrdem.update({
@@ -288,4 +281,3 @@ export const sliderService = {
     await invalidateCache(CACHE_KEY);
   },
 };
-

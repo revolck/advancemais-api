@@ -1,7 +1,7 @@
-import { Router } from "express";
-import { publicCache } from "../../../middlewares/cache-control";
-import { supabaseAuthMiddleware } from "../../usuarios/auth";
-import { SobreController } from "../controllers/sobre.controller";
+import { Router } from 'express';
+import { publicCache } from '../../../middlewares/cache-control';
+import { supabaseAuthMiddleware } from '../../usuarios/auth';
+import { SobreController } from '../controllers/sobre.controller';
 
 const router = Router();
 
@@ -32,7 +32,7 @@ const router = Router();
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/sobre"
  */
-router.get("/", publicCache, SobreController.list);
+router.get('/', publicCache, SobreController.list);
 
 /**
  * @openapi
@@ -71,7 +71,7 @@ router.get("/", publicCache, SobreController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/sobre/{id}"
  */
-router.get("/:id", publicCache, SobreController.get);
+router.get('/:id', publicCache, SobreController.get);
 
 /**
  * @openapi
@@ -108,12 +108,8 @@ router.get("/:id", publicCache, SobreController.get);
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -H "Content-Type: application/json" \\
  *            -d '{"titulo":"Novo","descricao":"Conteudo","imagemUrl":"https://cdn.example.com/sobre.jpg"}'
-*/
-router.post(
-  "/",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  SobreController.create
-);
+ */
+router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), SobreController.create);
 
 /**
  * @openapi
@@ -162,12 +158,8 @@ router.post(
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -H "Content-Type: application/json" \\
  *            -d '{"titulo":"Atualizado","descricao":"Atualizada","imagemUrl":"https://cdn.example.com/sobre.jpg"}'
-*/
-router.put(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  SobreController.update
-);
+ */
+router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), SobreController.update);
 
 /**
  * @openapi
@@ -204,11 +196,7 @@ router.put(
  *         source: |
  *           curl -X DELETE "http://localhost:3000/api/v1/website/sobre/{id}" \\
  *            -H "Authorization: Bearer <TOKEN>"
-*/
-router.delete(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  SobreController.remove
-);
+ */
+router.delete('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), SobreController.remove);
 
 export { router as sobreRoutes };

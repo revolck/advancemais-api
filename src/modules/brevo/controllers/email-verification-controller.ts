@@ -1,8 +1,8 @@
-import { Request, Response } from "express";
-import { EmailService } from "../services/email-service";
-import { prisma } from "../../../config/prisma";
-import { BrevoConfigManager } from "../config/brevo-config";
-import { logger } from "../../../utils/logger";
+import { Request, Response } from 'express';
+import { EmailService } from '../services/email-service';
+import { prisma } from '../../../config/prisma';
+import { BrevoConfigManager } from '../config/brevo-config';
+import { logger } from '../../../utils/logger';
 
 /**
  * Controller para verificação de email
@@ -19,7 +19,7 @@ export class EmailVerificationController {
 
   private getLogger(req: Request) {
     return logger.child({
-      controller: "EmailVerificationController",
+      controller: 'EmailVerificationController',
       correlationId: req.id,
     });
   }
@@ -34,30 +34,27 @@ export class EmailVerificationController {
       const { token } = req.query;
 
       // Validação do token
-      if (!token || typeof token !== "string") {
+      if (!token || typeof token !== 'string') {
         res.status(400).json({
           success: false,
-          message: "Token de verificação é obrigatório",
-          code: "MISSING_TOKEN",
+          message: 'Token de verificação é obrigatório',
+          code: 'MISSING_TOKEN',
         });
         return;
       }
 
-      log.info({ tokenPrefix: token.substring(0, 8) }, "🔍 Verificando token");
+      log.info({ tokenPrefix: token.substring(0, 8) }, '🔍 Verificando token');
 
       // Verifica o token
       const result = await this.emailService.verifyEmailToken(token);
 
       if (result.valid) {
-        log.info(
-          { userId: result.userId },
-          "✅ Email verificado com sucesso"
-        );
+        log.info({ userId: result.userId }, '✅ Email verificado com sucesso');
 
         const redirectUrl = this.config.getConfig().urls.frontend;
         res.json({
           success: true,
-          message: "Email verificado com sucesso",
+          message: 'Email verificado com sucesso',
           redirectUrl,
           userId: result.userId,
         });
@@ -68,8 +65,8 @@ export class EmailVerificationController {
       if (result.alreadyVerified) {
         res.status(400).json({
           success: false,
-          message: "Este email já foi verificado anteriormente.",
-          code: "ALREADY_VERIFIED",
+          message: 'Este email já foi verificado anteriormente.',
+          code: 'ALREADY_VERIFIED',
           userId: result.userId,
         });
         return;
@@ -79,8 +76,8 @@ export class EmailVerificationController {
         res.status(400).json({
           success: false,
           message:
-            "Token de verificação expirado. Seu cadastro foi removido. Por favor, realize um novo cadastro.",
-          code: "TOKEN_EXPIRED",
+            'Token de verificação expirado. Seu cadastro foi removido. Por favor, realize um novo cadastro.',
+          code: 'TOKEN_EXPIRED',
           userId: result.userId,
           deleted: result.deleted,
         });
@@ -90,16 +87,16 @@ export class EmailVerificationController {
       // Token inválido
       res.status(400).json({
         success: false,
-        message: result.error || "Token de verificação inválido",
-        code: "INVALID_TOKEN",
+        message: result.error || 'Token de verificação inválido',
+        code: 'INVALID_TOKEN',
       });
     } catch (error) {
-      log.error({ err: error }, "❌ Erro na verificação de email");
+      log.error({ err: error }, '❌ Erro na verificação de email');
       res.status(500).json({
         success: false,
-        message: "Erro interno do servidor",
-        code: "INTERNAL_ERROR",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
+        message: 'Erro interno do servidor',
+        code: 'INTERNAL_ERROR',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
       });
     }
   };
@@ -109,20 +106,17 @@ export class EmailVerificationController {
    * POST /reenviar-verificacao
    * Body: { email: string }
    */
-  public resendVerification = async (
-    req: Request,
-    res: Response
-  ): Promise<void> => {
+  public resendVerification = async (req: Request, res: Response): Promise<void> => {
     const log = this.getLogger(req);
     try {
       const { email } = req.body;
 
       // Validação do email
-      if (!email || typeof email !== "string") {
+      if (!email || typeof email !== 'string') {
         res.status(400).json({
           success: false,
-          message: "Email é obrigatório",
-          code: "MISSING_EMAIL",
+          message: 'Email é obrigatório',
+          code: 'MISSING_EMAIL',
         });
         return;
       }
@@ -130,13 +124,13 @@ export class EmailVerificationController {
       if (!this.isValidEmail(email)) {
         res.status(400).json({
           success: false,
-          message: "Formato de email inválido",
-          code: "INVALID_EMAIL",
+          message: 'Formato de email inválido',
+          code: 'INVALID_EMAIL',
         });
         return;
       }
 
-      log.info({ email }, "🔄 Reenviando verificação");
+      log.info({ email }, '🔄 Reenviando verificação');
 
       // Busca usuário
       const usuario = await prisma.usuario.findUnique({
@@ -154,8 +148,8 @@ export class EmailVerificationController {
       if (!usuario) {
         res.status(404).json({
           success: false,
-          message: "Usuário não encontrado com este email",
-          code: "USER_NOT_FOUND",
+          message: 'Usuário não encontrado com este email',
+          code: 'USER_NOT_FOUND',
         });
         return;
       }
@@ -163,17 +157,17 @@ export class EmailVerificationController {
       if (usuario.emailVerificado) {
         res.status(400).json({
           success: false,
-          message: "Este email já foi verificado",
-          code: "ALREADY_VERIFIED",
+          message: 'Este email já foi verificado',
+          code: 'ALREADY_VERIFIED',
         });
         return;
       }
 
-      if (usuario.status === "INATIVO") {
+      if (usuario.status === 'INATIVO') {
         res.status(403).json({
           success: false,
-          message: "Conta inativa. Entre em contato com o suporte",
-          code: "ACCOUNT_INACTIVE",
+          message: 'Conta inativa. Entre em contato com o suporte',
+          code: 'ACCOUNT_INACTIVE',
         });
         return;
       }
@@ -188,8 +182,8 @@ export class EmailVerificationController {
 
       if (result.success) {
         const message = result.simulated
-          ? "Email de verificação reenviado (simulado para desenvolvimento)"
-          : "Email de verificação reenviado com sucesso. Verifique sua caixa de entrada";
+          ? 'Email de verificação reenviado (simulado para desenvolvimento)'
+          : 'Email de verificação reenviado com sucesso. Verifique sua caixa de entrada';
 
         res.json({
           success: true,
@@ -200,17 +194,17 @@ export class EmailVerificationController {
       } else {
         res.status(500).json({
           success: false,
-          message: result.error || "Erro ao reenviar email de verificação",
-          code: "SEND_ERROR",
+          message: result.error || 'Erro ao reenviar email de verificação',
+          code: 'SEND_ERROR',
         });
       }
     } catch (error) {
-      log.error({ err: error }, "❌ Erro ao reenviar verificação");
+      log.error({ err: error }, '❌ Erro ao reenviar verificação');
       res.status(500).json({
         success: false,
-        message: "Erro interno do servidor",
-        code: "INTERNAL_ERROR",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
+        message: 'Erro interno do servidor',
+        code: 'INTERNAL_ERROR',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
       });
     }
   };
@@ -219,10 +213,7 @@ export class EmailVerificationController {
    * Status de verificação de um usuário
    * GET /status-verificacao/:userId
    */
-  public getVerificationStatus = async (
-    req: Request,
-    res: Response
-  ): Promise<void> => {
+  public getVerificationStatus = async (req: Request, res: Response): Promise<void> => {
     const log = this.getLogger(req);
     try {
       const { userId } = req.params;
@@ -230,8 +221,8 @@ export class EmailVerificationController {
       if (!userId) {
         res.status(400).json({
           success: false,
-          message: "ID do usuário é obrigatório",
-          code: "MISSING_USER_ID",
+          message: 'ID do usuário é obrigatório',
+          code: 'MISSING_USER_ID',
         });
         return;
       }
@@ -250,8 +241,8 @@ export class EmailVerificationController {
       if (!usuario) {
         res.status(404).json({
           success: false,
-          message: "Usuário não encontrado",
-          code: "USER_NOT_FOUND",
+          message: 'Usuário não encontrado',
+          code: 'USER_NOT_FOUND',
         });
         return;
       }
@@ -272,12 +263,12 @@ export class EmailVerificationController {
         },
       });
     } catch (error) {
-      log.error({ err: error }, "❌ Erro ao buscar status de verificação");
+      log.error({ err: error }, '❌ Erro ao buscar status de verificação');
       res.status(500).json({
         success: false,
-        message: "Erro interno do servidor",
-        code: "INTERNAL_ERROR",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
+        message: 'Erro interno do servidor',
+        code: 'INTERNAL_ERROR',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
       });
     }
   };

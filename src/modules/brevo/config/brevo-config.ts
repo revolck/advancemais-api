@@ -1,4 +1,4 @@
-import { brevoConfig } from "../../../config/env";
+import { brevoConfig } from '../../../config/env';
 
 /**
  * Configuração simplificada e robusta do módulo Brevo
@@ -108,17 +108,17 @@ export class BrevoConfigManager {
    */
   private buildConfiguration(): BrevoConfiguration {
     const isConfigured = !!(brevoConfig.apiKey && brevoConfig.fromEmail);
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const authUrl = process.env.AUTH_FRONTEND_URL || `${frontendUrl}/auth`;
 
     return {
-      apiKey: brevoConfig.apiKey || "",
-      fromEmail: brevoConfig.fromEmail || "noreply@advancemais.com",
-      fromName: brevoConfig.fromName || "Advance+",
+      apiKey: brevoConfig.apiKey || '',
+      fromEmail: brevoConfig.fromEmail || 'noreply@advancemais.com',
+      fromName: brevoConfig.fromName || 'Advance+',
       maxRetries: 3,
       timeout: 30000,
       isConfigured,
-      environment: process.env.NODE_ENV || "development",
+      environment: process.env.NODE_ENV || 'development',
 
       urls: {
         frontend: frontendUrl,
@@ -127,19 +127,10 @@ export class BrevoConfigManager {
       },
 
       emailVerification: {
-        enabled: process.env.EMAIL_VERIFICATION_REQUIRED !== "false",
-        tokenExpirationHours: parseInt(
-          process.env.EMAIL_VERIFICATION_EXPIRATION_HOURS || "72",
-          10
-        ),
-        maxResendAttempts: parseInt(
-          process.env.EMAIL_VERIFICATION_MAX_RESEND || "3",
-          10
-        ),
-        resendCooldownMinutes: parseInt(
-          process.env.EMAIL_VERIFICATION_COOLDOWN_MINUTES || "5",
-          10
-        ),
+        enabled: process.env.EMAIL_VERIFICATION_REQUIRED !== 'false',
+        tokenExpirationHours: parseInt(process.env.EMAIL_VERIFICATION_EXPIRATION_HOURS || '72', 10),
+        maxResendAttempts: parseInt(process.env.EMAIL_VERIFICATION_MAX_RESEND || '3', 10),
+        resendCooldownMinutes: parseInt(process.env.EMAIL_VERIFICATION_COOLDOWN_MINUTES || '5', 10),
       },
     };
   }
@@ -149,11 +140,11 @@ export class BrevoConfigManager {
    */
   private logConfiguration(): void {
     if (!this.config.isConfigured) {
-      console.warn("⚠️ Brevo não configurado - emails serão simulados");
+      console.warn('⚠️ Brevo não configurado - emails serão simulados');
     }
 
-    console.log("✅ Brevo configurado com sucesso:", {
-      module: "Brevo",
+    console.log('✅ Brevo configurado com sucesso:', {
+      module: 'Brevo',
       configured: this.config.isConfigured,
       environment: this.config.environment,
       emailVerificationEnabled: this.config.emailVerification.enabled,

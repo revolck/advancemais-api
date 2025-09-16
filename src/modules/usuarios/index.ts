@@ -1,20 +1,20 @@
 // Enums
-export * from "./enums";
+export * from './enums';
 
 // Utils
-export * from "./utils";
+export * from './utils';
 
 // Auth
-export * from "./auth";
+export * from './auth';
 
 // Middlewares
-export * from "./middlewares";
+export * from './middlewares';
 
 // Controllers
-export * from "./controllers";
+export * from './controllers';
 
 // Register
-export * from "./register";
+export * from './register';
 
 // Routes
-export * from "./routes";
+export * from './routes';

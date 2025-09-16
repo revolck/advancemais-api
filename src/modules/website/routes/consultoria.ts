@@ -1,8 +1,8 @@
-import { Router } from "express";
-import { publicCache } from "../../../middlewares/cache-control";
-import multer from "multer";
-import { supabaseAuthMiddleware } from "../../usuarios/auth";
-import { ConsultoriaController } from "../controllers/consultoria.controller";
+import { Router } from 'express';
+import { publicCache } from '../../../middlewares/cache-control';
+import multer from 'multer';
+import { supabaseAuthMiddleware } from '../../usuarios/auth';
+import { ConsultoriaController } from '../controllers/consultoria.controller';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -34,7 +34,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/consultoria"
  */
-router.get("/", publicCache, ConsultoriaController.list);
+router.get('/', publicCache, ConsultoriaController.list);
 
 /**
  * @openapi
@@ -73,7 +73,7 @@ router.get("/", publicCache, ConsultoriaController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/consultoria/{id}"
  */
-router.get("/:id", publicCache, ConsultoriaController.get);
+router.get('/:id', publicCache, ConsultoriaController.get);
 
 /**
  * @openapi
@@ -113,12 +113,12 @@ router.get("/:id", publicCache, ConsultoriaController.get);
  *            -F "descricao=Conteudo" \\
  *            -F "buttonUrl=https://example.com" \\
  *            -F "buttonLabel=Saiba mais"
-*/
+ */
 router.post(
-  "/",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  upload.single("imagem"),
-  ConsultoriaController.create
+  '/',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  upload.single('imagem'),
+  ConsultoriaController.create,
 );
 
 /**
@@ -171,12 +171,12 @@ router.post(
  *            -F "descricao=Atualizada" \\
  *            -F "buttonUrl=https://example.com" \\
  *            -F "buttonLabel=Saiba mais"
-*/
+ */
 router.put(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  upload.single("imagem"),
-  ConsultoriaController.update
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  upload.single('imagem'),
+  ConsultoriaController.update,
 );
 
 /**
@@ -214,11 +214,7 @@ router.put(
  *         source: |
  *           curl -X DELETE "http://localhost:3000/api/v1/website/consultoria/{id}" \\
  *            -H "Authorization: Bearer <TOKEN>"
-*/
-router.delete(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  ConsultoriaController.remove
-);
+ */
+router.delete('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), ConsultoriaController.remove);
 
 export { router as consultoriaRoutes };

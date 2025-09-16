@@ -1,10 +1,10 @@
-import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
-import jwksRsa from "jwks-rsa";
-import type { Prisma } from "@prisma/client";
-import { prisma } from "../../../config/prisma";
-import { supabaseConfig, jwtConfig } from "../../../config/env";
-import { getCache, setCache } from "../../../utils/cache";
+import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+import jwksRsa from 'jwks-rsa';
+import type { Prisma } from '@prisma/client';
+import { prisma } from '../../../config/prisma';
+import { supabaseConfig, jwtConfig } from '../../../config/env';
+import { getCache, setCache } from '../../../utils/cache';
 
 /**
  * Cliente JWKS para validação de tokens Supabase
@@ -23,7 +23,7 @@ const jwksClient = jwksRsa({
  */
 function getKey(header: any, callback: any) {
   // Tokens assinados com HS256 usam segredo local em vez de JWKS
-  if (header.alg === "HS256") {
+  if (header.alg === 'HS256') {
     return callback(null, jwtConfig.secret);
   }
 
@@ -44,45 +44,36 @@ function getKey(header: any, callback: any) {
  * @returns Middleware function
  */
 export const supabaseAuthMiddleware =
-  (roles?: string[]) =>
-  async (req: Request, res: Response, next: NextFunction) => {
-    if (req.originalUrl.startsWith("/docs/login")) {
+  (roles?: string[]) => async (req: Request, res: Response, next: NextFunction) => {
+    if (req.originalUrl.startsWith('/docs/login')) {
       return next();
     }
 
     const isDocsRoute = (url: string) =>
-      (url.startsWith("/docs") && !url.startsWith("/docs/login")) ||
-      url.startsWith("/redoc");
+      (url.startsWith('/docs') && !url.startsWith('/docs/login')) || url.startsWith('/redoc');
 
-    const token =
-      req.headers.authorization?.split(" ")[1] || req.cookies?.token;
+    const token = req.headers.authorization?.split(' ')[1] || req.cookies?.token;
 
     if (!token) {
       if (isDocsRoute(req.originalUrl)) {
-        return res.redirect(
-          `/docs/login?redirect=${encodeURIComponent(req.originalUrl)}`
-        );
+        return res.redirect(`/docs/login?redirect=${encodeURIComponent(req.originalUrl)}`);
       }
-      return res
-        .status(401)
-        .json({ message: "Token de autorização necessário" });
+      return res.status(401).json({ message: 'Token de autorização necessário' });
     }
 
     jwt.verify(
       token,
       getKey,
-      { algorithms: ["RS256", "ES256", "HS256"] },
+      { algorithms: ['RS256', 'ES256', 'HS256'] },
       async (err: any, decoded: any) => {
         if (err) {
           if (isDocsRoute(req.originalUrl)) {
-            res.clearCookie("token");
-            return res.redirect(
-              `/docs/login?redirect=${encodeURIComponent(req.originalUrl)}`
-            );
+            res.clearCookie('token');
+            return res.redirect(`/docs/login?redirect=${encodeURIComponent(req.originalUrl)}`);
           }
 
           return res.status(401).json({
-            message: "Token inválido ou expirado",
+            message: 'Token inválido ou expirado',
             error: err.message,
           });
         }
@@ -109,16 +100,12 @@ export const supabaseAuthMiddleware =
             select: typeof usuarioSelect;
           }>;
 
-          let usuario: UsuarioCache | null =
-            await getCache<UsuarioCache>(cacheKey);
+          let usuario: UsuarioCache | null = await getCache<UsuarioCache>(cacheKey);
 
           if (!usuario) {
             usuario = await prisma.usuario.findFirst({
               where: {
-                OR: [
-                  { supabaseId: decoded.sub as string },
-                  { id: decoded.sub as string },
-                ],
+                OR: [{ supabaseId: decoded.sub as string }, { id: decoded.sub as string }],
               },
               select: usuarioSelect,
             });
@@ -129,13 +116,11 @@ export const supabaseAuthMiddleware =
           }
 
           if (!usuario) {
-            return res
-              .status(401)
-              .json({ message: "Usuário não encontrado no sistema" });
+            return res.status(401).json({ message: 'Usuário não encontrado no sistema' });
           }
 
           // Verifica se o usuário está ativo
-          if (usuario.status !== "ATIVO") {
+          if (usuario.status !== 'ATIVO') {
             return res.status(403).json({
               message: `Acesso negado: usuário está ${usuario.status.toLowerCase()}`,
             });
@@ -144,7 +129,7 @@ export const supabaseAuthMiddleware =
           // Verifica permissões de role se especificadas
           if (roles && !roles.includes(usuario.role)) {
             return res.status(403).json({
-              message: "Acesso negado: permissões insuficientes",
+              message: 'Acesso negado: permissões insuficientes',
               requiredRoles: roles,
               userRole: usuario.role,
             });
@@ -158,12 +143,12 @@ export const supabaseAuthMiddleware =
 
           next();
         } catch (error) {
-          console.error("Erro no middleware de autenticação:", error);
+          console.error('Erro no middleware de autenticação:', error);
           return res.status(500).json({
-            message: "Erro interno do servidor",
-            error: error instanceof Error ? error.message : "Erro desconhecido",
+            message: 'Erro interno do servidor',
+            error: error instanceof Error ? error.message : 'Erro desconhecido',
           });
         }
-      }
+      },
     );
   };

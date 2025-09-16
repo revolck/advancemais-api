@@ -1,7 +1,7 @@
-import { Request, Response } from "express";
+import { Request, Response } from 'express';
 
-import { planinhasService } from "@/modules/website/services/planinhas.service";
-import { respondWithCache } from "@/modules/website/utils/cache-response";
+import { planinhasService } from '@/modules/website/services/planinhas.service';
+import { respondWithCache } from '@/modules/website/utils/cache-response';
 
 export class PlaninhasController {
   static list = async (req: Request, res: Response) => {
@@ -16,16 +16,14 @@ export class PlaninhasController {
       const { id } = req.params;
       const item = await planinhasService.get(id);
       if (!item) {
-        return res
-          .status(404)
-          .json({ message: "Planinhas não encontrado" });
+        return res.status(404).json({ message: 'Planinhas não encontrado' });
       }
       const response = item;
 
       return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao buscar planinhas",
+        message: 'Erro ao buscar planinhas',
         error: error.message,
       });
     }
@@ -64,7 +62,7 @@ export class PlaninhasController {
       res.status(201).json(item);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao criar planinhas",
+        message: 'Erro ao criar planinhas',
         error: error.message,
       });
     }
@@ -104,7 +102,7 @@ export class PlaninhasController {
       res.json(item);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao atualizar planinhas",
+        message: 'Erro ao atualizar planinhas',
         error: error.message,
       });
     }
@@ -117,10 +115,9 @@ export class PlaninhasController {
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao remover planinhas",
+        message: 'Erro ao remover planinhas',
         error: error.message,
       });
     }
   };
 }
-

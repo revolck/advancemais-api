@@ -1,13 +1,9 @@
-import { WebsiteConexaoForte } from "@prisma/client";
-import { prisma } from "@/config/prisma";
-import {
-  getCache,
-  setCache,
-  invalidateCache,
-} from "@/utils/cache";
-import { WEBSITE_CACHE_TTL } from "@/modules/website/config";
+import { WebsiteConexaoForte } from '@prisma/client';
+import { prisma } from '@/config/prisma';
+import { getCache, setCache, invalidateCache } from '@/utils/cache';
+import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
 
-const CACHE_KEY = "website:conexaoForte:list";
+const CACHE_KEY = 'website:conexaoForte:list';
 
 export const conexaoForteService = {
   list: async () => {
@@ -17,11 +13,8 @@ export const conexaoForteService = {
     await setCache(CACHE_KEY, result, WEBSITE_CACHE_TTL);
     return result;
   },
-  get: (id: string) =>
-    prisma.websiteConexaoForte.findUnique({ where: { id } }),
-  create: async (
-    data: Omit<WebsiteConexaoForte, "id" | "criadoEm" | "atualizadoEm">
-  ) => {
+  get: (id: string) => prisma.websiteConexaoForte.findUnique({ where: { id } }),
+  create: async (data: Omit<WebsiteConexaoForte, 'id' | 'criadoEm' | 'atualizadoEm'>) => {
     const result = await prisma.websiteConexaoForte.create({ data });
     await invalidateCache(CACHE_KEY);
     return result;
@@ -37,4 +30,3 @@ export const conexaoForteService = {
     return result;
   },
 };
-

@@ -5,9 +5,9 @@
  * @author Sistema Advance+
  * @version 3.0.0
  */
-import { prisma } from "../../../config/prisma";
-import redis from "../../../config/redis";
-import { getCache, setCache, DEFAULT_TTL } from "../../../utils/cache";
+import { prisma } from '../../../config/prisma';
+import redis from '../../../config/redis';
+import { getCache, setCache, DEFAULT_TTL } from '../../../utils/cache';
 
 type CountGroup = {
   _count: {
@@ -26,34 +26,28 @@ type UserStatsResponse = {
     mediaPorDia: string | number;
   };
   distribuicao: {
-    porStatus: DistributionGroup<"status">[];
-    porTipo: DistributionGroup<"tipoUsuario">[];
+    porStatus: DistributionGroup<'status'>[];
+    porTipo: DistributionGroup<'tipoUsuario'>[];
   };
 };
 
-const USER_STATS_CACHE_TTL = Number(
-  process.env.USER_STATS_CACHE_TTL ?? DEFAULT_TTL
-);
+const USER_STATS_CACHE_TTL = Number(process.env.USER_STATS_CACHE_TTL ?? DEFAULT_TTL);
 
 export class StatsService {
   /**
    * Estatísticas gerais do dashboard
    */
   async getDashboardStats() {
-    const cacheKey = "dashboard:stats";
+    const cacheKey = 'dashboard:stats';
 
     const cached = await redis.get(cacheKey);
     if (cached) {
       return JSON.parse(cached);
     }
 
-    const [
-      totalUsuarios,
-      usuariosAtivos,
-      usuariosHoje,
-    ] = await Promise.all([
+    const [totalUsuarios, usuariosAtivos, usuariosHoje] = await Promise.all([
       prisma.usuario.count(),
-      prisma.usuario.count({ where: { status: "ATIVO" } }),
+      prisma.usuario.count({ where: { status: 'ATIVO' } }),
       prisma.usuario.count({
         where: {
           criadoEm: {
@@ -68,10 +62,7 @@ export class StatsService {
         total: totalUsuarios,
         ativos: usuariosAtivos,
         hoje: usuariosHoje,
-        taxaAtivacao:
-          totalUsuarios > 0
-            ? ((usuariosAtivos / totalUsuarios) * 100).toFixed(1)
-            : 0,
+        taxaAtivacao: totalUsuarios > 0 ? ((usuariosAtivos / totalUsuarios) * 100).toFixed(1) : 0,
       },
       pagamentos: {
         totalOrders: 0,
@@ -87,7 +78,7 @@ export class StatsService {
       },
     };
 
-    await redis.set(cacheKey, JSON.stringify(stats), "EX", 60);
+    await redis.set(cacheKey, JSON.stringify(stats), 'EX', 60);
 
     return stats;
   }
@@ -106,41 +97,37 @@ export class StatsService {
     const dataInicio = new Date();
     dataInicio.setDate(dataInicio.getDate() - diasAtras);
 
-    const [usuariosPorPeriodo, usuariosPorStatus, usuariosPorTipo] = (
-      await Promise.all([
-        // Usuários por período
-        prisma.usuario.groupBy({
-          by: ["criadoEm"],
-          where: { criadoEm: { gte: dataInicio } },
-          _count: { id: true },
-        }),
+    const [usuariosPorPeriodo, usuariosPorStatus, usuariosPorTipo] = (await Promise.all([
+      // Usuários por período
+      prisma.usuario.groupBy({
+        by: ['criadoEm'],
+        where: { criadoEm: { gte: dataInicio } },
+        _count: { id: true },
+      }),
 
-        // Por status
-        prisma.usuario.groupBy({
-          by: ["status"],
-          _count: { id: true },
-        }),
+      // Por status
+      prisma.usuario.groupBy({
+        by: ['status'],
+        _count: { id: true },
+      }),
 
-        // Por tipo
-        prisma.usuario.groupBy({
-          by: ["tipoUsuario"],
-          _count: { id: true },
-        }),
-      ])
-    ) as [
+      // Por tipo
+      prisma.usuario.groupBy({
+        by: ['tipoUsuario'],
+        _count: { id: true },
+      }),
+    ])) as [
       (CountGroup & { criadoEm: Date })[],
-      DistributionGroup<"status">[],
-      DistributionGroup<"tipoUsuario">[]
+      DistributionGroup<'status'>[],
+      DistributionGroup<'tipoUsuario'>[],
     ];
 
     const usuariosNoPeriodo = usuariosPorPeriodo.reduce(
       (sum: number, item: { _count: { id: number } }) => sum + item._count.id,
-      0
+      0,
     );
     const mediaPorDia =
-      usuariosPorPeriodo.length > 0
-        ? (usuariosNoPeriodo / diasAtras).toFixed(1)
-        : 0;
+      usuariosPorPeriodo.length > 0 ? (usuariosNoPeriodo / diasAtras).toFixed(1) : 0;
 
     const stats: UserStatsResponse = {
       periodo: {
@@ -164,10 +151,10 @@ export class StatsService {
    */
   private getPeriodoDays(periodo: string): number {
     const periodos: Record<string, number> = {
-      "7d": 7,
-      "30d": 30,
-      "90d": 90,
-      "1y": 365,
+      '7d': 7,
+      '30d': 30,
+      '90d': 90,
+      '1y': 365,
     };
 
     return periodos[periodo] || 30;

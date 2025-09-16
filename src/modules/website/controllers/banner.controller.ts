@@ -1,10 +1,10 @@
-import { Request, Response } from "express";
-import path from "path";
-import { WebsiteStatus } from "@prisma/client";
+import { Request, Response } from 'express';
+import path from 'path';
+import { WebsiteStatus } from '@prisma/client';
 
-import { supabase } from "@/config/supabase";
-import { bannerService } from "@/modules/website/services/banner.service";
-import { respondWithCache } from "@/modules/website/utils/cache-response";
+import { supabase } from '@/config/supabase';
+import { bannerService } from '@/modules/website/services/banner.service';
+import { respondWithCache } from '@/modules/website/utils/cache-response';
 
 function mapBanner(ordem: any) {
   return {
@@ -24,9 +24,9 @@ function mapBanner(ordem: any) {
 function generateImageTitle(url: string): string {
   try {
     const pathname = new URL(url).pathname;
-    return path.basename(pathname).split(".")[0];
+    return path.basename(pathname).split('.')[0];
   } catch {
-    return "";
+    return '';
   }
 }
 
@@ -34,14 +34,12 @@ async function uploadImage(file: Express.Multer.File): Promise<string> {
   const fileExt = path.extname(file.originalname);
   const fileName = `banner-${Date.now()}${fileExt}`;
   const { error } = await supabase.storage
-    .from("website")
+    .from('website')
     .upload(`banners/${fileName}`, file.buffer, {
       contentType: file.mimetype,
     });
   if (error) throw error;
-  const { data } = supabase.storage
-    .from("website")
-    .getPublicUrl(`banners/${fileName}`);
+  const { data } = supabase.storage.from('website').getPublicUrl(`banners/${fileName}`);
   return data.publicUrl;
 }
 
@@ -58,14 +56,14 @@ export class BannerController {
       const { id: ordemId } = req.params;
       const ordem = await bannerService.get(ordemId);
       if (!ordem) {
-        return res.status(404).json({ message: "Banner não encontrado" });
+        return res.status(404).json({ message: 'Banner não encontrado' });
       }
       const response = mapBanner(ordem);
 
       return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao buscar banner",
+        message: 'Erro ao buscar banner',
         error: error.message,
       });
     }
@@ -75,18 +73,18 @@ export class BannerController {
     try {
       const { link } = req.body;
       let { status } = req.body as any;
-      if (typeof status === "boolean") {
-        status = status ? "PUBLICADO" : "RASCUNHO";
-      } else if (typeof status === "string") {
+      if (typeof status === 'boolean') {
+        status = status ? 'PUBLICADO' : 'RASCUNHO';
+      } else if (typeof status === 'string') {
         status = status.toUpperCase();
       }
-      let imagemUrl = "";
+      let imagemUrl = '';
       if (req.file) {
         imagemUrl = await uploadImage(req.file);
       } else if (req.body.imagemUrl) {
         imagemUrl = req.body.imagemUrl;
       }
-      const imagemTitulo = imagemUrl ? generateImageTitle(imagemUrl) : "";
+      const imagemTitulo = imagemUrl ? generateImageTitle(imagemUrl) : '';
       const ordem = await bannerService.create({
         imagemUrl,
         imagemTitulo,
@@ -96,7 +94,7 @@ export class BannerController {
       res.status(201).json(mapBanner(ordem));
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao criar banner",
+        message: 'Erro ao criar banner',
         error: error.message,
       });
     }
@@ -107,9 +105,9 @@ export class BannerController {
       const { id: bannerId } = req.params;
       const { link, ordem } = req.body;
       let { status } = req.body as any;
-      if (typeof status === "boolean") {
-        status = status ? "PUBLICADO" : "RASCUNHO";
-      } else if (typeof status === "string") {
+      if (typeof status === 'boolean') {
+        status = status ? 'PUBLICADO' : 'RASCUNHO';
+      } else if (typeof status === 'string') {
         status = status.toUpperCase();
       }
       let imagemUrl = req.body.imagemUrl as string | undefined;
@@ -129,7 +127,7 @@ export class BannerController {
       res.json(mapBanner(ordemResult));
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao atualizar banner",
+        message: 'Erro ao atualizar banner',
         error: error.message,
       });
     }
@@ -143,7 +141,7 @@ export class BannerController {
       res.json(mapBanner(ordemResult));
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao reordenar banner",
+        message: 'Erro ao reordenar banner',
         error: error.message,
       });
     }
@@ -156,7 +154,7 @@ export class BannerController {
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao remover banner",
+        message: 'Erro ao remover banner',
         error: error.message,
       });
     }

@@ -1,13 +1,6 @@
 type Bindings = Record<string, unknown>;
 
-type KnownLevel =
-  | "fatal"
-  | "error"
-  | "warn"
-  | "info"
-  | "debug"
-  | "trace"
-  | "silent";
+type KnownLevel = 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
 
 type LogFn = (...args: unknown[]) => void;
 
@@ -31,24 +24,22 @@ const levelRank: Record<KnownLevel, number> = {
 
 const normalizeLevel = (value: string | undefined): KnownLevel => {
   if (!value) {
-    return "info";
+    return 'info';
   }
 
   const normalized = value.toLowerCase() as KnownLevel;
 
-  return normalized in levelRank ? normalized : "info";
+  return normalized in levelRank ? normalized : 'info';
 };
 
 const resolvedLevel = normalizeLevel(
-  process.env.LOG_LEVEL ??
-    (process.env.NODE_ENV === "production" ? "info" : "debug"),
+  process.env.LOG_LEVEL ?? (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
 );
 
-const shouldLog = (requested: KnownLevel) =>
-  levelRank[requested] <= levelRank[resolvedLevel];
+const shouldLog = (requested: KnownLevel) => levelRank[requested] <= levelRank[resolvedLevel];
 
 const baseBindings: Bindings = {
-  service: "advancemais-api",
+  service: 'advancemais-api',
   environment: process.env.NODE_ENV,
 };
 
@@ -60,12 +51,12 @@ const createConsoleLogger = (bindings: Bindings = {}): AppLogger => {
 
   return {
     info: (...args) => {
-      if (shouldLog("info")) {
+      if (shouldLog('info')) {
         console.info(...prefixArgs(args));
       }
     },
     warn: (...args) => {
-      if (shouldLog("warn")) {
+      if (shouldLog('warn')) {
         console.warn(...prefixArgs(args));
       }
     },
@@ -73,7 +64,7 @@ const createConsoleLogger = (bindings: Bindings = {}): AppLogger => {
       console.error(...prefixArgs(args));
     },
     debug: (...args) => {
-      if (shouldLog("debug")) {
+      if (shouldLog('debug')) {
         console.debug(...prefixArgs(args));
       }
     },
@@ -93,31 +84,28 @@ const proxyLogger: AppLogger = {
 };
 
 const tryLoadPino = async () => {
-  const dynamicImport = new Function(
-    "specifier",
-    "return import(specifier);",
-  ) as (specifier: string) => Promise<unknown>;
+  const dynamicImport = new Function('specifier', 'return import(specifier);') as (
+    specifier: string,
+  ) => Promise<unknown>;
 
   try {
-    const module = await dynamicImport("pino");
+    const module = await dynamicImport('pino');
     const factory =
-      typeof module === "function"
+      typeof module === 'function'
         ? module
-        : typeof (module as { default?: unknown }).default === "function"
+        : typeof (module as { default?: unknown }).default === 'function'
           ? (module as { default: unknown }).default
           : undefined;
 
-    if (typeof factory === "function") {
+    if (typeof factory === 'function') {
       activeLogger = factory({
         level: resolvedLevel,
         base: baseBindings,
       }) as AppLogger;
     }
   } catch (error) {
-    if (process.env.NODE_ENV !== "test") {
-      console.warn(
-        "⚠️ Módulo 'pino' não encontrado - usando logger baseado em console.",
-      );
+    if (process.env.NODE_ENV !== 'test') {
+      console.warn("⚠️ Módulo 'pino' não encontrado - usando logger baseado em console.");
       if (error instanceof Error && error.message) {
         console.warn(`ℹ️ Detalhes: ${error.message}`);
       }

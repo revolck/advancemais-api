@@ -1,8 +1,8 @@
-import { Router } from "express";
-import { publicCache } from "../../../middlewares/cache-control";
-import multer from "multer";
-import { supabaseAuthMiddleware } from "../../usuarios/auth";
-import { RecrutamentoController } from "../controllers/recrutamento.controller";
+import { Router } from 'express';
+import { publicCache } from '../../../middlewares/cache-control';
+import multer from 'multer';
+import { supabaseAuthMiddleware } from '../../usuarios/auth';
+import { RecrutamentoController } from '../controllers/recrutamento.controller';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -34,7 +34,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/recrutamento"
  */
-router.get("/", publicCache, RecrutamentoController.list);
+router.get('/', publicCache, RecrutamentoController.list);
 
 /**
  * @openapi
@@ -73,7 +73,7 @@ router.get("/", publicCache, RecrutamentoController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/recrutamento/{id}"
  */
-router.get("/:id", publicCache, RecrutamentoController.get);
+router.get('/:id', publicCache, RecrutamentoController.get);
 
 /**
  * @openapi
@@ -113,12 +113,12 @@ router.get("/:id", publicCache, RecrutamentoController.get);
  *            -F "descricao=Conteudo" \\
  *            -F "buttonUrl=https://example.com" \\
  *            -F "buttonLabel=Saiba mais"
-*/
+ */
 router.post(
-  "/",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  upload.single("imagem"),
-  RecrutamentoController.create
+  '/',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  upload.single('imagem'),
+  RecrutamentoController.create,
 );
 
 /**
@@ -171,12 +171,12 @@ router.post(
  *            -F "descricao=Atualizada" \\
  *            -F "buttonUrl=https://example.com" \\
  *            -F "buttonLabel=Saiba mais"
-*/
+ */
 router.put(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  upload.single("imagem"),
-  RecrutamentoController.update
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  upload.single('imagem'),
+  RecrutamentoController.update,
 );
 
 /**
@@ -214,11 +214,11 @@ router.put(
  *         source: |
  *           curl -X DELETE "http://localhost:3000/api/v1/website/recrutamento/{id}" \\
  *            -H "Authorization: Bearer <TOKEN>"
-*/
+ */
 router.delete(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  RecrutamentoController.remove
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  RecrutamentoController.remove,
 );
 
 export { router as recrutamentoRoutes };

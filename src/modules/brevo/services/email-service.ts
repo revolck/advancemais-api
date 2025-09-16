@@ -1,9 +1,9 @@
-import { BrevoClient } from "../client/brevo-client";
-import { BrevoConfigManager } from "../config/brevo-config";
-import { EmailTemplates } from "../templates/email-templates";
-import { prisma } from "../../../config/prisma";
-import { brevoConfig } from "../../../config/env";
-import { invalidateUserCache } from "../../usuarios/utils/cache";
+import { BrevoClient } from '../client/brevo-client';
+import { BrevoConfigManager } from '../config/brevo-config';
+import { EmailTemplates } from '../templates/email-templates';
+import { prisma } from '../../../config/prisma';
+import { brevoConfig } from '../../../config/env';
+import { invalidateUserCache } from '../../usuarios/utils/cache';
 
 export interface EmailResult {
   success: boolean;
@@ -28,22 +28,18 @@ export class EmailService {
     this.config = BrevoConfigManager.getInstance();
   }
 
-  public async sendWelcomeEmail(
-    userData: WelcomeEmailData
-  ): Promise<EmailResult> {
+  public async sendWelcomeEmail(userData: WelcomeEmailData): Promise<EmailResult> {
     const correlationId = this.generateCorrelationId();
 
     try {
-      console.log(
-        `📧 [${correlationId}] Enviando email de boas-vindas para: ${userData.email}`
-      );
+      console.log(`📧 [${correlationId}] Enviando email de boas-vindas para: ${userData.email}`);
 
       if (!this.isValidEmailData(userData)) {
-        throw new Error("Dados do usuário inválidos para email");
+        throw new Error('Dados do usuário inválidos para email');
       }
 
       // Se for usuário de teste, não mexe no banco
-      if (userData.id.startsWith("test_user_")) {
+      if (userData.id.startsWith('test_user_')) {
         console.log(`🧪 [${correlationId}] Usuário de teste detectado`);
         return await this.sendTestEmail(userData, correlationId);
       }
@@ -54,12 +50,11 @@ export class EmailService {
 
       return await this.sendSimpleWelcomeEmail(userData, correlationId);
     } catch (error) {
-      const errorMsg =
-        error instanceof Error ? error.message : "Erro desconhecido";
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
       console.error(`❌ [${correlationId}] Erro no email:`, errorMsg);
 
-      if (!userData.id.startsWith("test_user_")) {
-        await this.logEmailError(userData.id, "BOAS_VINDAS", errorMsg);
+      if (!userData.id.startsWith('test_user_')) {
+        await this.logEmailError(userData.id, 'BOAS_VINDAS', errorMsg);
       }
 
       return { success: false, error: errorMsg };
@@ -68,7 +63,7 @@ export class EmailService {
 
   private async sendTestEmail(
     userData: WelcomeEmailData,
-    correlationId: string
+    correlationId: string,
   ): Promise<EmailResult> {
     try {
       const templateData = {
@@ -91,15 +86,14 @@ export class EmailService {
       console.log(`✅ [${correlationId}] Email de teste enviado`);
       return result;
     } catch (error) {
-      const errorMsg =
-        error instanceof Error ? error.message : "Erro desconhecido";
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
       return { success: false, error: errorMsg };
     }
   }
 
   private async sendVerificationEmail(
     userData: WelcomeEmailData,
-    correlationId: string
+    correlationId: string,
   ): Promise<EmailResult> {
     try {
       const usuarioExiste = await prisma.usuario.findUnique({
@@ -127,13 +121,11 @@ export class EmailService {
         tipoUsuario: userData.tipoUsuario,
         verificationUrl,
         token,
-        expirationHours:
-          this.config.getConfig().emailVerification.tokenExpirationHours,
+        expirationHours: this.config.getConfig().emailVerification.tokenExpirationHours,
         frontendUrl: this.config.getConfig().urls.frontend,
       };
 
-      const emailContent =
-        EmailTemplates.generateVerificationEmail(templateData);
+      const emailContent = EmailTemplates.generateVerificationEmail(templateData);
 
       const result = await this.client.sendEmail({
         to: userData.email,
@@ -144,24 +136,19 @@ export class EmailService {
       });
 
       if (result.success) {
-        await this.logEmailSuccess(
-          userData.id,
-          "VERIFICACAO_EMAIL",
-          result.messageId
-        );
+        await this.logEmailSuccess(userData.id, 'VERIFICACAO_EMAIL', result.messageId);
       }
 
       return result;
     } catch (error) {
-      const errorMsg =
-        error instanceof Error ? error.message : "Erro desconhecido";
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
       throw error;
     }
   }
 
   private async sendSimpleWelcomeEmail(
     userData: WelcomeEmailData,
-    correlationId: string
+    correlationId: string,
   ): Promise<EmailResult> {
     try {
       const templateData = {
@@ -182,24 +169,19 @@ export class EmailService {
       });
 
       if (result.success) {
-        await this.logEmailSuccess(
-          userData.id,
-          "BOAS_VINDAS",
-          result.messageId
-        );
+        await this.logEmailSuccess(userData.id, 'BOAS_VINDAS', result.messageId);
       }
 
       return result;
     } catch (error) {
-      const errorMsg =
-        error instanceof Error ? error.message : "Erro desconhecido";
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
       throw error;
     }
   }
 
   public async enviarEmailRecuperacaoSenha(
     usuario: { id: string; email: string; nomeCompleto: string },
-    token: string
+    token: string,
   ): Promise<EmailResult> {
     const correlationId = this.generateCorrelationId();
 
@@ -211,13 +193,11 @@ export class EmailService {
         nomeCompleto: usuario.nomeCompleto,
         token,
         linkRecuperacao,
-        expiracaoHoras:
-          brevoConfig.passwordRecovery.tokenExpirationMinutes / 60,
+        expiracaoHoras: brevoConfig.passwordRecovery.tokenExpirationMinutes / 60,
         maxTentativas: brevoConfig.passwordRecovery.maxAttempts,
       };
 
-      const emailContent =
-        EmailTemplates.generatePasswordRecoveryEmail(templateData);
+      const emailContent = EmailTemplates.generatePasswordRecoveryEmail(templateData);
 
       const result = await this.client.sendEmail({
         to: usuario.email,
@@ -228,24 +208,19 @@ export class EmailService {
       });
 
       if (result.success) {
-        await this.logEmailSuccess(
-          usuario.id,
-          "RECUPERACAO_SENHA",
-          result.messageId
-        );
+        await this.logEmailSuccess(usuario.id, 'RECUPERACAO_SENHA', result.messageId);
       } else {
         await this.logEmailError(
           usuario.id,
-          "RECUPERACAO_SENHA",
-          result.error || "Erro desconhecido"
+          'RECUPERACAO_SENHA',
+          result.error || 'Erro desconhecido',
         );
       }
 
       return result;
     } catch (error) {
-      const errorMsg =
-        error instanceof Error ? error.message : "Erro desconhecido";
-      await this.logEmailError(usuario.id, "RECUPERACAO_SENHA", errorMsg);
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      await this.logEmailError(usuario.id, 'RECUPERACAO_SENHA', errorMsg);
       return { success: false, error: errorMsg };
     }
   }
@@ -263,17 +238,14 @@ export class EmailService {
       });
 
       if (!usuario) {
-        return { valid: false, error: "Token inválido" };
+        return { valid: false, error: 'Token inválido' };
       }
 
       if (usuario.emailVerificado) {
         return { valid: false, alreadyVerified: true, userId: usuario.id };
       }
 
-      if (
-        usuario.emailVerificationTokenExp &&
-        usuario.emailVerificationTokenExp < new Date()
-      ) {
+      if (usuario.emailVerificationTokenExp && usuario.emailVerificationTokenExp < new Date()) {
         await prisma.usuario.delete({ where: { id: usuario.id } });
         return { valid: false, expired: true, userId: usuario.id, deleted: true };
       }
@@ -284,7 +256,7 @@ export class EmailService {
           emailVerificado: true,
           emailVerificationToken: null,
           emailVerificationTokenExp: null,
-          status: "ATIVO",
+          status: 'ATIVO',
         },
       });
 
@@ -292,8 +264,7 @@ export class EmailService {
 
       return { valid: true, userId: usuario.id };
     } catch (error) {
-      const errorMsg =
-        error instanceof Error ? error.message : "Erro desconhecido";
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
       return { valid: false, error: errorMsg };
     }
   }
@@ -309,14 +280,14 @@ export class EmailService {
   private async saveVerificationToken(
     userId: string,
     token: string,
-    expiration: Date
+    expiration: Date,
   ): Promise<void> {
     await prisma.usuario.update({
       where: { id: userId },
       data: {
         emailVerificationToken: token,
         emailVerificationTokenExp: expiration,
-        status: "PENDENTE",
+        status: 'PENDENTE',
       },
     });
 
@@ -326,46 +297,42 @@ export class EmailService {
   private async logEmailSuccess(
     userId: string,
     operation: string,
-    messageId?: string
+    messageId?: string,
   ): Promise<void> {
     try {
-      if (userId.startsWith("test_user_")) return;
+      if (userId.startsWith('test_user_')) return;
 
       await prisma.logEmail.create({
         data: {
           usuarioId: userId,
-          email: "",
+          email: '',
           tipoEmail: operation as any,
-          status: "ENVIADO",
-          messageId: messageId || "",
+          status: 'ENVIADO',
+          messageId: messageId || '',
           tentativas: 1,
         },
       });
     } catch (error) {
-      console.warn("⚠️ Erro ao registrar log:", error);
+      console.warn('⚠️ Erro ao registrar log:', error);
     }
   }
 
-  private async logEmailError(
-    userId: string,
-    operation: string,
-    error: string
-  ): Promise<void> {
+  private async logEmailError(userId: string, operation: string, error: string): Promise<void> {
     try {
-      if (userId.startsWith("test_user_")) return;
+      if (userId.startsWith('test_user_')) return;
 
       await prisma.logEmail.create({
         data: {
           usuarioId: userId,
-          email: "",
+          email: '',
           tipoEmail: operation as any,
-          status: "FALHA",
+          status: 'FALHA',
           erro: error,
           tentativas: 1,
         },
       });
     } catch (logError) {
-      console.warn("⚠️ Erro ao registrar log:", logError);
+      console.warn('⚠️ Erro ao registrar log:', logError);
     }
   }
 

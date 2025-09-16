@@ -1,14 +1,14 @@
-import type { Config } from "jest";
+import type { Config } from 'jest';
 
 const config: Config = {
-  preset: "ts-jest/presets/default-esm",
-  testEnvironment: "node",
-  testMatch: ["**/__tests__/**/*.test.ts"],
+  preset: 'ts-jest/presets/default-esm',
+  testEnvironment: 'node',
+  testMatch: ['**/__tests__/**/*.test.ts'],
   moduleNameMapper: {
-    "^(\\.+/.*)\\.js$": "$1",
-    "^@/(.*)$": "<rootDir>/src/$1",
+    '^(\\.+/.*)\\.js$': '$1',
+    '^@/(.*)$': '<rootDir>/src/$1',
   },
-  extensionsToTreatAsEsm: [".ts"],
+  extensionsToTreatAsEsm: ['.ts'],
 };
 
 export default config;

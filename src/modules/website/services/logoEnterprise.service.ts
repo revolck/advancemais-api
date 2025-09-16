@@ -1,22 +1,19 @@
-import { WebsiteStatus } from "@prisma/client";
-import { prisma } from "@/config/prisma";
-import {
-  getCache,
-  setCache,
-  invalidateCache,
-} from "@/utils/cache";
-import { WEBSITE_CACHE_TTL } from "@/modules/website/config";
+import { WebsiteStatus } from '@prisma/client';
+import { prisma } from '@/config/prisma';
+import { getCache, setCache, invalidateCache } from '@/utils/cache';
+import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
 
-const CACHE_KEY = "website:logoEnterprise:list";
+const CACHE_KEY = 'website:logoEnterprise:list';
 
 export const logoEnterpriseService = {
   list: async () => {
-    const cached = await getCache<
-      Awaited<ReturnType<typeof prisma.websiteLogoEnterpriseOrdem.findMany>>
-    >(CACHE_KEY);
+    const cached =
+      await getCache<Awaited<ReturnType<typeof prisma.websiteLogoEnterpriseOrdem.findMany>>>(
+        CACHE_KEY,
+      );
     if (cached) return cached;
     const result = await prisma.websiteLogoEnterpriseOrdem.findMany({
-      orderBy: { ordem: "asc" },
+      orderBy: { ordem: 'asc' },
       take: 100,
       select: {
         id: true,
@@ -72,7 +69,7 @@ export const logoEnterpriseService = {
       return tx.websiteLogoEnterpriseOrdem.create({
         data: {
           ordem,
-          status: data.status ?? "RASCUNHO",
+          status: data.status ?? 'RASCUNHO',
           logo: {
             create: {
               nome: data.nome,
@@ -111,13 +108,13 @@ export const logoEnterpriseService = {
       website?: string;
       status?: WebsiteStatus;
       ordem?: number;
-    }
+    },
   ) => {
     const result = await prisma.$transaction(async (tx) => {
       const current = await tx.websiteLogoEnterpriseOrdem.findUnique({
         where: { websiteLogoEnterpriseId: logoId },
       });
-      if (!current) throw new Error("Logo não encontrada");
+      if (!current) throw new Error('Logo não encontrada');
 
       let ordem = data.ordem ?? current.ordem;
       if (data.ordem !== undefined && data.ordem !== current.ordem) {
@@ -195,7 +192,7 @@ export const logoEnterpriseService = {
           },
         },
       });
-      if (!current) throw new Error("Logo não encontrada");
+      if (!current) throw new Error('Logo não encontrada');
 
       if (novaOrdem !== current.ordem) {
         await tx.websiteLogoEnterpriseOrdem.update({

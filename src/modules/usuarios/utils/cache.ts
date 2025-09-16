@@ -1,4 +1,4 @@
-import { invalidateCache } from "../../../utils/cache";
+import { invalidateCache, invalidateCacheByPrefix } from "../../../utils/cache";
 import { prisma } from "../../../config/prisma";
 
 export async function invalidateUserCache(
@@ -28,5 +28,7 @@ export async function invalidateUserCache(
   if (keys.length) {
     await invalidateCache(keys);
   }
+
+  await invalidateCacheByPrefix("stats:user:");
 }
 

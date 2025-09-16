@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { EmailVerificationService } from '../services/email-verification-service';
+import { logger } from '@/utils/logger';
 
 /**
  * Middleware robusto para envio de email de verificação
@@ -14,6 +15,7 @@ import { EmailVerificationService } from '../services/email-verification-service
  */
 export class EmailVerificationMiddleware {
   private emailVerificationService: EmailVerificationService;
+  private readonly log = logger.child({ module: 'EmailVerificationMiddleware' });
 
   constructor() {
     this.emailVerificationService = new EmailVerificationService();
@@ -31,25 +33,26 @@ export class EmailVerificationMiddleware {
     const correlationId: string = Array.isArray(rawCorrelationId)
       ? rawCorrelationId[0] || 'unknown'
       : rawCorrelationId || 'unknown';
+    const log = this.log.child({ correlationId, method: 'sendVerificationEmail' });
 
     try {
-      console.log(`📧 [${correlationId}] EmailVerificationMiddleware: Iniciando processamento`);
+      log.info('📧 EmailVerificationMiddleware: Iniciando processamento');
 
       // Extrai dados do usuário
       const userData = this.extractUserData(res, correlationId);
 
       if (userData) {
-        console.log(`📧 [${correlationId}] Dados extraídos para verificação: ${userData.email}`);
+        log.info({ email: userData.email }, '📧 Dados extraídos para verificação');
 
         // Execução completamente assíncrona sem await
         this.processVerificationEmailAsync(userData, correlationId);
 
-        console.log(`📧 [${correlationId}] Email de verificação agendado para: ${userData.email}`);
+        log.info({ email: userData.email }, '📧 Email de verificação agendado');
       } else {
-        console.warn(`⚠️ [${correlationId}] Dados insuficientes para email de verificação`);
+        log.warn('⚠️ Dados insuficientes para email de verificação');
       }
     } catch (error) {
-      console.error(`❌ [${correlationId}] Erro no middleware de verificação:`, error);
+      log.error({ err: error }, '❌ Erro no middleware de verificação');
       // Nunca falha o fluxo principal
     }
 
@@ -61,11 +64,12 @@ export class EmailVerificationMiddleware {
    * Extrai dados do usuário de forma segura
    */
   private extractUserData(res: Response, correlationId: string): any {
+    const log = this.log.child({ correlationId, method: 'extractUserData' });
     try {
-      console.log(`🔍 [${correlationId}] Extraindo dados do res.locals para verificação`);
+      log.info('🔍 Extraindo dados do res.locals para verificação');
 
       if (!res.locals?.usuarioCriado?.usuario) {
-        console.warn(`⚠️ [${correlationId}] res.locals.usuarioCriado.usuario não existe`);
+        log.warn('⚠️ res.locals.usuarioCriado.usuario não existe');
         return null;
       }
 
@@ -76,16 +80,13 @@ export class EmailVerificationMiddleware {
       const missingFields = requiredFields.filter((field) => !userData[field]);
 
       if (missingFields.length > 0) {
-        console.warn(
-          `⚠️ [${correlationId}] Campos obrigatórios ausentes para verificação:`,
-          missingFields,
-        );
+        log.warn({ missingFields }, '⚠️ Campos obrigatórios ausentes para verificação');
         return null;
       }
 
       // Validação de email
       if (!this.isValidEmail(userData.email)) {
-        console.warn(`⚠️ [${correlationId}] Email inválido para verificação: ${userData.email}`);
+        log.warn({ email: userData.email }, '⚠️ Email inválido para verificação');
         return null;
       }
 
@@ -96,16 +97,19 @@ export class EmailVerificationMiddleware {
         tipoUsuario: userData.tipoUsuario,
       };
 
-      console.log(`✅ [${correlationId}] Dados válidos extraídos para verificação:`, {
-        id: processedData.id,
-        email: processedData.email,
-        nomeCompleto: processedData.nomeCompleto,
-        tipoUsuario: processedData.tipoUsuario,
-      });
+      log.info(
+        {
+          id: processedData.id,
+          email: processedData.email,
+          nomeCompleto: processedData.nomeCompleto,
+          tipoUsuario: processedData.tipoUsuario,
+        },
+        '✅ Dados válidos extraídos para verificação',
+      );
 
       return processedData;
     } catch (error) {
-      console.error(`❌ [${correlationId}] Erro ao extrair dados para verificação:`, error);
+      log.error({ err: error }, '❌ Erro ao extrair dados para verificação');
       return null;
     }
   }
@@ -114,12 +118,11 @@ export class EmailVerificationMiddleware {
    * Processa email de verificação de forma completamente assíncrona
    */
   private processVerificationEmailAsync(userData: any, correlationId: string): void {
+    const log = this.log.child({ correlationId, method: 'processVerificationEmailAsync' });
     // Usa setImmediate para execução assíncrona garantida
     setImmediate(async () => {
       try {
-        console.log(
-          `📧 [${correlationId}] Iniciando envio assíncrono de verificação para: ${userData.email}`,
-        );
+        log.info({ email: userData.email }, '📧 Iniciando envio assíncrono de verificação');
 
         const startTime = Date.now();
         const result = await this.emailVerificationService.sendVerificationEmail(userData);
@@ -127,25 +130,28 @@ export class EmailVerificationMiddleware {
 
         if (result.success) {
           if (result.simulated) {
-            console.log(
-              `🎭 [${correlationId}] Email de verificação simulado: ${userData.email} (${duration}ms)`,
-            );
+            log.info({ email: userData.email, duration }, '🎭 Email de verificação simulado');
           } else {
-            console.log(
-              `✅ [${correlationId}] Email de verificação enviado: ${userData.email} (${duration}ms)`,
+            log.info({ email: userData.email, duration }, '✅ Email de verificação enviado');
+            log.info({ email: userData.email, messageId: result.messageId }, '📧 Message ID registrado');
+            log.info(
+              {
+                email: userData.email,
+                tokenExpiration: result.tokenExpiration,
+              },
+              '⏰ Token de verificação registrado',
             );
-            console.log(`📧 [${correlationId}] Message ID: ${result.messageId}`);
-            console.log(`⏰ [${correlationId}] Token expira em: ${result.tokenExpiration}`);
           }
         } else {
-          console.error(
-            `❌ [${correlationId}] Falha no email de verificação para ${userData.email}: ${result.error}`,
-          );
+          log.error({ email: userData.email, error: result.error }, '❌ Falha no email de verificação');
         }
       } catch (error) {
-        console.error(
-          `❌ [${correlationId}] Erro crítico no email de verificação para ${userData.email}:`,
-          error instanceof Error ? error.message : error,
+        log.error(
+          {
+            email: userData.email,
+            err: error,
+          },
+          '❌ Erro crítico no email de verificação',
         );
       }
     });
@@ -162,7 +168,8 @@ export class EmailVerificationMiddleware {
    * Factory method para criação do middleware
    */
   public static create() {
-    console.log('🏭 EmailVerificationMiddleware: Criando instância do middleware');
+    const factoryLogger = logger.child({ module: 'EmailVerificationMiddlewareFactory' });
+    factoryLogger.info('🏭 EmailVerificationMiddleware: Criando instância do middleware');
     const instance = new EmailVerificationMiddleware();
     return instance.sendVerificationEmail;
   }

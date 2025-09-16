@@ -17,6 +17,7 @@ import { startKeepAlive } from './utils/keep-alive';
 import { prisma } from './config/prisma';
 import redis from './config/redis';
 import { errorMiddleware } from './middlewares/error';
+import { logger } from '@/utils/logger';
 
 /**
  * Aplicação principal - Advance+ API
@@ -24,6 +25,8 @@ import { errorMiddleware } from './middlewares/error';
  * Configuração centralizada de middlewares e rotas
  * usando padrão de router centralizado para melhor organização
  */
+
+const bootstrapLogger = logger.child({ module: 'Bootstrap' });
 
 const app = express();
 
@@ -127,12 +130,14 @@ setupSwagger(app);
  * Carrega todas as rotas através do router centralizado
  * Inclui automaticamente: usuários, brevo, health checks
  */
+const routerLogger = bootstrapLogger.child({ context: 'RouterInit' });
+
 try {
   app.use('/', appRoutes);
-  console.log('✅ Router principal carregado com sucesso');
+  routerLogger.info('✅ Router principal carregado com sucesso');
   startExpiredUserCleanupJob();
 } catch (error) {
-  console.error('❌ Erro crítico ao carregar router principal:', error);
+  routerLogger.error({ err: error }, '❌ Erro crítico ao carregar router principal');
 
   // Fallback mínimo em caso de erro crítico
   app.get('/', (req, res) => {
@@ -181,34 +186,48 @@ app.use(errorMiddleware);
  * Inicia o servidor HTTP na porta configurada
  */
 const server = app.listen(serverConfig.port, async () => {
-  console.clear();
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('🚀 Advance+ API - Servidor Iniciado');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(`📍 URL Base: http://localhost:${serverConfig.port}`);
-  console.log(`🌍 Ambiente: ${serverConfig.nodeEnv}`);
-  console.log(`⏰ Iniciado em: ${new Date().toLocaleString('pt-BR')}`);
+  const startupLogger = bootstrapLogger.child({ context: 'ServerStart' });
+  startupLogger.info(
+    {
+      baseUrl: `http://localhost:${serverConfig.port}`,
+      environment: serverConfig.nodeEnv,
+      startedAt: new Date().toISOString(),
+    },
+    '🚀 Advance+ API - Servidor iniciado',
+  );
+
   if (process.env.REDIS_URL) {
     try {
       await redis.ping();
-      console.log('🧠 Redis: ✅ conectado');
-    } catch {
-      console.log('🧠 Redis: ❌ indisponível');
+      startupLogger.info('🧠 Redis conectado');
+    } catch (error) {
+      startupLogger.error({ err: error }, '🧠 Redis indisponível');
     }
   } else {
-    console.log('🧠 Redis: ⚠️ não configurado');
+    startupLogger.warn('🧠 Redis não configurado');
   }
-  console.log('');
-  console.log('📋 Endpoints Principais:');
-  console.log(`   💚 Health Check: http://localhost:${serverConfig.port}/health`);
-  console.log(`   👥 Usuários: http://localhost:${serverConfig.port}/api/v1/usuarios`);
-  console.log(`   📧 Brevo: http://localhost:${serverConfig.port}/api/v1/brevo`);
-  console.log(`   🌐 Website: http://localhost:${serverConfig.port}/api/v1/website`);
-  console.log('');
-  console.log('🧪 Testes Rápidos:');
-  console.log(`   curl http://localhost:${serverConfig.port}/health`);
-  console.log(`   curl http://localhost:${serverConfig.port}/api/v1/brevo/health`);
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+  startupLogger.info(
+    {
+      endpoints: {
+        health: `http://localhost:${serverConfig.port}/health`,
+        usuarios: `http://localhost:${serverConfig.port}/api/v1/usuarios`,
+        brevo: `http://localhost:${serverConfig.port}/api/v1/brevo`,
+        website: `http://localhost:${serverConfig.port}/api/v1/website`,
+      },
+    },
+    '📋 Endpoints principais',
+  );
+
+  startupLogger.info(
+    {
+      commands: [
+        `curl http://localhost:${serverConfig.port}/health`,
+        `curl http://localhost:${serverConfig.port}/api/v1/brevo/health`,
+      ],
+    },
+    '🧪 Testes rápidos',
+  );
 
   // Inicia keep-alive para evitar hibernação da instância
   startKeepAlive();
@@ -222,15 +241,16 @@ const server = app.listen(serverConfig.port, async () => {
  * Graceful shutdown em caso de SIGTERM (Docker, PM2, etc.)
  */
 process.on('SIGTERM', async () => {
-  console.log('🔄 SIGTERM recebido, encerrando servidor graciosamente...');
+  const shutdownLogger = bootstrapLogger.child({ context: 'Shutdown', signal: 'SIGTERM' });
+  shutdownLogger.info('🔄 SIGTERM recebido, encerrando servidor graciosamente...');
   try {
     await prisma.$disconnect();
-    console.log('🔌 Prisma desconectado');
+    shutdownLogger.info('🔌 Prisma desconectado');
   } catch (err) {
-    console.error('Erro ao desconectar Prisma', err);
+    shutdownLogger.error({ err }, 'Erro ao desconectar Prisma');
   }
   server.close(() => {
-    console.log('✅ Servidor encerrado com sucesso');
+    shutdownLogger.info('✅ Servidor encerrado com sucesso');
     process.exit(0);
   });
 });
@@ -239,15 +259,16 @@ process.on('SIGTERM', async () => {
  * Graceful shutdown em caso de SIGINT (Ctrl+C)
  */
 process.on('SIGINT', async () => {
-  console.log('\n🔄 SIGINT recebido, encerrando servidor graciosamente...');
+  const shutdownLogger = bootstrapLogger.child({ context: 'Shutdown', signal: 'SIGINT' });
+  shutdownLogger.info('🔄 SIGINT recebido, encerrando servidor graciosamente...');
   try {
     await prisma.$disconnect();
-    console.log('🔌 Prisma desconectado');
+    shutdownLogger.info('🔌 Prisma desconectado');
   } catch (err) {
-    console.error('Erro ao desconectar Prisma', err);
+    shutdownLogger.error({ err }, 'Erro ao desconectar Prisma');
   }
   server.close(() => {
-    console.log('✅ Servidor encerrado com sucesso');
+    shutdownLogger.info('✅ Servidor encerrado com sucesso');
     process.exit(0);
   });
 });

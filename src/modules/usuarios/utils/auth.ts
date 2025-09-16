@@ -1,5 +1,8 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
 import { jwtConfig } from '../../../config/env';
+import { logger } from '@/utils/logger';
+
+const authLogger = logger.child({ module: 'AuthUtils' });
 
 /**
  * Interface para payload do token de acesso
@@ -76,13 +79,13 @@ export const verifyToken = (token: string): AccessTokenPayload | null => {
 
     // Validação adicional do tipo
     if (decoded.type !== 'access') {
-      console.error('Token inválido: não é um token de acesso');
+      authLogger.error({ tokenType: decoded.type }, 'Token inválido: não é um token de acesso');
       return null;
     }
 
     return decoded;
   } catch (error) {
-    console.error('Erro ao verificar token de acesso:', error);
+    authLogger.error({ err: error }, 'Erro ao verificar token de acesso');
     return null;
   }
 };
@@ -101,13 +104,13 @@ export const verifyRefreshToken = (refreshToken: string): RefreshTokenPayload | 
 
     // Validação adicional do tipo
     if (decoded.type !== 'refresh') {
-      console.error('Token inválido: não é um refresh token');
+      authLogger.error({ tokenType: decoded.type }, 'Token inválido: não é um refresh token');
       return null;
     }
 
     return decoded;
   } catch (error) {
-    console.error('Erro ao verificar refresh token:', error);
+    authLogger.error({ err: error }, 'Erro ao verificar refresh token');
     return null;
   }
 };
@@ -121,7 +124,7 @@ export const decodeToken = (token: string): any | null => {
   try {
     return jwt.decode(token);
   } catch (error) {
-    console.error('Erro ao decodificar token:', error);
+    authLogger.error({ err: error }, 'Erro ao decodificar token');
     return null;
   }
 };
@@ -135,7 +138,7 @@ export const extractUserIdFromToken = (token: string): string | null => {
   try {
     const decoded = jwt.decode(token) as any;
     return decoded?.id || decoded?.sub || null;
-  } catch (error) {
+  } catch {
     return null;
   }
 };
@@ -157,7 +160,7 @@ export const isTokenNearExpiry = (token: string, thresholdMinutes: number = 5): 
     const thresholdMs = thresholdMinutes * 60 * 1000;
 
     return timeToExpiry <= thresholdMs;
-  } catch (error) {
+  } catch {
     return true; // Se não conseguir decodificar, considera como próximo do vencimento
   }
 };

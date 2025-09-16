@@ -4,6 +4,7 @@ import { BrevoConfigManager } from '../config/brevo-config';
 import { EmailTemplates } from '../templates/email-templates';
 import { prisma } from '../../../config/prisma';
 import { invalidateUserCache } from '../../usuarios/utils/cache';
+import { logger } from '@/utils/logger';
 
 /**
  * Serviço especializado em verificação de email
@@ -29,6 +30,7 @@ export interface VerificationTokenResult {
 export class EmailVerificationService {
   private client: BrevoClient;
   private config: BrevoConfigManager;
+  private readonly log = logger.child({ module: 'EmailVerificationService' });
 
   constructor() {
     this.client = BrevoClient.getInstance();
@@ -46,13 +48,19 @@ export class EmailVerificationService {
   }): Promise<EmailVerificationResult> {
     const operation = 'EMAIL_VERIFICATION';
     const correlationId = this.generateCorrelationId();
+    const log = this.log.child({
+      correlationId,
+      userId: userData.id,
+      email: userData.email,
+      method: 'sendVerificationEmail',
+    });
 
     try {
-      console.log(`📧 [${correlationId}] ${operation}: Enviando para ${userData.email}`);
+      log.info('📧 Iniciando envio de verificação');
 
       // Valida se verificação está habilitada
       if (!this.config.isEmailVerificationEnabled()) {
-        console.log(`ℹ️ [${correlationId}] Verificação de email desabilitada`);
+        log.info('ℹ️ Verificação de email desabilitada');
         return { success: true, simulated: true };
       }
 
@@ -67,7 +75,7 @@ export class EmailVerificationService {
       }
 
       if (usuario.emailVerificado) {
-        console.log(`ℹ️ [${correlationId}] Email já verificado para usuário ${userData.id}`);
+        log.info('ℹ️ Email já verificado');
         return { success: true, simulated: true };
       }
 
@@ -119,7 +127,7 @@ export class EmailVerificationService {
           result.messageId,
           correlationId,
         );
-        console.log(`✅ [${correlationId}] ${operation}: Sucesso`);
+        log.info({ messageId: result.messageId }, '✅ Email de verificação enviado com sucesso');
       } else {
         await this.logVerificationEmailError(
           userData.id,
@@ -135,7 +143,7 @@ export class EmailVerificationService {
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-      console.error(`❌ [${correlationId}] ${operation}: ${errorMsg}`);
+      log.error({ error: errorMsg }, '❌ Erro no envio de verificação');
       await this.logVerificationEmailError(userData.id, operation, errorMsg, correlationId);
       return { success: false, error: errorMsg };
     }
@@ -146,9 +154,10 @@ export class EmailVerificationService {
    */
   public async resendVerificationEmail(email: string): Promise<EmailVerificationResult> {
     const correlationId = this.generateCorrelationId();
+    const log = this.log.child({ correlationId, email, method: 'resendVerificationEmail' });
 
     try {
-      console.log(`🔄 [${correlationId}] Reenviando verificação para: ${email}`);
+      log.info('🔄 Reenviando verificação');
 
       // Busca usuário
       const usuario = await prisma.usuario.findUnique({
@@ -184,7 +193,7 @@ export class EmailVerificationService {
       });
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-      console.error(`❌ [${correlationId}] Erro no reenvio:`, errorMsg);
+      log.error({ error: errorMsg }, '❌ Erro no reenvio de verificação');
       return { success: false, error: errorMsg };
     }
   }
@@ -194,7 +203,11 @@ export class EmailVerificationService {
    */
   public async verifyEmailToken(token: string): Promise<VerificationTokenResult> {
     try {
-      console.log(`🔍 Verificando token: ${token.substring(0, 8)}...`);
+      const log = this.log.child({
+        method: 'verifyEmailToken',
+        tokenPrefix: token.substring(0, 8),
+      });
+      log.info('🔍 Verificando token');
 
       const usuario = await prisma.usuario.findFirst({
         where: { emailVerificationToken: token },
@@ -237,11 +250,11 @@ export class EmailVerificationService {
 
       await invalidateUserCache(usuario);
 
-      console.log(`✅ Email verificado com sucesso para usuário: ${usuario.id}`);
+      log.info({ userId: usuario.id }, '✅ Email verificado com sucesso');
       return { valid: true, userId: usuario.id };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-      console.error('❌ Erro na verificação de token:', errorMsg);
+      this.log.error({ error: errorMsg }, '❌ Erro na verificação de token');
       return { valid: false, error: errorMsg };
     }
   }
@@ -272,14 +285,23 @@ export class EmailVerificationService {
       const canResend = recentAttempts < maxAttempts;
 
       if (!canResend) {
-        console.warn(
-          `⚠️ [${correlationId}] Limite de reenvio atingido: ${recentAttempts}/${maxAttempts}`,
+        this.log.warn(
+          {
+            correlationId,
+            userId,
+            recentAttempts,
+            maxAttempts,
+          },
+          '⚠️ Limite de reenvio atingido',
         );
       }
 
       return canResend;
     } catch (error) {
-      console.warn(`⚠️ [${correlationId}] Erro ao verificar limite de reenvio:`, error);
+      this.log.warn(
+        { correlationId, userId, err: error },
+        '⚠️ Erro ao verificar limite de reenvio',
+      );
       return true; // Em caso de erro, permite reenvio
     }
   }
@@ -304,9 +326,9 @@ export class EmailVerificationService {
 
       await invalidateUserCache({ id: userId });
 
-      console.log(`💾 [${correlationId}] Token de verificação salvo para usuário ${userId}`);
+      this.log.info({ correlationId, userId }, '💾 Token de verificação salvo');
     } catch (error) {
-      console.error(`❌ [${correlationId}] Erro ao salvar token:`, error);
+      this.log.error({ correlationId, userId, err: error }, '❌ Erro ao salvar token');
       throw error;
     }
   }
@@ -326,7 +348,7 @@ export class EmailVerificationService {
   ): Promise<EmailVerificationResult> {
     // Modo simulado
     if (this.client.isSimulated()) {
-      console.log(`🎭 [${correlationId}] Email de verificação simulado para: ${emailData.to}`);
+      this.log.info({ correlationId, email: emailData.to }, '🎭 Email de verificação simulado');
       return {
         success: true,
         messageId: `sim_verify_${Date.now()}`,
@@ -358,10 +380,10 @@ export class EmailVerificationService {
         messageId,
       };
     } catch (error) {
-      console.error(`❌ [${correlationId}] Erro no envio via Brevo:`, error);
+      this.log.error({ correlationId, err: error, email: emailData.to }, '❌ Erro no envio via Brevo');
 
       // Fallback para simulação
-      console.log(`🎭 [${correlationId}] Fallback para modo simulado`);
+      this.log.warn({ correlationId, email: emailData.to }, '🎭 Fallback para modo simulado');
       return {
         success: true,
         messageId: `fallback_verify_${Date.now()}`,
@@ -400,7 +422,10 @@ export class EmailVerificationService {
         },
       });
     } catch (error) {
-      console.warn(`⚠️ [${correlationId}] Erro ao registrar log de sucesso:`, error);
+      this.log.warn(
+        { correlationId, userId, operation, err: error },
+        '⚠️ Erro ao registrar log de sucesso',
+      );
     }
   }
 
@@ -425,7 +450,10 @@ export class EmailVerificationService {
         },
       });
     } catch (logError) {
-      console.warn(`⚠️ [${correlationId}] Erro ao registrar log de erro:`, logError);
+      this.log.warn(
+        { correlationId, userId, operation, err: logError },
+        '⚠️ Erro ao registrar log de erro',
+      );
     }
   }
 

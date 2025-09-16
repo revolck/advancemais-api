@@ -178,7 +178,7 @@ export const planosParceiroService = {
     const updates: Prisma.EmpresaPlanoUpdateInput = {};
 
     if (data.planoEmpresarialId !== undefined) {
-      updates.planoEmpresarialId = data.planoEmpresarialId;
+      updates.plano = { connect: { id: data.planoEmpresarialId } };
     }
 
     let inicio = planoAtual.inicio;
@@ -191,13 +191,10 @@ export const planosParceiroService = {
     if (data.tipo !== undefined) {
       tipo = mapTipoToPrisma(data.tipo);
       updates.tipo = tipo;
-      if (updates.inicio === undefined) {
-        updates.inicio = inicio;
-      }
     }
 
     if (data.tipo !== undefined || data.iniciarEm !== undefined) {
-      updates.fim = calcularDataFim(tipo, updates.inicio ? (updates.inicio as Date) : inicio);
+      updates.fim = calcularDataFim(tipo, inicio);
     }
 
     if (data.observacao !== undefined) {

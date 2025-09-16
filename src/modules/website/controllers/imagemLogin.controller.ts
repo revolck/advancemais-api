@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
-import { setCacheHeaders } from '../../../utils/cache';
 import path from "path";
-import { supabase } from "../../../config/supabase";
-import { imagemLoginService } from "../services/imagem-login.service";
+
+import { supabase } from "@/config/supabase";
+import { imagemLoginService } from "@/modules/website/services/imagem-login.service";
+import { respondWithCache } from "@/modules/website/utils/cache-response";
 
 function generateImageTitle(url: string): string {
   try {
@@ -33,9 +34,7 @@ export class ImagemLoginController {
     const itens = await imagemLoginService.list();
     const response = itens;
 
-    setCacheHeaders(res, response);
-
-    res.json(response);
+    return respondWithCache(req, res, response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -49,9 +48,7 @@ export class ImagemLoginController {
       }
       const response = item;
 
-      setCacheHeaders(res, response);
-
-      res.json(response);
+      return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao buscar imagem de login",

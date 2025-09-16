@@ -1,15 +1,14 @@
 import { Request, Response } from "express";
-import { setCacheHeaders } from '../../../utils/cache';
-import { planinhasService } from "../services/planinhas.service";
+
+import { planinhasService } from "@/modules/website/services/planinhas.service";
+import { respondWithCache } from "@/modules/website/utils/cache-response";
 
 export class PlaninhasController {
   static list = async (req: Request, res: Response) => {
     const itens = await planinhasService.list();
     const response = itens;
 
-    setCacheHeaders(res, response);
-
-    res.json(response);
+    return respondWithCache(req, res, response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -23,9 +22,7 @@ export class PlaninhasController {
       }
       const response = item;
 
-      setCacheHeaders(res, response);
-
-      res.json(response);
+      return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao buscar planinhas",

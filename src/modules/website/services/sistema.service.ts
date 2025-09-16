@@ -1,15 +1,20 @@
-import { prisma } from "../../../config/prisma";
 import { WebsiteSistema } from "@prisma/client";
-import { getCache, setCache, invalidateCache } from "../../../utils/cache";
+import { prisma } from "@/config/prisma";
+import {
+  getCache,
+  setCache,
+  invalidateCache,
+} from "@/utils/cache";
+import { WEBSITE_CACHE_TTL } from "@/modules/website/config";
 
 const CACHE_KEY = "website:sistema:list";
 
 export const sistemaService = {
   list: async () => {
-    const cached = await getCache(CACHE_KEY);
+    const cached = await getCache<WebsiteSistema[]>(CACHE_KEY);
     if (cached) return cached;
     const result = await prisma.websiteSistema.findMany();
-    await setCache(CACHE_KEY, result);
+    await setCache(CACHE_KEY, result, WEBSITE_CACHE_TTL);
     return result;
   },
   get: (id: string) =>

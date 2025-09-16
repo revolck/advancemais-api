@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
-import { setCacheHeaders } from '../../../utils/cache';
 import path from "path";
-import { supabase } from "../../../config/supabase";
-import { sliderService } from "../services/slider.service";
+
+import { supabase } from "@/config/supabase";
+import { sliderService } from "@/modules/website/services/slider.service";
+import { respondWithCache } from "@/modules/website/utils/cache-response";
 
 /**
  * Mapeia uma ordem de slider para o formato exposto na API.
@@ -46,9 +47,7 @@ export class SliderController {
     const itens = await sliderService.list();
     const response = itens.map(mapSlider);
 
-    setCacheHeaders(res, response);
-
-    res.json(response);
+    return respondWithCache(req, res, response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -60,9 +59,7 @@ export class SliderController {
       }
       const response = mapSlider(ordem);
 
-      setCacheHeaders(res, response);
-
-      res.json(response);
+      return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao buscar slider",

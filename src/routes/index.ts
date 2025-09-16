@@ -1,17 +1,36 @@
-import { Router } from "express";
-import { publicCache } from "../middlewares/cache-control";
-import { usuarioRoutes } from "../modules/usuarios";
-import { brevoRoutes } from "../modules/brevo/routes";
-import { websiteRoutes } from "../modules/website";
-import { docsRoutes } from "../modules/docs";
-import { EmailVerificationController } from "../modules/brevo/controllers/email-verification-controller";
-import redis from "../config/redis";
+import { Router, type Request } from "express";
+
+import redis from "@/config/redis";
+import { publicCache } from "@/middlewares/cache-control";
+import { docsRoutes } from "@/modules/docs";
+import { brevoRoutes } from "@/modules/brevo/routes";
+import { EmailVerificationController } from "@/modules/brevo/controllers/email-verification-controller";
+import { usuarioRoutes } from "@/modules/usuarios";
+import { websiteRoutes } from "@/modules/website";
+import { setCacheHeaders, DEFAULT_TTL } from "@/utils/cache";
 
 /**
  * Router principal da aplicação
  */
 const router = Router();
 const emailVerificationController = new EmailVerificationController();
+
+const parseEtags = (header: Request["headers"]["if-none-match"]) => {
+  if (!header) return [] as string[];
+  const values = Array.isArray(header) ? header : header.split(",");
+  return values
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => value.replace(/^W\//, "").replace(/"/g, ""));
+};
+
+const normalizeTimestamp = (ttl: number) => {
+  if (ttl <= 0) {
+    return new Date().toISOString();
+  }
+  const bucket = Math.floor(Date.now() / (ttl * 1000)) * ttl * 1000;
+  return new Date(bucket).toISOString();
+};
 
 /**
  * @openapi
@@ -39,10 +58,12 @@ const emailVerificationController = new EmailVerificationController();
  *           curl -X GET "http://localhost:3000/"
  */
 router.get("/", publicCache, (req, res) => {
+  const ttl = Number(process.env.WEBSITE_CACHE_TTL || DEFAULT_TTL);
+  const timestamp = normalizeTimestamp(ttl);
   const data = {
     message: "Advance+ API",
     version: "v3.0.3",
-    timestamp: new Date().toISOString(),
+    timestamp,
     environment: process.env.NODE_ENV,
     status: "operational",
     express_version: "4.x",
@@ -53,6 +74,11 @@ router.get("/", publicCache, (req, res) => {
       health: "/health",
     },
   };
+
+  const etag = setCacheHeaders(res, data, ttl);
+  if (parseEtags(req.headers["if-none-match"]).includes(etag)) {
+    return res.status(304).end();
+  }
 
   if (req.headers["accept"]?.includes("application/json")) {
     return res.json(data);
@@ -130,11 +156,14 @@ router.get("/health", publicCache, async (req, res) => {
     }
   }
 
-  res.json({
+  const ttl = Number(process.env.WEBSITE_CACHE_TTL || DEFAULT_TTL);
+  const uptimeRaw = Math.floor(process.uptime());
+  const uptime = ttl > 0 ? Math.floor(uptimeRaw / ttl) * ttl : uptimeRaw;
+  const payload = {
     status: "OK",
-    timestamp: new Date().toISOString(),
+    timestamp: normalizeTimestamp(ttl),
     version: "v3.0.3",
-    uptime: Math.floor(process.uptime()),
+    uptime,
     environment: process.env.NODE_ENV,
     memory: {
       used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + " MB",
@@ -146,7 +175,14 @@ router.get("/health", publicCache, async (req, res) => {
       website: "✅ active",
       redis: redisStatus,
     },
-  });
+  };
+
+  const etag = setCacheHeaders(res, payload, ttl);
+  if (parseEtags(req.headers["if-none-match"]).includes(etag)) {
+    return res.status(304).end();
+  }
+
+  res.json(payload);
 });
 
 // Rota pública para verificação de email

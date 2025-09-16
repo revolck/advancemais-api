@@ -1,9 +1,9 @@
-import { Request, Response, NextFunction } from "express";
-import jwt, { type JwtPayload } from "jsonwebtoken";
-import jwksRsa from "jwks-rsa";
+import { Request, Response, NextFunction } from 'express';
+import jwt, { type JwtPayload } from 'jsonwebtoken';
+import jwksRsa from 'jwks-rsa';
 
-import { supabaseConfig } from "@/config/env";
-import { prisma } from "@/config/prisma";
+import { supabaseConfig } from '@/config/env';
+import { prisma } from '@/config/prisma';
 
 /**
  * Cliente JWKS para validação de tokens
@@ -32,22 +32,17 @@ function getKey(header: any, callback: any) {
 
 async function verifyToken(token: string): Promise<JwtPayload> {
   return new Promise<JwtPayload>((resolve, reject) => {
-    jwt.verify(
-      token,
-      getKey,
-      { algorithms: ["RS256", "ES256", "HS256"] },
-      (err, decoded) => {
-        if (err) {
-          return reject(err);
-        }
-
-        if (!decoded || typeof decoded === "string") {
-          return reject(new Error("Token inválido"));
-        }
-
-        resolve(decoded as JwtPayload);
+    jwt.verify(token, getKey, { algorithms: ['RS256', 'ES256', 'HS256'] }, (err, decoded) => {
+      if (err) {
+        return reject(err);
       }
-    );
+
+      if (!decoded || typeof decoded === 'string') {
+        return reject(new Error('Token inválido'));
+      }
+
+      resolve(decoded as JwtPayload);
+    });
   });
 }
 
@@ -58,12 +53,10 @@ async function verifyToken(token: string): Promise<JwtPayload> {
  */
 export const authMiddleware = (roles?: string[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const token = req.headers.authorization?.split(" ")[1];
+    const token = req.headers.authorization?.split(' ')[1];
 
     if (!token) {
-      return res
-        .status(401)
-        .json({ message: "Token de autorização necessário" });
+      return res.status(401).json({ message: 'Token de autorização necessário' });
     }
 
     try {
@@ -75,12 +68,11 @@ export const authMiddleware = (roles?: string[]) => {
         sub?: string;
       };
 
-      const derivedId =
-        payload.id ?? (typeof payload.sub === "string" ? payload.sub : undefined);
+      const derivedId = payload.id ?? (typeof payload.sub === 'string' ? payload.sub : undefined);
       if (!derivedId || !payload.email || !payload.role) {
         return res.status(401).json({
-          message: "Token inválido ou expirado",
-          error: "Token não contém dados essenciais",
+          message: 'Token inválido ou expirado',
+          error: 'Token não contém dados essenciais',
         });
       }
 
@@ -94,7 +86,7 @@ export const authMiddleware = (roles?: string[]) => {
       const userRole = payload.role;
       if (roles && userRole && !roles.includes(userRole)) {
         return res.status(403).json({
-          message: "Acesso negado: permissões insuficientes",
+          message: 'Acesso negado: permissões insuficientes',
         });
       }
 
@@ -102,7 +94,7 @@ export const authMiddleware = (roles?: string[]) => {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       return res.status(401).json({
-        message: "Token inválido ou expirado",
+        message: 'Token inválido ou expirado',
         error: errorMessage,
       });
     }
@@ -116,12 +108,10 @@ export const authMiddleware = (roles?: string[]) => {
  */
 export const authMiddlewareWithDB = (roles?: string[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const token = req.headers.authorization?.split(" ")[1];
+    const token = req.headers.authorization?.split(' ')[1];
 
     if (!token) {
-      return res
-        .status(401)
-        .json({ message: "Token de autorização necessário" });
+      return res.status(401).json({ message: 'Token de autorização necessário' });
     }
 
     try {
@@ -142,12 +132,10 @@ export const authMiddlewareWithDB = (roles?: string[]) => {
         });
 
         if (!usuario) {
-          return res
-            .status(401)
-            .json({ message: "Usuário não encontrado no sistema" });
+          return res.status(401).json({ message: 'Usuário não encontrado no sistema' });
         }
 
-        if (usuario.status !== "ATIVO") {
+        if (usuario.status !== 'ATIVO') {
           return res.status(403).json({
             message: `Acesso negado: usuário está ${usuario.status.toLowerCase()}`,
           });
@@ -155,7 +143,7 @@ export const authMiddlewareWithDB = (roles?: string[]) => {
 
         if (roles && !roles.includes(usuario.role)) {
           return res.status(403).json({
-            message: "Acesso negado: permissões insuficientes",
+            message: 'Acesso negado: permissões insuficientes',
             requiredRoles: roles,
             userRole: usuario.role,
           });
@@ -168,18 +156,17 @@ export const authMiddlewareWithDB = (roles?: string[]) => {
 
         next();
       } catch (error) {
-        console.error("Erro no middleware de autenticação:", error);
-        const errorMessage =
-          error instanceof Error ? error.message : "Erro desconhecido";
+        console.error('Erro no middleware de autenticação:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
         return res.status(500).json({
-          message: "Erro interno do servidor",
+          message: 'Erro interno do servidor',
           error: errorMessage,
         });
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       return res.status(401).json({
-        message: "Token inválido ou expirado",
+        message: 'Token inválido ou expirado',
         error: errorMessage,
       });
     }

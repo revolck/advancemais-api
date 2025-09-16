@@ -1,7 +1,7 @@
-import { Router } from "express";
-import { publicCache } from "../../../middlewares/cache-control";
-import { supabaseAuthMiddleware } from "../../usuarios/auth";
-import { DiferenciaisController } from "../controllers/diferenciais.controller";
+import { Router } from 'express';
+import { publicCache } from '../../../middlewares/cache-control';
+import { supabaseAuthMiddleware } from '../../usuarios/auth';
+import { DiferenciaisController } from '../controllers/diferenciais.controller';
 
 const router = Router();
 
@@ -32,7 +32,7 @@ const router = Router();
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/diferenciais"
  */
-router.get("/", publicCache, DiferenciaisController.list);
+router.get('/', publicCache, DiferenciaisController.list);
 
 /**
  * @openapi
@@ -71,7 +71,7 @@ router.get("/", publicCache, DiferenciaisController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/diferenciais/{id}"
  */
-router.get("/:id", publicCache, DiferenciaisController.get);
+router.get('/:id', publicCache, DiferenciaisController.get);
 
 /**
  * @openapi
@@ -109,11 +109,7 @@ router.get("/:id", publicCache, DiferenciaisController.get);
  *            -H "Content-Type: application/json" \\
  *            -d '{"icone1":"i1","titulo1":"Titulo 1","descricao1":"Desc 1","icone2":"i2","titulo2":"Titulo 2","descricao2":"Desc 2","icone3":"i3","titulo3":"Titulo 3","descricao3":"Desc 3","icone4":"i4","titulo4":"Titulo 4","descricao4":"Desc 4","titulo":"Geral","descricao":"Resumo","botaoUrl":"https://example.com","botaoLabel":"Saiba mais"}'
  */
-router.post(
-  "/",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  DiferenciaisController.create
-);
+router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), DiferenciaisController.create);
 
 /**
  * @openapi
@@ -163,11 +159,7 @@ router.post(
  *            -H "Content-Type: application/json" \\
  *            -d '{"titulo":"Atualizado"}'
  */
-router.put(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  DiferenciaisController.update
-);
+router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), DiferenciaisController.update);
 
 /**
  * @openapi
@@ -206,9 +198,9 @@ router.put(
  *            -H "Authorization: Bearer <TOKEN>"
  */
 router.delete(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  DiferenciaisController.remove
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  DiferenciaisController.remove,
 );
 
 export { router as diferenciaisRoutes };

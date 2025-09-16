@@ -1,16 +1,16 @@
-import { Request, Response } from "express";
-import path from "path";
+import { Request, Response } from 'express';
+import path from 'path';
 
-import { supabase } from "@/config/supabase";
-import { advanceAjudaService } from "@/modules/website/services/advanceAjuda.service";
-import { respondWithCache } from "@/modules/website/utils/cache-response";
+import { supabase } from '@/config/supabase';
+import { advanceAjudaService } from '@/modules/website/services/advanceAjuda.service';
+import { respondWithCache } from '@/modules/website/utils/cache-response';
 
 function generateImageTitle(url: string): string {
   try {
     const pathname = new URL(url).pathname;
-    return path.basename(pathname).split(".")[0];
+    return path.basename(pathname).split('.')[0];
   } catch {
-    return "";
+    return '';
   }
 }
 
@@ -18,14 +18,12 @@ async function uploadImage(file: Express.Multer.File): Promise<string> {
   const fileExt = path.extname(file.originalname);
   const fileName = `advance-ajuda-${Date.now()}${fileExt}`;
   const { error } = await supabase.storage
-    .from("website")
+    .from('website')
     .upload(`advance-ajuda/${fileName}`, file.buffer, {
       contentType: file.mimetype,
     });
   if (error) throw error;
-  const { data } = supabase.storage
-    .from("website")
-    .getPublicUrl(`advance-ajuda/${fileName}`);
+  const { data } = supabase.storage.from('website').getPublicUrl(`advance-ajuda/${fileName}`);
   return data.publicUrl;
 }
 
@@ -42,16 +40,14 @@ export class AdvanceAjudaController {
       const { id } = req.params;
       const item = await advanceAjudaService.get(id);
       if (!item) {
-        return res
-          .status(404)
-          .json({ message: "Advance Ajuda não encontrado" });
+        return res.status(404).json({ message: 'Advance Ajuda não encontrado' });
       }
       const response = item;
 
       return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao buscar Advance Ajuda",
+        message: 'Erro ao buscar Advance Ajuda',
         error: error.message,
       });
     }
@@ -59,23 +55,15 @@ export class AdvanceAjudaController {
 
   static create = async (req: Request, res: Response) => {
     try {
-      const {
-        titulo,
-        descricao,
-        titulo1,
-        descricao1,
-        titulo2,
-        descricao2,
-        titulo3,
-        descricao3,
-      } = req.body;
-      let imagemUrl = "";
+      const { titulo, descricao, titulo1, descricao1, titulo2, descricao2, titulo3, descricao3 } =
+        req.body;
+      let imagemUrl = '';
       if (req.file) {
         imagemUrl = await uploadImage(req.file);
       } else if (req.body.imagemUrl) {
         imagemUrl = req.body.imagemUrl;
       }
-      const imagemTitulo = imagemUrl ? generateImageTitle(imagemUrl) : "";
+      const imagemTitulo = imagemUrl ? generateImageTitle(imagemUrl) : '';
       const item = await advanceAjudaService.create({
         titulo,
         descricao,
@@ -91,7 +79,7 @@ export class AdvanceAjudaController {
       res.status(201).json(item);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao criar Advance Ajuda",
+        message: 'Erro ao criar Advance Ajuda',
         error: error.message,
       });
     }
@@ -100,16 +88,8 @@ export class AdvanceAjudaController {
   static update = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const {
-        titulo,
-        descricao,
-        titulo1,
-        descricao1,
-        titulo2,
-        descricao2,
-        titulo3,
-        descricao3,
-      } = req.body;
+      const { titulo, descricao, titulo1, descricao1, titulo2, descricao2, titulo3, descricao3 } =
+        req.body;
       let imagemUrl = req.body.imagemUrl as string | undefined;
       if (req.file) {
         imagemUrl = await uploadImage(req.file);
@@ -132,7 +112,7 @@ export class AdvanceAjudaController {
       res.json(item);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao atualizar Advance Ajuda",
+        message: 'Erro ao atualizar Advance Ajuda',
         error: error.message,
       });
     }
@@ -145,10 +125,9 @@ export class AdvanceAjudaController {
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao remover Advance Ajuda",
+        message: 'Erro ao remover Advance Ajuda',
         error: error.message,
       });
     }
   };
 }
-

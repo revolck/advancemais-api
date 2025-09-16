@@ -1,7 +1,7 @@
-import { Request, Response } from "express";
+import { Request, Response } from 'express';
 
-import { headerPagesService } from "@/modules/website/services/header-pages.service";
-import { respondWithCache } from "@/modules/website/utils/cache-response";
+import { headerPagesService } from '@/modules/website/services/header-pages.service';
+import { respondWithCache } from '@/modules/website/utils/cache-response';
 
 export class HeaderPageController {
   static list = async (_req: Request, res: Response) => {
@@ -16,15 +16,13 @@ export class HeaderPageController {
       const { id } = req.params;
       const item = await headerPagesService.get(id);
       if (!item) {
-        return res.status(404).json({ message: "Header page não encontrado" });
+        return res.status(404).json({ message: 'Header page não encontrado' });
       }
       const response = item;
 
       return respondWithCache(req, res, response);
     } catch (error: any) {
-      res
-        .status(500)
-        .json({ message: "Erro ao buscar header page", error: error.message });
+      res.status(500).json({ message: 'Erro ao buscar header page', error: error.message });
     }
   };
 
@@ -39,10 +37,8 @@ export class HeaderPageController {
         buttonLink: rawButtonLink,
         page,
       } = req.body;
-      const imagemUrl =
-        typeof rawImagemUrl === "string" ? rawImagemUrl.trim() : "";
-      const buttonLink =
-        typeof rawButtonLink === "string" ? rawButtonLink.trim() : "";
+      const imagemUrl = typeof rawImagemUrl === 'string' ? rawImagemUrl.trim() : '';
+      const buttonLink = typeof rawButtonLink === 'string' ? rawButtonLink.trim() : '';
       const item = await headerPagesService.create({
         subtitulo,
         titulo,
@@ -55,7 +51,7 @@ export class HeaderPageController {
       res.status(201).json(item);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao criar header page",
+        message: 'Erro ao criar header page',
         error: error.message,
       });
     }
@@ -79,15 +75,13 @@ export class HeaderPageController {
       if (descricao !== undefined) data.descricao = descricao;
       if (buttonLabel !== undefined) data.buttonLabel = buttonLabel;
       if (page !== undefined) data.page = page;
-      if (rawImagemUrl !== undefined)
-        data.imagemUrl = (rawImagemUrl as string).trim();
-      if (rawButtonLink !== undefined)
-        data.buttonLink = (rawButtonLink as string).trim();
+      if (rawImagemUrl !== undefined) data.imagemUrl = (rawImagemUrl as string).trim();
+      if (rawButtonLink !== undefined) data.buttonLink = (rawButtonLink as string).trim();
       const item = await headerPagesService.update(id, data);
       res.json(item);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao atualizar header page",
+        message: 'Erro ao atualizar header page',
         error: error.message,
       });
     }
@@ -100,7 +94,7 @@ export class HeaderPageController {
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao remover header page",
+        message: 'Erro ao remover header page',
         error: error.message,
       });
     }

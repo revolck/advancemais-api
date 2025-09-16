@@ -1,7 +1,7 @@
-import { Router } from "express";
-import { publicCache } from "../../../middlewares/cache-control";
-import { supabaseAuthMiddleware } from "../../usuarios/auth";
-import { SobreEmpresaController } from "../controllers/sobreEmpresa.controller";
+import { Router } from 'express';
+import { publicCache } from '../../../middlewares/cache-control';
+import { supabaseAuthMiddleware } from '../../usuarios/auth';
+import { SobreEmpresaController } from '../controllers/sobreEmpresa.controller';
 
 const router = Router();
 
@@ -32,7 +32,7 @@ const router = Router();
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/sobre-empresa"
  */
-router.get("/", publicCache, SobreEmpresaController.list);
+router.get('/', publicCache, SobreEmpresaController.list);
 
 /**
  * @openapi
@@ -71,7 +71,7 @@ router.get("/", publicCache, SobreEmpresaController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/sobre-empresa/{id}"
  */
-router.get("/:id", publicCache, SobreEmpresaController.get);
+router.get('/:id', publicCache, SobreEmpresaController.get);
 
 /**
  * @openapi
@@ -109,11 +109,7 @@ router.get("/:id", publicCache, SobreEmpresaController.get);
  *            -H "Content-Type: application/json" \\
  *            -d '{"titulo":"Novo","descricao":"Conteudo","descricaoVisao":"Visao","descricaoMissao":"Missao","descricaoValores":"Valores","videoUrl":"https://example.com/video"}'
  */
-router.post(
-  "/",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  SobreEmpresaController.create
-);
+router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), SobreEmpresaController.create);
 
 /**
  * @openapi
@@ -163,11 +159,7 @@ router.post(
  *            -H "Content-Type: application/json" \\
  *            -d '{"titulo":"Atualizado"}'
  */
-router.put(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  SobreEmpresaController.update
-);
+router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), SobreEmpresaController.update);
 
 /**
  * @openapi
@@ -206,10 +198,9 @@ router.put(
  *            -H "Authorization: Bearer <TOKEN>"
  */
 router.delete(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  SobreEmpresaController.remove
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  SobreEmpresaController.remove,
 );
 
 export { router as sobreEmpresaRoutes };
-

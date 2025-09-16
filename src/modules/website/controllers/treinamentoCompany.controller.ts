@@ -1,16 +1,16 @@
-import { Request, Response } from "express";
-import path from "path";
+import { Request, Response } from 'express';
+import path from 'path';
 
-import { supabase } from "@/config/supabase";
-import { treinamentoCompanyService } from "@/modules/website/services/treinamentoCompany.service";
-import { respondWithCache } from "@/modules/website/utils/cache-response";
+import { supabase } from '@/config/supabase';
+import { treinamentoCompanyService } from '@/modules/website/services/treinamentoCompany.service';
+import { respondWithCache } from '@/modules/website/utils/cache-response';
 
 function generateImageTitle(url: string): string {
   try {
     const pathname = new URL(url).pathname;
-    return path.basename(pathname).split(".")[0];
+    return path.basename(pathname).split('.')[0];
   } catch {
-    return "";
+    return '';
   }
 }
 
@@ -18,14 +18,12 @@ async function uploadImage(file: Express.Multer.File): Promise<string> {
   const fileExt = path.extname(file.originalname);
   const fileName = `treinamento-company-${Date.now()}${fileExt}`;
   const { error } = await supabase.storage
-    .from("website")
+    .from('website')
     .upload(`treinamento-company/${fileName}`, file.buffer, {
       contentType: file.mimetype,
     });
   if (error) throw error;
-  const { data } = supabase.storage
-    .from("website")
-    .getPublicUrl(`treinamento-company/${fileName}`);
+  const { data } = supabase.storage.from('website').getPublicUrl(`treinamento-company/${fileName}`);
   return data.publicUrl;
 }
 
@@ -42,16 +40,14 @@ export class TreinamentoCompanyController {
       const { id } = req.params;
       const item = await treinamentoCompanyService.get(id);
       if (!item) {
-        return res
-          .status(404)
-          .json({ message: "TreinamentoCompany não encontrado" });
+        return res.status(404).json({ message: 'TreinamentoCompany não encontrado' });
       }
       const response = item;
 
       return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao buscar TreinamentoCompany",
+        message: 'Erro ao buscar TreinamentoCompany',
         error: error.message,
       });
     }
@@ -60,13 +56,13 @@ export class TreinamentoCompanyController {
   static create = async (req: Request, res: Response) => {
     try {
       const { titulo, descricao, titulo1, titulo2, titulo3, titulo4 } = req.body;
-      let imagemUrl = "";
+      let imagemUrl = '';
       if (req.file) {
         imagemUrl = await uploadImage(req.file);
       } else if (req.body.imagemUrl) {
         imagemUrl = req.body.imagemUrl;
       }
-      const imagemTitulo = imagemUrl ? generateImageTitle(imagemUrl) : "";
+      const imagemTitulo = imagemUrl ? generateImageTitle(imagemUrl) : '';
       const item = await treinamentoCompanyService.create({
         titulo,
         descricao,
@@ -80,7 +76,7 @@ export class TreinamentoCompanyController {
       res.status(201).json(item);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao criar TreinamentoCompany",
+        message: 'Erro ao criar TreinamentoCompany',
         error: error.message,
       });
     }
@@ -110,7 +106,7 @@ export class TreinamentoCompanyController {
       res.json(item);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao atualizar TreinamentoCompany",
+        message: 'Erro ao atualizar TreinamentoCompany',
         error: error.message,
       });
     }
@@ -123,10 +119,9 @@ export class TreinamentoCompanyController {
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao remover TreinamentoCompany",
+        message: 'Erro ao remover TreinamentoCompany',
         error: error.message,
       });
     }
   };
 }
-

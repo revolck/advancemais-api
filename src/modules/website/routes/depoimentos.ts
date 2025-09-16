@@ -1,7 +1,7 @@
-import { Router } from "express";
-import { publicCache } from "../../../middlewares/cache-control";
-import { supabaseAuthMiddleware } from "../../usuarios/auth";
-import { DepoimentosController } from "../controllers/depoimentos.controller";
+import { Router } from 'express';
+import { publicCache } from '../../../middlewares/cache-control';
+import { supabaseAuthMiddleware } from '../../usuarios/auth';
+import { DepoimentosController } from '../controllers/depoimentos.controller';
 
 const router = Router();
 
@@ -38,7 +38,7 @@ const router = Router();
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/depoimentos"
  */
-router.get("/", publicCache, DepoimentosController.list);
+router.get('/', publicCache, DepoimentosController.list);
 
 /**
  * @openapi
@@ -78,7 +78,7 @@ router.get("/", publicCache, DepoimentosController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/depoimentos/{ordemId}"
  */
-router.get("/:id", publicCache, DepoimentosController.get);
+router.get('/:id', publicCache, DepoimentosController.get);
 
 /**
  * @openapi
@@ -117,11 +117,7 @@ router.get("/:id", publicCache, DepoimentosController.get);
  *            -H "Content-Type: application/json" \\
  *            -d '{"depoimento":"Excelente serviço","nome":"Fulano","cargo":"Gerente","fotoUrl":"https://cdn.example.com/foto.jpg","status":"PUBLICADO"}'
  */
-router.post(
-  "/",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  DepoimentosController.create
-);
+router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), DepoimentosController.create);
 
 /**
  * @openapi
@@ -173,11 +169,7 @@ router.post(
  *            -H "Content-Type: application/json" \\
  *            -d '{"depoimento":"Texto","status":"RASCUNHO"}'
  */
-router.put(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  DepoimentosController.update
-);
+router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), DepoimentosController.update);
 
 /**
  * @openapi
@@ -230,9 +222,9 @@ router.put(
  *            -d '{"ordem":2}'
  */
 router.put(
-  "/:id/reorder",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  DepoimentosController.reorder
+  '/:id/reorder',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  DepoimentosController.reorder,
 );
 
 /**
@@ -271,11 +263,6 @@ router.put(
  *           curl -X DELETE "http://localhost:3000/api/v1/website/depoimentos/{id}" \\
  *            -H "Authorization: Bearer <TOKEN>"
  */
-router.delete(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  DepoimentosController.remove
-);
+router.delete('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), DepoimentosController.remove);
 
 export { router as depoimentosRoutes };
-

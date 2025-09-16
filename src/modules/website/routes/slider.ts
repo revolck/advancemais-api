@@ -1,8 +1,8 @@
-import { Router } from "express";
-import { publicCache } from "../../../middlewares/cache-control";
-import multer from "multer";
-import { supabaseAuthMiddleware } from "../../usuarios/auth";
-import { SliderController } from "../controllers/slider.controller";
+import { Router } from 'express';
+import { publicCache } from '../../../middlewares/cache-control';
+import multer from 'multer';
+import { supabaseAuthMiddleware } from '../../usuarios/auth';
+import { SliderController } from '../controllers/slider.controller';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -33,8 +33,8 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         label: Exemplo
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/slider"
-*/
-router.get("/", publicCache, SliderController.list);
+ */
+router.get('/', publicCache, SliderController.list);
 
 /**
  * @openapi
@@ -73,8 +73,8 @@ router.get("/", publicCache, SliderController.list);
  *         label: Exemplo
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/slider/{ordemId}"
-*/
-router.get("/:id", publicCache, SliderController.get);
+ */
+router.get('/:id', publicCache, SliderController.get);
 
 /**
  * @openapi
@@ -115,12 +115,12 @@ router.get("/:id", publicCache, SliderController.get);
  *            -F "orientacao=DESKTOP" \\
  *            -F "status=true" \\
  *            -F "link=https://example.com"
-*/
+ */
 router.post(
-  "/",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  upload.single("imagem"),
-  SliderController.create
+  '/',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  upload.single('imagem'),
+  SliderController.create,
 );
 
 /**
@@ -176,12 +176,12 @@ router.post(
  *            -F "status=false" \\
  *            -F "link=https://example.com" \\
  *            -F "ordem=2"
-*/
+ */
 router.put(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  upload.single("imagem"),
-  SliderController.update
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  upload.single('imagem'),
+  SliderController.update,
 );
 
 /**
@@ -235,9 +235,9 @@ router.put(
  *            -d '{"ordem":2}'
  */
 router.put(
-  "/:id/reorder",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  SliderController.reorder
+  '/:id/reorder',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  SliderController.reorder,
 );
 
 /**
@@ -276,11 +276,7 @@ router.put(
  *         source: |
  *           curl -X DELETE "http://localhost:3000/api/v1/website/slider/{sliderId}" \\
  *            -H "Authorization: Bearer <TOKEN>"
-*/
-router.delete(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  SliderController.remove
-);
+ */
+router.delete('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), SliderController.remove);
 
 export { router as sliderRoutes };

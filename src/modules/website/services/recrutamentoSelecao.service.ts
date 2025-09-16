@@ -1,13 +1,9 @@
-import { WebsiteRecrutamentoSelecao } from "@prisma/client";
-import { prisma } from "@/config/prisma";
-import {
-  getCache,
-  setCache,
-  invalidateCache,
-} from "@/utils/cache";
-import { WEBSITE_CACHE_TTL } from "@/modules/website/config";
+import { WebsiteRecrutamentoSelecao } from '@prisma/client';
+import { prisma } from '@/config/prisma';
+import { getCache, setCache, invalidateCache } from '@/utils/cache';
+import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
 
-const CACHE_KEY = "website:recrutamentoSelecao:list";
+const CACHE_KEY = 'website:recrutamentoSelecao:list';
 
 export const recrutamentoSelecaoService = {
   list: async () => {
@@ -17,11 +13,8 @@ export const recrutamentoSelecaoService = {
     await setCache(CACHE_KEY, result, WEBSITE_CACHE_TTL);
     return result;
   },
-  get: (id: string) =>
-    prisma.websiteRecrutamentoSelecao.findUnique({ where: { id } }),
-  create: async (
-    data: Omit<WebsiteRecrutamentoSelecao, "id" | "criadoEm" | "atualizadoEm">
-  ) => {
+  get: (id: string) => prisma.websiteRecrutamentoSelecao.findUnique({ where: { id } }),
+  create: async (data: Omit<WebsiteRecrutamentoSelecao, 'id' | 'criadoEm' | 'atualizadoEm'>) => {
     const result = await prisma.websiteRecrutamentoSelecao.create({ data });
     await invalidateCache(CACHE_KEY);
     return result;
@@ -37,4 +30,3 @@ export const recrutamentoSelecaoService = {
     return result;
   },
 };
-

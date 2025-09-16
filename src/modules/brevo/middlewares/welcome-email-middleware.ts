@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from "express";
-import { EmailService } from "../services/email-service";
+import { Request, Response, NextFunction } from 'express';
+import { EmailService } from '../services/email-service';
 
 /**
  * Middleware simplificado e robusto para envio de email de boas-vindas
@@ -24,43 +24,29 @@ export class WelcomeEmailMiddleware {
   public sendWelcomeEmail = async (
     req: Request,
     res: Response,
-    _next: NextFunction
+    _next: NextFunction,
   ): Promise<void> => {
     const correlationId = this.getCorrelationId(req);
 
     try {
-      console.log(
-        `📧 [${correlationId}] WelcomeEmailMiddleware: Iniciando processamento`
-      );
+      console.log(`📧 [${correlationId}] WelcomeEmailMiddleware: Iniciando processamento`);
 
       // Extrai dados do usuário criado
       const userData = this.extractUserData(res, correlationId);
 
       if (userData) {
-        console.log(
-          `📧 [${correlationId}] Dados válidos extraídos para: ${userData.email}`
-        );
+        console.log(`📧 [${correlationId}] Dados válidos extraídos para: ${userData.email}`);
 
         // Executa envio de email de forma assíncrona (não bloqueia resposta)
         this.processEmailAsync(userData, correlationId);
 
-        console.log(
-          `📧 [${correlationId}] Email agendado para envio: ${userData.email}`
-        );
+        console.log(`📧 [${correlationId}] Email agendado para envio: ${userData.email}`);
       } else {
-        console.warn(
-          `⚠️ [${correlationId}] Dados insuficientes para envio de email`
-        );
-        console.warn(
-          `⚠️ [${correlationId}] res.locals keys:`,
-          Object.keys(res.locals || {})
-        );
+        console.warn(`⚠️ [${correlationId}] Dados insuficientes para envio de email`);
+        console.warn(`⚠️ [${correlationId}] res.locals keys:`, Object.keys(res.locals || {}));
       }
     } catch (error) {
-      console.error(
-        `❌ [${correlationId}] Erro no middleware de email:`,
-        error
-      );
+      console.error(`❌ [${correlationId}] Erro no middleware de email:`, error);
       // Nunca falha o fluxo principal
     }
 
@@ -83,9 +69,7 @@ export class WelcomeEmailMiddleware {
 
       // Verifica se usuarioCriado existe
       if (!res.locals.usuarioCriado) {
-        console.warn(
-          `⚠️ [${correlationId}] res.locals.usuarioCriado não existe`
-        );
+        console.warn(`⚠️ [${correlationId}] res.locals.usuarioCriado não existe`);
         return null;
       }
 
@@ -93,23 +77,18 @@ export class WelcomeEmailMiddleware {
 
       // Verifica se dados do usuário existem
       if (!usuarioCriado.usuario) {
-        console.warn(
-          `⚠️ [${correlationId}] res.locals.usuarioCriado.usuario não existe`
-        );
+        console.warn(`⚠️ [${correlationId}] res.locals.usuarioCriado.usuario não existe`);
         return null;
       }
 
       const userData = usuarioCriado.usuario;
 
       // Validação dos campos obrigatórios
-      const requiredFields = ["id", "email", "nomeCompleto", "tipoUsuario"];
+      const requiredFields = ['id', 'email', 'nomeCompleto', 'tipoUsuario'];
       const missingFields = requiredFields.filter((field) => !userData[field]);
 
       if (missingFields.length > 0) {
-        console.warn(
-          `⚠️ [${correlationId}] Campos obrigatórios ausentes:`,
-          missingFields
-        );
+        console.warn(`⚠️ [${correlationId}] Campos obrigatórios ausentes:`, missingFields);
         return null;
       }
 
@@ -148,9 +127,7 @@ export class WelcomeEmailMiddleware {
     // Executa em background sem bloquear
     setImmediate(async () => {
       try {
-        console.log(
-          `📧 [${correlationId}] Iniciando envio assíncrono para: ${userData.email}`
-        );
+        console.log(`📧 [${correlationId}] Iniciando envio assíncrono para: ${userData.email}`);
 
         const startTime = Date.now();
         const result = await this.emailService.sendWelcomeEmail(userData);
@@ -159,27 +136,25 @@ export class WelcomeEmailMiddleware {
         if (result.success) {
           if (result.simulated) {
             console.log(
-              `🎭 [${correlationId}] Email simulado enviado para: ${userData.email} (${duration}ms)`
+              `🎭 [${correlationId}] Email simulado enviado para: ${userData.email} (${duration}ms)`,
             );
           } else {
             console.log(
-              `✅ [${correlationId}] Email enviado com sucesso para: ${userData.email} (${duration}ms)`
+              `✅ [${correlationId}] Email enviado com sucesso para: ${userData.email} (${duration}ms)`,
             );
             if (result.messageId) {
-              console.log(
-                `📧 [${correlationId}] Message ID: ${result.messageId}`
-              );
+              console.log(`📧 [${correlationId}] Message ID: ${result.messageId}`);
             }
           }
         } else {
           console.error(
-            `❌ [${correlationId}] Falha no envio para ${userData.email}: ${result.error}`
+            `❌ [${correlationId}] Falha no envio para ${userData.email}: ${result.error}`,
           );
         }
       } catch (error) {
         console.error(
           `❌ [${correlationId}] Erro crítico no envio assíncrono para ${userData.email}:`,
-          error instanceof Error ? error.message : error
+          error instanceof Error ? error.message : error,
         );
       }
     });
@@ -189,10 +164,10 @@ export class WelcomeEmailMiddleware {
    * Obtém correlation ID do request
    */
   private getCorrelationId(req: Request): string {
-    const rawCorrelationId = req.headers["x-correlation-id"];
+    const rawCorrelationId = req.headers['x-correlation-id'];
     return Array.isArray(rawCorrelationId)
-      ? rawCorrelationId[0] || "unknown"
-      : rawCorrelationId || "unknown";
+      ? rawCorrelationId[0] || 'unknown'
+      : rawCorrelationId || 'unknown';
   }
 
   /**
@@ -206,7 +181,7 @@ export class WelcomeEmailMiddleware {
    * Factory method para uso nas rotas
    */
   public static create() {
-    console.log("🏭 WelcomeEmailMiddleware: Criando instância do middleware");
+    console.log('🏭 WelcomeEmailMiddleware: Criando instância do middleware');
     const instance = new WelcomeEmailMiddleware();
     return instance.sendWelcomeEmail;
   }

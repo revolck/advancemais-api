@@ -5,10 +5,10 @@
  * @author Sistema Advance+
  * @version 3.0.0
  */
-import { Router } from "express";
-import { supabaseAuthMiddleware } from "../auth";
-import { AdminController } from "../controllers/admin-controller";
-import { asyncHandler } from "../../../utils/asyncHandler";
+import { Router } from 'express';
+import { supabaseAuthMiddleware } from '../auth';
+import { AdminController } from '../controllers/admin-controller';
+import { asyncHandler } from '../../../utils/asyncHandler';
 
 const router = Router();
 const adminController = new AdminController();
@@ -20,7 +20,7 @@ const adminController = new AdminController();
 /**
  * Todas as rotas admin requerem pelo menos role MODERADOR
  */
-router.use(supabaseAuthMiddleware(["ADMIN", "MODERADOR"]));
+router.use(supabaseAuthMiddleware(['ADMIN', 'MODERADOR']));
 
 // =============================================
 // ROTAS DE LISTAGEM E CONSULTA
@@ -33,24 +33,24 @@ router.use(supabaseAuthMiddleware(["ADMIN", "MODERADOR"]));
 /**
  * @openapi
  * /api/v1/usuarios/admin:
-  *   get:
-  *     summary: Informações do painel administrativo
-  *     tags: [Usuários - Admin]
-  *     security:
-  *       - bearerAuth: []
-  *     responses:
-  *       200:
-  *         description: Detalhes do painel
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/AdminModuleInfo'
-  *       500:
-  *         description: Erro interno
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/ErrorResponse'
+ *   get:
+ *     summary: Informações do painel administrativo
+ *     tags: [Usuários - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Detalhes do painel
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminModuleInfo'
+ *       500:
+ *         description: Erro interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -58,7 +58,7 @@ router.use(supabaseAuthMiddleware(["ADMIN", "MODERADOR"]));
  *           curl -X GET "http://localhost:3000/api/v1/usuarios/admin" \\
  *            -H "Authorization: Bearer <TOKEN>"
  */
-router.get("/", asyncHandler(adminController.getAdminInfo));
+router.get('/', asyncHandler(adminController.getAdminInfo));
 
 /**
  * Listar usuários com filtros
@@ -67,50 +67,50 @@ router.get("/", asyncHandler(adminController.getAdminInfo));
 /**
  * @openapi
  * /api/v1/usuarios/admin/usuarios:
-  *   get:
-  *     summary: Listar usuários
-  *     tags: [Usuários - Admin]
-  *     security:
-  *       - bearerAuth: []
-  *     parameters:
-  *       - in: query
-  *         name: page
-  *         schema:
-  *           type: integer
-  *           example: 1
-  *       - in: query
-  *         name: limit
-  *         schema:
-  *           type: integer
-  *           example: 50
-  *       - in: query
-  *         name: status
-  *         schema:
-  *           type: string
-  *           example: ATIVO
-  *       - in: query
-  *         name: role
-  *         schema:
-  *           type: string
-  *           example: ADMIN
-  *       - in: query
-  *         name: tipoUsuario
-  *         schema:
-  *           type: string
-  *           example: PESSOA_FISICA
-  *     responses:
-  *       200:
-  *         description: Lista de usuários
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/AdminUserListResponse'
-  *       500:
-  *         description: Erro ao listar usuários
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/ErrorResponse'
+ *   get:
+ *     summary: Listar usuários
+ *     tags: [Usuários - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           example: 50
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           example: ATIVO
+ *       - in: query
+ *         name: role
+ *         schema:
+ *           type: string
+ *           example: ADMIN
+ *       - in: query
+ *         name: tipoUsuario
+ *         schema:
+ *           type: string
+ *           example: PESSOA_FISICA
+ *     responses:
+ *       200:
+ *         description: Lista de usuários
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminUserListResponse'
+ *       500:
+ *         description: Erro ao listar usuários
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -118,7 +118,7 @@ router.get("/", asyncHandler(adminController.getAdminInfo));
  *           curl -X GET "http://localhost:3000/api/v1/usuarios/admin/usuarios" \\
  *            -H "Authorization: Bearer <TOKEN>"
  */
-router.get("/usuarios", asyncHandler(adminController.listarUsuarios));
+router.get('/usuarios', asyncHandler(adminController.listarUsuarios));
 
 /**
  * Buscar usuário específico por ID
@@ -126,37 +126,37 @@ router.get("/usuarios", asyncHandler(adminController.listarUsuarios));
  */
 /**
  * @openapi
-  * /api/v1/usuarios/admin/usuarios/{userId}:
-  *   get:
-  *     summary: Buscar usuário por ID
-  *     tags: [Usuários - Admin]
-  *     security:
-  *       - bearerAuth: []
-  *     parameters:
-  *       - in: path
-  *         name: userId
-  *         required: true
-  *         schema:
-  *           type: string
-  *     responses:
-  *       200:
-  *         description: Usuário encontrado
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/AdminUserDetailResponse'
-  *       404:
-  *         description: Usuário não encontrado
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/ErrorResponse'
-  *       500:
-  *         description: Erro interno
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/ErrorResponse'
+ * /api/v1/usuarios/admin/usuarios/{userId}:
+ *   get:
+ *     summary: Buscar usuário por ID
+ *     tags: [Usuários - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Usuário encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminUserDetailResponse'
+ *       404:
+ *         description: Usuário não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -164,7 +164,7 @@ router.get("/usuarios", asyncHandler(adminController.listarUsuarios));
  *           curl -X GET "http://localhost:3000/api/v1/usuarios/admin/usuarios/{userId}" \\
  *            -H "Authorization: Bearer <TOKEN>"
  */
-router.get("/usuarios/:userId", asyncHandler(adminController.buscarUsuario));
+router.get('/usuarios/:userId', asyncHandler(adminController.buscarUsuario));
 
 // =============================================
 // ROTAS DE MODIFICAÇÃO (APENAS ADMIN)
@@ -223,9 +223,9 @@ router.get("/usuarios/:userId", asyncHandler(adminController.buscarUsuario));
  *            -d '{"status":"ATIVO"}'
  */
 router.patch(
-  "/usuarios/:userId/status",
-  supabaseAuthMiddleware(["ADMIN"]),
-  asyncHandler(adminController.atualizarStatus)
+  '/usuarios/:userId/status',
+  supabaseAuthMiddleware(['ADMIN']),
+  asyncHandler(adminController.atualizarStatus),
 );
 
 /**
@@ -281,9 +281,9 @@ router.patch(
  *            -d '{"role":"MODERADOR"}'
  */
 router.patch(
-  "/usuarios/:userId/role",
-  supabaseAuthMiddleware(["ADMIN"]),
-  asyncHandler(adminController.atualizarRole)
+  '/usuarios/:userId/role',
+  supabaseAuthMiddleware(['ADMIN']),
+  asyncHandler(adminController.atualizarRole),
 );
 
 export { router as adminRoutes };

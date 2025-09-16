@@ -1,13 +1,9 @@
-import { WebsiteSobre } from "@prisma/client";
-import { prisma } from "@/config/prisma";
-import {
-  getCache,
-  setCache,
-  invalidateCache,
-} from "@/utils/cache";
-import { WEBSITE_CACHE_TTL } from "@/modules/website/config";
+import { WebsiteSobre } from '@prisma/client';
+import { prisma } from '@/config/prisma';
+import { getCache, setCache, invalidateCache } from '@/utils/cache';
+import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
 
-const CACHE_KEY = "website:sobre:list";
+const CACHE_KEY = 'website:sobre:list';
 
 export const sobreService = {
   list: async () => {
@@ -18,7 +14,7 @@ export const sobreService = {
     return result;
   },
   get: (id: string) => prisma.websiteSobre.findUnique({ where: { id } }),
-  create: async (data: Omit<WebsiteSobre, "id" | "criadoEm" | "atualizadoEm">) => {
+  create: async (data: Omit<WebsiteSobre, 'id' | 'criadoEm' | 'atualizadoEm'>) => {
     const result = await prisma.websiteSobre.create({ data });
     await invalidateCache(CACHE_KEY);
     return result;

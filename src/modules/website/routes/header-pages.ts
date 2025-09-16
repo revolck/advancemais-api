@@ -1,7 +1,7 @@
-import { Router } from "express";
-import { publicCache } from "../../../middlewares/cache-control";
-import { supabaseAuthMiddleware } from "../../usuarios/auth";
-import { HeaderPageController } from "../controllers/header-pages.controller";
+import { Router } from 'express';
+import { publicCache } from '../../../middlewares/cache-control';
+import { supabaseAuthMiddleware } from '../../usuarios/auth';
+import { HeaderPageController } from '../controllers/header-pages.controller';
 
 const router = Router();
 
@@ -32,7 +32,7 @@ const router = Router();
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/header-pages"
  */
-router.get("/", publicCache, HeaderPageController.list);
+router.get('/', publicCache, HeaderPageController.list);
 
 /**
  * @openapi
@@ -71,7 +71,7 @@ router.get("/", publicCache, HeaderPageController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/header-pages/{id}"
  */
-router.get("/:id", publicCache, HeaderPageController.get);
+router.get('/:id', publicCache, HeaderPageController.get);
 
 /**
  * @openapi
@@ -109,11 +109,7 @@ router.get("/:id", publicCache, HeaderPageController.get);
  *            -H "Content-Type: application/json" \\
  *            -d '{"subtitulo":"Sub","titulo":"Titulo","descricao":"Desc","imagemUrl":"https://cdn.example.com/img.jpg","buttonLabel":"Saiba mais","buttonLink":"https://example.com","page":"SOBRE"}'
  */
-router.post(
-  "/",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  HeaderPageController.create
-);
+router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), HeaderPageController.create);
 
 /**
  * @openapi
@@ -163,11 +159,7 @@ router.post(
  *            -H "Content-Type: application/json" \\
  *            -d '{"titulo":"Novo titulo"}'
  */
-router.put(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  HeaderPageController.update
-);
+router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), HeaderPageController.update);
 
 /**
  * @openapi
@@ -205,10 +197,6 @@ router.put(
  *           curl -X DELETE "http://localhost:3000/api/v1/website/header-pages/{id}" \\
  *            -H "Authorization: Bearer <TOKEN>"
  */
-router.delete(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  HeaderPageController.remove
-);
+router.delete('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), HeaderPageController.remove);
 
 export { router as headerPagesRoutes };

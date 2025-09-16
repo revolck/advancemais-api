@@ -5,8 +5,8 @@
  * @author Sistema Advance+
  * @version 3.0.3 - Correção path-to-regexp
  */
-import { Router } from "express";
-import { PasswordRecoveryController } from "../controllers/password-recovery-controller";
+import { Router } from 'express';
+import { PasswordRecoveryController } from '../controllers/password-recovery-controller';
 
 const router = Router();
 const passwordRecoveryController = new PasswordRecoveryController();
@@ -95,7 +95,7 @@ const passwordRecoveryController = new PasswordRecoveryController();
  *            -H "Content-Type: application/json" \\
  *            -d '{"email":"user@example.com"}'
  */
-router.post("/", passwordRecoveryController.solicitarRecuperacao);
+router.post('/', passwordRecoveryController.solicitarRecuperacao);
 
 /**
  * Valida token de recuperação - ROTA CORRIGIDA
@@ -160,10 +160,7 @@ router.post("/", passwordRecoveryController.solicitarRecuperacao);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/usuarios/recuperar-senha/validar/{token}"
  */
-router.get(
-  "/validar/:token([a-fA-F0-9]{64})",
-  passwordRecoveryController.validarToken
-);
+router.get('/validar/:token([a-fA-F0-9]{64})', passwordRecoveryController.validarToken);
 
 /**
  * Redefine senha com token
@@ -240,6 +237,6 @@ router.get(
  *            -H "Content-Type: application/json" \\
  *            -d '{"token":"<token>","novaSenha":"senha123"}'
  */
-router.post("/redefinir", passwordRecoveryController.redefinirSenha);
+router.post('/redefinir', passwordRecoveryController.redefinirSenha);
 
 export default router;

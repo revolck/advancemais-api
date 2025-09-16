@@ -1,7 +1,7 @@
-import { Router } from "express";
-import { publicCache } from "../../../middlewares/cache-control";
-import { supabaseAuthMiddleware } from "../../usuarios/auth";
-import { TeamController } from "../controllers/team.controller";
+import { Router } from 'express';
+import { publicCache } from '../../../middlewares/cache-control';
+import { supabaseAuthMiddleware } from '../../usuarios/auth';
+import { TeamController } from '../controllers/team.controller';
 
 const router = Router();
 
@@ -38,7 +38,7 @@ const router = Router();
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/team"
  */
-router.get("/", publicCache, TeamController.list);
+router.get('/', publicCache, TeamController.list);
 
 /**
  * @openapi
@@ -78,7 +78,7 @@ router.get("/", publicCache, TeamController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/team/{ordemId}"
  */
-router.get("/:id", publicCache, TeamController.get);
+router.get('/:id', publicCache, TeamController.get);
 
 /**
  * @openapi
@@ -117,11 +117,7 @@ router.get("/:id", publicCache, TeamController.get);
  *            -H "Content-Type: application/json" \
  *            -d '{"nome":"Fulano","cargo":"Dev","photoUrl":"https://cdn.example.com/team.jpg","status":"PUBLICADO"}'
  */
-router.post(
-  "/",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  TeamController.create
-);
+router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), TeamController.create);
 
 /**
  * @openapi
@@ -173,11 +169,7 @@ router.post(
  *            -H "Content-Type: application/json" \
  *            -d '{"nome":"Fulano","cargo":"Dev","photoUrl":"https://cdn.example.com/team.jpg","status":"RASCUNHO"}'
  */
-router.put(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  TeamController.update
-);
+router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), TeamController.update);
 
 /**
  * @openapi
@@ -229,11 +221,7 @@ router.put(
  *            -H "Content-Type: application/json" \\
  *            -d '{"ordem":2}'
  */
-router.put(
-  "/:id/reorder",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  TeamController.reorder
-);
+router.put('/:id/reorder', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), TeamController.reorder);
 
 /**
  * @openapi
@@ -271,10 +259,6 @@ router.put(
  *           curl -X DELETE "http://localhost:3000/api/v1/website/team/{id}" \
  *            -H "Authorization: Bearer <TOKEN>"
  */
-router.delete(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  TeamController.remove
-);
+router.delete('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), TeamController.remove);
 
 export { router as teamRoutes };

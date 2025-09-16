@@ -1,13 +1,13 @@
-import { invalidateCache, invalidateCacheByPrefix } from "@/utils/cache";
-import { prisma } from "@/config/prisma";
+import { invalidateCache, invalidateCacheByPrefix } from '@/utils/cache';
+import { prisma } from '@/config/prisma';
 
 export async function invalidateUserCache(
-  usuario: { supabaseId?: string; id?: string } | string | null
+  usuario: { supabaseId?: string; id?: string } | string | null,
 ) {
   let supabaseId: string | undefined;
   let id: string | undefined;
 
-  if (typeof usuario === "string") {
+  if (typeof usuario === 'string') {
     id = usuario;
   } else {
     supabaseId = usuario?.supabaseId;
@@ -29,6 +29,5 @@ export async function invalidateUserCache(
     await invalidateCache(keys);
   }
 
-  await invalidateCacheByPrefix("stats:user:");
+  await invalidateCacheByPrefix('stats:user:');
 }
-

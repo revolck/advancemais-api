@@ -1,1 +1,1 @@
-export { criarUsuario } from "./register-controller";
+export { criarUsuario } from './register-controller';

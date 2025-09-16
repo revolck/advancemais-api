@@ -1,7 +1,7 @@
-import { Router } from "express";
-import { publicCache } from "../../../middlewares/cache-control";
-import { supabaseAuthMiddleware } from "../../usuarios/auth";
-import { PlaninhasController } from "../controllers/planinhas.controller";
+import { Router } from 'express';
+import { publicCache } from '../../../middlewares/cache-control';
+import { supabaseAuthMiddleware } from '../../usuarios/auth';
+import { PlaninhasController } from '../controllers/planinhas.controller';
 
 const router = Router();
 
@@ -32,7 +32,7 @@ const router = Router();
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/planinhas"
  */
-router.get("/", publicCache, PlaninhasController.list);
+router.get('/', publicCache, PlaninhasController.list);
 
 /**
  * @openapi
@@ -71,7 +71,7 @@ router.get("/", publicCache, PlaninhasController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/planinhas/{id}"
  */
-router.get("/:id", publicCache, PlaninhasController.get);
+router.get('/:id', publicCache, PlaninhasController.get);
 
 /**
  * @openapi
@@ -109,11 +109,7 @@ router.get("/:id", publicCache, PlaninhasController.get);
  *            -H "Content-Type: application/json" \
  *            -d '{"titulo":"T","descricao":"D","icone1":"i1","titulo1":"t1","descricao1":"d1","icone2":"i2","titulo2":"t2","descricao2":"d2","icone3":"i3","titulo3":"t3","descricao3":"d3"}'
  */
-router.post(
-  "/",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  PlaninhasController.create
-);
+router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), PlaninhasController.create);
 
 /**
  * @openapi
@@ -163,11 +159,7 @@ router.post(
  *            -H "Content-Type: application/json" \
  *            -d '{"titulo":"Atual"}'
  */
-router.put(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  PlaninhasController.update
-);
+router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), PlaninhasController.update);
 
 /**
  * @openapi
@@ -205,11 +197,6 @@ router.put(
  *           curl -X DELETE "http://localhost:3000/api/v1/website/planinhas/{id}" \
  *            -H "Authorization: Bearer <TOKEN>"
  */
-router.delete(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  PlaninhasController.remove
-);
+router.delete('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), PlaninhasController.remove);
 
 export { router as planinhasRoutes };
-

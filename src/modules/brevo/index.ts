@@ -4,34 +4,34 @@
  */
 
 // Serviços principais
-export { EmailService } from "./services/email-service";
-export { SMSService } from "./services/sms-service";
+export { EmailService } from './services/email-service';
+export { SMSService } from './services/sms-service';
 
 // Cliente e configuração
-export { BrevoClient } from "./client/brevo-client";
-export { BrevoConfigManager } from "./config/brevo-config";
+export { BrevoClient } from './client/brevo-client';
+export { BrevoConfigManager } from './config/brevo-config';
 
 // Templates
-export { EmailTemplates } from "./templates/email-templates";
+export { EmailTemplates } from './templates/email-templates';
 
 // Middlewares
-export { WelcomeEmailMiddleware } from "./middlewares/welcome-email-middleware";
+export { WelcomeEmailMiddleware } from './middlewares/welcome-email-middleware';
 
 // Controllers
-export { BrevoController } from "./controllers/brevo-controller";
-export { EmailVerificationController } from "./controllers/email-verification-controller";
+export { BrevoController } from './controllers/brevo-controller';
+export { EmailVerificationController } from './controllers/email-verification-controller';
 
 // Rotas
-export { brevoRoutes } from "./routes";
+export { brevoRoutes } from './routes';
 
 // Tipos e interfaces
-export * from "./types/interfaces";
+export * from './types/interfaces';
 
 // Imports para classe principal
-import { EmailService } from "./services/email-service";
-import { SMSService } from "./services/sms-service";
-import { BrevoClient } from "./client/brevo-client";
-import { BrevoConfigManager } from "./config/brevo-config";
+import { EmailService } from './services/email-service';
+import { SMSService } from './services/sms-service';
+import { BrevoClient } from './client/brevo-client';
+import { BrevoConfigManager } from './config/brevo-config';
 
 /**
  * Classe principal do módulo Brevo
@@ -50,7 +50,7 @@ export class BrevoModule {
     this.emailService = new EmailService();
     this.smsService = new SMSService();
 
-    console.log("🏭 BrevoModule: Instância criada com sucesso");
+    console.log('🏭 BrevoModule: Instância criada com sucesso');
   }
 
   public static getInstance(): BrevoModule {
@@ -99,18 +99,17 @@ export class BrevoModule {
         this.client.healthCheck(),
       ]);
 
-      const overall =
-        (emailHealthy && clientHealthy) || this.client.isSimulated();
+      const overall = (emailHealthy && clientHealthy) || this.client.isSimulated();
 
       return {
         overall,
-        status: overall ? "healthy" : "degraded",
-        module: "brevo",
+        status: overall ? 'healthy' : 'degraded',
+        module: 'brevo',
         timestamp: new Date().toISOString(),
         services: {
-          email: emailHealthy ? "operational" : "degraded",
-          sms: smsHealthy ? "operational" : "degraded",
-          client: clientHealthy ? "operational" : "degraded",
+          email: emailHealthy ? 'operational' : 'degraded',
+          sms: smsHealthy ? 'operational' : 'degraded',
+          client: clientHealthy ? 'operational' : 'degraded',
         },
         configuration: {
           configured: this.config.isConfigured(),
@@ -120,13 +119,13 @@ export class BrevoModule {
         },
       };
     } catch (error) {
-      console.error("❌ Erro no health check do BrevoModule:", error);
+      console.error('❌ Erro no health check do BrevoModule:', error);
       return {
         overall: false,
-        status: "unhealthy",
-        module: "brevo",
+        status: 'unhealthy',
+        module: 'brevo',
         timestamp: new Date().toISOString(),
-        error: error instanceof Error ? error.message : "Health check failed",
+        error: error instanceof Error ? error.message : 'Health check failed',
       };
     }
   }
@@ -138,9 +137,9 @@ export class BrevoModule {
     const config = this.config.getConfig();
 
     return {
-      module: "Brevo Communication Module",
-      version: "7.0.0",
-      status: "active",
+      module: 'Brevo Communication Module',
+      version: '7.0.0',
+      status: 'active',
       configured: config.isConfigured,
       simulated: this.client.isSimulated(),
       features: {
@@ -150,7 +149,7 @@ export class BrevoModule {
         passwordRecovery: true,
         smsSupport: true,
       },
-      services: ["email", "sms", "verification"],
+      services: ['email', 'sms', 'verification'],
       environment: config.environment,
       timestamp: new Date().toISOString(),
     };

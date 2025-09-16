@@ -15,7 +15,9 @@ if (process.env.REDIS_URL) {
     })
     .catch((err) => console.error("Redis connection error:", err));
 } else {
-  console.warn("⚠️ REDIS_URL não configurada - Redis desativado");
+  if (process.env.NODE_ENV !== "test") {
+    console.warn("⚠️ REDIS_URL não configurada - Redis desativado");
+  }
 }
 
 export default redis;

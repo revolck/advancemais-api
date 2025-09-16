@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcrypt";
 import { prisma } from "../../../config/prisma";
 import { invalidateCacheByPrefix } from "../../../utils/cache";
+import { invalidateUserCache } from "../utils/cache";
 import { Prisma, CodigoTipo } from "@prisma/client";
 import { TipoUsuario, Role } from "../enums";
 import {
@@ -192,6 +193,7 @@ export const criarUsuario = async (
     // Cria usuário dentro de transação
     log.info("💾 Iniciando transação de banco");
     const usuario = await createUserWithTransaction(userData, correlationId);
+    await invalidateUserCache(usuario);
     try {
       await invalidateCacheByPrefix("dashboard:");
     } catch (cacheError) {

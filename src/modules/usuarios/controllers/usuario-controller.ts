@@ -149,9 +149,7 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
     log.info(
       {
         documentoPrefix:
-          campoBusca === 'cpf'
-            ? documentoLimpo.substring(0, 3)
-            : documentoLimpo.substring(0, 5),
+          campoBusca === 'cpf' ? documentoLimpo.substring(0, 3) : documentoLimpo.substring(0, 5),
         tipoDocumento: campoBusca.toUpperCase(),
       },
       '🔍 Buscando usuário por documento',
@@ -187,9 +185,7 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
       log.warn(
         {
           documentoPrefix:
-            campoBusca === 'cpf'
-              ? documentoLimpo.substring(0, 3)
-              : documentoLimpo.substring(0, 5),
+            campoBusca === 'cpf' ? documentoLimpo.substring(0, 3) : documentoLimpo.substring(0, 5),
           tipoDocumento: campoBusca.toUpperCase(),
         },
         '⚠️ Usuário não encontrado',
@@ -421,6 +417,13 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
         status: true,
         tipoUsuario: true,
         supabaseId: true,
+        codUsuario: true,
+        cidade: true,
+        estado: true,
+        avatarUrl: true,
+        descricao: true,
+        instagram: true,
+        linkedin: true,
         emailVerificado: true,
         ultimoLogin: true,
       },

@@ -778,9 +778,9 @@ const options: Options = {
         },
         EmpresaPlanAssignRequest: {
           type: 'object',
-          required: ['empresaId', 'metodoPagamento'],
+          required: ['usuarioId', 'metodoPagamento'],
           properties: {
-            empresaId: { type: 'string', example: 'empresa-uuid' },
+            usuarioId: { type: 'string', example: 'usuario-uuid' },
             metodoPagamento: {
               type: 'string',
               enum: ['PIX', 'BOLETO', 'CARTAO_CREDITO', 'CARTAO_DEBITO', 'DINHEIRO', 'GRATUITO'],
@@ -811,7 +811,7 @@ const options: Options = {
           type: 'object',
           properties: {
             id: { type: 'string', example: 'assignment-uuid' },
-            empresaId: { type: 'string', example: 'empresa-uuid' },
+            usuarioId: { type: 'string', example: 'usuario-uuid' },
             planoId: { type: 'string', example: 'plan-uuid' },
             metodoPagamento: {
               type: 'string',
@@ -2977,17 +2977,25 @@ const options: Options = {
           type: 'object',
           properties: {
             id: { type: 'string', example: 'empresa-uuid' },
-            nome: { type: 'string', example: 'Empresa Parceira' },
-            logoUrl: { type: 'string', nullable: true, example: 'https://cdn.advance.com.br/logo.png' },
+            nome: { type: 'string', example: 'Advance Tech Consultoria' },
+            avatarUrl: { type: 'string', nullable: true, example: 'https://cdn.advance.com.br/avatar.png' },
             cidade: { type: 'string', nullable: true, example: 'São Paulo' },
             estado: { type: 'string', nullable: true, example: 'SP' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Consultoria em RH especializada em recrutamento.',
+            },
+            instagram: { type: 'string', nullable: true, example: 'https://instagram.com/advancemais' },
+            linkedin: { type: 'string', nullable: true, example: 'https://linkedin.com/company/advancemais' },
+            codUsuario: { type: 'string', example: 'USD1915' },
           },
         },
         EmpresaPlanoParceiro: {
           type: 'object',
           properties: {
             id: { type: 'string', example: 'parceria-uuid' },
-            empresaId: { type: 'string', example: 'empresa-uuid' },
+            usuarioId: { type: 'string', example: 'usuario-uuid' },
             planoEmpresarialId: { type: 'string', example: 'plano-uuid' },
             tipo: { $ref: '#/components/schemas/PlanoParceiroTipo' },
             inicio: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00Z' },
@@ -3025,9 +3033,9 @@ const options: Options = {
         },
         EmpresaPlanoParceiroCreateInput: {
           type: 'object',
-          required: ['empresaId', 'planoEmpresarialId', 'tipo'],
+          required: ['usuarioId', 'planoEmpresarialId', 'tipo'],
           properties: {
-            empresaId: { type: 'string', format: 'uuid', example: 'empresa-uuid' },
+            usuarioId: { type: 'string', format: 'uuid', example: 'usuario-uuid' },
             planoEmpresarialId: { type: 'string', format: 'uuid', example: 'plano-uuid' },
             tipo: { $ref: '#/components/schemas/PlanoParceiroTipo' },
             iniciarEm: {
@@ -3102,10 +3110,10 @@ const options: Options = {
           properties: {
             id: { type: 'string', example: 'empresa-uuid' },
             nome: { type: 'string', example: 'Advance Tech Consultoria' },
-            logoUrl: {
+            avatarUrl: {
               type: 'string',
               nullable: true,
-              example: 'https://cdn.advance.com.br/assets/empresa/logo.png',
+              example: 'https://cdn.advance.com.br/assets/empresa/avatar.png',
             },
             cidade: { type: 'string', nullable: true, example: 'São Paulo' },
             estado: { type: 'string', nullable: true, example: 'SP' },
@@ -3114,11 +3122,9 @@ const options: Options = {
               nullable: true,
               example: 'Consultoria em RH e tecnologia especializada em recrutamento.',
             },
-            criadoEm: {
-              type: 'string',
-              format: 'date-time',
-              example: '2024-01-05T12:00:00Z',
-            },
+            instagram: { type: 'string', nullable: true, example: 'https://instagram.com/advancemais' },
+            linkedin: { type: 'string', nullable: true, example: 'https://linkedin.com/company/advancemais' },
+            codUsuario: { type: 'string', example: 'USD1915' },
           },
         },
         Vaga: {
@@ -3126,7 +3132,7 @@ const options: Options = {
           description: 'Representação completa da vaga cadastrada pela empresa',
           properties: {
             id: { type: 'string', example: 'vaga-uuid' },
-            empresaId: { type: 'string', example: 'empresa-uuid' },
+            usuarioId: { type: 'string', example: 'usuario-uuid' },
             empresa: {
               allOf: [{ $ref: '#/components/schemas/EmpresaResumo' }],
               nullable: true,
@@ -3211,7 +3217,7 @@ const options: Options = {
           type: 'object',
           description: 'Dados necessários para cadastrar uma vaga. O status inicial é definido automaticamente como EM_ANALISE.',
           required: [
-            'empresaId',
+            'usuarioId',
             'regimeDeTrabalho',
             'modalidade',
             'requisitos',
@@ -3220,7 +3226,7 @@ const options: Options = {
             'cargaHoraria',
           ],
           properties: {
-            empresaId: {
+            usuarioId: {
               type: 'string',
               format: 'uuid',
               example: 'f1d7a9c2-4e0b-4f6d-90ad-8c6b84a0f1a1',
@@ -3277,7 +3283,7 @@ const options: Options = {
           type: 'object',
           description: 'Campos permitidos para atualização da vaga, inclusive o status do fluxo de aprovação.',
           properties: {
-            empresaId: {
+            usuarioId: {
               type: 'string',
               format: 'uuid',
               example: 'f1d7a9c2-4e0b-4f6d-90ad-8c6b84a0f1a1',
@@ -3409,13 +3415,29 @@ const options: Options = {
                 genero: { type: 'string', example: 'MASCULINO' },
                 matricula: { type: 'string', example: 'MAT123' },
                 supabaseId: { type: 'string', example: 'uuid-supabase' },
-                empresa: {
-                  type: 'object',
-                  properties: {
-                    id: { type: 'string', example: 'emp-1' },
-                    nome: { type: 'string', example: 'Empresa XYZ' },
-                  },
+                cidade: { type: 'string', nullable: true, example: 'Maceió' },
+                estado: { type: 'string', nullable: true, example: 'AL' },
+                avatarUrl: {
+                  type: 'string',
+                  nullable: true,
+                  example: 'https://cdn.advance.com.br/avatar.png',
                 },
+                descricao: {
+                  type: 'string',
+                  nullable: true,
+                  example: 'Empresa focada em soluções tecnológicas para RH.',
+                },
+                instagram: {
+                  type: 'string',
+                  nullable: true,
+                  example: 'https://instagram.com/advancemais',
+                },
+                linkedin: {
+                  type: 'string',
+                  nullable: true,
+                  example: 'https://linkedin.com/company/advancemais',
+                },
+                codUsuario: { type: 'string', example: 'USD1915' },
                 enderecos: {
                   type: 'array',
                   items: {

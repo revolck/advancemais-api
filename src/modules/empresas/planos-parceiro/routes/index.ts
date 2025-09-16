@@ -17,11 +17,11 @@ const adminRoles = ['ADMIN', 'MODERADOR'];
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: empresaId
+ *         name: usuarioId
  *         schema:
  *           type: string
  *           format: uuid
- *         description: Filtra os registros pelo identificador da empresa
+ *         description: Filtra os registros pelo identificador do usuário (empresa - PJ)
  *       - in: query
  *         name: ativo
  *         schema:
@@ -154,7 +154,7 @@ router.get('/:id', supabaseAuthMiddleware(adminRoles), PlanosParceiroController.
  *            -H "Authorization: Bearer <TOKEN>" \
  *            -H "Content-Type: application/json" \
  *            -d '{
- *                  "empresaId": "f1d7a9c2-4e0b-4f6d-90ad-8c6b84a0f1a1",
+ *                  "usuarioId": "f1d7a9c2-4e0b-4f6d-90ad-8c6b84a0f1a1",
  *                  "planoEmpresarialId": "31b3b0e1-4d9d-4a3c-9a77-51b872d59bf0",
  *                  "tipo": "7_dias",
  *                  "observacao": "Período de teste liberado pela equipe comercial"

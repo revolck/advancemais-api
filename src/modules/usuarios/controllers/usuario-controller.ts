@@ -5,6 +5,7 @@ import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import { getCache, setCache } from '@/utils/cache';
 import { generateTokenPair } from '@/modules/usuarios/utils/auth';
+import { limparDocumento, validarCNPJ, validarCPF } from '@/modules/usuarios/utils';
 import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
 import { formatZodErrors, loginSchema } from '../validators/auth.schema';
 
@@ -46,11 +47,6 @@ interface UsuarioEndereco {
   cep: string | null;
 }
 
-interface UsuarioEmpresa {
-  id: string;
-  nome: string;
-}
-
 interface UsuarioPerfil {
   id: string;
   email: string;
@@ -70,7 +66,13 @@ interface UsuarioPerfil {
   ultimoLogin: Date | null;
   criadoEm: Date;
   atualizadoEm: Date;
-  empresa: UsuarioEmpresa | null;
+  cidade: string | null;
+  estado: string | null;
+  avatarUrl: string | null;
+  descricao: string | null;
+  instagram: string | null;
+  linkedin: string | null;
+  codUsuario: string;
   enderecos: UsuarioEndereco[];
 }
 
@@ -126,22 +128,38 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
     const { documento, senha } = validation.data;
 
     // Remove caracteres especiais do documento para comparação
-    const documentoLimpo = documento.replace(/\D/g, '');
+    const documentoLimpo = limparDocumento(documento);
 
-    if (documentoLimpo.length !== 11) {
-      log.warn({ length: documentoLimpo.length }, '⚠️ CPF inválido informado');
+    let campoBusca: 'cpf' | 'cnpj' | null = null;
+    if (validarCPF(documentoLimpo)) {
+      campoBusca = 'cpf';
+    } else if (validarCNPJ(documentoLimpo)) {
+      campoBusca = 'cnpj';
+    }
+
+    if (!campoBusca) {
+      log.warn({ length: documentoLimpo.length }, '⚠️ Documento inválido informado');
       return res.status(400).json({
         success: false,
-        message: 'Documento deve ser um CPF válido com 11 dígitos',
+        message: 'Documento deve ser um CPF (11 dígitos) ou CNPJ (14 dígitos) válido',
         correlationId,
       });
     }
 
-    log.info({ documentoPrefix: documentoLimpo.substring(0, 3) }, '🔍 Buscando usuário por CPF');
+    log.info(
+      {
+        documentoPrefix:
+          campoBusca === 'cpf'
+            ? documentoLimpo.substring(0, 3)
+            : documentoLimpo.substring(0, 5),
+        tipoDocumento: campoBusca.toUpperCase(),
+      },
+      '🔍 Buscando usuário por documento',
+    );
 
     // Busca usuário no banco com todos os campos necessários
     const usuario = await prisma.usuario.findUnique({
-      where: { cpf: documentoLimpo },
+      where: campoBusca === 'cpf' ? { cpf: documentoLimpo } : { cnpj: documentoLimpo },
       select: {
         id: true,
         email: true,
@@ -155,11 +173,27 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
         emailVerificadoEm: true,
         ultimoLogin: true,
         criadoEm: true,
+        cidade: true,
+        estado: true,
+        avatarUrl: true,
+        descricao: true,
+        instagram: true,
+        linkedin: true,
+        codUsuario: true,
       },
     });
 
     if (!usuario) {
-      log.warn({ documentoPrefix: documentoLimpo.substring(0, 3) }, '⚠️ Usuário não encontrado');
+      log.warn(
+        {
+          documentoPrefix:
+            campoBusca === 'cpf'
+              ? documentoLimpo.substring(0, 3)
+              : documentoLimpo.substring(0, 5),
+          tipoDocumento: campoBusca.toUpperCase(),
+        },
+        '⚠️ Usuário não encontrado',
+      );
       return res.status(401).json({
         success: false,
         message: 'Credenciais inválidas',
@@ -256,6 +290,13 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
       emailVerificado: usuario.emailVerificado,
       emailVerificadoEm: usuario.emailVerificadoEm,
       ultimoLogin: new Date().toISOString(),
+      codUsuario: usuario.codUsuario,
+      cidade: usuario.cidade,
+      estado: usuario.estado,
+      avatarUrl: usuario.avatarUrl,
+      descricao: usuario.descricao,
+      instagram: usuario.instagram,
+      linkedin: usuario.linkedin,
     };
 
     // Retorna dados do usuário autenticado com tokens
@@ -461,6 +502,13 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       supabaseId: usuario.supabaseId,
       emailVerificado: usuario.emailVerificado,
       ultimoLogin: usuario.ultimoLogin,
+      codUsuario: usuario.codUsuario,
+      cidade: usuario.cidade,
+      estado: usuario.estado,
+      avatarUrl: usuario.avatarUrl,
+      descricao: usuario.descricao,
+      instagram: usuario.instagram,
+      linkedin: usuario.linkedin,
     };
 
     res.json({
@@ -545,13 +593,13 @@ export const obterPerfil = async (req: Request, res: Response, next: NextFunctio
         ultimoLogin: true,
         criadoEm: true,
         atualizadoEm: true,
-        // Relacionamentos
-        empresa: {
-          select: {
-            id: true,
-            nome: true,
-          },
-        },
+        cidade: true,
+        estado: true,
+        avatarUrl: true,
+        descricao: true,
+        instagram: true,
+        linkedin: true,
+        codUsuario: true,
         enderecos: {
           select: {
             id: true,

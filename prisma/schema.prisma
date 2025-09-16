@@ -20,7 +20,13 @@ model Usuario {
   email         String      @unique
   senha         String
   matricula     String?
-  codEmpresa    String?
+  cidade        String?
+  estado        String?
+  avatarUrl     String?
+  descricao     String?     @db.VarChar(500)
+  instagram     String?
+  linkedin      String?
+  codUsuario    String      @unique
   tipoUsuario   TipoUsuario
   role          Role
   status        Status      @default(ATIVO)
@@ -45,9 +51,10 @@ model Usuario {
   ultimaTentativaVerificacao DateTime?
 
   // RELACIONAMENTOS EXISTENTES
-  enderecos     Endereco[]
-  empresa       Empresa?       @relation(fields: [codEmpresa], references: [id])
-  codigoUsuario CodigoUsuario?
+  enderecos       Endereco[]
+  codigoUsuario   CodigoUsuario?
+  vagasCriadas      Vaga[]         @relation("UsuarioVagas")
+  planosContratados EmpresaPlano[] @relation("UsuarioPlanos")
 
   @@index([tokenRecuperacao])
   @@index([emailVerificationToken])
@@ -55,19 +62,6 @@ model Usuario {
   @@index([role])
   @@index([tipoUsuario])
   @@index([criadoEm])
-}
-
-model Empresa {
-  id        String    @id @default(uuid())
-  nome      String
-  logoUrl   String?
-  cidade    String?
-  estado    String?
-  descricao String?   @db.VarChar(500)
-  criadoEm  DateTime  @default(now())
-  usuarios  Usuario[]
-  vagas     Vaga[]
-  planos    EmpresaPlano[]
 }
 
 enum RegimeTrabalho {
@@ -104,7 +98,7 @@ enum PlanoParceiro {
 
 model Vaga {
   id               String         @id @default(uuid())
-  empresaId        String
+  usuarioId        String
   modoAnonimo      Boolean        @default(false)
   regimeDeTrabalho RegimeTrabalho
   modalidade       ModalidadeVaga
@@ -119,14 +113,14 @@ model Vaga {
   atualizadoEm     DateTime       @updatedAt
   status           StatusVaga     @default(RASCUNHO)
 
-  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresa Usuario @relation("UsuarioVagas", fields: [usuarioId], references: [id], onDelete: Cascade)
 
-  @@index([empresaId])
+  @@index([usuarioId])
 }
 
 model EmpresaPlano {
   id                 String          @id @default(uuid())
-  empresaId          String
+  usuarioId          String
   planoEmpresarialId String
   tipo               PlanoParceiro
   inicio             DateTime
@@ -136,10 +130,10 @@ model EmpresaPlano {
   criadoEm           DateTime        @default(now())
   atualizadoEm       DateTime        @updatedAt
 
-  empresa Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresa Usuario        @relation("UsuarioPlanos", fields: [usuarioId], references: [id], onDelete: Cascade)
   plano   PlanoEmpresarial @relation(fields: [planoEmpresarialId], references: [id])
 
-  @@index([empresaId, ativo])
+  @@index([usuarioId, ativo])
   @@index([planoEmpresarialId])
 }
 

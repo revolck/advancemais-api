@@ -19,9 +19,9 @@ const dateField = (field: string) =>
   z.coerce.date({ invalid_type_error: `${field} deve ser uma data válida`, required_error: `${field} é obrigatório` });
 
 const baseVagaSchema = z.object({
-  empresaId: z
-    .string({ required_error: 'O ID da empresa é obrigatório', invalid_type_error: 'O ID da empresa deve ser uma string' })
-    .uuid('O ID da empresa deve ser um UUID válido'),
+  usuarioId: z
+    .string({ required_error: 'O ID do usuário é obrigatório', invalid_type_error: 'O ID do usuário deve ser uma string' })
+    .uuid('O ID do usuário deve ser um UUID válido'),
   modoAnonimo: z.boolean({ invalid_type_error: 'modoAnonimo deve ser verdadeiro ou falso' }).optional(),
   regimeDeTrabalho: z.nativeEnum(RegimeTrabalho, {
     required_error: 'O regime de trabalho é obrigatório',

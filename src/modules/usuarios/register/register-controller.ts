@@ -58,6 +58,22 @@ const createCorrelationLogger = (correlationId: string, action: string) =>
     correlationId,
   });
 
+const USER_CODE_PREFIX = 'USD';
+
+const generateUniqueUserCode = async (tx: Prisma.TransactionClient): Promise<string> => {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const random = Math.floor(1000 + Math.random() * 9000);
+    const candidate = `${USER_CODE_PREFIX}${random}`;
+    const existing = await tx.usuario.findUnique({ where: { codUsuario: candidate }, select: { id: true } });
+    if (!existing) {
+      return candidate;
+    }
+  }
+
+  const fallback = `${USER_CODE_PREFIX}${Date.now().toString().slice(-6)}`;
+  return fallback;
+};
+
 /**
  * Controller para criação de novos usuários
  * Implementa validação robusta e transações seguras
@@ -559,6 +575,12 @@ function buildUserDataForDatabase(params: {
   cnpjLimpo?: string;
   dataNascimento?: Date;
   generoValidado?: string;
+  cidade?: string | null;
+  estado?: string | null;
+  avatarUrl?: string | null;
+  descricao?: string | null;
+  instagram?: string | null;
+  linkedin?: string | null;
 }) {
   return {
     nomeCompleto: params.nomeCompleto.trim(),
@@ -573,6 +595,12 @@ function buildUserDataForDatabase(params: {
     ...(params.cnpjLimpo && { cnpj: params.cnpjLimpo }),
     ...(params.dataNascimento && { dataNasc: params.dataNascimento }),
     ...(params.generoValidado && { genero: params.generoValidado }),
+    ...(params.cidade ? { cidade: params.cidade.trim() } : {}),
+    ...(params.estado ? { estado: params.estado.trim() } : {}),
+    ...(params.avatarUrl ? { avatarUrl: params.avatarUrl.trim() } : {}),
+    ...(params.descricao ? { descricao: params.descricao.trim() } : {}),
+    ...(params.instagram ? { instagram: params.instagram.trim() } : {}),
+    ...(params.linkedin ? { linkedin: params.linkedin.trim() } : {}),
   };
 }
 
@@ -585,25 +613,42 @@ async function createUserWithTransaction(userData: any, correlationId: string) {
     return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       log.info('💾 Inserindo usuário no banco');
 
+      const userSelect = {
+        id: true,
+        email: true,
+        nomeCompleto: true,
+        cpf: true,
+        cnpj: true,
+        telefone: true,
+        dataNasc: true,
+        genero: true,
+        tipoUsuario: true,
+        role: true,
+        status: true,
+        supabaseId: true,
+        criadoEm: true,
+        cidade: true,
+        estado: true,
+        avatarUrl: true,
+        descricao: true,
+        instagram: true,
+        linkedin: true,
+        codUsuario: true,
+      } as const;
+
+      const codUsuario = await generateUniqueUserCode(tx);
+
       const usuario = await tx.usuario.create({
-        data: userData,
-        select: {
-          id: true,
-          email: true,
-          nomeCompleto: true,
-          cpf: true,
-          cnpj: true,
-          telefone: true,
-          dataNasc: true,
-          genero: true,
-          tipoUsuario: true,
-          role: true,
-          status: true,
-          supabaseId: true,
-          criadoEm: true,
-          // Não retorna senha nem tokens por segurança
+        data: {
+          ...userData,
+          codUsuario,
         },
+        select: userSelect,
       });
+
+      if (userData.tipoUsuario === TipoUsuario.PESSOA_JURIDICA) {
+        log.info({ userId: usuario.id }, '🏢 Usuário registrado como pessoa jurídica');
+      }
 
       log.info({ userId: usuario.id }, '✅ Usuário inserido com sucesso');
 

@@ -1,4 +1,4 @@
-import { PlanoParceiro, Prisma } from '@prisma/client';
+import { PlanoParceiro, Prisma, TipoUsuario } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import {
@@ -43,10 +43,16 @@ const includePlanoEmpresa = {
     empresa: {
       select: {
         id: true,
-        nome: true,
-        logoUrl: true,
+        nomeCompleto: true,
+        avatarUrl: true,
         cidade: true,
         estado: true,
+        descricao: true,
+        instagram: true,
+        linkedin: true,
+        codUsuario: true,
+        role: true,
+        tipoUsuario: true,
       },
     },
     plano: true,
@@ -76,14 +82,47 @@ const mapTipoToPrisma = (tipo: PlanoParceiroTipo) => PLANO_INPUT_MAP[tipo];
 
 const mapTipoToResponse = (tipo: PlanoParceiro) => PLANO_OUTPUT_MAP[tipo];
 
+const ensureUsuarioEmpresa = async (usuarioId: string) => {
+  const usuario = await prisma.usuario.findUnique({
+    where: { id: usuarioId },
+    select: { tipoUsuario: true },
+  });
+
+  if (!usuario || usuario.tipoUsuario !== TipoUsuario.PESSOA_JURIDICA) {
+    throw Object.assign(new Error('Usuário informado não é uma empresa válida'), {
+      code: 'USUARIO_NAO_EMPRESA',
+    });
+  }
+};
+
 const transformarPlano = (plano: EmpresaPlanoWithRelations) => {
   const now = new Date();
   const estaVigente = plano.ativo && (!plano.fim || plano.fim > now);
   const diasRestantes =
     plano.fim && plano.fim > now ? Math.ceil((plano.fim.getTime() - now.getTime()) / 86400000) : null;
 
+  const empresaUsuario =
+    plano.empresa && plano.empresa.tipoUsuario === TipoUsuario.PESSOA_JURIDICA ? plano.empresa : null;
+
+  const empresa = empresaUsuario
+    ? {
+        id: empresaUsuario.id,
+        nome: empresaUsuario.nomeCompleto,
+        avatarUrl: empresaUsuario.avatarUrl,
+        cidade: empresaUsuario.cidade,
+        estado: empresaUsuario.estado,
+        descricao: empresaUsuario.descricao,
+        instagram: empresaUsuario.instagram,
+        linkedin: empresaUsuario.linkedin,
+        codUsuario: empresaUsuario.codUsuario,
+      }
+    : null;
+
+  const { empresa: _empresa, ...restoPlano } = plano;
+
   return {
-    ...plano,
+    ...restoPlano,
+    empresa,
     tipo: mapTipoToResponse(plano.tipo),
     estaVigente,
     diasRestantes: diasRestantes !== null && diasRestantes < 0 ? 0 : diasRestantes,
@@ -93,8 +132,8 @@ const transformarPlano = (plano: EmpresaPlanoWithRelations) => {
 const buildWhere = (filters: ListPlanoParceiroQuery): Prisma.EmpresaPlanoWhereInput => {
   const where: Prisma.EmpresaPlanoWhereInput = {};
 
-  if (filters.empresaId) {
-    where.empresaId = filters.empresaId;
+  if (filters.usuarioId) {
+    where.usuarioId = filters.usuarioId;
   }
 
   if (filters.ativo !== undefined) {
@@ -120,11 +159,12 @@ export const planosParceiroService = {
     return plano ? transformarPlano(plano) : null;
   },
 
-  findActiveByEmpresa: async (empresaId: string) => {
+  findActiveByUsuario: async (usuarioId: string) => {
+    await ensureUsuarioEmpresa(usuarioId);
     const now = new Date();
     const plano = await prisma.empresaPlano.findFirst({
       where: {
-        empresaId,
+        usuarioId,
         ativo: true,
         OR: [{ fim: null }, { fim: { gt: now } }],
       },
@@ -141,6 +181,7 @@ export const planosParceiroService = {
   },
 
   assign: async (data: CreatePlanoParceiroInput) => {
+    await ensureUsuarioEmpresa(data.usuarioId);
     const tipo = mapTipoToPrisma(data.tipo);
     const inicio = data.iniciarEm ?? new Date();
     const fim = calcularDataFim(tipo, inicio);
@@ -148,13 +189,13 @@ export const planosParceiroService = {
 
     const plano = await prisma.$transaction(async (tx) => {
       await tx.empresaPlano.updateMany({
-        where: { empresaId: data.empresaId, ativo: true },
+        where: { usuarioId: data.usuarioId, ativo: true },
         data: { ativo: false, fim: new Date() },
       });
 
       return tx.empresaPlano.create({
         data: {
-          empresaId: data.empresaId,
+          usuarioId: data.usuarioId,
           planoEmpresarialId: data.planoEmpresarialId,
           tipo,
           inicio,

@@ -5,17 +5,28 @@
  * @author Sistema Advance+
  * @version 3.0.0
  */
-import { prisma } from "../../../config/prisma";
-import { invalidateUserCache } from "../utils/cache";
+import { z } from "zod";
+
+import { prisma } from "@/config/prisma";
+import { invalidateUserCache } from "@/modules/usuarios/utils/cache";
 export class AdminService {
   constructor() {}
 
   /**
    * Lista usuários com filtros e paginação
    */
-  async listarUsuarios(query: any) {
-    const { page = 1, limit = 50, status, role, tipoUsuario } = query;
-    const skip = (Number(page) - 1) * Number(limit);
+  async listarUsuarios(query: unknown) {
+    const querySchema = z.object({
+      page: z.coerce.number().int().min(1).default(1),
+      limit: z.coerce.number().int().min(1).default(50),
+      status: z.string().optional(),
+      role: z.string().optional(),
+      tipoUsuario: z.string().optional(),
+    });
+
+    const { page, limit, status, role, tipoUsuario } = querySchema.parse(query);
+    const pageSize = Math.min(Number(limit) || 50, 100);
+    const skip = (page - 1) * pageSize;
 
     // Construir filtros dinamicamente
     const where: any = {};
@@ -38,7 +49,7 @@ export class AdminService {
         },
         orderBy: { criadoEm: "desc" },
         skip,
-        take: Number(limit),
+        take: pageSize,
       }),
       prisma.usuario.count({ where }),
     ]);
@@ -47,10 +58,10 @@ export class AdminService {
       message: "Lista de usuários",
       usuarios,
       pagination: {
-        page: Number(page),
-        limit: Number(limit),
+        page,
+        limit: pageSize,
         total,
-        pages: Math.ceil(total / Number(limit)),
+        pages: Math.ceil(total / pageSize),
       },
     };
   }

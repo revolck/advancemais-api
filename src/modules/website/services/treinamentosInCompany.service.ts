@@ -1,15 +1,20 @@
-import { prisma } from "../../../config/prisma";
 import { WebsiteTreinamentosInCompany } from "@prisma/client";
-import { getCache, setCache, invalidateCache } from "../../../utils/cache";
+import { prisma } from "@/config/prisma";
+import {
+  getCache,
+  setCache,
+  invalidateCache,
+} from "@/utils/cache";
+import { WEBSITE_CACHE_TTL } from "@/modules/website/config";
 
 const CACHE_KEY = "website:treinamentosInCompany:list";
 
 export const treinamentosInCompanyService = {
   list: async () => {
-    const cached = await getCache(CACHE_KEY);
+    const cached = await getCache<WebsiteTreinamentosInCompany[]>(CACHE_KEY);
     if (cached) return cached;
     const result = await prisma.websiteTreinamentosInCompany.findMany();
-    await setCache(CACHE_KEY, result);
+    await setCache(CACHE_KEY, result, WEBSITE_CACHE_TTL);
     return result;
   },
   get: (id: string) =>

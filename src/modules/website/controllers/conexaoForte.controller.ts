@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
-import { setCacheHeaders } from '../../../utils/cache';
 import path from "path";
-import { supabase } from "../../../config/supabase";
-import { conexaoForteService } from "../services/conexaoForte.service";
+
+import { supabase } from "@/config/supabase";
+import { conexaoForteService } from "@/modules/website/services/conexaoForte.service";
+import { respondWithCache } from "@/modules/website/utils/cache-response";
 
 function generateImageTitle(url: string): string {
   try {
@@ -36,9 +37,7 @@ export class ConexaoForteController {
     const itens = await conexaoForteService.list();
     const response = itens;
 
-    setCacheHeaders(res, response);
-
-    res.json(response);
+    return respondWithCache(req, res, response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -52,9 +51,7 @@ export class ConexaoForteController {
       }
       const response = item;
 
-      setCacheHeaders(res, response);
-
-      res.json(response);
+      return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao buscar ConexaoForte",

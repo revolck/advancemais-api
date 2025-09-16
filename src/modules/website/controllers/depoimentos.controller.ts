@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
-import { setCacheHeaders } from '../../../utils/cache';
 import { WebsiteStatus } from "@prisma/client";
-import { depoimentosService } from "../services/depoimentos.service";
+
+import { depoimentosService } from "@/modules/website/services/depoimentos.service";
+import { respondWithCache } from "@/modules/website/utils/cache-response";
 
 function mapDepoimento(ordem: any) {
   return {
@@ -27,12 +28,12 @@ export class DepoimentosController {
       else if (status === "false") status = "RASCUNHO";
       else status = status.toUpperCase();
     }
-    const itens = await depoimentosService.list(status as WebsiteStatus | undefined);
+    const itens = await depoimentosService.list(
+      status as WebsiteStatus | undefined
+    );
     const response = itens.map(mapDepoimento);
 
-    setCacheHeaders(res, response);
-
-    res.json(response);
+    return respondWithCache(req, res, response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -44,9 +45,7 @@ export class DepoimentosController {
       }
       const response = mapDepoimento(ordem);
 
-      setCacheHeaders(res, response);
-
-      res.json(response);
+      return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao buscar depoimento",

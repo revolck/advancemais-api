@@ -84,11 +84,12 @@ export function setCacheHeaders(
   res: Response,
   data: unknown,
   ttl = DEFAULT_TTL
-): void {
+): string {
   const etag = createHash("md5")
     .update(JSON.stringify(data))
     .digest("hex");
   res.setHeader("Cache-Control", `public, max-age=${ttl}`);
   res.setHeader("ETag", etag);
+  return etag;
 }
 

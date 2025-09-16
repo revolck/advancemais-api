@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
-import { setCacheHeaders } from '../../../utils/cache';
 import path from "path";
-import { sobreService } from "../services/sobre.service";
+
+import { sobreService } from "@/modules/website/services/sobre.service";
+import { respondWithCache } from "@/modules/website/utils/cache-response";
 
 function generateImageTitle(url: string): string {
   try {
@@ -18,9 +19,7 @@ export class SobreController {
     const itens = await sobreService.list();
     const response = itens;
 
-    setCacheHeaders(res, response);
-
-    res.json(response);
+    return respondWithCache(req, res, response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -32,9 +31,7 @@ export class SobreController {
       }
       const response = sobre;
 
-      setCacheHeaders(res, response);
-
-      res.json(response);
+      return respondWithCache(req, res, response);
     } catch (error: any) {
       res
         .status(500)

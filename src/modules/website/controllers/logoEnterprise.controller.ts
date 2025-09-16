@@ -1,9 +1,10 @@
 import { Request, Response } from "express";
-import { setCacheHeaders } from '../../../utils/cache';
 import path from "path";
-import { supabase } from "../../../config/supabase";
-import { logoEnterpriseService } from "../services/logoEnterprise.service";
 import { WebsiteStatus } from "@prisma/client";
+
+import { supabase } from "@/config/supabase";
+import { logoEnterpriseService } from "@/modules/website/services/logoEnterprise.service";
+import { respondWithCache } from "@/modules/website/utils/cache-response";
 
 function mapLogo(ordem: any) {
   return {
@@ -50,9 +51,7 @@ export class LogoEnterpriseController {
     const itens = await logoEnterpriseService.list();
     const response = itens.map(mapLogo);
 
-    setCacheHeaders(res, response);
-
-    res.json(response);
+    return respondWithCache(req, res, response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -64,9 +63,7 @@ export class LogoEnterpriseController {
       }
       const response = mapLogo(item);
 
-      setCacheHeaders(res, response);
-
-      res.json(response);
+      return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao buscar logo",

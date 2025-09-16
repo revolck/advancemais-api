@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
-import { setCacheHeaders } from '../../../utils/cache';
 import { WebsiteStatus } from "@prisma/client";
-import { teamService } from "../services/team.service";
+
+import { teamService } from "@/modules/website/services/team.service";
+import { respondWithCache } from "@/modules/website/utils/cache-response";
 
 function mapTeam(ordem: any) {
   return {
@@ -29,9 +30,7 @@ export class TeamController {
     const itens = await teamService.list(status as WebsiteStatus | undefined);
     const response = itens.map(mapTeam);
 
-    setCacheHeaders(res, response);
-
-    res.json(response);
+    return respondWithCache(req, res, response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -43,9 +42,7 @@ export class TeamController {
       }
       const response = mapTeam(ordem);
 
-      setCacheHeaders(res, response);
-
-      res.json(response);
+      return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao buscar team member",

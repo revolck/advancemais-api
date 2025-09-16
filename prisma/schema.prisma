@@ -67,6 +67,7 @@ model Empresa {
   criadoEm  DateTime  @default(now())
   usuarios  Usuario[]
   vagas     Vaga[]
+  planos    EmpresaPlano[]
 }
 
 enum RegimeTrabalho {
@@ -91,6 +92,16 @@ enum StatusVaga {
   EXPIRADO
 }
 
+enum PlanoParceiro {
+  SETE_DIAS         @map("7_dias")
+  QUINZE_DIAS       @map("15_dias")
+  TRINTA_DIAS       @map("30_dias")
+  SESSENTA_DIAS     @map("60_dias")
+  NOVENTA_DIAS      @map("90dias")
+  CENTO_VINTE_DIAS  @map("120_dias")
+  PARCEIRO          @map("parceiro")
+}
+
 model Vaga {
   id               String         @id @default(uuid())
   empresaId        String
@@ -113,6 +124,25 @@ model Vaga {
   @@index([empresaId])
 }
 
+model EmpresaPlano {
+  id                 String          @id @default(uuid())
+  empresaId          String
+  planoEmpresarialId String
+  tipo               PlanoParceiro
+  inicio             DateTime
+  fim                DateTime?
+  ativo              Boolean         @default(true)
+  observacao         String?         @db.Text
+  criadoEm           DateTime        @default(now())
+  atualizadoEm       DateTime        @updatedAt
+
+  empresa Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  plano   PlanoEmpresarial @relation(fields: [planoEmpresarialId], references: [id])
+
+  @@index([empresaId, ativo])
+  @@index([planoEmpresarialId])
+}
+
 model PlanoEmpresarial {
   id                       String   @id @default(uuid())
   icon                     String
@@ -125,6 +155,8 @@ model PlanoEmpresarial {
   quantidadeVagasDestaque  Int?
   criadoEm                 DateTime @default(now())
   atualizadoEm             DateTime @updatedAt
+
+  empresas EmpresaPlano[]
 }
 
 model Endereco {

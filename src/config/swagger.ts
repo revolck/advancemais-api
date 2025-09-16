@@ -107,6 +107,10 @@ const options: Options = {
         description: 'Gestão dos planos empresariais corporativos',
       },
       {
+        name: 'Empresas - Planos Parceiro',
+        description: 'Vinculação e controle de planos parceiros para empresas',
+      },
+      {
         name: 'Empresas - Vagas',
         description: 'Administração de vagas corporativas vinculadas às empresas',
       },
@@ -146,7 +150,7 @@ const options: Options = {
       },
       {
         name: 'Empresas',
-        tags: ['Empresas - Planos Empresariais', 'Empresas - Vagas'],
+        tags: ['Empresas - Planos Empresariais', 'Empresas - Planos Parceiro', 'Empresas - Vagas'],
       },
     ],
     components: {
@@ -2962,6 +2966,128 @@ const options: Options = {
               example: 'Limite máximo de 4 planos empresariais atingido',
             },
             limite: { type: 'integer', example: 4 },
+          },
+        },
+        PlanoParceiroTipo: {
+          type: 'string',
+          enum: ['7_dias', '15_dias', '30_dias', '60_dias', '90dias', '120_dias', 'parceiro'],
+          example: '7_dias',
+        },
+        EmpresaPlanoParceiroEmpresa: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', example: 'empresa-uuid' },
+            nome: { type: 'string', example: 'Empresa Parceira' },
+            logoUrl: { type: 'string', nullable: true, example: 'https://cdn.advance.com.br/logo.png' },
+            cidade: { type: 'string', nullable: true, example: 'São Paulo' },
+            estado: { type: 'string', nullable: true, example: 'SP' },
+          },
+        },
+        EmpresaPlanoParceiro: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', example: 'parceria-uuid' },
+            empresaId: { type: 'string', example: 'empresa-uuid' },
+            planoEmpresarialId: { type: 'string', example: 'plano-uuid' },
+            tipo: { $ref: '#/components/schemas/PlanoParceiroTipo' },
+            inicio: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00Z' },
+            fim: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              example: '2024-01-08T12:00:00Z',
+            },
+            ativo: { type: 'boolean', example: true },
+            observacao: {
+              type: 'string',
+              nullable: true,
+              example: 'Teste liberado pelo time comercial',
+            },
+            estaVigente: {
+              type: 'boolean',
+              example: true,
+              description: 'Indica se o plano está válido considerando a data atual',
+            },
+            diasRestantes: {
+              type: 'integer',
+              nullable: true,
+              example: 6,
+              description: 'Quantidade de dias restantes até o encerramento do plano',
+            },
+            criadoEm: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00Z' },
+            atualizadoEm: { type: 'string', format: 'date-time', example: '2024-01-02T12:00:00Z' },
+            empresa: {
+              allOf: [{ $ref: '#/components/schemas/EmpresaPlanoParceiroEmpresa' }],
+              nullable: true,
+            },
+            plano: { $ref: '#/components/schemas/PlanoEmpresarial' },
+          },
+        },
+        EmpresaPlanoParceiroCreateInput: {
+          type: 'object',
+          required: ['empresaId', 'planoEmpresarialId', 'tipo'],
+          properties: {
+            empresaId: { type: 'string', format: 'uuid', example: 'empresa-uuid' },
+            planoEmpresarialId: { type: 'string', format: 'uuid', example: 'plano-uuid' },
+            tipo: { $ref: '#/components/schemas/PlanoParceiroTipo' },
+            iniciarEm: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              example: '2024-01-01T08:00:00Z',
+            },
+            observacao: {
+              type: 'string',
+              nullable: true,
+              example: 'Plano liberado para demonstração por 7 dias',
+            },
+          },
+        },
+        EmpresaPlanoParceiroUpdateInput: {
+          type: 'object',
+          properties: {
+            planoEmpresarialId: {
+              type: 'string',
+              format: 'uuid',
+              example: 'novo-plano-uuid',
+            },
+            tipo: { $ref: '#/components/schemas/PlanoParceiroTipo' },
+            iniciarEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-01-05T09:00:00Z',
+            },
+            observacao: {
+              type: 'string',
+              nullable: true,
+              example: 'Parceiro oficial, acesso ilimitado',
+            },
+          },
+        },
+        EmpresaSemPlanoAtivoResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: false },
+            code: { type: 'string', example: 'EMPRESA_SEM_PLANO_ATIVO' },
+            message: {
+              type: 'string',
+              example: 'A empresa não possui um plano parceiro ativo no momento.',
+            },
+          },
+        },
+        PlanoParceiroLimiteVagasResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: false },
+            code: {
+              type: 'string',
+              example: 'PLANO_EMPRESARIAL_LIMIT_VAGAS',
+            },
+            message: {
+              type: 'string',
+              example: 'O limite de vagas simultâneas do plano foi atingido.',
+            },
+            limite: { type: 'integer', example: 10 },
           },
         },
         StatusVaga: {

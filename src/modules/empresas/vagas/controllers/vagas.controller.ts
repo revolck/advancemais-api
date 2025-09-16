@@ -2,6 +2,10 @@ import { Request, Response } from 'express';
 import { ZodError } from 'zod';
 
 import { vagasService } from '@/modules/empresas/vagas/services/vagas.service';
+import {
+  EmpresaSemPlanoAtivoError,
+  LimiteVagasPlanoAtingidoError,
+} from '@/modules/empresas/vagas/services/errors';
 import { createVagaSchema, updateVagaSchema } from '@/modules/empresas/vagas/validators/vagas.schema';
 
 export class VagasController {
@@ -63,6 +67,23 @@ export class VagasController {
           success: false,
           code: 'EMPRESA_NOT_FOUND',
           message: 'Empresa não encontrada para vincular à vaga',
+        });
+      }
+
+      if (error instanceof EmpresaSemPlanoAtivoError) {
+        return res.status(403).json({
+          success: false,
+          code: error.code,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof LimiteVagasPlanoAtingidoError) {
+        return res.status(409).json({
+          success: false,
+          code: error.code,
+          message: error.message,
+          limite: error.limite,
         });
       }
 

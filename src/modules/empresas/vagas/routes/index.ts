@@ -111,6 +111,18 @@ router.get('/:id', publicCache, VagasController.get);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Empresa sem plano parceiro ativo
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/EmpresaSemPlanoAtivoResponse'
+ *       409:
+ *         description: Limite de vagas simultâneas do plano atingido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PlanoParceiroLimiteVagasResponse'
  *       500:
  *         description: Erro interno do servidor
  *         content:

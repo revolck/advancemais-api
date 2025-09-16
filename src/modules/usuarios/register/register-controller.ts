@@ -1,10 +1,10 @@
-import { Request, Response, NextFunction } from "express";
-import bcrypt from "bcrypt";
-import { prisma } from "../../../config/prisma";
-import { invalidateCacheByPrefix } from "../../../utils/cache";
-import { invalidateUserCache } from "../utils/cache";
-import { Prisma, CodigoTipo } from "@prisma/client";
-import { TipoUsuario, Role } from "../enums";
+import { Request, Response, NextFunction } from 'express';
+import bcrypt from 'bcrypt';
+import { prisma } from '../../../config/prisma';
+import { invalidateCacheByPrefix } from '../../../utils/cache';
+import { invalidateUserCache } from '../utils/cache';
+import { Prisma, CodigoTipo } from '@prisma/client';
+import { TipoUsuario, Role } from '../enums';
 import {
   validarCPF,
   validarCNPJ,
@@ -15,15 +15,15 @@ import {
   validarDataNascimento,
   validarGenero,
   limparDocumento,
-} from "../utils/validation";
-import { logger } from "../../../utils/logger";
+} from '../utils/validation';
+import { logger } from '../../../utils/logger';
 import {
   formatZodErrors,
   registerSchema,
   type RegisterInput,
   type RegisterPessoaFisicaInput,
   type RegisterPessoaJuridicaInput,
-} from "../validators/auth.schema";
+} from '../validators/auth.schema';
 
 /**
  * Controller para criação de novos usuários
@@ -46,14 +46,14 @@ type CriarUsuarioData = RegisterInput;
 
 const createRegisterLogger = (req: Request, action: string) =>
   logger.child({
-    controller: "RegisterController",
+    controller: 'RegisterController',
     action,
     correlationId: req.id,
   });
 
 const createCorrelationLogger = (correlationId: string, action: string) =>
   logger.child({
-    controller: "RegisterController",
+    controller: 'RegisterController',
     action,
     correlationId,
   });
@@ -65,25 +65,21 @@ const createCorrelationLogger = (correlationId: string, action: string) =>
  * @param req - Request object com dados do usuário
  * @param res - Response object
  */
-export const criarUsuario = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const log = createRegisterLogger(req, "criarUsuario");
+export const criarUsuario = async (req: Request, res: Response, next: NextFunction) => {
+  const log = createRegisterLogger(req, 'criarUsuario');
   const correlationId = req.id;
   const startTime = Date.now();
 
-  log.info("🚀 Iniciando criação de usuário");
+  log.info('🚀 Iniciando criação de usuário');
 
   try {
     const parseResult = registerSchema.safeParse(req.body);
     if (!parseResult.success) {
       const errors = formatZodErrors(parseResult.error);
-      log.warn({ errors }, "⚠️ Dados inválidos para criação de usuário");
+      log.warn({ errors }, '⚠️ Dados inválidos para criação de usuário');
       return res.status(400).json({
         success: false,
-        message: "Dados de entrada inválidos",
+        message: 'Dados de entrada inválidos',
         errors,
         correlationId,
       });
@@ -92,18 +88,12 @@ export const criarUsuario = async (
     const dadosUsuario: CriarUsuarioData = parseResult.data;
 
     // Validação de entrada com logs estruturados
-    const validationResult = await validateUserInput(
-      dadosUsuario,
-      correlationId
-    );
+    const validationResult = await validateUserInput(dadosUsuario, correlationId);
     if (!validationResult.isValid) {
-      log.warn(
-        { errors: validationResult.errors },
-        "⚠️ Dados inválidos para criação de usuário"
-      );
+      log.warn({ errors: validationResult.errors }, '⚠️ Dados inválidos para criação de usuário');
       return res.status(400).json({
         success: false,
-        message: "Dados de entrada inválidos",
+        message: 'Dados de entrada inválidos',
         errors: validationResult.errors,
         correlationId,
       });
@@ -127,19 +117,13 @@ export const criarUsuario = async (
       role && Object.values(Role).includes(role)
         ? role
         : tipoUsuario === TipoUsuario.PESSOA_JURIDICA
-        ? Role.EMPRESA
-        : Role.ALUNO_CANDIDATO;
+          ? Role.EMPRESA
+          : Role.ALUNO_CANDIDATO;
 
     // Processa dados específicos por tipo de usuário
-    const processedData = await processUserTypeSpecificData(
-      dadosUsuario,
-      correlationId
-    );
+    const processedData = await processUserTypeSpecificData(dadosUsuario, correlationId);
     if (!processedData.success) {
-      log.warn(
-        { error: processedData.error },
-        "⚠️ Erro no processamento específico"
-      );
+      log.warn({ error: processedData.error }, '⚠️ Erro no processamento específico');
       return res.status(400).json({
         success: false,
         message: processedData.error,
@@ -155,14 +139,11 @@ export const criarUsuario = async (
         cpf: processedData.cpfLimpo,
         cnpj: processedData.cnpjLimpo,
       },
-      correlationId
+      correlationId,
     );
 
     if (duplicateCheck.found) {
-      log.warn(
-        { reason: duplicateCheck.reason },
-        "⚠️ Usuário duplicado detectado"
-      );
+      log.warn({ reason: duplicateCheck.reason }, '⚠️ Usuário duplicado detectado');
       return res.status(409).json({
         success: false,
         message: duplicateCheck.reason,
@@ -171,7 +152,7 @@ export const criarUsuario = async (
     }
 
     // Gera hash da senha com salt seguro
-    log.info("🔐 Gerando hash da senha");
+    log.info('🔐 Gerando hash da senha');
     const senhaHash = await bcrypt.hash(senha, 12);
 
     // Prepara dados para inserção no banco
@@ -191,26 +172,23 @@ export const criarUsuario = async (
     });
 
     // Cria usuário dentro de transação
-    log.info("💾 Iniciando transação de banco");
+    log.info('💾 Iniciando transação de banco');
     const usuario = await createUserWithTransaction(userData, correlationId);
     await invalidateUserCache(usuario);
     try {
-      await invalidateCacheByPrefix("dashboard:");
+      await invalidateCacheByPrefix('dashboard:');
     } catch (cacheError) {
-      const err =
-        cacheError instanceof Error
-          ? cacheError
-          : new Error(String(cacheError));
-      log.warn({ err }, "⚠️ Falha ao invalidar cache do dashboard");
+      const err = cacheError instanceof Error ? cacheError : new Error(String(cacheError));
+      log.warn({ err }, '⚠️ Falha ao invalidar cache do dashboard');
     }
 
     const duration = Date.now() - startTime;
-    log.info({ duration }, "✅ Usuário criado com sucesso");
+    log.info({ duration }, '✅ Usuário criado com sucesso');
 
     // ===================================================================
     // CRÍTICO: Prepara dados para middleware de email de boas-vindas
     // ===================================================================
-    log.info("📧 Preparando dados para middleware de email");
+    log.info('📧 Preparando dados para middleware de email');
 
     res.locals.usuarioCriado = {
       usuario: {
@@ -227,7 +205,7 @@ export const criarUsuario = async (
       // Metadados para debugging
       correlationId,
       createdAt: new Date().toISOString(),
-      source: "register-controller",
+      source: 'register-controller',
       emailShouldBeSent: true, // Flag explícita para o middleware
     };
 
@@ -237,12 +215,11 @@ export const criarUsuario = async (
         nome: usuario.nomeCompleto,
         id: usuario.id,
       },
-      "📧 Dados do usuário salvos em res.locals"
+      '📧 Dados do usuário salvos em res.locals',
     );
 
     // Resposta de sucesso
-    const userTypeLabel =
-      tipoUsuario === TipoUsuario.PESSOA_FISICA ? "Pessoa física" : "Empresa";
+    const userTypeLabel = tipoUsuario === TipoUsuario.PESSOA_FISICA ? 'Pessoa física' : 'Empresa';
 
     res.status(201).json({
       success: true,
@@ -262,20 +239,16 @@ export const criarUsuario = async (
     });
 
     // IMPORTANTE: Não retorna aqui, deixa o middleware processar
-    log.info("🔄 Resposta enviada, aguardando middleware");
+    log.info('🔄 Resposta enviada, aguardando middleware');
 
     // Continua para o próximo middleware (ex: envio de email)
     next();
   } catch (error) {
     const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : "Erro desconhecido";
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
     const err = error instanceof Error ? error : new Error(String(error));
 
-    log.error(
-      { err, duration },
-      "❌ Erro crítico na criação de usuário"
-    );
+    log.error({ err, duration }, '❌ Erro crítico na criação de usuário');
 
     err.message = errorMessage;
     return next(err);
@@ -287,9 +260,9 @@ export const criarUsuario = async (
  */
 async function validateUserInput(
   dadosUsuario: CriarUsuarioData,
-  correlationId: string
+  correlationId: string,
 ): Promise<{ isValid: boolean; errors?: string[] }> {
-  const log = createCorrelationLogger(correlationId, "validateUserInput");
+  const log = createCorrelationLogger(correlationId, 'validateUserInput');
   const errors: string[] = [];
 
   try {
@@ -306,17 +279,17 @@ async function validateUserInput(
 
     // Validação de campos obrigatórios básicos
     const requiredFields = [
-      { field: "nomeCompleto", value: nomeCompleto },
-      { field: "telefone", value: telefone },
-      { field: "email", value: email },
-      { field: "senha", value: senha },
-      { field: "confirmarSenha", value: confirmarSenha },
-      { field: "supabaseId", value: supabaseId },
-      { field: "tipoUsuario", value: tipoUsuario },
+      { field: 'nomeCompleto', value: nomeCompleto },
+      { field: 'telefone', value: telefone },
+      { field: 'email', value: email },
+      { field: 'senha', value: senha },
+      { field: 'confirmarSenha', value: confirmarSenha },
+      { field: 'supabaseId', value: supabaseId },
+      { field: 'tipoUsuario', value: tipoUsuario },
     ];
 
     for (const { field, value } of requiredFields) {
-      if (!value || (typeof value === "string" && value.trim() === "")) {
+      if (!value || (typeof value === 'string' && value.trim() === '')) {
         errors.push(`Campo obrigatório: ${field}`);
       }
     }
@@ -327,7 +300,7 @@ async function validateUserInput(
 
     // Validação de email
     if (!validarEmail(email)) {
-      errors.push("Formato de email inválido");
+      errors.push('Formato de email inválido');
     }
 
     // Validação de senha
@@ -338,25 +311,25 @@ async function validateUserInput(
 
     // Validação de confirmação de senha
     if (!validarConfirmacaoSenha(senha, confirmarSenha)) {
-      errors.push("Confirmação de senha não confere");
+      errors.push('Confirmação de senha não confere');
     }
 
     // Validação de telefone
     if (!validarTelefone(telefone)) {
-      errors.push("Formato de telefone inválido");
+      errors.push('Formato de telefone inválido');
     }
 
     // Validação de termos
     if (!aceitarTermos) {
-      errors.push("É necessário aceitar os termos de uso");
+      errors.push('É necessário aceitar os termos de uso');
     }
 
     // Validação de tipo de usuário
     if (!Object.values(TipoUsuario).includes(tipoUsuario)) {
-      errors.push("Tipo de usuário inválido");
+      errors.push('Tipo de usuário inválido');
     }
 
-    log.info({ errorCount: errors.length }, "✅ Validação básica concluída");
+    log.info({ errorCount: errors.length }, '✅ Validação básica concluída');
 
     return {
       isValid: errors.length === 0,
@@ -364,8 +337,8 @@ async function validateUserInput(
     };
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
-    log.error({ err }, "❌ Erro na validação de usuário");
-    return { isValid: false, errors: ["Erro interno na validação"] };
+    log.error({ err }, '❌ Erro na validação de usuário');
+    return { isValid: false, errors: ['Erro interno na validação'] };
   }
 }
 
@@ -374,7 +347,7 @@ async function validateUserInput(
  */
 async function processUserTypeSpecificData(
   dadosUsuario: CriarUsuarioData,
-  correlationId: string
+  correlationId: string,
 ): Promise<{
   success: boolean;
   error?: string;
@@ -383,10 +356,7 @@ async function processUserTypeSpecificData(
   dataNascimento?: Date;
   generoValidado?: string;
 }> {
-  const log = createCorrelationLogger(
-    correlationId,
-    "processUserTypeSpecificData"
-  );
+  const log = createCorrelationLogger(correlationId, 'processUserTypeSpecificData');
   try {
     const { tipoUsuario } = dadosUsuario;
 
@@ -397,7 +367,7 @@ async function processUserTypeSpecificData(
       if (!dadosPF.cpf) {
         return {
           success: false,
-          error: "Para pessoa física é obrigatório: CPF",
+          error: 'Para pessoa física é obrigatório: CPF',
         };
       }
 
@@ -406,7 +376,7 @@ async function processUserTypeSpecificData(
       if (!validarCPF(cpfLimpo)) {
         return {
           success: false,
-          error: "CPF deve ter 11 dígitos válidos",
+          error: 'CPF deve ter 11 dígitos válidos',
         };
       }
 
@@ -429,14 +399,13 @@ async function processUserTypeSpecificData(
         if (!validarGenero(dadosPF.genero)) {
           return {
             success: false,
-            error:
-              "Gênero deve ser: MASCULINO, FEMININO, OUTRO ou NAO_INFORMAR",
+            error: 'Gênero deve ser: MASCULINO, FEMININO, OUTRO ou NAO_INFORMAR',
           };
         }
         generoValidado = dadosPF.genero.toUpperCase();
       }
 
-      log.info("✅ Dados de pessoa física validados");
+      log.info('✅ Dados de pessoa física validados');
 
       return {
         success: true,
@@ -451,7 +420,7 @@ async function processUserTypeSpecificData(
       if (!dadosPJ.cnpj) {
         return {
           success: false,
-          error: "Para pessoa jurídica é obrigatório: CNPJ",
+          error: 'Para pessoa jurídica é obrigatório: CNPJ',
         };
       }
 
@@ -460,11 +429,11 @@ async function processUserTypeSpecificData(
       if (!validarCNPJ(cnpjLimpo)) {
         return {
           success: false,
-          error: "CNPJ deve ter 14 dígitos válidos",
+          error: 'CNPJ deve ter 14 dígitos válidos',
         };
       }
 
-      log.info("✅ Dados de pessoa jurídica validados");
+      log.info('✅ Dados de pessoa jurídica validados');
 
       return {
         success: true,
@@ -474,14 +443,14 @@ async function processUserTypeSpecificData(
 
     return {
       success: false,
-      error: "Tipo de usuário não reconhecido",
+      error: 'Tipo de usuário não reconhecido',
     };
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
-    log.error({ err }, "❌ Erro no processamento específico");
+    log.error({ err }, '❌ Erro no processamento específico');
     return {
       success: false,
-      error: "Erro interno no processamento dos dados",
+      error: 'Erro interno no processamento dos dados',
     };
   }
 }
@@ -497,11 +466,11 @@ async function checkForDuplicates(
     cpf?: string;
     cnpj?: string;
   },
-  correlationId: string
+  correlationId: string,
 ): Promise<{ found: boolean; reason?: string }> {
-  const log = createCorrelationLogger(correlationId, "checkForDuplicates");
+  const log = createCorrelationLogger(correlationId, 'checkForDuplicates');
   try {
-    log.info("🔍 Verificando duplicatas");
+    log.info('🔍 Verificando duplicatas');
 
     // CORREÇÃO: Tipagem explícita corrigida para Array
     type WhereCondition =
@@ -510,10 +479,7 @@ async function checkForDuplicates(
       | { cpf: string }
       | { cnpj: string };
 
-    const orConditions: WhereCondition[] = [
-      { email: data.email },
-      { supabaseId: data.supabaseId },
-    ];
+    const orConditions: WhereCondition[] = [{ email: data.email }, { supabaseId: data.supabaseId }];
 
     // Adiciona condições específicas se fornecidas
     if (data.cpf) {
@@ -545,36 +511,33 @@ async function checkForDuplicates(
         usuarioExistente.emailVerificationTokenExp < new Date()
       ) {
         await prisma.usuario.delete({ where: { id: usuarioExistente.id } });
-        log.info(
-          { email: usuarioExistente.email },
-          "🧹 Usuário com verificação expirada removido"
-        );
+        log.info({ email: usuarioExistente.email }, '🧹 Usuário com verificação expirada removido');
         return { found: false };
       }
 
-      let reason = "Já existe usuário cadastrado com ";
+      let reason = 'Já existe usuário cadastrado com ';
 
       // Verifica qual campo causou a duplicata
       if (usuarioExistente.email === data.email) {
-        reason += "este email";
+        reason += 'este email';
       } else if (data.cpf && usuarioExistente.cpf === data.cpf) {
-        reason += "este CPF";
+        reason += 'este CPF';
       } else if (data.cnpj && usuarioExistente.cnpj === data.cnpj) {
-        reason += "este CNPJ";
+        reason += 'este CNPJ';
       } else if (usuarioExistente.supabaseId === data.supabaseId) {
-        reason += "este ID do Supabase";
+        reason += 'este ID do Supabase';
       } else {
-        reason += "estes dados";
+        reason += 'estes dados';
       }
 
       return { found: true, reason };
     }
 
-    log.info("✅ Nenhuma duplicata encontrada");
+    log.info('✅ Nenhuma duplicata encontrada');
     return { found: false };
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
-    log.error({ err }, "❌ Erro na verificação de duplicatas");
+    log.error({ err }, '❌ Erro na verificação de duplicatas');
     // Em caso de erro na verificação, assume que não há duplicatas
     // para não bloquear o registro desnecessariamente
     return { found: false };
@@ -618,13 +581,10 @@ function buildUserDataForDatabase(params: {
  * Cria usuário dentro de transação segura
  */
 async function createUserWithTransaction(userData: any, correlationId: string) {
-  const log = createCorrelationLogger(
-    correlationId,
-    "createUserWithTransaction"
-  );
+  const log = createCorrelationLogger(correlationId, 'createUserWithTransaction');
   try {
     return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      log.info("💾 Inserindo usuário no banco");
+      log.info('💾 Inserindo usuário no banco');
 
       const usuario = await tx.usuario.create({
         data: userData,
@@ -646,7 +606,7 @@ async function createUserWithTransaction(userData: any, correlationId: string) {
         },
       });
 
-      log.info({ userId: usuario.id }, "✅ Usuário inserido com sucesso");
+      log.info({ userId: usuario.id }, '✅ Usuário inserido com sucesso');
 
       const codigo = await tx.codigoUsuario.create({
         data: {
@@ -662,16 +622,13 @@ async function createUserWithTransaction(userData: any, correlationId: string) {
     });
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
-    log.error({ err }, "❌ Erro na transação de banco");
+    log.error({ err }, '❌ Erro na transação de banco');
 
     // Tratamento específico para erros de constraint do Prisma
-    if (error instanceof Error && error.message.includes("Unique constraint")) {
-      throw new Error(
-        "Dados duplicados: email, CPF, CNPJ ou ID do Supabase já existem"
-      );
+    if (error instanceof Error && error.message.includes('Unique constraint')) {
+      throw new Error('Dados duplicados: email, CPF, CNPJ ou ID do Supabase já existem');
     }
 
     throw error;
   }
 }
-

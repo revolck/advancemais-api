@@ -1,16 +1,16 @@
-jest.mock("../../../config/prisma", () => ({
+jest.mock('../../../config/prisma', () => ({
   prisma: { $transaction: jest.fn() },
 }));
 
-import { sliderService } from "../services/slider.service";
-import { prisma } from "../../../config/prisma";
+import { sliderService } from '../services/slider.service';
+import { prisma } from '../../../config/prisma';
 
-describe("sliderService.reorder", () => {
-  it("reorders when moving to an occupied position", async () => {
+describe('sliderService.reorder', () => {
+  it('reorders when moving to an occupied position', async () => {
     const items = [
-      { id: "1", websiteSliderId: "s1", ordem: 1, orientacao: "DESKTOP", slider: { id: "s1" } },
-      { id: "2", websiteSliderId: "s2", ordem: 2, orientacao: "DESKTOP", slider: { id: "s2" } },
-      { id: "3", websiteSliderId: "s3", ordem: 3, orientacao: "DESKTOP", slider: { id: "s3" } },
+      { id: '1', websiteSliderId: 's1', ordem: 1, orientacao: 'DESKTOP', slider: { id: 's1' } },
+      { id: '2', websiteSliderId: 's2', ordem: 2, orientacao: 'DESKTOP', slider: { id: 's2' } },
+      { id: '3', websiteSliderId: 's3', ordem: 3, orientacao: 'DESKTOP', slider: { id: 's3' } },
     ];
 
     (prisma.$transaction as jest.Mock).mockImplementation(async (fn) => {
@@ -41,9 +41,9 @@ describe("sliderService.reorder", () => {
       return fn(tx);
     });
 
-    const result = await sliderService.reorder("1", 2);
+    const result = await sliderService.reorder('1', 2);
     expect(result.ordem).toBe(2);
-    expect(items.find((i) => i.id === "2")?.ordem).toBe(1);
-    expect(items.find((i) => i.id === "3")?.ordem).toBe(3);
+    expect(items.find((i) => i.id === '2')?.ordem).toBe(1);
+    expect(items.find((i) => i.id === '3')?.ordem).toBe(3);
   });
 });

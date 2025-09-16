@@ -6,4 +6,3 @@ export const rateLimitMiddleware = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-

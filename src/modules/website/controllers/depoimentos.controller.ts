@@ -1,8 +1,8 @@
-import { Request, Response } from "express";
-import { WebsiteStatus } from "@prisma/client";
+import { Request, Response } from 'express';
+import { WebsiteStatus } from '@prisma/client';
 
-import { depoimentosService } from "@/modules/website/services/depoimentos.service";
-import { respondWithCache } from "@/modules/website/utils/cache-response";
+import { depoimentosService } from '@/modules/website/services/depoimentos.service';
+import { respondWithCache } from '@/modules/website/utils/cache-response';
 
 function mapDepoimento(ordem: any) {
   return {
@@ -23,14 +23,12 @@ function mapDepoimento(ordem: any) {
 export class DepoimentosController {
   static list = async (req: Request, res: Response) => {
     let { status } = req.query as any;
-    if (typeof status === "string") {
-      if (status === "true") status = "PUBLICADO";
-      else if (status === "false") status = "RASCUNHO";
+    if (typeof status === 'string') {
+      if (status === 'true') status = 'PUBLICADO';
+      else if (status === 'false') status = 'RASCUNHO';
       else status = status.toUpperCase();
     }
-    const itens = await depoimentosService.list(
-      status as WebsiteStatus | undefined
-    );
+    const itens = await depoimentosService.list(status as WebsiteStatus | undefined);
     const response = itens.map(mapDepoimento);
 
     return respondWithCache(req, res, response);
@@ -41,14 +39,14 @@ export class DepoimentosController {
       const { id: ordemId } = req.params;
       const ordem = await depoimentosService.get(ordemId);
       if (!ordem) {
-        return res.status(404).json({ message: "Depoimento não encontrado" });
+        return res.status(404).json({ message: 'Depoimento não encontrado' });
       }
       const response = mapDepoimento(ordem);
 
       return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao buscar depoimento",
+        message: 'Erro ao buscar depoimento',
         error: error.message,
       });
     }
@@ -58,9 +56,9 @@ export class DepoimentosController {
     try {
       const { depoimento, nome, cargo, fotoUrl } = req.body;
       let { status } = req.body as any;
-      if (typeof status === "boolean") {
-        status = status ? "PUBLICADO" : "RASCUNHO";
-      } else if (typeof status === "string") {
+      if (typeof status === 'boolean') {
+        status = status ? 'PUBLICADO' : 'RASCUNHO';
+      } else if (typeof status === 'string') {
         status = status.toUpperCase();
       }
       const ordem = await depoimentosService.create({
@@ -73,7 +71,7 @@ export class DepoimentosController {
       res.status(201).json(mapDepoimento(ordem));
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao criar depoimento",
+        message: 'Erro ao criar depoimento',
         error: error.message,
       });
     }
@@ -84,9 +82,9 @@ export class DepoimentosController {
       const { id: depoimentoId } = req.params;
       const { depoimento, nome, cargo, fotoUrl, ordem } = req.body;
       let { status } = req.body as any;
-      if (typeof status === "boolean") {
-        status = status ? "PUBLICADO" : "RASCUNHO";
-      } else if (typeof status === "string") {
+      if (typeof status === 'boolean') {
+        status = status ? 'PUBLICADO' : 'RASCUNHO';
+      } else if (typeof status === 'string') {
         status = status.toUpperCase();
       }
       const data: any = { depoimento, nome, cargo, fotoUrl };
@@ -96,7 +94,7 @@ export class DepoimentosController {
       res.json(mapDepoimento(ordemResult));
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao atualizar depoimento",
+        message: 'Erro ao atualizar depoimento',
         error: error.message,
       });
     }
@@ -110,7 +108,7 @@ export class DepoimentosController {
       res.json(mapDepoimento(ordemResult));
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao reordenar depoimento",
+        message: 'Erro ao reordenar depoimento',
         error: error.message,
       });
     }
@@ -123,10 +121,9 @@ export class DepoimentosController {
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao remover depoimento",
+        message: 'Erro ao remover depoimento',
         error: error.message,
       });
     }
   };
 }
-

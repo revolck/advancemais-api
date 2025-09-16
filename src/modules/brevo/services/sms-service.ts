@@ -1,6 +1,6 @@
-import * as Brevo from "@getbrevo/brevo";
-import { BrevoClient } from "../client/brevo-client";
-import { BrevoConfigManager } from "../config/brevo-config";
+import * as Brevo from '@getbrevo/brevo';
+import { BrevoClient } from '../client/brevo-client';
+import { BrevoConfigManager } from '../config/brevo-config';
 
 /**
  * Serviço de SMS simplificado para uso futuro
@@ -39,7 +39,7 @@ export class SMSService {
 
       // Validação básica
       if (!this.isValidSMSData(smsData)) {
-        throw new Error("Dados do SMS inválidos");
+        throw new Error('Dados do SMS inválidos');
       }
 
       // Normaliza número de telefone
@@ -51,7 +51,7 @@ export class SMSService {
           ...smsData,
           to: normalizedPhone,
         },
-        correlationId
+        correlationId,
       );
 
       // Registra resultado
@@ -59,17 +59,12 @@ export class SMSService {
         await this.logSMSSuccess(smsData, result.messageId, correlationId);
         console.log(`✅ [${correlationId}] SMS enviado com sucesso`);
       } else {
-        await this.logSMSError(
-          smsData,
-          result.error || "Erro desconhecido",
-          correlationId
-        );
+        await this.logSMSError(smsData, result.error || 'Erro desconhecido', correlationId);
       }
 
       return result;
     } catch (error) {
-      const errorMsg =
-        error instanceof Error ? error.message : "Erro desconhecido";
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
       console.error(`❌ [${correlationId}] Erro no envio de SMS:`, errorMsg);
 
       await this.logSMSError(smsData, errorMsg, correlationId);
@@ -80,30 +75,24 @@ export class SMSService {
   /**
    * Envia SMS de verificação/autenticação
    */
-  public async sendVerificationSMS(
-    phoneNumber: string,
-    code: string
-  ): Promise<SMSResult> {
+  public async sendVerificationSMS(phoneNumber: string, code: string): Promise<SMSResult> {
     const message = `Seu código de verificação Advance+: ${code}. Válido por 10 minutos. Não compartilhe este código.`;
 
     return await this.sendSMS({
       to: phoneNumber,
       message,
-      sender: "Advance+",
+      sender: 'Advance+',
     });
   }
 
   /**
    * Envia SMS de notificação
    */
-  public async sendNotificationSMS(
-    phoneNumber: string,
-    message: string
-  ): Promise<SMSResult> {
+  public async sendNotificationSMS(phoneNumber: string, message: string): Promise<SMSResult> {
     return await this.sendSMS({
       to: phoneNumber,
       message: `Advance+: ${message}`,
-      sender: "Advance+",
+      sender: 'Advance+',
     });
   }
 
@@ -120,7 +109,7 @@ export class SMSService {
       // Testa conectividade com API Brevo
       return await this.client.healthCheck();
     } catch (error) {
-      console.warn("⚠️ SMS Health check falhou:", error);
+      console.warn('⚠️ SMS Health check falhou:', error);
       return false;
     }
   }
@@ -132,10 +121,7 @@ export class SMSService {
   /**
    * Executa envio do SMS
    */
-  private async performSMSSend(
-    smsData: SMSData,
-    correlationId: string
-  ): Promise<SMSResult> {
+  private async performSMSSend(smsData: SMSData, correlationId: string): Promise<SMSResult> {
     // Modo simulado (desenvolvimento ou API não configurada)
     if (this.client.isSimulated()) {
       console.log(`🎭 [${correlationId}] SMS simulado para: ${smsData.to}`);
@@ -152,13 +138,13 @@ export class SMSService {
       const smsAPI = this.client.getSMSAPI();
 
       if (!smsAPI) {
-        throw new Error("API de SMS não disponível");
+        throw new Error('API de SMS não disponível');
       }
 
       const sendSmsRequest = new Brevo.SendTransacSms();
       sendSmsRequest.type = Brevo.SendTransacSms.TypeEnum.Transactional;
       sendSmsRequest.unicodeEnabled = false;
-      sendSmsRequest.sender = smsData.sender || "Advance+";
+      sendSmsRequest.sender = smsData.sender || 'Advance+';
       sendSmsRequest.recipient = smsData.to;
       sendSmsRequest.content = smsData.message;
 
@@ -186,7 +172,7 @@ export class SMSService {
         success: true,
         messageId: `sms_fallback_${Date.now()}`,
         simulated: true,
-        error: error instanceof Error ? error.message : "Erro na API",
+        error: error instanceof Error ? error.message : 'Erro na API',
       };
     }
   }
@@ -210,7 +196,7 @@ export class SMSService {
   private isValidPhoneNumber(phone: string): boolean {
     // Validação básica - aceita formatos internacionais
     const phoneRegex = /^\+?[1-9]\d{8,14}$/;
-    const cleanPhone = phone.replace(/[\s\-\(\)]/g, "");
+    const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
     return phoneRegex.test(cleanPhone);
   }
 
@@ -219,16 +205,16 @@ export class SMSService {
    */
   private normalizePhoneNumber(phone: string): string {
     // Remove espaços, parênteses e hífens
-    let cleaned = phone.replace(/[\s\-\(\)]/g, "");
+    let cleaned = phone.replace(/[\s\-\(\)]/g, '');
 
     // Adiciona código do país se não tiver
-    if (!cleaned.startsWith("+")) {
-      if (cleaned.startsWith("55")) {
-        cleaned = "+" + cleaned;
-      } else if (cleaned.startsWith("0")) {
-        cleaned = "+55" + cleaned.substring(1);
+    if (!cleaned.startsWith('+')) {
+      if (cleaned.startsWith('55')) {
+        cleaned = '+' + cleaned;
+      } else if (cleaned.startsWith('0')) {
+        cleaned = '+55' + cleaned.substring(1);
       } else {
-        cleaned = "+55" + cleaned;
+        cleaned = '+55' + cleaned;
       }
     }
 
@@ -251,7 +237,7 @@ export class SMSService {
   private async logSMSSuccess(
     smsData: SMSData,
     messageId?: string,
-    correlationId?: string
+    correlationId?: string,
   ): Promise<void> {
     try {
       // Implementar log de SMS no banco se necessário
@@ -274,10 +260,7 @@ export class SMSService {
       });
       */
     } catch (error) {
-      console.warn(
-        `⚠️ [${correlationId}] Erro ao registrar log de sucesso SMS:`,
-        error
-      );
+      console.warn(`⚠️ [${correlationId}] Erro ao registrar log de sucesso SMS:`, error);
     }
   }
 
@@ -287,7 +270,7 @@ export class SMSService {
   private async logSMSError(
     smsData: SMSData,
     error: string,
-    correlationId?: string
+    correlationId?: string,
   ): Promise<void> {
     try {
       console.log(`📊 [${correlationId}] Erro no SMS:`, {
@@ -309,10 +292,7 @@ export class SMSService {
       });
       */
     } catch (logError) {
-      console.warn(
-        `⚠️ [${correlationId}] Erro ao registrar log de erro SMS:`,
-        logError
-      );
+      console.warn(`⚠️ [${correlationId}] Erro ao registrar log de erro SMS:`, logError);
     }
   }
 

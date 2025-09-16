@@ -1,16 +1,16 @@
-import { Request, Response } from "express";
-import path from "path";
+import { Request, Response } from 'express';
+import path from 'path';
 
-import { supabase } from "@/config/supabase";
-import { recrutamentoSelecaoService } from "@/modules/website/services/recrutamentoSelecao.service";
-import { respondWithCache } from "@/modules/website/utils/cache-response";
+import { supabase } from '@/config/supabase';
+import { recrutamentoSelecaoService } from '@/modules/website/services/recrutamentoSelecao.service';
+import { respondWithCache } from '@/modules/website/utils/cache-response';
 
 function generateImageTitle(url: string): string {
   try {
     const pathname = new URL(url).pathname;
-    return path.basename(pathname).split(".")[0];
+    return path.basename(pathname).split('.')[0];
   } catch {
-    return "";
+    return '';
   }
 }
 
@@ -18,13 +18,13 @@ async function uploadImage(file: Express.Multer.File): Promise<string> {
   const fileExt = path.extname(file.originalname);
   const fileName = `recrutamento-selecao-${Date.now()}${fileExt}`;
   const { error } = await supabase.storage
-    .from("website")
+    .from('website')
     .upload(`recrutamento-selecao/${fileName}`, file.buffer, {
       contentType: file.mimetype,
     });
   if (error) throw error;
   const { data } = supabase.storage
-    .from("website")
+    .from('website')
     .getPublicUrl(`recrutamento-selecao/${fileName}`);
   return data.publicUrl;
 }
@@ -42,16 +42,14 @@ export class RecrutamentoSelecaoController {
       const { id } = req.params;
       const item = await recrutamentoSelecaoService.get(id);
       if (!item) {
-        return res
-          .status(404)
-          .json({ message: "RecrutamentoSelecao não encontrado" });
+        return res.status(404).json({ message: 'RecrutamentoSelecao não encontrado' });
       }
       const response = item;
 
       return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao buscar RecrutamentoSelecao",
+        message: 'Erro ao buscar RecrutamentoSelecao',
         error: error.message,
       });
     }
@@ -59,21 +57,14 @@ export class RecrutamentoSelecaoController {
 
   static create = async (req: Request, res: Response) => {
     try {
-      const {
-        titulo,
-        descricao,
-        titulo1,
-        titulo2,
-        titulo3,
-        titulo4,
-      } = req.body;
-      let imagemUrl = "";
+      const { titulo, descricao, titulo1, titulo2, titulo3, titulo4 } = req.body;
+      let imagemUrl = '';
       if (req.file) {
         imagemUrl = await uploadImage(req.file);
       } else if (req.body.imagemUrl) {
         imagemUrl = req.body.imagemUrl;
       }
-      const imagemTitulo = imagemUrl ? generateImageTitle(imagemUrl) : "";
+      const imagemTitulo = imagemUrl ? generateImageTitle(imagemUrl) : '';
       const item = await recrutamentoSelecaoService.create({
         titulo,
         descricao,
@@ -87,7 +78,7 @@ export class RecrutamentoSelecaoController {
       res.status(201).json(item);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao criar RecrutamentoSelecao",
+        message: 'Erro ao criar RecrutamentoSelecao',
         error: error.message,
       });
     }
@@ -96,14 +87,7 @@ export class RecrutamentoSelecaoController {
   static update = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const {
-        titulo,
-        descricao,
-        titulo1,
-        titulo2,
-        titulo3,
-        titulo4,
-      } = req.body;
+      const { titulo, descricao, titulo1, titulo2, titulo3, titulo4 } = req.body;
       let imagemUrl = req.body.imagemUrl as string | undefined;
       if (req.file) {
         imagemUrl = await uploadImage(req.file);
@@ -124,7 +108,7 @@ export class RecrutamentoSelecaoController {
       res.json(item);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao atualizar RecrutamentoSelecao",
+        message: 'Erro ao atualizar RecrutamentoSelecao',
         error: error.message,
       });
     }
@@ -137,10 +121,9 @@ export class RecrutamentoSelecaoController {
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao remover RecrutamentoSelecao",
+        message: 'Erro ao remover RecrutamentoSelecao',
         error: error.message,
       });
     }
   };
 }
-

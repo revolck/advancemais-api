@@ -1,13 +1,9 @@
-import { WebsiteConsultoria } from "@prisma/client";
-import { prisma } from "@/config/prisma";
-import {
-  getCache,
-  setCache,
-  invalidateCache,
-} from "@/utils/cache";
-import { WEBSITE_CACHE_TTL } from "@/modules/website/config";
+import { WebsiteConsultoria } from '@prisma/client';
+import { prisma } from '@/config/prisma';
+import { getCache, setCache, invalidateCache } from '@/utils/cache';
+import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
 
-const CACHE_KEY = "website:consultoria:list";
+const CACHE_KEY = 'website:consultoria:list';
 
 export const consultoriaService = {
   list: async () => {
@@ -17,11 +13,8 @@ export const consultoriaService = {
     await setCache(CACHE_KEY, result, WEBSITE_CACHE_TTL);
     return result;
   },
-  get: (id: string) =>
-    prisma.websiteConsultoria.findUnique({ where: { id } }),
-  create: async (
-    data: Omit<WebsiteConsultoria, "id" | "criadoEm" | "atualizadoEm">
-  ) => {
+  get: (id: string) => prisma.websiteConsultoria.findUnique({ where: { id } }),
+  create: async (data: Omit<WebsiteConsultoria, 'id' | 'criadoEm' | 'atualizadoEm'>) => {
     const result = await prisma.websiteConsultoria.create({ data });
     await invalidateCache(CACHE_KEY);
     return result;

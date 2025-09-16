@@ -1,6 +1,6 @@
-import type { NextFunction, Request, Response } from "express";
-import { ZodError } from "zod";
-import { logger } from "../utils/logger";
+import type { NextFunction, Request, Response } from 'express';
+import { ZodError } from 'zod';
+import { logger } from '../utils/logger';
 
 interface HttpError extends Error {
   statusCode?: number;
@@ -11,7 +11,7 @@ interface HttpError extends Error {
 
 const formatZodIssues = (error: ZodError) =>
   error.issues.map((issue) => ({
-    path: issue.path.join("."),
+    path: issue.path.join('.'),
     message: issue.message,
   }));
 
@@ -19,22 +19,23 @@ export const errorMiddleware = (
   err: HttpError,
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const correlationId = req.id;
   const isZodError = err instanceof ZodError;
-  let statusCode = typeof err.statusCode === "number"
-    ? err.statusCode
-    : typeof err.status === "number"
-    ? err.status
-    : isZodError
-    ? 400
-    : 500;
+  let statusCode =
+    typeof err.statusCode === 'number'
+      ? err.statusCode
+      : typeof err.status === 'number'
+        ? err.status
+        : isZodError
+          ? 400
+          : 500;
 
-  let message = err.message || "Erro interno do servidor";
+  let message = err.message || 'Erro interno do servidor';
   const response: Record<string, unknown> = {
     success: false,
-    message: isZodError ? "Dados inválidos fornecidos" : message,
+    message: isZodError ? 'Dados inválidos fornecidos' : message,
     correlationId,
     timestamp: new Date().toISOString(),
   };
@@ -57,10 +58,10 @@ export const errorMiddleware = (
       method: req.method,
       correlationId,
     },
-    "❌ Erro não tratado"
+    '❌ Erro não tratado',
   );
 
-  if (process.env.NODE_ENV === "development" && err.stack) {
+  if (process.env.NODE_ENV === 'development' && err.stack) {
     response.stack = err.stack;
   }
 

@@ -1,8 +1,8 @@
-import { Router } from "express";
+import { Router } from 'express';
 
 const router = Router();
 
-router.get("/docs/login", (req, res) => {
+router.get('/docs/login', (req, res) => {
   res.send(
     String.raw`<!DOCTYPE html>
 <html lang="pt-BR">
@@ -72,7 +72,7 @@ router.get("/docs/login", (req, res) => {
   });
 </script>
 </body>
-</html>`
+</html>`,
   );
 });
 

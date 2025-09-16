@@ -1,8 +1,8 @@
-import { Router } from "express";
-import { publicCache } from "../../../middlewares/cache-control";
-import multer from "multer";
-import { supabaseAuthMiddleware } from "../../usuarios/auth";
-import { ConexaoForteController } from "../controllers/conexaoForte.controller";
+import { Router } from 'express';
+import { publicCache } from '../../../middlewares/cache-control';
+import multer from 'multer';
+import { supabaseAuthMiddleware } from '../../usuarios/auth';
+import { ConexaoForteController } from '../controllers/conexaoForte.controller';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -34,7 +34,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/conexao-forte"
  */
-router.get("/", publicCache, ConexaoForteController.list);
+router.get('/', publicCache, ConexaoForteController.list);
 
 /**
  * @openapi
@@ -73,7 +73,7 @@ router.get("/", publicCache, ConexaoForteController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/conexao-forte/{id}"
  */
-router.get("/:id", publicCache, ConexaoForteController.get);
+router.get('/:id', publicCache, ConexaoForteController.get);
 
 /**
  * @openapi
@@ -113,15 +113,15 @@ router.get("/:id", publicCache, ConexaoForteController.get);
  *            -F "descricao=Desc"
  */
 router.post(
-  "/",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
+  '/',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
   upload.fields([
-    { name: "imagem1" },
-    { name: "imagem2" },
-    { name: "imagem3" },
-    { name: "imagem4" },
+    { name: 'imagem1' },
+    { name: 'imagem2' },
+    { name: 'imagem3' },
+    { name: 'imagem4' },
   ]),
-  ConexaoForteController.create
+  ConexaoForteController.create,
 );
 
 /**
@@ -173,15 +173,15 @@ router.post(
  *            -F "descricao=Atual"
  */
 router.put(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
   upload.fields([
-    { name: "imagem1" },
-    { name: "imagem2" },
-    { name: "imagem3" },
-    { name: "imagem4" },
+    { name: 'imagem1' },
+    { name: 'imagem2' },
+    { name: 'imagem3' },
+    { name: 'imagem4' },
   ]),
-  ConexaoForteController.update
+  ConexaoForteController.update,
 );
 
 /**
@@ -221,10 +221,9 @@ router.put(
  *            -H "Authorization: Bearer <TOKEN>"
  */
 router.delete(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  ConexaoForteController.remove
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  ConexaoForteController.remove,
 );
 
 export { router as conexaoForteRoutes };
-

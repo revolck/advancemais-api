@@ -1,8 +1,8 @@
-import { Router } from "express";
-import { publicCache } from "../../../middlewares/cache-control";
-import multer from "multer";
-import { supabaseAuthMiddleware } from "../../usuarios/auth";
-import { TreinamentoCompanyController } from "../controllers/treinamentoCompany.controller";
+import { Router } from 'express';
+import { publicCache } from '../../../middlewares/cache-control';
+import multer from 'multer';
+import { supabaseAuthMiddleware } from '../../usuarios/auth';
+import { TreinamentoCompanyController } from '../controllers/treinamentoCompany.controller';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -34,7 +34,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/treinamento-company"
  */
-router.get("/", publicCache, TreinamentoCompanyController.list);
+router.get('/', publicCache, TreinamentoCompanyController.list);
 
 /**
  * @openapi
@@ -73,7 +73,7 @@ router.get("/", publicCache, TreinamentoCompanyController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/treinamento-company/{id}"
  */
-router.get("/:id", publicCache, TreinamentoCompanyController.get);
+router.get('/:id', publicCache, TreinamentoCompanyController.get);
 
 /**
  * @openapi
@@ -113,10 +113,10 @@ router.get("/:id", publicCache, TreinamentoCompanyController.get);
  *            -F "descricao=Desc"
  */
 router.post(
-  "/",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  upload.single("imagem"),
-  TreinamentoCompanyController.create
+  '/',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  upload.single('imagem'),
+  TreinamentoCompanyController.create,
 );
 
 /**
@@ -168,10 +168,10 @@ router.post(
  *            -F "descricao=Atual"
  */
 router.put(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  upload.single("imagem"),
-  TreinamentoCompanyController.update
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  upload.single('imagem'),
+  TreinamentoCompanyController.update,
 );
 
 /**
@@ -211,9 +211,9 @@ router.put(
  *            -H "Authorization: Bearer <TOKEN>"
  */
 router.delete(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  TreinamentoCompanyController.remove
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  TreinamentoCompanyController.remove,
 );
 
 export { router as treinamentoCompanyRoutes };

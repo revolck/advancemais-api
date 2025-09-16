@@ -1,20 +1,16 @@
-import { WebsiteStatus } from "@prisma/client";
-import { prisma } from "@/config/prisma";
-import {
-  getCache,
-  setCache,
-  invalidateCache,
-} from "@/utils/cache";
-import { WEBSITE_CACHE_TTL } from "@/modules/website/config";
+import { WebsiteStatus } from '@prisma/client';
+import { prisma } from '@/config/prisma';
+import { getCache, setCache, invalidateCache } from '@/utils/cache';
+import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
 
-const CACHE_KEY = "website:team:list";
+const CACHE_KEY = 'website:team:list';
 
 export const teamService = {
   list: async (status?: WebsiteStatus) => {
     if (status) {
       return prisma.websiteTeamOrdem.findMany({
         where: { status },
-        orderBy: { ordem: "asc" },
+        orderBy: { ordem: 'asc' },
         take: 100,
         select: {
           id: true,
@@ -26,12 +22,11 @@ export const teamService = {
         },
       });
     }
-    const cached = await getCache<
-      Awaited<ReturnType<typeof prisma.websiteTeamOrdem.findMany>>
-    >(CACHE_KEY);
+    const cached =
+      await getCache<Awaited<ReturnType<typeof prisma.websiteTeamOrdem.findMany>>>(CACHE_KEY);
     if (cached) return cached;
     const result = await prisma.websiteTeamOrdem.findMany({
-      orderBy: { ordem: "asc" },
+      orderBy: { ordem: 'asc' },
       take: 100,
       select: {
         id: true,
@@ -70,7 +65,7 @@ export const teamService = {
     const result = await prisma.websiteTeamOrdem.create({
       data: {
         ordem,
-        status: data.status ?? "RASCUNHO",
+        status: data.status ?? 'RASCUNHO',
         team: {
           create: {
             photoUrl: data.photoUrl,
@@ -99,13 +94,13 @@ export const teamService = {
       cargo?: string;
       status?: WebsiteStatus;
       ordem?: number;
-    }
+    },
   ) => {
     const result = await prisma.$transaction(async (tx) => {
       const current = await tx.websiteTeamOrdem.findUnique({
         where: { websiteTeamId: teamId },
       });
-      if (!current) throw new Error("Team member não encontrado");
+      if (!current) throw new Error('Team member não encontrado');
 
       let ordem = data.ordem ?? current.ordem;
       if (data.ordem !== undefined && data.ordem !== current.ordem) {
@@ -128,9 +123,7 @@ export const teamService = {
         data: {
           ordem,
           ...(data.status !== undefined && { status: data.status }),
-          ...(data.photoUrl !== undefined ||
-          data.nome !== undefined ||
-          data.cargo !== undefined
+          ...(data.photoUrl !== undefined || data.nome !== undefined || data.cargo !== undefined
             ? {
                 team: {
                   update: {
@@ -165,7 +158,7 @@ export const teamService = {
           team: { select: { id: true, photoUrl: true, nome: true, cargo: true } },
         },
       });
-      if (!current) throw new Error("Team member não encontrado");
+      if (!current) throw new Error('Team member não encontrado');
 
       if (novaOrdem !== current.ordem) {
         await tx.websiteTeamOrdem.update({
@@ -220,4 +213,3 @@ export const teamService = {
     await invalidateCache(CACHE_KEY);
   },
 };
-

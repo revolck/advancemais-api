@@ -214,9 +214,9 @@ export class EmailTemplates {
    * Email de confirmação de conta - design limpo e direto
    */
   public static generateAccountConfirmationEmail(
-    data: AccountConfirmationEmailData
+    data: AccountConfirmationEmailData,
   ): EmailTemplate {
-    const firstName = data.nomeCompleto.split(" ")[0];
+    const firstName = data.nomeCompleto.split(' ')[0];
     const currentYear = this.getCurrentYear();
 
     return {
@@ -261,17 +261,13 @@ export class EmailTemplates {
           <div class="fallback-title">Não consegue clicar no botão?</div>
           <div>Copie e cole este link no seu navegador:</div>
           <div style="margin-top: 8px;">
-            <a href="${data.verificationUrl}" class="fallback-link">${
-        data.verificationUrl
-      }</a>
+            <a href="${data.verificationUrl}" class="fallback-link">${data.verificationUrl}</a>
           </div>
         </div>
         
         <div class="info-box">
           <p class="info-text">
-            <strong>Importante:</strong> Este link expira em ${
-              data.expirationHours ?? 72
-            } horas.
+            <strong>Importante:</strong> Este link expira em ${data.expirationHours ?? 72} horas.
             Se não confirmar até lá, você precisará fazer um novo cadastro.
           </p>
         </div>
@@ -299,10 +295,8 @@ export class EmailTemplates {
   /**
    * Email de recuperação de senha - foco na segurança
    */
-  public static generatePasswordRecoveryEmail(
-    data: PasswordRecoveryData
-  ): EmailTemplate {
-    const firstName = data.nomeCompleto.split(" ")[0];
+  public static generatePasswordRecoveryEmail(data: PasswordRecoveryData): EmailTemplate {
+    const firstName = data.nomeCompleto.split(' ')[0];
     const currentYear = this.getCurrentYear();
 
     return {
@@ -347,9 +341,7 @@ export class EmailTemplates {
           <div class="fallback-title">Não consegue clicar no botão?</div>
           <div>Copie e cole este link no seu navegador:</div>
           <div style="margin-top: 8px;">
-            <a href="${data.linkRecuperacao}" class="fallback-link">${
-        data.linkRecuperacao
-      }</a>
+            <a href="${data.linkRecuperacao}" class="fallback-link">${data.linkRecuperacao}</a>
           </div>
         </div>
         
@@ -360,9 +352,7 @@ export class EmailTemplates {
             } horas</strong> por motivos de segurança.
           </p>
           <p class="info-text">
-            Você pode realizar até ${
-              data.maxTentativas
-            } tentativas de recuperação.
+            Você pode realizar até ${data.maxTentativas} tentativas de recuperação.
           </p>
         </div>
         
@@ -391,15 +381,11 @@ export class EmailTemplates {
   }
 
   // Métodos de compatibilidade
-  public static generateVerificationEmail(
-    data: AccountConfirmationEmailData
-  ): EmailTemplate {
+  public static generateVerificationEmail(data: AccountConfirmationEmailData): EmailTemplate {
     return this.generateAccountConfirmationEmail(data);
   }
 
-  public static generateWelcomeEmail(
-    data: AccountConfirmationEmailData
-  ): EmailTemplate {
+  public static generateWelcomeEmail(data: AccountConfirmationEmailData): EmailTemplate {
     return this.generateAccountConfirmationEmail(data);
   }
 }

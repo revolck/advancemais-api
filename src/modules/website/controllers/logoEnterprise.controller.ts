@@ -1,10 +1,10 @@
-import { Request, Response } from "express";
-import path from "path";
-import { WebsiteStatus } from "@prisma/client";
+import { Request, Response } from 'express';
+import path from 'path';
+import { WebsiteStatus } from '@prisma/client';
 
-import { supabase } from "@/config/supabase";
-import { logoEnterpriseService } from "@/modules/website/services/logoEnterprise.service";
-import { respondWithCache } from "@/modules/website/utils/cache-response";
+import { supabase } from '@/config/supabase';
+import { logoEnterpriseService } from '@/modules/website/services/logoEnterprise.service';
+import { respondWithCache } from '@/modules/website/utils/cache-response';
 
 function mapLogo(ordem: any) {
   return {
@@ -25,9 +25,9 @@ function mapLogo(ordem: any) {
 function generateImageTitle(url: string): string {
   try {
     const pathname = new URL(url).pathname;
-    return path.basename(pathname).split(".")[0];
+    return path.basename(pathname).split('.')[0];
   } catch {
-    return "";
+    return '';
   }
 }
 
@@ -35,14 +35,12 @@ async function uploadImage(file: Express.Multer.File): Promise<string> {
   const fileExt = path.extname(file.originalname);
   const fileName = `logo-${Date.now()}${fileExt}`;
   const { error } = await supabase.storage
-    .from("website")
+    .from('website')
     .upload(`logos/${fileName}`, file.buffer, {
       contentType: file.mimetype,
     });
   if (error) throw error;
-  const { data } = supabase.storage
-    .from("website")
-    .getPublicUrl(`logos/${fileName}`);
+  const { data } = supabase.storage.from('website').getPublicUrl(`logos/${fileName}`);
   return data.publicUrl;
 }
 
@@ -59,14 +57,14 @@ export class LogoEnterpriseController {
       const { id } = req.params;
       const item = await logoEnterpriseService.get(id);
       if (!item) {
-        return res.status(404).json({ message: "Logo não encontrado" });
+        return res.status(404).json({ message: 'Logo não encontrado' });
       }
       const response = mapLogo(item);
 
       return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao buscar logo",
+        message: 'Erro ao buscar logo',
         error: error.message,
       });
     }
@@ -76,19 +74,18 @@ export class LogoEnterpriseController {
     try {
       const { nome, website } = req.body;
       let { status } = req.body as any;
-      if (typeof status === "boolean") {
-        status = status ? "PUBLICADO" : "RASCUNHO";
-      } else if (typeof status === "string") {
+      if (typeof status === 'boolean') {
+        status = status ? 'PUBLICADO' : 'RASCUNHO';
+      } else if (typeof status === 'string') {
         status = status.toUpperCase();
       }
-      let imagemUrl = "";
+      let imagemUrl = '';
       if (req.file) {
         imagemUrl = await uploadImage(req.file);
       } else if (req.body.imagemUrl) {
         imagemUrl = req.body.imagemUrl;
       }
-      const imagemAlt =
-        req.body.imagemAlt || (imagemUrl ? generateImageTitle(imagemUrl) : "");
+      const imagemAlt = req.body.imagemAlt || (imagemUrl ? generateImageTitle(imagemUrl) : '');
       const ordem = await logoEnterpriseService.create({
         nome,
         imagemUrl,
@@ -99,7 +96,7 @@ export class LogoEnterpriseController {
       res.status(201).json(mapLogo(ordem));
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao criar logo",
+        message: 'Erro ao criar logo',
         error: error.message,
       });
     }
@@ -110,9 +107,9 @@ export class LogoEnterpriseController {
       const { id: logoId } = req.params;
       const { nome, website, ordem } = req.body;
       let { status } = req.body as any;
-      if (typeof status === "boolean") {
-        status = status ? "PUBLICADO" : "RASCUNHO";
-      } else if (typeof status === "string") {
+      if (typeof status === 'boolean') {
+        status = status ? 'PUBLICADO' : 'RASCUNHO';
+      } else if (typeof status === 'string') {
         status = status.toUpperCase();
       }
       let imagemUrl = req.body.imagemUrl as string | undefined;
@@ -135,7 +132,7 @@ export class LogoEnterpriseController {
       res.json(mapLogo(ordemResult));
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao atualizar logo",
+        message: 'Erro ao atualizar logo',
         error: error.message,
       });
     }
@@ -145,14 +142,11 @@ export class LogoEnterpriseController {
     try {
       const { id: ordemId } = req.params;
       const { ordem } = req.body;
-      const ordemResult = await logoEnterpriseService.reorder(
-        ordemId,
-        parseInt(ordem, 10)
-      );
+      const ordemResult = await logoEnterpriseService.reorder(ordemId, parseInt(ordem, 10));
       res.json(mapLogo(ordemResult));
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao reordenar logo",
+        message: 'Erro ao reordenar logo',
         error: error.message,
       });
     }
@@ -165,7 +159,7 @@ export class LogoEnterpriseController {
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao remover logo",
+        message: 'Erro ao remover logo',
         error: error.message,
       });
     }

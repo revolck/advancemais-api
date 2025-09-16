@@ -1,18 +1,18 @@
-import { Request, Response } from "express";
-import bcrypt from "bcrypt";
-import crypto from "crypto";
-import { prisma } from "../../../config/prisma";
-import { EmailService } from "../../brevo/services/email-service";
-import { brevoConfig } from "../../../config/env";
-import { logger } from "../../../utils/logger";
+import { Request, Response } from 'express';
+import bcrypt from 'bcrypt';
+import crypto from 'crypto';
+import { prisma } from '../../../config/prisma';
+import { EmailService } from '../../brevo/services/email-service';
+import { brevoConfig } from '../../../config/env';
+import { logger } from '../../../utils/logger';
 import {
   validarCPF,
   validarCNPJ,
   validarEmail,
   validarSenha,
   limparDocumento,
-} from "../utils/validation";
-import { invalidateUserCache } from "../utils/cache";
+} from '../utils/validation';
+import { invalidateUserCache } from '../utils/cache';
 
 /**
  * Interface para solicitação de recuperação de senha
@@ -43,7 +43,7 @@ export class PasswordRecoveryController {
 
   private getLogger(req: Request) {
     return logger.child({
-      controller: "PasswordRecoveryController",
+      controller: 'PasswordRecoveryController',
       correlationId: req.id,
     });
   }
@@ -59,9 +59,9 @@ export class PasswordRecoveryController {
       const { identificador }: SolicitarRecuperacaoData = req.body;
 
       // Validação básica
-      if (!identificador || identificador.trim() === "") {
+      if (!identificador || identificador.trim() === '') {
         return res.status(400).json({
-          message: "Identificador (CPF, CNPJ ou email) é obrigatório",
+          message: 'Identificador (CPF, CNPJ ou email) é obrigatório',
         });
       }
 
@@ -83,7 +83,7 @@ export class PasswordRecoveryController {
         } else {
           return res.status(400).json({
             message:
-              "Identificador deve ser um email válido, CPF (11 dígitos) ou CNPJ (14 dígitos)",
+              'Identificador deve ser um email válido, CPF (11 dígitos) ou CNPJ (14 dígitos)',
           });
         }
       }
@@ -92,7 +92,7 @@ export class PasswordRecoveryController {
       const usuario = await prisma.usuario.findFirst({
         where: {
           ...buscarPor,
-          status: "ATIVO", // Só permite recuperação para usuários ativos
+          status: 'ATIVO', // Só permite recuperação para usuários ativos
         },
         select: {
           id: true,
@@ -105,7 +105,7 @@ export class PasswordRecoveryController {
 
       if (!usuario) {
         return res.status(404).json({
-          message: "Usuário não encontrado com este identificador",
+          message: 'Usuário não encontrado com este identificador',
         });
       }
 
@@ -116,16 +116,11 @@ export class PasswordRecoveryController {
 
       if (usuario.ultimaTentativaRecuperacao) {
         const tempoCooldown = new Date(
-          usuario.ultimaTentativaRecuperacao.getTime() + cooldownMinutes * 60000
+          usuario.ultimaTentativaRecuperacao.getTime() + cooldownMinutes * 60000,
         );
 
-        if (
-          agora < tempoCooldown &&
-          usuario.tentativasRecuperacao >= maxAttempts
-        ) {
-          const minutosRestantes = Math.ceil(
-            (tempoCooldown.getTime() - agora.getTime()) / 60000
-          );
+        if (agora < tempoCooldown && usuario.tentativasRecuperacao >= maxAttempts) {
+          const minutosRestantes = Math.ceil((tempoCooldown.getTime() - agora.getTime()) / 60000);
           return res.status(429).json({
             message: `Muitas tentativas de recuperação. Tente novamente em ${minutosRestantes} minutos`,
           });
@@ -145,10 +140,9 @@ export class PasswordRecoveryController {
       }
 
       // Gera token seguro
-      const token = crypto.randomBytes(32).toString("hex");
+      const token = crypto.randomBytes(32).toString('hex');
       const tokenExpiracao = new Date(
-        agora.getTime() +
-          brevoConfig.passwordRecovery.tokenExpirationMinutes * 60000
+        agora.getTime() + brevoConfig.passwordRecovery.tokenExpirationMinutes * 60000,
       );
 
       // Atualiza usuário com token e incrementa tentativas
@@ -165,30 +159,24 @@ export class PasswordRecoveryController {
       await invalidateUserCache(usuario);
 
       // Envia email de recuperação
-      const emailResult = await this.emailService.enviarEmailRecuperacaoSenha(
-        usuario,
-        token
-      );
+      const emailResult = await this.emailService.enviarEmailRecuperacaoSenha(usuario, token);
 
       if (!emailResult.success) {
-        log.error(
-          { error: emailResult.error },
-          "Erro ao enviar email de recuperação"
-        );
+        log.error({ error: emailResult.error }, 'Erro ao enviar email de recuperação');
         return res.status(500).json({
-          message: "Erro interno ao enviar email de recuperação",
+          message: 'Erro interno ao enviar email de recuperação',
         });
       }
 
       res.json({
         message:
-          "Se o identificador estiver correto, você receberá um email com instruções para recuperação",
+          'Se o identificador estiver correto, você receberá um email com instruções para recuperação',
       });
     } catch (error) {
-      log.error({ err: error }, "Erro na solicitação de recuperação");
+      log.error({ err: error }, 'Erro na solicitação de recuperação');
       res.status(500).json({
-        message: "Erro interno do servidor",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
+        message: 'Erro interno do servidor',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
       });
     }
   };
@@ -203,9 +191,9 @@ export class PasswordRecoveryController {
     try {
       const { token } = req.params;
 
-      if (!token || token.trim() === "") {
+      if (!token || token.trim() === '') {
         return res.status(400).json({
-          message: "Token é obrigatório",
+          message: 'Token é obrigatório',
         });
       }
 
@@ -213,7 +201,7 @@ export class PasswordRecoveryController {
       const usuario = await prisma.usuario.findFirst({
         where: {
           tokenRecuperacao: token,
-          status: "ATIVO",
+          status: 'ATIVO',
         },
         select: {
           id: true,
@@ -225,15 +213,12 @@ export class PasswordRecoveryController {
 
       if (!usuario) {
         return res.status(400).json({
-          message: "Token inválido ou expirado",
+          message: 'Token inválido ou expirado',
         });
       }
 
       // Verifica se token não expirou
-      if (
-        !usuario.tokenRecuperacaoExp ||
-        new Date() > usuario.tokenRecuperacaoExp
-      ) {
+      if (!usuario.tokenRecuperacaoExp || new Date() > usuario.tokenRecuperacaoExp) {
         // Remove token expirado
         await prisma.usuario.update({
           where: { id: usuario.id },
@@ -246,22 +231,22 @@ export class PasswordRecoveryController {
         await invalidateUserCache(usuario);
 
         return res.status(400).json({
-          message: "Token expirado. Solicite uma nova recuperação",
+          message: 'Token expirado. Solicite uma nova recuperação',
         });
       }
 
       res.json({
-        message: "Token válido",
+        message: 'Token válido',
         usuario: {
           email: usuario.email,
           nomeCompleto: usuario.nomeCompleto,
         },
       });
     } catch (error) {
-      log.error({ err: error }, "Erro na validação do token");
+      log.error({ err: error }, 'Erro na validação do token');
       res.status(500).json({
-        message: "Erro interno do servidor",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
+        message: 'Erro interno do servidor',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
       });
     }
   };
@@ -279,7 +264,7 @@ export class PasswordRecoveryController {
       // Validações básicas
       if (!token || !novaSenha || !confirmarSenha) {
         return res.status(400).json({
-          message: "Token, nova senha e confirmação são obrigatórios",
+          message: 'Token, nova senha e confirmação são obrigatórios',
         });
       }
 
@@ -287,7 +272,7 @@ export class PasswordRecoveryController {
       const validacaoSenha = validarSenha(novaSenha);
       if (!validacaoSenha.valida) {
         return res.status(400).json({
-          message: "Nova senha não atende aos critérios de segurança",
+          message: 'Nova senha não atende aos critérios de segurança',
           detalhes: validacaoSenha.mensagens,
         });
       }
@@ -295,7 +280,7 @@ export class PasswordRecoveryController {
       // Verifica confirmação de senha
       if (novaSenha !== confirmarSenha) {
         return res.status(400).json({
-          message: "Confirmação de senha não confere",
+          message: 'Confirmação de senha não confere',
         });
       }
 
@@ -303,7 +288,7 @@ export class PasswordRecoveryController {
       const usuario = await prisma.usuario.findFirst({
         where: {
           tokenRecuperacao: token,
-          status: "ATIVO",
+          status: 'ATIVO',
         },
         select: {
           id: true,
@@ -316,15 +301,12 @@ export class PasswordRecoveryController {
 
       if (!usuario) {
         return res.status(400).json({
-          message: "Token inválido ou expirado",
+          message: 'Token inválido ou expirado',
         });
       }
 
       // Verifica se token não expirou
-      if (
-        !usuario.tokenRecuperacaoExp ||
-        new Date() > usuario.tokenRecuperacaoExp
-      ) {
+      if (!usuario.tokenRecuperacaoExp || new Date() > usuario.tokenRecuperacaoExp) {
         await prisma.usuario.update({
           where: { id: usuario.id },
           data: {
@@ -336,7 +318,7 @@ export class PasswordRecoveryController {
         await invalidateUserCache(usuario);
 
         return res.status(400).json({
-          message: "Token expirado. Solicite uma nova recuperação",
+          message: 'Token expirado. Solicite uma nova recuperação',
         });
       }
 
@@ -344,7 +326,7 @@ export class PasswordRecoveryController {
       const senhaIgual = await bcrypt.compare(novaSenha, usuario.senha);
       if (senhaIgual) {
         return res.status(400).json({
-          message: "A nova senha deve ser diferente da senha atual",
+          message: 'A nova senha deve ser diferente da senha atual',
         });
       }
 
@@ -367,13 +349,13 @@ export class PasswordRecoveryController {
       await invalidateUserCache(usuario);
 
       res.json({
-        message: "Senha redefinida com sucesso",
+        message: 'Senha redefinida com sucesso',
       });
     } catch (error) {
-      log.error({ err: error }, "Erro na redefinição de senha");
+      log.error({ err: error }, 'Erro na redefinição de senha');
       res.status(500).json({
-        message: "Erro interno do servidor",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
+        message: 'Erro interno do servidor',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
       });
     }
   };

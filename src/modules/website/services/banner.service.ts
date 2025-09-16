@@ -1,22 +1,17 @@
-import { WebsiteStatus } from "@prisma/client";
-import { prisma } from "@/config/prisma";
-import {
-  getCache,
-  setCache,
-  invalidateCache,
-} from "@/utils/cache";
-import { WEBSITE_CACHE_TTL } from "@/modules/website/config";
+import { WebsiteStatus } from '@prisma/client';
+import { prisma } from '@/config/prisma';
+import { getCache, setCache, invalidateCache } from '@/utils/cache';
+import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
 
-const CACHE_KEY = "website:banner:list";
+const CACHE_KEY = 'website:banner:list';
 
 export const bannerService = {
   list: async () => {
-    const cached = await getCache<Awaited<ReturnType<typeof prisma.websiteBannerOrdem.findMany>>>(
-      CACHE_KEY
-    );
+    const cached =
+      await getCache<Awaited<ReturnType<typeof prisma.websiteBannerOrdem.findMany>>>(CACHE_KEY);
     if (cached) return cached;
     const result = await prisma.websiteBannerOrdem.findMany({
-      orderBy: { ordem: "asc" },
+      orderBy: { ordem: 'asc' },
       take: 100,
       select: {
         id: true,
@@ -67,7 +62,7 @@ export const bannerService = {
       return tx.websiteBannerOrdem.create({
         data: {
           ordem,
-          status: data.status ?? "RASCUNHO",
+          status: data.status ?? 'RASCUNHO',
           banner: {
             create: {
               imagemUrl: data.imagemUrl,
@@ -103,13 +98,13 @@ export const bannerService = {
       link?: string;
       status?: WebsiteStatus;
       ordem?: number;
-    }
+    },
   ) => {
     const result = await prisma.$transaction(async (tx) => {
       const current = await tx.websiteBannerOrdem.findUnique({
         where: { websiteBannerId: bannerId },
       });
-      if (!current) throw new Error("Banner não encontrado");
+      if (!current) throw new Error('Banner não encontrado');
 
       let ordem = data.ordem ?? current.ordem;
       if (data.ordem !== undefined && data.ordem !== current.ordem) {
@@ -181,7 +176,7 @@ export const bannerService = {
           },
         },
       });
-      if (!current) throw new Error("Banner não encontrado");
+      if (!current) throw new Error('Banner não encontrado');
 
       if (novaOrdem !== current.ordem) {
         await tx.websiteBannerOrdem.update({
@@ -242,4 +237,3 @@ export const bannerService = {
     await invalidateCache(CACHE_KEY);
   },
 };
-

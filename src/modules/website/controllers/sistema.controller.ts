@@ -1,7 +1,7 @@
-import { Request, Response } from "express";
+import { Request, Response } from 'express';
 
-import { sistemaService } from "@/modules/website/services/sistema.service";
-import { respondWithCache } from "@/modules/website/utils/cache-response";
+import { sistemaService } from '@/modules/website/services/sistema.service';
+import { respondWithCache } from '@/modules/website/utils/cache-response';
 
 export class SistemaController {
   static list = async (req: Request, res: Response) => {
@@ -16,14 +16,14 @@ export class SistemaController {
       const { id } = req.params;
       const item = await sistemaService.get(id);
       if (!item) {
-        return res.status(404).json({ message: "Sistema não encontrado" });
+        return res.status(404).json({ message: 'Sistema não encontrado' });
       }
       const response = item;
 
       return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao buscar sistema",
+        message: 'Erro ao buscar sistema',
         error: error.message,
       });
     }
@@ -56,7 +56,7 @@ export class SistemaController {
       res.status(201).json(item);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao criar sistema",
+        message: 'Erro ao criar sistema',
         error: error.message,
       });
     }
@@ -90,7 +90,7 @@ export class SistemaController {
       res.json(item);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao atualizar sistema",
+        message: 'Erro ao atualizar sistema',
         error: error.message,
       });
     }
@@ -103,10 +103,9 @@ export class SistemaController {
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao remover sistema",
+        message: 'Erro ao remover sistema',
         error: error.message,
       });
     }
   };
 }
-

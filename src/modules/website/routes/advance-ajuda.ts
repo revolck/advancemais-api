@@ -1,8 +1,8 @@
-import { Router } from "express";
-import { publicCache } from "../../../middlewares/cache-control";
-import multer from "multer";
-import { supabaseAuthMiddleware } from "../../usuarios/auth";
-import { AdvanceAjudaController } from "../controllers/advanceAjuda.controller";
+import { Router } from 'express';
+import { publicCache } from '../../../middlewares/cache-control';
+import multer from 'multer';
+import { supabaseAuthMiddleware } from '../../usuarios/auth';
+import { AdvanceAjudaController } from '../controllers/advanceAjuda.controller';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -34,7 +34,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/advance-ajuda"
  */
-router.get("/", publicCache, AdvanceAjudaController.list);
+router.get('/', publicCache, AdvanceAjudaController.list);
 
 /**
  * @openapi
@@ -73,7 +73,7 @@ router.get("/", publicCache, AdvanceAjudaController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/advance-ajuda/{id}"
  */
-router.get("/:id", publicCache, AdvanceAjudaController.get);
+router.get('/:id', publicCache, AdvanceAjudaController.get);
 
 /**
  * @openapi
@@ -113,10 +113,10 @@ router.get("/:id", publicCache, AdvanceAjudaController.get);
  *            -F "descricao=Desc"
  */
 router.post(
-  "/",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  upload.single("imagem"),
-  AdvanceAjudaController.create
+  '/',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  upload.single('imagem'),
+  AdvanceAjudaController.create,
 );
 
 /**
@@ -168,10 +168,10 @@ router.post(
  *            -F "descricao=Atual"
  */
 router.put(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  upload.single("imagem"),
-  AdvanceAjudaController.update
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  upload.single('imagem'),
+  AdvanceAjudaController.update,
 );
 
 /**
@@ -211,10 +211,9 @@ router.put(
  *            -H "Authorization: Bearer <TOKEN>"
  */
 router.delete(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  AdvanceAjudaController.remove
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  AdvanceAjudaController.remove,
 );
 
 export { router as advanceAjudaRoutes };
-

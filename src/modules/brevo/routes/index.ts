@@ -1,8 +1,8 @@
-import { Router } from "express";
-import { BrevoController } from "../controllers/brevo-controller";
-import { EmailVerificationController } from "../controllers/email-verification-controller";
-import { prisma } from "../../../config/prisma";
-import { supabaseAuthMiddleware } from "../../usuarios/auth";
+import { Router } from 'express';
+import { BrevoController } from '../controllers/brevo-controller';
+import { EmailVerificationController } from '../controllers/email-verification-controller';
+import { prisma } from '../../../config/prisma';
+import { supabaseAuthMiddleware } from '../../usuarios/auth';
 
 const router = Router();
 
@@ -28,7 +28,7 @@ const emailVerificationController = new EmailVerificationController();
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/brevo"
  */
-router.get("/", brevoController.getModuleInfo);
+router.get('/', brevoController.getModuleInfo);
 
 /**
  * @openapi
@@ -55,7 +55,7 @@ router.get("/", brevoController.getModuleInfo);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/brevo/health"
  */
-router.get("/health", brevoController.healthCheck);
+router.get('/health', brevoController.healthCheck);
 /**
  * @openapi
  * /api/v1/brevo/config:
@@ -85,9 +85,9 @@ router.get("/health", brevoController.healthCheck);
  *            -H "Authorization: Bearer <TOKEN>"
  */
 router.get(
-  "/config",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  brevoController.getConfigStatus
+  '/config',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  brevoController.getConfigStatus,
 );
 /**
  * @openapi
@@ -120,7 +120,7 @@ router.get(
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/brevo/verificar-email?token=TOKEN"
  */
-router.get("/verificar-email", emailVerificationController.verifyEmail);
+router.get('/verificar-email', emailVerificationController.verifyEmail);
 /**
  * @openapi
  * /api/v1/brevo/reenviar-verificacao:
@@ -160,14 +160,8 @@ router.get("/verificar-email", emailVerificationController.verifyEmail);
  *            -H "Content-Type: application/json" \\
  *            -d '{"email":"user@example.com"}'
  */
-router.post(
-  "/reenviar-verificacao",
-  emailVerificationController.resendVerification
-);
-router.get(
-  "/status-verificacao/:userId",
-  emailVerificationController.getVerificationStatus
-);
+router.post('/reenviar-verificacao', emailVerificationController.resendVerification);
+router.get('/status-verificacao/:userId', emailVerificationController.getVerificationStatus);
 
 /**
  * @openapi
@@ -199,68 +193,64 @@ router.get(
  *         label: Exemplo
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/brevo/status-verificacao/USER_ID"
-*/
+ */
 
-router.get(
-  "/status/:email",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  async (req, res) => {
-    try {
-      const { email } = req.params;
+router.get('/status/:email', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), async (req, res) => {
+  try {
+    const { email } = req.params;
 
-      if (!email) {
-        return res.status(400).json({
-          success: false,
-          message: "Email é obrigatório",
-          code: "MISSING_EMAIL",
-        });
-      }
-
-      const usuario = await prisma.usuario.findUnique({
-        where: { email: email.toLowerCase().trim() },
-        select: {
-          id: true,
-          email: true,
-          emailVerificado: true,
-          status: true,
-          emailVerificationTokenExp: true,
-        },
-      });
-
-      if (!usuario) {
-        return res.status(404).json({
-          success: false,
-          message: "Usuário não encontrado",
-          code: "USER_NOT_FOUND",
-        });
-      }
-
-      const hasValidToken = usuario.emailVerificationTokenExp
-        ? usuario.emailVerificationTokenExp > new Date()
-        : false;
-
-      res.json({
-        success: true,
-        data: {
-          userId: usuario.id,
-          email: usuario.email,
-          emailVerified: usuario.emailVerificado,
-          accountStatus: usuario.status,
-          hasValidToken,
-          tokenExpiration: usuario.emailVerificationTokenExp,
-        },
-      });
-    } catch (error) {
-      console.error("❌ Erro ao buscar status por email:", error);
-      res.status(500).json({
+    if (!email) {
+      return res.status(400).json({
         success: false,
-        message: "Erro interno do servidor",
-        code: "INTERNAL_ERROR",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
+        message: 'Email é obrigatório',
+        code: 'MISSING_EMAIL',
       });
     }
+
+    const usuario = await prisma.usuario.findUnique({
+      where: { email: email.toLowerCase().trim() },
+      select: {
+        id: true,
+        email: true,
+        emailVerificado: true,
+        status: true,
+        emailVerificationTokenExp: true,
+      },
+    });
+
+    if (!usuario) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuário não encontrado',
+        code: 'USER_NOT_FOUND',
+      });
+    }
+
+    const hasValidToken = usuario.emailVerificationTokenExp
+      ? usuario.emailVerificationTokenExp > new Date()
+      : false;
+
+    res.json({
+      success: true,
+      data: {
+        userId: usuario.id,
+        email: usuario.email,
+        emailVerified: usuario.emailVerificado,
+        accountStatus: usuario.status,
+        hasValidToken,
+        tokenExpiration: usuario.emailVerificationTokenExp,
+      },
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar status por email:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor',
+      code: 'INTERNAL_ERROR',
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    });
   }
-);
+});
 
 /**
  * @openapi
@@ -295,12 +285,12 @@ router.get(
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/brevo/status/user%40example.com" \\
  *            -H "Authorization: Bearer <TOKEN>"
-*/
+ */
 
 router.post(
-  "/test/email",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  brevoController.testEmail
+  '/test/email',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  brevoController.testEmail,
 );
 
 /**
@@ -344,12 +334,8 @@ router.post(
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -H "Content-Type: application/json" \\
  *            -d '{"email":"user@example.com"}'
-*/
-router.post(
-  "/test/sms",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  brevoController.testSMS
-);
+ */
+router.post('/test/sms', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), brevoController.testSMS);
 
 /**
  * @openapi
@@ -392,9 +378,9 @@ router.post(
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -H "Content-Type: application/json" \\
  *            -d '{"to":"+5511999999999"}'
-*/
-router.get("/verificar", emailVerificationController.verifyEmail);
-router.post("/reenviar", emailVerificationController.resendVerification);
+ */
+router.get('/verificar', emailVerificationController.verifyEmail);
+router.post('/reenviar', emailVerificationController.resendVerification);
 
 /**
  * @openapi
@@ -465,10 +451,8 @@ router.post("/reenviar", emailVerificationController.resendVerification);
  */
 
 router.use((err: any, req: any, res: any, next: any) => {
-  const correlationId = req.headers["x-correlation-id"] || "unknown";
-  const errorId = `brevo-err-${Date.now()}-${Math.random()
-    .toString(36)
-    .substr(2, 6)}`;
+  const correlationId = req.headers['x-correlation-id'] || 'unknown';
+  const errorId = `brevo-err-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
 
   console.error(`❌ [${correlationId}] Erro no módulo Brevo:`, {
     errorId,
@@ -479,8 +463,8 @@ router.use((err: any, req: any, res: any, next: any) => {
 
   res.status(err.status || 500).json({
     success: false,
-    message: err.message || "Erro interno no módulo Brevo",
-    code: err.code || "BREVO_ERROR",
+    message: err.message || 'Erro interno no módulo Brevo',
+    code: err.code || 'BREVO_ERROR',
     errorId,
     correlationId,
     timestamp: new Date().toISOString(),

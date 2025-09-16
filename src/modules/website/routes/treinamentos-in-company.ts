@@ -1,7 +1,7 @@
-import { Router } from "express";
-import { publicCache } from "../../../middlewares/cache-control";
-import { supabaseAuthMiddleware } from "../../usuarios/auth";
-import { TreinamentosInCompanyController } from "../controllers/treinamentosInCompany.controller";
+import { Router } from 'express';
+import { publicCache } from '../../../middlewares/cache-control';
+import { supabaseAuthMiddleware } from '../../usuarios/auth';
+import { TreinamentosInCompanyController } from '../controllers/treinamentosInCompany.controller';
 
 const router = Router();
 
@@ -32,7 +32,7 @@ const router = Router();
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/treinamentos-in-company"
  */
-router.get("/", publicCache, TreinamentosInCompanyController.list);
+router.get('/', publicCache, TreinamentosInCompanyController.list);
 
 /**
  * @openapi
@@ -71,7 +71,7 @@ router.get("/", publicCache, TreinamentosInCompanyController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/treinamentos-in-company/{id}"
  */
-router.get("/:id", publicCache, TreinamentosInCompanyController.get);
+router.get('/:id', publicCache, TreinamentosInCompanyController.get);
 
 /**
  * @openapi
@@ -108,11 +108,11 @@ router.get("/:id", publicCache, TreinamentosInCompanyController.get);
  *            -H "Authorization: Bearer <TOKEN>" \
  *            -H "Content-Type: application/json" \
  *            -d '{"titulo":"Novo","icone1":"icon1","descricao1":"Desc1","icone2":"icon2","descricao2":"Desc2","icone3":"icon3","descricao3":"Desc3","icone4":"icon4","descricao4":"Desc4","icone5":"icon5","descricao5":"Desc5"}'
-*/
+ */
 router.post(
-  "/",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  TreinamentosInCompanyController.create
+  '/',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  TreinamentosInCompanyController.create,
 );
 
 /**
@@ -162,11 +162,11 @@ router.post(
  *            -H "Authorization: Bearer <TOKEN>" \
  *            -H "Content-Type: application/json" \
  *            -d '{"titulo":"Atual"}'
-*/
+ */
 router.put(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  TreinamentosInCompanyController.update
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  TreinamentosInCompanyController.update,
 );
 
 /**
@@ -206,10 +206,9 @@ router.put(
  *            -H "Authorization: Bearer <TOKEN>"
  */
 router.delete(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  TreinamentosInCompanyController.remove
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  TreinamentosInCompanyController.remove,
 );
 
 export { router as treinamentosInCompanyRoutes };
-

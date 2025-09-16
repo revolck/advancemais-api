@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { rateLimitMiddleware } from "../../../middlewares/rate-limit";
 import { publicCache } from "../../../middlewares/cache-control";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
 import { TeamController } from "../controllers/team.controller";
@@ -39,7 +38,7 @@ const router = Router();
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/team"
  */
-router.get("/", rateLimitMiddleware, publicCache, TeamController.list);
+router.get("/", publicCache, TeamController.list);
 
 /**
  * @openapi
@@ -79,7 +78,7 @@ router.get("/", rateLimitMiddleware, publicCache, TeamController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/team/{ordemId}"
  */
-router.get("/:id", rateLimitMiddleware, publicCache, TeamController.get);
+router.get("/:id", publicCache, TeamController.get);
 
 /**
  * @openapi

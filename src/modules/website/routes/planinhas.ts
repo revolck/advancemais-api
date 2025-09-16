@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { rateLimitMiddleware } from "../../../middlewares/rate-limit";
 import { publicCache } from "../../../middlewares/cache-control";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
 import { PlaninhasController } from "../controllers/planinhas.controller";
@@ -33,7 +32,7 @@ const router = Router();
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/planinhas"
  */
-router.get("/", rateLimitMiddleware, publicCache, PlaninhasController.list);
+router.get("/", publicCache, PlaninhasController.list);
 
 /**
  * @openapi
@@ -72,7 +71,7 @@ router.get("/", rateLimitMiddleware, publicCache, PlaninhasController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/planinhas/{id}"
  */
-router.get("/:id", rateLimitMiddleware, publicCache, PlaninhasController.get);
+router.get("/:id", publicCache, PlaninhasController.get);
 
 /**
  * @openapi

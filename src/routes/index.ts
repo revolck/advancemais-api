@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { rateLimitMiddleware } from "../middlewares/rate-limit";
 import { publicCache } from "../middlewares/cache-control";
 import { usuarioRoutes } from "../modules/usuarios";
 import { brevoRoutes } from "../modules/brevo/routes";
@@ -39,7 +38,7 @@ const emailVerificationController = new EmailVerificationController();
  *         source: |
  *           curl -X GET "http://localhost:3000/"
  */
-router.get("/", rateLimitMiddleware, publicCache, (req, res) => {
+router.get("/", publicCache, (req, res) => {
   const data = {
     message: "Advance+ API",
     version: "v3.0.3",
@@ -120,7 +119,7 @@ router.get("/", rateLimitMiddleware, publicCache, (req, res) => {
  *         source: |
  *           curl -X GET "http://localhost:3000/health"
  */
-router.get("/health", rateLimitMiddleware, publicCache, async (req, res) => {
+router.get("/health", publicCache, async (req, res) => {
   let redisStatus = "⚠️ not configured";
   if (process.env.REDIS_URL) {
     try {
@@ -153,7 +152,6 @@ router.get("/health", rateLimitMiddleware, publicCache, async (req, res) => {
 // Rota pública para verificação de email
 router.get(
   "/verificar-email",
-  rateLimitMiddleware,
   emailVerificationController.verifyEmail
 );
 

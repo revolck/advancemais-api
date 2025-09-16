@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { rateLimitMiddleware } from "../../../middlewares/rate-limit";
 import { publicCache } from "../../../middlewares/cache-control";
 import multer from "multer";
 import { supabaseAuthMiddleware } from "../../usuarios/auth";
@@ -35,7 +34,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/recrutamento-selecao"
  */
-router.get("/", rateLimitMiddleware, publicCache, RecrutamentoSelecaoController.list);
+router.get("/", publicCache, RecrutamentoSelecaoController.list);
 
 /**
  * @openapi
@@ -74,7 +73,7 @@ router.get("/", rateLimitMiddleware, publicCache, RecrutamentoSelecaoController.
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/recrutamento-selecao/{id}"
  */
-router.get("/:id", rateLimitMiddleware, publicCache, RecrutamentoSelecaoController.get);
+router.get("/:id", publicCache, RecrutamentoSelecaoController.get);
 
 /**
  * @openapi

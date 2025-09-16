@@ -1,6 +1,11 @@
 import { ModalidadeVaga, Prisma, RegimeTrabalho, StatusVaga } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
+import { planosParceiroService } from '@/modules/empresas/planos-parceiro/services/planos-parceiro.service';
+import {
+  EmpresaSemPlanoAtivoError,
+  LimiteVagasPlanoAtingidoError,
+} from '@/modules/empresas/vagas/services/errors';
 
 export type CreateVagaData = {
   empresaId: string;
@@ -133,6 +138,30 @@ const transformVaga = (vaga: VagaWithEmpresa) => {
   };
 };
 
+const ensurePlanoAtivoParaEmpresa = async (empresaId: string) => {
+  const planoAtivo = await planosParceiroService.findActiveByEmpresa(empresaId);
+
+  if (!planoAtivo) {
+    throw new EmpresaSemPlanoAtivoError();
+  }
+
+  const limite = planoAtivo.plano.quantidadeVagas;
+  if (typeof limite === 'number' && limite > 0) {
+    const vagasAtivas = await prisma.vaga.count({
+      where: {
+        empresaId,
+        status: { in: [StatusVaga.EM_ANALISE, StatusVaga.PUBLICADO] },
+      },
+    });
+
+    if (vagasAtivas >= limite) {
+      throw new LimiteVagasPlanoAtingidoError(limite);
+    }
+  }
+
+  return planoAtivo;
+};
+
 export const vagasService = {
   list: async () => {
     const vagas = await prisma.vaga.findMany({
@@ -154,6 +183,7 @@ export const vagasService = {
   },
 
   create: async (data: CreateVagaData) => {
+    await ensurePlanoAtivoParaEmpresa(data.empresaId);
     const vaga = await prisma.vaga.create({
       data: sanitizeCreateData(data),
       ...includeEmpresa,

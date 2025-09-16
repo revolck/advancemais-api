@@ -9,6 +9,7 @@ import {
 import { supabaseAuthMiddleware } from "../auth";
 import { WelcomeEmailMiddleware } from "../../brevo/middlewares/welcome-email-middleware";
 import passwordRecoveryRoutes from "./password-recovery";
+import { asyncHandler } from "../../../utils/asyncHandler";
 
 /**
  * Rotas de usuário atualizadas com sistema de verificação de email
@@ -307,7 +308,7 @@ router.post(
     console.log(`📝 [${correlationId}] Iniciando processo de registro`);
     next();
   },
-  criarUsuario, // Controller principal que cria usuário
+  asyncHandler(criarUsuario), // Controller principal que cria usuário
   async (req, res, next) => {
     // Middleware de debug para verificar dados
     const correlationId = req.headers["x-correlation-id"];
@@ -423,7 +424,7 @@ router.post(
     );
     next();
   },
-  loginUsuario
+  asyncHandler(loginUsuario)
 );
 
 /**
@@ -507,7 +508,7 @@ router.post(
 router.post(
   "/refresh",
   createAuthRateLimit(10, 15), // 10 tentativas por 15 minutos
-  refreshToken
+  asyncHandler(refreshToken)
 );
 
 // ===========================
@@ -575,7 +576,7 @@ router.post(
     );
     next();
   },
-  logoutUsuario
+  asyncHandler(logoutUsuario)
 );
 
 /**
@@ -645,7 +646,7 @@ router.get(
     );
     next();
   },
-  obterPerfil
+  asyncHandler(obterPerfil)
 );
 
 // ===========================
@@ -665,59 +666,5 @@ router.use(
   },
   passwordRecoveryRoutes
 );
-
-// ===========================
-// MIDDLEWARE DE TRATAMENTO DE ERROS
-// ===========================
-
-/**
- * Middleware de tratamento de erros para rotas de usuário
- */
-router.use((err: any, req: any, res: any, next: any) => {
-  const correlationId = req.headers["x-correlation-id"] || "unknown";
-  const errorId = `user-err-${Date.now()}-${Math.random()
-    .toString(36)
-    .substr(2, 6)}`;
-
-  console.error(`❌ [${correlationId}] Erro na rota de usuário:`, {
-    errorId,
-    method: req.method,
-    path: req.path,
-    error: err.message || err,
-    stack: err.stack?.substring(0, 500), // Limita stack trace
-  });
-
-  // Determina status code apropriado
-  let statusCode = 500;
-  let message = "Erro interno do servidor";
-  let code = "INTERNAL_ERROR";
-
-  if (err.name === "ValidationError") {
-    statusCode = 400;
-    message = "Dados inválidos fornecidos";
-    code = "VALIDATION_ERROR";
-  } else if (err.name === "UnauthorizedError") {
-    statusCode = 401;
-    message = "Não autorizado";
-    code = "UNAUTHORIZED";
-  } else if (err.message?.includes("duplicate")) {
-    statusCode = 409;
-    message = "Dados já existem no sistema";
-    code = "DUPLICATE_ERROR";
-  }
-
-  res.status(statusCode).json({
-    success: false,
-    message,
-    code,
-    errorId,
-    correlationId,
-    timestamp: new Date().toISOString(),
-    ...(process.env.NODE_ENV === "development" && {
-      error: err.message,
-      stack: err.stack,
-    }),
-  });
-});
 
 export default router;

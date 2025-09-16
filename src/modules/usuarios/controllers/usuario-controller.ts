@@ -1,9 +1,13 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import bcrypt from "bcrypt";
 import { prisma } from "../../../config/prisma";
 import { generateTokenPair } from "../utils/auth";
 import { invalidateUserCache } from "../utils/cache";
 import { logger } from "../../../utils/logger";
+import {
+  formatZodErrors,
+  loginSchema,
+} from "../validators/auth.schema";
 
 /**
  * Controllers para autenticação e gestão de usuários
@@ -26,14 +30,6 @@ import { logger } from "../../../utils/logger";
  * @version 6.0.0 - Sistema completo com verificação de email
  */
 
-/**
- * Interface para dados de login
- */
-interface LoginData {
-  documento: string; // CPF
-  senha: string;
-}
-
 const createControllerLogger = (req: Request, action: string) =>
   logger.child({
     controller: "UsuarioController",
@@ -47,7 +43,11 @@ const createControllerLogger = (req: Request, action: string) =>
  * @param req - Request object com credenciais
  * @param res - Response object
  */
-export const loginUsuario = async (req: Request, res: Response) => {
+export const loginUsuario = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const log = createControllerLogger(req, "loginUsuario");
   const correlationId = req.id;
   const startTime = Date.now();
@@ -55,17 +55,19 @@ export const loginUsuario = async (req: Request, res: Response) => {
   try {
     log.info("🔐 Iniciando processo de login");
 
-    const { documento, senha }: LoginData = req.body;
-
-    // Validação básica de entrada
-    if (!documento || !senha) {
-      log.warn("⚠️ Dados de login incompletos");
+    const validation = loginSchema.safeParse(req.body);
+    if (!validation.success) {
+      const errors = formatZodErrors(validation.error);
+      log.warn({ errors }, "⚠️ Dados de login inválidos");
       return res.status(400).json({
         success: false,
-        message: "Documento e senha são obrigatórios",
+        message: "Dados de login inválidos",
+        errors,
         correlationId,
       });
     }
+
+    const { documento, senha } = validation.data;
 
     // Remove caracteres especiais do documento para comparação
     const documentoLimpo = documento.replace(/\D/g, "");
@@ -251,17 +253,8 @@ export const loginUsuario = async (req: Request, res: Response) => {
       "❌ Erro crítico no login"
     );
 
-    // Resposta de erro sem vazar informações sensíveis
-    res.status(500).json({
-      success: false,
-      message: "Erro interno do servidor",
-      correlationId,
-      timestamp: new Date().toISOString(),
-      // Em desenvolvimento, inclui mais detalhes
-      ...(process.env.NODE_ENV === "development" && {
-        error: errorMessage,
-      }),
-    });
+    err.message = errorMessage;
+    return next(err);
   }
 };
 
@@ -271,7 +264,11 @@ export const loginUsuario = async (req: Request, res: Response) => {
  * @param req - Request object com dados do usuário autenticado
  * @param res - Response object
  */
-export const logoutUsuario = async (req: Request, res: Response) => {
+export const logoutUsuario = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const log = createControllerLogger(req, "logoutUsuario");
   const correlationId = req.id;
 
@@ -315,15 +312,8 @@ export const logoutUsuario = async (req: Request, res: Response) => {
 
     log.error({ err, userId: req.user?.id }, "❌ Erro no logout");
 
-    res.status(500).json({
-      success: false,
-      message: "Erro interno do servidor",
-      correlationId,
-      timestamp: new Date().toISOString(),
-      ...(process.env.NODE_ENV === "development" && {
-        error: errorMessage,
-      }),
-    });
+    err.message = errorMessage;
+    return next(err);
   }
 };
 
@@ -333,7 +323,11 @@ export const logoutUsuario = async (req: Request, res: Response) => {
  * @param req - Request object com refresh token
  * @param res - Response object
  */
-export const refreshToken = async (req: Request, res: Response) => {
+export const refreshToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const log = createControllerLogger(req, "refreshToken");
   const correlationId = req.id;
 
@@ -474,15 +468,8 @@ export const refreshToken = async (req: Request, res: Response) => {
 
     log.error({ err }, "❌ Erro ao validar refresh token");
 
-    res.status(500).json({
-      success: false,
-      message: "Erro interno do servidor",
-      correlationId,
-      timestamp: new Date().toISOString(),
-      ...(process.env.NODE_ENV === "development" && {
-        error: errorMessage,
-      }),
-    });
+    err.message = errorMessage;
+    return next(err);
   }
 };
 
@@ -492,7 +479,11 @@ export const refreshToken = async (req: Request, res: Response) => {
  * @param req - Request object com dados do usuário
  * @param res - Response object
  */
-export const obterPerfil = async (req: Request, res: Response) => {
+export const obterPerfil = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const log = createControllerLogger(req, "obterPerfil");
   const correlationId = req.id;
 
@@ -602,15 +593,8 @@ export const obterPerfil = async (req: Request, res: Response) => {
 
     log.error({ err, userId: req.user?.id }, "❌ Erro ao obter perfil");
 
-    res.status(500).json({
-      success: false,
-      message: "Erro interno do servidor",
-      correlationId,
-      timestamp: new Date().toISOString(),
-      ...(process.env.NODE_ENV === "development" && {
-        error: errorMessage,
-      }),
-    });
+    err.message = errorMessage;
+    return next(err);
   }
 };
 

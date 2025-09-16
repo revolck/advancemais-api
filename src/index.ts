@@ -1,3 +1,4 @@
+import "./config/module-alias";
 import "./config/env";
 
 import express from "express";

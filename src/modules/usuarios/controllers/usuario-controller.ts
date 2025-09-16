@@ -1,9 +1,11 @@
 import { NextFunction, Request, Response } from "express";
 import bcrypt from "bcrypt";
-import { prisma } from "../../../config/prisma";
-import { generateTokenPair } from "../utils/auth";
-import { invalidateUserCache } from "../utils/cache";
-import { logger } from "../../../utils/logger";
+
+import { prisma } from "@/config/prisma";
+import { logger } from "@/utils/logger";
+import { getCache, setCache } from "@/utils/cache";
+import { generateTokenPair } from "@/modules/usuarios/utils/auth";
+import { invalidateUserCache } from "@/modules/usuarios/utils/cache";
 import {
   formatZodErrors,
   loginSchema,
@@ -36,6 +38,71 @@ const createControllerLogger = (req: Request, action: string) =>
     action,
     correlationId: req.id,
   });
+
+interface UsuarioEndereco {
+  id: string;
+  logradouro: string | null;
+  numero: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  estado: string | null;
+  cep: string | null;
+}
+
+interface UsuarioEmpresa {
+  id: string;
+  nome: string;
+}
+
+interface UsuarioPerfil {
+  id: string;
+  email: string;
+  nomeCompleto: string | null;
+  cpf: string | null;
+  cnpj: string | null;
+  telefone: string | null;
+  dataNasc: Date | null;
+  genero: string | null;
+  matricula: string | null;
+  role: string;
+  status: string;
+  tipoUsuario: string;
+  supabaseId: string | null;
+  emailVerificado: boolean;
+  emailVerificadoEm: Date | null;
+  ultimoLogin: Date | null;
+  criadoEm: Date;
+  atualizadoEm: Date;
+  empresa: UsuarioEmpresa | null;
+  enderecos: UsuarioEndereco[];
+}
+
+const USER_PROFILE_CACHE_TTL = 300;
+
+const reviveUsuario = (usuario: UsuarioPerfil): UsuarioPerfil => ({
+  ...usuario,
+  criadoEm: new Date(usuario.criadoEm),
+  atualizadoEm: new Date(usuario.atualizadoEm),
+  emailVerificadoEm: usuario.emailVerificadoEm
+    ? new Date(usuario.emailVerificadoEm)
+    : null,
+  ultimoLogin: usuario.ultimoLogin ? new Date(usuario.ultimoLogin) : null,
+  dataNasc: usuario.dataNasc ? new Date(usuario.dataNasc) : null,
+});
+
+const buildProfileStats = (usuario: UsuarioPerfil) => ({
+  accountAge: Math.floor(
+    (Date.now() - usuario.criadoEm.getTime()) / (1000 * 60 * 60 * 24)
+  ),
+  hasCompletedProfile: !!(usuario.telefone && usuario.nomeCompleto),
+  hasAddress: usuario.enderecos.length > 0,
+  totalOrders: 0,
+  totalSubscriptions: 0,
+  emailVerificationStatus: {
+    verified: usuario.emailVerificado,
+    verifiedAt: usuario.emailVerificadoEm,
+  },
+});
 
 /**
  * Controller para autenticação de usuários
@@ -501,8 +568,26 @@ export const obterPerfil = async (
 
     log.info({ userId }, "👤 Obtendo perfil do usuário");
 
+    const cacheKey = `user:${userId}`;
+    const cached = await getCache<UsuarioPerfil>(cacheKey);
+
+    if (cached) {
+      log.debug({ userId }, "🧠 Perfil obtido do cache");
+      const usuario = reviveUsuario(cached);
+      const profileStats = buildProfileStats(usuario);
+
+      return res.json({
+        success: true,
+        message: "Perfil obtido com sucesso",
+        usuario: { ...usuario, _count: undefined },
+        stats: profileStats,
+        correlationId,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     // Busca dados completos do usuário (excluindo informações sensíveis)
-    const usuario = await prisma.usuario.findUnique({
+    const usuario = (await prisma.usuario.findUnique({
       where: { id: userId },
       select: {
         id: true,
@@ -543,7 +628,7 @@ export const obterPerfil = async (
         },
         // Estatísticas de pagamentos removidas
       },
-    });
+    })) as UsuarioPerfil | null;
 
     if (!usuario) {
       log.warn({ userId }, "⚠️ Usuário não encontrado ao obter perfil");
@@ -559,20 +644,17 @@ export const obterPerfil = async (
       "✅ Perfil obtido com sucesso"
     );
 
+    await setCache(cacheKey, usuario, USER_PROFILE_CACHE_TTL);
+    if (usuario.supabaseId) {
+      await setCache(
+        `user:${usuario.supabaseId}`,
+        usuario,
+        USER_PROFILE_CACHE_TTL
+      );
+    }
+
     // Prepara estatísticas adicionais
-    const profileStats = {
-      accountAge: Math.floor(
-        (Date.now() - usuario.criadoEm.getTime()) / (1000 * 60 * 60 * 24)
-      ),
-      hasCompletedProfile: !!(usuario.telefone && usuario.nomeCompleto),
-      hasAddress: usuario.enderecos.length > 0,
-      totalOrders: 0,
-      totalSubscriptions: 0,
-      emailVerificationStatus: {
-        verified: usuario.emailVerificado,
-        verifiedAt: usuario.emailVerificadoEm,
-      },
-    };
+    const profileStats = buildProfileStats(usuario);
 
     // Retorna perfil completo
     res.json({

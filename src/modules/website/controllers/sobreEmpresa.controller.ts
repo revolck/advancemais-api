@@ -1,15 +1,14 @@
 import { Request, Response } from "express";
-import { setCacheHeaders } from '../../../utils/cache';
-import { sobreEmpresaService } from "../services/sobreEmpresa.service";
+
+import { sobreEmpresaService } from "@/modules/website/services/sobreEmpresa.service";
+import { respondWithCache } from "@/modules/website/utils/cache-response";
 
 export class SobreEmpresaController {
   static list = async (req: Request, res: Response) => {
     const itens = await sobreEmpresaService.list();
     const response = itens;
 
-    setCacheHeaders(res, response);
-
-    res.json(response);
+    return respondWithCache(req, res, response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -23,9 +22,7 @@ export class SobreEmpresaController {
       }
       const response = sobreEmpresa;
 
-      setCacheHeaders(res, response);
-
-      res.json(response);
+      return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao buscar sobreEmpresa",

@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
-import { setCacheHeaders } from '../../../utils/cache';
 import path from "path";
-import { supabase } from "../../../config/supabase";
-import { consultoriaService } from "../services/consultoria.service";
+
+import { supabase } from "@/config/supabase";
+import { consultoriaService } from "@/modules/website/services/consultoria.service";
+import { respondWithCache } from "@/modules/website/utils/cache-response";
 
 function generateImageTitle(url: string): string {
   try {
@@ -33,9 +34,7 @@ export class ConsultoriaController {
     const itens = await consultoriaService.list();
     const response = itens;
 
-    setCacheHeaders(res, response);
-
-    res.json(response);
+    return respondWithCache(req, res, response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -47,9 +46,7 @@ export class ConsultoriaController {
       }
       const response = consultoria;
 
-      setCacheHeaders(res, response);
-
-      res.json(response);
+      return respondWithCache(req, res, response);
     } catch (error: any) {
       res
         .status(500)

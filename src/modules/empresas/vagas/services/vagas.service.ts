@@ -18,7 +18,7 @@ export type CreateVagaData = {
   status?: StatusVaga;
 };
 
-export type UpdateVagaData = Partial<CreateVagaData> & {
+export type UpdateVagaData = Omit<Partial<CreateVagaData>, 'inscricoesAte'> & {
   inscricoesAte?: Date | null;
 };
 

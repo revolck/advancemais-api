@@ -1,0 +1,1 @@
+export { vagasRoutes } from './routes';

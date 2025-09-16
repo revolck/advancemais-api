@@ -6,8 +6,10 @@
  * @version 3.0.4 - ESTRUTURA ORIGINAL com verificações de segurança
  */
 import { Router } from 'express';
+import { logger } from '@/utils/logger';
 
 const router = Router();
+const usuarioModuleLogger = logger.child({ module: 'UsuariosRouter' });
 
 /**
  * Informações do módulo de usuários
@@ -41,27 +43,27 @@ let statsRoutes: Router | undefined;
 try {
   const { default: routes } = require('./usuario-routes');
   usuarioRoutes = routes;
-  console.log('✅ usuario-routes carregado');
+  usuarioModuleLogger.info('✅ usuario-routes carregado');
 } catch (error) {
-  console.error('❌ Erro ao carregar usuario-routes:', error);
+  usuarioModuleLogger.error({ err: error }, '❌ Erro ao carregar usuario-routes');
 }
 
 // Import das rotas administrativas (OPCIONAL)
 try {
   const { default: routes } = require('./admin-routes');
   adminRoutes = routes;
-  console.log('✅ admin-routes carregado');
+  usuarioModuleLogger.info('✅ admin-routes carregado');
 } catch (error) {
-  console.warn('⚠️ admin-routes não disponível:', error);
+  usuarioModuleLogger.warn({ err: error }, '⚠️ admin-routes não disponível');
 }
 
 // Import das rotas de estatísticas (OPCIONAL)
 try {
   const { default: routes } = require('./stats-routes');
   statsRoutes = routes;
-  console.log('✅ stats-routes carregado');
+  usuarioModuleLogger.info('✅ stats-routes carregado');
 } catch (error) {
-  console.warn('⚠️ stats-routes não disponível:', error);
+  usuarioModuleLogger.warn({ err: error }, '⚠️ stats-routes não disponível');
 }
 
 // =============================================
@@ -73,7 +75,7 @@ try {
  */
 if (adminRoutes) {
   router.use('/admin', adminRoutes);
-  console.log('✅ Rotas administrativas registradas');
+  usuarioModuleLogger.info('✅ Rotas administrativas registradas');
 }
 
 /**
@@ -81,7 +83,7 @@ if (adminRoutes) {
  */
 if (statsRoutes) {
   router.use('/stats', statsRoutes);
-  console.log('✅ Rotas de estatísticas registradas');
+  usuarioModuleLogger.info('✅ Rotas de estatísticas registradas');
 }
 
 /**
@@ -89,9 +91,9 @@ if (statsRoutes) {
  */
 if (usuarioRoutes) {
   router.use('/', usuarioRoutes);
-  console.log('✅ Rotas básicas de usuário registradas');
+  usuarioModuleLogger.info('✅ Rotas básicas de usuário registradas');
 } else {
-  console.error('❌ CRÍTICO: usuario-routes não disponível');
+  usuarioModuleLogger.error('❌ CRÍTICO: usuario-routes não disponível');
 }
 
 export { router as usuarioRoutes };

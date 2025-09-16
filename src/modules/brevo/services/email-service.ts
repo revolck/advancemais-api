@@ -4,6 +4,7 @@ import { EmailTemplates } from '../templates/email-templates';
 import { prisma } from '../../../config/prisma';
 import { brevoConfig } from '../../../config/env';
 import { invalidateUserCache } from '../../usuarios/utils/cache';
+import { logger } from '@/utils/logger';
 
 export interface EmailResult {
   success: boolean;
@@ -22,6 +23,7 @@ export interface WelcomeEmailData {
 export class EmailService {
   private client: BrevoClient;
   private config: BrevoConfigManager;
+  private readonly log = logger.child({ module: 'EmailService' });
 
   constructor() {
     this.client = BrevoClient.getInstance();
@@ -30,9 +32,15 @@ export class EmailService {
 
   public async sendWelcomeEmail(userData: WelcomeEmailData): Promise<EmailResult> {
     const correlationId = this.generateCorrelationId();
+    const log = this.log.child({
+      correlationId,
+      userId: userData.id,
+      email: userData.email,
+      method: 'sendWelcomeEmail',
+    });
 
     try {
-      console.log(`📧 [${correlationId}] Enviando email de boas-vindas para: ${userData.email}`);
+      log.info('📧 Enviando email de boas-vindas');
 
       if (!this.isValidEmailData(userData)) {
         throw new Error('Dados do usuário inválidos para email');
@@ -40,7 +48,7 @@ export class EmailService {
 
       // Se for usuário de teste, não mexe no banco
       if (userData.id.startsWith('test_user_')) {
-        console.log(`🧪 [${correlationId}] Usuário de teste detectado`);
+        log.info('🧪 Usuário de teste detectado');
         return await this.sendTestEmail(userData, correlationId);
       }
 
@@ -51,7 +59,7 @@ export class EmailService {
       return await this.sendSimpleWelcomeEmail(userData, correlationId);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-      console.error(`❌ [${correlationId}] Erro no email:`, errorMsg);
+      log.error({ error: errorMsg }, '❌ Erro no email de boas-vindas');
 
       if (!userData.id.startsWith('test_user_')) {
         await this.logEmailError(userData.id, 'BOAS_VINDAS', errorMsg);
@@ -65,6 +73,12 @@ export class EmailService {
     userData: WelcomeEmailData,
     correlationId: string,
   ): Promise<EmailResult> {
+    const log = this.log.child({
+      correlationId,
+      userId: userData.id,
+      email: userData.email,
+      method: 'sendTestEmail',
+    });
     try {
       const templateData = {
         nomeCompleto: userData.nomeCompleto,
@@ -83,10 +97,11 @@ export class EmailService {
         text: emailContent.text,
       });
 
-      console.log(`✅ [${correlationId}] Email de teste enviado`);
+      log.info('✅ Email de teste enviado');
       return result;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      log.error({ error: errorMsg }, '❌ Erro no envio de email de teste');
       return { success: false, error: errorMsg };
     }
   }
@@ -95,6 +110,12 @@ export class EmailService {
     userData: WelcomeEmailData,
     correlationId: string,
   ): Promise<EmailResult> {
+    const log = this.log.child({
+      correlationId,
+      userId: userData.id,
+      email: userData.email,
+      method: 'sendVerificationEmailInternal',
+    });
     try {
       const usuarioExiste = await prisma.usuario.findUnique({
         where: { id: userData.id },
@@ -137,11 +158,13 @@ export class EmailService {
 
       if (result.success) {
         await this.logEmailSuccess(userData.id, 'VERIFICACAO_EMAIL', result.messageId);
+        log.info({ messageId: result.messageId }, '✅ Email de verificação enviado');
       }
 
       return result;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      log.error({ error: errorMsg }, '❌ Erro ao enviar email de verificação');
       throw error;
     }
   }
@@ -150,6 +173,12 @@ export class EmailService {
     userData: WelcomeEmailData,
     correlationId: string,
   ): Promise<EmailResult> {
+    const log = this.log.child({
+      correlationId,
+      userId: userData.id,
+      email: userData.email,
+      method: 'sendSimpleWelcomeEmail',
+    });
     try {
       const templateData = {
         nomeCompleto: userData.nomeCompleto,
@@ -170,11 +199,13 @@ export class EmailService {
 
       if (result.success) {
         await this.logEmailSuccess(userData.id, 'BOAS_VINDAS', result.messageId);
+        log.info({ messageId: result.messageId }, '✅ Email de boas-vindas enviado');
       }
 
       return result;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      log.error({ error: errorMsg }, '❌ Erro ao enviar email de boas-vindas simples');
       throw error;
     }
   }
@@ -184,6 +215,12 @@ export class EmailService {
     token: string,
   ): Promise<EmailResult> {
     const correlationId = this.generateCorrelationId();
+    const log = this.log.child({
+      correlationId,
+      userId: usuario.id,
+      email: usuario.email,
+      method: 'enviarEmailRecuperacaoSenha',
+    });
 
     try {
       const linkRecuperacao = `${
@@ -208,6 +245,10 @@ export class EmailService {
       });
 
       if (result.success) {
+        log.info({ messageId: result.messageId }, '✅ Email de recuperação enviado');
+      }
+
+      if (result.success) {
         await this.logEmailSuccess(usuario.id, 'RECUPERACAO_SENHA', result.messageId);
       } else {
         await this.logEmailError(
@@ -220,6 +261,7 @@ export class EmailService {
       return result;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      log.error({ error: errorMsg }, '❌ Erro ao enviar email de recuperação de senha');
       await this.logEmailError(usuario.id, 'RECUPERACAO_SENHA', errorMsg);
       return { success: false, error: errorMsg };
     }
@@ -273,6 +315,7 @@ export class EmailService {
     try {
       return await this.client.healthCheck();
     } catch (error) {
+      this.log.warn({ err: error }, '⚠️ Health check do EmailService falhou');
       return false;
     }
   }
@@ -313,7 +356,10 @@ export class EmailService {
         },
       });
     } catch (error) {
-      console.warn('⚠️ Erro ao registrar log:', error);
+      this.log.warn(
+        { err: error, userId, operation, context: 'logEmailSuccess' },
+        '⚠️ Erro ao registrar log de email',
+      );
     }
   }
 
@@ -332,7 +378,10 @@ export class EmailService {
         },
       });
     } catch (logError) {
-      console.warn('⚠️ Erro ao registrar log:', logError);
+      this.log.warn(
+        { err: logError, userId, operation, context: 'logEmailError' },
+        '⚠️ Erro ao registrar log de email',
+      );
     }
   }
 

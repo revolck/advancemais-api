@@ -19,11 +19,11 @@ export const errorMiddleware = (
   err: HttpError,
   req: Request,
   res: Response,
-  next: NextFunction,
+  _next: NextFunction,
 ) => {
   const correlationId = req.id;
   const isZodError = err instanceof ZodError;
-  let statusCode =
+  const statusCode =
     typeof err.statusCode === 'number'
       ? err.statusCode
       : typeof err.status === 'number'
@@ -32,7 +32,7 @@ export const errorMiddleware = (
           ? 400
           : 500;
 
-  let message = err.message || 'Erro interno do servidor';
+  const message = err.message || 'Erro interno do servidor';
   const response: Record<string, unknown> = {
     success: false,
     message: isZodError ? 'Dados inválidos fornecidos' : message,

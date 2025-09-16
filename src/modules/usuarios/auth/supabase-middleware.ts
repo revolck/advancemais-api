@@ -5,6 +5,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '../../../config/prisma';
 import { supabaseConfig, jwtConfig } from '../../../config/env';
 import { getCache, setCache } from '../../../utils/cache';
+import { logger } from '../../../utils/logger';
 
 /**
  * Cliente JWKS para validação de tokens Supabase
@@ -15,6 +16,8 @@ const jwksClient = jwksRsa({
   cache: true,
   rateLimit: true,
 });
+
+const supabaseAuthLogger = logger.child({ module: 'SupabaseAuthMiddleware' });
 
 /**
  * Função para obter chave pública do JWKS
@@ -45,6 +48,11 @@ function getKey(header: any, callback: any) {
  */
 export const supabaseAuthMiddleware =
   (roles?: string[]) => async (req: Request, res: Response, next: NextFunction) => {
+    const log = supabaseAuthLogger.child({
+      correlationId: req.id,
+      path: req.originalUrl,
+      method: req.method,
+    });
     if (req.originalUrl.startsWith('/docs/login')) {
       return next();
     }
@@ -143,7 +151,7 @@ export const supabaseAuthMiddleware =
 
           next();
         } catch (error) {
-          console.error('Erro no middleware de autenticação:', error);
+          log.error({ err: error }, 'Erro no middleware de autenticação');
           return res.status(500).json({
             message: 'Erro interno do servidor',
             error: error instanceof Error ? error.message : 'Erro desconhecido',

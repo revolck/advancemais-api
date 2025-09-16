@@ -3,11 +3,13 @@ import { BrevoController } from '../controllers/brevo-controller';
 import { EmailVerificationController } from '../controllers/email-verification-controller';
 import { prisma } from '../../../config/prisma';
 import { supabaseAuthMiddleware } from '../../usuarios/auth';
+import { logger } from '@/utils/logger';
 
 const router = Router();
 
 const brevoController = new BrevoController();
 const emailVerificationController = new EmailVerificationController();
+const brevoRoutesLogger = logger.child({ module: 'BrevoRoutes' });
 
 /**
  * @openapi
@@ -196,6 +198,12 @@ router.get('/status-verificacao/:userId', emailVerificationController.getVerific
  */
 
 router.get('/status/:email', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), async (req, res) => {
+  const log = brevoRoutesLogger.child({
+    correlationId: req.id,
+    path: req.path,
+    method: req.method,
+  });
+
   try {
     const { email } = req.params;
 
@@ -242,7 +250,7 @@ router.get('/status/:email', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), asy
       },
     });
   } catch (error) {
-    console.error('❌ Erro ao buscar status por email:', error);
+    log.error({ err: error }, '❌ Erro ao buscar status por email');
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor',
@@ -450,16 +458,20 @@ router.post('/reenviar', emailVerificationController.resendVerification);
  *            -d '{"email":"user@example.com"}'
  */
 
-router.use((err: any, req: any, res: any, next: any) => {
-  const correlationId = req.headers['x-correlation-id'] || 'unknown';
+router.use((err: any, req: any, res: any, _next: any) => {
+  const rawCorrelationId = req.headers['x-correlation-id'];
+  const correlationId = Array.isArray(rawCorrelationId)
+    ? rawCorrelationId[0]
+    : rawCorrelationId || req.id || 'unknown';
   const errorId = `brevo-err-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
-
-  console.error(`❌ [${correlationId}] Erro no módulo Brevo:`, {
-    errorId,
-    method: req.method,
+  const log = brevoRoutesLogger.child({
+    correlationId,
     path: req.path,
-    error: err.message || err,
+    method: req.method,
+    errorId,
   });
+
+  log.error({ err }, '❌ Erro no módulo Brevo');
 
   res.status(err.status || 500).json({
     success: false,

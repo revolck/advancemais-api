@@ -1,15 +1,14 @@
 import { Request, Response } from "express";
-import { setCacheHeaders } from '../../../utils/cache';
-import { diferenciaisService } from "../services/diferenciais.service";
+
+import { diferenciaisService } from "@/modules/website/services/diferenciais.service";
+import { respondWithCache } from "@/modules/website/utils/cache-response";
 
 export class DiferenciaisController {
   static list = async (req: Request, res: Response) => {
     const itens = await diferenciaisService.list();
     const response = itens;
 
-    setCacheHeaders(res, response);
-
-    res.json(response);
+    return respondWithCache(req, res, response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -23,9 +22,7 @@ export class DiferenciaisController {
       }
       const response = diferencial;
 
-      setCacheHeaders(res, response);
-
-      res.json(response);
+      return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao buscar diferenciais",

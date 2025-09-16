@@ -1,9 +1,10 @@
 import { Request, Response } from "express";
-import { setCacheHeaders } from '../../../utils/cache';
 import path from "path";
-import { supabase } from "../../../config/supabase";
-import { bannerService } from "../services/banner.service";
 import { WebsiteStatus } from "@prisma/client";
+
+import { supabase } from "@/config/supabase";
+import { bannerService } from "@/modules/website/services/banner.service";
+import { respondWithCache } from "@/modules/website/utils/cache-response";
 
 function mapBanner(ordem: any) {
   return {
@@ -49,9 +50,7 @@ export class BannerController {
     const itens = await bannerService.list();
     const response = itens.map(mapBanner);
 
-    setCacheHeaders(res, response);
-
-    res.json(response);
+    return respondWithCache(req, res, response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -63,9 +62,7 @@ export class BannerController {
       }
       const response = mapBanner(ordem);
 
-      setCacheHeaders(res, response);
-
-      res.json(response);
+      return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
         message: "Erro ao buscar banner",

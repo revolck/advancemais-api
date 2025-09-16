@@ -1,15 +1,14 @@
 import { Request, Response } from "express";
-import { setCacheHeaders } from '../../../utils/cache';
-import { headerPagesService } from "../services/header-pages.service";
+
+import { headerPagesService } from "@/modules/website/services/header-pages.service";
+import { respondWithCache } from "@/modules/website/utils/cache-response";
 
 export class HeaderPageController {
   static list = async (_req: Request, res: Response) => {
     const items = await headerPagesService.list();
     const response = items;
 
-    setCacheHeaders(res, response);
-
-    res.json(response);
+    return respondWithCache(_req, res, response);
   };
 
   static get = async (req: Request, res: Response) => {
@@ -21,9 +20,7 @@ export class HeaderPageController {
       }
       const response = item;
 
-      setCacheHeaders(res, response);
-
-      res.json(response);
+      return respondWithCache(req, res, response);
     } catch (error: any) {
       res
         .status(500)

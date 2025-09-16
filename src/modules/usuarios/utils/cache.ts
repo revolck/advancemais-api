@@ -1,5 +1,5 @@
-import { invalidateCache, invalidateCacheByPrefix } from "../../../utils/cache";
-import { prisma } from "../../../config/prisma";
+import { invalidateCache, invalidateCacheByPrefix } from "@/utils/cache";
+import { prisma } from "@/config/prisma";
 
 export async function invalidateUserCache(
   usuario: { supabaseId?: string; id?: string } | string | null

@@ -1,14 +1,15 @@
-import { ModalidadeVaga, Prisma, RegimeTrabalho, StatusVaga } from '@prisma/client';
+import { ModalidadeVaga, Prisma, RegimeTrabalho, StatusVaga, TipoUsuario } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { planosParceiroService } from '@/modules/empresas/planos-parceiro/services/planos-parceiro.service';
 import {
   EmpresaSemPlanoAtivoError,
   LimiteVagasPlanoAtingidoError,
+  UsuarioNaoEmpresaError,
 } from '@/modules/empresas/vagas/services/errors';
 
 export type CreateVagaData = {
-  empresaId: string;
+  usuarioId: string;
   modoAnonimo?: boolean;
   regimeDeTrabalho: RegimeTrabalho;
   modalidade: ModalidadeVaga;
@@ -30,7 +31,25 @@ export type UpdateVagaData = Omit<Partial<CreateVagaData>, 'inscricoesAte'> & {
 const ANON_DESCRIPTION =
   'Esta empresa optou por manter suas informações confidenciais até avançar nas etapas do processo seletivo.';
 
-const includeEmpresa = { include: { empresa: true } } as const;
+const includeEmpresa = {
+  include: {
+    empresa: {
+      select: {
+        id: true,
+        nomeCompleto: true,
+        avatarUrl: true,
+        cidade: true,
+        estado: true,
+        descricao: true,
+        instagram: true,
+        linkedin: true,
+        codUsuario: true,
+        role: true,
+        tipoUsuario: true,
+      },
+    },
+  },
+} as const;
 
 type VagaWithEmpresa = Prisma.VagaGetPayload<typeof includeEmpresa>;
 
@@ -43,7 +62,7 @@ const nullableText = (value?: string) => {
 };
 
 const sanitizeCreateData = (data: CreateVagaData): Prisma.VagaUncheckedCreateInput => ({
-  empresaId: data.empresaId,
+  usuarioId: data.usuarioId,
   modoAnonimo: data.modoAnonimo ?? false,
   regimeDeTrabalho: data.regimeDeTrabalho,
   modalidade: data.modalidade,
@@ -61,8 +80,8 @@ const sanitizeCreateData = (data: CreateVagaData): Prisma.VagaUncheckedCreateInp
 const sanitizeUpdateData = (data: UpdateVagaData): Prisma.VagaUncheckedUpdateInput => {
   const update: Prisma.VagaUncheckedUpdateInput = {};
 
-  if (data.empresaId !== undefined) {
-    update.empresaId = data.empresaId;
+  if (data.usuarioId !== undefined) {
+    update.usuarioId = data.usuarioId;
   }
   if (data.modoAnonimo !== undefined) {
     update.modoAnonimo = data.modoAnonimo;
@@ -110,21 +129,30 @@ const sanitizeUpdateData = (data: UpdateVagaData): Prisma.VagaUncheckedUpdateInp
 const transformVaga = (vaga: VagaWithEmpresa) => {
   if (!vaga) return null;
 
-  const displayName = vaga.modoAnonimo ? anonymizedName(vaga.id) : vaga.empresa?.nome ?? null;
-  const displayLogo = vaga.modoAnonimo ? null : vaga.empresa?.logoUrl ?? null;
-  const rawDescricao = vaga.empresa?.descricao;
+  const empresaUsuario = vaga.empresa && vaga.empresa.tipoUsuario === TipoUsuario.PESSOA_JURIDICA ? vaga.empresa : null;
+
+  const displayName = vaga.modoAnonimo
+    ? anonymizedName(vaga.id)
+    : empresaUsuario?.nomeCompleto ?? null;
+  const displayLogo = vaga.modoAnonimo ? null : empresaUsuario?.avatarUrl ?? null;
+  const rawDescricao = empresaUsuario?.descricao;
   const displayDescription = vaga.modoAnonimo
     ? ANON_DESCRIPTION
     : typeof rawDescricao === 'string' && rawDescricao.trim().length > 0
       ? rawDescricao.trim()
       : rawDescricao ?? null;
 
-  const empresa = vaga.empresa
+  const empresa = empresaUsuario
     ? {
-        ...vaga.empresa,
-        nome: displayName ?? vaga.empresa.nome,
-        logoUrl: vaga.modoAnonimo ? null : vaga.empresa.logoUrl,
+        id: empresaUsuario.id,
+        nome: empresaUsuario.nomeCompleto,
+        avatarUrl: vaga.modoAnonimo ? null : empresaUsuario.avatarUrl,
+        cidade: empresaUsuario.cidade,
+        estado: empresaUsuario.estado,
         descricao: displayDescription,
+        instagram: vaga.modoAnonimo ? null : empresaUsuario.instagram,
+        linkedin: vaga.modoAnonimo ? null : empresaUsuario.linkedin,
+        codUsuario: empresaUsuario.codUsuario,
       }
     : null;
 
@@ -138,8 +166,17 @@ const transformVaga = (vaga: VagaWithEmpresa) => {
   };
 };
 
-const ensurePlanoAtivoParaEmpresa = async (empresaId: string) => {
-  const planoAtivo = await planosParceiroService.findActiveByEmpresa(empresaId);
+const ensurePlanoAtivoParaUsuario = async (usuarioId: string) => {
+  const usuarioEmpresa = await prisma.usuario.findUnique({
+    where: { id: usuarioId },
+    select: { tipoUsuario: true },
+  });
+
+  if (!usuarioEmpresa || usuarioEmpresa.tipoUsuario !== TipoUsuario.PESSOA_JURIDICA) {
+    throw new UsuarioNaoEmpresaError();
+  }
+
+  const planoAtivo = await planosParceiroService.findActiveByUsuario(usuarioId);
 
   if (!planoAtivo) {
     throw new EmpresaSemPlanoAtivoError();
@@ -149,7 +186,7 @@ const ensurePlanoAtivoParaEmpresa = async (empresaId: string) => {
   if (typeof limite === 'number' && limite > 0) {
     const vagasAtivas = await prisma.vaga.count({
       where: {
-        empresaId,
+        usuarioId,
         status: { in: [StatusVaga.EM_ANALISE, StatusVaga.PUBLICADO] },
       },
     });
@@ -183,7 +220,7 @@ export const vagasService = {
   },
 
   create: async (data: CreateVagaData) => {
-    await ensurePlanoAtivoParaEmpresa(data.empresaId);
+    await ensurePlanoAtivoParaUsuario(data.usuarioId);
     const vaga = await prisma.vaga.create({
       data: sanitizeCreateData(data),
       ...includeEmpresa,

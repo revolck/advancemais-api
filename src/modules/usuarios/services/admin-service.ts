@@ -77,7 +77,7 @@ export class AdminService {
       throw new Error('ID do usuário é obrigatório');
     }
 
-    return await prisma.usuario.findUnique({
+    const usuario = await prisma.usuario.findUnique({
       where: { id: userId },
       select: {
         id: true,
@@ -96,9 +96,13 @@ export class AdminService {
         ultimoLogin: true,
         criadoEm: true,
         atualizadoEm: true,
-        empresa: {
-          select: { id: true, nome: true },
-        },
+        cidade: true,
+        estado: true,
+        avatarUrl: true,
+        descricao: true,
+        instagram: true,
+        linkedin: true,
+        codUsuario: true,
         enderecos: {
           select: {
             id: true,
@@ -112,6 +116,11 @@ export class AdminService {
         },
       },
     });
+
+    if (!usuario) {
+      return null;
+    }
+    return usuario;
   }
 
   /**

@@ -19,7 +19,7 @@ const observacaoSchema = z
   .max(500, 'A observação deve ter no máximo 500 caracteres');
 
 export const createPlanoParceiroSchema = z.object({
-  empresaId: uuidSchema,
+  usuarioId: uuidSchema,
   planoEmpresarialId: uuidSchema,
   tipo: planoParceiroTipoSchema,
   iniciarEm: z.coerce.date({ invalid_type_error: 'Informe uma data válida' }).optional(),
@@ -34,7 +34,7 @@ export const updatePlanoParceiroSchema = z.object({
 });
 
 export const listPlanoParceiroQuerySchema = z.object({
-  empresaId: uuidSchema.optional(),
+  usuarioId: uuidSchema.optional(),
   ativo: z
     .preprocess((value) => {
       if (value === undefined || value === null) {

@@ -36,6 +36,8 @@ function createPrismaClient() {
     prismaLogger.error({ err: e }, '🔥 Prisma error');
   });
 
+  // Nota: evite middleware $use para compatibilidade com Data Proxy/Accelerate.
+
   return client;
 }
 

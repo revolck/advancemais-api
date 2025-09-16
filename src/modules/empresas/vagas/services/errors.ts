@@ -7,6 +7,15 @@ export class EmpresaSemPlanoAtivoError extends Error {
   }
 }
 
+export class UsuarioNaoEmpresaError extends Error {
+  code = 'USUARIO_NAO_EMPRESA';
+
+  constructor() {
+    super('Somente usuários do tipo pessoa jurídica podem realizar esta operação.');
+    this.name = 'UsuarioNaoEmpresaError';
+  }
+}
+
 export class LimiteVagasPlanoAtingidoError extends Error {
   code = 'PLANO_EMPRESARIAL_LIMIT_VAGAS';
   readonly limite: number;

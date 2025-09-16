@@ -137,7 +137,7 @@ router.get('/:id', publicCache, VagasController.get);
  *            -H "Authorization: Bearer <TOKEN>" \
  *            -H "Content-Type: application/json" \
  *            -d '{
- *                  "empresaId": "f1d7a9c2-4e0b-4f6d-90ad-8c6b84a0f1a1",
+ *                  "usuarioId": "f1d7a9c2-4e0b-4f6d-90ad-8c6b84a0f1a1",
  *                  "modoAnonimo": true,
  *                  "regimeDeTrabalho": "CLT",
  *                  "modalidade": "PRESENCIAL",

@@ -8,6 +8,7 @@
 import { Router } from "express";
 import { supabaseAuthMiddleware } from "../auth";
 import { AdminController } from "../controllers/admin-controller";
+import { asyncHandler } from "../../../utils/asyncHandler";
 
 const router = Router();
 const adminController = new AdminController();
@@ -57,7 +58,7 @@ router.use(supabaseAuthMiddleware(["ADMIN", "MODERADOR"]));
  *           curl -X GET "http://localhost:3000/api/v1/usuarios/admin" \\
  *            -H "Authorization: Bearer <TOKEN>"
  */
-router.get("/", adminController.getAdminInfo);
+router.get("/", asyncHandler(adminController.getAdminInfo));
 
 /**
  * Listar usuários com filtros
@@ -117,7 +118,7 @@ router.get("/", adminController.getAdminInfo);
  *           curl -X GET "http://localhost:3000/api/v1/usuarios/admin/usuarios" \\
  *            -H "Authorization: Bearer <TOKEN>"
  */
-router.get("/usuarios", adminController.listarUsuarios);
+router.get("/usuarios", asyncHandler(adminController.listarUsuarios));
 
 /**
  * Buscar usuário específico por ID
@@ -163,7 +164,7 @@ router.get("/usuarios", adminController.listarUsuarios);
  *           curl -X GET "http://localhost:3000/api/v1/usuarios/admin/usuarios/{userId}" \\
  *            -H "Authorization: Bearer <TOKEN>"
  */
-router.get("/usuarios/:userId", adminController.buscarUsuario);
+router.get("/usuarios/:userId", asyncHandler(adminController.buscarUsuario));
 
 // =============================================
 // ROTAS DE MODIFICAÇÃO (APENAS ADMIN)
@@ -224,7 +225,7 @@ router.get("/usuarios/:userId", adminController.buscarUsuario);
 router.patch(
   "/usuarios/:userId/status",
   supabaseAuthMiddleware(["ADMIN"]),
-  adminController.atualizarStatus
+  asyncHandler(adminController.atualizarStatus)
 );
 
 /**
@@ -282,7 +283,7 @@ router.patch(
 router.patch(
   "/usuarios/:userId/role",
   supabaseAuthMiddleware(["ADMIN"]),
-  adminController.atualizarRole
+  asyncHandler(adminController.atualizarRole)
 );
 
 export { router as adminRoutes };

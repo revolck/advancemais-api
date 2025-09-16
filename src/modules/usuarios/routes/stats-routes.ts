@@ -8,6 +8,7 @@
 import { Router } from "express";
 import { supabaseAuthMiddleware } from "../auth";
 import { StatsController } from "../controllers/stats-controller";
+import { asyncHandler } from "../../../utils/asyncHandler";
 
 const router = Router();
 const statsController = new StatsController();
@@ -57,7 +58,7 @@ router.use(supabaseAuthMiddleware(["ADMIN", "MODERADOR"]));
  *           curl -X GET "http://localhost:3000/api/v1/usuarios/stats/dashboard" \\
  *            -H "Authorization: Bearer <TOKEN>"
  */
-router.get("/dashboard", statsController.getDashboardStats);
+router.get("/dashboard", asyncHandler(statsController.getDashboardStats));
 
 /**
  * Estatísticas de usuários
@@ -97,6 +98,6 @@ router.get("/dashboard", statsController.getDashboardStats);
  *           curl -X GET "http://localhost:3000/api/v1/usuarios/stats/usuarios" \\
  *            -H "Authorization: Bearer <TOKEN>"
  */
-router.get("/usuarios", statsController.getUserStats);
+router.get("/usuarios", asyncHandler(statsController.getUserStats));
 
 export { router as statsRoutes };

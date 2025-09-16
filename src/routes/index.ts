@@ -8,12 +8,14 @@ import { EmailVerificationController } from '@/modules/brevo/controllers/email-v
 import { usuarioRoutes } from '@/modules/usuarios';
 import { websiteRoutes } from '@/modules/website';
 import { setCacheHeaders, DEFAULT_TTL } from '@/utils/cache';
+import { logger } from '@/utils/logger';
 
 /**
  * Router principal da aplicação
  */
 const router = Router();
 const emailVerificationController = new EmailVerificationController();
+const routesLogger = logger.child({ module: 'Router' });
 
 const parseEtags = (header: Request['headers']['if-none-match']) => {
   if (!header) return [] as string[];
@@ -199,12 +201,12 @@ router.get('/verificar-email', emailVerificationController.verifyEmail);
 if (usuarioRoutes) {
   try {
     router.use('/api/v1/usuarios', usuarioRoutes);
-    console.log('✅ Módulo de usuários registrado com sucesso');
+    routesLogger.info({ feature: 'UsuariosModule' }, '✅ Módulo de usuários registrado com sucesso');
   } catch (error) {
-    console.error('❌ ERRO - Módulo de usuários:', error);
+    routesLogger.error({ feature: 'UsuariosModule', err: error }, '❌ ERRO - Módulo de usuários');
   }
 } else {
-  console.error('❌ usuarioRoutes não está definido');
+  routesLogger.error({ feature: 'UsuariosModule' }, '❌ usuarioRoutes não está definido');
 }
 
 /**
@@ -214,12 +216,12 @@ if (usuarioRoutes) {
 if (brevoRoutes) {
   try {
     router.use('/api/v1/brevo', brevoRoutes);
-    console.log('✅ Módulo Brevo registrado com sucesso');
+    routesLogger.info({ feature: 'BrevoModule' }, '✅ Módulo Brevo registrado com sucesso');
   } catch (error) {
-    console.error('❌ ERRO - Módulo Brevo:', error);
+    routesLogger.error({ feature: 'BrevoModule', err: error }, '❌ ERRO - Módulo Brevo');
   }
 } else {
-  console.error('❌ brevoRoutes não está definido');
+  routesLogger.error({ feature: 'BrevoModule' }, '❌ brevoRoutes não está definido');
 }
 
 /**
@@ -229,12 +231,12 @@ if (brevoRoutes) {
 if (websiteRoutes) {
   try {
     router.use('/api/v1/website', websiteRoutes);
-    console.log('✅ Módulo Website registrado com sucesso');
+    routesLogger.info({ feature: 'WebsiteModule' }, '✅ Módulo Website registrado com sucesso');
   } catch (error) {
-    console.error('❌ ERRO - Módulo Website:', error);
+    routesLogger.error({ feature: 'WebsiteModule', err: error }, '❌ ERRO - Módulo Website');
   }
 } else {
-  console.error('❌ websiteRoutes não está definido');
+  routesLogger.error({ feature: 'WebsiteModule' }, '❌ websiteRoutes não está definido');
 }
 
 /**
@@ -244,12 +246,12 @@ if (websiteRoutes) {
 if (docsRoutes) {
   try {
     router.use('/', docsRoutes);
-    console.log('✅ Módulo Documentação registrado com sucesso');
+    routesLogger.info({ feature: 'DocsModule' }, '✅ Módulo Documentação registrado com sucesso');
   } catch (error) {
-    console.error('❌ ERRO - Módulo Documentação:', error);
+    routesLogger.error({ feature: 'DocsModule', err: error }, '❌ ERRO - Módulo Documentação');
   }
 } else {
-  console.error('❌ docsRoutes não está definido');
+  routesLogger.error({ feature: 'DocsModule' }, '❌ docsRoutes não está definido');
 }
 
 /**

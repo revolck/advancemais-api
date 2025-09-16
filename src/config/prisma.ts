@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { logger } from '@/utils/logger';
 
 // Prefer an IPv4-compatible connection string if provided
 // This allows deployments in environments without IPv6 support
@@ -17,20 +18,22 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+const prismaLogger = logger.child({ module: 'PrismaClient' });
+
 function createPrismaClient() {
   const client = new PrismaClient({
     datasourceUrl,
     log: [{ emit: 'event', level: 'error' }],
   });
   if (process.env.NODE_ENV !== 'test') {
-    client
+    void client
       .$connect()
-      .then(() => console.log('✅ Prisma conectado'))
-      .catch((err) => console.error('❌ Erro ao conectar ao Prisma', err));
+      .then(() => prismaLogger.info('✅ Prisma conectado'))
+      .catch((err) => prismaLogger.error({ err }, '❌ Erro ao conectar ao Prisma'));
   }
 
   client.$on('error', (e) => {
-    console.error('🔥 Prisma error', e);
+    prismaLogger.error({ err: e }, '🔥 Prisma error');
   });
 
   return client;

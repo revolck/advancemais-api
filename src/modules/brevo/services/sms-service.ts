@@ -1,6 +1,7 @@
 import * as Brevo from '@getbrevo/brevo';
 import { BrevoClient } from '../client/brevo-client';
 import { BrevoConfigManager } from '../config/brevo-config';
+import { logger } from '@/utils/logger';
 
 /**
  * Serviço de SMS simplificado para uso futuro
@@ -22,6 +23,7 @@ export interface SMSData {
 export class SMSService {
   private client: BrevoClient;
   private config: BrevoConfigManager;
+  private readonly log = logger.child({ module: 'SMSService' });
 
   constructor() {
     this.client = BrevoClient.getInstance();
@@ -33,9 +35,14 @@ export class SMSService {
    */
   public async sendSMS(smsData: SMSData): Promise<SMSResult> {
     const correlationId = this.generateCorrelationId();
+    const log = this.log.child({
+      correlationId,
+      phone: smsData.to,
+      method: 'sendSMS',
+    });
 
     try {
-      console.log(`📱 [${correlationId}] Enviando SMS para: ${smsData.to}`);
+      log.info('📱 Enviando SMS');
 
       // Validação básica
       if (!this.isValidSMSData(smsData)) {
@@ -57,7 +64,7 @@ export class SMSService {
       // Registra resultado
       if (result.success) {
         await this.logSMSSuccess(smsData, result.messageId, correlationId);
-        console.log(`✅ [${correlationId}] SMS enviado com sucesso`);
+        log.info({ messageId: result.messageId }, '✅ SMS enviado com sucesso');
       } else {
         await this.logSMSError(smsData, result.error || 'Erro desconhecido', correlationId);
       }
@@ -65,7 +72,7 @@ export class SMSService {
       return result;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-      console.error(`❌ [${correlationId}] Erro no envio de SMS:`, errorMsg);
+      log.error({ error: errorMsg }, '❌ Erro no envio de SMS');
 
       await this.logSMSError(smsData, errorMsg, correlationId);
       return { success: false, error: errorMsg };
@@ -109,7 +116,7 @@ export class SMSService {
       // Testa conectividade com API Brevo
       return await this.client.healthCheck();
     } catch (error) {
-      console.warn('⚠️ SMS Health check falhou:', error);
+      this.log.warn({ err: error }, '⚠️ SMS Health check falhou');
       return false;
     }
   }
@@ -122,10 +129,14 @@ export class SMSService {
    * Executa envio do SMS
    */
   private async performSMSSend(smsData: SMSData, correlationId: string): Promise<SMSResult> {
+    const log = this.log.child({
+      correlationId,
+      phone: smsData.to,
+      method: 'performSMSSend',
+    });
     // Modo simulado (desenvolvimento ou API não configurada)
     if (this.client.isSimulated()) {
-      console.log(`🎭 [${correlationId}] SMS simulado para: ${smsData.to}`);
-      console.log(`📄 [${correlationId}] Mensagem: ${smsData.message}`);
+      log.info({ message: smsData.message }, '🎭 SMS simulado');
       return {
         success: true,
         messageId: `sms_sim_${Date.now()}`,
@@ -148,26 +159,23 @@ export class SMSService {
       sendSmsRequest.recipient = smsData.to;
       sendSmsRequest.content = smsData.message;
 
-      console.log(`📱 [${correlationId}] Enviando SMS via Brevo...`);
+      log.info('📱 Enviando SMS via Brevo');
 
       // Chama API do Brevo
       const response = await smsAPI.sendTransacSms(sendSmsRequest);
       const messageId = this.extractMessageId(response);
 
-      console.log(`✅ [${correlationId}] SMS enviado via Brevo:`, {
-        to: smsData.to,
-        messageId,
-      });
+      log.info({ messageId }, '✅ SMS enviado via Brevo');
 
       return {
         success: true,
         messageId,
       };
     } catch (error) {
-      console.error(`❌ [${correlationId}] Erro no envio via Brevo:`, error);
+      log.error({ err: error }, '❌ Erro no envio via Brevo');
 
       // Fallback para simulação em caso de erro
-      console.log(`🎭 [${correlationId}] Fallback para modo simulado`);
+      log.warn('🎭 Fallback para modo simulado');
       return {
         success: true,
         messageId: `sms_fallback_${Date.now()}`,
@@ -241,11 +249,15 @@ export class SMSService {
   ): Promise<void> {
     try {
       // Implementar log de SMS no banco se necessário
-      console.log(`📊 [${correlationId}] SMS enviado com sucesso:`, {
-        to: smsData.to,
-        messageId,
-        length: smsData.message.length,
-      });
+      this.log.info(
+        {
+          correlationId,
+          phone: smsData.to,
+          messageId,
+          length: smsData.message.length,
+        },
+        '📊 SMS enviado com sucesso',
+      );
 
       // Exemplo de como seria o log no banco (se modelo existir):
       /*
@@ -260,7 +272,10 @@ export class SMSService {
       });
       */
     } catch (error) {
-      console.warn(`⚠️ [${correlationId}] Erro ao registrar log de sucesso SMS:`, error);
+      this.log.warn(
+        { err: error, correlationId, phone: smsData.to, context: 'logSMSSuccess' },
+        '⚠️ Erro ao registrar log de sucesso SMS',
+      );
     }
   }
 
@@ -273,11 +288,15 @@ export class SMSService {
     correlationId?: string,
   ): Promise<void> {
     try {
-      console.log(`📊 [${correlationId}] Erro no SMS:`, {
-        to: smsData.to,
-        error,
-        messageLength: smsData.message.length,
-      });
+      this.log.error(
+        {
+          correlationId,
+          phone: smsData.to,
+          error,
+          messageLength: smsData.message.length,
+        },
+        '📊 Erro no SMS',
+      );
 
       // Exemplo de como seria o log no banco (se modelo existir):
       /*
@@ -292,7 +311,10 @@ export class SMSService {
       });
       */
     } catch (logError) {
-      console.warn(`⚠️ [${correlationId}] Erro ao registrar log de erro SMS:`, logError);
+      this.log.warn(
+        { err: logError, correlationId, phone: smsData.to, context: 'logSMSError' },
+        '⚠️ Erro ao registrar log de erro SMS',
+      );
     }
   }
 

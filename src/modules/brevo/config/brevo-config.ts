@@ -1,4 +1,5 @@
 import { brevoConfig } from '../../../config/env';
+import { logger } from '@/utils/logger';
 
 /**
  * Configuração simplificada e robusta do módulo Brevo
@@ -35,6 +36,7 @@ export interface BrevoConfiguration {
 export class BrevoConfigManager {
   private static instance: BrevoConfigManager;
   private config: BrevoConfiguration;
+  private readonly log = logger.child({ module: 'BrevoConfigManager' });
 
   private constructor() {
     this.config = this.buildConfiguration();
@@ -140,20 +142,23 @@ export class BrevoConfigManager {
    */
   private logConfiguration(): void {
     if (!this.config.isConfigured) {
-      console.warn('⚠️ Brevo não configurado - emails serão simulados');
+      this.log.warn('⚠️ Brevo não configurado - emails serão simulados');
     }
 
-    console.log('✅ Brevo configurado com sucesso:', {
-      module: 'Brevo',
-      configured: this.config.isConfigured,
-      environment: this.config.environment,
-      emailVerificationEnabled: this.config.emailVerification.enabled,
-      features: {
-        transactionalEmails: true,
-        emailVerification: this.config.emailVerification.enabled,
-        passwordRecovery: true,
-        welcomeEmails: true,
+    this.log.info(
+      {
+        module: 'Brevo',
+        configured: this.config.isConfigured,
+        environment: this.config.environment,
+        emailVerificationEnabled: this.config.emailVerification.enabled,
+        features: {
+          transactionalEmails: true,
+          emailVerification: this.config.emailVerification.enabled,
+          passwordRecovery: true,
+          welcomeEmails: true,
+        },
       },
-    });
+      '✅ Brevo configurado com sucesso',
+    );
   }
 }

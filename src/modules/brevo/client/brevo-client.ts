@@ -1,5 +1,6 @@
 import * as Brevo from '@getbrevo/brevo';
 import { BrevoConfigManager, BrevoConfiguration } from '../config/brevo-config';
+import { logger } from '@/utils/logger';
 
 /**
  * Cliente Brevo simplificado e robusto
@@ -12,6 +13,7 @@ export class BrevoClient {
   private accountAPI?: Brevo.AccountApi;
   private config: BrevoConfiguration;
   private operational: boolean = false;
+  private readonly log = logger.child({ module: 'BrevoClient' });
 
   private constructor() {
     this.config = BrevoConfigManager.getInstance().getConfig();
@@ -42,12 +44,12 @@ export class BrevoClient {
         this.accountAPI.setApiKey(Brevo.AccountApiApiKeys.apiKey, this.config.apiKey);
 
         this.operational = true;
-        console.log('✅ Brevo Client configurado para ambiente:', this.config.environment);
+        this.log.info({ environment: this.config.environment }, '✅ Brevo Client configurado');
       } else {
-        console.log('ℹ️ Brevo Client em modo simulado (API não configurada)');
+        this.log.info('ℹ️ Brevo Client em modo simulado (API não configurada)');
       }
     } catch (error) {
-      console.error('❌ Erro ao inicializar Brevo Client:', error);
+      this.log.error({ err: error }, '❌ Erro ao inicializar Brevo Client');
       this.operational = false;
     }
   }
@@ -109,7 +111,7 @@ export class BrevoClient {
       }
       return false;
     } catch (error) {
-      console.warn('⚠️ Brevo health check falhou:', error);
+      this.log.warn({ err: error }, '⚠️ Brevo health check falhou');
       return false;
     }
   }
@@ -131,10 +133,13 @@ export class BrevoClient {
   }> {
     // Modo simulado
     if (this.isSimulated()) {
-      console.log('🎭 Email simulado enviado:', {
-        to: emailData.to,
-        subject: emailData.subject,
-      });
+      this.log.info(
+        {
+          to: emailData.to,
+          subject: emailData.subject,
+        },
+        '🎭 Email simulado enviado',
+      );
       return {
         success: true,
         messageId: `sim_${Date.now()}`,
@@ -161,20 +166,17 @@ export class BrevoClient {
       const response = await this.emailAPI.sendTransacEmail(sendSmtpEmail);
       const messageId = this.extractMessageId(response);
 
-      console.log('✅ Email enviado via Brevo:', {
-        to: emailData.to,
-        messageId,
-      });
+      this.log.info({ to: emailData.to, messageId }, '✅ Email enviado via Brevo');
 
       return {
         success: true,
         messageId,
       };
     } catch (error) {
-      console.error('❌ Erro no envio via Brevo:', error);
+      this.log.error({ err: error, to: emailData.to }, '❌ Erro no envio via Brevo');
 
       // Fallback para simulação em caso de erro
-      console.log('🎭 Fallback para modo simulado');
+      this.log.warn({ to: emailData.to }, '🎭 Fallback para modo simulado');
       return {
         success: true,
         messageId: `fallback_${Date.now()}`,
@@ -195,10 +197,13 @@ export class BrevoClient {
   }> {
     // Modo simulado
     if (this.isSimulated()) {
-      console.log('🎭 SMS simulado enviado:', {
-        to: smsData.to,
-        message: smsData.message,
-      });
+      this.log.info(
+        {
+          to: smsData.to,
+          message: smsData.message,
+        },
+        '🎭 SMS simulado enviado',
+      );
       return {
         success: true,
         messageId: `sms_sim_${Date.now()}`,
@@ -222,20 +227,17 @@ export class BrevoClient {
       const response = await this.smsAPI.sendTransacSms(sendSmsRequest);
       const messageId = this.extractMessageId(response);
 
-      console.log('✅ SMS enviado via Brevo:', {
-        to: smsData.to,
-        messageId,
-      });
+      this.log.info({ to: smsData.to, messageId }, '✅ SMS enviado via Brevo');
 
       return {
         success: true,
         messageId,
       };
     } catch (error) {
-      console.error('❌ Erro no envio de SMS via Brevo:', error);
+      this.log.error({ err: error, to: smsData.to }, '❌ Erro no envio de SMS via Brevo');
 
       // Fallback para simulação
-      console.log('🎭 Fallback SMS para modo simulado');
+      this.log.warn({ to: smsData.to }, '🎭 Fallback SMS para modo simulado');
       return {
         success: true,
         messageId: `sms_fallback_${Date.now()}`,

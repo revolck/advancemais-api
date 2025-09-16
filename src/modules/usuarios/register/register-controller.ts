@@ -105,7 +105,6 @@ export const criarUsuario = async (req: Request, res: Response, next: NextFuncti
       telefone,
       email,
       senha,
-      confirmarSenha,
       aceitarTermos,
       supabaseId,
       tipoUsuario,

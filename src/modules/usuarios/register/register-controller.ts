@@ -16,6 +16,13 @@ import {
   limparDocumento,
 } from "../utils/validation";
 import { logger } from "../../../utils/logger";
+import {
+  formatZodErrors,
+  registerSchema,
+  type RegisterInput,
+  type RegisterPessoaFisicaInput,
+  type RegisterPessoaJuridicaInput,
+} from "../validators/auth.schema";
 
 /**
  * Controller para criação de novos usuários
@@ -32,44 +39,9 @@ import { logger } from "../../../utils/logger";
  * @version 4.0.2 - Correção de tipagem TypeScript
  */
 
-/**
- * Interface para dados de criação de usuário - Pessoa Física
- */
-interface CriarPessoaFisicaData {
-  nomeCompleto: string;
-  cpf: string;
-  dataNasc?: string;
-  telefone: string;
-  genero?: string;
-  email: string;
-  senha: string;
-  confirmarSenha: string;
-  aceitarTermos: boolean;
-  supabaseId: string;
-  role?: Role;
-  tipoUsuario: TipoUsuario.PESSOA_FISICA;
-}
-
-/**
- * Interface para dados de criação de usuário - Pessoa Jurídica
- */
-interface CriarPessoaJuridicaData {
-  nomeCompleto: string; // Nome da empresa
-  cnpj: string;
-  telefone: string;
-  email: string;
-  senha: string;
-  confirmarSenha: string;
-  aceitarTermos: boolean;
-  supabaseId: string;
-  role?: Role;
-  tipoUsuario: TipoUsuario.PESSOA_JURIDICA;
-}
-
-/**
- * Type union para dados de criação
- */
-type CriarUsuarioData = CriarPessoaFisicaData | CriarPessoaJuridicaData;
+type CriarPessoaFisicaData = RegisterPessoaFisicaInput;
+type CriarPessoaJuridicaData = RegisterPessoaJuridicaInput;
+type CriarUsuarioData = RegisterInput;
 
 const createRegisterLogger = (req: Request, action: string) =>
   logger.child({
@@ -104,7 +76,19 @@ export const criarUsuario = async (
   log.info("🚀 Iniciando criação de usuário");
 
   try {
-    const dadosUsuario: CriarUsuarioData = req.body;
+    const parseResult = registerSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      const errors = formatZodErrors(parseResult.error);
+      log.warn({ errors }, "⚠️ Dados inválidos para criação de usuário");
+      return res.status(400).json({
+        success: false,
+        message: "Dados de entrada inválidos",
+        errors,
+        correlationId,
+      });
+    }
+
+    const dadosUsuario: CriarUsuarioData = parseResult.data;
 
     // Validação de entrada com logs estruturados
     const validationResult = await validateUserInput(
@@ -291,25 +275,8 @@ export const criarUsuario = async (
       "❌ Erro crítico na criação de usuário"
     );
 
-    // Log estruturado para monitoramento
-    if (process.env.NODE_ENV === "production") {
-      // Em produção, evita vazar detalhes do erro
-      res.status(500).json({
-        success: false,
-        message: "Erro interno do servidor ao criar usuário",
-        correlationId,
-        timestamp: new Date().toISOString(),
-      });
-    } else {
-      // Em desenvolvimento, fornece mais detalhes
-      res.status(500).json({
-        success: false,
-        message: "Erro interno do servidor ao criar usuário",
-        error: errorMessage,
-        correlationId,
-        stack: error instanceof Error ? error.stack : undefined,
-      });
-    }
+    err.message = errorMessage;
+    return next(err);
   }
 };
 

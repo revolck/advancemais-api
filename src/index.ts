@@ -15,6 +15,7 @@ import { setupSwagger } from "./config/swagger";
 import { startKeepAlive } from "./utils/keep-alive";
 import { prisma } from "./config/prisma";
 import redis from "./config/redis";
+import { errorMiddleware } from "./middlewares/error";
 
 /**
  * Aplicação principal - Advance+ API
@@ -172,26 +173,7 @@ app.all("*", (req, res) => {
  * Middleware de tratamento de erros global
  * Captura qualquer erro não tratado na aplicação
  */
-app.use(
-  (
-    err: any,
-    req: express.Request,
-    res: express.Response,
-    next: express.NextFunction
-  ) => {
-    console.error("❌ Erro interno não tratado:", err);
-
-    res.status(500).json({
-      message: "Erro interno do servidor",
-      timestamp: new Date().toISOString(),
-      // Só mostra detalhes do erro em desenvolvimento
-      ...(process.env.NODE_ENV === "development" && {
-        error: err.message,
-        stack: err.stack,
-      }),
-    });
-  }
-);
+app.use(errorMiddleware);
 
 // =============================================
 // INICIALIZAÇÃO DO SERVIDOR

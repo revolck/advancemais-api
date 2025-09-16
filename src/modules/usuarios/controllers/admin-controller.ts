@@ -5,9 +5,14 @@
  * @author Sistema Advance+
  * @version 3.0.0
  */
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { AdminService } from "../services/admin-service";
 import { logger } from "../../../utils/logger";
+import {
+  formatZodErrors,
+  updateRoleSchema,
+  updateStatusSchema,
+} from "../validators/auth.schema";
 
 export class AdminController {
   private adminService: AdminService;
@@ -27,42 +32,41 @@ export class AdminController {
    * Informações da área administrativa
    */
   public getAdminInfo = async (req: Request, res: Response) => {
-    try {
-      res.json({
-        message: "Área administrativa",
-        usuario: req.user,
-        timestamp: new Date().toISOString(),
-        permissions: this.getUserPermissions(req.user?.role),
-      });
-    } catch (error) {
-      res.status(500).json({
-        message: "Erro interno do servidor",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
-      });
-    }
+    res.json({
+      message: "Área administrativa",
+      usuario: req.user,
+      timestamp: new Date().toISOString(),
+      permissions: this.getUserPermissions(req.user?.role),
+    });
   };
 
   /**
    * Lista usuários com paginação e filtros
    */
-  public listarUsuarios = async (req: Request, res: Response) => {
+  public listarUsuarios = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
     const log = this.getLogger(req);
     try {
       const result = await this.adminService.listarUsuarios(req.query);
       res.json(result);
     } catch (error) {
-      log.error({ err: error }, "Erro ao listar usuários");
-      res.status(500).json({
-        message: "Erro ao listar usuários",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
-      });
+      const err = error instanceof Error ? error : new Error(String(error));
+      log.error({ err }, "Erro ao listar usuários");
+      return next(err);
     }
   };
 
   /**
    * Busca usuário específico
    */
-  public buscarUsuario = async (req: Request, res: Response) => {
+  public buscarUsuario = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
     const log = this.getLogger(req);
     try {
       const { userId } = req.params;
@@ -79,22 +83,34 @@ export class AdminController {
         usuario: result,
       });
     } catch (error) {
-      log.error({ err: error }, "Erro ao buscar usuário");
-      res.status(500).json({
-        message: "Erro ao buscar usuário",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
-      });
+      const err = error instanceof Error ? error : new Error(String(error));
+      log.error({ err }, "Erro ao buscar usuário");
+      return next(err);
     }
   };
 
   /**
    * Atualiza status do usuário
    */
-  public atualizarStatus = async (req: Request, res: Response) => {
+  public atualizarStatus = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
     const log = this.getLogger(req);
     try {
       const { userId } = req.params;
-      const { status, motivo } = req.body;
+      const validation = updateStatusSchema.safeParse(req.body);
+      if (!validation.success) {
+        const errors = formatZodErrors(validation.error);
+        log.warn({ errors }, "Erro de validação ao atualizar status");
+        return res.status(400).json({
+          message: "Dados inválidos para atualização de status",
+          errors,
+        });
+      }
+
+      const { status, motivo } = validation.data;
 
       const result = await this.adminService.atualizarStatus(
         userId,
@@ -103,22 +119,34 @@ export class AdminController {
       );
       res.json(result);
     } catch (error) {
-      log.error({ err: error }, "Erro ao atualizar status");
-      res.status(500).json({
-        message: "Erro ao atualizar status do usuário",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
-      });
+      const err = error instanceof Error ? error : new Error(String(error));
+      log.error({ err }, "Erro ao atualizar status");
+      return next(err);
     }
   };
 
   /**
    * Atualiza role do usuário
    */
-  public atualizarRole = async (req: Request, res: Response) => {
+  public atualizarRole = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
     const log = this.getLogger(req);
     try {
       const { userId } = req.params;
-      const { role, motivo } = req.body;
+      const validation = updateRoleSchema.safeParse(req.body);
+      if (!validation.success) {
+        const errors = formatZodErrors(validation.error);
+        log.warn({ errors }, "Erro de validação ao atualizar role");
+        return res.status(400).json({
+          message: "Dados inválidos para atualização de role",
+          errors,
+        });
+      }
+
+      const { role, motivo } = validation.data;
       const adminId = req.user?.id;
 
       const result = await this.adminService.atualizarRole(
@@ -129,11 +157,9 @@ export class AdminController {
       );
       res.json(result);
     } catch (error) {
-      log.error({ err: error }, "Erro ao atualizar role");
-      res.status(500).json({
-        message: "Erro ao atualizar role do usuário",
-        error: error instanceof Error ? error.message : "Erro desconhecido",
-      });
+      const err = error instanceof Error ? error : new Error(String(error));
+      log.error({ err }, "Erro ao atualizar role");
+      return next(err);
     }
   };
 

@@ -1,9 +1,9 @@
-import { Request, Response } from "express";
-import path from "path";
+import { Request, Response } from 'express';
+import path from 'path';
 
-import { supabase } from "@/config/supabase";
-import { sliderService } from "@/modules/website/services/slider.service";
-import { respondWithCache } from "@/modules/website/utils/cache-response";
+import { supabase } from '@/config/supabase';
+import { sliderService } from '@/modules/website/services/slider.service';
+import { respondWithCache } from '@/modules/website/utils/cache-response';
 
 /**
  * Mapeia uma ordem de slider para o formato exposto na API.
@@ -31,14 +31,12 @@ async function uploadImage(file: Express.Multer.File): Promise<string> {
   const fileExt = path.extname(file.originalname);
   const fileName = `slide-${Date.now()}${fileExt}`;
   const { error } = await supabase.storage
-    .from("website")
+    .from('website')
     .upload(`slides/${fileName}`, file.buffer, {
       contentType: file.mimetype,
     });
   if (error) throw error;
-  const { data } = supabase.storage
-    .from("website")
-    .getPublicUrl(`slides/${fileName}`);
+  const { data } = supabase.storage.from('website').getPublicUrl(`slides/${fileName}`);
   return data.publicUrl;
 }
 
@@ -55,14 +53,14 @@ export class SliderController {
       const { id: ordemId } = req.params;
       const ordem = await sliderService.get(ordemId);
       if (!ordem) {
-        return res.status(404).json({ message: "Slider não encontrado" });
+        return res.status(404).json({ message: 'Slider não encontrado' });
       }
       const response = mapSlider(ordem);
 
       return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao buscar slider",
+        message: 'Erro ao buscar slider',
         error: error.message,
       });
     }
@@ -72,12 +70,12 @@ export class SliderController {
     try {
       const { sliderName, link, orientacao } = req.body;
       let { status } = req.body;
-      if (typeof status === "boolean") {
-        status = status ? "PUBLICADO" : "RASCUNHO";
-      } else if (typeof status === "string") {
+      if (typeof status === 'boolean') {
+        status = status ? 'PUBLICADO' : 'RASCUNHO';
+      } else if (typeof status === 'string') {
         status = status.toUpperCase();
       }
-      let imagemUrl = "";
+      let imagemUrl = '';
       if (req.file) {
         imagemUrl = await uploadImage(req.file);
       } else if (req.body.imagemUrl) {
@@ -93,7 +91,7 @@ export class SliderController {
       res.status(201).json(mapSlider(ordem));
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao criar slider",
+        message: 'Erro ao criar slider',
         error: error.message,
       });
     }
@@ -104,9 +102,9 @@ export class SliderController {
       const { id: sliderId } = req.params;
       const { sliderName, link, orientacao, ordem } = req.body;
       let { status } = req.body as any;
-      if (typeof status === "boolean") {
-        status = status ? "PUBLICADO" : "RASCUNHO";
-      } else if (typeof status === "string") {
+      if (typeof status === 'boolean') {
+        status = status ? 'PUBLICADO' : 'RASCUNHO';
+      } else if (typeof status === 'string') {
         status = status.toUpperCase();
       }
       let imagemUrl = req.body.imagemUrl as string | undefined;
@@ -128,7 +126,7 @@ export class SliderController {
       res.json(mapSlider(ordemResult));
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao atualizar slider",
+        message: 'Erro ao atualizar slider',
         error: error.message,
       });
     }
@@ -138,14 +136,11 @@ export class SliderController {
     try {
       const { id: ordemId } = req.params;
       const { ordem } = req.body;
-      const ordemResult = await sliderService.reorder(
-        ordemId,
-        parseInt(ordem, 10)
-      );
+      const ordemResult = await sliderService.reorder(ordemId, parseInt(ordem, 10));
       res.json(mapSlider(ordemResult));
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao reordenar slider",
+        message: 'Erro ao reordenar slider',
         error: error.message,
       });
     }
@@ -158,10 +153,9 @@ export class SliderController {
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao remover slider",
+        message: 'Erro ao remover slider',
         error: error.message,
       });
     }
   };
 }
-

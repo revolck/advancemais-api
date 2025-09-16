@@ -1,4 +1,4 @@
-export { generateToken, generateRefreshToken } from "./auth";
+export { generateToken, generateRefreshToken } from './auth';
 export {
   validarCPF,
   validarCNPJ,
@@ -9,4 +9,4 @@ export {
   validarDataNascimento,
   validarGenero,
   limparDocumento,
-} from "./validation";
+} from './validation';

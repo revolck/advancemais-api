@@ -1,7 +1,7 @@
-import { Request, Response } from "express";
+import { Request, Response } from 'express';
 
-import { diferenciaisService } from "@/modules/website/services/diferenciais.service";
-import { respondWithCache } from "@/modules/website/utils/cache-response";
+import { diferenciaisService } from '@/modules/website/services/diferenciais.service';
+import { respondWithCache } from '@/modules/website/utils/cache-response';
 
 export class DiferenciaisController {
   static list = async (req: Request, res: Response) => {
@@ -16,16 +16,14 @@ export class DiferenciaisController {
       const { id } = req.params;
       const diferencial = await diferenciaisService.get(id);
       if (!diferencial) {
-        return res
-          .status(404)
-          .json({ message: "Diferenciais não encontrado" });
+        return res.status(404).json({ message: 'Diferenciais não encontrado' });
       }
       const response = diferencial;
 
       return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao buscar diferenciais",
+        message: 'Erro ao buscar diferenciais',
         error: error.message,
       });
     }
@@ -72,7 +70,7 @@ export class DiferenciaisController {
       res.status(201).json(diferencial);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao criar diferenciais",
+        message: 'Erro ao criar diferenciais',
         error: error.message,
       });
     }
@@ -120,7 +118,7 @@ export class DiferenciaisController {
       res.json(diferencial);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao atualizar diferenciais",
+        message: 'Erro ao atualizar diferenciais',
         error: error.message,
       });
     }
@@ -133,7 +131,7 @@ export class DiferenciaisController {
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao remover diferenciais",
+        message: 'Erro ao remover diferenciais',
         error: error.message,
       });
     }

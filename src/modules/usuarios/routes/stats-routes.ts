@@ -5,10 +5,10 @@
  * @author Sistema Advance+
  * @version 3.0.0
  */
-import { Router } from "express";
-import { supabaseAuthMiddleware } from "../auth";
-import { StatsController } from "../controllers/stats-controller";
-import { asyncHandler } from "../../../utils/asyncHandler";
+import { Router } from 'express';
+import { supabaseAuthMiddleware } from '../auth';
+import { StatsController } from '../controllers/stats-controller';
+import { asyncHandler } from '../../../utils/asyncHandler';
 
 const router = Router();
 const statsController = new StatsController();
@@ -20,7 +20,7 @@ const statsController = new StatsController();
 /**
  * Estatísticas requerem pelo menos role MODERADOR
  */
-router.use(supabaseAuthMiddleware(["ADMIN", "MODERADOR"]));
+router.use(supabaseAuthMiddleware(['ADMIN', 'MODERADOR']));
 
 // =============================================
 // ROTAS DE ESTATÍSTICAS
@@ -33,24 +33,24 @@ router.use(supabaseAuthMiddleware(["ADMIN", "MODERADOR"]));
 /**
  * @openapi
  * /api/v1/usuarios/stats/dashboard:
-  *   get:
-  *     summary: Estatísticas gerais do sistema
-  *     tags: [Usuários - Stats]
-  *     security:
-  *       - bearerAuth: []
-  *     responses:
-  *       200:
-  *         description: Dados de dashboard
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/DashboardStatsResponse'
-  *       500:
-  *         description: Erro ao obter estatísticas
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/ErrorResponse'
+ *   get:
+ *     summary: Estatísticas gerais do sistema
+ *     tags: [Usuários - Stats]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dados de dashboard
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DashboardStatsResponse'
+ *       500:
+ *         description: Erro ao obter estatísticas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -58,7 +58,7 @@ router.use(supabaseAuthMiddleware(["ADMIN", "MODERADOR"]));
  *           curl -X GET "http://localhost:3000/api/v1/usuarios/stats/dashboard" \\
  *            -H "Authorization: Bearer <TOKEN>"
  */
-router.get("/dashboard", asyncHandler(statsController.getDashboardStats));
+router.get('/dashboard', asyncHandler(statsController.getDashboardStats));
 
 /**
  * Estatísticas de usuários
@@ -67,30 +67,30 @@ router.get("/dashboard", asyncHandler(statsController.getDashboardStats));
 /**
  * @openapi
  * /api/v1/usuarios/stats/usuarios:
-  *   get:
-  *     summary: Estatísticas de usuários
-  *     tags: [Usuários - Stats]
-  *     security:
-  *       - bearerAuth: []
-  *     parameters:
-  *       - in: query
-  *         name: periodo
-  *         schema:
-  *           type: string
-  *           example: 30d
-  *     responses:
-  *       200:
-  *         description: Estatísticas retornadas
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/UserStatsResponse'
-  *       500:
-  *         description: Erro ao obter estatísticas
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/ErrorResponse'
+ *   get:
+ *     summary: Estatísticas de usuários
+ *     tags: [Usuários - Stats]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: periodo
+ *         schema:
+ *           type: string
+ *           example: 30d
+ *     responses:
+ *       200:
+ *         description: Estatísticas retornadas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UserStatsResponse'
+ *       500:
+ *         description: Erro ao obter estatísticas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -98,6 +98,6 @@ router.get("/dashboard", asyncHandler(statsController.getDashboardStats));
  *           curl -X GET "http://localhost:3000/api/v1/usuarios/stats/usuarios" \\
  *            -H "Authorization: Bearer <TOKEN>"
  */
-router.get("/usuarios", asyncHandler(statsController.getUserStats));
+router.get('/usuarios', asyncHandler(statsController.getUserStats));
 
 export { router as statsRoutes };

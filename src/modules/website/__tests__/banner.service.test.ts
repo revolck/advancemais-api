@@ -1,16 +1,16 @@
-jest.mock("../../../config/prisma", () => ({
+jest.mock('../../../config/prisma', () => ({
   prisma: { $transaction: jest.fn() },
 }));
 
-import { bannerService } from "../services/banner.service";
-import { prisma } from "../../../config/prisma";
+import { bannerService } from '../services/banner.service';
+import { prisma } from '../../../config/prisma';
 
-describe("bannerService.reorder", () => {
-  it("reorders when moving to an occupied position", async () => {
+describe('bannerService.reorder', () => {
+  it('reorders when moving to an occupied position', async () => {
     const items = [
-      { id: "ord1", ordem: 1, banner: {} },
-      { id: "ord2", ordem: 2, banner: {} },
-      { id: "ord3", ordem: 3, banner: {} },
+      { id: 'ord1', ordem: 1, banner: {} },
+      { id: 'ord2', ordem: 2, banner: {} },
+      { id: 'ord3', ordem: 3, banner: {} },
     ];
 
     (prisma.$transaction as jest.Mock).mockImplementation(async (fn) => {
@@ -40,10 +40,9 @@ describe("bannerService.reorder", () => {
       return fn(tx);
     });
 
-    const result = await bannerService.reorder("ord1", 2);
+    const result = await bannerService.reorder('ord1', 2);
     expect(result.ordem).toBe(2);
-    expect(items.find((i) => i.id === "ord2")?.ordem).toBe(1);
-    expect(items.find((i) => i.id === "ord3")?.ordem).toBe(3);
+    expect(items.find((i) => i.id === 'ord2')?.ordem).toBe(1);
+    expect(items.find((i) => i.id === 'ord3')?.ordem).toBe(3);
   });
 });
-

@@ -1,13 +1,12 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from '@prisma/client';
 
 // Prefer an IPv4-compatible connection string if provided
 // This allows deployments in environments without IPv6 support
-let datasourceUrl =
-  process.env.DATABASE_POOL_URL || process.env.DATABASE_URL || "";
+let datasourceUrl = process.env.DATABASE_POOL_URL || process.env.DATABASE_URL || '';
 
 // Ensure pooling params if not present in connection string
-if (datasourceUrl && !datasourceUrl.includes("connection_limit")) {
-  const separator = datasourceUrl.includes("?") ? "&" : "?";
+if (datasourceUrl && !datasourceUrl.includes('connection_limit')) {
+  const separator = datasourceUrl.includes('?') ? '&' : '?';
   datasourceUrl += `${separator}pgbouncer=true&connection_limit=5`;
 }
 
@@ -21,23 +20,23 @@ const globalForPrisma = globalThis as unknown as {
 function createPrismaClient() {
   const client = new PrismaClient({
     datasourceUrl,
-    log: [{ emit: "event", level: "error" }],
+    log: [{ emit: 'event', level: 'error' }],
   });
-  if (process.env.NODE_ENV !== "test") {
+  if (process.env.NODE_ENV !== 'test') {
     client
       .$connect()
-      .then(() => console.log("✅ Prisma conectado"))
-      .catch((err) => console.error("❌ Erro ao conectar ao Prisma", err));
+      .then(() => console.log('✅ Prisma conectado'))
+      .catch((err) => console.error('❌ Erro ao conectar ao Prisma', err));
   }
 
-  client.$on("error", (e) => {
-    console.error("🔥 Prisma error", e);
+  client.$on('error', (e) => {
+    console.error('🔥 Prisma error', e);
   });
 
   return client;
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
-if (process.env.NODE_ENV !== "production") {
+if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;
 }

@@ -1,34 +1,29 @@
-import { Request, Response } from "express";
-import path from "path";
+import { Request, Response } from 'express';
+import path from 'path';
 
-import { supabase } from "@/config/supabase";
-import { conexaoForteService } from "@/modules/website/services/conexaoForte.service";
-import { respondWithCache } from "@/modules/website/utils/cache-response";
+import { supabase } from '@/config/supabase';
+import { conexaoForteService } from '@/modules/website/services/conexaoForte.service';
+import { respondWithCache } from '@/modules/website/utils/cache-response';
 
 function generateImageTitle(url: string): string {
   try {
     const pathname = new URL(url).pathname;
-    return path.basename(pathname).split(".")[0];
+    return path.basename(pathname).split('.')[0];
   } catch {
-    return "";
+    return '';
   }
 }
 
-async function uploadImage(
-  file: Express.Multer.File,
-  index: number
-): Promise<string> {
+async function uploadImage(file: Express.Multer.File, index: number): Promise<string> {
   const fileExt = path.extname(file.originalname);
   const fileName = `conexao-forte-${index}-${Date.now()}${fileExt}`;
   const { error } = await supabase.storage
-    .from("website")
+    .from('website')
     .upload(`conexao-forte/${fileName}`, file.buffer, {
       contentType: file.mimetype,
     });
   if (error) throw error;
-  const { data } = supabase.storage
-    .from("website")
-    .getPublicUrl(`conexao-forte/${fileName}`);
+  const { data } = supabase.storage.from('website').getPublicUrl(`conexao-forte/${fileName}`);
   return data.publicUrl;
 }
 
@@ -45,16 +40,14 @@ export class ConexaoForteController {
       const { id } = req.params;
       const item = await conexaoForteService.get(id);
       if (!item) {
-        return res
-          .status(404)
-          .json({ message: "ConexaoForte não encontrado" });
+        return res.status(404).json({ message: 'ConexaoForte não encontrado' });
       }
       const response = item;
 
       return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao buscar ConexaoForte",
+        message: 'Erro ao buscar ConexaoForte',
         error: error.message,
       });
     }
@@ -82,7 +75,7 @@ export class ConexaoForteController {
       res.status(201).json(item);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao criar ConexaoForte",
+        message: 'Erro ao criar ConexaoForte',
         error: error.message,
       });
     }
@@ -111,7 +104,7 @@ export class ConexaoForteController {
       res.json(item);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao atualizar ConexaoForte",
+        message: 'Erro ao atualizar ConexaoForte',
         error: error.message,
       });
     }
@@ -124,10 +117,9 @@ export class ConexaoForteController {
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao remover ConexaoForte",
+        message: 'Erro ao remover ConexaoForte',
         error: error.message,
       });
     }
   };
 }
-

@@ -1,7 +1,7 @@
-import { Router } from "express";
-import { publicCache } from "../../../middlewares/cache-control";
-import { supabaseAuthMiddleware } from "../../usuarios/auth";
-import { InformacoesGeraisController } from "../controllers/informacoes-gerais.controller";
+import { Router } from 'express';
+import { publicCache } from '../../../middlewares/cache-control';
+import { supabaseAuthMiddleware } from '../../usuarios/auth';
+import { InformacoesGeraisController } from '../controllers/informacoes-gerais.controller';
 
 const router = Router();
 
@@ -32,7 +32,7 @@ const router = Router();
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/informacoes-gerais"
  */
-router.get("/", publicCache, InformacoesGeraisController.list);
+router.get('/', publicCache, InformacoesGeraisController.list);
 
 /**
  * @openapi
@@ -71,7 +71,7 @@ router.get("/", publicCache, InformacoesGeraisController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/informacoes-gerais/{id}"
  */
-router.get("/:id", publicCache, InformacoesGeraisController.get);
+router.get('/:id', publicCache, InformacoesGeraisController.get);
 
 /**
  * @openapi
@@ -109,9 +109,9 @@ router.get("/:id", publicCache, InformacoesGeraisController.get);
  *            -d '{"endereco":"Rua A, 123","cep":"12345-678","cidade":"Cidade","estado":"ST","telefone1":"(11) 1234-5678","whatsapp":"(11) 91234-5678","email":"contato@example.com","horarios":[{"diaDaSemana":"segunda","horarioInicio":"08:00","horarioFim":"18:00"}]}'
  */
 router.post(
-  "/",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  InformacoesGeraisController.create
+  '/',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  InformacoesGeraisController.create,
 );
 
 /**
@@ -162,9 +162,9 @@ router.post(
  *            -d '{"telefone2":"(11) 9876-5432"}'
  */
 router.put(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  InformacoesGeraisController.update
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  InformacoesGeraisController.update,
 );
 
 /**
@@ -204,10 +204,9 @@ router.put(
  *            -H "Authorization: Bearer <TOKEN>"
  */
 router.delete(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  InformacoesGeraisController.remove
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  InformacoesGeraisController.remove,
 );
 
 export { router as informacoesGeraisRoutes };
-

@@ -1,13 +1,9 @@
-import { WebsiteSistema } from "@prisma/client";
-import { prisma } from "@/config/prisma";
-import {
-  getCache,
-  setCache,
-  invalidateCache,
-} from "@/utils/cache";
-import { WEBSITE_CACHE_TTL } from "@/modules/website/config";
+import { WebsiteSistema } from '@prisma/client';
+import { prisma } from '@/config/prisma';
+import { getCache, setCache, invalidateCache } from '@/utils/cache';
+import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
 
-const CACHE_KEY = "website:sistema:list";
+const CACHE_KEY = 'website:sistema:list';
 
 export const sistemaService = {
   list: async () => {
@@ -17,11 +13,8 @@ export const sistemaService = {
     await setCache(CACHE_KEY, result, WEBSITE_CACHE_TTL);
     return result;
   },
-  get: (id: string) =>
-    prisma.websiteSistema.findUnique({ where: { id } }),
-  create: async (
-    data: Omit<WebsiteSistema, "id" | "criadoEm" | "atualizadoEm">
-  ) => {
+  get: (id: string) => prisma.websiteSistema.findUnique({ where: { id } }),
+  create: async (data: Omit<WebsiteSistema, 'id' | 'criadoEm' | 'atualizadoEm'>) => {
     const result = await prisma.websiteSistema.create({ data });
     await invalidateCache(CACHE_KEY);
     return result;
@@ -37,4 +30,3 @@ export const sistemaService = {
     return result;
   },
 };
-

@@ -1,22 +1,22 @@
-import "./config/module-alias";
-import "./config/env";
+import './config/module-alias';
+import './config/env';
 
-import express from "express";
-import cors from "cors";
-import type { CorsOptions, CorsOptionsDelegate } from "cors";
-import helmet from "helmet";
-import cookieParser from "cookie-parser";
-import { compressionMiddleware } from "./middlewares/compression";
-import { rateLimitMiddleware } from "./middlewares/rate-limit";
-import { correlationIdMiddleware } from "./middlewares/correlation-id";
-import { serverConfig } from "./config/env";
-import { appRoutes } from "./routes";
-import { startExpiredUserCleanupJob } from "./modules/usuarios/services/user-cleanup-service";
-import { setupSwagger } from "./config/swagger";
-import { startKeepAlive } from "./utils/keep-alive";
-import { prisma } from "./config/prisma";
-import redis from "./config/redis";
-import { errorMiddleware } from "./middlewares/error";
+import express from 'express';
+import cors from 'cors';
+import type { CorsOptions, CorsOptionsDelegate } from 'cors';
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
+import { compressionMiddleware } from './middlewares/compression';
+import { rateLimitMiddleware } from './middlewares/rate-limit';
+import { correlationIdMiddleware } from './middlewares/correlation-id';
+import { serverConfig } from './config/env';
+import { appRoutes } from './routes';
+import { startExpiredUserCleanupJob } from './modules/usuarios/services/user-cleanup-service';
+import { setupSwagger } from './config/swagger';
+import { startKeepAlive } from './utils/keep-alive';
+import { prisma } from './config/prisma';
+import redis from './config/redis';
+import { errorMiddleware } from './middlewares/error';
 
 /**
  * Aplicação principal - Advance+ API
@@ -27,7 +27,7 @@ import { errorMiddleware } from "./middlewares/error";
 
 const app = express();
 
-app.set("trust proxy", 1);
+app.set('trust proxy', 1);
 
 // =============================================
 // MIDDLEWARES GLOBAIS
@@ -38,11 +38,8 @@ app.set("trust proxy", 1);
  * Permite requisições do frontend configurado
  * e sempre aceita requisições do mesmo domínio do servidor
  */
-const corsOptionsDelegate: CorsOptionsDelegate<express.Request> = (
-  req,
-  callback
-) => {
-  const origin = req.header("Origin");
+const corsOptionsDelegate: CorsOptionsDelegate<express.Request> = (req, callback) => {
+  const origin = req.header('Origin');
   const allowedOrigins = Array.isArray(serverConfig.corsOrigin)
     ? serverConfig.corsOrigin
     : [serverConfig.corsOrigin];
@@ -55,8 +52,8 @@ const corsOptionsDelegate: CorsOptionsDelegate<express.Request> = (
     const corsOptions: CorsOptions = {
       origin: true,
       credentials: true,
-      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
-      allowedHeaders: ["Authorization", "Content-Type", "X-Requested-With"],
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'],
+      allowedHeaders: ['Authorization', 'Content-Type', 'X-Requested-With'],
       optionsSuccessStatus: 204,
     };
     return callback(null, corsOptions);
@@ -67,7 +64,7 @@ const corsOptionsDelegate: CorsOptionsDelegate<express.Request> = (
 };
 
 app.use(cors(corsOptionsDelegate));
-app.options("*", cors(corsOptionsDelegate));
+app.options('*', cors(corsOptionsDelegate));
 
 /**
  * Middleware de segurança Helmet
@@ -81,22 +78,22 @@ app.use(
         scriptSrc: [
           "'self'",
           "'unsafe-inline'",
-          "https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js",
+          'https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js',
         ],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        imgSrc: ["'self'", "data:", "https:"],
-        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
-        workerSrc: ["'self'", "blob:"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        imgSrc: ["'self'", 'data:', 'https:'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+        workerSrc: ["'self'", 'blob:'],
       },
     },
-  })
+  }),
 );
 
 /**
  * Parser de JSON com limite configurável
  * Aceita payloads de até 10MB
  */
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: '10mb' }));
 
 /**
  * Parser de dados URL-encoded
@@ -131,24 +128,24 @@ setupSwagger(app);
  * Inclui automaticamente: usuários, brevo, health checks
  */
 try {
-  app.use("/", appRoutes);
-  console.log("✅ Router principal carregado com sucesso");
+  app.use('/', appRoutes);
+  console.log('✅ Router principal carregado com sucesso');
   startExpiredUserCleanupJob();
 } catch (error) {
-  console.error("❌ Erro crítico ao carregar router principal:", error);
+  console.error('❌ Erro crítico ao carregar router principal:', error);
 
   // Fallback mínimo em caso de erro crítico
-  app.get("/", (req, res) => {
+  app.get('/', (req, res) => {
     res.status(503).json({
-      message: "API temporariamente indisponível",
-      error: "Falha na inicialização do router principal",
+      message: 'API temporariamente indisponível',
+      error: 'Falha na inicialização do router principal',
     });
   });
 
-  app.get("/health", (req, res) => {
+  app.get('/health', (req, res) => {
     res.status(503).json({
-      status: "UNHEALTHY",
-      error: "Router principal não carregado",
+      status: 'UNHEALTHY',
+      error: 'Router principal não carregado',
     });
   });
 }
@@ -161,9 +158,9 @@ try {
  * Catch-all para rotas não encontradas
  * Deve ser registrado após todas as outras rotas
  */
-app.all("*", (req, res) => {
+app.all('*', (req, res) => {
   res.status(404).json({
-    message: "Rota não encontrada",
+    message: 'Rota não encontrada',
     path: req.originalUrl,
     method: req.method,
     timestamp: new Date().toISOString(),
@@ -185,43 +182,33 @@ app.use(errorMiddleware);
  */
 const server = app.listen(serverConfig.port, async () => {
   console.clear();
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log("🚀 Advance+ API - Servidor Iniciado");
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('🚀 Advance+ API - Servidor Iniciado');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(`📍 URL Base: http://localhost:${serverConfig.port}`);
   console.log(`🌍 Ambiente: ${serverConfig.nodeEnv}`);
-  console.log(`⏰ Iniciado em: ${new Date().toLocaleString("pt-BR")}`);
+  console.log(`⏰ Iniciado em: ${new Date().toLocaleString('pt-BR')}`);
   if (process.env.REDIS_URL) {
     try {
       await redis.ping();
-      console.log("🧠 Redis: ✅ conectado");
+      console.log('🧠 Redis: ✅ conectado');
     } catch {
-      console.log("🧠 Redis: ❌ indisponível");
+      console.log('🧠 Redis: ❌ indisponível');
     }
   } else {
-    console.log("🧠 Redis: ⚠️ não configurado");
+    console.log('🧠 Redis: ⚠️ não configurado');
   }
-  console.log("");
-  console.log("📋 Endpoints Principais:");
-  console.log(
-    `   💚 Health Check: http://localhost:${serverConfig.port}/health`
-  );
-  console.log(
-    `   👥 Usuários: http://localhost:${serverConfig.port}/api/v1/usuarios`
-  );
-  console.log(
-    `   📧 Brevo: http://localhost:${serverConfig.port}/api/v1/brevo`
-  );
-  console.log(
-    `   🌐 Website: http://localhost:${serverConfig.port}/api/v1/website`
-  );
-  console.log("");
-  console.log("🧪 Testes Rápidos:");
+  console.log('');
+  console.log('📋 Endpoints Principais:');
+  console.log(`   💚 Health Check: http://localhost:${serverConfig.port}/health`);
+  console.log(`   👥 Usuários: http://localhost:${serverConfig.port}/api/v1/usuarios`);
+  console.log(`   📧 Brevo: http://localhost:${serverConfig.port}/api/v1/brevo`);
+  console.log(`   🌐 Website: http://localhost:${serverConfig.port}/api/v1/website`);
+  console.log('');
+  console.log('🧪 Testes Rápidos:');
   console.log(`   curl http://localhost:${serverConfig.port}/health`);
-  console.log(
-    `   curl http://localhost:${serverConfig.port}/api/v1/brevo/health`
-  );
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log(`   curl http://localhost:${serverConfig.port}/api/v1/brevo/health`);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   // Inicia keep-alive para evitar hibernação da instância
   startKeepAlive();
@@ -234,16 +221,16 @@ const server = app.listen(serverConfig.port, async () => {
 /**
  * Graceful shutdown em caso de SIGTERM (Docker, PM2, etc.)
  */
-process.on("SIGTERM", async () => {
-  console.log("🔄 SIGTERM recebido, encerrando servidor graciosamente...");
+process.on('SIGTERM', async () => {
+  console.log('🔄 SIGTERM recebido, encerrando servidor graciosamente...');
   try {
     await prisma.$disconnect();
-    console.log("🔌 Prisma desconectado");
+    console.log('🔌 Prisma desconectado');
   } catch (err) {
-    console.error("Erro ao desconectar Prisma", err);
+    console.error('Erro ao desconectar Prisma', err);
   }
   server.close(() => {
-    console.log("✅ Servidor encerrado com sucesso");
+    console.log('✅ Servidor encerrado com sucesso');
     process.exit(0);
   });
 });
@@ -251,16 +238,16 @@ process.on("SIGTERM", async () => {
 /**
  * Graceful shutdown em caso de SIGINT (Ctrl+C)
  */
-process.on("SIGINT", async () => {
-  console.log("\n🔄 SIGINT recebido, encerrando servidor graciosamente...");
+process.on('SIGINT', async () => {
+  console.log('\n🔄 SIGINT recebido, encerrando servidor graciosamente...');
   try {
     await prisma.$disconnect();
-    console.log("🔌 Prisma desconectado");
+    console.log('🔌 Prisma desconectado');
   } catch (err) {
-    console.error("Erro ao desconectar Prisma", err);
+    console.error('Erro ao desconectar Prisma', err);
   }
   server.close(() => {
-    console.log("✅ Servidor encerrado com sucesso");
+    console.log('✅ Servidor encerrado com sucesso');
     process.exit(0);
   });
 });

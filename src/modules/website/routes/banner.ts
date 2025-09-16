@@ -1,8 +1,8 @@
-import { Router } from "express";
-import { publicCache } from "../../../middlewares/cache-control";
-import multer from "multer";
-import { supabaseAuthMiddleware } from "../../usuarios/auth";
-import { BannerController } from "../controllers/banner.controller";
+import { Router } from 'express';
+import { publicCache } from '../../../middlewares/cache-control';
+import multer from 'multer';
+import { supabaseAuthMiddleware } from '../../usuarios/auth';
+import { BannerController } from '../controllers/banner.controller';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -34,7 +34,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/banner"
  */
-router.get("/", publicCache, BannerController.list);
+router.get('/', publicCache, BannerController.list);
 
 /**
  * @openapi
@@ -74,7 +74,7 @@ router.get("/", publicCache, BannerController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/banner/{ordemId}"
  */
-router.get("/:id", publicCache, BannerController.get);
+router.get('/:id', publicCache, BannerController.get);
 
 /**
  * @openapi
@@ -114,10 +114,10 @@ router.get("/:id", publicCache, BannerController.get);
  *            -F "status=true"
  */
 router.post(
-  "/",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  upload.single("imagem"),
-  BannerController.create
+  '/',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  upload.single('imagem'),
+  BannerController.create,
 );
 
 /**
@@ -171,10 +171,10 @@ router.post(
  *            -F "ordem=2"
  */
 router.put(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  upload.single("imagem"),
-  BannerController.update
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  upload.single('imagem'),
+  BannerController.update,
 );
 
 /**
@@ -228,9 +228,9 @@ router.put(
  *            -d '{"ordem":2}'
  */
 router.put(
-  "/:id/reorder",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  BannerController.reorder
+  '/:id/reorder',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  BannerController.reorder,
 );
 
 /**
@@ -269,10 +269,6 @@ router.put(
  *           curl -X DELETE "http://localhost:3000/api/v1/website/banner/{bannerId}" \\
  *            -H "Authorization: Bearer <TOKEN>"
  */
-router.delete(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  BannerController.remove
-);
+router.delete('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), BannerController.remove);
 
 export { router as bannerRoutes };

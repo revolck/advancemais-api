@@ -1,20 +1,16 @@
-import { WebsiteStatus } from "@prisma/client";
-import { prisma } from "@/config/prisma";
-import {
-  getCache,
-  setCache,
-  invalidateCache,
-} from "@/utils/cache";
-import { WEBSITE_CACHE_TTL } from "@/modules/website/config";
+import { WebsiteStatus } from '@prisma/client';
+import { prisma } from '@/config/prisma';
+import { getCache, setCache, invalidateCache } from '@/utils/cache';
+import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
 
-const CACHE_KEY = "website:depoimentos:list";
+const CACHE_KEY = 'website:depoimentos:list';
 
 export const depoimentosService = {
   list: async (status?: WebsiteStatus) => {
     if (status) {
       return prisma.websiteDepoimentoOrdem.findMany({
         where: { status },
-        orderBy: { ordem: "asc" },
+        orderBy: { ordem: 'asc' },
         take: 100,
         select: {
           id: true,
@@ -32,12 +28,11 @@ export const depoimentosService = {
         },
       });
     }
-    const cached = await getCache<
-      Awaited<ReturnType<typeof prisma.websiteDepoimentoOrdem.findMany>>
-    >(CACHE_KEY);
+    const cached =
+      await getCache<Awaited<ReturnType<typeof prisma.websiteDepoimentoOrdem.findMany>>>(CACHE_KEY);
     if (cached) return cached;
     const result = await prisma.websiteDepoimentoOrdem.findMany({
-      orderBy: { ordem: "asc" },
+      orderBy: { ordem: 'asc' },
       take: 100,
       select: {
         id: true,
@@ -89,7 +84,7 @@ export const depoimentosService = {
     const result = await prisma.websiteDepoimentoOrdem.create({
       data: {
         ordem,
-        status: data.status ?? "RASCUNHO",
+        status: data.status ?? 'RASCUNHO',
         depoimento: {
           create: {
             depoimento: data.depoimento,
@@ -126,13 +121,13 @@ export const depoimentosService = {
       fotoUrl?: string;
       status?: WebsiteStatus;
       ordem?: number;
-    }
+    },
   ) => {
     const result = await prisma.$transaction(async (tx) => {
       const current = await tx.websiteDepoimentoOrdem.findUnique({
         where: { websiteDepoimentoId: depoimentoId },
       });
-      if (!current) throw new Error("Depoimento não encontrado");
+      if (!current) throw new Error('Depoimento não encontrado');
 
       let ordem = data.ordem ?? current.ordem;
       if (data.ordem !== undefined && data.ordem !== current.ordem) {
@@ -210,7 +205,7 @@ export const depoimentosService = {
           },
         },
       });
-      if (!current) throw new Error("Depoimento não encontrado");
+      if (!current) throw new Error('Depoimento não encontrado');
 
       if (novaOrdem !== current.ordem) {
         await tx.websiteDepoimentoOrdem.update({
@@ -271,4 +266,3 @@ export const depoimentosService = {
     await invalidateCache(CACHE_KEY);
   },
 };
-

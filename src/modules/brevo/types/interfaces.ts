@@ -36,7 +36,7 @@ export interface BrevoConfiguration {
  * Status de health check
  */
 export interface HealthStatus {
-  status: "healthy" | "degraded" | "unhealthy";
+  status: 'healthy' | 'degraded' | 'unhealthy';
   timestamp: string;
   module: string;
   configured: boolean;
@@ -88,26 +88,26 @@ export interface SMSResult {
  * Enums para tipos de email
  */
 export enum EmailType {
-  WELCOME = "BOAS_VINDAS",
-  PASSWORD_RECOVERY = "RECUPERACAO_SENHA",
-  VERIFICATION = "VERIFICACAO_EMAIL",
-  NOTIFICATION = "NOTIFICACAO_SISTEMA",
+  WELCOME = 'BOAS_VINDAS',
+  PASSWORD_RECOVERY = 'RECUPERACAO_SENHA',
+  VERIFICATION = 'VERIFICACAO_EMAIL',
+  NOTIFICATION = 'NOTIFICACAO_SISTEMA',
 }
 
 /**
  * Enums para status de envio
  */
 export enum SendStatus {
-  SENT = "ENVIADO",
-  FAILED = "FALHA",
-  PENDING = "PENDENTE",
+  SENT = 'ENVIADO',
+  FAILED = 'FALHA',
+  PENDING = 'PENDENTE',
 }
 
 /**
  * Enums para tipos de SMS
  */
 export enum SMSType {
-  VERIFICATION = "VERIFICACAO",
-  NOTIFICATION = "NOTIFICACAO",
-  MARKETING = "MARKETING",
+  VERIFICATION = 'VERIFICACAO',
+  NOTIFICATION = 'NOTIFICACAO',
+  MARKETING = 'MARKETING',
 }

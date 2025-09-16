@@ -1,18 +1,17 @@
-import { Request, Response } from "express";
-import path from "path";
+import { Request, Response } from 'express';
+import path from 'path';
 
-import { sobreService } from "@/modules/website/services/sobre.service";
-import { respondWithCache } from "@/modules/website/utils/cache-response";
+import { sobreService } from '@/modules/website/services/sobre.service';
+import { respondWithCache } from '@/modules/website/utils/cache-response';
 
 function generateImageTitle(url: string): string {
   try {
     const pathname = new URL(url).pathname;
-    return path.basename(pathname).split(".")[0];
+    return path.basename(pathname).split('.')[0];
   } catch {
-    return "";
+    return '';
   }
 }
-
 
 export class SobreController {
   static list = async (req: Request, res: Response) => {
@@ -27,15 +26,13 @@ export class SobreController {
       const { id } = req.params;
       const sobre = await sobreService.get(id);
       if (!sobre) {
-        return res.status(404).json({ message: "Sobre não encontrado" });
+        return res.status(404).json({ message: 'Sobre não encontrado' });
       }
       const response = sobre;
 
       return respondWithCache(req, res, response);
     } catch (error: any) {
-      res
-        .status(500)
-        .json({ message: "Erro ao buscar sobre", error: error.message });
+      res.status(500).json({ message: 'Erro ao buscar sobre', error: error.message });
     }
   };
 
@@ -43,18 +40,17 @@ export class SobreController {
     try {
       const { titulo, descricao } = req.body;
       const imagemUrlRaw = req.body.imagemUrl;
-      const imagemUrl =
-        typeof imagemUrlRaw === "string" ? imagemUrlRaw.trim() : undefined;
-      const imagemTitulo = imagemUrl ? generateImageTitle(imagemUrl) : "";
+      const imagemUrl = typeof imagemUrlRaw === 'string' ? imagemUrlRaw.trim() : undefined;
+      const imagemTitulo = imagemUrl ? generateImageTitle(imagemUrl) : '';
       const sobre = await sobreService.create({
-        imagemUrl: imagemUrl ?? "",
+        imagemUrl: imagemUrl ?? '',
         imagemTitulo,
         titulo,
         descricao,
       });
       res.status(201).json(sobre);
     } catch (error: any) {
-      res.status(500).json({ message: "Erro ao criar sobre", error: error.message });
+      res.status(500).json({ message: 'Erro ao criar sobre', error: error.message });
     }
   };
 
@@ -63,8 +59,7 @@ export class SobreController {
       const { id } = req.params;
       const { titulo, descricao } = req.body;
       const imagemUrlRaw = req.body.imagemUrl;
-      const imagemUrl =
-        typeof imagemUrlRaw === "string" ? imagemUrlRaw.trim() : undefined;
+      const imagemUrl = typeof imagemUrlRaw === 'string' ? imagemUrlRaw.trim() : undefined;
       const data: any = {};
       if (titulo !== undefined) data.titulo = titulo;
       if (descricao !== undefined) data.descricao = descricao;
@@ -75,7 +70,7 @@ export class SobreController {
       const sobre = await sobreService.update(id, data);
       res.json(sobre);
     } catch (error: any) {
-      res.status(500).json({ message: "Erro ao atualizar sobre", error: error.message });
+      res.status(500).json({ message: 'Erro ao atualizar sobre', error: error.message });
     }
   };
 
@@ -85,7 +80,7 @@ export class SobreController {
       await sobreService.remove(id);
       res.status(204).send();
     } catch (error: any) {
-      res.status(500).json({ message: "Erro ao remover sobre", error: error.message });
+      res.status(500).json({ message: 'Erro ao remover sobre', error: error.message });
     }
   };
 }

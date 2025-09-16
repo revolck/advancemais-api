@@ -1,7 +1,7 @@
-import { Request, Response } from "express";
+import { Request, Response } from 'express';
 
-import { treinamentosInCompanyService } from "@/modules/website/services/treinamentosInCompany.service";
-import { respondWithCache } from "@/modules/website/utils/cache-response";
+import { treinamentosInCompanyService } from '@/modules/website/services/treinamentosInCompany.service';
+import { respondWithCache } from '@/modules/website/utils/cache-response';
 
 export class TreinamentosInCompanyController {
   static list = async (req: Request, res: Response) => {
@@ -16,16 +16,14 @@ export class TreinamentosInCompanyController {
       const { id } = req.params;
       const item = await treinamentosInCompanyService.get(id);
       if (!item) {
-        return res
-          .status(404)
-          .json({ message: "TreinamentosInCompany não encontrado" });
+        return res.status(404).json({ message: 'TreinamentosInCompany não encontrado' });
       }
       const response = item;
 
       return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao buscar TreinamentosInCompany",
+        message: 'Erro ao buscar TreinamentosInCompany',
         error: error.message,
       });
     }
@@ -63,7 +61,7 @@ export class TreinamentosInCompanyController {
       res.status(201).json(item);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao criar TreinamentosInCompany",
+        message: 'Erro ao criar TreinamentosInCompany',
         error: error.message,
       });
     }
@@ -102,7 +100,7 @@ export class TreinamentosInCompanyController {
       res.json(item);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao atualizar TreinamentosInCompany",
+        message: 'Erro ao atualizar TreinamentosInCompany',
         error: error.message,
       });
     }
@@ -115,10 +113,9 @@ export class TreinamentosInCompanyController {
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao remover TreinamentosInCompany",
+        message: 'Erro ao remover TreinamentosInCompany',
         error: error.message,
       });
     }
   };
 }
-

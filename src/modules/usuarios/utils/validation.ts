@@ -8,7 +8,7 @@
  * @returns boolean
  */
 export const validarCPF = (cpf: string): boolean => {
-  const cpfLimpo = cpf.replace(/\D/g, "");
+  const cpfLimpo = cpf.replace(/\D/g, '');
   return cpfLimpo.length === 11;
 };
 
@@ -18,7 +18,7 @@ export const validarCPF = (cpf: string): boolean => {
  * @returns boolean
  */
 export const validarCNPJ = (cnpj: string): boolean => {
-  const cnpjLimpo = cnpj.replace(/\D/g, "");
+  const cnpjLimpo = cnpj.replace(/\D/g, '');
   return cnpjLimpo.length === 14;
 };
 
@@ -37,29 +37,27 @@ export const validarEmail = (email: string): boolean => {
  * @param senha - Senha para validar
  * @returns object com resultado e mensagens
  */
-export const validarSenha = (
-  senha: string
-): { valida: boolean; mensagens: string[] } => {
+export const validarSenha = (senha: string): { valida: boolean; mensagens: string[] } => {
   const mensagens: string[] = [];
 
   if (senha.length < 8) {
-    mensagens.push("Senha deve ter pelo menos 8 caracteres");
+    mensagens.push('Senha deve ter pelo menos 8 caracteres');
   }
 
   if (!/[A-Z]/.test(senha)) {
-    mensagens.push("Senha deve conter pelo menos uma letra maiúscula");
+    mensagens.push('Senha deve conter pelo menos uma letra maiúscula');
   }
 
   if (!/[a-z]/.test(senha)) {
-    mensagens.push("Senha deve conter pelo menos uma letra minúscula");
+    mensagens.push('Senha deve conter pelo menos uma letra minúscula');
   }
 
   if (!/\d/.test(senha)) {
-    mensagens.push("Senha deve conter pelo menos um número");
+    mensagens.push('Senha deve conter pelo menos um número');
   }
 
   if (!/[!@#$%^&*(),.?":{}|<>]/.test(senha)) {
-    mensagens.push("Senha deve conter pelo menos um caractere especial");
+    mensagens.push('Senha deve conter pelo menos um caractere especial');
   }
 
   return {
@@ -74,10 +72,7 @@ export const validarSenha = (
  * @param confirmarSenha - Confirmação da senha
  * @returns boolean
  */
-export const validarConfirmacaoSenha = (
-  senha: string,
-  confirmarSenha: string
-): boolean => {
+export const validarConfirmacaoSenha = (senha: string, confirmarSenha: string): boolean => {
   return senha === confirmarSenha;
 };
 
@@ -87,7 +82,7 @@ export const validarConfirmacaoSenha = (
  * @returns string apenas com números
  */
 export const limparDocumento = (documento: string): string => {
-  return documento.replace(/\D/g, "");
+  return documento.replace(/\D/g, '');
 };
 
 /**
@@ -96,7 +91,7 @@ export const limparDocumento = (documento: string): string => {
  * @returns boolean
  */
 export const validarTelefone = (telefone: string): boolean => {
-  const telefoneLimpo = telefone.replace(/\D/g, "");
+  const telefoneLimpo = telefone.replace(/\D/g, '');
   // Aceita telefones com 10 ou 11 dígitos (DDD + número)
   return telefoneLimpo.length >= 10 && telefoneLimpo.length <= 11;
 };
@@ -106,21 +101,19 @@ export const validarTelefone = (telefone: string): boolean => {
  * @param dataNasc - Data de nascimento
  * @returns object com resultado e mensagem
  */
-export const validarDataNascimento = (
-  dataNasc: string
-): { valida: boolean; mensagem?: string } => {
+export const validarDataNascimento = (dataNasc: string): { valida: boolean; mensagem?: string } => {
   const data = new Date(dataNasc);
 
   // Verifica se a data é válida
   if (isNaN(data.getTime())) {
-    return { valida: false, mensagem: "Data de nascimento inválida" };
+    return { valida: false, mensagem: 'Data de nascimento inválida' };
   }
 
   // Verifica se a data não é futura
   if (data > new Date()) {
     return {
       valida: false,
-      mensagem: "Data de nascimento não pode ser futura",
+      mensagem: 'Data de nascimento não pode ser futura',
     };
   }
 
@@ -138,7 +131,7 @@ export const validarDataNascimento = (
   }
 
   if (idadeReal < 16) {
-    return { valida: false, mensagem: "Idade mínima de 16 anos" };
+    return { valida: false, mensagem: 'Idade mínima de 16 anos' };
   }
 
   return { valida: true };
@@ -150,6 +143,6 @@ export const validarDataNascimento = (
  * @returns boolean
  */
 export const validarGenero = (genero: string): boolean => {
-  const generosValidos = ["MASCULINO", "FEMININO", "OUTRO", "NAO_INFORMAR"];
+  const generosValidos = ['MASCULINO', 'FEMININO', 'OUTRO', 'NAO_INFORMAR'];
   return generosValidos.includes(genero.toUpperCase());
 };

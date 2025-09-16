@@ -1,5 +1,5 @@
-import * as Brevo from "@getbrevo/brevo";
-import { BrevoConfigManager, BrevoConfiguration } from "../config/brevo-config";
+import * as Brevo from '@getbrevo/brevo';
+import { BrevoConfigManager, BrevoConfiguration } from '../config/brevo-config';
 
 /**
  * Cliente Brevo simplificado e robusto
@@ -37,29 +37,17 @@ export class BrevoClient {
         this.accountAPI = new Brevo.AccountApi();
 
         // Configura API key
-        this.emailAPI.setApiKey(
-          Brevo.TransactionalEmailsApiApiKeys.apiKey,
-          this.config.apiKey
-        );
-        this.smsAPI.setApiKey(
-          Brevo.TransactionalSMSApiApiKeys.apiKey,
-          this.config.apiKey
-        );
-        this.accountAPI.setApiKey(
-          Brevo.AccountApiApiKeys.apiKey,
-          this.config.apiKey
-        );
+        this.emailAPI.setApiKey(Brevo.TransactionalEmailsApiApiKeys.apiKey, this.config.apiKey);
+        this.smsAPI.setApiKey(Brevo.TransactionalSMSApiApiKeys.apiKey, this.config.apiKey);
+        this.accountAPI.setApiKey(Brevo.AccountApiApiKeys.apiKey, this.config.apiKey);
 
         this.operational = true;
-        console.log(
-          "✅ Brevo Client configurado para ambiente:",
-          this.config.environment
-        );
+        console.log('✅ Brevo Client configurado para ambiente:', this.config.environment);
       } else {
-        console.log("ℹ️ Brevo Client em modo simulado (API não configurada)");
+        console.log('ℹ️ Brevo Client em modo simulado (API não configurada)');
       }
     } catch (error) {
-      console.error("❌ Erro ao inicializar Brevo Client:", error);
+      console.error('❌ Erro ao inicializar Brevo Client:', error);
       this.operational = false;
     }
   }
@@ -121,7 +109,7 @@ export class BrevoClient {
       }
       return false;
     } catch (error) {
-      console.warn("⚠️ Brevo health check falhou:", error);
+      console.warn('⚠️ Brevo health check falhou:', error);
       return false;
     }
   }
@@ -143,7 +131,7 @@ export class BrevoClient {
   }> {
     // Modo simulado
     if (this.isSimulated()) {
-      console.log("🎭 Email simulado enviado:", {
+      console.log('🎭 Email simulado enviado:', {
         to: emailData.to,
         subject: emailData.subject,
       });
@@ -157,7 +145,7 @@ export class BrevoClient {
     // Envio real
     try {
       if (!this.emailAPI) {
-        throw new Error("API de email não inicializada");
+        throw new Error('API de email não inicializada');
       }
 
       const sendSmtpEmail = new Brevo.SendSmtpEmail();
@@ -173,7 +161,7 @@ export class BrevoClient {
       const response = await this.emailAPI.sendTransacEmail(sendSmtpEmail);
       const messageId = this.extractMessageId(response);
 
-      console.log("✅ Email enviado via Brevo:", {
+      console.log('✅ Email enviado via Brevo:', {
         to: emailData.to,
         messageId,
       });
@@ -183,15 +171,15 @@ export class BrevoClient {
         messageId,
       };
     } catch (error) {
-      console.error("❌ Erro no envio via Brevo:", error);
+      console.error('❌ Erro no envio via Brevo:', error);
 
       // Fallback para simulação em caso de erro
-      console.log("🎭 Fallback para modo simulado");
+      console.log('🎭 Fallback para modo simulado');
       return {
         success: true,
         messageId: `fallback_${Date.now()}`,
         simulated: true,
-        error: error instanceof Error ? error.message : "Erro desconhecido",
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
       };
     }
   }
@@ -199,11 +187,7 @@ export class BrevoClient {
   /**
    * Envia SMS transacional
    */
-  public async sendSMS(smsData: {
-    to: string;
-    message: string;
-    sender?: string;
-  }): Promise<{
+  public async sendSMS(smsData: { to: string; message: string; sender?: string }): Promise<{
     success: boolean;
     messageId?: string;
     error?: string;
@@ -211,7 +195,7 @@ export class BrevoClient {
   }> {
     // Modo simulado
     if (this.isSimulated()) {
-      console.log("🎭 SMS simulado enviado:", {
+      console.log('🎭 SMS simulado enviado:', {
         to: smsData.to,
         message: smsData.message,
       });
@@ -225,20 +209,20 @@ export class BrevoClient {
     // Envio real
     try {
       if (!this.smsAPI) {
-        throw new Error("API de SMS não inicializada");
+        throw new Error('API de SMS não inicializada');
       }
 
       const sendSmsRequest = new Brevo.SendTransacSms();
       sendSmsRequest.type = Brevo.SendTransacSms.TypeEnum.Transactional;
       sendSmsRequest.unicodeEnabled = false;
-      sendSmsRequest.sender = smsData.sender || "Advance+";
+      sendSmsRequest.sender = smsData.sender || 'Advance+';
       sendSmsRequest.recipient = smsData.to;
       sendSmsRequest.content = smsData.message;
 
       const response = await this.smsAPI.sendTransacSms(sendSmsRequest);
       const messageId = this.extractMessageId(response);
 
-      console.log("✅ SMS enviado via Brevo:", {
+      console.log('✅ SMS enviado via Brevo:', {
         to: smsData.to,
         messageId,
       });
@@ -248,15 +232,15 @@ export class BrevoClient {
         messageId,
       };
     } catch (error) {
-      console.error("❌ Erro no envio de SMS via Brevo:", error);
+      console.error('❌ Erro no envio de SMS via Brevo:', error);
 
       // Fallback para simulação
-      console.log("🎭 Fallback SMS para modo simulado");
+      console.log('🎭 Fallback SMS para modo simulado');
       return {
         success: true,
         messageId: `sms_fallback_${Date.now()}`,
         simulated: true,
-        error: error instanceof Error ? error.message : "Erro na API de SMS",
+        error: error instanceof Error ? error.message : 'Erro na API de SMS',
       };
     }
   }

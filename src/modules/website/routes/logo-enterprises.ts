@@ -1,8 +1,8 @@
-import { Router } from "express";
-import { publicCache } from "../../../middlewares/cache-control";
-import multer from "multer";
-import { supabaseAuthMiddleware } from "../../usuarios/auth";
-import { LogoEnterpriseController } from "../controllers/logoEnterprise.controller";
+import { Router } from 'express';
+import { publicCache } from '../../../middlewares/cache-control';
+import multer from 'multer';
+import { supabaseAuthMiddleware } from '../../usuarios/auth';
+import { LogoEnterpriseController } from '../controllers/logoEnterprise.controller';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -34,7 +34,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/logo-enterprises"
  */
-router.get("/", publicCache, LogoEnterpriseController.list);
+router.get('/', publicCache, LogoEnterpriseController.list);
 
 /**
  * @openapi
@@ -74,7 +74,7 @@ router.get("/", publicCache, LogoEnterpriseController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/logo-enterprises/{id}"
  */
-router.get("/:id", publicCache, LogoEnterpriseController.get);
+router.get('/:id', publicCache, LogoEnterpriseController.get);
 
 /**
  * @openapi
@@ -114,12 +114,12 @@ router.get("/:id", publicCache, LogoEnterpriseController.get);
  *            -F "nome=Minha Empresa" \\
  *            -F "website=https://empresa.com" \\
  *            -F "status=true"
-*/
+ */
 router.post(
-  "/",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  upload.single("imagem"),
-  LogoEnterpriseController.create
+  '/',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  upload.single('imagem'),
+  LogoEnterpriseController.create,
 );
 
 /**
@@ -173,12 +173,12 @@ router.post(
  *            -F "website=https://empresa.com" \\
  *            -F "status=false" \\
  *            -F "ordem=2"
-*/
+ */
 router.put(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  upload.single("imagem"),
-  LogoEnterpriseController.update
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  upload.single('imagem'),
+  LogoEnterpriseController.update,
 );
 
 /**
@@ -232,9 +232,9 @@ router.put(
  *            -d '{"ordem":2}'
  */
 router.put(
-  "/:id/reorder",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  LogoEnterpriseController.reorder
+  '/:id/reorder',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  LogoEnterpriseController.reorder,
 );
 
 /**
@@ -273,11 +273,11 @@ router.put(
  *         source: |
  *           curl -X DELETE "http://localhost:3000/api/v1/website/logo-enterprises/{id}" \\
  *            -H "Authorization: Bearer <TOKEN>"
-*/
+ */
 router.delete(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  LogoEnterpriseController.remove
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  LogoEnterpriseController.remove,
 );
 
 export { router as logoEnterpriseRoutes };

@@ -1,7 +1,7 @@
-import { Router } from "express";
-import { publicCache } from "../../../middlewares/cache-control";
-import { supabaseAuthMiddleware } from "../../usuarios/auth";
-import { SistemaController } from "../controllers/sistema.controller";
+import { Router } from 'express';
+import { publicCache } from '../../../middlewares/cache-control';
+import { supabaseAuthMiddleware } from '../../usuarios/auth';
+import { SistemaController } from '../controllers/sistema.controller';
 
 const router = Router();
 
@@ -32,7 +32,7 @@ const router = Router();
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/sistema"
  */
-router.get("/", publicCache, SistemaController.list);
+router.get('/', publicCache, SistemaController.list);
 
 /**
  * @openapi
@@ -71,7 +71,7 @@ router.get("/", publicCache, SistemaController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/sistema/{id}"
  */
-router.get("/:id", publicCache, SistemaController.get);
+router.get('/:id', publicCache, SistemaController.get);
 
 /**
  * @openapi
@@ -109,11 +109,7 @@ router.get("/:id", publicCache, SistemaController.get);
  *            -H "Content-Type: application/json" \
  *            -d '{"titulo":"T","descricao":"D","subtitulo":"S","etapa1Titulo":"E1","etapa1Descricao":"D1","etapa2Titulo":"E2","etapa2Descricao":"D2","etapa3Titulo":"E3","etapa3Descricao":"D3"}'
  */
-router.post(
-  "/",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  SistemaController.create
-);
+router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), SistemaController.create);
 
 /**
  * @openapi
@@ -163,11 +159,7 @@ router.post(
  *            -H "Content-Type: application/json" \
  *            -d '{"titulo":"Atual"}'
  */
-router.put(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  SistemaController.update
-);
+router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), SistemaController.update);
 
 /**
  * @openapi
@@ -205,11 +197,6 @@ router.put(
  *           curl -X DELETE "http://localhost:3000/api/v1/website/sistema/{id}" \
  *            -H "Authorization: Bearer <TOKEN>"
  */
-router.delete(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  SistemaController.remove
-);
+router.delete('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), SistemaController.remove);
 
 export { router as sistemaRoutes };
-

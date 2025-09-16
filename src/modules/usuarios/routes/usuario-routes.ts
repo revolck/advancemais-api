@@ -1,15 +1,10 @@
-import { Router } from "express";
-import { criarUsuario } from "../register";
-import {
-  loginUsuario,
-  logoutUsuario,
-  refreshToken,
-  obterPerfil,
-} from "../controllers";
-import { supabaseAuthMiddleware } from "../auth";
-import { WelcomeEmailMiddleware } from "../../brevo/middlewares/welcome-email-middleware";
-import passwordRecoveryRoutes from "./password-recovery";
-import { asyncHandler } from "../../../utils/asyncHandler";
+import { Router } from 'express';
+import { criarUsuario } from '../register';
+import { loginUsuario, logoutUsuario, refreshToken, obterPerfil } from '../controllers';
+import { supabaseAuthMiddleware } from '../auth';
+import { WelcomeEmailMiddleware } from '../../brevo/middlewares/welcome-email-middleware';
+import passwordRecoveryRoutes from './password-recovery';
+import { asyncHandler } from '../../../utils/asyncHandler';
 
 /**
  * Rotas de usuário atualizadas com sistema de verificação de email
@@ -30,11 +25,11 @@ const router = Router();
 router.use((req, res, next) => {
   const startTime = Date.now();
   const correlationId =
-    req.headers["x-correlation-id"] ||
+    req.headers['x-correlation-id'] ||
     `user-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`;
 
   // Adiciona correlation ID ao request
-  req.headers["x-correlation-id"] = correlationId;
+  req.headers['x-correlation-id'] = correlationId;
 
   console.log(`🌐 [${correlationId}] ${req.method} ${req.path} - Iniciado`);
 
@@ -43,7 +38,7 @@ router.use((req, res, next) => {
   res.json = function (data) {
     const duration = Date.now() - startTime;
     console.log(
-      `📤 [${correlationId}] ${req.method} ${req.path} - ${res.statusCode} em ${duration}ms`
+      `📤 [${correlationId}] ${req.method} ${req.path} - ${res.statusCode} em ${duration}ms`,
     );
     return originalJson.call(this, data);
   };
@@ -54,14 +49,11 @@ router.use((req, res, next) => {
 /**
  * Rate limiting inteligente para autenticação
  */
-const createAuthRateLimit = (
-  maxRequests: number = 5,
-  windowMinutes: number = 15
-) => {
+const createAuthRateLimit = (maxRequests: number = 5, windowMinutes: number = 15) => {
   const attempts = new Map<string, { count: number; resetTime: number }>();
 
   return (req: any, res: any, next: any) => {
-    const clientId = req.ip || req.connection.remoteAddress || "unknown";
+    const clientId = req.ip || req.connection.remoteAddress || 'unknown';
     const now = Date.now();
     const windowMs = windowMinutes * 60 * 1000;
 
@@ -79,14 +71,12 @@ const createAuthRateLimit = (
     };
 
     if (clientAttempts.count >= maxRequests && clientAttempts.resetTime > now) {
-      const resetInMinutes = Math.ceil(
-        (clientAttempts.resetTime - now) / 60000
-      );
+      const resetInMinutes = Math.ceil((clientAttempts.resetTime - now) / 60000);
       return res.status(429).json({
         success: false,
         message: `Muitas tentativas. Tente novamente em ${resetInMinutes} minutos`,
         retryAfter: resetInMinutes * 60,
-        code: "RATE_LIMIT_EXCEEDED",
+        code: 'RATE_LIMIT_EXCEEDED',
       });
     }
 
@@ -177,14 +167,14 @@ const createAuthRateLimit = (
  *               message: "Erro interno do servidor"
  *               code: "INTERNAL_ERROR"
  */
-router.get("/", (req, res) => {
+router.get('/', (req, res) => {
   res.json({
-    module: "Usuários API",
-    version: "7.0.0",
+    module: 'Usuários API',
+    version: '7.0.0',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
     features: {
-      emailVerification: process.env.EMAIL_VERIFICATION_REQUIRED !== "false",
+      emailVerification: process.env.EMAIL_VERIFICATION_REQUIRED !== 'false',
       registration: true,
       authentication: true,
       profileManagement: true,
@@ -192,27 +182,27 @@ router.get("/", (req, res) => {
     },
     endpoints: {
       auth: {
-        register: "POST /registrar",
-        login: "POST /login",
-        logout: "POST /logout",
-        refresh: "POST /refresh",
+        register: 'POST /registrar',
+        login: 'POST /login',
+        logout: 'POST /logout',
+        refresh: 'POST /refresh',
       },
       profile: {
-        get: "GET /perfil",
-        update: "PUT /perfil",
+        get: 'GET /perfil',
+        update: 'PUT /perfil',
       },
       recovery: {
-        request: "POST /recuperar-senha",
-        validate: "GET /recuperar-senha/validar/:token",
-        reset: "POST /recuperar-senha/redefinir",
+        request: 'POST /recuperar-senha',
+        validate: 'GET /recuperar-senha/validar/:token',
+        reset: 'POST /recuperar-senha/redefinir',
       },
       verification: {
-        verify: "GET /verificar-email?token=xxx",
-        resend: "POST /reenviar-verificacao",
-        status: "GET /status-verificacao/:userId",
+        verify: 'GET /verificar-email?token=xxx',
+        resend: 'POST /reenviar-verificacao',
+        status: 'GET /status-verificacao/:userId',
       },
     },
-    status: "operational",
+    status: 'operational',
   });
 });
 
@@ -258,40 +248,40 @@ router.get("/", (req, res) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
-  *             example:
-  *               success: false
-  *               message: "Dados inválidos fornecidos"
-  *               code: "VALIDATION_ERROR"
-  *       409:
-  *         description: Usuário já existe
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/ErrorResponse'
-  *             example:
-  *               success: false
-  *               message: "Usuário já cadastrado"
-  *               code: "DUPLICATE_ERROR"
-  *       429:
-  *         description: Muitas tentativas
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/ErrorResponse'
-  *             example:
-  *               success: false
-  *               message: "Muitas tentativas. Tente novamente mais tarde"
-  *               code: "RATE_LIMIT_EXCEEDED"
-  *       500:
-  *         description: Erro interno
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/ErrorResponse'
-  *             example:
-  *               success: false
-  *               message: "Erro interno do servidor"
-  *               code: "INTERNAL_ERROR"
+ *             example:
+ *               success: false
+ *               message: "Dados inválidos fornecidos"
+ *               code: "VALIDATION_ERROR"
+ *       409:
+ *         description: Usuário já existe
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Usuário já cadastrado"
+ *               code: "DUPLICATE_ERROR"
+ *       429:
+ *         description: Muitas tentativas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Muitas tentativas. Tente novamente mais tarde"
+ *               code: "RATE_LIMIT_EXCEEDED"
+ *       500:
+ *         description: Erro interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Erro interno do servidor"
+ *               code: "INTERNAL_ERROR"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -301,21 +291,19 @@ router.get("/", (req, res) => {
  *            -d '{"nomeCompleto":"João da Silva","documento":"12345678900","telefone":"11999999999","email":"joao@example.com","senha":"senha123","confirmarSenha":"senha123","aceitarTermos":true,"supabaseId":"uuid","tipoUsuario":"PESSOA_FISICA"}'
  */
 router.post(
-  "/registrar",
+  '/registrar',
   createAuthRateLimit(3, 10), // 3 tentativas por 10 minutos
   async (req, res, next) => {
-    const correlationId = req.headers["x-correlation-id"];
+    const correlationId = req.headers['x-correlation-id'];
     console.log(`📝 [${correlationId}] Iniciando processo de registro`);
     next();
   },
   asyncHandler(criarUsuario), // Controller principal que cria usuário
   async (req, res, next) => {
     // Middleware de debug para verificar dados
-    const correlationId = req.headers["x-correlation-id"];
+    const correlationId = req.headers['x-correlation-id'];
 
-    console.log(
-      `🔍 [${correlationId}] Verificando dados para middleware de email`
-    );
+    console.log(`🔍 [${correlationId}] Verificando dados para middleware de email`);
 
     if (res.locals?.usuarioCriado?.usuario) {
       const user = res.locals.usuarioCriado.usuario;
@@ -326,15 +314,13 @@ router.post(
         tipo: user.tipoUsuario,
       });
     } else {
-      console.warn(
-        `⚠️ [${correlationId}] Dados não encontrados em res.locals.usuarioCriado`
-      );
+      console.warn(`⚠️ [${correlationId}] Dados não encontrados em res.locals.usuarioCriado`);
       console.warn(`⚠️ [${correlationId}] res.locals:`, res.locals);
     }
 
     next();
   },
-  WelcomeEmailMiddleware.create() // Middleware de email assíncrono
+  WelcomeEmailMiddleware.create(), // Middleware de email assíncrono
 );
 
 /**
@@ -364,46 +350,46 @@ router.post(
  *               success: true
  *               token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  *               refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-  *       400:
-  *         description: Dados ausentes ou inválidos
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/ErrorResponse'
-  *             example:
-  *               success: false
-  *               message: "Documento ou senha inválidos"
-  *               code: "VALIDATION_ERROR"
-  *       401:
-  *         description: Credenciais inválidas
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/ErrorResponse'
-  *             example:
-  *               success: false
-  *               message: "Credenciais inválidas"
-  *               code: "UNAUTHORIZED"
-  *       429:
-  *         description: Muitas tentativas
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/ErrorResponse'
-  *             example:
-  *               success: false
-  *               message: "Muitas tentativas. Tente novamente mais tarde"
-  *               code: "RATE_LIMIT_EXCEEDED"
-  *       500:
-  *         description: Erro interno
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/ErrorResponse'
-  *             example:
-  *               success: false
-  *               message: "Erro interno do servidor"
-  *               code: "INTERNAL_ERROR"
+ *       400:
+ *         description: Dados ausentes ou inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Documento ou senha inválidos"
+ *               code: "VALIDATION_ERROR"
+ *       401:
+ *         description: Credenciais inválidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Credenciais inválidas"
+ *               code: "UNAUTHORIZED"
+ *       429:
+ *         description: Muitas tentativas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Muitas tentativas. Tente novamente mais tarde"
+ *               code: "RATE_LIMIT_EXCEEDED"
+ *       500:
+ *         description: Erro interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Erro interno do servidor"
+ *               code: "INTERNAL_ERROR"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -413,18 +399,18 @@ router.post(
  *            -d '{"documento":"12345678900","senha":"senha123"}'
  */
 router.post(
-  "/login",
+  '/login',
   createAuthRateLimit(5, 15), // 5 tentativas por 15 minutos
   async (req, res, next) => {
-    const correlationId = req.headers["x-correlation-id"];
+    const correlationId = req.headers['x-correlation-id'];
     console.log(
       `🔐 [${correlationId}] Tentativa de login para: ${
-        req.body.documento || "documento não fornecido"
-      }`
+        req.body.documento || 'documento não fornecido'
+      }`,
     );
     next();
   },
-  asyncHandler(loginUsuario)
+  asyncHandler(loginUsuario),
 );
 
 /**
@@ -463,40 +449,40 @@ router.post(
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
-  *             example:
-  *               success: false
-  *               message: "Refresh token não informado"
-  *               code: "VALIDATION_ERROR"
-  *       401:
-  *         description: Refresh token inválido ou expirado
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/ErrorResponse'
-  *             example:
-  *               success: false
-  *               message: "Token inválido"
-  *               code: "UNAUTHORIZED"
-  *       429:
-  *         description: Muitas tentativas
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/ErrorResponse'
-  *             example:
-  *               success: false
-  *               message: "Muitas tentativas. Tente novamente mais tarde"
-  *               code: "RATE_LIMIT_EXCEEDED"
-  *       500:
-  *         description: Erro interno
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/ErrorResponse'
-  *             example:
-  *               success: false
-  *               message: "Erro interno do servidor"
-  *               code: "INTERNAL_ERROR"
+ *             example:
+ *               success: false
+ *               message: "Refresh token não informado"
+ *               code: "VALIDATION_ERROR"
+ *       401:
+ *         description: Refresh token inválido ou expirado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Token inválido"
+ *               code: "UNAUTHORIZED"
+ *       429:
+ *         description: Muitas tentativas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Muitas tentativas. Tente novamente mais tarde"
+ *               code: "RATE_LIMIT_EXCEEDED"
+ *       500:
+ *         description: Erro interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Erro interno do servidor"
+ *               code: "INTERNAL_ERROR"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -506,9 +492,9 @@ router.post(
  *            -d '{"refreshToken":"<TOKEN>"}'
  */
 router.post(
-  "/refresh",
+  '/refresh',
   createAuthRateLimit(10, 15), // 10 tentativas por 15 minutos
-  asyncHandler(refreshToken)
+  asyncHandler(refreshToken),
 );
 
 // ===========================
@@ -537,26 +523,26 @@ router.post(
  *             example:
  *               success: true
  *               message: "Logout realizado"
-  *       401:
-  *         description: Não autenticado
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/ErrorResponse'
-  *             example:
-  *               success: false
-  *               message: "Token inválido ou ausente"
-  *               code: "UNAUTHORIZED"
-  *       500:
-  *         description: Erro interno
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/ErrorResponse'
-  *             example:
-  *               success: false
-  *               message: "Erro interno do servidor"
-  *               code: "INTERNAL_ERROR"
+ *       401:
+ *         description: Não autenticado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Token inválido ou ausente"
+ *               code: "UNAUTHORIZED"
+ *       500:
+ *         description: Erro interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Erro interno do servidor"
+ *               code: "INTERNAL_ERROR"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -565,18 +551,14 @@ router.post(
  *            -H "Authorization: Bearer <TOKEN>"
  */
 router.post(
-  "/logout",
+  '/logout',
   supabaseAuthMiddleware(),
   async (req, res, next) => {
-    const correlationId = req.headers["x-correlation-id"];
-    console.log(
-      `🚪 [${correlationId}] Logout do usuário: ${
-        req.user?.id || "ID não disponível"
-      }`
-    );
+    const correlationId = req.headers['x-correlation-id'];
+    console.log(`🚪 [${correlationId}] Logout do usuário: ${req.user?.id || 'ID não disponível'}`);
     next();
   },
-  asyncHandler(logoutUsuario)
+  asyncHandler(logoutUsuario),
 );
 
 /**
@@ -607,26 +589,26 @@ router.post(
  *               supabaseId: "uuid-supabase"
  *               emailVerificado: true
  *               ultimoLogin: "2024-01-01T12:00:00Z"
-  *       401:
-  *         description: Não autenticado
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/ErrorResponse'
-  *             example:
-  *               success: false
-  *               message: "Token inválido ou ausente"
-  *               code: "UNAUTHORIZED"
-  *       500:
-  *         description: Erro interno
-  *         content:
-  *           application/json:
-  *             schema:
-  *               $ref: '#/components/schemas/ErrorResponse'
-  *             example:
-  *               success: false
-  *               message: "Erro interno do servidor"
-  *               code: "INTERNAL_ERROR"
+ *       401:
+ *         description: Não autenticado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Token inválido ou ausente"
+ *               code: "UNAUTHORIZED"
+ *       500:
+ *         description: Erro interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Erro interno do servidor"
+ *               code: "INTERNAL_ERROR"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -635,18 +617,16 @@ router.post(
  *            -H "Authorization: Bearer <TOKEN>"
  */
 router.get(
-  "/perfil",
+  '/perfil',
   supabaseAuthMiddleware(),
   async (req, res, next) => {
-    const correlationId = req.headers["x-correlation-id"];
+    const correlationId = req.headers['x-correlation-id'];
     console.log(
-      `👤 [${correlationId}] Solicitação de perfil: ${
-        req.user?.id || "ID não disponível"
-      }`
+      `👤 [${correlationId}] Solicitação de perfil: ${req.user?.id || 'ID não disponível'}`,
     );
     next();
   },
-  asyncHandler(obterPerfil)
+  asyncHandler(obterPerfil),
 );
 
 // ===========================
@@ -657,14 +637,14 @@ router.get(
  * Rotas de recuperação de senha
  */
 router.use(
-  "/recuperar-senha",
+  '/recuperar-senha',
   createAuthRateLimit(3, 60), // 3 tentativas por hora
   async (req, res, next) => {
-    const correlationId = req.headers["x-correlation-id"];
+    const correlationId = req.headers['x-correlation-id'];
     console.log(`🔑 [${correlationId}] Solicitação de recuperação de senha`);
     next();
   },
-  passwordRecoveryRoutes
+  passwordRecoveryRoutes,
 );
 
 export default router;

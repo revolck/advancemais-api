@@ -5,10 +5,10 @@
  * @author Sistema Advance+
  * @version 3.0.0
  */
-import { z } from "zod";
+import { z } from 'zod';
 
-import { prisma } from "@/config/prisma";
-import { invalidateUserCache } from "@/modules/usuarios/utils/cache";
+import { prisma } from '@/config/prisma';
+import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
 export class AdminService {
   constructor() {}
 
@@ -47,7 +47,7 @@ export class AdminService {
           criadoEm: true,
           ultimoLogin: true,
         },
-        orderBy: { criadoEm: "desc" },
+        orderBy: { criadoEm: 'desc' },
         skip,
         take: pageSize,
       }),
@@ -55,7 +55,7 @@ export class AdminService {
     ]);
 
     return {
-      message: "Lista de usuários",
+      message: 'Lista de usuários',
       usuarios,
       pagination: {
         page,
@@ -70,8 +70,8 @@ export class AdminService {
    * Busca usuário específico com detalhes
    */
   async buscarUsuario(userId: string) {
-    if (!userId || userId.trim() === "") {
-      throw new Error("ID do usuário é obrigatório");
+    if (!userId || userId.trim() === '') {
+      throw new Error('ID do usuário é obrigatório');
     }
 
     return await prisma.usuario.findUnique({
@@ -116,8 +116,8 @@ export class AdminService {
    */
   async atualizarStatus(userId: string, status: string, motivo?: string) {
     // Validações
-    if (!userId || userId.trim() === "") {
-      throw new Error("ID do usuário é obrigatório");
+    if (!userId || userId.trim() === '') {
+      throw new Error('ID do usuário é obrigatório');
     }
 
     // Validação usando enum do Prisma
@@ -130,7 +130,7 @@ export class AdminService {
     });
 
     if (!usuarioAntes) {
-      throw new Error("Usuário não encontrado");
+      throw new Error('Usuário não encontrado');
     }
 
     // Atualizar status - CORREÇÃO: usando enum
@@ -155,11 +155,11 @@ export class AdminService {
     console.log(
       `Status do usuário ${userId} alterado de ${
         usuarioAntes.status
-      } para ${statusEnum}${motivo ? ` (Motivo: ${motivo})` : ""}`
+      } para ${statusEnum}${motivo ? ` (Motivo: ${motivo})` : ''}`,
     );
 
     return {
-      message: "Status do usuário atualizado com sucesso",
+      message: 'Status do usuário atualizado com sucesso',
       usuario,
       statusAnterior: usuarioAntes.status,
     };
@@ -168,24 +168,17 @@ export class AdminService {
   /**
    * Atualiza role do usuário - TIPAGEM CORRETA
    */
-  async atualizarRole(
-    userId: string,
-    role: string,
-    motivo?: string,
-    adminId?: string
-  ) {
+  async atualizarRole(userId: string, role: string, motivo?: string, adminId?: string) {
     // Validações
     if (!userId || !role) {
-      throw new Error("ID do usuário e role são obrigatórios");
+      throw new Error('ID do usuário e role são obrigatórios');
     }
 
     const roleEnum = role.trim();
 
     // Prevenir auto-demoção de ADMIN
-    if (adminId === userId && roleEnum !== "ADMIN") {
-      throw new Error(
-        "Você não pode alterar sua própria role para uma função não-administrativa"
-      );
+    if (adminId === userId && roleEnum !== 'ADMIN') {
+      throw new Error('Você não pode alterar sua própria role para uma função não-administrativa');
     }
 
     const usuario = await prisma.usuario.update({
@@ -204,15 +197,12 @@ export class AdminService {
     await invalidateUserCache(usuario);
 
     console.log(
-      `Role do usuário ${userId} alterada para ${roleEnum}${
-        motivo ? ` (Motivo: ${motivo})` : ""
-      }`
+      `Role do usuário ${userId} alterada para ${roleEnum}${motivo ? ` (Motivo: ${motivo})` : ''}`,
     );
 
     return {
-      message: "Role do usuário atualizada com sucesso",
+      message: 'Role do usuário atualizada com sucesso',
       usuario,
     };
   }
-
 }

@@ -1,15 +1,12 @@
-import { NextFunction, Request, Response } from "express";
-import bcrypt from "bcrypt";
+import { NextFunction, Request, Response } from 'express';
+import bcrypt from 'bcrypt';
 
-import { prisma } from "@/config/prisma";
-import { logger } from "@/utils/logger";
-import { getCache, setCache } from "@/utils/cache";
-import { generateTokenPair } from "@/modules/usuarios/utils/auth";
-import { invalidateUserCache } from "@/modules/usuarios/utils/cache";
-import {
-  formatZodErrors,
-  loginSchema,
-} from "../validators/auth.schema";
+import { prisma } from '@/config/prisma';
+import { logger } from '@/utils/logger';
+import { getCache, setCache } from '@/utils/cache';
+import { generateTokenPair } from '@/modules/usuarios/utils/auth';
+import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
+import { formatZodErrors, loginSchema } from '../validators/auth.schema';
 
 /**
  * Controllers para autenticação e gestão de usuários
@@ -34,7 +31,7 @@ import {
 
 const createControllerLogger = (req: Request, action: string) =>
   logger.child({
-    controller: "UsuarioController",
+    controller: 'UsuarioController',
     action,
     correlationId: req.id,
   });
@@ -83,17 +80,13 @@ const reviveUsuario = (usuario: UsuarioPerfil): UsuarioPerfil => ({
   ...usuario,
   criadoEm: new Date(usuario.criadoEm),
   atualizadoEm: new Date(usuario.atualizadoEm),
-  emailVerificadoEm: usuario.emailVerificadoEm
-    ? new Date(usuario.emailVerificadoEm)
-    : null,
+  emailVerificadoEm: usuario.emailVerificadoEm ? new Date(usuario.emailVerificadoEm) : null,
   ultimoLogin: usuario.ultimoLogin ? new Date(usuario.ultimoLogin) : null,
   dataNasc: usuario.dataNasc ? new Date(usuario.dataNasc) : null,
 });
 
 const buildProfileStats = (usuario: UsuarioPerfil) => ({
-  accountAge: Math.floor(
-    (Date.now() - usuario.criadoEm.getTime()) / (1000 * 60 * 60 * 24)
-  ),
+  accountAge: Math.floor((Date.now() - usuario.criadoEm.getTime()) / (1000 * 60 * 60 * 24)),
   hasCompletedProfile: !!(usuario.telefone && usuario.nomeCompleto),
   hasAddress: usuario.enderecos.length > 0,
   totalOrders: 0,
@@ -110,25 +103,21 @@ const buildProfileStats = (usuario: UsuarioPerfil) => ({
  * @param req - Request object com credenciais
  * @param res - Response object
  */
-export const loginUsuario = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const log = createControllerLogger(req, "loginUsuario");
+export const loginUsuario = async (req: Request, res: Response, next: NextFunction) => {
+  const log = createControllerLogger(req, 'loginUsuario');
   const correlationId = req.id;
   const startTime = Date.now();
 
   try {
-    log.info("🔐 Iniciando processo de login");
+    log.info('🔐 Iniciando processo de login');
 
     const validation = loginSchema.safeParse(req.body);
     if (!validation.success) {
       const errors = formatZodErrors(validation.error);
-      log.warn({ errors }, "⚠️ Dados de login inválidos");
+      log.warn({ errors }, '⚠️ Dados de login inválidos');
       return res.status(400).json({
         success: false,
-        message: "Dados de login inválidos",
+        message: 'Dados de login inválidos',
         errors,
         correlationId,
       });
@@ -137,24 +126,18 @@ export const loginUsuario = async (
     const { documento, senha } = validation.data;
 
     // Remove caracteres especiais do documento para comparação
-    const documentoLimpo = documento.replace(/\D/g, "");
+    const documentoLimpo = documento.replace(/\D/g, '');
 
     if (documentoLimpo.length !== 11) {
-      log.warn(
-        { length: documentoLimpo.length },
-        "⚠️ CPF inválido informado"
-      );
+      log.warn({ length: documentoLimpo.length }, '⚠️ CPF inválido informado');
       return res.status(400).json({
         success: false,
-        message: "Documento deve ser um CPF válido com 11 dígitos",
+        message: 'Documento deve ser um CPF válido com 11 dígitos',
         correlationId,
       });
     }
 
-    log.info(
-      { documentoPrefix: documentoLimpo.substring(0, 3) },
-      "🔍 Buscando usuário por CPF"
-    );
+    log.info({ documentoPrefix: documentoLimpo.substring(0, 3) }, '🔍 Buscando usuário por CPF');
 
     // Busca usuário no banco com todos os campos necessários
     const usuario = await prisma.usuario.findUnique({
@@ -176,32 +159,23 @@ export const loginUsuario = async (
     });
 
     if (!usuario) {
-      log.warn(
-        { documentoPrefix: documentoLimpo.substring(0, 3) },
-        "⚠️ Usuário não encontrado"
-      );
+      log.warn({ documentoPrefix: documentoLimpo.substring(0, 3) }, '⚠️ Usuário não encontrado');
       return res.status(401).json({
         success: false,
-        message: "Credenciais inválidas",
+        message: 'Credenciais inválidas',
         correlationId,
       });
     }
 
-    log.info(
-      { userId: usuario.id, email: usuario.email },
-      "👤 Usuário encontrado"
-    );
+    log.info({ userId: usuario.id, email: usuario.email }, '👤 Usuário encontrado');
 
     // Verifica status da conta
-    if (usuario.status !== "ATIVO") {
-      log.warn(
-        { userId: usuario.id, status: usuario.status },
-        "⚠️ Conta inativa"
-      );
+    if (usuario.status !== 'ATIVO') {
+      log.warn({ userId: usuario.id, status: usuario.status }, '⚠️ Conta inativa');
       return res.status(403).json({
         success: false,
         message: `Conta ${usuario.status.toLowerCase()}. Entre em contato com o suporte.`,
-        code: "ACCOUNT_INACTIVE",
+        code: 'ACCOUNT_INACTIVE',
         status: usuario.status,
         correlationId,
       });
@@ -209,10 +183,7 @@ export const loginUsuario = async (
 
     // VERIFICAÇÃO CRÍTICA: Email deve estar verificado
     if (!usuario.emailVerificado) {
-      log.warn(
-        { userId: usuario.id, email: usuario.email },
-        "⚠️ Email não verificado"
-      );
+      log.warn({ userId: usuario.id, email: usuario.email }, '⚠️ Email não verificado');
 
       // Calcula há quanto tempo a conta foi criada
       const accountAge = Date.now() - usuario.criadoEm.getTime();
@@ -221,8 +192,8 @@ export const loginUsuario = async (
       return res.status(403).json({
         success: false,
         message:
-          "Email não verificado. Verifique sua caixa de entrada ou solicite um novo email de verificação.",
-        code: "EMAIL_NOT_VERIFIED",
+          'Email não verificado. Verifique sua caixa de entrada ou solicite um novo email de verificação.',
+        code: 'EMAIL_NOT_VERIFIED',
         data: {
           email: usuario.email,
           canResendVerification: true,
@@ -230,27 +201,24 @@ export const loginUsuario = async (
           accountAgeDays,
           helpText:
             accountAgeDays > 1
-              ? "Sua conta foi criada há mais de 1 dia. Verifique sua pasta de spam ou solicite um novo email."
-              : "Verifique sua caixa de entrada. O email pode demorar alguns minutos para chegar.",
+              ? 'Sua conta foi criada há mais de 1 dia. Verifique sua pasta de spam ou solicite um novo email.'
+              : 'Verifique sua caixa de entrada. O email pode demorar alguns minutos para chegar.',
         },
         correlationId,
       });
     }
 
-    log.info(
-      { userId: usuario.id, verifiedAt: usuario.emailVerificadoEm },
-      "✅ Email verificado"
-    );
+    log.info({ userId: usuario.id, verifiedAt: usuario.emailVerificadoEm }, '✅ Email verificado');
 
     // Valida senha usando bcrypt
-    log.info({ userId: usuario.id }, "🔐 Validando senha");
+    log.info({ userId: usuario.id }, '🔐 Validando senha');
     const senhaValida = await bcrypt.compare(senha, usuario.senha);
 
     if (!senhaValida) {
-      log.warn({ userId: usuario.id }, "⚠️ Senha inválida");
+      log.warn({ userId: usuario.id }, '⚠️ Senha inválida');
       return res.status(401).json({
         success: false,
-        message: "Credenciais inválidas",
+        message: 'Credenciais inválidas',
         correlationId,
       });
     }
@@ -259,7 +227,7 @@ export const loginUsuario = async (
     const tokens = generateTokenPair(usuario.id, usuario.role);
 
     // Atualiza último login e armazena refresh token
-    log.info({ userId: usuario.id }, "💾 Atualizando último login");
+    log.info({ userId: usuario.id }, '💾 Atualizando último login');
     await prisma.usuario.update({
       where: { id: usuario.id },
       data: {
@@ -274,7 +242,7 @@ export const loginUsuario = async (
     const duration = Date.now() - startTime;
     log.info(
       { duration, userId: usuario.id, email: usuario.email },
-      "✅ Login realizado com sucesso"
+      '✅ Login realizado com sucesso',
     );
 
     // Prepara dados de resposta (sem informações sensíveis)
@@ -293,7 +261,7 @@ export const loginUsuario = async (
     // Retorna dados do usuário autenticado com tokens
     res.json({
       success: true,
-      message: "Login realizado com sucesso",
+      message: 'Login realizado com sucesso',
       usuario: responseData,
       token: tokens.accessToken,
       refreshToken: tokens.refreshToken,
@@ -304,10 +272,8 @@ export const loginUsuario = async (
     });
   } catch (error) {
     const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : "Erro desconhecido";
-    const err =
-      error instanceof Error ? error : new Error(String(error));
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    const err = error instanceof Error ? error : new Error(String(error));
 
     log.error(
       {
@@ -315,9 +281,9 @@ export const loginUsuario = async (
         duration,
         documento: req.body.documento
           ? `${req.body.documento.substring(0, 3)}***`
-          : "não fornecido",
+          : 'não fornecido',
       },
-      "❌ Erro crítico no login"
+      '❌ Erro crítico no login',
     );
 
     err.message = errorMessage;
@@ -331,27 +297,23 @@ export const loginUsuario = async (
  * @param req - Request object com dados do usuário autenticado
  * @param res - Response object
  */
-export const logoutUsuario = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const log = createControllerLogger(req, "logoutUsuario");
+export const logoutUsuario = async (req: Request, res: Response, next: NextFunction) => {
+  const log = createControllerLogger(req, 'logoutUsuario');
   const correlationId = req.id;
 
   try {
     const userId = req.user?.id;
 
     if (!userId) {
-      log.warn("⚠️ Tentativa de logout sem usuário autenticado");
+      log.warn('⚠️ Tentativa de logout sem usuário autenticado');
       return res.status(401).json({
         success: false,
-        message: "Usuário não autenticado",
+        message: 'Usuário não autenticado',
         correlationId,
       });
     }
 
-    log.info({ userId }, "🚪 Iniciando logout");
+    log.info({ userId }, '🚪 Iniciando logout');
 
     // Remove refresh token do banco (invalidação de sessão)
     await prisma.usuario.update({
@@ -364,20 +326,19 @@ export const logoutUsuario = async (
 
     await invalidateUserCache({ id: userId });
 
-    log.info({ userId }, "✅ Logout realizado com sucesso");
+    log.info({ userId }, '✅ Logout realizado com sucesso');
 
     res.json({
       success: true,
-      message: "Logout realizado com sucesso",
+      message: 'Logout realizado com sucesso',
       correlationId,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Erro desconhecido";
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
     const err = error instanceof Error ? error : new Error(String(error));
 
-    log.error({ err, userId: req.user?.id }, "❌ Erro no logout");
+    log.error({ err, userId: req.user?.id }, '❌ Erro no logout');
 
     err.message = errorMessage;
     return next(err);
@@ -390,30 +351,23 @@ export const logoutUsuario = async (
  * @param req - Request object com refresh token
  * @param res - Response object
  */
-export const refreshToken = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const log = createControllerLogger(req, "refreshToken");
+export const refreshToken = async (req: Request, res: Response, next: NextFunction) => {
+  const log = createControllerLogger(req, 'refreshToken');
   const correlationId = req.id;
 
   try {
     const { refreshToken } = req.body;
 
     if (!refreshToken) {
-      log.warn("⚠️ Refresh token não fornecido");
+      log.warn('⚠️ Refresh token não fornecido');
       return res.status(400).json({
         success: false,
-        message: "Refresh token é obrigatório",
+        message: 'Refresh token é obrigatório',
         correlationId,
       });
     }
 
-    log.info(
-      { tokenPrefix: refreshToken.substring(0, 10) },
-      "🔄 Validando refresh token"
-    );
+    log.info({ tokenPrefix: refreshToken.substring(0, 10) }, '🔄 Validando refresh token');
 
     // Busca usuário pelo refresh token
     const usuario = await prisma.usuario.findFirst({
@@ -432,26 +386,20 @@ export const refreshToken = async (
     });
 
     if (!usuario) {
-      log.warn("⚠️ Refresh token inválido ou não encontrado");
+      log.warn('⚠️ Refresh token inválido ou não encontrado');
       return res.status(401).json({
         success: false,
-        message: "Refresh token inválido",
-        code: "INVALID_REFRESH_TOKEN",
+        message: 'Refresh token inválido',
+        code: 'INVALID_REFRESH_TOKEN',
         correlationId,
       });
     }
 
-    log.info(
-      { userId: usuario.id, email: usuario.email },
-      "👤 Refresh token válido"
-    );
+    log.info({ userId: usuario.id, email: usuario.email }, '👤 Refresh token válido');
 
     // Verifica se a conta ainda está ativa
-    if (usuario.status !== "ATIVO") {
-      log.warn(
-        { userId: usuario.id, status: usuario.status },
-        "⚠️ Conta inativa durante refresh"
-      );
+    if (usuario.status !== 'ATIVO') {
+      log.warn({ userId: usuario.id, status: usuario.status }, '⚠️ Conta inativa durante refresh');
 
       // Remove refresh token inválido
       await prisma.usuario.update({
@@ -464,7 +412,7 @@ export const refreshToken = async (
       return res.status(403).json({
         success: false,
         message: `Conta ${usuario.status.toLowerCase()}`,
-        code: "ACCOUNT_INACTIVE",
+        code: 'ACCOUNT_INACTIVE',
         status: usuario.status,
         correlationId,
       });
@@ -472,10 +420,7 @@ export const refreshToken = async (
 
     // Verifica se email ainda está verificado (caso tenha sido revertido por admin)
     if (!usuario.emailVerificado) {
-      log.warn(
-        { userId: usuario.id },
-        "⚠️ Email não verificado durante refresh"
-      );
+      log.warn({ userId: usuario.id }, '⚠️ Email não verificado durante refresh');
 
       // Remove refresh token
       await prisma.usuario.update({
@@ -487,16 +432,13 @@ export const refreshToken = async (
 
       return res.status(403).json({
         success: false,
-        message: "Email não verificado. Verifique sua caixa de entrada.",
-        code: "EMAIL_NOT_VERIFIED",
+        message: 'Email não verificado. Verifique sua caixa de entrada.',
+        code: 'EMAIL_NOT_VERIFIED',
         correlationId,
       });
     }
 
-    log.info(
-      { userId: usuario.id },
-      "✅ Refresh token validado com sucesso"
-    );
+    log.info({ userId: usuario.id }, '✅ Refresh token validado com sucesso');
 
     // Atualiza último acesso
     await prisma.usuario.update({
@@ -523,17 +465,16 @@ export const refreshToken = async (
 
     res.json({
       success: true,
-      message: "Token renovado com sucesso",
+      message: 'Token renovado com sucesso',
       usuario: responseData,
       correlationId,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Erro desconhecido";
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
     const err = error instanceof Error ? error : new Error(String(error));
 
-    log.error({ err }, "❌ Erro ao validar refresh token");
+    log.error({ err }, '❌ Erro ao validar refresh token');
 
     err.message = errorMessage;
     return next(err);
@@ -546,39 +487,35 @@ export const refreshToken = async (
  * @param req - Request object com dados do usuário
  * @param res - Response object
  */
-export const obterPerfil = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const log = createControllerLogger(req, "obterPerfil");
+export const obterPerfil = async (req: Request, res: Response, next: NextFunction) => {
+  const log = createControllerLogger(req, 'obterPerfil');
   const correlationId = req.id;
 
   try {
     const userId = req.user?.id;
 
     if (!userId) {
-      log.warn("⚠️ Tentativa de obter perfil sem autenticação");
+      log.warn('⚠️ Tentativa de obter perfil sem autenticação');
       return res.status(401).json({
         success: false,
-        message: "Usuário não autenticado",
+        message: 'Usuário não autenticado',
         correlationId,
       });
     }
 
-    log.info({ userId }, "👤 Obtendo perfil do usuário");
+    log.info({ userId }, '👤 Obtendo perfil do usuário');
 
     const cacheKey = `user:${userId}`;
     const cached = await getCache<UsuarioPerfil>(cacheKey);
 
     if (cached) {
-      log.debug({ userId }, "🧠 Perfil obtido do cache");
+      log.debug({ userId }, '🧠 Perfil obtido do cache');
       const usuario = reviveUsuario(cached);
       const profileStats = buildProfileStats(usuario);
 
       return res.json({
         success: true,
-        message: "Perfil obtido com sucesso",
+        message: 'Perfil obtido com sucesso',
         usuario: { ...usuario, _count: undefined },
         stats: profileStats,
         correlationId,
@@ -631,26 +568,19 @@ export const obterPerfil = async (
     })) as UsuarioPerfil | null;
 
     if (!usuario) {
-      log.warn({ userId }, "⚠️ Usuário não encontrado ao obter perfil");
+      log.warn({ userId }, '⚠️ Usuário não encontrado ao obter perfil');
       return res.status(404).json({
         success: false,
-        message: "Usuário não encontrado",
+        message: 'Usuário não encontrado',
         correlationId,
       });
     }
 
-    log.info(
-      { userId: usuario.id, email: usuario.email },
-      "✅ Perfil obtido com sucesso"
-    );
+    log.info({ userId: usuario.id, email: usuario.email }, '✅ Perfil obtido com sucesso');
 
     await setCache(cacheKey, usuario, USER_PROFILE_CACHE_TTL);
     if (usuario.supabaseId) {
-      await setCache(
-        `user:${usuario.supabaseId}`,
-        usuario,
-        USER_PROFILE_CACHE_TTL
-      );
+      await setCache(`user:${usuario.supabaseId}`, usuario, USER_PROFILE_CACHE_TTL);
     }
 
     // Prepara estatísticas adicionais
@@ -659,7 +589,7 @@ export const obterPerfil = async (
     // Retorna perfil completo
     res.json({
       success: true,
-      message: "Perfil obtido com sucesso",
+      message: 'Perfil obtido com sucesso',
       usuario: {
         ...usuario,
         _count: undefined, // Remove contadores internos da resposta
@@ -669,11 +599,10 @@ export const obterPerfil = async (
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Erro desconhecido";
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
     const err = error instanceof Error ? error : new Error(String(error));
 
-    log.error({ err, userId: req.user?.id }, "❌ Erro ao obter perfil");
+    log.error({ err, userId: req.user?.id }, '❌ Erro ao obter perfil');
 
     err.message = errorMessage;
     return next(err);
@@ -685,8 +614,8 @@ export const obterPerfil = async (
  */
 export const getControllerStats = () => {
   return {
-    module: "usuario-controller",
-    version: "6.0.0",
+    module: 'usuario-controller',
+    version: '6.0.0',
     features: {
       emailVerificationRequired: true,
       rateLimitingIntegrated: true,
@@ -694,11 +623,11 @@ export const getControllerStats = () => {
       securePasswordHandling: true,
     },
     endpoints: {
-      loginUsuario: "POST /login",
-      logoutUsuario: "POST /logout",
-      refreshToken: "POST /refresh",
-      obterPerfil: "GET /perfil",
+      loginUsuario: 'POST /login',
+      logoutUsuario: 'POST /logout',
+      refreshToken: 'POST /refresh',
+      obterPerfil: 'GET /perfil',
     },
-    lastUpdated: "2025-08-04T18:00:00Z",
+    lastUpdated: '2025-08-04T18:00:00Z',
   };
 };

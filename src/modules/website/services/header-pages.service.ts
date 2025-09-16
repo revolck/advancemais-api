@@ -1,13 +1,9 @@
-import { WebsiteHeaderPage } from "@prisma/client";
-import { prisma } from "@/config/prisma";
-import {
-  getCache,
-  setCache,
-  invalidateCache,
-} from "@/utils/cache";
-import { WEBSITE_CACHE_TTL } from "@/modules/website/config";
+import { WebsiteHeaderPage } from '@prisma/client';
+import { prisma } from '@/config/prisma';
+import { getCache, setCache, invalidateCache } from '@/utils/cache';
+import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
 
-const CACHE_KEY = "website:headerPages:list";
+const CACHE_KEY = 'website:headerPages:list';
 
 export const headerPagesService = {
   list: async () => {
@@ -17,11 +13,8 @@ export const headerPagesService = {
     await setCache(CACHE_KEY, result, WEBSITE_CACHE_TTL);
     return result;
   },
-  get: (id: string) =>
-    prisma.websiteHeaderPage.findUnique({ where: { id } }),
-  create: async (
-    data: Omit<WebsiteHeaderPage, "id" | "criadoEm" | "atualizadoEm">
-  ) => {
+  get: (id: string) => prisma.websiteHeaderPage.findUnique({ where: { id } }),
+  create: async (data: Omit<WebsiteHeaderPage, 'id' | 'criadoEm' | 'atualizadoEm'>) => {
     const result = await prisma.websiteHeaderPage.create({ data });
     await invalidateCache(CACHE_KEY);
     return result;

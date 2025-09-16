@@ -1,13 +1,9 @@
-import { WebsiteDiferenciais } from "@prisma/client";
-import { prisma } from "@/config/prisma";
-import {
-  getCache,
-  setCache,
-  invalidateCache,
-} from "@/utils/cache";
-import { WEBSITE_CACHE_TTL } from "@/modules/website/config";
+import { WebsiteDiferenciais } from '@prisma/client';
+import { prisma } from '@/config/prisma';
+import { getCache, setCache, invalidateCache } from '@/utils/cache';
+import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
 
-const CACHE_KEY = "website:diferenciais:list";
+const CACHE_KEY = 'website:diferenciais:list';
 
 export const diferenciaisService = {
   list: async () => {
@@ -17,11 +13,8 @@ export const diferenciaisService = {
     await setCache(CACHE_KEY, result, WEBSITE_CACHE_TTL);
     return result;
   },
-  get: (id: string) =>
-    prisma.websiteDiferenciais.findUnique({ where: { id } }),
-  create: async (
-    data: Omit<WebsiteDiferenciais, "id" | "criadoEm" | "atualizadoEm">
-  ) => {
+  get: (id: string) => prisma.websiteDiferenciais.findUnique({ where: { id } }),
+  create: async (data: Omit<WebsiteDiferenciais, 'id' | 'criadoEm' | 'atualizadoEm'>) => {
     const result = await prisma.websiteDiferenciais.create({ data });
     await invalidateCache(CACHE_KEY);
     return result;

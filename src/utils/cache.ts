@@ -1,8 +1,8 @@
-import { createHash } from "crypto";
-import type { Response } from "express";
-import redis from "../config/redis";
+import { createHash } from 'crypto';
+import type { Response } from 'express';
+import redis from '../config/redis';
 
-export const DEFAULT_TTL = Number(process.env.CACHE_TTL || "60");
+export const DEFAULT_TTL = Number(process.env.CACHE_TTL || '60');
 const memoryStore = new Map<string, any>();
 
 export async function getCache<T>(key: string): Promise<T | null> {
@@ -17,26 +17,20 @@ export async function getCache<T>(key: string): Promise<T | null> {
   }
 }
 
-export async function setCache(
-  key: string,
-  value: any,
-  ttl = DEFAULT_TTL
-): Promise<void> {
+export async function setCache(key: string, value: any, ttl = DEFAULT_TTL): Promise<void> {
   try {
     if (!process.env.REDIS_URL) {
       memoryStore.set(key, value);
       setTimeout(() => memoryStore.delete(key), ttl * 1000);
       return;
     }
-    await redis.set(key, JSON.stringify(value), "EX", ttl);
+    await redis.set(key, JSON.stringify(value), 'EX', ttl);
   } catch {
     // ignore errors
   }
 }
 
-export async function invalidateCache(
-  key: string | string[]
-): Promise<void> {
+export async function invalidateCache(key: string | string[]): Promise<void> {
   try {
     if (!process.env.REDIS_URL) {
       if (Array.isArray(key)) key.forEach((k) => memoryStore.delete(k));
@@ -61,35 +55,22 @@ export async function invalidateCacheByPrefix(prefix: string): Promise<void> {
       }
       return;
     }
-    let cursor = "0";
+    let cursor = '0';
     const keys: string[] = [];
     do {
-      const [next, found] = await redis.scan(
-        cursor,
-        "MATCH",
-        `${prefix}*`,
-        "COUNT",
-        100
-      );
+      const [next, found] = await redis.scan(cursor, 'MATCH', `${prefix}*`, 'COUNT', 100);
       cursor = next;
       keys.push(...found);
-    } while (cursor !== "0");
+    } while (cursor !== '0');
     if (keys.length) await redis.del(...keys);
   } catch {
     // ignore errors
   }
 }
 
-export function setCacheHeaders(
-  res: Response,
-  data: unknown,
-  ttl = DEFAULT_TTL
-): string {
-  const etag = createHash("md5")
-    .update(JSON.stringify(data))
-    .digest("hex");
-  res.setHeader("Cache-Control", `public, max-age=${ttl}`);
-  res.setHeader("ETag", etag);
+export function setCacheHeaders(res: Response, data: unknown, ttl = DEFAULT_TTL): string {
+  const etag = createHash('md5').update(JSON.stringify(data)).digest('hex');
+  res.setHeader('Cache-Control', `public, max-age=${ttl}`);
+  res.setHeader('ETag', etag);
   return etag;
 }
-

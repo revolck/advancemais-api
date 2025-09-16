@@ -1,13 +1,13 @@
-import { Router, type Request } from "express";
+import { Router, type Request } from 'express';
 
-import redis from "@/config/redis";
-import { publicCache } from "@/middlewares/cache-control";
-import { docsRoutes } from "@/modules/docs";
-import { brevoRoutes } from "@/modules/brevo/routes";
-import { EmailVerificationController } from "@/modules/brevo/controllers/email-verification-controller";
-import { usuarioRoutes } from "@/modules/usuarios";
-import { websiteRoutes } from "@/modules/website";
-import { setCacheHeaders, DEFAULT_TTL } from "@/utils/cache";
+import redis from '@/config/redis';
+import { publicCache } from '@/middlewares/cache-control';
+import { docsRoutes } from '@/modules/docs';
+import { brevoRoutes } from '@/modules/brevo/routes';
+import { EmailVerificationController } from '@/modules/brevo/controllers/email-verification-controller';
+import { usuarioRoutes } from '@/modules/usuarios';
+import { websiteRoutes } from '@/modules/website';
+import { setCacheHeaders, DEFAULT_TTL } from '@/utils/cache';
 
 /**
  * Router principal da aplicação
@@ -15,13 +15,13 @@ import { setCacheHeaders, DEFAULT_TTL } from "@/utils/cache";
 const router = Router();
 const emailVerificationController = new EmailVerificationController();
 
-const parseEtags = (header: Request["headers"]["if-none-match"]) => {
+const parseEtags = (header: Request['headers']['if-none-match']) => {
   if (!header) return [] as string[];
-  const values = Array.isArray(header) ? header : header.split(",");
+  const values = Array.isArray(header) ? header : header.split(',');
   return values
     .map((value) => value.trim())
     .filter(Boolean)
-    .map((value) => value.replace(/^W\//, "").replace(/"/g, ""));
+    .map((value) => value.replace(/^W\//, '').replace(/"/g, ''));
 };
 
 const normalizeTimestamp = (ttl: number) => {
@@ -57,30 +57,30 @@ const normalizeTimestamp = (ttl: number) => {
  *         source: |
  *           curl -X GET "http://localhost:3000/"
  */
-router.get("/", publicCache, (req, res) => {
+router.get('/', publicCache, (req, res) => {
   const ttl = Number(process.env.WEBSITE_CACHE_TTL || DEFAULT_TTL);
   const timestamp = normalizeTimestamp(ttl);
   const data = {
-    message: "Advance+ API",
-    version: "v3.0.3",
+    message: 'Advance+ API',
+    version: 'v3.0.3',
     timestamp,
     environment: process.env.NODE_ENV,
-    status: "operational",
-    express_version: "4.x",
+    status: 'operational',
+    express_version: '4.x',
     endpoints: {
-      usuarios: "/api/v1/usuarios",
-      brevo: "/api/v1/brevo",
-      website: "/api/v1/website",
-      health: "/health",
+      usuarios: '/api/v1/usuarios',
+      brevo: '/api/v1/brevo',
+      website: '/api/v1/website',
+      health: '/health',
     },
   };
 
   const etag = setCacheHeaders(res, data, ttl);
-  if (parseEtags(req.headers["if-none-match"]).includes(etag)) {
+  if (parseEtags(req.headers['if-none-match']).includes(etag)) {
     return res.status(304).end();
   }
 
-  if (req.headers["accept"]?.includes("application/json")) {
+  if (req.headers['accept']?.includes('application/json')) {
     return res.json(data);
   }
 
@@ -116,7 +116,7 @@ router.get("/", publicCache, (req, res) => {
     </body>
   </html>`;
 
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(html);
 });
 
@@ -145,14 +145,14 @@ router.get("/", publicCache, (req, res) => {
  *         source: |
  *           curl -X GET "http://localhost:3000/health"
  */
-router.get("/health", publicCache, async (req, res) => {
-  let redisStatus = "⚠️ not configured";
+router.get('/health', publicCache, async (req, res) => {
+  let redisStatus = '⚠️ not configured';
   if (process.env.REDIS_URL) {
     try {
       await redis.ping();
-      redisStatus = "✅ active";
+      redisStatus = '✅ active';
     } catch {
-      redisStatus = "❌ inactive";
+      redisStatus = '❌ inactive';
     }
   }
 
@@ -160,25 +160,25 @@ router.get("/health", publicCache, async (req, res) => {
   const uptimeRaw = Math.floor(process.uptime());
   const uptime = ttl > 0 ? Math.floor(uptimeRaw / ttl) * ttl : uptimeRaw;
   const payload = {
-    status: "OK",
+    status: 'OK',
     timestamp: normalizeTimestamp(ttl),
-    version: "v3.0.3",
+    version: 'v3.0.3',
     uptime,
     environment: process.env.NODE_ENV,
     memory: {
-      used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + " MB",
-      total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + " MB",
+      used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + ' MB',
+      total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + ' MB',
     },
     modules: {
-      usuarios: "✅ active",
-      brevo: "✅ active",
-      website: "✅ active",
+      usuarios: '✅ active',
+      brevo: '✅ active',
+      website: '✅ active',
       redis: redisStatus,
     },
   };
 
   const etag = setCacheHeaders(res, payload, ttl);
-  if (parseEtags(req.headers["if-none-match"]).includes(etag)) {
+  if (parseEtags(req.headers['if-none-match']).includes(etag)) {
     return res.status(304).end();
   }
 
@@ -186,10 +186,7 @@ router.get("/health", publicCache, async (req, res) => {
 });
 
 // Rota pública para verificação de email
-router.get(
-  "/verificar-email",
-  emailVerificationController.verifyEmail
-);
+router.get('/verificar-email', emailVerificationController.verifyEmail);
 
 // =============================================
 // REGISTRO DE MÓDULOS - COM ERROR HANDLING
@@ -201,13 +198,13 @@ router.get(
  */
 if (usuarioRoutes) {
   try {
-    router.use("/api/v1/usuarios", usuarioRoutes);
-    console.log("✅ Módulo de usuários registrado com sucesso");
+    router.use('/api/v1/usuarios', usuarioRoutes);
+    console.log('✅ Módulo de usuários registrado com sucesso');
   } catch (error) {
-    console.error("❌ ERRO - Módulo de usuários:", error);
+    console.error('❌ ERRO - Módulo de usuários:', error);
   }
 } else {
-  console.error("❌ usuarioRoutes não está definido");
+  console.error('❌ usuarioRoutes não está definido');
 }
 
 /**
@@ -216,13 +213,13 @@ if (usuarioRoutes) {
  */
 if (brevoRoutes) {
   try {
-    router.use("/api/v1/brevo", brevoRoutes);
-    console.log("✅ Módulo Brevo registrado com sucesso");
+    router.use('/api/v1/brevo', brevoRoutes);
+    console.log('✅ Módulo Brevo registrado com sucesso');
   } catch (error) {
-    console.error("❌ ERRO - Módulo Brevo:", error);
+    console.error('❌ ERRO - Módulo Brevo:', error);
   }
 } else {
-  console.error("❌ brevoRoutes não está definido");
+  console.error('❌ brevoRoutes não está definido');
 }
 
 /**
@@ -231,13 +228,13 @@ if (brevoRoutes) {
  */
 if (websiteRoutes) {
   try {
-    router.use("/api/v1/website", websiteRoutes);
-    console.log("✅ Módulo Website registrado com sucesso");
+    router.use('/api/v1/website', websiteRoutes);
+    console.log('✅ Módulo Website registrado com sucesso');
   } catch (error) {
-    console.error("❌ ERRO - Módulo Website:", error);
+    console.error('❌ ERRO - Módulo Website:', error);
   }
 } else {
-  console.error("❌ websiteRoutes não está definido");
+  console.error('❌ websiteRoutes não está definido');
 }
 
 /**
@@ -246,25 +243,25 @@ if (websiteRoutes) {
  */
 if (docsRoutes) {
   try {
-    router.use("/", docsRoutes);
-    console.log("✅ Módulo Documentação registrado com sucesso");
+    router.use('/', docsRoutes);
+    console.log('✅ Módulo Documentação registrado com sucesso');
   } catch (error) {
-    console.error("❌ ERRO - Módulo Documentação:", error);
+    console.error('❌ ERRO - Módulo Documentação:', error);
   }
 } else {
-  console.error("❌ docsRoutes não está definido");
+  console.error('❌ docsRoutes não está definido');
 }
 
 /**
  * Catch-all para rotas não encontradas
  */
-router.all("*", (req, res) => {
+router.all('*', (req, res) => {
   res.status(404).json({
-    message: "Endpoint não encontrado",
+    message: 'Endpoint não encontrado',
     path: req.originalUrl,
     method: req.method,
     timestamp: new Date().toISOString(),
-    suggestion: "Verifique a documentação da API",
+    suggestion: 'Verifique a documentação da API',
   });
 });
 

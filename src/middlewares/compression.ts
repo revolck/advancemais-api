@@ -1,4 +1,3 @@
-import compression from "compression";
+import compression from 'compression';
 
 export const compressionMiddleware = compression();
-

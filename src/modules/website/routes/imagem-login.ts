@@ -1,8 +1,8 @@
-import { Router } from "express";
-import { publicCache } from "../../../middlewares/cache-control";
-import multer from "multer";
-import { supabaseAuthMiddleware } from "../../usuarios/auth";
-import { ImagemLoginController } from "../controllers/imagemLogin.controller";
+import { Router } from 'express';
+import { publicCache } from '../../../middlewares/cache-control';
+import multer from 'multer';
+import { supabaseAuthMiddleware } from '../../usuarios/auth';
+import { ImagemLoginController } from '../controllers/imagemLogin.controller';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -34,7 +34,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/imagem-login"
  */
-router.get("/", publicCache, ImagemLoginController.list);
+router.get('/', publicCache, ImagemLoginController.list);
 
 /**
  * @openapi
@@ -73,7 +73,7 @@ router.get("/", publicCache, ImagemLoginController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/website/imagem-login/{id}"
  */
-router.get("/:id", publicCache, ImagemLoginController.get);
+router.get('/:id', publicCache, ImagemLoginController.get);
 
 /**
  * @openapi
@@ -112,10 +112,10 @@ router.get("/:id", publicCache, ImagemLoginController.get);
  *            -F "link=https://example.com"
  */
 router.post(
-  "/",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  upload.single("imagem"),
-  ImagemLoginController.create
+  '/',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  upload.single('imagem'),
+  ImagemLoginController.create,
 );
 
 /**
@@ -166,10 +166,10 @@ router.post(
  *            -F "imagem=@login.png"
  */
 router.put(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  upload.single("imagem"),
-  ImagemLoginController.update
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  upload.single('imagem'),
+  ImagemLoginController.update,
 );
 
 /**
@@ -208,11 +208,6 @@ router.put(
  *           curl -X DELETE "http://localhost:3000/api/v1/website/imagem-login/{id}" \\
  *            -H "Authorization: Bearer <TOKEN>"
  */
-router.delete(
-  "/:id",
-  supabaseAuthMiddleware(["ADMIN", "MODERADOR"]),
-  ImagemLoginController.remove
-);
+router.delete('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), ImagemLoginController.remove);
 
 export { router as imagemLoginRoutes };
-

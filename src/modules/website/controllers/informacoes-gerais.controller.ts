@@ -1,7 +1,7 @@
-import { Request, Response } from "express";
+import { Request, Response } from 'express';
 
-import { informacoesGeraisService } from "@/modules/website/services/informacoes-gerais.service";
-import { respondWithCache } from "@/modules/website/utils/cache-response";
+import { informacoesGeraisService } from '@/modules/website/services/informacoes-gerais.service';
+import { respondWithCache } from '@/modules/website/utils/cache-response';
 
 export class InformacoesGeraisController {
   static list = async (req: Request, res: Response) => {
@@ -16,14 +16,14 @@ export class InformacoesGeraisController {
       const { id } = req.params;
       const info = await informacoesGeraisService.get(id);
       if (!info) {
-        return res.status(404).json({ message: "Informação não encontrada" });
+        return res.status(404).json({ message: 'Informação não encontrada' });
       }
       const response = info;
 
       return respondWithCache(req, res, response);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao buscar informação",
+        message: 'Erro ao buscar informação',
         error: error.message,
       });
     }
@@ -39,7 +39,7 @@ export class InformacoesGeraisController {
       res.status(201).json(info);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao criar informação",
+        message: 'Erro ao criar informação',
         error: error.message,
       });
     }
@@ -58,7 +58,7 @@ export class InformacoesGeraisController {
       res.json(info);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao atualizar informação",
+        message: 'Erro ao atualizar informação',
         error: error.message,
       });
     }
@@ -71,7 +71,7 @@ export class InformacoesGeraisController {
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao remover informação",
+        message: 'Erro ao remover informação',
         error: error.message,
       });
     }

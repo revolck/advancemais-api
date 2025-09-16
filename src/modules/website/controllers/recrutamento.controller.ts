@@ -1,16 +1,16 @@
-import { Request, Response } from "express";
-import path from "path";
+import { Request, Response } from 'express';
+import path from 'path';
 
-import { supabase } from "@/config/supabase";
-import { recrutamentoService } from "@/modules/website/services/recrutamento.service";
-import { respondWithCache } from "@/modules/website/utils/cache-response";
+import { supabase } from '@/config/supabase';
+import { recrutamentoService } from '@/modules/website/services/recrutamento.service';
+import { respondWithCache } from '@/modules/website/utils/cache-response';
 
 function generateImageTitle(url: string): string {
   try {
     const pathname = new URL(url).pathname;
-    return path.basename(pathname).split(".")[0];
+    return path.basename(pathname).split('.')[0];
   } catch {
-    return "";
+    return '';
   }
 }
 
@@ -18,14 +18,12 @@ async function uploadImage(file: Express.Multer.File): Promise<string> {
   const fileExt = path.extname(file.originalname);
   const fileName = `recrutamento-${Date.now()}${fileExt}`;
   const { error } = await supabase.storage
-    .from("website")
+    .from('website')
     .upload(`recrutamento/${fileName}`, file.buffer, {
       contentType: file.mimetype,
     });
   if (error) throw error;
-  const { data } = supabase.storage
-    .from("website")
-    .getPublicUrl(`recrutamento/${fileName}`);
+  const { data } = supabase.storage.from('website').getPublicUrl(`recrutamento/${fileName}`);
   return data.publicUrl;
 }
 
@@ -42,30 +40,26 @@ export class RecrutamentoController {
       const { id } = req.params;
       const recrutamento = await recrutamentoService.get(id);
       if (!recrutamento) {
-        return res
-          .status(404)
-          .json({ message: "Recrutamento não encontrado" });
+        return res.status(404).json({ message: 'Recrutamento não encontrado' });
       }
       const response = recrutamento;
 
       return respondWithCache(req, res, response);
     } catch (error: any) {
-      res
-        .status(500)
-        .json({ message: "Erro ao buscar recrutamento", error: error.message });
+      res.status(500).json({ message: 'Erro ao buscar recrutamento', error: error.message });
     }
   };
 
   static create = async (req: Request, res: Response) => {
     try {
       const { titulo, descricao, buttonUrl, buttonLabel } = req.body;
-      let imagemUrl = "";
+      let imagemUrl = '';
       if (req.file) {
         imagemUrl = await uploadImage(req.file);
-      } else if (typeof req.body.imagemUrl === "string") {
+      } else if (typeof req.body.imagemUrl === 'string') {
         imagemUrl = req.body.imagemUrl.trim();
       }
-      const imagemTitulo = imagemUrl ? generateImageTitle(imagemUrl) : "";
+      const imagemTitulo = imagemUrl ? generateImageTitle(imagemUrl) : '';
       const recrutamento = await recrutamentoService.create({
         imagemUrl,
         imagemTitulo,
@@ -77,7 +71,7 @@ export class RecrutamentoController {
       res.status(201).json(recrutamento);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao criar recrutamento",
+        message: 'Erro ao criar recrutamento',
         error: error.message,
       });
     }
@@ -88,8 +82,7 @@ export class RecrutamentoController {
       const { id } = req.params;
       const { titulo, descricao, buttonUrl, buttonLabel } = req.body;
       const imagemUrlRaw = req.body.imagemUrl;
-      let imagemUrl =
-        typeof imagemUrlRaw === "string" ? imagemUrlRaw.trim() : undefined;
+      let imagemUrl = typeof imagemUrlRaw === 'string' ? imagemUrlRaw.trim() : undefined;
       if (req.file) {
         imagemUrl = await uploadImage(req.file);
       }
@@ -106,7 +99,7 @@ export class RecrutamentoController {
       res.json(recrutamento);
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao atualizar recrutamento",
+        message: 'Erro ao atualizar recrutamento',
         error: error.message,
       });
     }
@@ -119,7 +112,7 @@ export class RecrutamentoController {
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({
-        message: "Erro ao remover recrutamento",
+        message: 'Erro ao remover recrutamento',
         error: error.message,
       });
     }

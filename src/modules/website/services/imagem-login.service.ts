@@ -1,13 +1,9 @@
-import { WebsiteImagemLogin } from "@prisma/client";
-import { prisma } from "@/config/prisma";
-import {
-  getCache,
-  setCache,
-  invalidateCache,
-} from "@/utils/cache";
-import { WEBSITE_CACHE_TTL } from "@/modules/website/config";
+import { WebsiteImagemLogin } from '@prisma/client';
+import { prisma } from '@/config/prisma';
+import { getCache, setCache, invalidateCache } from '@/utils/cache';
+import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
 
-const CACHE_KEY = "website:imagemLogin:list";
+const CACHE_KEY = 'website:imagemLogin:list';
 
 export const imagemLoginService = {
   list: async () => {
@@ -18,9 +14,7 @@ export const imagemLoginService = {
     return result;
   },
   get: (id: string) => prisma.websiteImagemLogin.findUnique({ where: { id } }),
-  create: async (
-    data: Omit<WebsiteImagemLogin, "id" | "criadoEm" | "atualizadoEm">
-  ) => {
+  create: async (data: Omit<WebsiteImagemLogin, 'id' | 'criadoEm' | 'atualizadoEm'>) => {
     const result = await prisma.websiteImagemLogin.create({ data });
     await invalidateCache(CACHE_KEY);
     return result;
@@ -36,4 +30,3 @@ export const imagemLoginService = {
     return result;
   },
 };
-

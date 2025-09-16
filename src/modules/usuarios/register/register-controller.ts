@@ -15,6 +15,7 @@ import {
   validarGenero,
   limparDocumento,
 } from "../utils/validation";
+import { logger } from "../../../utils/logger";
 
 /**
  * Controller para criação de novos usuários
@@ -70,6 +71,20 @@ interface CriarPessoaJuridicaData {
  */
 type CriarUsuarioData = CriarPessoaFisicaData | CriarPessoaJuridicaData;
 
+const createRegisterLogger = (req: Request, action: string) =>
+  logger.child({
+    controller: "RegisterController",
+    action,
+    correlationId: req.id,
+  });
+
+const createCorrelationLogger = (correlationId: string, action: string) =>
+  logger.child({
+    controller: "RegisterController",
+    action,
+    correlationId,
+  });
+
 /**
  * Controller para criação de novos usuários
  * Implementa validação robusta e transações seguras
@@ -82,11 +97,11 @@ export const criarUsuario = async (
   res: Response,
   next: NextFunction
 ) => {
-  // Gera ID de correlação para rastreamento
-  const correlationId = generateCorrelationId();
+  const log = createRegisterLogger(req, "criarUsuario");
+  const correlationId = req.id;
   const startTime = Date.now();
 
-  console.log(`🚀 [${correlationId}] Iniciando criação de usuário`);
+  log.info("🚀 Iniciando criação de usuário");
 
   try {
     const dadosUsuario: CriarUsuarioData = req.body;
@@ -97,10 +112,9 @@ export const criarUsuario = async (
       correlationId
     );
     if (!validationResult.isValid) {
-      console.warn(
-        `⚠️ [${correlationId}] Dados inválidos: ${validationResult.errors?.join(
-          ", "
-        )}`
+      log.warn(
+        { errors: validationResult.errors },
+        "⚠️ Dados inválidos para criação de usuário"
       );
       return res.status(400).json({
         success: false,
@@ -137,8 +151,9 @@ export const criarUsuario = async (
       correlationId
     );
     if (!processedData.success) {
-      console.warn(
-        `⚠️ [${correlationId}] Erro no processamento específico: ${processedData.error}`
+      log.warn(
+        { error: processedData.error },
+        "⚠️ Erro no processamento específico"
       );
       return res.status(400).json({
         success: false,
@@ -159,8 +174,9 @@ export const criarUsuario = async (
     );
 
     if (duplicateCheck.found) {
-      console.warn(
-        `⚠️ [${correlationId}] Usuário duplicado: ${duplicateCheck.reason}`
+      log.warn(
+        { reason: duplicateCheck.reason },
+        "⚠️ Usuário duplicado detectado"
       );
       return res.status(409).json({
         success: false,
@@ -170,7 +186,7 @@ export const criarUsuario = async (
     }
 
     // Gera hash da senha com salt seguro
-    console.log(`🔐 [${correlationId}] Gerando hash da senha`);
+    log.info("🔐 Gerando hash da senha");
     const senhaHash = await bcrypt.hash(senha, 12);
 
     // Prepara dados para inserção no banco
@@ -190,28 +206,25 @@ export const criarUsuario = async (
     });
 
     // Cria usuário dentro de transação
-    console.log(`💾 [${correlationId}] Iniciando transação de banco`);
+    log.info("💾 Iniciando transação de banco");
     const usuario = await createUserWithTransaction(userData, correlationId);
     try {
       await invalidateCacheByPrefix("dashboard:");
     } catch (cacheError) {
-      console.warn(
-        `⚠️ [${correlationId}] Falha ao invalidar cache do dashboard`,
-        cacheError
-      );
+      const err =
+        cacheError instanceof Error
+          ? cacheError
+          : new Error(String(cacheError));
+      log.warn({ err }, "⚠️ Falha ao invalidar cache do dashboard");
     }
 
     const duration = Date.now() - startTime;
-    console.log(
-      `✅ [${correlationId}] Usuário criado com sucesso em ${duration}ms`
-    );
+    log.info({ duration }, "✅ Usuário criado com sucesso");
 
     // ===================================================================
     // CRÍTICO: Prepara dados para middleware de email de boas-vindas
     // ===================================================================
-    console.log(
-      `📧 [${correlationId}] Preparando dados para middleware de email`
-    );
+    log.info("📧 Preparando dados para middleware de email");
 
     res.locals.usuarioCriado = {
       usuario: {
@@ -232,13 +245,13 @@ export const criarUsuario = async (
       emailShouldBeSent: true, // Flag explícita para o middleware
     };
 
-    console.log(
-      `📧 [${correlationId}] Dados do usuário salvos em res.locals:`,
+    log.info(
       {
         email: usuario.email,
         nome: usuario.nomeCompleto,
         id: usuario.id,
-      }
+      },
+      "📧 Dados do usuário salvos em res.locals"
     );
 
     // Resposta de sucesso
@@ -263,9 +276,7 @@ export const criarUsuario = async (
     });
 
     // IMPORTANTE: Não retorna aqui, deixa o middleware processar
-    console.log(
-      `🔄 [${correlationId}] Resposta enviada, aguardando middleware`
-    );
+    log.info("🔄 Resposta enviada, aguardando middleware");
 
     // Continua para o próximo middleware (ex: envio de email)
     next();
@@ -273,10 +284,11 @@ export const criarUsuario = async (
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : "Erro desconhecido";
+    const err = error instanceof Error ? error : new Error(String(error));
 
-    console.error(
-      `❌ [${correlationId}] Erro crítico na criação de usuário após ${duration}ms:`,
-      error
+    log.error(
+      { err, duration },
+      "❌ Erro crítico na criação de usuário"
     );
 
     // Log estruturado para monitoramento
@@ -308,6 +320,7 @@ async function validateUserInput(
   dadosUsuario: CriarUsuarioData,
   correlationId: string
 ): Promise<{ isValid: boolean; errors?: string[] }> {
+  const log = createCorrelationLogger(correlationId, "validateUserInput");
   const errors: string[] = [];
 
   try {
@@ -374,16 +387,15 @@ async function validateUserInput(
       errors.push("Tipo de usuário inválido");
     }
 
-    console.log(
-      `✅ [${correlationId}] Validação básica concluída com ${errors.length} erros`
-    );
+    log.info({ errorCount: errors.length }, "✅ Validação básica concluída");
 
     return {
       isValid: errors.length === 0,
       errors: errors.length > 0 ? errors : undefined,
     };
   } catch (error) {
-    console.error(`❌ [${correlationId}] Erro na validação:`, error);
+    const err = error instanceof Error ? error : new Error(String(error));
+    log.error({ err }, "❌ Erro na validação de usuário");
     return { isValid: false, errors: ["Erro interno na validação"] };
   }
 }
@@ -402,6 +414,10 @@ async function processUserTypeSpecificData(
   dataNascimento?: Date;
   generoValidado?: string;
 }> {
+  const log = createCorrelationLogger(
+    correlationId,
+    "processUserTypeSpecificData"
+  );
   try {
     const { tipoUsuario } = dadosUsuario;
 
@@ -451,7 +467,7 @@ async function processUserTypeSpecificData(
         generoValidado = dadosPF.genero.toUpperCase();
       }
 
-      console.log(`✅ [${correlationId}] Dados de pessoa física validados`);
+      log.info("✅ Dados de pessoa física validados");
 
       return {
         success: true,
@@ -479,7 +495,7 @@ async function processUserTypeSpecificData(
         };
       }
 
-      console.log(`✅ [${correlationId}] Dados de pessoa jurídica validados`);
+      log.info("✅ Dados de pessoa jurídica validados");
 
       return {
         success: true,
@@ -492,10 +508,8 @@ async function processUserTypeSpecificData(
       error: "Tipo de usuário não reconhecido",
     };
   } catch (error) {
-    console.error(
-      `❌ [${correlationId}] Erro no processamento específico:`,
-      error
-    );
+    const err = error instanceof Error ? error : new Error(String(error));
+    log.error({ err }, "❌ Erro no processamento específico");
     return {
       success: false,
       error: "Erro interno no processamento dos dados",
@@ -516,8 +530,9 @@ async function checkForDuplicates(
   },
   correlationId: string
 ): Promise<{ found: boolean; reason?: string }> {
+  const log = createCorrelationLogger(correlationId, "checkForDuplicates");
   try {
-    console.log(`🔍 [${correlationId}] Verificando duplicatas`);
+    log.info("🔍 Verificando duplicatas");
 
     // CORREÇÃO: Tipagem explícita corrigida para Array
     type WhereCondition =
@@ -561,8 +576,9 @@ async function checkForDuplicates(
         usuarioExistente.emailVerificationTokenExp < new Date()
       ) {
         await prisma.usuario.delete({ where: { id: usuarioExistente.id } });
-        console.log(
-          `🧹 [${correlationId}] Usuário com verificação expirada removido: ${usuarioExistente.email}`
+        log.info(
+          { email: usuarioExistente.email },
+          "🧹 Usuário com verificação expirada removido"
         );
         return { found: false };
       }
@@ -585,13 +601,11 @@ async function checkForDuplicates(
       return { found: true, reason };
     }
 
-    console.log(`✅ [${correlationId}] Nenhuma duplicata encontrada`);
+    log.info("✅ Nenhuma duplicata encontrada");
     return { found: false };
   } catch (error) {
-    console.error(
-      `❌ [${correlationId}] Erro na verificação de duplicatas:`,
-      error
-    );
+    const err = error instanceof Error ? error : new Error(String(error));
+    log.error({ err }, "❌ Erro na verificação de duplicatas");
     // Em caso de erro na verificação, assume que não há duplicatas
     // para não bloquear o registro desnecessariamente
     return { found: false };
@@ -635,9 +649,13 @@ function buildUserDataForDatabase(params: {
  * Cria usuário dentro de transação segura
  */
 async function createUserWithTransaction(userData: any, correlationId: string) {
+  const log = createCorrelationLogger(
+    correlationId,
+    "createUserWithTransaction"
+  );
   try {
     return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      console.log(`💾 [${correlationId}] Inserindo usuário no banco`);
+      log.info("💾 Inserindo usuário no banco");
 
       const usuario = await tx.usuario.create({
         data: userData,
@@ -659,9 +677,7 @@ async function createUserWithTransaction(userData: any, correlationId: string) {
         },
       });
 
-      console.log(
-        `✅ [${correlationId}] Usuário inserido com ID: ${usuario.id}`
-      );
+      log.info({ userId: usuario.id }, "✅ Usuário inserido com sucesso");
 
       const codigo = await tx.codigoUsuario.create({
         data: {
@@ -676,7 +692,8 @@ async function createUserWithTransaction(userData: any, correlationId: string) {
       return { ...usuario, codigoUsuario: codigo.codigo };
     });
   } catch (error) {
-    console.error(`❌ [${correlationId}] Erro na transação de banco:`, error);
+    const err = error instanceof Error ? error : new Error(String(error));
+    log.error({ err }, "❌ Erro na transação de banco");
 
     // Tratamento específico para erros de constraint do Prisma
     if (error instanceof Error && error.message.includes("Unique constraint")) {
@@ -689,11 +706,3 @@ async function createUserWithTransaction(userData: any, correlationId: string) {
   }
 }
 
-/**
- * Gera ID de correlação único para rastreamento
- */
-function generateCorrelationId(): string {
-  const timestamp = Date.now().toString(36);
-  const random = Math.random().toString(36).substr(2, 8);
-  return `reg-${timestamp}-${random}`;
-}

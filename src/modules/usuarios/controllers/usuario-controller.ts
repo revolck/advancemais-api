@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import { prisma } from "../../../config/prisma";
 import { generateTokenPair } from "../utils/auth";
 import { invalidateUserCache } from "../utils/cache";
+import { logger } from "../../../utils/logger";
 
 /**
  * Controllers para autenticação e gestão de usuários
@@ -33,6 +34,13 @@ interface LoginData {
   senha: string;
 }
 
+const createControllerLogger = (req: Request, action: string) =>
+  logger.child({
+    controller: "UsuarioController",
+    action,
+    correlationId: req.id,
+  });
+
 /**
  * Controller para autenticação de usuários
  * Valida credenciais e verifica se email foi confirmado
@@ -40,19 +48,18 @@ interface LoginData {
  * @param res - Response object
  */
 export const loginUsuario = async (req: Request, res: Response) => {
-  // Gera correlation ID para rastreamento
-  const correlationId =
-    req.headers["x-correlation-id"] || `login-${Date.now()}`;
+  const log = createControllerLogger(req, "loginUsuario");
+  const correlationId = req.id;
   const startTime = Date.now();
 
   try {
-    console.log(`🔐 [${correlationId}] Iniciando processo de login`);
+    log.info("🔐 Iniciando processo de login");
 
     const { documento, senha }: LoginData = req.body;
 
     // Validação básica de entrada
     if (!documento || !senha) {
-      console.warn(`⚠️ [${correlationId}] Dados de login incompletos`);
+      log.warn("⚠️ Dados de login incompletos");
       return res.status(400).json({
         success: false,
         message: "Documento e senha são obrigatórios",
@@ -64,8 +71,9 @@ export const loginUsuario = async (req: Request, res: Response) => {
     const documentoLimpo = documento.replace(/\D/g, "");
 
     if (documentoLimpo.length !== 11) {
-      console.warn(
-        `⚠️ [${correlationId}] CPF inválido: ${documentoLimpo.length} dígitos`
+      log.warn(
+        { length: documentoLimpo.length },
+        "⚠️ CPF inválido informado"
       );
       return res.status(400).json({
         success: false,
@@ -74,8 +82,9 @@ export const loginUsuario = async (req: Request, res: Response) => {
       });
     }
 
-    console.log(
-      `🔍 [${correlationId}] Buscando usuário por CPF: ${documentoLimpo.substring(0, 3)}***`
+    log.info(
+      { documentoPrefix: documentoLimpo.substring(0, 3) },
+      "🔍 Buscando usuário por CPF"
     );
 
     // Busca usuário no banco com todos os campos necessários
@@ -98,11 +107,9 @@ export const loginUsuario = async (req: Request, res: Response) => {
     });
 
     if (!usuario) {
-      console.warn(
-        `⚠️ [${correlationId}] Usuário não encontrado para documento: ${documentoLimpo.substring(
-          0,
-          3
-        )}***`
+      log.warn(
+        { documentoPrefix: documentoLimpo.substring(0, 3) },
+        "⚠️ Usuário não encontrado"
       );
       return res.status(401).json({
         success: false,
@@ -111,14 +118,16 @@ export const loginUsuario = async (req: Request, res: Response) => {
       });
     }
 
-    console.log(
-      `👤 [${correlationId}] Usuário encontrado: ${usuario.email} (ID: ${usuario.id})`
+    log.info(
+      { userId: usuario.id, email: usuario.email },
+      "👤 Usuário encontrado"
     );
 
     // Verifica status da conta
     if (usuario.status !== "ATIVO") {
-      console.warn(
-        `⚠️ [${correlationId}] Conta inativa: ${usuario.status} para usuário ${usuario.id}`
+      log.warn(
+        { userId: usuario.id, status: usuario.status },
+        "⚠️ Conta inativa"
       );
       return res.status(403).json({
         success: false,
@@ -131,8 +140,9 @@ export const loginUsuario = async (req: Request, res: Response) => {
 
     // VERIFICAÇÃO CRÍTICA: Email deve estar verificado
     if (!usuario.emailVerificado) {
-      console.warn(
-        `⚠️ [${correlationId}] Email não verificado para usuário ${usuario.id}: ${usuario.email}`
+      log.warn(
+        { userId: usuario.id, email: usuario.email },
+        "⚠️ Email não verificado"
       );
 
       // Calcula há quanto tempo a conta foi criada
@@ -158,20 +168,17 @@ export const loginUsuario = async (req: Request, res: Response) => {
       });
     }
 
-    console.log(
-      `✅ [${correlationId}] Email verificado em: ${usuario.emailVerificadoEm}`
+    log.info(
+      { userId: usuario.id, verifiedAt: usuario.emailVerificadoEm },
+      "✅ Email verificado"
     );
 
     // Valida senha usando bcrypt
-    console.log(
-      `🔐 [${correlationId}] Validando senha para usuário ${usuario.id}`
-    );
+    log.info({ userId: usuario.id }, "🔐 Validando senha");
     const senhaValida = await bcrypt.compare(senha, usuario.senha);
 
     if (!senhaValida) {
-      console.warn(
-        `⚠️ [${correlationId}] Senha inválida para usuário ${usuario.id}`
-      );
+      log.warn({ userId: usuario.id }, "⚠️ Senha inválida");
       return res.status(401).json({
         success: false,
         message: "Credenciais inválidas",
@@ -183,9 +190,7 @@ export const loginUsuario = async (req: Request, res: Response) => {
     const tokens = generateTokenPair(usuario.id, usuario.role);
 
     // Atualiza último login e armazena refresh token
-    console.log(
-      `💾 [${correlationId}] Atualizando último login para usuário ${usuario.id}`
-    );
+    log.info({ userId: usuario.id }, "💾 Atualizando último login");
     await prisma.usuario.update({
       where: { id: usuario.id },
       data: {
@@ -198,8 +203,9 @@ export const loginUsuario = async (req: Request, res: Response) => {
     await invalidateUserCache(usuario);
 
     const duration = Date.now() - startTime;
-    console.log(
-      `✅ [${correlationId}] Login realizado com sucesso em ${duration}ms para usuário: ${usuario.email}`
+    log.info(
+      { duration, userId: usuario.id, email: usuario.email },
+      "✅ Login realizado com sucesso"
     );
 
     // Prepara dados de resposta (sem informações sensíveis)
@@ -214,7 +220,6 @@ export const loginUsuario = async (req: Request, res: Response) => {
       emailVerificadoEm: usuario.emailVerificadoEm,
       ultimoLogin: new Date().toISOString(),
     };
-
 
     // Retorna dados do usuário autenticado com tokens
     res.json({
@@ -232,16 +237,18 @@ export const loginUsuario = async (req: Request, res: Response) => {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : "Erro desconhecido";
+    const err =
+      error instanceof Error ? error : new Error(String(error));
 
-    console.error(
-      `❌ [${correlationId}] Erro crítico no login após ${duration}ms:`,
+    log.error(
       {
-        error: errorMessage,
-        stack: error instanceof Error ? error.stack : undefined,
+        err,
+        duration,
         documento: req.body.documento
           ? `${req.body.documento.substring(0, 3)}***`
           : "não fornecido",
-      }
+      },
+      "❌ Erro crítico no login"
     );
 
     // Resposta de erro sem vazar informações sensíveis
@@ -265,16 +272,14 @@ export const loginUsuario = async (req: Request, res: Response) => {
  * @param res - Response object
  */
 export const logoutUsuario = async (req: Request, res: Response) => {
-  const correlationId =
-    req.headers["x-correlation-id"] || `logout-${Date.now()}`;
+  const log = createControllerLogger(req, "logoutUsuario");
+  const correlationId = req.id;
 
   try {
     const userId = req.user?.id;
 
     if (!userId) {
-      console.warn(
-        `⚠️ [${correlationId}] Tentativa de logout sem usuário autenticado`
-      );
+      log.warn("⚠️ Tentativa de logout sem usuário autenticado");
       return res.status(401).json({
         success: false,
         message: "Usuário não autenticado",
@@ -282,9 +287,7 @@ export const logoutUsuario = async (req: Request, res: Response) => {
       });
     }
 
-    console.log(
-      `🚪 [${correlationId}] Iniciando logout para usuário: ${userId}`
-    );
+    log.info({ userId }, "🚪 Iniciando logout");
 
     // Remove refresh token do banco (invalidação de sessão)
     await prisma.usuario.update({
@@ -297,10 +300,7 @@ export const logoutUsuario = async (req: Request, res: Response) => {
 
     await invalidateUserCache({ id: userId });
 
-    console.log(
-      `✅ [${correlationId}] Logout realizado com sucesso para usuário: ${userId}`
-    );
-
+    log.info({ userId }, "✅ Logout realizado com sucesso");
 
     res.json({
       success: true,
@@ -311,7 +311,9 @@ export const logoutUsuario = async (req: Request, res: Response) => {
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Erro desconhecido";
-    console.error(`❌ [${correlationId}] Erro no logout:`, errorMessage);
+    const err = error instanceof Error ? error : new Error(String(error));
+
+    log.error({ err, userId: req.user?.id }, "❌ Erro no logout");
 
     res.status(500).json({
       success: false,
@@ -332,14 +334,14 @@ export const logoutUsuario = async (req: Request, res: Response) => {
  * @param res - Response object
  */
 export const refreshToken = async (req: Request, res: Response) => {
-  const correlationId =
-    req.headers["x-correlation-id"] || `refresh-${Date.now()}`;
+  const log = createControllerLogger(req, "refreshToken");
+  const correlationId = req.id;
 
   try {
     const { refreshToken } = req.body;
 
     if (!refreshToken) {
-      console.warn(`⚠️ [${correlationId}] Refresh token não fornecido`);
+      log.warn("⚠️ Refresh token não fornecido");
       return res.status(400).json({
         success: false,
         message: "Refresh token é obrigatório",
@@ -347,11 +349,9 @@ export const refreshToken = async (req: Request, res: Response) => {
       });
     }
 
-    console.log(
-      `🔄 [${correlationId}] Validando refresh token: ${refreshToken.substring(
-        0,
-        10
-      )}...`
+    log.info(
+      { tokenPrefix: refreshToken.substring(0, 10) },
+      "🔄 Validando refresh token"
     );
 
     // Busca usuário pelo refresh token
@@ -371,9 +371,7 @@ export const refreshToken = async (req: Request, res: Response) => {
     });
 
     if (!usuario) {
-      console.warn(
-        `⚠️ [${correlationId}] Refresh token inválido ou não encontrado`
-      );
+      log.warn("⚠️ Refresh token inválido ou não encontrado");
       return res.status(401).json({
         success: false,
         message: "Refresh token inválido",
@@ -382,14 +380,16 @@ export const refreshToken = async (req: Request, res: Response) => {
       });
     }
 
-    console.log(
-      `👤 [${correlationId}] Refresh token válido para usuário: ${usuario.email} (${usuario.id})`
+    log.info(
+      { userId: usuario.id, email: usuario.email },
+      "👤 Refresh token válido"
     );
 
     // Verifica se a conta ainda está ativa
     if (usuario.status !== "ATIVO") {
-      console.warn(
-        `⚠️ [${correlationId}] Conta inativa durante refresh: ${usuario.status}`
+      log.warn(
+        { userId: usuario.id, status: usuario.status },
+        "⚠️ Conta inativa durante refresh"
       );
 
       // Remove refresh token inválido
@@ -411,8 +411,9 @@ export const refreshToken = async (req: Request, res: Response) => {
 
     // Verifica se email ainda está verificado (caso tenha sido revertido por admin)
     if (!usuario.emailVerificado) {
-      console.warn(
-        `⚠️ [${correlationId}] Email não verificado durante refresh para usuário: ${usuario.id}`
+      log.warn(
+        { userId: usuario.id },
+        "⚠️ Email não verificado durante refresh"
       );
 
       // Remove refresh token
@@ -431,8 +432,9 @@ export const refreshToken = async (req: Request, res: Response) => {
       });
     }
 
-    console.log(
-      `✅ [${correlationId}] Refresh token validado com sucesso para usuário: ${usuario.id}`
+    log.info(
+      { userId: usuario.id },
+      "✅ Refresh token validado com sucesso"
     );
 
     // Atualiza último acesso
@@ -468,10 +470,9 @@ export const refreshToken = async (req: Request, res: Response) => {
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Erro desconhecido";
-    console.error(
-      `❌ [${correlationId}] Erro ao validar refresh token:`,
-      errorMessage
-    );
+    const err = error instanceof Error ? error : new Error(String(error));
+
+    log.error({ err }, "❌ Erro ao validar refresh token");
 
     res.status(500).json({
       success: false,
@@ -492,16 +493,14 @@ export const refreshToken = async (req: Request, res: Response) => {
  * @param res - Response object
  */
 export const obterPerfil = async (req: Request, res: Response) => {
-  const correlationId =
-    req.headers["x-correlation-id"] || `profile-${Date.now()}`;
+  const log = createControllerLogger(req, "obterPerfil");
+  const correlationId = req.id;
 
   try {
     const userId = req.user?.id;
 
     if (!userId) {
-      console.warn(
-        `⚠️ [${correlationId}] Tentativa de obter perfil sem autenticação`
-      );
+      log.warn("⚠️ Tentativa de obter perfil sem autenticação");
       return res.status(401).json({
         success: false,
         message: "Usuário não autenticado",
@@ -509,7 +508,7 @@ export const obterPerfil = async (req: Request, res: Response) => {
       });
     }
 
-    console.log(`👤 [${correlationId}] Obtendo perfil para usuário: ${userId}`);
+    log.info({ userId }, "👤 Obtendo perfil do usuário");
 
     // Busca dados completos do usuário (excluindo informações sensíveis)
     const usuario = await prisma.usuario.findUnique({
@@ -556,7 +555,7 @@ export const obterPerfil = async (req: Request, res: Response) => {
     });
 
     if (!usuario) {
-      console.warn(`⚠️ [${correlationId}] Usuário não encontrado: ${userId}`);
+      log.warn({ userId }, "⚠️ Usuário não encontrado ao obter perfil");
       return res.status(404).json({
         success: false,
         message: "Usuário não encontrado",
@@ -564,8 +563,9 @@ export const obterPerfil = async (req: Request, res: Response) => {
       });
     }
 
-    console.log(
-      `✅ [${correlationId}] Perfil obtido com sucesso para: ${usuario.email}`
+    log.info(
+      { userId: usuario.id, email: usuario.email },
+      "✅ Perfil obtido com sucesso"
     );
 
     // Prepara estatísticas adicionais
@@ -598,7 +598,9 @@ export const obterPerfil = async (req: Request, res: Response) => {
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Erro desconhecido";
-    console.error(`❌ [${correlationId}] Erro ao obter perfil:`, errorMessage);
+    const err = error instanceof Error ? error : new Error(String(error));
+
+    log.error({ err, userId: req.user?.id }, "❌ Erro ao obter perfil");
 
     res.status(500).json({
       success: false,

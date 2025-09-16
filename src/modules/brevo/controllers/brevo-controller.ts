@@ -3,6 +3,7 @@ import { EmailService } from "../services/email-service";
 import { SMSService } from "../services/sms-service";
 import { BrevoClient } from "../client/brevo-client";
 import { BrevoConfigManager } from "../config/brevo-config";
+import { logger } from "../../../utils/logger";
 
 /**
  * Controller principal do módulo Brevo
@@ -21,13 +22,21 @@ export class BrevoController {
     this.config = BrevoConfigManager.getInstance();
   }
 
+  private getLogger(req: Request) {
+    return logger.child({
+      controller: "BrevoController",
+      correlationId: req.id,
+    });
+  }
+
   /**
    * Health check completo do módulo
    * GET /brevo/health
    */
   public healthCheck = async (req: Request, res: Response): Promise<void> => {
+    const log = this.getLogger(req);
     try {
-      console.log("🔍 Executando health check do Brevo...");
+      log.info("🔍 Executando health check do Brevo...");
 
       const [emailHealthy, smsHealthy, clientHealthy] = await Promise.all([
         this.emailService.checkHealth(),
@@ -70,15 +79,18 @@ export class BrevoController {
         },
       };
 
-      console.log("✅ Health check concluído:", {
-        status: healthData.status,
-        configured: healthData.configured,
-        simulated: healthData.simulated,
-      });
+      log.info(
+        {
+          status: healthData.status,
+          configured: healthData.configured,
+          simulated: healthData.simulated,
+        },
+        "✅ Health check concluído"
+      );
 
       res.status(overall ? 200 : 503).json(healthData);
     } catch (error) {
-      console.error("❌ Erro no health check:", error);
+      log.error({ err: error }, "❌ Erro no health check");
 
       res.status(503).json({
         status: "unhealthy",
@@ -94,6 +106,7 @@ export class BrevoController {
    * GET /brevo
    */
   public getModuleInfo = async (req: Request, res: Response): Promise<void> => {
+    const log = this.getLogger(req);
     try {
       const config = this.config.getConfig();
 
@@ -141,7 +154,7 @@ export class BrevoController {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      console.error("❌ Erro ao buscar informações do módulo:", error);
+      log.error({ err: error }, "❌ Erro ao buscar informações do módulo");
 
       res.status(500).json({
         error: "Erro ao buscar informações do módulo",
@@ -156,6 +169,7 @@ export class BrevoController {
    * Body: { email: string, name?: string, type?: string }
    */
   public testEmail = async (req: Request, res: Response): Promise<void> => {
+    const log = this.getLogger(req);
     // Bloqueio em produção
     if (process.env.NODE_ENV === "production") {
       res.status(403).json({
@@ -188,7 +202,7 @@ export class BrevoController {
         return;
       }
 
-      console.log(`🧪 Teste de email: ${type} para ${email}`);
+      log.info({ type, email }, "🧪 Teste de email");
 
       const testUserData = {
         id: `test_user_${Date.now()}`, // Prefixo especial para detecção
@@ -197,12 +211,12 @@ export class BrevoController {
         tipoUsuario: "PESSOA_FISICA",
       };
 
-      console.log(`🧪 Enviando teste para usuário: ${testUserData.id}`);
+      log.info({ testUserId: testUserData.id }, "🧪 Enviando teste de email");
 
       // Envia email usando o sistema normal (mas detectará como teste)
       const result = await this.emailService.sendWelcomeEmail(testUserData);
 
-      console.log(`📧 Resultado do teste:`, result);
+      log.info({ result }, "📧 Resultado do teste de email");
 
       res.json({
         success: result.success,
@@ -218,7 +232,7 @@ export class BrevoController {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      console.error("❌ Erro no teste de email:", error);
+      log.error({ err: error }, "❌ Erro no teste de email");
 
       res.status(500).json({
         success: false,
@@ -235,6 +249,7 @@ export class BrevoController {
    * Body: { to: string, message?: string }
    */
   public testSMS = async (req: Request, res: Response): Promise<void> => {
+    const log = this.getLogger(req);
     // Bloqueio em produção
     if (process.env.NODE_ENV === "production") {
       res.status(403).json({
@@ -258,7 +273,7 @@ export class BrevoController {
         return;
       }
 
-      console.log(`🧪 Teste de SMS para: ${to}`);
+      log.info({ to }, "🧪 Teste de SMS");
 
       const testMessage =
         message || "Teste de SMS do Advance+ - Sistema funcionando!";
@@ -269,7 +284,7 @@ export class BrevoController {
         sender: "Advance+",
       });
 
-      console.log(`📱 Resultado do teste SMS:`, result);
+      log.info({ result }, "📱 Resultado do teste SMS");
 
       res.json({
         success: result.success,
@@ -284,7 +299,7 @@ export class BrevoController {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      console.error("❌ Erro no teste de SMS:", error);
+      log.error({ err: error }, "❌ Erro no teste de SMS");
 
       res.status(500).json({
         success: false,
@@ -303,6 +318,7 @@ export class BrevoController {
     req: Request,
     res: Response
   ): Promise<void> => {
+    const log = this.getLogger(req);
     if (process.env.NODE_ENV === "production") {
       res.status(403).json({
         message: "Informações de configuração não disponíveis em produção",
@@ -337,7 +353,7 @@ export class BrevoController {
         healthInfo,
       });
     } catch (error) {
-      console.error("❌ Erro ao buscar status da configuração:", error);
+      log.error({ err: error }, "❌ Erro ao buscar status da configuração");
 
       res.status(500).json({
         error: "Erro ao buscar status da configuração",

@@ -4,6 +4,7 @@ import jwksRsa from 'jwks-rsa';
 
 import { supabaseConfig } from '@/config/env';
 import { prisma } from '@/config/prisma';
+import { logger } from '@/utils/logger';
 
 /**
  * Cliente JWKS para validação de tokens
@@ -13,6 +14,8 @@ const jwksClient = jwksRsa({
   cache: true,
   rateLimit: true,
 });
+
+const authMiddlewareLogger = logger.child({ module: 'AuthMiddleware' });
 
 /**
  * Função auxiliar para obter chave de assinatura
@@ -108,6 +111,11 @@ export const authMiddleware = (roles?: string[]) => {
  */
 export const authMiddlewareWithDB = (roles?: string[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
+    const log = authMiddlewareLogger.child({
+      correlationId: req.id,
+      path: req.originalUrl,
+      method: req.method,
+    });
     const token = req.headers.authorization?.split(' ')[1];
 
     if (!token) {
@@ -156,7 +164,7 @@ export const authMiddlewareWithDB = (roles?: string[]) => {
 
         next();
       } catch (error) {
-        console.error('Erro no middleware de autenticação:', error);
+        log.error({ err: error }, 'Erro no middleware de autenticação');
         const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
         return res.status(500).json({
           message: 'Erro interno do servidor',

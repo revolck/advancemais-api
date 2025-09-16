@@ -5,6 +5,7 @@ import { supabaseAuthMiddleware } from '../auth';
 import { WelcomeEmailMiddleware } from '../../brevo/middlewares/welcome-email-middleware';
 import passwordRecoveryRoutes from './password-recovery';
 import { asyncHandler } from '../../../utils/asyncHandler';
+import { logger } from '@/utils/logger';
 
 /**
  * Rotas de usuário atualizadas com sistema de verificação de email
@@ -14,6 +15,7 @@ import { asyncHandler } from '../../../utils/asyncHandler';
  * @version 7.0.0 - Sistema de verificação de email implementado
  */
 const router = Router();
+const usuarioRoutesLogger = logger.child({ module: 'UsuarioRoutes' });
 
 // ===========================
 // MIDDLEWARES GLOBAIS
@@ -31,15 +33,18 @@ router.use((req, res, next) => {
   // Adiciona correlation ID ao request
   req.headers['x-correlation-id'] = correlationId;
 
-  console.log(`🌐 [${correlationId}] ${req.method} ${req.path} - Iniciado`);
+  const requestLogger = usuarioRoutesLogger.child({
+    correlationId,
+    method: req.method,
+    path: req.path,
+  });
+  requestLogger.info('🌐 Requisição iniciada');
 
   // Override do res.json para capturar tempo de resposta
   const originalJson = res.json;
   res.json = function (data) {
     const duration = Date.now() - startTime;
-    console.log(
-      `📤 [${correlationId}] ${req.method} ${req.path} - ${res.statusCode} em ${duration}ms`,
-    );
+    requestLogger.info({ status: res.statusCode, duration }, '📤 Resposta enviada');
     return originalJson.call(this, data);
   };
 
@@ -295,27 +300,32 @@ router.post(
   createAuthRateLimit(3, 10), // 3 tentativas por 10 minutos
   async (req, res, next) => {
     const correlationId = req.headers['x-correlation-id'];
-    console.log(`📝 [${correlationId}] Iniciando processo de registro`);
+    usuarioRoutesLogger.child({ correlationId, route: 'registrar' }).info(
+      '📝 Iniciando processo de registro',
+    );
     next();
   },
   asyncHandler(criarUsuario), // Controller principal que cria usuário
   async (req, res, next) => {
     // Middleware de debug para verificar dados
     const correlationId = req.headers['x-correlation-id'];
-
-    console.log(`🔍 [${correlationId}] Verificando dados para middleware de email`);
+    const log = usuarioRoutesLogger.child({ correlationId, route: 'registrar' });
+    log.info('🔍 Verificando dados para middleware de email');
 
     if (res.locals?.usuarioCriado?.usuario) {
       const user = res.locals.usuarioCriado.usuario;
-      console.log(`✅ [${correlationId}] Dados prontos para email:`, {
-        id: user.id,
-        email: user.email,
-        nome: user.nomeCompleto,
-        tipo: user.tipoUsuario,
-      });
+      log.info(
+        {
+          id: user.id,
+          email: user.email,
+          nome: user.nomeCompleto,
+          tipo: user.tipoUsuario,
+        },
+        '✅ Dados prontos para email',
+      );
     } else {
-      console.warn(`⚠️ [${correlationId}] Dados não encontrados em res.locals.usuarioCriado`);
-      console.warn(`⚠️ [${correlationId}] res.locals:`, res.locals);
+      log.warn('⚠️ Dados não encontrados em res.locals.usuarioCriado');
+      log.warn({ resLocals: res.locals }, '⚠️ Detalhes do res.locals');
     }
 
     next();
@@ -403,11 +413,9 @@ router.post(
   createAuthRateLimit(5, 15), // 5 tentativas por 15 minutos
   async (req, res, next) => {
     const correlationId = req.headers['x-correlation-id'];
-    console.log(
-      `🔐 [${correlationId}] Tentativa de login para: ${
-        req.body.documento || 'documento não fornecido'
-      }`,
-    );
+    usuarioRoutesLogger
+      .child({ correlationId, route: 'login' })
+      .info({ documento: req.body.documento || 'documento não fornecido' }, '🔐 Tentativa de login');
     next();
   },
   asyncHandler(loginUsuario),
@@ -555,7 +563,9 @@ router.post(
   supabaseAuthMiddleware(),
   async (req, res, next) => {
     const correlationId = req.headers['x-correlation-id'];
-    console.log(`🚪 [${correlationId}] Logout do usuário: ${req.user?.id || 'ID não disponível'}`);
+    usuarioRoutesLogger
+      .child({ correlationId, route: 'logout' })
+      .info({ userId: req.user?.id ?? 'ID não disponível' }, '🚪 Logout do usuário');
     next();
   },
   asyncHandler(logoutUsuario),
@@ -621,9 +631,9 @@ router.get(
   supabaseAuthMiddleware(),
   async (req, res, next) => {
     const correlationId = req.headers['x-correlation-id'];
-    console.log(
-      `👤 [${correlationId}] Solicitação de perfil: ${req.user?.id || 'ID não disponível'}`,
-    );
+    usuarioRoutesLogger
+      .child({ correlationId, route: 'perfil' })
+      .info({ userId: req.user?.id ?? 'ID não disponível' }, '👤 Solicitação de perfil');
     next();
   },
   asyncHandler(obterPerfil),
@@ -641,7 +651,9 @@ router.use(
   createAuthRateLimit(3, 60), // 3 tentativas por hora
   async (req, res, next) => {
     const correlationId = req.headers['x-correlation-id'];
-    console.log(`🔑 [${correlationId}] Solicitação de recuperação de senha`);
+    usuarioRoutesLogger
+      .child({ correlationId, route: 'recuperar-senha' })
+      .info('🔑 Solicitação de recuperação de senha');
     next();
   },
   passwordRecoveryRoutes,

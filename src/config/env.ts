@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { logger } from '@/utils/logger';
 
 // Carrega as variáveis de ambiente o mais cedo possível
 dotenv.config();
@@ -21,16 +22,6 @@ dotenv.config();
 // =============================================
 // CLASSES DE VALIDAÇÃO
 // =============================================
-
-class ConfigurationError extends Error {
-  constructor(
-    message: string,
-    public missingVars?: string[],
-  ) {
-    super(message);
-    this.name = 'ConfigurationError';
-  }
-}
 
 class EnvironmentValidator {
   /**
@@ -87,7 +78,9 @@ const isDevelopment = NODE_ENV === 'development';
 const isProduction = NODE_ENV === 'production';
 const isTest = NODE_ENV === 'test';
 
-console.log(`🌍 Ambiente: ${NODE_ENV}`);
+const envLogger = logger.child({ module: 'EnvironmentConfig', environment: NODE_ENV });
+
+envLogger.info({ nodeEnv: NODE_ENV }, '🌍 Ambiente configurado');
 
 // =============================================
 // VALIDAÇÃO DE VARIÁVEIS CRÍTICAS
@@ -115,16 +108,15 @@ const requiredVars =
 const validation = EnvironmentValidator.validateRequired(requiredVars);
 
 if (!validation.isValid) {
-  const errorMessage = `Variáveis de ambiente obrigatórias não encontradas para ${NODE_ENV}: ${validation.missing.join(
-    ', ',
-  )}`;
+  const missingVars = validation.missing.join(', ');
+  const errorMessage = `Variáveis de ambiente obrigatórias não encontradas para ${NODE_ENV}: ${missingVars}`;
 
   if (isProduction) {
-    console.error(`❌ ${errorMessage}`);
+    envLogger.error({ missing: validation.missing }, `❌ ${errorMessage}`);
     process.exit(1); // Falha crítica em produção
   } else {
-    console.warn(`⚠️ ${errorMessage}`);
-    console.warn('⚠️ Alguns módulos podem não funcionar corretamente');
+    envLogger.warn({ missing: validation.missing }, `⚠️ ${errorMessage}`);
+    envLogger.warn('⚠️ Alguns módulos podem não funcionar corretamente');
   }
 }
 
@@ -451,20 +443,19 @@ export class ConfigurationManager {
    */
   static validateWithLogging(): boolean {
     const result = this.validateAll();
+    const log = envLogger.child({ context: 'ConfigurationManager' });
 
     if (result.errors.length > 0) {
-      console.error('❌ Erros críticos de configuração:');
-      result.errors.forEach((error) => console.error(`   - ${error}`));
+      log.error({ errors: result.errors }, '❌ Erros críticos de configuração');
 
       if (isProduction) {
-        console.error('🚨 Aplicação não pode iniciar em produção com erros críticos');
+        log.error('🚨 Aplicação não pode iniciar em produção com erros críticos');
         process.exit(1);
       }
     }
 
     if (result.warnings.length > 0) {
-      console.warn('⚠️ Avisos de configuração:');
-      result.warnings.forEach((warning) => console.warn(`   - ${warning}`));
+      log.warn({ warnings: result.warnings }, '⚠️ Avisos de configuração');
     }
 
     // Log de módulos configurados
@@ -473,7 +464,7 @@ export class ConfigurationManager {
       .map(([name]) => name);
 
     if (configuredModules.length > 0) {
-      console.log('✅ Módulos configurados:', configuredModules.join(', '));
+      log.info({ modules: configuredModules }, '✅ Módulos configurados');
     }
 
     return result.isValid;
@@ -516,7 +507,7 @@ export const appConfig = {
 const isConfigValid = ConfigurationManager.validateWithLogging();
 
 if (isDevelopment && !isConfigValid) {
-  console.warn('⚠️ Configuração incompleta - alguns recursos podem não funcionar');
+  envLogger.warn('⚠️ Configuração incompleta - alguns recursos podem não funcionar');
 }
 
 export default appConfig;

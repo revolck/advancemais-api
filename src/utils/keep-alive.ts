@@ -1,8 +1,11 @@
 import { serverConfig } from '../config/env';
+import { logger } from './logger';
 
 /**
  * Inicia um ping periódico para manter a instância ativa.
  */
+const keepAliveLogger = logger.child({ module: 'KeepAlive' });
+
 export function startKeepAlive(): void {
   const url =
     process.env.KEEP_ALIVE_URL ||
@@ -12,16 +15,16 @@ export function startKeepAlive(): void {
   const interval = parseInt(process.env.KEEP_ALIVE_INTERVAL || '600000', 10); // 10min
 
   if (!url || interval <= 0) {
-    console.warn('⚠️ Keep-alive desativado: URL ou intervalo inválido');
+    keepAliveLogger.warn({ url, interval }, '⚠️ Keep-alive desativado: URL ou intervalo inválido');
     return;
   }
 
   setInterval(async () => {
     try {
       await fetch(url);
-      console.log(`✅ Keep-alive ping para ${url}`);
+      keepAliveLogger.info({ url }, '✅ Keep-alive ping concluído');
     } catch (error) {
-      console.error(`❌ Erro no keep-alive para ${url}:`, error);
+      keepAliveLogger.error({ url, err: error }, '❌ Erro no keep-alive');
     }
   }, interval);
 }

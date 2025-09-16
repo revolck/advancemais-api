@@ -32,6 +32,7 @@ import { EmailService } from './services/email-service';
 import { SMSService } from './services/sms-service';
 import { BrevoClient } from './client/brevo-client';
 import { BrevoConfigManager } from './config/brevo-config';
+import { logger } from '@/utils/logger';
 
 /**
  * Classe principal do módulo Brevo
@@ -43,6 +44,7 @@ export class BrevoModule {
   private smsService: SMSService;
   private client: BrevoClient;
   private config: BrevoConfigManager;
+  private readonly log = logger.child({ module: 'BrevoModule' });
 
   private constructor() {
     this.config = BrevoConfigManager.getInstance();
@@ -50,7 +52,7 @@ export class BrevoModule {
     this.emailService = new EmailService();
     this.smsService = new SMSService();
 
-    console.log('🏭 BrevoModule: Instância criada com sucesso');
+    this.log.info('🏭 BrevoModule: Instância criada com sucesso');
   }
 
   public static getInstance(): BrevoModule {
@@ -119,7 +121,7 @@ export class BrevoModule {
         },
       };
     } catch (error) {
-      console.error('❌ Erro no health check do BrevoModule:', error);
+      this.log.error({ err: error }, '❌ Erro no health check do BrevoModule');
       return {
         overall: false,
         status: 'unhealthy',

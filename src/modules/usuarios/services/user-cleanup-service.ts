@@ -1,4 +1,7 @@
 import { prisma } from '../../../config/prisma';
+import { logger } from '@/utils/logger';
+
+const cleanupLogger = logger.child({ module: 'UserCleanupService' });
 
 /**
  * Remove usuários que não confirmaram o email e cujo token expirou.
@@ -15,7 +18,10 @@ export async function deleteExpiredUnverifiedUsers(): Promise<number> {
   });
 
   if (result.count > 0) {
-    console.log(`🧹 Removidos ${result.count} usuários com verificação de email expirada`);
+    cleanupLogger.info(
+      { removedCount: result.count },
+      '🧹 Removidos usuários com verificação de email expirada',
+    );
   }
 
   return result.count;
@@ -30,7 +36,7 @@ export function startExpiredUserCleanupJob(): void {
     try {
       await deleteExpiredUnverifiedUsers();
     } catch (error) {
-      console.error('Erro ao remover usuários expirados:', error);
+      cleanupLogger.error({ err: error }, 'Erro ao remover usuários expirados');
     }
   };
 

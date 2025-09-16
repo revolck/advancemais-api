@@ -9,7 +9,10 @@ import { z } from 'zod';
 
 import { prisma } from '@/config/prisma';
 import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
+import { logger } from '@/utils/logger';
 export class AdminService {
+  private readonly log = logger.child({ module: 'AdminService' });
+
   constructor() {}
 
   /**
@@ -152,10 +155,14 @@ export class AdminService {
     // Cancelamento de assinatura removido após retirada do provedor de pagamentos
 
     // Log da alteração
-    console.log(
-      `Status do usuário ${userId} alterado de ${
-        usuarioAntes.status
-      } para ${statusEnum}${motivo ? ` (Motivo: ${motivo})` : ''}`,
+    this.log.info(
+      {
+        userId,
+        statusAnterior: usuarioAntes.status,
+        statusAtual: statusEnum,
+        motivo,
+      },
+      'Status do usuário alterado',
     );
 
     return {
@@ -196,8 +203,13 @@ export class AdminService {
 
     await invalidateUserCache(usuario);
 
-    console.log(
-      `Role do usuário ${userId} alterada para ${roleEnum}${motivo ? ` (Motivo: ${motivo})` : ''}`,
+    this.log.info(
+      {
+        userId,
+        novaRole: roleEnum,
+        motivo,
+      },
+      'Role do usuário alterada',
     );
 
     return {

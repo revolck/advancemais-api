@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { EmailService } from '../services/email-service';
+import { logger } from '@/utils/logger';
 
 /**
  * Middleware simplificado e robusto para envio de email de boas-vindas
@@ -13,6 +14,7 @@ import { EmailService } from '../services/email-service';
  */
 export class WelcomeEmailMiddleware {
   private emailService: EmailService;
+  private readonly log = logger.child({ module: 'WelcomeEmailMiddleware' });
 
   constructor() {
     this.emailService = new EmailService();
@@ -27,26 +29,29 @@ export class WelcomeEmailMiddleware {
     _next: NextFunction,
   ): Promise<void> => {
     const correlationId = this.getCorrelationId(req);
+    const log = this.log.child({ correlationId, method: 'sendWelcomeEmail' });
 
     try {
-      console.log(`📧 [${correlationId}] WelcomeEmailMiddleware: Iniciando processamento`);
+      log.info('📧 WelcomeEmailMiddleware: Iniciando processamento');
 
       // Extrai dados do usuário criado
       const userData = this.extractUserData(res, correlationId);
 
       if (userData) {
-        console.log(`📧 [${correlationId}] Dados válidos extraídos para: ${userData.email}`);
+        log.info({ email: userData.email }, '📧 Dados válidos extraídos');
 
         // Executa envio de email de forma assíncrona (não bloqueia resposta)
         this.processEmailAsync(userData, correlationId);
 
-        console.log(`📧 [${correlationId}] Email agendado para envio: ${userData.email}`);
+        log.info({ email: userData.email }, '📧 Email agendado para envio');
       } else {
-        console.warn(`⚠️ [${correlationId}] Dados insuficientes para envio de email`);
-        console.warn(`⚠️ [${correlationId}] res.locals keys:`, Object.keys(res.locals || {}));
+        log.warn(
+          { resLocalsKeys: Object.keys(res.locals || {}) },
+          '⚠️ Dados insuficientes para envio de email',
+        );
       }
     } catch (error) {
-      console.error(`❌ [${correlationId}] Erro no middleware de email:`, error);
+      log.error({ err: error }, '❌ Erro no middleware de email');
       // Nunca falha o fluxo principal
     }
 
@@ -58,18 +63,19 @@ export class WelcomeEmailMiddleware {
    * Extrai dados do usuário de forma segura
    */
   private extractUserData(res: Response, correlationId: string): any {
+    const log = this.log.child({ correlationId, method: 'extractUserData' });
     try {
-      console.log(`🔍 [${correlationId}] Extraindo dados do res.locals`);
+      log.info('🔍 Extraindo dados do res.locals');
 
       // Verifica se res.locals existe
       if (!res.locals) {
-        console.warn(`⚠️ [${correlationId}] res.locals não existe`);
+        log.warn('⚠️ res.locals não existe');
         return null;
       }
 
       // Verifica se usuarioCriado existe
       if (!res.locals.usuarioCriado) {
-        console.warn(`⚠️ [${correlationId}] res.locals.usuarioCriado não existe`);
+        log.warn('⚠️ res.locals.usuarioCriado não existe');
         return null;
       }
 
@@ -77,7 +83,7 @@ export class WelcomeEmailMiddleware {
 
       // Verifica se dados do usuário existem
       if (!usuarioCriado.usuario) {
-        console.warn(`⚠️ [${correlationId}] res.locals.usuarioCriado.usuario não existe`);
+        log.warn('⚠️ res.locals.usuarioCriado.usuario não existe');
         return null;
       }
 
@@ -88,13 +94,13 @@ export class WelcomeEmailMiddleware {
       const missingFields = requiredFields.filter((field) => !userData[field]);
 
       if (missingFields.length > 0) {
-        console.warn(`⚠️ [${correlationId}] Campos obrigatórios ausentes:`, missingFields);
+        log.warn({ missingFields }, '⚠️ Campos obrigatórios ausentes');
         return null;
       }
 
       // Validação de email
       if (!this.isValidEmail(userData.email)) {
-        console.warn(`⚠️ [${correlationId}] Email inválido: ${userData.email}`);
+        log.warn({ email: userData.email }, '⚠️ Email inválido');
         return null;
       }
 
@@ -106,16 +112,19 @@ export class WelcomeEmailMiddleware {
         tipoUsuario: userData.tipoUsuario,
       };
 
-      console.log(`✅ [${correlationId}] Dados válidos extraídos:`, {
-        id: processedData.id,
-        email: processedData.email,
-        nomeCompleto: processedData.nomeCompleto,
-        tipoUsuario: processedData.tipoUsuario,
-      });
+      log.info(
+        {
+          id: processedData.id,
+          email: processedData.email,
+          nomeCompleto: processedData.nomeCompleto,
+          tipoUsuario: processedData.tipoUsuario,
+        },
+        '✅ Dados válidos extraídos',
+      );
 
       return processedData;
     } catch (error) {
-      console.error(`❌ [${correlationId}] Erro ao extrair dados:`, error);
+      log.error({ err: error }, '❌ Erro ao extrair dados');
       return null;
     }
   }
@@ -124,10 +133,11 @@ export class WelcomeEmailMiddleware {
    * Processa email de forma completamente assíncrona
    */
   private processEmailAsync(userData: any, correlationId: string): void {
+    const log = this.log.child({ correlationId, method: 'processEmailAsync' });
     // Executa em background sem bloquear
     setImmediate(async () => {
       try {
-        console.log(`📧 [${correlationId}] Iniciando envio assíncrono para: ${userData.email}`);
+        log.info({ email: userData.email }, '📧 Iniciando envio assíncrono');
 
         const startTime = Date.now();
         const result = await this.emailService.sendWelcomeEmail(userData);
@@ -135,26 +145,23 @@ export class WelcomeEmailMiddleware {
 
         if (result.success) {
           if (result.simulated) {
-            console.log(
-              `🎭 [${correlationId}] Email simulado enviado para: ${userData.email} (${duration}ms)`,
-            );
+            log.info({ email: userData.email, duration }, '🎭 Email simulado enviado');
           } else {
-            console.log(
-              `✅ [${correlationId}] Email enviado com sucesso para: ${userData.email} (${duration}ms)`,
-            );
+            log.info({ email: userData.email, duration }, '✅ Email enviado com sucesso');
             if (result.messageId) {
-              console.log(`📧 [${correlationId}] Message ID: ${result.messageId}`);
+              log.info({ email: userData.email, messageId: result.messageId }, '📧 Message ID registrado');
             }
           }
         } else {
-          console.error(
-            `❌ [${correlationId}] Falha no envio para ${userData.email}: ${result.error}`,
-          );
+          log.error({ email: userData.email, error: result.error }, '❌ Falha no envio de email');
         }
       } catch (error) {
-        console.error(
-          `❌ [${correlationId}] Erro crítico no envio assíncrono para ${userData.email}:`,
-          error instanceof Error ? error.message : error,
+        log.error(
+          {
+            email: userData.email,
+            err: error,
+          },
+          '❌ Erro crítico no envio assíncrono',
         );
       }
     });
@@ -181,7 +188,8 @@ export class WelcomeEmailMiddleware {
    * Factory method para uso nas rotas
    */
   public static create() {
-    console.log('🏭 WelcomeEmailMiddleware: Criando instância do middleware');
+    const factoryLogger = logger.child({ module: 'WelcomeEmailMiddlewareFactory' });
+    factoryLogger.info('🏭 WelcomeEmailMiddleware: Criando instância do middleware');
     const instance = new WelcomeEmailMiddleware();
     return instance.sendWelcomeEmail;
   }

@@ -7,10 +7,64 @@ import { clientesService } from '@/modules/empresas/clientes/services/clientes.s
 import { METODO_PAGAMENTO, MODELO_PAGAMENTO, STATUS_PAGAMENTO, StatusVaga, PlanoParceiro } from '@prisma/client';
 import { EmailService } from '@/modules/brevo/services/email-service';
 
+type MercadoPagoResponse<T = any> = {
+  body?: T;
+  [key: string]: any;
+};
+
 function addMonths(date: Date, months: number) {
   const d = new Date(date);
   d.setMonth(d.getMonth() + months);
   return d;
+}
+
+function extractInitPoint(result: MercadoPagoResponse): string | null {
+  if (!result) return null;
+  const body = result.body ?? result;
+  return (
+    body?.sandbox_init_point ||
+    body?.init_point ||
+    result?.sandbox_init_point ||
+    result?.init_point ||
+    null
+  );
+}
+
+function extractResourceId(result: MercadoPagoResponse): string | null {
+  if (!result) return null;
+  const body = result.body ?? result;
+  return (
+    body?.id ||
+    body?.preapproval_id ||
+    body?.preference_id ||
+    result?.id ||
+    null
+  );
+}
+
+function normalizeMercadoPagoError(error: unknown): { message: string; payload?: any } {
+  if (error instanceof Error) {
+    return { message: error.message, payload: { name: error.name, message: error.message, stack: error.stack } };
+  }
+
+  if (error && typeof error === 'object') {
+    const errObj = error as any;
+    const message =
+      errObj?.message ||
+      errObj?.description ||
+      errObj?.error ||
+      errObj?.status_detail ||
+      errObj?.response?.data?.message ||
+      errObj?.response?.data?.error ||
+      errObj?.response?.message ||
+      'erro desconhecido';
+
+    const payload = errObj?.response?.data ?? errObj;
+
+    return { message: String(message), payload };
+  }
+
+  return { message: String(error ?? 'erro desconhecido'), payload: error };
 }
 
 async function setVagasToDraft(usuarioId: string) {
@@ -174,7 +228,7 @@ export const assinaturasService = {
         // Assinatura recorrente real com cartão
         const preapproval = new PreApproval(mp);
         const preapprovalPlanId = await this.ensurePlanPreapproval(params.planoEmpresarialId);
-        const result = await preapproval.create({
+        const result = (await preapproval.create({
           body: {
             reason: titulo,
             external_reference: checkoutId,
@@ -182,10 +236,17 @@ export const assinaturasService = {
             payer_email: payerEmail,
             preapproval_plan_id: preapprovalPlanId,
           },
-        });
-        initPoint = (result as any)?.sandbox_init_point || (result as any)?.init_point || null;
+        })) as MercadoPagoResponse;
+        initPoint = extractInitPoint(result);
         // Persistir ID da assinatura
-        await this.logEvent({ usuarioId: params.usuarioId, tipo: 'PREAPPROVAL_CREATED', status: 'CRIADO', externalRef: checkoutId, mpResourceId: (result as any)?.id || null });
+        await this.logEvent({
+          usuarioId: params.usuarioId,
+          tipo: 'PREAPPROVAL_CREATED',
+          status: 'CRIADO',
+          externalRef: checkoutId,
+          mpResourceId: extractResourceId(result),
+          payload: result.body ?? result,
+        });
       } else {
         // Checkout Pro (PIX/BOLETO ou cartão via preference) - recorrência assistida
         const preference = new Preference(mp);
@@ -199,7 +260,7 @@ export const assinaturasService = {
           }
           return undefined;
         })();
-        const pref = await preference.create({
+        const pref = (await preference.create({
           body: {
             external_reference: checkoutId,
             auto_return: 'approved',
@@ -208,17 +269,32 @@ export const assinaturasService = {
             payer: payerEmail ? { email: payerEmail } : undefined,
             ...(payment_methods ? { payment_methods } : {}),
           },
+        })) as MercadoPagoResponse;
+        initPoint = extractInitPoint(pref);
+        await this.logEvent({
+          usuarioId: params.usuarioId,
+          tipo: 'PREFERENCE_CREATED',
+          status: 'CRIADO',
+          externalRef: checkoutId,
+          mpResourceId: extractResourceId(pref),
+          payload: pref.body ?? pref,
         });
-        initPoint = (pref as any)?.sandbox_init_point || (pref as any)?.init_point || null;
-        await this.logEvent({ usuarioId: params.usuarioId, tipo: 'PREFERENCE_CREATED', status: 'CRIADO', externalRef: checkoutId, mpResourceId: (pref as any)?.id || null });
       }
       if (!initPoint) {
         await this.logEvent({ usuarioId: params.usuarioId, tipo: 'CHECKOUT_NO_INITPOINT', status: 'ERRO', externalRef: checkoutId });
         throw new Error('Não foi possível gerar o link de pagamento para o método selecionado');
       }
     } catch (e) {
-      // Log da falha ficará a cargo do middleware de erro global/log
-      await this.logEvent({ usuarioId: params.usuarioId, tipo: 'CHECKOUT_ERROR', status: 'ERRO', externalRef: checkoutId, mensagem: e instanceof Error ? e.message : 'erro desconhecido' });
+      const normalized = normalizeMercadoPagoError(e);
+      await this.logEvent({
+        usuarioId: params.usuarioId,
+        tipo: 'CHECKOUT_ERROR',
+        status: 'ERRO',
+        externalRef: checkoutId,
+        mensagem: normalized.message,
+        payload: normalized.payload,
+      });
+      throw new Error(`Erro ao iniciar checkout no Mercado Pago: ${normalized.message}`);
     }
 
     const planoSnapshot = {

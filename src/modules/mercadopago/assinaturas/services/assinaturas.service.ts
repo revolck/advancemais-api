@@ -250,13 +250,22 @@ export const assinaturasService = {
       } else {
         // Checkout Pro (PIX/BOLETO ou cartão via preference) - recorrência assistida
         const preference = new Preference(mp);
-        const payment_methods = ((): any => {
-          const excludeCards = { excluded_payment_types: [{ id: 'credit_card' }, { id: 'debit_card' }] };
+        const payment_methods = ((): Record<string, unknown> | undefined => {
+          const excludedPaymentTypesBase = [{ id: 'credit_card' }, { id: 'debit_card' }];
           if (params.metodoPagamento === METODO_PAGAMENTO.PIX) {
-            return { ...excludeCards, excluded_payment_types: [...excludeCards.excluded_payment_types, { id: 'ticket' }] , default_payment_method_id: 'pix' };
+            return {
+              excluded_payment_types: [...excludedPaymentTypesBase, { id: 'ticket' }],
+              default_payment_type_id: 'bank_transfer',
+            };
           }
           if (params.metodoPagamento === METODO_PAGAMENTO.BOLETO) {
-            return { ...excludeCards, default_payment_type_id: 'ticket' } as any;
+            return {
+              excluded_payment_types: [...excludedPaymentTypesBase, { id: 'bank_transfer' }],
+              default_payment_type_id: 'ticket',
+            };
+          }
+          if (excludedPaymentTypesBase.length) {
+            return { excluded_payment_types: excludedPaymentTypesBase };
           }
           return undefined;
         })();

@@ -44,9 +44,9 @@ async function processPendingBoletos() {
         data: body,
       });
 
-      const stillPending = [STATUS_PAGAMENTO.PENDENTE, STATUS_PAGAMENTO.EM_PROCESSAMENTO].includes(
-        (body?.status ? mapStatus(body.status) : boleto.statusPagamento) as STATUS_PAGAMENTO,
-      );
+      const currentStatus = body?.status ? mapStatus(body.status) : boleto.statusPagamento;
+      const stillPending =
+        currentStatus === STATUS_PAGAMENTO.PENDENTE || currentStatus === STATUS_PAGAMENTO.EM_PROCESSAMENTO;
 
       if (stillPending) {
         const createdAt = boleto.criadoEm || new Date();

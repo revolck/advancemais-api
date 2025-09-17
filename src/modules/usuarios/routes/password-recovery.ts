@@ -19,7 +19,7 @@ const passwordRecoveryController = new PasswordRecoveryController();
  * @openapi
  * /api/v1/usuarios/recuperar-senha:
  *   post:
- *     summary: Solicitar recuperação de senha
+ *     summary: Solicitar recuperação de senha por email, CPF ou CNPJ
  *     tags: [Usuários]
  *     requestBody:
  *       required: true
@@ -27,13 +27,33 @@ const passwordRecoveryController = new PasswordRecoveryController();
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - email
  *             properties:
+ *               identificador:
+ *                 type: string
+ *                 description: Email, CPF ou CNPJ associado à conta
+ *                 example: "user@example.com"
  *               email:
  *                 type: string
  *                 format: email
+ *                 description: Alternativa para enviar diretamente o email cadastrado
  *                 example: "user@example.com"
+ *               cpf:
+ *                 type: string
+ *                 description: CPF com ou sem máscara
+ *                 example: "12345678909"
+ *               cnpj:
+ *                 type: string
+ *                 description: CNPJ com ou sem máscara
+ *                 example: "12345678000199"
+ *             oneOf:
+ *               - required:
+ *                   - identificador
+ *               - required:
+ *                   - email
+ *               - required:
+ *                   - cpf
+ *               - required:
+ *                   - cnpj
  *     responses:
  *       200:
  *         description: Solicitação enviada
@@ -55,7 +75,7 @@ const passwordRecoveryController = new PasswordRecoveryController();
  *               $ref: '#/components/schemas/ErrorResponse'
  *             example:
  *               success: false
- *               message: "E-mail inválido"
+ *               message: "Informe um email, CPF ou CNPJ válido"
  *               code: "VALIDATION_ERROR"
  *       404:
  *         description: Usuário não encontrado
@@ -93,7 +113,13 @@ const passwordRecoveryController = new PasswordRecoveryController();
  *         source: |
  *           curl -X POST "http://localhost:3000/api/v1/usuarios/recuperar-senha" \\
  *            -H "Content-Type: application/json" \\
- *            -d '{"email":"user@example.com"}'
+ *            -d '{"identificador":"user@example.com"}'
+ *       - lang: cURL
+ *         label: Exemplo com CPF
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/usuarios/recuperar-senha" \\
+ *            -H "Content-Type: application/json" \\
+ *            -d '{"cpf":"123.456.789-09"}'
  */
 router.post('/', passwordRecoveryController.solicitarRecuperacao);
 

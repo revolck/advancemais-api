@@ -18,7 +18,10 @@ import { invalidateUserCache } from '../utils/cache';
  * Interface para solicitação de recuperação de senha
  */
 interface SolicitarRecuperacaoData {
-  identificador: string; // CPF, CNPJ ou email
+  identificador?: string; // CPF, CNPJ ou email
+  email?: string;
+  cpf?: string;
+  cnpj?: string;
 }
 
 /**
@@ -56,39 +59,79 @@ export class PasswordRecoveryController {
   public solicitarRecuperacao = async (req: Request, res: Response) => {
     const log = this.getLogger(req);
     try {
-      const { identificador }: SolicitarRecuperacaoData = req.body;
+      const { identificador, email, cpf, cnpj }: SolicitarRecuperacaoData = req.body;
 
-      // Validação básica
-      if (!identificador || identificador.trim() === '') {
+      const entradas = [
+        { tipo: 'identificador', valor: identificador },
+        { tipo: 'email', valor: email },
+        { tipo: 'cpf', valor: cpf },
+        { tipo: 'cnpj', valor: cnpj },
+      ].filter((entrada) => typeof entrada.valor === 'string' && entrada.valor.trim() !== '');
+
+      if (entradas.length === 0) {
         return res.status(400).json({
-          message: 'Identificador (CPF, CNPJ ou email) é obrigatório',
+          message: 'Informe um email, CPF ou CNPJ para recuperar a senha',
         });
       }
 
-      // Limpa e determina o tipo de identificador
-      const identificadorLimpo = identificador.trim();
-      let buscarPor: any = {};
+      const entradaSelecionada = entradas[0];
+      const valorEntrada = (entradaSelecionada.valor as string).trim();
+      let buscarPor: Record<string, string> | null = null;
 
-      // Verifica se é email
-      if (validarEmail(identificadorLimpo)) {
-        buscarPor = { email: identificadorLimpo.toLowerCase() };
-      } else {
-        // Remove caracteres especiais para CPF/CNPJ
-        const documentoLimpo = limparDocumento(identificadorLimpo);
-
-        if (validarCPF(documentoLimpo)) {
-          buscarPor = { cpf: documentoLimpo };
-        } else if (validarCNPJ(documentoLimpo)) {
-          buscarPor = { cnpj: documentoLimpo };
-        } else {
+      if (entradaSelecionada.tipo === 'email') {
+        if (!validarEmail(valorEntrada)) {
           return res.status(400).json({
-            message:
-              'Identificador deve ser um email válido, CPF (11 dígitos) ou CNPJ (14 dígitos)',
+            message: 'Email inválido. Informe um email válido para continuar',
           });
+        }
+
+        buscarPor = { email: valorEntrada.toLowerCase() };
+      } else if (entradaSelecionada.tipo === 'cpf') {
+        const documentoLimpo = limparDocumento(valorEntrada);
+
+        if (!validarCPF(documentoLimpo)) {
+          return res.status(400).json({
+            message: 'CPF deve conter 11 dígitos numéricos',
+          });
+        }
+
+        buscarPor = { cpf: documentoLimpo };
+      } else if (entradaSelecionada.tipo === 'cnpj') {
+        const documentoLimpo = limparDocumento(valorEntrada);
+
+        if (!validarCNPJ(documentoLimpo)) {
+          return res.status(400).json({
+            message: 'CNPJ deve conter 14 dígitos numéricos',
+          });
+        }
+
+        buscarPor = { cnpj: documentoLimpo };
+      } else {
+        if (validarEmail(valorEntrada)) {
+          buscarPor = { email: valorEntrada.toLowerCase() };
+        } else {
+          const documentoLimpo = limparDocumento(valorEntrada);
+
+          if (validarCPF(documentoLimpo)) {
+            buscarPor = { cpf: documentoLimpo };
+          } else if (validarCNPJ(documentoLimpo)) {
+            buscarPor = { cnpj: documentoLimpo };
+          } else {
+            return res.status(400).json({
+              message:
+                'Identificador deve ser um email válido, CPF (11 dígitos) ou CNPJ (14 dígitos)',
+            });
+          }
         }
       }
 
       // Busca usuário no banco
+      if (!buscarPor) {
+        return res.status(400).json({
+          message: 'Não foi possível identificar um email, CPF ou CNPJ válido',
+        });
+      }
+
       const usuario = await prisma.usuario.findFirst({
         where: {
           ...buscarPor,

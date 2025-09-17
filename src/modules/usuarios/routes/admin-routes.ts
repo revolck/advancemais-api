@@ -121,6 +121,66 @@ router.get('/', asyncHandler(adminController.getAdminInfo));
 router.get('/usuarios', asyncHandler(adminController.listarUsuarios));
 
 /**
+ * Listar candidatos com filtros
+ * GET /admin/candidatos
+ */
+/**
+ * @openapi
+ * /api/v1/usuarios/admin/candidatos:
+ *   get:
+ *     summary: Listar candidatos
+ *     tags: [Usuários - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           example: 50
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           example: ATIVO
+ *       - in: query
+ *         name: tipoUsuario
+ *         schema:
+ *           type: string
+ *           example: PESSOA_FISICA
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *           example: Joao da Silva
+ *     responses:
+ *       200:
+ *         description: Lista de candidatos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminCandidateListResponse'
+ *       500:
+ *         description: Erro ao listar candidatos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/usuarios/admin/candidatos" \\
+ *            -H "Authorization: Bearer <TOKEN>"
+ */
+router.get('/candidatos', asyncHandler(adminController.listarCandidatos));
+
+/**
  * Buscar usuário específico por ID
  * GET /admin/usuarios/:userId
  */
@@ -165,6 +225,52 @@ router.get('/usuarios', asyncHandler(adminController.listarUsuarios));
  *            -H "Authorization: Bearer <TOKEN>"
  */
 router.get('/usuarios/:userId', asyncHandler(adminController.buscarUsuario));
+
+/**
+ * Buscar candidato específico por ID
+ * GET /admin/candidatos/:userId
+ */
+/**
+ * @openapi
+ * /api/v1/usuarios/admin/candidatos/{userId}:
+ *   get:
+ *     summary: Buscar candidato por ID
+ *     tags: [Usuários - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Candidato encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminCandidateDetailResponse'
+ *       404:
+ *         description: Candidato não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/usuarios/admin/candidatos/{userId}" \\
+ *            -H "Authorization: Bearer <TOKEN>"
+ */
+router.get('/candidatos/:userId', asyncHandler(adminController.buscarCandidato));
 
 // =============================================
 // ROTAS DE MODIFICAÇÃO (APENAS ADMIN)

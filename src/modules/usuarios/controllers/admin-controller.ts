@@ -52,6 +52,21 @@ export class AdminController {
   };
 
   /**
+   * Lista candidatos com paginação e filtros
+   */
+  public listarCandidatos = async (req: Request, res: Response, next: NextFunction) => {
+    const log = this.getLogger(req);
+    try {
+      const result = await this.adminService.listarCandidatos(req.query);
+      res.json(result);
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      log.error({ err }, 'Erro ao listar candidatos');
+      return next(err);
+    }
+  };
+
+  /**
    * Busca usuário específico
    */
   public buscarUsuario = async (req: Request, res: Response, next: NextFunction) => {
@@ -73,6 +88,32 @@ export class AdminController {
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       log.error({ err }, 'Erro ao buscar usuário');
+      return next(err);
+    }
+  };
+
+  /**
+   * Busca candidato específico
+   */
+  public buscarCandidato = async (req: Request, res: Response, next: NextFunction) => {
+    const log = this.getLogger(req);
+    try {
+      const { userId } = req.params;
+      const result = await this.adminService.buscarCandidato(userId);
+
+      if (!result) {
+        return res.status(404).json({
+          message: 'Candidato não encontrado',
+        });
+      }
+
+      res.json({
+        message: 'Candidato encontrado',
+        candidato: result,
+      });
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      log.error({ err }, 'Erro ao buscar candidato');
       return next(err);
     }
   };

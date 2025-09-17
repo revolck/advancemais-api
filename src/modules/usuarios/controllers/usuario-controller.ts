@@ -78,6 +78,24 @@ interface UsuarioPerfil {
 
 const USER_PROFILE_CACHE_TTL = 300;
 
+const ensureEnderecosArray = (enderecos: unknown): UsuarioEndereco[] => {
+  if (!Array.isArray(enderecos)) {
+    return [];
+  }
+
+  return (enderecos as UsuarioEndereco[])
+    .filter((endereco) => typeof endereco === 'object' && endereco !== null)
+    .map((endereco) => ({
+      id: endereco.id,
+      logradouro: endereco.logradouro ?? null,
+      numero: endereco.numero ?? null,
+      bairro: endereco.bairro ?? null,
+      cidade: endereco.cidade ?? null,
+      estado: endereco.estado ?? null,
+      cep: endereco.cep ?? null,
+    }));
+};
+
 const reviveUsuario = (usuario: UsuarioPerfil): UsuarioPerfil => ({
   ...usuario,
   criadoEm: new Date(usuario.criadoEm),
@@ -85,12 +103,13 @@ const reviveUsuario = (usuario: UsuarioPerfil): UsuarioPerfil => ({
   emailVerificadoEm: usuario.emailVerificadoEm ? new Date(usuario.emailVerificadoEm) : null,
   ultimoLogin: usuario.ultimoLogin ? new Date(usuario.ultimoLogin) : null,
   dataNasc: usuario.dataNasc ? new Date(usuario.dataNasc) : null,
+  enderecos: ensureEnderecosArray(usuario.enderecos),
 });
 
 const buildProfileStats = (usuario: UsuarioPerfil) => ({
   accountAge: Math.floor((Date.now() - usuario.criadoEm.getTime()) / (1000 * 60 * 60 * 24)),
   hasCompletedProfile: !!(usuario.telefone && usuario.nomeCompleto),
-  hasAddress: usuario.enderecos.length > 0,
+  hasAddress: ensureEnderecosArray(usuario.enderecos).length > 0,
   totalOrders: 0,
   totalSubscriptions: 0,
   emailVerificationStatus: {
@@ -575,7 +594,7 @@ export const obterPerfil = async (req: Request, res: Response, next: NextFunctio
     }
 
     // Busca dados completos do usuário (excluindo informações sensíveis)
-    const usuario = (await prisma.usuario.findUnique({
+    const usuarioDb = await prisma.usuario.findUnique({
       where: { id: userId },
       select: {
         id: true,
@@ -616,7 +635,14 @@ export const obterPerfil = async (req: Request, res: Response, next: NextFunctio
         },
         // Estatísticas de pagamentos removidas
       },
-    })) as UsuarioPerfil | null;
+    });
+
+    const usuario = usuarioDb
+      ? ({
+          ...usuarioDb,
+          enderecos: ensureEnderecosArray(usuarioDb.enderecos),
+        } as UsuarioPerfil)
+      : null;
 
     if (!usuario) {
       log.warn({ userId }, '⚠️ Usuário não encontrado ao obter perfil');

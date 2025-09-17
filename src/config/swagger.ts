@@ -3837,6 +3837,49 @@ const options: Options = {
             },
           },
         },
+        AdminCandidateSummary: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', example: 'candidate-uuid' },
+            email: { type: 'string', example: 'candidato@example.com' },
+            nomeCompleto: { type: 'string', example: 'João da Silva' },
+            role: { type: 'string', example: 'ALUNO_CANDIDATO' },
+            status: { type: 'string', example: 'ATIVO' },
+            tipoUsuario: { type: 'string', example: 'PESSOA_FISICA' },
+            cidade: { type: 'string', nullable: true, example: 'Maceió' },
+            estado: { type: 'string', nullable: true, example: 'AL' },
+            criadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-01-01T12:00:00Z',
+            },
+            ultimoLogin: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              example: '2024-01-10T12:00:00Z',
+            },
+          },
+        },
+        AdminCandidateListResponse: {
+          type: 'object',
+          properties: {
+            message: { type: 'string', example: 'Lista de candidatos' },
+            candidatos: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/AdminCandidateSummary' },
+            },
+            pagination: {
+              type: 'object',
+              properties: {
+                page: { type: 'integer', example: 1 },
+                limit: { type: 'integer', example: 50 },
+                total: { type: 'integer', example: 100 },
+                pages: { type: 'integer', example: 2 },
+              },
+            },
+          },
+        },
         AdminUserListResponse: {
           type: 'object',
           properties: {
@@ -3920,6 +3963,70 @@ const options: Options = {
           properties: {
             message: { type: 'string', example: 'Usuário encontrado' },
             usuario: { $ref: '#/components/schemas/AdminUserDetail' },
+          },
+        },
+        AdminCandidateDetail: {
+          allOf: [
+            { $ref: '#/components/schemas/AdminCandidateSummary' },
+            {
+              type: 'object',
+              properties: {
+                cpf: { type: 'string', nullable: true, example: '12345678900' },
+                telefone: { type: 'string', example: '+55 11 99999-0000' },
+                dataNasc: {
+                  type: 'string',
+                  format: 'date',
+                  nullable: true,
+                  example: '1990-01-01',
+                },
+                genero: { type: 'string', nullable: true, example: 'MASCULINO' },
+                matricula: { type: 'string', nullable: true, example: 'MAT123' },
+                supabaseId: { type: 'string', example: 'uuid-supabase' },
+                avatarUrl: {
+                  type: 'string',
+                  nullable: true,
+                  example: 'https://cdn.advance.com.br/avatar.png',
+                },
+                descricao: {
+                  type: 'string',
+                  nullable: true,
+                  example: 'Profissional com experiência em atendimento.',
+                },
+                instagram: {
+                  type: 'string',
+                  nullable: true,
+                  example: 'https://instagram.com/candidato',
+                },
+                linkedin: {
+                  type: 'string',
+                  nullable: true,
+                  example: 'https://linkedin.com/in/candidato',
+                },
+                codUsuario: { type: 'string', example: 'CAN1234' },
+                enderecos: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string', example: 'end-1' },
+                      logradouro: { type: 'string', example: 'Rua A' },
+                      numero: { type: 'string', example: '100' },
+                      bairro: { type: 'string', example: 'Centro' },
+                      cidade: { type: 'string', example: 'São Paulo' },
+                      estado: { type: 'string', example: 'SP' },
+                      cep: { type: 'string', example: '01000-000' },
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+        AdminCandidateDetailResponse: {
+          type: 'object',
+          properties: {
+            message: { type: 'string', example: 'Candidato encontrado' },
+            candidato: { $ref: '#/components/schemas/AdminCandidateDetail' },
           },
         },
         AdminStatusUpdateRequest: {

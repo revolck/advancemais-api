@@ -130,6 +130,17 @@ model EmpresaPlano {
   criadoEm           DateTime        @default(now())
   atualizadoEm       DateTime        @updatedAt
 
+  // Integração de pagamentos/assinaturas (Mercado Pago)
+  modeloPagamento   MODELO_PAGAMENTO?
+  metodoPagamento   METODO_PAGAMENTO?
+  statusPagamento   STATUS_PAGAMENTO? @default(PENDENTE)
+  mpPreapprovalId   String?           @unique
+  mpSubscriptionId  String?           @unique
+  mpPayerId         String?
+  mpPaymentId       String?
+  proximaCobranca   DateTime?
+  graceUntil        DateTime?
+
   empresa Usuario        @relation("UsuarioPlanos", fields: [usuarioId], references: [id], onDelete: Cascade)
   plano   PlanoEmpresarial @relation(fields: [planoEmpresarialId], references: [id])
 
@@ -651,4 +662,33 @@ enum WebsiteHeaderPageType {
   CURSOS
   POLITICA_PRIVACIDADE
   OUVIDORIA
+}
+
+// ===============================
+// ENUMS DE PAGAMENTOS
+// ===============================
+
+enum STATUS_PAGAMENTO {
+  PENDENTE
+  EM_PROCESSAMENTO
+  APROVADO
+  CONCLUIDO
+  RECUSADO
+  ESTORNADO
+  CANCELADO
+}
+
+enum MODELO_PAGAMENTO {
+  ASSINATURA
+  PAGAMENTO_UNICO
+  PAGAMENTO_PARCELADO
+}
+
+enum METODO_PAGAMENTO {
+  CARTAO_CREDITO
+  CARTAO_DEBITO
+  PIX
+  BOLETO
+  TRANSFERENCIA
+  DINHEIRO
 }

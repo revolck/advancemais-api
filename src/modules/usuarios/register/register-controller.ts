@@ -58,19 +58,28 @@ const createCorrelationLogger = (correlationId: string, action: string) =>
     correlationId,
   });
 
-const USER_CODE_PREFIX = 'USD';
+const generateCodePrefix = (): string => {
+  // Letras sem caracteres ambíguos para melhor legibilidade
+  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let prefix = '';
+  for (let i = 0; i < 3; i++) {
+    prefix += letters[Math.floor(Math.random() * letters.length)];
+  }
+  return prefix;
+};
 
 const generateUniqueUserCode = async (tx: Prisma.TransactionClient): Promise<string> => {
+  const prefix = generateCodePrefix();
   for (let attempt = 0; attempt < 10; attempt++) {
     const random = Math.floor(1000 + Math.random() * 9000);
-    const candidate = `${USER_CODE_PREFIX}${random}`;
+    const candidate = `${prefix}${random}`;
     const existing = await tx.usuario.findUnique({ where: { codUsuario: candidate }, select: { id: true } });
     if (!existing) {
       return candidate;
     }
   }
 
-  const fallback = `${USER_CODE_PREFIX}${Date.now().toString().slice(-6)}`;
+  const fallback = `${prefix}${Date.now().toString().slice(-6)}`;
   return fallback;
 };
 
@@ -102,18 +111,6 @@ export const criarUsuario = async (req: Request, res: Response, next: NextFuncti
     }
 
     const dadosUsuario: CriarUsuarioData = parseResult.data;
-
-    // Validação de entrada com logs estruturados
-    const validationResult = await validateUserInput(dadosUsuario, correlationId);
-    if (!validationResult.isValid) {
-      log.warn({ errors: validationResult.errors }, '⚠️ Dados inválidos para criação de usuário');
-      return res.status(400).json({
-        success: false,
-        message: 'Dados de entrada inválidos',
-        errors: validationResult.errors,
-        correlationId,
-      });
-    }
 
     // Extrai dados validados
     const {
@@ -270,92 +267,7 @@ export const criarUsuario = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
-/**
- * Valida dados de entrada de forma robusta
- */
-async function validateUserInput(
-  dadosUsuario: CriarUsuarioData,
-  correlationId: string,
-): Promise<{ isValid: boolean; errors?: string[] }> {
-  const log = createCorrelationLogger(correlationId, 'validateUserInput');
-  const errors: string[] = [];
-
-  try {
-    const {
-      nomeCompleto,
-      telefone,
-      email,
-      senha,
-      confirmarSenha,
-      aceitarTermos,
-      supabaseId,
-      tipoUsuario,
-    } = dadosUsuario;
-
-    // Validação de campos obrigatórios básicos
-    const requiredFields = [
-      { field: 'nomeCompleto', value: nomeCompleto },
-      { field: 'telefone', value: telefone },
-      { field: 'email', value: email },
-      { field: 'senha', value: senha },
-      { field: 'confirmarSenha', value: confirmarSenha },
-      { field: 'supabaseId', value: supabaseId },
-      { field: 'tipoUsuario', value: tipoUsuario },
-    ];
-
-    for (const { field, value } of requiredFields) {
-      if (!value || (typeof value === 'string' && value.trim() === '')) {
-        errors.push(`Campo obrigatório: ${field}`);
-      }
-    }
-
-    if (errors.length > 0) {
-      return { isValid: false, errors };
-    }
-
-    // Validação de email
-    if (!validarEmail(email)) {
-      errors.push('Formato de email inválido');
-    }
-
-    // Validação de senha
-    const validacaoSenha = validarSenha(senha);
-    if (!validacaoSenha.valida) {
-      errors.push(...validacaoSenha.mensagens);
-    }
-
-    // Validação de confirmação de senha
-    if (!validarConfirmacaoSenha(senha, confirmarSenha)) {
-      errors.push('Confirmação de senha não confere');
-    }
-
-    // Validação de telefone
-    if (!validarTelefone(telefone)) {
-      errors.push('Formato de telefone inválido');
-    }
-
-    // Validação de termos
-    if (!aceitarTermos) {
-      errors.push('É necessário aceitar os termos de uso');
-    }
-
-    // Validação de tipo de usuário
-    if (!Object.values(TipoUsuario).includes(tipoUsuario)) {
-      errors.push('Tipo de usuário inválido');
-    }
-
-    log.info({ errorCount: errors.length }, '✅ Validação básica concluída');
-
-    return {
-      isValid: errors.length === 0,
-      errors: errors.length > 0 ? errors : undefined,
-    };
-  } catch (error) {
-    const err = error instanceof Error ? error : new Error(String(error));
-    log.error({ err }, '❌ Erro na validação de usuário');
-    return { isValid: false, errors: ['Erro interno na validação'] };
-  }
-}
+// Validações agora centralizadas via Zod (registerSchema)
 
 /**
  * Processa dados específicos por tipo de usuário

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const planoParceiroTipoSchema = z.enum([
+export const clientePlanoTipoSchema = z.enum([
   '7_dias',
   '15_dias',
   '30_dias',
@@ -18,22 +18,22 @@ const observacaoSchema = z
   .min(1, 'A observação não pode estar vazia')
   .max(500, 'A observação deve ter no máximo 500 caracteres');
 
-export const createPlanoParceiroSchema = z.object({
+export const createClientePlanoSchema = z.object({
   usuarioId: uuidSchema,
   planoEmpresarialId: uuidSchema,
-  tipo: planoParceiroTipoSchema,
+  tipo: clientePlanoTipoSchema,
   iniciarEm: z.coerce.date({ invalid_type_error: 'Informe uma data válida' }).optional(),
   observacao: observacaoSchema.optional().nullable(),
 });
 
-export const updatePlanoParceiroSchema = z.object({
+export const updateClientePlanoSchema = z.object({
   planoEmpresarialId: uuidSchema.optional(),
-  tipo: planoParceiroTipoSchema.optional(),
+  tipo: clientePlanoTipoSchema.optional(),
   iniciarEm: z.coerce.date({ invalid_type_error: 'Informe uma data válida' }).optional(),
   observacao: observacaoSchema.optional().nullable(),
 });
 
-export const listPlanoParceiroQuerySchema = z.object({
+export const listClientePlanoQuerySchema = z.object({
   usuarioId: uuidSchema.optional(),
   ativo: z
     .preprocess((value) => {
@@ -58,7 +58,7 @@ export const listPlanoParceiroQuerySchema = z.object({
     }, z.boolean({ invalid_type_error: 'Valor inválido para o filtro ativo' }).optional()),
 });
 
-export type CreatePlanoParceiroInput = z.infer<typeof createPlanoParceiroSchema>;
-export type UpdatePlanoParceiroInput = z.infer<typeof updatePlanoParceiroSchema>;
-export type ListPlanoParceiroQuery = z.infer<typeof listPlanoParceiroQuerySchema>;
-export type PlanoParceiroTipo = z.infer<typeof planoParceiroTipoSchema>;
+export type CreateClientePlanoInput = z.infer<typeof createClientePlanoSchema>;
+export type UpdateClientePlanoInput = z.infer<typeof updateClientePlanoSchema>;
+export type ListClientePlanoQuery = z.infer<typeof listClientePlanoQuerySchema>;
+export type ClientePlanoTipo = z.infer<typeof clientePlanoTipoSchema>;

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 
 import { publicCache } from '@/middlewares/cache-control';
-import { supabaseAuthMiddleware } from '@/modules/usuarios/auth';
+import { supabaseAuthMiddleware, optionalSupabaseAuth } from '@/modules/usuarios/auth';
 import { VagasController } from '@/modules/empresas/vagas/controllers/vagas.controller';
 
 const router = Router();
@@ -12,8 +12,39 @@ const protectedRoles = ['ADMIN', 'MODERADOR', 'EMPRESA', 'RECRUTADOR'];
  * /api/v1/empresas/vagas:
  *   get:
  *     summary: Listar vagas publicadas
- *     description: Retorna apenas as vagas com status PUBLICADO disponíveis para visualização pública.
+ *     description: "Retorna as vagas disponíveis para visualização. Por padrão, apenas vagas PUBLICADAS são retornadas. É possível filtrar por status via query string. Importante: Para consultar vagas com status RASCUNHO ou EM_ANALISE é necessário token válido com roles: ADMIN, MODERADOR, EMPRESA ou RECRUTADOR."
  *     tags: [Empresas - Vagas]
+ *     parameters:
+  *       - in: query
+  *         name: status
+ *         required: false
+ *         schema:
+ *           type: string
+ *           example: PUBLICADO,EM_ANALISE
+  *         description: "Filtra por um ou mais status separados por vírgula. Aceita RASCUNHO, EM_ANALISE, PUBLICADO, EXPIRADO. Use ALL/TODAS para todos."
+  *       - in: query
+  *         name: usuarioId
+ *         required: false
+ *         schema:
+ *           type: string
+  *         description: "Filtra vagas por usuarioId (empresa responsável pela vaga)"
+  *       - in: query
+  *         name: page
+  *         required: false
+  *         schema:
+  *           type: integer
+  *           minimum: 1
+  *           example: 1
+  *         description: "Página de resultados (inicia em 1)."
+  *       - in: query
+  *         name: pageSize
+  *         required: false
+  *         schema:
+  *           type: integer
+  *           minimum: 1
+  *           maximum: 100
+  *           example: 10
+  *         description: "Quantidade de itens por página (máx. 100)."
  *     responses:
  *       200:
  *         description: Lista de vagas cadastradas
@@ -34,8 +65,13 @@ const protectedRoles = ['ADMIN', 'MODERADOR', 'EMPRESA', 'RECRUTADOR'];
  *         label: Exemplo
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/empresas/vagas"
+ *       - lang: cURL
+ *         label: Consultar vagas EM_ANALISE (autenticado)
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/empresas/vagas?status=EM_ANALISE" \\
+ *            -H "Authorization: Bearer <TOKEN>"
  */
-router.get('/', publicCache, VagasController.list);
+router.get('/', optionalSupabaseAuth(), publicCache, VagasController.list);
 
 /**
  * @openapi
@@ -82,7 +118,7 @@ router.get('/:id', publicCache, VagasController.get);
  * /api/v1/empresas/vagas:
  *   post:
  *     summary: Criar uma nova vaga
- *     description: Disponível para administradores, moderadores, empresas e recrutadores autenticados. Permite cadastrar vagas vinculadas a uma empresa e envia automaticamente o registro para a fila de revisão com status EM_ANALISE.
+ *     description: "Disponível para administradores, moderadores, empresas e recrutadores autenticados (roles: ADMIN, MODERADOR, EMPRESA, RECRUTADOR). Permite cadastrar vagas vinculadas a uma empresa e envia automaticamente o registro para a fila de revisão com status EM_ANALISE."
  *     tags: [Empresas - Vagas]
  *     security:
  *       - bearerAuth: []
@@ -122,7 +158,7 @@ router.get('/:id', publicCache, VagasController.get);
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/PlanoParceiroLimiteVagasResponse'
+ *               $ref: '#/components/schemas/PlanoClienteLimiteVagasResponse'
  *       500:
  *         description: Erro interno do servidor
  *         content:
@@ -157,7 +193,7 @@ router.post('/', supabaseAuthMiddleware(protectedRoles), VagasController.create)
  * /api/v1/empresas/vagas/{id}:
  *   put:
  *     summary: Atualizar vaga
- *     description: Permite editar os dados de uma vaga existente, incluindo o status do fluxo (RASCUNHO, EM_ANALISE, PUBLICADO ou EXPIRADO). Requer autenticação com perfil autorizado.
+ *     description: "Permite editar os dados de uma vaga existente, incluindo o status do fluxo (RASCUNHO, EM_ANALISE, PUBLICADO ou EXPIRADO). Requer autenticação com perfil autorizado (roles: ADMIN, MODERADOR, EMPRESA, RECRUTADOR)."
  *     tags: [Empresas - Vagas]
  *     security:
  *       - bearerAuth: []

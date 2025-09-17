@@ -1,7 +1,7 @@
 import { ModalidadeVaga, Prisma, RegimeTrabalho, StatusVaga, TipoUsuario } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
-import { planosParceiroService } from '@/modules/empresas/planos-parceiro/services/planos-parceiro.service';
+import { clientesService } from '@/modules/empresas/clientes/services/clientes.service';
 import {
   EmpresaSemPlanoAtivoError,
   LimiteVagasPlanoAtingidoError,
@@ -176,7 +176,7 @@ const ensurePlanoAtivoParaUsuario = async (usuarioId: string) => {
     throw new UsuarioNaoEmpresaError();
   }
 
-  const planoAtivo = await planosParceiroService.findActiveByUsuario(usuarioId);
+  const planoAtivo = await clientesService.findActiveByUsuario(usuarioId);
 
   if (!planoAtivo) {
     throw new EmpresaSemPlanoAtivoError();
@@ -200,11 +200,23 @@ const ensurePlanoAtivoParaUsuario = async (usuarioId: string) => {
 };
 
 export const vagasService = {
-  list: async () => {
+  list: async (params?: { status?: StatusVaga[]; usuarioId?: string; page?: number; pageSize?: number }) => {
+    const where: Prisma.VagaWhereInput = {
+      ...(params?.status && params.status.length > 0
+        ? { status: { in: params.status } }
+        : { status: StatusVaga.PUBLICADO }),
+      ...(params?.usuarioId ? { usuarioId: params.usuarioId } : {}),
+    };
+
+    const take = params?.pageSize && params.pageSize > 0 ? params.pageSize : undefined;
+    const skip = take && params?.page && params.page > 1 ? (params.page - 1) * take : undefined;
+
     const vagas = await prisma.vaga.findMany({
-      where: { status: StatusVaga.PUBLICADO },
+      where,
       ...includeEmpresa,
       orderBy: { inseridaEm: 'desc' },
+      ...(take ? { take } : {}),
+      ...(skip ? { skip } : {}),
     });
 
     return vagas.map((vaga) => transformVaga(vaga));

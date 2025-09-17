@@ -1,13 +1,21 @@
 import { createHash } from 'crypto';
 import type { Response } from 'express';
 import redis from '../config/redis';
+import { LRUCache } from 'lru-cache';
 
 export const DEFAULT_TTL = Number(process.env.CACHE_TTL || '60');
 const memoryStore = new Map<string, any>();
+let lru: LRUCache<string, any> | null = null;
+if (!process.env.REDIS_URL) {
+  const max = Number(process.env.MEM_CACHE_MAX_ITEMS || '500');
+  const ttl = Number(process.env.MEM_CACHE_TTL || process.env.CACHE_TTL || '60') * 1000;
+  lru = new LRUCache<string, any>({ max, ttl });
+}
 
 export async function getCache<T>(key: string): Promise<T | null> {
   try {
     if (!process.env.REDIS_URL) {
+      if (lru) return (lru.get(key) as T) ?? null;
       return memoryStore.has(key) ? (memoryStore.get(key) as T) : null;
     }
     const data = await redis.get(key);
@@ -20,8 +28,12 @@ export async function getCache<T>(key: string): Promise<T | null> {
 export async function setCache(key: string, value: any, ttl = DEFAULT_TTL): Promise<void> {
   try {
     if (!process.env.REDIS_URL) {
-      memoryStore.set(key, value);
-      setTimeout(() => memoryStore.delete(key), ttl * 1000);
+      if (lru) {
+        lru.set(key, value, { ttl: ttl * 1000 });
+      } else {
+        memoryStore.set(key, value);
+        setTimeout(() => memoryStore.delete(key), ttl * 1000);
+      }
       return;
     }
     await redis.set(key, JSON.stringify(value), 'EX', ttl);
@@ -33,8 +45,13 @@ export async function setCache(key: string, value: any, ttl = DEFAULT_TTL): Prom
 export async function invalidateCache(key: string | string[]): Promise<void> {
   try {
     if (!process.env.REDIS_URL) {
-      if (Array.isArray(key)) key.forEach((k) => memoryStore.delete(k));
-      else memoryStore.delete(key);
+      if (lru) {
+        if (Array.isArray(key)) key.forEach((k) => lru!.delete(k));
+        else lru.delete(key);
+      } else {
+        if (Array.isArray(key)) key.forEach((k) => memoryStore.delete(k));
+        else memoryStore.delete(key);
+      }
       return;
     }
     if (Array.isArray(key)) {
@@ -50,8 +67,14 @@ export async function invalidateCache(key: string | string[]): Promise<void> {
 export async function invalidateCacheByPrefix(prefix: string): Promise<void> {
   try {
     if (!process.env.REDIS_URL) {
-      for (const key of memoryStore.keys()) {
-        if (key.startsWith(prefix)) memoryStore.delete(key);
+      if (lru) {
+        lru.forEach((_v: any, k: string) => {
+          if (k.startsWith(prefix)) lru!.delete(k);
+        });
+      } else {
+        for (const key of memoryStore.keys()) {
+          if (key.startsWith(prefix)) memoryStore.delete(key);
+        }
       }
       return;
     }

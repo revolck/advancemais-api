@@ -282,6 +282,62 @@ export const brevoConfig = {
 } as const;
 
 // =============================================
+// CONFIGURAÇÕES DO MERCADO PAGO (ASSINATURAS/PAGAMENTOS)
+// =============================================
+
+export const mercadopagoConfig = {
+  // Dados da aplicação/conta
+  userId: process.env.MP_USER_ID || '',
+  applicationId: process.env.MP_APPLICATION_ID || '',
+  webhookSecret: process.env.MP_WEBHOOK_SECRET || '',
+
+  // Credenciais de teste
+  test: {
+    publicKey: process.env.MP_TEST_PUBLIC_KEY || '',
+    accessToken: process.env.MP_TEST_ACCESS_TOKEN || '',
+  },
+
+  // Credenciais de produção
+  prod: {
+    publicKey: process.env.MP_PUBLIC_KEY || '',
+    accessToken: process.env.MP_ACCESS_TOKEN || '',
+    clientId: process.env.MP_CLIENT_ID || '',
+    clientSecret: process.env.MP_CLIENT_SECRET || '',
+  },
+
+  // URLs de retorno do Checkout Pro
+  returnUrls: {
+    success: process.env.MP_RETURN_SUCCESS_URL || '',
+    failure: process.env.MP_RETURN_FAILURE_URL || '',
+    pending: process.env.MP_RETURN_PENDING_URL || '',
+  },
+
+  // Retorna o access token prioritário (produção > teste)
+  getAccessToken(): string {
+    return this.prod.accessToken || this.test.accessToken || '';
+  },
+
+  // Retorna a public key prioritária (produção > teste)
+  getPublicKey(): string {
+    return this.prod.publicKey || this.test.publicKey || '';
+  },
+
+  isConfiguredForPayments(): boolean {
+    return !!this.getAccessToken();
+  },
+
+  getStatus(): { configured: boolean; issues: string[] } {
+    const issues: string[] = [];
+    if (!this.getAccessToken()) issues.push('MP_ACCESS_TOKEN/MP_TEST_ACCESS_TOKEN não configurado');
+    if (!this.getPublicKey()) issues.push('MP_PUBLIC_KEY/MP_TEST_PUBLIC_KEY não configurado');
+    if (!this.returnUrls.success) issues.push('MP_RETURN_SUCCESS_URL não configurado');
+    if (!this.returnUrls.failure) issues.push('MP_RETURN_FAILURE_URL não configurado');
+    if (!this.returnUrls.pending) issues.push('MP_RETURN_PENDING_URL não configurado');
+    return { configured: issues.length === 0, issues };
+  },
+} as const;
+
+// =============================================
 // CONFIGURAÇÕES DO SERVIDOR
 // =============================================
 
@@ -417,6 +473,7 @@ export class ConfigurationManager {
       supabase: supabaseConfig.getStatus(),
       jwt: jwtConfig.getStatus(),
       brevo: brevoConfig.getStatus(),
+      mercadopago: mercadopagoConfig.getStatus(),
     };
 
     // Coleta erros e warnings

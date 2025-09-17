@@ -4,6 +4,7 @@ import redis from '@/config/redis';
 import { publicCache } from '@/middlewares/cache-control';
 import { docsRoutes } from '@/modules/docs';
 import { brevoRoutes } from '@/modules/brevo/routes';
+import { mercadopagoRoutes } from '@/modules/mercadopago';
 import { EmailVerificationController } from '@/modules/brevo/controllers/email-verification-controller';
 import { usuarioRoutes } from '@/modules/usuarios';
 import { websiteRoutes } from '@/modules/website';
@@ -76,7 +77,7 @@ router.get('/', publicCache, (req, res) => {
       website: '/api/v1/website',
       empresas: '/api/v1/empresas',
       planosEmpresariais: '/api/v1/empresas/planos-empresarial',
-      planosParceiro: '/api/v1/empresas/planos-parceiro',
+      clientesEmpresas: '/api/v1/empresas/clientes',
       vagasEmpresariais: '/api/v1/empresas/vagas',
       health: '/health',
     },
@@ -117,6 +118,7 @@ router.get('/', publicCache, (req, res) => {
         <li>🌐 Website: <code>${data.endpoints.website}</code></li>
         <li>🏢 Empresas: <code>${data.endpoints.empresas}</code></li>
         <li>📦 Planos empresariais: <code>${data.endpoints.planosEmpresariais}</code></li>
+        <li>🧾 Clientes (planos): <code>${data.endpoints.clientesEmpresas}</code></li>
         <li>💼 Vagas empresariais: <code>${data.endpoints.vagasEmpresariais}</code></li>
         <li>💚 Health: <code>${data.endpoints.health}</code></li>
       </ul>
@@ -231,6 +233,21 @@ if (brevoRoutes) {
   }
 } else {
   routesLogger.error({ feature: 'BrevoModule' }, '❌ brevoRoutes não está definido');
+}
+
+/**
+ * Módulo Mercado Pago - COM VALIDAÇÃO
+ * /api/v1/mercadopago/*
+ */
+if (mercadopagoRoutes) {
+  try {
+    router.use('/api/v1/mercadopago', mercadopagoRoutes);
+    routesLogger.info({ feature: 'MercadoPagoModule' }, '✅ Módulo Mercado Pago registrado com sucesso');
+  } catch (error) {
+    routesLogger.error({ feature: 'MercadoPagoModule', err: error }, '❌ ERRO - Módulo Mercado Pago');
+  }
+} else {
+  routesLogger.error({ feature: 'MercadoPagoModule' }, '❌ mercadopagoRoutes não está definido');
 }
 
 /**

@@ -1,1 +1,0 @@
-export { planosParceiroRoutes } from './routes';

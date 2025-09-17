@@ -176,6 +176,122 @@ const options: Options = {
           example: 'PIX',
           description: 'Meios de pagamento aceitos',
         },
+        CheckoutMetodo: {
+          type: 'string',
+          enum: ['pagamento', 'assinatura'],
+          example: 'pagamento',
+          description: 'Fluxo desejado: cobrança única ou assinatura recorrente',
+        },
+        CheckoutPagamento: {
+          type: 'string',
+          enum: ['pix', 'card', 'boleto'],
+          example: 'pix',
+          description: 'Meio de pagamento quando metodo=pagamento',
+        },
+        CheckoutCardData: {
+          type: 'object',
+          required: ['token'],
+          properties: {
+            token: {
+              type: 'string',
+              description: 'Token do cartão retornado pelo Card Payment Brick',
+              example: '9f0f9a0f-0acb-4bc8-8f10-1234567890ab',
+            },
+            installments: {
+              type: 'integer',
+              minimum: 1,
+              maximum: 48,
+              example: 1,
+              description: 'Quantidade de parcelas desejada',
+            },
+          },
+        },
+        CheckoutIntent: {
+          type: 'object',
+          required: ['usuarioId', 'planoEmpresarialId', 'metodo'],
+          properties: {
+            usuarioId: { type: 'string', format: 'uuid' },
+            planoEmpresarialId: { type: 'string', format: 'uuid' },
+            metodo: { $ref: '#/components/schemas/CheckoutMetodo' },
+            pagamento: {
+              $ref: '#/components/schemas/CheckoutPagamento',
+              description: 'Obrigatório quando metodo=pagamento. Para assinatura, utiliza-se card.',
+            },
+            card: {
+              $ref: '#/components/schemas/CheckoutCardData',
+              description: 'Obrigatório para pagamento com cartão e para assinatura direta (sem redirect).',
+            },
+            successUrl: { type: 'string', format: 'uri', nullable: true },
+            failureUrl: { type: 'string', format: 'uri', nullable: true },
+            pendingUrl: { type: 'string', format: 'uri', nullable: true },
+          },
+        },
+        CheckoutPaymentPixResponse: {
+          type: 'object',
+          required: ['tipo', 'status'],
+          properties: {
+            tipo: { type: 'string', enum: ['pix'] },
+            status: { type: 'string', example: 'pending' },
+            paymentId: { type: 'string', nullable: true },
+            qrCode: { type: 'string', nullable: true },
+            qrCodeBase64: { type: 'string', nullable: true },
+            expiresAt: { type: 'string', format: 'date-time', nullable: true },
+          },
+        },
+        CheckoutPaymentCardResponse: {
+          type: 'object',
+          required: ['tipo', 'status'],
+          properties: {
+            tipo: { type: 'string', enum: ['card'] },
+            status: { type: 'string', example: 'approved' },
+            paymentId: { type: 'string', nullable: true },
+            installments: { type: 'integer', nullable: true, example: 1 },
+          },
+        },
+        CheckoutPaymentBoletoResponse: {
+          type: 'object',
+          required: ['tipo', 'status'],
+          properties: {
+            tipo: { type: 'string', enum: ['boleto'] },
+            status: { type: 'string', example: 'pending' },
+            paymentId: { type: 'string', nullable: true },
+            boletoUrl: { type: 'string', format: 'uri', nullable: true },
+            barcode: { type: 'string', nullable: true },
+            expiresAt: { type: 'string', format: 'date-time', nullable: true },
+          },
+        },
+        CheckoutAssinaturaResponse: {
+          type: 'object',
+          required: ['preapprovalId', 'status'],
+          properties: {
+            preapprovalId: { type: 'string', nullable: true },
+            status: { type: 'string', example: 'authorized' },
+            initPoint: { type: 'string', format: 'uri', nullable: true },
+            requiresRedirect: { type: 'boolean', example: false },
+          },
+        },
+        CheckoutResponse: {
+          type: 'object',
+          properties: {
+            checkoutId: { type: 'string', format: 'uuid' },
+            plano: {
+              type: 'object',
+              description: 'Snapshot do vínculo criado ou atualizado para o checkout',
+            },
+            pagamento: {
+              nullable: true,
+              oneOf: [
+                { $ref: '#/components/schemas/CheckoutPaymentPixResponse' },
+                { $ref: '#/components/schemas/CheckoutPaymentCardResponse' },
+                { $ref: '#/components/schemas/CheckoutPaymentBoletoResponse' },
+              ],
+            },
+            assinatura: {
+              nullable: true,
+              $ref: '#/components/schemas/CheckoutAssinaturaResponse',
+            },
+          },
+        },
         ErrorResponse: {
           type: 'object',
           properties: {

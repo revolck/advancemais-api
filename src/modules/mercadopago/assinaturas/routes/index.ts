@@ -204,4 +204,27 @@ router.post('/admin/remind-payment', supabaseAuthMiddleware(adminRoles), Assinat
  */
 router.post('/admin/sync-plans', supabaseAuthMiddleware(adminRoles), AssinaturasController.adminSyncPlans);
 
+/**
+ * @openapi
+ * /api/v1/mercadopago/assinaturas/admin/sync-plan:
+ *   post:
+ *     summary: (Admin) Sincronizar um plano empresarial com PreApprovalPlan
+ *     description: "Cria/garante um PreApprovalPlan no Mercado Pago para o PlanoEmpresarial informado."
+ *     tags: [MercadoPago - Assinaturas]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               planoEmpresarialId: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Plano sincronizado
+ */
+router.post('/admin/sync-plan', supabaseAuthMiddleware(adminRoles), AssinaturasController.adminSyncPlan);
+
 export { router as assinaturasRoutes };

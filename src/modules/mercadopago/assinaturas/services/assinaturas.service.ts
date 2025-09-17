@@ -44,7 +44,10 @@ export const assinaturasService = {
           mensagem: data.mensagem ?? null,
         },
       });
-    } catch {}
+    } catch (error) {
+      // Ignoramos falhas de logging para não interromper o fluxo principal
+      void error;
+    }
   },
   async ensurePlanPreapproval(planId: string) {
     assertMercadoPagoConfigured();
@@ -73,6 +76,55 @@ export const assinaturasService = {
     }
     throw new Error('Falha ao criar PreApprovalPlan no Mercado Pago');
   },
+  async ensureEmpresaPlanoFromCheckout(externalRef: string) {
+    const existing = await prisma.empresaPlano.findUnique({ where: { id: externalRef } });
+    if (existing) return existing;
+
+    const checkoutLog = await prisma.logPagamento.findFirst({
+      where: { externalRef, tipo: 'CHECKOUT_START' },
+      orderBy: { criadoEm: 'desc' },
+    });
+
+    if (!checkoutLog?.usuarioId) return null;
+    const payload = (checkoutLog.payload as any) || {};
+    const planoEmpresarialId = payload.planoEmpresarialId as string | undefined;
+    if (!planoEmpresarialId) return null;
+
+    const modeloPagamento = (payload.modeloPagamento as MODELO_PAGAMENTO | undefined) ?? MODELO_PAGAMENTO.ASSINATURA;
+    const metodoPagamento = payload.metodoPagamento as METODO_PAGAMENTO | undefined;
+    const observacao = typeof payload.observacao === 'string' ? payload.observacao : 'Aguardando confirmação de pagamento (Mercado Pago)';
+
+    const created = await prisma.empresaPlano.create({
+      data: {
+        id: externalRef,
+        usuarioId: checkoutLog.usuarioId,
+        planoEmpresarialId,
+        tipo: PlanoParceiro.ASSINATURA_MENSAL,
+        modeloPagamento,
+        metodoPagamento: metodoPagamento ?? null,
+        statusPagamento: STATUS_PAGAMENTO.PENDENTE,
+        observacao,
+        inicio: null,
+        proximaCobranca: null,
+        graceUntil: null,
+        ativo: false,
+      },
+    });
+
+    const subscriptionLog = await prisma.logPagamento.findFirst({
+      where: { externalRef, tipo: 'PREAPPROVAL_CREATED' },
+      orderBy: { criadoEm: 'desc' },
+    });
+
+    let updated = created;
+    if (subscriptionLog?.mpResourceId) {
+      updated = await prisma.empresaPlano.update({ where: { id: created.id }, data: { mpSubscriptionId: subscriptionLog.mpResourceId } });
+    }
+
+    await prisma.logPagamento.updateMany({ where: { externalRef }, data: { empresaPlanoId: created.id } });
+
+    return updated;
+  },
   async startCheckout(params: {
     usuarioId: string;
     planoEmpresarialId: string;
@@ -84,33 +136,32 @@ export const assinaturasService = {
   }) {
     assertMercadoPagoConfigured();
 
-    // Cria (ou atualiza) vínculo local do plano com status pendente
-    const inicio: Date | null = null; // será definido após aprovação
-    const proximaCobranca: Date | null = null;
+    const planoBase = await prisma.planoEmpresarial.findUnique({ where: { id: params.planoEmpresarialId } });
+    if (!planoBase) {
+      throw new Error('PlanoEmpresarial não encontrado');
+    }
 
-    const plano = await prisma.empresaPlano.create({
-      data: {
-        usuarioId: params.usuarioId,
+    const checkoutId = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
+    const modeloPagamento = params.modeloPagamento ?? MODELO_PAGAMENTO.ASSINATURA;
+
+    await this.logEvent({
+      usuarioId: params.usuarioId,
+      tipo: 'CHECKOUT_START',
+      status: 'PENDENTE',
+      externalRef: checkoutId,
+      payload: {
         planoEmpresarialId: params.planoEmpresarialId,
-        // Para assinatura mensal recorrente usamos o marcador ASSINATURA_MENSAL
-        tipo: PlanoParceiro.ASSINATURA_MENSAL,
-        modeloPagamento: params.modeloPagamento ?? MODELO_PAGAMENTO.ASSINATURA,
         metodoPagamento: params.metodoPagamento,
-        statusPagamento: STATUS_PAGAMENTO.PENDENTE,
-        inicio,
-        proximaCobranca,
-        observacao: 'Aguardando confirmação de pagamento (Mercado Pago)'
+        modeloPagamento,
+        observacao: 'Aguardando confirmação de pagamento (Mercado Pago)',
       },
-      include: { plano: true },
     });
-
-    await this.logEvent({ usuarioId: params.usuarioId, empresaPlanoId: plano.id, tipo: 'CHECKOUT_START', status: 'PENDENTE', externalRef: plano.id, payload: { metodo: params.metodoPagamento } });
 
     const mp = mpClient!;
     let initPoint: string | null = null;
     try {
-      const valor = parseFloat(plano.plano.valor);
-      const titulo = plano.plano.nome;
+      const valor = parseFloat(planoBase.valor);
+      const titulo = planoBase.nome;
       const success = params.successUrl || mercadopagoConfig.returnUrls.success;
       const failure = params.failureUrl || mercadopagoConfig.returnUrls.failure;
       const pending = params.pendingUrl || mercadopagoConfig.returnUrls.pending;
@@ -122,11 +173,11 @@ export const assinaturasService = {
       if (params.metodoPagamento === METODO_PAGAMENTO.CARTAO_CREDITO || params.metodoPagamento === METODO_PAGAMENTO.CARTAO_DEBITO) {
         // Assinatura recorrente real com cartão
         const preapproval = new PreApproval(mp);
-        const preapprovalPlanId = await this.ensurePlanPreapproval(plano.planoEmpresarialId);
+        const preapprovalPlanId = await this.ensurePlanPreapproval(params.planoEmpresarialId);
         const result = await preapproval.create({
           body: {
             reason: titulo,
-            external_reference: plano.id,
+            external_reference: checkoutId,
             back_url: success,
             payer_email: payerEmail,
             preapproval_plan_id: preapprovalPlanId,
@@ -134,8 +185,7 @@ export const assinaturasService = {
         });
         initPoint = (result as any)?.sandbox_init_point || (result as any)?.init_point || null;
         // Persistir ID da assinatura
-        await prisma.empresaPlano.update({ where: { id: plano.id }, data: { mpSubscriptionId: (result as any)?.id || null } });
-        await this.logEvent({ usuarioId: params.usuarioId, empresaPlanoId: plano.id, tipo: 'PREAPPROVAL_CREATED', status: 'CRIADO', externalRef: plano.id, mpResourceId: (result as any)?.id || null });
+        await this.logEvent({ usuarioId: params.usuarioId, tipo: 'PREAPPROVAL_CREATED', status: 'CRIADO', externalRef: checkoutId, mpResourceId: (result as any)?.id || null });
       } else {
         // Checkout Pro (PIX/BOLETO ou cartão via preference) - recorrência assistida
         const preference = new Preference(mp);
@@ -151,27 +201,50 @@ export const assinaturasService = {
         })();
         const pref = await preference.create({
           body: {
-            external_reference: plano.id,
+            external_reference: checkoutId,
             auto_return: 'approved',
             back_urls: { success, failure, pending },
-            items: [{ id: plano.plano.id, title: titulo, quantity: 1, unit_price: valor, currency_id: mercadopagoConfig.settings.defaultCurrency }],
+            items: [{ id: planoBase.id, title: titulo, quantity: 1, unit_price: valor, currency_id: mercadopagoConfig.settings.defaultCurrency }],
             payer: payerEmail ? { email: payerEmail } : undefined,
             ...(payment_methods ? { payment_methods } : {}),
           },
         });
         initPoint = (pref as any)?.sandbox_init_point || (pref as any)?.init_point || null;
-        await this.logEvent({ usuarioId: params.usuarioId, empresaPlanoId: plano.id, tipo: 'PREFERENCE_CREATED', status: 'CRIADO', externalRef: plano.id, mpResourceId: (pref as any)?.id || null });
+        await this.logEvent({ usuarioId: params.usuarioId, tipo: 'PREFERENCE_CREATED', status: 'CRIADO', externalRef: checkoutId, mpResourceId: (pref as any)?.id || null });
       }
       if (!initPoint) {
-        await this.logEvent({ usuarioId: params.usuarioId, empresaPlanoId: plano.id, tipo: 'CHECKOUT_NO_INITPOINT', status: 'ERRO', externalRef: plano.id });
+        await this.logEvent({ usuarioId: params.usuarioId, tipo: 'CHECKOUT_NO_INITPOINT', status: 'ERRO', externalRef: checkoutId });
         throw new Error('Não foi possível gerar o link de pagamento para o método selecionado');
       }
     } catch (e) {
       // Log da falha ficará a cargo do middleware de erro global/log
-      await this.logEvent({ usuarioId: params.usuarioId, empresaPlanoId: plano.id, tipo: 'CHECKOUT_ERROR', status: 'ERRO', externalRef: plano.id, mensagem: e instanceof Error ? e.message : 'erro desconhecido' });
+      await this.logEvent({ usuarioId: params.usuarioId, tipo: 'CHECKOUT_ERROR', status: 'ERRO', externalRef: checkoutId, mensagem: e instanceof Error ? e.message : 'erro desconhecido' });
     }
 
-    return { plano, initPoint };
+    const planoSnapshot = {
+      id: checkoutId,
+      usuarioId: params.usuarioId,
+      planoEmpresarialId: params.planoEmpresarialId,
+      tipo: PlanoParceiro.ASSINATURA_MENSAL,
+      inicio: null as Date | null,
+      fim: null as Date | null,
+      ativo: false,
+      observacao: 'Aguardando confirmação de pagamento (Mercado Pago)',
+      criadoEm: new Date(),
+      atualizadoEm: new Date(),
+      modeloPagamento,
+      metodoPagamento: params.metodoPagamento,
+      statusPagamento: STATUS_PAGAMENTO.PENDENTE,
+      mpPreapprovalId: null as string | null,
+      mpSubscriptionId: null as string | null,
+      mpPayerId: null as string | null,
+      mpPaymentId: null as string | null,
+      proximaCobranca: null as Date | null,
+      graceUntil: null as Date | null,
+      plano: planoBase,
+    };
+
+    return { plano: planoSnapshot, initPoint, checkoutId };
   },
 
   async handleWebhook(event: { type?: string; action?: string; data?: any }) {
@@ -188,7 +261,10 @@ export const assinaturasService = {
       const externalRef = String(data?.external_reference ?? '');
       if (!externalRef) return;
 
-      const plano = await prisma.empresaPlano.findUnique({ where: { id: externalRef } });
+      let plano = await prisma.empresaPlano.findUnique({ where: { id: externalRef } });
+      if (!plano) {
+        plano = await this.ensureEmpresaPlanoFromCheckout(externalRef);
+      }
       if (!plano) return;
 
       const aprovado = ['approved', 'accredited'].includes(String(data?.status ?? '').toLowerCase());

@@ -5,12 +5,28 @@ export const logsController = {
   list: async (req: Request, res: Response) => {
     try {
       const isAdmin = ['ADMIN', 'MODERADOR'].includes((req.user as any)?.role);
-      const { usuarioId, empresaPlanoId, tipo, page, pageSize } = req.query as any;
+      const { usuarioId, empresaPlanoId, tipo, page, pageSize, startDate, endDate } = req.query as any;
       const where: any = {};
       if (usuarioId && isAdmin) where.usuarioId = usuarioId;
       if (!isAdmin) where.usuarioId = (req.user as any)?.id;
       if (empresaPlanoId) where.empresaPlanoId = empresaPlanoId;
       if (tipo) where.tipo = tipo;
+      const range: any = {};
+      if (startDate) {
+        const start = new Date(startDate);
+        if (!isNaN(start.getTime())) {
+          range.gte = start;
+        }
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        if (!isNaN(end.getTime())) {
+          range.lte = end;
+        }
+      }
+      if (Object.keys(range).length > 0) {
+        where.criadoEm = range;
+      }
       const take = pageSize ? Math.min(100, Math.max(1, parseInt(pageSize))) : 20;
       const skip = page ? (Math.max(1, parseInt(page)) - 1) * take : 0;
       const [items, total] = await Promise.all([

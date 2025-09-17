@@ -3,7 +3,6 @@ import { supabaseAuthMiddleware } from '@/modules/usuarios/auth';
 import { logsController } from '../services/logs.controller';
 
 const router = Router();
-const adminRoles = ['ADMIN', 'MODERADOR'];
 const empresaRoles = ['ADMIN', 'MODERADOR', 'EMPRESA', 'RECRUTADOR'];
 
 /**
@@ -24,6 +23,12 @@ const empresaRoles = ['ADMIN', 'MODERADOR', 'EMPRESA', 'RECRUTADOR'];
  *       - in: query
  *         name: tipo
  *         schema: { type: string }
+ *       - in: query
+ *         name: startDate
+ *         schema: { type: string, format: date-time }
+ *       - in: query
+ *         name: endDate
+ *         schema: { type: string, format: date-time }
  *       - in: query
  *         name: page
  *         schema: { type: integer, minimum: 1, example: 1 }

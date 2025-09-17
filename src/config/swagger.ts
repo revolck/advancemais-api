@@ -3295,9 +3295,11 @@ const options: Options = {
             codUsuario: { type: 'string', example: 'EMP-123456' },
             nome: { type: 'string', example: 'Advance Tech Consultoria' },
             avatarUrl: { type: 'string', nullable: true, example: 'https://cdn.advance.com.br/logo.png' },
+            cnpj: { type: 'string', nullable: true, example: '12345678000190' },
             cidade: { type: 'string', nullable: true, example: 'São Paulo' },
             estado: { type: 'string', nullable: true, example: 'SP' },
             criadoEm: { type: 'string', format: 'date-time', example: '2024-01-05T12:00:00Z' },
+            ativa: { type: 'boolean', example: true },
             parceira: { type: 'boolean', example: true },
             diasTesteDisponibilizados: { type: 'integer', nullable: true, example: 30 },
             plano: {
@@ -3326,6 +3328,7 @@ const options: Options = {
             codUsuario: { type: 'string', example: 'EMP-123456' },
             nome: { type: 'string', example: 'Advance Tech Consultoria' },
             avatarUrl: { type: 'string', nullable: true, example: 'https://cdn.advance.com.br/logo.png' },
+            cnpj: { type: 'string', nullable: true, example: '12345678000190' },
             descricao: {
               type: 'string',
               nullable: true,
@@ -3336,6 +3339,7 @@ const options: Options = {
             cidade: { type: 'string', nullable: true, example: 'São Paulo' },
             estado: { type: 'string', nullable: true, example: 'SP' },
             criadoEm: { type: 'string', format: 'date-time', example: '2023-11-01T08:30:00Z' },
+            ativa: { type: 'boolean', example: true },
             parceira: { type: 'boolean', example: true },
             diasTesteDisponibilizados: { type: 'integer', nullable: true, example: 30 },
             plano: {

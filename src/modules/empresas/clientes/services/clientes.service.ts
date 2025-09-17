@@ -4,41 +4,13 @@ import { prisma } from '@/config/prisma';
 import {
   CreateClientePlanoInput,
   ListClientePlanoQuery,
-  ClientePlanoTipo,
   UpdateClientePlanoInput,
 } from '@/modules/empresas/clientes/validators/clientes.schema';
-
-const PLANO_INPUT_MAP: Record<ClientePlanoTipo, PlanoParceiro> = {
-  '7_dias': PlanoParceiro.SETE_DIAS,
-  '15_dias': PlanoParceiro.QUINZE_DIAS,
-  '30_dias': PlanoParceiro.TRINTA_DIAS,
-  '60_dias': PlanoParceiro.SESSENTA_DIAS,
-  '90dias': PlanoParceiro.NOVENTA_DIAS,
-  '120_dias': PlanoParceiro.CENTO_VINTE_DIAS,
-  parceiro: PlanoParceiro.PARCEIRO,
-};
-
-const PLANO_OUTPUT_MAP: Record<PlanoParceiro, ClientePlanoTipo | 'assinatura_mensal'> = {
-  [PlanoParceiro.SETE_DIAS]: '7_dias',
-  [PlanoParceiro.QUINZE_DIAS]: '15_dias',
-  [PlanoParceiro.TRINTA_DIAS]: '30_dias',
-  [PlanoParceiro.SESSENTA_DIAS]: '60_dias',
-  [PlanoParceiro.NOVENTA_DIAS]: '90dias',
-  [PlanoParceiro.CENTO_VINTE_DIAS]: '120_dias',
-  [PlanoParceiro.ASSINATURA_MENSAL]: 'assinatura_mensal',
-  [PlanoParceiro.PARCEIRO]: 'parceiro',
-};
-
-const PLANO_DURACAO: Record<PlanoParceiro, number | null> = {
-  [PlanoParceiro.SETE_DIAS]: 7,
-  [PlanoParceiro.QUINZE_DIAS]: 15,
-  [PlanoParceiro.TRINTA_DIAS]: 30,
-  [PlanoParceiro.SESSENTA_DIAS]: 60,
-  [PlanoParceiro.NOVENTA_DIAS]: 90,
-  [PlanoParceiro.CENTO_VINTE_DIAS]: 120,
-  [PlanoParceiro.ASSINATURA_MENSAL]: null,
-  [PlanoParceiro.PARCEIRO]: null,
-};
+import {
+  getPlanoParceiroDuracao,
+  mapClienteTipoToPlanoParceiro,
+  mapPlanoParceiroToClienteTipo,
+} from '@/modules/empresas/shared/plano-parceiro';
 
 const includePlanoEmpresa = {
   include: {
@@ -70,7 +42,7 @@ const sanitizeObservacao = (value?: string | null) => {
 };
 
 const calcularDataFim = (tipo: PlanoParceiro, inicio: Date | null) => {
-  const duracao = PLANO_DURACAO[tipo];
+  const duracao = getPlanoParceiroDuracao(tipo);
   if (duracao === null) {
     return null;
   }
@@ -79,10 +51,6 @@ const calcularDataFim = (tipo: PlanoParceiro, inicio: Date | null) => {
   data.setDate(data.getDate() + duracao);
   return data;
 };
-
-const mapTipoToPrisma = (tipo: ClientePlanoTipo) => PLANO_INPUT_MAP[tipo];
-
-const mapTipoToResponse = (tipo: PlanoParceiro) => PLANO_OUTPUT_MAP[tipo];
 
 const ensureUsuarioEmpresa = async (usuarioId: string) => {
   const usuario = await prisma.usuario.findUnique({
@@ -125,7 +93,7 @@ const transformarPlano = (plano: EmpresaPlanoWithRelations) => {
   return {
     ...restoPlano,
     empresa,
-    tipo: mapTipoToResponse(plano.tipo),
+    tipo: mapPlanoParceiroToClienteTipo(plano.tipo),
     estaVigente,
     diasRestantes: diasRestantes !== null && diasRestantes < 0 ? 0 : diasRestantes,
   };
@@ -178,13 +146,13 @@ export const clientesService = {
 
     return {
       ...plano,
-      tipo: mapTipoToResponse(plano.tipo),
+      tipo: mapPlanoParceiroToClienteTipo(plano.tipo),
     };
   },
 
   assign: async (data: CreateClientePlanoInput) => {
     await ensureUsuarioEmpresa(data.usuarioId);
-    const tipo = mapTipoToPrisma(data.tipo);
+    const tipo = mapClienteTipoToPlanoParceiro(data.tipo);
     const inicio = data.iniciarEm ?? new Date();
     const fim = calcularDataFim(tipo, inicio);
     const observacao = sanitizeObservacao(data.observacao);
@@ -232,7 +200,7 @@ export const clientesService = {
 
     let tipo = planoAtual.tipo;
     if (data.tipo !== undefined) {
-      tipo = mapTipoToPrisma(data.tipo);
+      tipo = mapClienteTipoToPlanoParceiro(data.tipo);
       updates.tipo = tipo;
     }
 

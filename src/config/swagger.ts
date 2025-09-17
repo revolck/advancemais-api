@@ -114,6 +114,10 @@ const options: Options = {
         name: 'Empresas - Vagas',
         description: 'Administração de vagas corporativas vinculadas às empresas',
       },
+      {
+        name: 'Empresas - Admin',
+        description: 'Gestão administrativa das empresas e seus planos ativos',
+      },
       { name: 'MercadoPago - Assinaturas', description: 'Assinaturas e cobranças recorrentes (Mercado Pago)' },
     ],
     'x-tagGroups': [
@@ -151,7 +155,12 @@ const options: Options = {
       },
       {
         name: 'Empresas',
-        tags: ['Empresas - Planos Empresariais', 'Empresas - Clientes', 'Empresas - Vagas'],
+        tags: [
+          'Empresas - Planos Empresariais',
+          'Empresas - Clientes',
+          'Empresas - Vagas',
+          'Empresas - Admin',
+        ],
       },
       { name: 'Pagamentos', tags: ['MercadoPago - Assinaturas'] },
     ],
@@ -3240,6 +3249,136 @@ const options: Options = {
           description: 'Etapas do fluxo de publicação da vaga',
           enum: ['RASCUNHO', 'EM_ANALISE', 'PUBLICADO', 'EXPIRADO'],
           example: 'EM_ANALISE',
+        },
+        PaginationMeta: {
+          type: 'object',
+          properties: {
+            page: { type: 'integer', example: 1 },
+            pageSize: { type: 'integer', example: 20 },
+            total: { type: 'integer', example: 120 },
+            totalPages: { type: 'integer', example: 6 },
+          },
+        },
+        AdminEmpresaPlanoResumo: {
+          type: 'object',
+          description: 'Resumo do plano ativo vinculado à empresa',
+          properties: {
+            id: { type: 'string', format: 'uuid', example: 'plano-uuid' },
+            nome: { type: 'string', nullable: true, example: 'Plano Avançado' },
+            tipo: {
+              type: 'string',
+              enum: ['7_dias', '15_dias', '30_dias', '60_dias', '90dias', '120_dias', 'assinatura_mensal', 'parceiro'],
+              example: 'parceiro',
+            },
+            inicio: { type: 'string', format: 'date-time', nullable: true, example: '2024-01-10T12:00:00Z' },
+            fim: { type: 'string', format: 'date-time', nullable: true, example: '2024-02-10T12:00:00Z' },
+            modeloPagamento: {
+              allOf: [{ $ref: '#/components/schemas/ModeloPagamento' }],
+              nullable: true,
+            },
+            metodoPagamento: {
+              allOf: [{ $ref: '#/components/schemas/MetodoPagamento' }],
+              nullable: true,
+            },
+            statusPagamento: {
+              allOf: [{ $ref: '#/components/schemas/StatusPagamento' }],
+              nullable: true,
+            },
+            quantidadeVagas: { type: 'integer', nullable: true, example: 3 },
+          },
+        },
+        AdminEmpresaListItem: {
+          type: 'object',
+          description: 'Dados resumidos da empresa para listagem administrativa',
+          properties: {
+            id: { type: 'string', format: 'uuid', example: 'empresa-uuid' },
+            codUsuario: { type: 'string', example: 'EMP-123456' },
+            nome: { type: 'string', example: 'Advance Tech Consultoria' },
+            avatarUrl: { type: 'string', nullable: true, example: 'https://cdn.advance.com.br/logo.png' },
+            cidade: { type: 'string', nullable: true, example: 'São Paulo' },
+            estado: { type: 'string', nullable: true, example: 'SP' },
+            criadoEm: { type: 'string', format: 'date-time', example: '2024-01-05T12:00:00Z' },
+            parceira: { type: 'boolean', example: true },
+            diasTesteDisponibilizados: { type: 'integer', nullable: true, example: 30 },
+            plano: {
+              allOf: [{ $ref: '#/components/schemas/AdminEmpresaPlanoResumo' }],
+              nullable: true,
+            },
+          },
+        },
+        AdminEmpresasListResponse: {
+          type: 'object',
+          properties: {
+            data: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/AdminEmpresaListItem' },
+            },
+            pagination: {
+              allOf: [{ $ref: '#/components/schemas/PaginationMeta' }],
+            },
+          },
+        },
+        AdminEmpresaDetail: {
+          type: 'object',
+          description: 'Informações detalhadas da empresa para o painel administrativo',
+          properties: {
+            id: { type: 'string', format: 'uuid', example: 'empresa-uuid' },
+            codUsuario: { type: 'string', example: 'EMP-123456' },
+            nome: { type: 'string', example: 'Advance Tech Consultoria' },
+            avatarUrl: { type: 'string', nullable: true, example: 'https://cdn.advance.com.br/logo.png' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Consultoria especializada em recrutamento e seleção para empresas de tecnologia.',
+            },
+            instagram: { type: 'string', nullable: true, example: 'https://instagram.com/advancemais' },
+            linkedin: { type: 'string', nullable: true, example: 'https://linkedin.com/company/advancemais' },
+            cidade: { type: 'string', nullable: true, example: 'São Paulo' },
+            estado: { type: 'string', nullable: true, example: 'SP' },
+            criadoEm: { type: 'string', format: 'date-time', example: '2023-11-01T08:30:00Z' },
+            parceira: { type: 'boolean', example: true },
+            diasTesteDisponibilizados: { type: 'integer', nullable: true, example: 30 },
+            plano: {
+              allOf: [{ $ref: '#/components/schemas/AdminEmpresaPlanoResumo' }],
+              nullable: true,
+            },
+            vagas: {
+              type: 'object',
+              properties: {
+                publicadas: { type: 'integer', example: 1 },
+                limitePlano: { type: 'integer', nullable: true, example: 3 },
+              },
+            },
+            pagamento: {
+              type: 'object',
+              properties: {
+                modelo: {
+                  allOf: [{ $ref: '#/components/schemas/ModeloPagamento' }],
+                  nullable: true,
+                },
+                metodo: {
+                  allOf: [{ $ref: '#/components/schemas/MetodoPagamento' }],
+                  nullable: true,
+                },
+                status: {
+                  allOf: [{ $ref: '#/components/schemas/StatusPagamento' }],
+                  nullable: true,
+                },
+                ultimoPagamentoEm: {
+                  type: 'string',
+                  format: 'date-time',
+                  nullable: true,
+                  example: '2024-01-15T14:20:00Z',
+                },
+              },
+            },
+          },
+        },
+        AdminEmpresaDetailResponse: {
+          type: 'object',
+          properties: {
+            empresa: { $ref: '#/components/schemas/AdminEmpresaDetail' },
+          },
         },
         EmpresaResumo: {
           type: 'object',

@@ -327,11 +327,15 @@ export const mercadopagoConfig = {
     defaultCurrency: process.env.ASSINATURAS_DEFAULT_CURRENCY || 'BRL',
     defaultRecurrence: process.env.ASSINATURAS_RECURRENCIA_PADRAO || 'ASSINATURA',
     graceDays: parseInt(process.env.ASSINATURAS_GRACE_DAYS || '5', 10),
+    boletoGraceDays: parseInt(process.env.ASSINATURAS_BOLETO_GRACE_DAYS || '5', 10),
     emailsEnabled: process.env.ASSINATURAS_EMAILS_ENABLED !== 'false',
     assistedRecurringPixBoleto: process.env.ASSINATURAS_ASSISTIDA_PIX_BOLETO !== 'false',
     billingPortalUrl: process.env.MP_BILLING_PORTAL_URL || '',
     cronEnabled: process.env.CRON_RECONCILIATION_ENABLED === 'true',
     cronSchedule: process.env.CRON_RECONCILIATION_SCHEDULE || '0 2 * * *', // 02:00
+    boletoWatcherEnabled: process.env.CRON_BOLETO_ENABLED === 'true',
+    boletoWatcherSchedule: process.env.CRON_BOLETO_SCHEDULE || '0 * * * *',
+    boletoWatcherMaxDays: parseInt(process.env.CRON_BOLETO_MAX_DAYS || '5', 10),
   },
 
   isConfiguredForPayments(): boolean {

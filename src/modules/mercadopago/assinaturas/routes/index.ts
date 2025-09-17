@@ -11,8 +11,8 @@ const empresaOnly = ['EMPRESA'];
  * @openapi
  * /api/v1/mercadopago/assinaturas/checkout:
  *   post:
- *     summary: Iniciar checkout de assinatura
- *     description: "Inicia o fluxo de assinatura de um plano empresarial usando Mercado Pago. Em pagamentos por boleto, o plano só é ativado após confirmação via webhook."
+ *     summary: Iniciar checkout de plano (pagamento único ou assinatura)
+ *     description: "Recebe a intenção de pagamento do frontend (usuário, plano, método e token do cartão quando aplicável) e delega toda a comunicação com o Mercado Pago ao backend. Retorna os dados necessários para exibir o QR Code PIX, acompanhar o pagamento com cartão ou continuar o fluxo de assinatura via preapproval. Boleto permanece pendente até confirmação via webhook ou monitoramento agendado."
  *     tags: [MercadoPago - Assinaturas]
  *     security:
  *       - bearerAuth: []
@@ -21,18 +21,18 @@ const empresaOnly = ['EMPRESA'];
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               usuarioId: { type: string, format: uuid }
- *               planoEmpresarialId: { type: string, format: uuid }
- *               metodoPagamento: { $ref: '#/components/schemas/MetodoPagamento' }
- *               modeloPagamento: { $ref: '#/components/schemas/ModeloPagamento' }
- *               successUrl: { type: string, format: uri }
- *               failureUrl: { type: string, format: uri }
- *               pendingUrl: { type: string, format: uri }
+ *             $ref: '#/components/schemas/CheckoutIntent'
  *     responses:
  *       201:
  *         description: Checkout iniciado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/CheckoutResponse'
+ *                 - type: object
+ *                   properties:
+ *                     success: { type: boolean, example: true }
  *       400:
  *         description: Dados inválidos
  *       500:

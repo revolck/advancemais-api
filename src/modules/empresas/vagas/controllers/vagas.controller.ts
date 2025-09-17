@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ZodError } from 'zod';
 import type { StatusVaga } from '@prisma/client';
 import { setCacheHeaders, DEFAULT_TTL } from '@/utils/cache';
+import { Role } from '@/modules/usuarios/enums/Role';
 
 import { vagasService } from '@/modules/empresas/vagas/services/vagas.service';
 import {
@@ -22,7 +23,13 @@ export class VagasController {
 
       const validStatuses = new Set<StatusVaga>(['RASCUNHO', 'EM_ANALISE', 'PUBLICADO', 'EXPIRADO'] as const);
       const restrictedStatuses = new Set<StatusVaga>(['RASCUNHO', 'EM_ANALISE']);
-      const allowedRoles = ['ADMIN', 'MODERADOR', 'EMPRESA', 'RECRUTADOR'] as const;
+      const allowedRoles: Role[] = [
+        Role.ADMIN,
+        Role.MODERADOR,
+        Role.EMPRESA,
+        Role.RECRUTADOR,
+        Role.ALUNO_CANDIDATO,
+      ];
       let statusesFilter: StatusVaga[] | undefined = undefined;
 
       if (typeof status === 'string' && status.trim() !== '') {
@@ -52,7 +59,7 @@ export class VagasController {
             message: 'Token de autorização necessário para consultar vagas não públicas',
           });
         }
-        if (!allowedRoles.includes(user.role as (typeof allowedRoles)[number])) {
+        if (!allowedRoles.includes(user.role as Role)) {
           return res.status(403).json({
             success: false,
             code: 'FORBIDDEN',

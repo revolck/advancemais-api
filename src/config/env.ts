@@ -322,6 +322,18 @@ export const mercadopagoConfig = {
     return this.prod.publicKey || this.test.publicKey || '';
   },
 
+  // Configurações de assinaturas (ajustáveis por env)
+  settings: {
+    defaultCurrency: process.env.ASSINATURAS_DEFAULT_CURRENCY || 'BRL',
+    defaultRecurrence: process.env.ASSINATURAS_RECURRENCIA_PADRAO || 'ASSINATURA',
+    graceDays: parseInt(process.env.ASSINATURAS_GRACE_DAYS || '5', 10),
+    emailsEnabled: process.env.ASSINATURAS_EMAILS_ENABLED !== 'false',
+    assistedRecurringPixBoleto: process.env.ASSINATURAS_ASSISTIDA_PIX_BOLETO !== 'false',
+    billingPortalUrl: process.env.MP_BILLING_PORTAL_URL || '',
+    cronEnabled: process.env.CRON_RECONCILIATION_ENABLED === 'true',
+    cronSchedule: process.env.CRON_RECONCILIATION_SCHEDULE || '0 2 * * *', // 02:00
+  },
+
   isConfiguredForPayments(): boolean {
     return !!this.getAccessToken();
   },
@@ -333,6 +345,7 @@ export const mercadopagoConfig = {
     if (!this.returnUrls.success) issues.push('MP_RETURN_SUCCESS_URL não configurado');
     if (!this.returnUrls.failure) issues.push('MP_RETURN_FAILURE_URL não configurado');
     if (!this.returnUrls.pending) issues.push('MP_RETURN_PENDING_URL não configurado');
+    if (!this.settings.billingPortalUrl) issues.push('MP_BILLING_PORTAL_URL não configurado (opcional, recomendado)');
     return { configured: issues.length === 0, issues };
   },
 } as const;

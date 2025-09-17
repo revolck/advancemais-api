@@ -30,6 +30,11 @@ export class EmailService {
     this.config = BrevoConfigManager.getInstance();
   }
 
+  // Expor método simples para envio genérico (assinaturas etc.)
+  public async sendGeneric(to: string, toName: string, subject: string, html: string, text: string) {
+    return this.client.sendEmail({ to, toName, subject, html, text });
+  }
+
   public async sendWelcomeEmail(userData: WelcomeEmailData): Promise<EmailResult> {
     const correlationId = this.generateCorrelationId();
     const log = this.log.child({
@@ -207,6 +212,37 @@ export class EmailService {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
       log.error({ error: errorMsg }, '❌ Erro ao enviar email de boas-vindas simples');
       throw error;
+    }
+  }
+
+  public async sendAssinaturaNotificacao(
+    usuario: { id: string; email: string; nomeCompleto: string },
+    content: { subject: string; html: string; text: string },
+  ): Promise<EmailResult> {
+    const correlationId = this.generateCorrelationId();
+    const log = this.log.child({ correlationId, userId: usuario.id, email: usuario.email, method: 'sendAssinaturaNotificacao' });
+    try {
+      const result = await this.client.sendEmail({
+        to: usuario.email,
+        toName: usuario.nomeCompleto,
+        subject: content.subject,
+        html: content.html,
+        text: content.text,
+      });
+
+      if (result.success) {
+        await this.logEmailSuccess(usuario.id, 'NOTIFICACAO_SISTEMA', result.messageId);
+        log.info({ messageId: result.messageId }, '✅ Email de assinatura enviado');
+      } else {
+        await this.logEmailError(usuario.id, 'NOTIFICACAO_SISTEMA', result.error || 'Erro desconhecido');
+      }
+
+      return result;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      log.error({ error: errorMsg }, '❌ Erro ao enviar email de assinatura');
+      await this.logEmailError(usuario.id, 'NOTIFICACAO_SISTEMA', errorMsg);
+      return { success: false, error: errorMsg };
     }
   }
 

@@ -1,6 +1,6 @@
 import { prisma } from '@/config/prisma';
 import { mpClient, assertMercadoPagoConfigured } from '@/config/mercadopago';
-import { mercadopagoConfig } from '@/config/env';
+import { mercadopagoConfig, serverConfig } from '@/config/env';
 import { Preference, PreApproval, PreApprovalPlan } from 'mercadopago';
 import crypto from 'crypto';
 import { clientesService } from '@/modules/empresas/clientes/services/clientes.service';
@@ -18,14 +18,18 @@ function addMonths(date: Date, months: number) {
   return d;
 }
 
-function extractInitPoint(result: MercadoPagoResponse): string | null {
+export function extractInitPoint(result: MercadoPagoResponse): string | null {
   if (!result) return null;
   const body = result.body ?? result;
   return (
-    body?.sandbox_init_point ||
     body?.init_point ||
-    result?.sandbox_init_point ||
+    body?.initPoint ||
     result?.init_point ||
+    result?.initPoint ||
+    body?.sandbox_init_point ||
+    body?.sandboxInitPoint ||
+    result?.sandbox_init_point ||
+    result?.sandboxInitPoint ||
     null
   );
 }
@@ -40,6 +44,42 @@ function extractResourceId(result: MercadoPagoResponse): string | null {
     result?.id ||
     null
   );
+}
+
+function firstNonEmptyUrl(...urls: Array<string | null | undefined>): string | null {
+  for (const url of urls) {
+    if (typeof url === 'string') {
+      const trimmed = url.trim();
+      if (trimmed) {
+        return trimmed;
+      }
+    }
+  }
+  return null;
+}
+
+export function resolveCheckoutReturnUrls(params?: {
+  successUrl?: string;
+  failureUrl?: string;
+  pendingUrl?: string;
+}) {
+  const overrides = params ?? {};
+  const fallbackBase =
+    firstNonEmptyUrl(
+      mercadopagoConfig.returnUrls.success,
+      mercadopagoConfig.returnUrls.pending,
+      mercadopagoConfig.returnUrls.failure,
+      serverConfig.frontendUrl,
+    ) || serverConfig.frontendUrl;
+
+  const success =
+    firstNonEmptyUrl(overrides.successUrl, mercadopagoConfig.returnUrls.success, fallbackBase) || fallbackBase;
+  const failure =
+    firstNonEmptyUrl(overrides.failureUrl, mercadopagoConfig.returnUrls.failure, success, fallbackBase) || success;
+  const pending =
+    firstNonEmptyUrl(overrides.pendingUrl, mercadopagoConfig.returnUrls.pending, success, failure, fallbackBase) || success;
+
+  return { success, failure, pending };
 }
 
 function normalizeMercadoPagoError(error: unknown): { message: string; payload?: any } {
@@ -216,9 +256,11 @@ export const assinaturasService = {
     try {
       const valor = parseFloat(planoBase.valor);
       const titulo = planoBase.nome;
-      const success = params.successUrl || mercadopagoConfig.returnUrls.success;
-      const failure = params.failureUrl || mercadopagoConfig.returnUrls.failure;
-      const pending = params.pendingUrl || mercadopagoConfig.returnUrls.pending;
+      const { success, failure, pending } = resolveCheckoutReturnUrls({
+        successUrl: params.successUrl,
+        failureUrl: params.failureUrl,
+        pendingUrl: params.pendingUrl,
+      });
 
       // Busca email do usuário (payer_email exigido em preapproval)
       const usuario = await prisma.usuario.findUnique({ where: { id: params.usuarioId }, select: { email: true } });
@@ -473,9 +515,7 @@ export const assinaturasService = {
     const preference = new Preference(mp);
     const valor = parseFloat(plano.plano.valor);
     const titulo = plano.plano.nome + ' - Renovação';
-    const success = mercadopagoConfig.returnUrls.success;
-    const failure = mercadopagoConfig.returnUrls.failure;
-    const pending = mercadopagoConfig.returnUrls.pending;
+    const { success, failure, pending } = resolveCheckoutReturnUrls();
 
     const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId }, select: { email: true, nomeCompleto: true } });
     const payerEmail = usuario?.email || undefined;
@@ -490,7 +530,12 @@ export const assinaturasService = {
       },
     });
 
-    const link = (pref as any)?.sandbox_init_point || (pref as any)?.init_point || '';
+    const link =
+      (pref as any)?.init_point ||
+      (pref as any)?.initPoint ||
+      (pref as any)?.sandbox_init_point ||
+      (pref as any)?.sandboxInitPoint ||
+      '';
 
     if (usuario?.email && mercadopagoConfig.settings.emailsEnabled) {
       const emailService = new EmailService();

@@ -51,8 +51,7 @@ model Usuario {
   ultimaTentativaVerificacao DateTime?
 
   // RELACIONAMENTOS EXISTENTES
-  enderecos       Endereco[]
-  codigoUsuario   CodigoUsuario?
+  enderecos         Endereco[]
   vagasCriadas      Vaga[]         @relation("UsuarioVagas")
   planosContratados EmpresaPlano[] @relation("UsuarioPlanos")
 
@@ -120,29 +119,29 @@ model Vaga {
 }
 
 model EmpresaPlano {
-  id                 String          @id @default(uuid())
+  id                 String        @id @default(uuid())
   usuarioId          String
   planoEmpresarialId String
   tipo               PlanoParceiro
   inicio             DateTime?
   fim                DateTime?
-  ativo              Boolean         @default(false)
-  observacao         String?         @db.Text
-  criadoEm           DateTime        @default(now())
-  atualizadoEm       DateTime        @updatedAt
+  ativo              Boolean       @default(false)
+  observacao         String?       @db.Text
+  criadoEm           DateTime      @default(now())
+  atualizadoEm       DateTime      @updatedAt
 
   // Integração de pagamentos/assinaturas (Mercado Pago)
-  modeloPagamento   MODELO_PAGAMENTO?
-  metodoPagamento   METODO_PAGAMENTO?
-  statusPagamento   STATUS_PAGAMENTO? @default(PENDENTE)
-  mpPreapprovalId   String?           @unique
-  mpSubscriptionId  String?           @unique
-  mpPayerId         String?
-  mpPaymentId       String?
-  proximaCobranca   DateTime?
-  graceUntil        DateTime?
+  modeloPagamento  MODELO_PAGAMENTO?
+  metodoPagamento  METODO_PAGAMENTO?
+  statusPagamento  STATUS_PAGAMENTO? @default(PENDENTE)
+  mpPreapprovalId  String?           @unique
+  mpSubscriptionId String?           @unique
+  mpPayerId        String?
+  mpPaymentId      String?
+  proximaCobranca  DateTime?
+  graceUntil       DateTime?
 
-  empresa Usuario        @relation("UsuarioPlanos", fields: [usuarioId], references: [id], onDelete: Cascade)
+  empresa Usuario          @relation("UsuarioPlanos", fields: [usuarioId], references: [id], onDelete: Cascade)
   plano   PlanoEmpresarial @relation(fields: [planoEmpresarialId], references: [id])
 
   @@index([usuarioId, ativo])
@@ -168,17 +167,17 @@ model LogPagamento {
 }
 
 model PlanoEmpresarial {
-  id                       String   @id @default(uuid())
-  icon                     String
-  nome                     String
-  descricao                String
-  valor                    String
-  desconto                 Float?
-  quantidadeVagas          Int
-  vagaEmDestaque           Boolean  @default(false)
-  quantidadeVagasDestaque  Int?
-  criadoEm                 DateTime @default(now())
-  atualizadoEm             DateTime @updatedAt
+  id                      String   @id @default(uuid())
+  icon                    String
+  nome                    String
+  descricao               String
+  valor                   String
+  desconto                Float?
+  quantidadeVagas         Int
+  vagaEmDestaque          Boolean  @default(false)
+  quantidadeVagasDestaque Int?
+  criadoEm                DateTime @default(now())
+  atualizadoEm            DateTime @updatedAt
 
   empresas EmpresaPlano[]
 
@@ -234,17 +233,6 @@ model LogSMS {
   @@index([telefone])
   @@index([tipoSMS])
   @@index([criadoEm])
-}
-
-model CodigoUsuario {
-  codigo    Int        @id @default(autoincrement())
-  usuarioId String     @unique
-  tipo      CodigoTipo @default(USUARIO)
-  criadoEm  DateTime   @default(now())
-
-  usuario Usuario @relation(fields: [usuarioId], references: [id])
-
-  @@map("codigo_usuario")
 }
 
 model WebsiteSobre {
@@ -655,11 +643,6 @@ enum StatusSMS {
   ENVIADO
   FALHA
   PENDENTE
-}
-
-enum CodigoTipo {
-  USUARIO
-  EMPRESA
 }
 
 // Métodos de pagamento aceitos para planos

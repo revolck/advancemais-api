@@ -3,15 +3,11 @@ import bcrypt from 'bcrypt';
 import { prisma } from '../../../config/prisma';
 import { invalidateCacheByPrefix } from '../../../utils/cache';
 import { invalidateUserCache } from '../utils/cache';
-import { Prisma, CodigoTipo } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { TipoUsuario, Role } from '../enums';
 import {
   validarCPF,
   validarCNPJ,
-  validarEmail,
-  validarSenha,
-  validarConfirmacaoSenha,
-  validarTelefone,
   validarDataNascimento,
   validarGenero,
   limparDocumento,
@@ -212,7 +208,7 @@ export const criarUsuario = async (req: Request, res: Response, next: NextFuncti
         role: usuario.role,
         status: usuario.status,
         criadoEm: usuario.criadoEm,
-        codigoUsuario: usuario.codigoUsuario,
+        codUsuario: usuario.codUsuario,
       },
       // Metadados para debugging
       correlationId,
@@ -244,7 +240,7 @@ export const criarUsuario = async (req: Request, res: Response, next: NextFuncti
         role: usuario.role,
         status: usuario.status,
         criadoEm: usuario.criadoEm,
-        codigoUsuario: usuario.codigoUsuario,
+        codUsuario: usuario.codUsuario,
       },
       correlationId,
       duration: `${duration}ms`,
@@ -564,17 +560,7 @@ async function createUserWithTransaction(userData: any, correlationId: string) {
 
       log.info({ userId: usuario.id }, '✅ Usuário inserido com sucesso');
 
-      const codigo = await tx.codigoUsuario.create({
-        data: {
-          usuarioId: usuario.id,
-          tipo:
-            userData.tipoUsuario === TipoUsuario.PESSOA_JURIDICA
-              ? CodigoTipo.EMPRESA
-              : CodigoTipo.USUARIO,
-        },
-      });
-
-      return { ...usuario, codigoUsuario: codigo.codigo };
+      return usuario;
     });
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));

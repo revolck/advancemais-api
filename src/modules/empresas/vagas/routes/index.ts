@@ -2,10 +2,12 @@ import { Router } from 'express';
 
 import { publicCache } from '@/middlewares/cache-control';
 import { supabaseAuthMiddleware, optionalSupabaseAuth } from '@/modules/usuarios/auth';
+import { Role } from '@/modules/usuarios/enums/Role';
 import { VagasController } from '@/modules/empresas/vagas/controllers/vagas.controller';
 
 const router = Router();
-const protectedRoles = ['ADMIN', 'MODERADOR', 'EMPRESA', 'RECRUTADOR'];
+const protectedRoles = [Role.ADMIN, Role.MODERADOR, Role.EMPRESA, Role.RECRUTADOR];
+const updateRoles = [Role.ADMIN, Role.MODERADOR, Role.RECRUTADOR];
 
 /**
  * @openapi
@@ -248,7 +250,7 @@ router.post('/', supabaseAuthMiddleware(protectedRoles), VagasController.create)
  *                  "status": "PUBLICADO"
  *                }'
  */
-router.put('/:id', supabaseAuthMiddleware(protectedRoles), VagasController.update);
+router.put('/:id', supabaseAuthMiddleware(updateRoles), VagasController.update);
 
 /**
  * @openapi

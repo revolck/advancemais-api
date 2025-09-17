@@ -3308,6 +3308,184 @@ const options: Options = {
             },
           },
         },
+        AdminEmpresaPlanoInput: {
+          type: 'object',
+          required: ['planoEmpresarialId', 'tipo'],
+          properties: {
+            planoEmpresarialId: {
+              type: 'string',
+              format: 'uuid',
+              example: 'plano-uuid',
+              description: 'Identificador do plano empresarial que será vinculado à empresa',
+            },
+            tipo: {
+              allOf: [{ $ref: '#/components/schemas/ClientePlanoTipo' }],
+              description: 'Tipo de duração/liberação do plano parceiro',
+            },
+            iniciarEm: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              example: '2024-01-01T12:00:00Z',
+              description: 'Data de início do plano. Quando omitido, utiliza a data atual',
+            },
+            observacao: {
+              type: 'string',
+              nullable: true,
+              example: 'Plano cortesia liberado pelo time comercial',
+              description: 'Observação interna sobre a concessão do plano',
+            },
+          },
+        },
+        AdminEmpresaCreateInput: {
+          type: 'object',
+          required: ['nome', 'email', 'telefone', 'senha', 'supabaseId', 'cnpj'],
+          properties: {
+            nome: {
+              type: 'string',
+              example: 'Advance Tech Consultoria',
+              description: 'Nome fantasia da empresa',
+            },
+            email: {
+              type: 'string',
+              format: 'email',
+              example: 'contato@advancetech.com.br',
+              description: 'E-mail principal utilizado pela empresa',
+            },
+            telefone: {
+              type: 'string',
+              example: '11987654321',
+              description: 'Telefone de contato direto com a empresa',
+            },
+            senha: {
+              type: 'string',
+              example: 'SenhaForte123!',
+              description: 'Senha inicial que será criptografada antes de salvar',
+            },
+            supabaseId: {
+              type: 'string',
+              example: 'supabase-user-id',
+              description: 'Identificador do usuário correspondente no Supabase',
+            },
+            cnpj: {
+              type: 'string',
+              example: '12345678000190',
+              description: 'CNPJ da empresa, apenas números',
+            },
+            cidade: {
+              type: 'string',
+              nullable: true,
+              example: 'São Paulo',
+            },
+            estado: {
+              type: 'string',
+              nullable: true,
+              example: 'SP',
+            },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Consultoria especializada em recrutamento e seleção.',
+            },
+            instagram: {
+              type: 'string',
+              nullable: true,
+              example: 'https://instagram.com/advancemais',
+            },
+            linkedin: {
+              type: 'string',
+              nullable: true,
+              example: 'https://linkedin.com/company/advancemais',
+            },
+            avatarUrl: {
+              type: 'string',
+              nullable: true,
+              example: 'https://cdn.advance.com.br/logo.png',
+            },
+            aceitarTermos: {
+              type: 'boolean',
+              example: true,
+              description: 'Indica se os termos de uso já foram aceitos em nome da empresa',
+            },
+            status: {
+              type: 'string',
+              nullable: true,
+              enum: ['ATIVO', 'INATIVO', 'BANIDO', 'PENDENTE', 'SUSPENSO'],
+              example: 'ATIVO',
+              description: 'Status inicial da conta da empresa. Padrão: ATIVO',
+            },
+            plano: {
+              allOf: [{ $ref: '#/components/schemas/AdminEmpresaPlanoInput' }],
+              nullable: true,
+              description: 'Dados opcionais para já vincular um plano empresarial ativo',
+            },
+          },
+        },
+        AdminEmpresaUpdateInput: {
+          type: 'object',
+          description: 'Informe ao menos um campo para atualização',
+          properties: {
+            nome: {
+              type: 'string',
+              example: 'Advance Tech Consultoria LTDA',
+            },
+            email: {
+              type: 'string',
+              format: 'email',
+              example: 'contato@advancetech.com.br',
+            },
+            telefone: {
+              type: 'string',
+              example: '11912345678',
+            },
+            cnpj: {
+              type: 'string',
+              nullable: true,
+              example: '12345678000190',
+            },
+            cidade: {
+              type: 'string',
+              nullable: true,
+              example: 'São Paulo',
+            },
+            estado: {
+              type: 'string',
+              nullable: true,
+              example: 'SP',
+            },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Consultoria especializada em recrutamento e seleção com foco em tecnologia.',
+            },
+            instagram: {
+              type: 'string',
+              nullable: true,
+              example: 'https://instagram.com/advancemais',
+            },
+            linkedin: {
+              type: 'string',
+              nullable: true,
+              example: 'https://linkedin.com/company/advancemais',
+            },
+            avatarUrl: {
+              type: 'string',
+              nullable: true,
+              example: 'https://cdn.advance.com.br/logo.png',
+            },
+            status: {
+              type: 'string',
+              nullable: true,
+              enum: ['ATIVO', 'INATIVO', 'BANIDO', 'PENDENTE', 'SUSPENSO'],
+              example: 'ATIVO',
+            },
+            plano: {
+              allOf: [{ $ref: '#/components/schemas/AdminEmpresaPlanoInput' }],
+              nullable: true,
+              description: 'Envie null para encerrar o plano atual da empresa',
+            },
+          },
+        },
         AdminEmpresasListResponse: {
           type: 'object',
           properties: {

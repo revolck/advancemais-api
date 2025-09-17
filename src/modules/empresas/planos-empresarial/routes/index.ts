@@ -11,7 +11,7 @@ const router = Router();
  * /api/v1/empresas/planos-empresarial:
  *   get:
  *     summary: Listar planos empresariais disponíveis
- *     description: Retorna todos os planos empresariais configurados, incluindo regras de publicação de vagas. A tabela está limitada a no máximo 4 registros.
+ *     description: "Retorna todos os planos empresariais configurados, incluindo regras de publicação de vagas. A tabela está limitada a no máximo 4 registros. Endpoint público, não requer autenticação."
  *     tags: [Empresas - Planos Empresariais]
  *     responses:
  *       200:
@@ -80,7 +80,7 @@ router.get('/:id', publicCache, PlanosEmpresariaisController.get);
  * /api/v1/empresas/planos-empresarial:
  *   post:
  *     summary: Criar um novo plano empresarial
- *     description: Disponível apenas para administradores e moderadores. A criação respeita o limite máximo de 4 planos ativos e permite definir descontos percentuais e regras de publicação de vagas.
+ *     description: "Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR). A criação respeita o limite máximo de 4 planos ativos e permite definir descontos percentuais e regras de publicação de vagas."
  *     tags: [Empresas - Planos Empresariais]
  *     security:
  *       - bearerAuth: []
@@ -140,6 +140,7 @@ router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), PlanosEmpresari
  * /api/v1/empresas/planos-empresarial/{id}:
  *   put:
  *     summary: Atualizar plano empresarial
+ *     description: "Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR)."
  *     tags: [Empresas - Planos Empresariais]
  *     security:
  *       - bearerAuth: []
@@ -201,6 +202,7 @@ router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), PlanosEmpresa
  * /api/v1/empresas/planos-empresarial/{id}:
  *   delete:
  *     summary: Remover plano empresarial
+ *     description: "Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR)."
  *     tags: [Empresas - Planos Empresariais]
  *     security:
  *       - bearerAuth: []

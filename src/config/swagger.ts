@@ -107,13 +107,14 @@ const options: Options = {
         description: 'Gestão dos planos empresariais corporativos',
       },
       {
-        name: 'Empresas - Planos Parceiro',
-        description: 'Vinculação e controle de planos parceiros para empresas',
+        name: 'Empresas - Clientes',
+        description: 'Clientes (empresas) vinculados a planos pagos',
       },
       {
         name: 'Empresas - Vagas',
         description: 'Administração de vagas corporativas vinculadas às empresas',
       },
+      { name: 'MercadoPago - Assinaturas', description: 'Assinaturas e cobranças recorrentes (Mercado Pago)' },
     ],
     'x-tagGroups': [
       { name: 'Default', tags: ['Default'] },
@@ -150,11 +151,31 @@ const options: Options = {
       },
       {
         name: 'Empresas',
-        tags: ['Empresas - Planos Empresariais', 'Empresas - Planos Parceiro', 'Empresas - Vagas'],
+        tags: ['Empresas - Planos Empresariais', 'Empresas - Clientes', 'Empresas - Vagas'],
       },
+      { name: 'Pagamentos', tags: ['MercadoPago - Assinaturas'] },
     ],
-    components: {
-      schemas: {
+        components: {
+          schemas: {
+        // Enums de Pagamento (para uso geral)
+        StatusPagamento: {
+          type: 'string',
+          enum: ['PENDENTE', 'EM_PROCESSAMENTO', 'APROVADO', 'CONCLUIDO', 'RECUSADO', 'ESTORNADO', 'CANCELADO'],
+          example: 'PENDENTE',
+          description: 'Estados possíveis de um pagamento/processamento de transação',
+        },
+        ModeloPagamento: {
+          type: 'string',
+          enum: ['ASSINATURA', 'PAGAMENTO_UNICO', 'PAGAMENTO_PARCELADO'],
+          example: 'ASSINATURA',
+          description: 'Modelos de cobrança suportados',
+        },
+        MetodoPagamento: {
+          type: 'string',
+          enum: ['CARTAO_CREDITO', 'CARTAO_DEBITO', 'PIX', 'BOLETO', 'TRANSFERENCIA', 'DINHEIRO'],
+          example: 'PIX',
+          description: 'Meios de pagamento aceitos',
+        },
         ErrorResponse: {
           type: 'object',
           properties: {
@@ -2968,12 +2989,12 @@ const options: Options = {
             limite: { type: 'integer', example: 4 },
           },
         },
-        PlanoParceiroTipo: {
+        ClientePlanoTipo: {
           type: 'string',
           enum: ['7_dias', '15_dias', '30_dias', '60_dias', '90dias', '120_dias', 'parceiro'],
           example: '7_dias',
         },
-        EmpresaPlanoParceiroEmpresa: {
+        ClientePlanoEmpresa: {
           type: 'object',
           properties: {
             id: { type: 'string', example: 'empresa-uuid' },
@@ -2988,16 +3009,16 @@ const options: Options = {
             },
             instagram: { type: 'string', nullable: true, example: 'https://instagram.com/advancemais' },
             linkedin: { type: 'string', nullable: true, example: 'https://linkedin.com/company/advancemais' },
-            codUsuario: { type: 'string', example: 'USD1915' },
+            codUsuario: { type: 'string', example: 'ABC1234' },
           },
         },
-        EmpresaPlanoParceiro: {
+        EmpresaClientePlano: {
           type: 'object',
           properties: {
             id: { type: 'string', example: 'parceria-uuid' },
             usuarioId: { type: 'string', example: 'usuario-uuid' },
             planoEmpresarialId: { type: 'string', example: 'plano-uuid' },
-            tipo: { $ref: '#/components/schemas/PlanoParceiroTipo' },
+            tipo: { $ref: '#/components/schemas/ClientePlanoTipo' },
             inicio: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00Z' },
             fim: {
               type: 'string',
@@ -3025,19 +3046,19 @@ const options: Options = {
             criadoEm: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00Z' },
             atualizadoEm: { type: 'string', format: 'date-time', example: '2024-01-02T12:00:00Z' },
             empresa: {
-              allOf: [{ $ref: '#/components/schemas/EmpresaPlanoParceiroEmpresa' }],
+              allOf: [{ $ref: '#/components/schemas/ClientePlanoEmpresa' }],
               nullable: true,
             },
             plano: { $ref: '#/components/schemas/PlanoEmpresarial' },
           },
         },
-        EmpresaPlanoParceiroCreateInput: {
+        EmpresaClientePlanoCreateInput: {
           type: 'object',
           required: ['usuarioId', 'planoEmpresarialId', 'tipo'],
           properties: {
             usuarioId: { type: 'string', format: 'uuid', example: 'usuario-uuid' },
             planoEmpresarialId: { type: 'string', format: 'uuid', example: 'plano-uuid' },
-            tipo: { $ref: '#/components/schemas/PlanoParceiroTipo' },
+            tipo: { $ref: '#/components/schemas/ClientePlanoTipo' },
             iniciarEm: {
               type: 'string',
               format: 'date-time',
@@ -3051,7 +3072,7 @@ const options: Options = {
             },
           },
         },
-        EmpresaPlanoParceiroUpdateInput: {
+        EmpresaClientePlanoUpdateInput: {
           type: 'object',
           properties: {
             planoEmpresarialId: {
@@ -3059,7 +3080,7 @@ const options: Options = {
               format: 'uuid',
               example: 'novo-plano-uuid',
             },
-            tipo: { $ref: '#/components/schemas/PlanoParceiroTipo' },
+            tipo: { $ref: '#/components/schemas/ClientePlanoTipo' },
             iniciarEm: {
               type: 'string',
               format: 'date-time',
@@ -3079,11 +3100,11 @@ const options: Options = {
             code: { type: 'string', example: 'EMPRESA_SEM_PLANO_ATIVO' },
             message: {
               type: 'string',
-              example: 'A empresa não possui um plano parceiro ativo no momento.',
+              example: 'A empresa não possui um plano ativo no momento.',
             },
           },
         },
-        PlanoParceiroLimiteVagasResponse: {
+        PlanoClienteLimiteVagasResponse: {
           type: 'object',
           properties: {
             success: { type: 'boolean', example: false },
@@ -3124,7 +3145,7 @@ const options: Options = {
             },
             instagram: { type: 'string', nullable: true, example: 'https://instagram.com/advancemais' },
             linkedin: { type: 'string', nullable: true, example: 'https://linkedin.com/company/advancemais' },
-            codUsuario: { type: 'string', example: 'USD1915' },
+            codUsuario: { type: 'string', example: 'ABC1234' },
           },
         },
         Vaga: {
@@ -3437,7 +3458,7 @@ const options: Options = {
                   nullable: true,
                   example: 'https://linkedin.com/company/advancemais',
                 },
-                codUsuario: { type: 'string', example: 'USD1915' },
+                codUsuario: { type: 'string', example: 'ABC1234' },
                 enderecos: {
                   type: 'array',
                   items: {
@@ -3757,8 +3778,19 @@ export function setupSwagger(app: Application): void {
               'Website - InformacoesGerais',
               'Website - ImagemLogin',
               'Website - Header Pages',
+              'MercadoPago - Assinaturas',
+              // Empresas - após Website - Header Pages
+              'Empresas - Planos Empresariais',
+              'Empresas - Clientes',
+              'Empresas - Vagas',
             ];
-            return order.indexOf(a) - order.indexOf(b);
+            const ai = order.indexOf(a);
+            const bi = order.indexOf(b);
+            // Tags não listadas vão para o final mantendo ordem alfabética entre elas
+            if (ai === -1 && bi === -1) return a.localeCompare(b);
+            if (ai === -1) return 1;
+            if (bi === -1) return -1;
+            return ai - bi;
           },
         },
       })(req, res, next);

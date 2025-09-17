@@ -2,13 +2,13 @@ import { PlanoParceiro, Prisma, TipoUsuario } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import {
-  CreatePlanoParceiroInput,
-  ListPlanoParceiroQuery,
-  PlanoParceiroTipo,
-  UpdatePlanoParceiroInput,
-} from '@/modules/empresas/planos-parceiro/validators/planos-parceiro.schema';
+  CreateClientePlanoInput,
+  ListClientePlanoQuery,
+  ClientePlanoTipo,
+  UpdateClientePlanoInput,
+} from '@/modules/empresas/clientes/validators/clientes.schema';
 
-const PLANO_INPUT_MAP: Record<PlanoParceiroTipo, PlanoParceiro> = {
+const PLANO_INPUT_MAP: Record<ClientePlanoTipo, PlanoParceiro> = {
   '7_dias': PlanoParceiro.SETE_DIAS,
   '15_dias': PlanoParceiro.QUINZE_DIAS,
   '30_dias': PlanoParceiro.TRINTA_DIAS,
@@ -18,7 +18,7 @@ const PLANO_INPUT_MAP: Record<PlanoParceiroTipo, PlanoParceiro> = {
   parceiro: PlanoParceiro.PARCEIRO,
 };
 
-const PLANO_OUTPUT_MAP: Record<PlanoParceiro, PlanoParceiroTipo> = {
+const PLANO_OUTPUT_MAP: Record<PlanoParceiro, ClientePlanoTipo> = {
   [PlanoParceiro.SETE_DIAS]: '7_dias',
   [PlanoParceiro.QUINZE_DIAS]: '15_dias',
   [PlanoParceiro.TRINTA_DIAS]: '30_dias',
@@ -78,7 +78,7 @@ const calcularDataFim = (tipo: PlanoParceiro, inicio: Date) => {
   return data;
 };
 
-const mapTipoToPrisma = (tipo: PlanoParceiroTipo) => PLANO_INPUT_MAP[tipo];
+const mapTipoToPrisma = (tipo: ClientePlanoTipo) => PLANO_INPUT_MAP[tipo];
 
 const mapTipoToResponse = (tipo: PlanoParceiro) => PLANO_OUTPUT_MAP[tipo];
 
@@ -129,7 +129,7 @@ const transformarPlano = (plano: EmpresaPlanoWithRelations) => {
   };
 };
 
-const buildWhere = (filters: ListPlanoParceiroQuery): Prisma.EmpresaPlanoWhereInput => {
+const buildWhere = (filters: ListClientePlanoQuery): Prisma.EmpresaPlanoWhereInput => {
   const where: Prisma.EmpresaPlanoWhereInput = {};
 
   if (filters.usuarioId) {
@@ -143,8 +143,8 @@ const buildWhere = (filters: ListPlanoParceiroQuery): Prisma.EmpresaPlanoWhereIn
   return where;
 };
 
-export const planosParceiroService = {
-  list: async (filters: ListPlanoParceiroQuery) => {
+export const clientesService = {
+  list: async (filters: ListClientePlanoQuery) => {
     const planos = await prisma.empresaPlano.findMany({
       where: buildWhere(filters),
       orderBy: { criadoEm: 'desc' },
@@ -180,7 +180,7 @@ export const planosParceiroService = {
     };
   },
 
-  assign: async (data: CreatePlanoParceiroInput) => {
+  assign: async (data: CreateClientePlanoInput) => {
     await ensureUsuarioEmpresa(data.usuarioId);
     const tipo = mapTipoToPrisma(data.tipo);
     const inicio = data.iniciarEm ?? new Date();
@@ -209,7 +209,7 @@ export const planosParceiroService = {
     return transformarPlano(plano);
   },
 
-  update: async (id: string, data: UpdatePlanoParceiroInput) => {
+  update: async (id: string, data: UpdateClientePlanoInput) => {
     const planoAtual = await prisma.empresaPlano.findUnique({ where: { id } });
 
     if (!planoAtual) {

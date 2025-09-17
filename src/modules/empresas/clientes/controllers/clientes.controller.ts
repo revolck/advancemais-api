@@ -1,20 +1,20 @@
 import { Request, Response } from 'express';
 import { ZodError } from 'zod';
 
-import { planosParceiroService } from '@/modules/empresas/planos-parceiro/services/planos-parceiro.service';
+import { clientesService } from '@/modules/empresas/clientes/services/clientes.service';
 import {
-  createPlanoParceiroSchema,
-  listPlanoParceiroQuerySchema,
-  updatePlanoParceiroSchema,
-} from '@/modules/empresas/planos-parceiro/validators/planos-parceiro.schema';
+  createClientePlanoSchema,
+  listClientePlanoQuerySchema,
+  updateClientePlanoSchema,
+} from '@/modules/empresas/clientes/validators/clientes.schema';
 
 const PRISMA_NOT_FOUND_CODE = 'EMPRESA_PLANO_NOT_FOUND';
 
-export class PlanosParceiroController {
+export class ClientesController {
   static list = async (req: Request, res: Response) => {
     try {
-      const filters = listPlanoParceiroQuerySchema.parse(req.query);
-      const planos = await planosParceiroService.list(filters);
+      const filters = listClientePlanoQuerySchema.parse(req.query);
+      const planos = await clientesService.list(filters);
       res.json(planos);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -37,7 +37,7 @@ export class PlanosParceiroController {
 
   static get = async (req: Request, res: Response) => {
     try {
-      const plano = await planosParceiroService.get(req.params.id);
+      const plano = await clientesService.get(req.params.id);
 
       if (!plano) {
         return res.status(404).json({
@@ -60,8 +60,8 @@ export class PlanosParceiroController {
 
   static assign = async (req: Request, res: Response) => {
     try {
-      const payload = createPlanoParceiroSchema.parse(req.body);
-      const plano = await planosParceiroService.assign(payload);
+      const payload = createClientePlanoSchema.parse(req.body);
+      const plano = await clientesService.assign(payload);
       res.status(201).json(plano);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -92,7 +92,7 @@ export class PlanosParceiroController {
 
   static update = async (req: Request, res: Response) => {
     try {
-      const payload = updatePlanoParceiroSchema.parse(req.body);
+      const payload = updateClientePlanoSchema.parse(req.body);
       const hasUpdates = Object.values(payload).some((value) => value !== undefined);
 
       if (!hasUpdates) {
@@ -103,7 +103,7 @@ export class PlanosParceiroController {
         });
       }
 
-      const plano = await planosParceiroService.update(req.params.id, payload);
+      const plano = await clientesService.update(req.params.id, payload);
       res.json(plano);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -142,7 +142,7 @@ export class PlanosParceiroController {
 
   static deactivate = async (req: Request, res: Response) => {
     try {
-      await planosParceiroService.deactivate(req.params.id);
+      await clientesService.deactivate(req.params.id);
       res.status(204).send();
     } catch (error: any) {
       if (error?.code === PRISMA_NOT_FOUND_CODE || error?.code === 'P2025') {

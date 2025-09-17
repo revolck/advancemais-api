@@ -1,0 +1,2 @@
+export { mercadopagoRoutes } from './routes';
+

@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { ZodError } from 'zod';
+import type { StatusVaga } from '@prisma/client';
+import { setCacheHeaders, DEFAULT_TTL } from '@/utils/cache';
 
 import { vagasService } from '@/modules/empresas/vagas/services/vagas.service';
 import {
@@ -11,7 +13,67 @@ import { createVagaSchema, updateVagaSchema } from '@/modules/empresas/vagas/val
 export class VagasController {
   static list = async (_req: Request, res: Response) => {
     try {
-      const vagas = await vagasService.list();
+      const { status, usuarioId, page, pageSize } = _req.query as {
+        status?: string;
+        usuarioId?: string;
+        page?: string;
+        pageSize?: string;
+      };
+
+      const validStatuses = new Set<StatusVaga>(['RASCUNHO', 'EM_ANALISE', 'PUBLICADO', 'EXPIRADO'] as const);
+      const restrictedStatuses = new Set<StatusVaga>(['RASCUNHO', 'EM_ANALISE']);
+      const allowedRoles = ['ADMIN', 'MODERADOR', 'EMPRESA', 'RECRUTADOR'] as const;
+      let statusesFilter: StatusVaga[] | undefined = undefined;
+
+      if (typeof status === 'string' && status.trim() !== '') {
+        const normalized = status.trim().toUpperCase();
+        if (normalized === 'ALL' || normalized === 'TODAS' || normalized === 'TODOS') {
+          statusesFilter = ['RASCUNHO', 'EM_ANALISE', 'PUBLICADO', 'EXPIRADO'];
+        } else {
+          const parts = normalized.split(',').map((s) => s.trim()).filter(Boolean);
+          const chosen = parts.filter((s): s is StatusVaga => validStatuses.has(s as StatusVaga));
+          if (chosen.length > 0) {
+            statusesFilter = chosen;
+          }
+        }
+      }
+
+      // Proteção: exige autenticação/roles para RASCUNHO ou EM_ANALISE
+      const includesRestricted = Array.isArray(statusesFilter)
+        ? statusesFilter.some((s) => restrictedStatuses.has(s))
+        : false;
+
+      if (includesRestricted) {
+        const user = _req.user;
+        if (!user) {
+          return res.status(401).json({
+            success: false,
+            code: 'UNAUTHORIZED',
+            message: 'Token de autorização necessário para consultar vagas não públicas',
+          });
+        }
+        if (!allowedRoles.includes(user.role as (typeof allowedRoles)[number])) {
+          return res.status(403).json({
+            success: false,
+            code: 'FORBIDDEN',
+            message: 'Acesso negado: permissões insuficientes para consultar vagas não públicas',
+          });
+        }
+      }
+
+      const vagas = await vagasService.list({
+        status: statusesFilter,
+        usuarioId: typeof usuarioId === 'string' ? usuarioId : undefined,
+        page: page ? Math.max(1, parseInt(page, 10) || 1) : undefined,
+        pageSize: pageSize ? Math.max(1, Math.min(100, parseInt(pageSize, 10) || 10)) : undefined,
+      });
+      const ttl = Number(process.env.VAGAS_CACHE_TTL || DEFAULT_TTL);
+      const etag = setCacheHeaders(res, vagas, ttl);
+      const ifNoneMatch = _req.headers['if-none-match'];
+      const tags = Array.isArray(ifNoneMatch) ? ifNoneMatch : typeof ifNoneMatch === 'string' ? ifNoneMatch.split(',').map((v) => v.trim().replace(/^W\//, '').replace(/"/g, '')) : [];
+      if (tags.includes(etag)) {
+        return res.status(304).end();
+      }
       res.json(vagas);
     } catch (error: any) {
       res.status(500).json({

@@ -1,18 +1,18 @@
 import { Router } from 'express';
 
 import { supabaseAuthMiddleware } from '@/modules/usuarios/auth';
-import { PlanosParceiroController } from '@/modules/empresas/planos-parceiro/controllers/planos-parceiro.controller';
+import { ClientesController } from '@/modules/empresas/clientes/controllers/clientes.controller';
 
 const router = Router();
 const adminRoles = ['ADMIN', 'MODERADOR'];
 
 /**
  * @openapi
- * /api/v1/empresas/planos-parceiro:
+ * /api/v1/empresas/clientes:
  *   get:
- *     summary: Listar vinculações de planos parceiros
- *     description: Retorna o histórico de planos parceiros atribuídos às empresas. Permite filtrar por empresa e status atual.
- *     tags: [Empresas - Planos Parceiro]
+ *     summary: Listar clientes (empresas) vinculados a planos
+ *     description: "Retorna o histórico de vinculações de planos para clientes (empresas). Permite filtrar por empresa e status atual. Endpoint restrito a administradores e moderadores (roles: ADMIN, MODERADOR)."
+ *     tags: [Empresas - Clientes]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -21,12 +21,12 @@ const adminRoles = ['ADMIN', 'MODERADOR'];
  *         schema:
  *           type: string
  *           format: uuid
- *         description: Filtra os registros pelo identificador do usuário (empresa - PJ)
+ *         description: "Filtra os registros pelo identificador do cliente (empresa - PJ)"
  *       - in: query
  *         name: ativo
  *         schema:
  *           type: boolean
- *         description: Quando informado, retorna apenas os registros com o status ativo correspondente
+ *         description: "Quando informado, retorna apenas os registros com o status ativo correspondente"
  *     responses:
  *       200:
  *         description: Lista de planos parceiros vinculados
@@ -35,7 +35,7 @@ const adminRoles = ['ADMIN', 'MODERADOR'];
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/EmpresaPlanoParceiro'
+ *                 $ref: '#/components/schemas/EmpresaClientePlano'
  *       400:
  *         description: Parâmetros inválidos
  *         content:
@@ -55,14 +55,15 @@ const adminRoles = ['ADMIN', 'MODERADOR'];
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/', supabaseAuthMiddleware(adminRoles), PlanosParceiroController.list);
+router.get('/', supabaseAuthMiddleware(adminRoles), ClientesController.list);
 
 /**
  * @openapi
- * /api/v1/empresas/planos-parceiro/{id}:
+ * /api/v1/empresas/clientes/{id}:
  *   get:
- *     summary: Consultar plano parceiro de uma empresa
- *     tags: [Empresas - Planos Parceiro]
+ *     summary: Consultar vinculação de plano de um cliente
+ *     description: "Endpoint restrito a administradores e moderadores (roles: ADMIN, MODERADOR)."
+ *     tags: [Empresas - Clientes]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -78,7 +79,7 @@ router.get('/', supabaseAuthMiddleware(adminRoles), PlanosParceiroController.lis
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/EmpresaPlanoParceiro'
+ *               $ref: '#/components/schemas/EmpresaClientePlano'
  *       401:
  *         description: Token inválido ou ausente
  *         content:
@@ -98,15 +99,15 @@ router.get('/', supabaseAuthMiddleware(adminRoles), PlanosParceiroController.lis
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/:id', supabaseAuthMiddleware(adminRoles), PlanosParceiroController.get);
+router.get('/:id', supabaseAuthMiddleware(adminRoles), ClientesController.get);
 
 /**
  * @openapi
- * /api/v1/empresas/planos-parceiro:
+ * /api/v1/empresas/clientes:
  *   post:
- *     summary: Vincular plano parceiro a uma empresa
- *     description: Disponibiliza o acesso temporário ou permanente aos recursos do plano empresarial selecionado para a empresa informada.
- *     tags: [Empresas - Planos Parceiro]
+ *     summary: Vincular plano a um cliente
+ *     description: "Disponibiliza o acesso temporário ou permanente aos recursos do plano empresarial selecionado para o cliente informado. Endpoint restrito a administradores e moderadores (roles: ADMIN, MODERADOR)."
+ *     tags: [Empresas - Clientes]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -114,14 +115,14 @@ router.get('/:id', supabaseAuthMiddleware(adminRoles), PlanosParceiroController.
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/EmpresaPlanoParceiroCreateInput'
+ *             $ref: '#/components/schemas/EmpresaClientePlanoCreateInput'
  *     responses:
  *       201:
  *         description: Plano parceiro vinculado com sucesso
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/EmpresaPlanoParceiro'
+ *               $ref: '#/components/schemas/EmpresaClientePlano'
  *       400:
  *         description: Dados inválidos
  *         content:
@@ -150,7 +151,7 @@ router.get('/:id', supabaseAuthMiddleware(adminRoles), PlanosParceiroController.
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X POST "http://localhost:3000/api/v1/empresas/planos-parceiro" \
+ *           curl -X POST "http://localhost:3000/api/v1/empresas/clientes" \
  *            -H "Authorization: Bearer <TOKEN>" \
  *            -H "Content-Type: application/json" \
  *            -d '{
@@ -160,14 +161,15 @@ router.get('/:id', supabaseAuthMiddleware(adminRoles), PlanosParceiroController.
  *                  "observacao": "Período de teste liberado pela equipe comercial"
  *                }'
  */
-router.post('/', supabaseAuthMiddleware(adminRoles), PlanosParceiroController.assign);
+router.post('/', supabaseAuthMiddleware(adminRoles), ClientesController.assign);
 
 /**
  * @openapi
- * /api/v1/empresas/planos-parceiro/{id}:
+ * /api/v1/empresas/clientes/{id}:
  *   put:
- *     summary: Atualizar plano parceiro da empresa
- *     tags: [Empresas - Planos Parceiro]
+ *     summary: Atualizar vinculação de plano do cliente
+ *     description: "Endpoint restrito a administradores e moderadores (roles: ADMIN, MODERADOR)."
+ *     tags: [Empresas - Clientes]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -182,14 +184,14 @@ router.post('/', supabaseAuthMiddleware(adminRoles), PlanosParceiroController.as
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/EmpresaPlanoParceiroUpdateInput'
+ *             $ref: '#/components/schemas/EmpresaClientePlanoUpdateInput'
  *     responses:
  *       200:
  *         description: Plano parceiro atualizado
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/EmpresaPlanoParceiro'
+ *               $ref: '#/components/schemas/EmpresaClientePlano'
  *       400:
  *         description: Dados inválidos
  *         content:
@@ -218,7 +220,7 @@ router.post('/', supabaseAuthMiddleware(adminRoles), PlanosParceiroController.as
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X PUT "http://localhost:3000/api/v1/empresas/planos-parceiro/{id}" \
+ *           curl -X PUT "http://localhost:3000/api/v1/empresas/clientes/{id}" \
  *            -H "Authorization: Bearer <TOKEN>" \
  *            -H "Content-Type: application/json" \
  *            -d '{
@@ -226,14 +228,15 @@ router.post('/', supabaseAuthMiddleware(adminRoles), PlanosParceiroController.as
  *                  "observacao": "Parceiro oficial da Advance+"
  *                }'
  */
-router.put('/:id', supabaseAuthMiddleware(adminRoles), PlanosParceiroController.update);
+router.put('/:id', supabaseAuthMiddleware(adminRoles), ClientesController.update);
 
 /**
  * @openapi
- * /api/v1/empresas/planos-parceiro/{id}:
+ * /api/v1/empresas/clientes/{id}:
  *   delete:
- *     summary: Encerrar o plano parceiro da empresa
- *     tags: [Empresas - Planos Parceiro]
+ *     summary: Encerrar vínculo de plano do cliente
+ *     description: "Endpoint restrito a administradores e moderadores (roles: ADMIN, MODERADOR)."
+ *     tags: [Empresas - Clientes]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -268,9 +271,9 @@ router.put('/:id', supabaseAuthMiddleware(adminRoles), PlanosParceiroController.
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X DELETE "http://localhost:3000/api/v1/empresas/planos-parceiro/{id}" \
+ *           curl -X DELETE "http://localhost:3000/api/v1/empresas/clientes/{id}" \
  *            -H "Authorization: Bearer <TOKEN>"
  */
-router.delete('/:id', supabaseAuthMiddleware(adminRoles), PlanosParceiroController.deactivate);
+router.delete('/:id', supabaseAuthMiddleware(adminRoles), ClientesController.deactivate);
 
-export { router as planosParceiroRoutes };
+export { router as clientesRoutes };

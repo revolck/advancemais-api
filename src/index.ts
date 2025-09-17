@@ -96,7 +96,18 @@ app.use(
  * Parser de JSON com limite configurável
  * Aceita payloads de até 10MB
  */
-app.use(express.json({ limit: '10mb' }));
+// Captura raw body para validação HMAC do Mercado Pago somente no webhook
+app.use(
+  (express as any).json({
+    limit: '10mb',
+    verify: (req: any, _res: any, buf: Buffer) => {
+      const url = (req as any).originalUrl || '';
+      if (typeof url === 'string' && url.startsWith('/api/v1/mercadopago/assinaturas/webhook')) {
+        (req as any).rawBody = buf.toString('utf8');
+      }
+    },
+  }),
+);
 
 /**
  * Parser de dados URL-encoded

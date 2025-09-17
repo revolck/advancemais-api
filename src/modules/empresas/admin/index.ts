@@ -1,0 +1,1 @@
+export { adminEmpresasRoutes } from './routes';

@@ -19,6 +19,7 @@ import redis from './config/redis';
 import { errorMiddleware } from './middlewares/error';
 import { logger } from '@/utils/logger';
 import { startAssinaturasReconJob } from '@/modules/mercadopago/assinaturas/cron/reconcile';
+import { startBoletoWatcherJob } from '@/modules/mercadopago/assinaturas/cron/boleto-watcher';
 
 /**
  * Aplicação principal - Advance+ API
@@ -151,6 +152,7 @@ try {
   // Cron de reconciliação de assinaturas (habilitado via env)
   try {
     startAssinaturasReconJob();
+    startBoletoWatcherJob();
   } catch (e) {
     routerLogger.warn({ err: e }, '⚠️ Falha ao iniciar cron de assinaturas');
   }

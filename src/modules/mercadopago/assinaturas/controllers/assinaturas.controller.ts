@@ -81,12 +81,58 @@ export class AssinaturasController {
     }
   };
 
+  static remindPayment = async (req: Request, res: Response) => {
+    try {
+      const { usuarioId } = req.body as { usuarioId?: string };
+      if (!usuarioId) return res.status(400).json({ success: false, code: 'VALIDATION_ERROR', message: 'usuarioId é obrigatório' });
+      const result = await assinaturasService.remindPayment(usuarioId);
+      res.json({ success: true, ...result });
+    } catch (error: any) {
+      res.status(500).json({ success: false, code: 'REMIND_ERROR', message: 'Erro ao reemitir cobrança', error: error?.message });
+    }
+  };
+
   static reconcile = async (_req: Request, res: Response) => {
     try {
       const result = await assinaturasService.reconcile();
       res.json({ success: true, ...result });
     } catch (error: any) {
       res.status(500).json({ success: false, code: 'RECONCILE_ERROR', message: 'Erro na reconciliação', error: error?.message });
+    }
+  };
+
+  // Admin: reemitir cobrança por plano específico para um usuário
+  static adminRemindPaymentForPlan = async (req: Request, res: Response) => {
+    try {
+      const { usuarioId, planoEmpresarialId, metodoPagamento, successUrl, failureUrl, pendingUrl } = req.body as any;
+      if (!usuarioId || !planoEmpresarialId) {
+        return res.status(400).json({ success: false, code: 'VALIDATION_ERROR', message: 'usuarioId e planoEmpresarialId são obrigatórios' });
+      }
+      const result = await assinaturasService.adminRemindPaymentForPlan({ usuarioId, planoEmpresarialId, metodoPagamento, successUrl, failureUrl, pendingUrl });
+      res.json({ success: true, ...result });
+    } catch (error: any) {
+      res.status(500).json({ success: false, code: 'ADMIN_REMIND_ERROR', message: 'Erro ao reemitir cobrança para o plano', error: error?.message });
+    }
+  };
+
+  // Admin: sincronizar todos os planos empresariais como PreApprovalPlan no MP
+  static adminSyncPlans = async (_req: Request, res: Response) => {
+    try {
+      // Busca todos os planos e cria/garante preapprovalPlan
+      const { prisma } = await import('../../../../config/prisma.js');
+      const planos = await prisma.planoEmpresarial.findMany({ select: { id: true, mpPreapprovalPlanId: true } });
+      const results: Record<string, string> = {};
+      for (const p of planos) {
+        try {
+          const id = await assinaturasService.ensurePlanPreapproval(p.id);
+          results[p.id] = id;
+        } catch (e: any) {
+          results[p.id] = `ERROR: ${e?.message || 'unknown'}`;
+        }
+      }
+      res.json({ success: true, count: planos.length, results });
+    } catch (error: any) {
+      res.status(500).json({ success: false, code: 'SYNC_PLANS_ERROR', message: 'Erro ao sincronizar planos', error: error?.message });
     }
   };
 }

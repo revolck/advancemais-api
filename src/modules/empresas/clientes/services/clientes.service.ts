@@ -18,13 +18,14 @@ const PLANO_INPUT_MAP: Record<ClientePlanoTipo, PlanoParceiro> = {
   parceiro: PlanoParceiro.PARCEIRO,
 };
 
-const PLANO_OUTPUT_MAP: Record<PlanoParceiro, ClientePlanoTipo> = {
+const PLANO_OUTPUT_MAP: Record<PlanoParceiro, ClientePlanoTipo | 'assinatura_mensal'> = {
   [PlanoParceiro.SETE_DIAS]: '7_dias',
   [PlanoParceiro.QUINZE_DIAS]: '15_dias',
   [PlanoParceiro.TRINTA_DIAS]: '30_dias',
   [PlanoParceiro.SESSENTA_DIAS]: '60_dias',
   [PlanoParceiro.NOVENTA_DIAS]: '90dias',
   [PlanoParceiro.CENTO_VINTE_DIAS]: '120_dias',
+  [PlanoParceiro.ASSINATURA_MENSAL]: 'assinatura_mensal',
   [PlanoParceiro.PARCEIRO]: 'parceiro',
 };
 
@@ -35,6 +36,7 @@ const PLANO_DURACAO: Record<PlanoParceiro, number | null> = {
   [PlanoParceiro.SESSENTA_DIAS]: 60,
   [PlanoParceiro.NOVENTA_DIAS]: 90,
   [PlanoParceiro.CENTO_VINTE_DIAS]: 120,
+  [PlanoParceiro.ASSINATURA_MENSAL]: null,
   [PlanoParceiro.PARCEIRO]: null,
 };
 
@@ -67,13 +69,13 @@ const sanitizeObservacao = (value?: string | null) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-const calcularDataFim = (tipo: PlanoParceiro, inicio: Date) => {
+const calcularDataFim = (tipo: PlanoParceiro, inicio: Date | null) => {
   const duracao = PLANO_DURACAO[tipo];
   if (duracao === null) {
     return null;
   }
-
-  const data = new Date(inicio.getTime());
+  const base = inicio ?? new Date();
+  const data = new Date(base.getTime());
   data.setDate(data.getDate() + duracao);
   return data;
 };
@@ -222,7 +224,7 @@ export const clientesService = {
       updates.plano = { connect: { id: data.planoEmpresarialId } };
     }
 
-    let inicio = planoAtual.inicio;
+    let inicio = planoAtual.inicio ?? null;
     if (data.iniciarEm !== undefined) {
       inicio = data.iniciarEm;
       updates.inicio = inicio;

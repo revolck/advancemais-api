@@ -79,6 +79,8 @@ router.get('/', publicCache, (req, res) => {
       planosEmpresariais: '/api/v1/empresas/planos-empresarial',
       clientesEmpresas: '/api/v1/empresas/clientes',
       vagasEmpresariais: '/api/v1/empresas/vagas',
+      mercadopagoAssinaturas: '/api/v1/mercadopago/assinaturas',
+      mercadopagoLogs: '/api/v1/mercadopago/logs',
       health: '/health',
     },
   };
@@ -120,6 +122,7 @@ router.get('/', publicCache, (req, res) => {
         <li>📦 Planos empresariais: <code>${data.endpoints.planosEmpresariais}</code></li>
         <li>🧾 Clientes (planos): <code>${data.endpoints.clientesEmpresas}</code></li>
         <li>💼 Vagas empresariais: <code>${data.endpoints.vagasEmpresariais}</code></li>
+        <li>💳 MercadoPago - Assinaturas: <code>${data.endpoints.mercadopagoAssinaturas}</code></li>
         <li>💚 Health: <code>${data.endpoints.health}</code></li>
       </ul>
       <footer>
@@ -186,6 +189,7 @@ router.get('/health', publicCache, async (req, res) => {
       brevo: '✅ active',
       website: '✅ active',
       empresas: '✅ active',
+      mercadopago: '✅ active',
       redis: redisStatus,
     },
   };

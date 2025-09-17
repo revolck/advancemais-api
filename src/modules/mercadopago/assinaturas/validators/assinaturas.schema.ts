@@ -21,7 +21,11 @@ export const changePlanSchema = z.object({
   novoPlanoEmpresarialId: z.string().uuid(),
 });
 
+export const remindPaymentSchema = z.object({
+  usuarioId: z.string().uuid(),
+});
+
 export type StartCheckoutInput = z.infer<typeof startCheckoutSchema>;
 export type CancelInput = z.infer<typeof cancelSchema>;
 export type ChangePlanInput = z.infer<typeof changePlanSchema>;
-
+export type RemindPaymentInput = z.infer<typeof remindPaymentSchema>;

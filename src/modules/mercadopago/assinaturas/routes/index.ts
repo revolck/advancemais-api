@@ -5,6 +5,7 @@ import { supabaseAuthMiddleware } from '@/modules/usuarios/auth';
 const router = Router();
 const adminRoles = ['ADMIN', 'MODERADOR'];
 const empresaRoles = ['ADMIN', 'MODERADOR', 'EMPRESA', 'RECRUTADOR'];
+const empresaOnly = ['EMPRESA'];
 
 /**
  * @openapi
@@ -37,7 +38,8 @@ const empresaRoles = ['ADMIN', 'MODERADOR', 'EMPRESA', 'RECRUTADOR'];
  *       500:
  *         description: Erro interno
  */
-router.post('/checkout', supabaseAuthMiddleware(empresaRoles), AssinaturasController.checkout);
+// Somente EMPRESA pode iniciar checkout
+router.post('/checkout', supabaseAuthMiddleware(empresaOnly), AssinaturasController.checkout);
 
 /**
  * @openapi
@@ -126,6 +128,29 @@ router.post('/downgrade', supabaseAuthMiddleware(empresaRoles), AssinaturasContr
 
 /**
  * @openapi
+ * /api/v1/mercadopago/assinaturas/remind-payment:
+ *   post:
+ *     summary: Reemitir cobrança (PIX/BOLETO) e enviar lembrete
+ *     description: "Gera uma nova preferência de pagamento para o plano ativo do cliente (recorrência assistida) e envia email com link."
+ *     tags: [MercadoPago - Assinaturas]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               usuarioId: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Lembrete enviado
+ */
+router.post('/remind-payment', supabaseAuthMiddleware(empresaOnly), AssinaturasController.remindPayment);
+
+/**
+ * @openapi
  * /api/v1/mercadopago/assinaturas/reconcile:
  *   post:
  *     summary: Reconciliação de assinaturas
@@ -139,5 +164,44 @@ router.post('/downgrade', supabaseAuthMiddleware(empresaRoles), AssinaturasContr
  */
 router.post('/reconcile', supabaseAuthMiddleware(adminRoles), AssinaturasController.reconcile);
 
-export { router as assinaturasRoutes };
+/**
+ * @openapi
+ * /api/v1/mercadopago/assinaturas/admin/remind-payment:
+ *   post:
+ *     summary: (Admin) Reemitir cobrança por plano específico
+ *     description: "Cria uma nova preferência de pagamento para o plano informado e usuário alvo. Útil para auxiliar cobranças PIX/BOLETO ou migrações manuais."
+ *     tags: [MercadoPago - Assinaturas]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               usuarioId: { type: string, format: uuid }
+ *               planoEmpresarialId: { type: string, format: uuid }
+ *               metodoPagamento: { $ref: '#/components/schemas/MetodoPagamento' }
+ *     responses:
+ *       200:
+ *         description: Preferência criada com sucesso
+ */
+router.post('/admin/remind-payment', supabaseAuthMiddleware(adminRoles), AssinaturasController.adminRemindPaymentForPlan);
 
+/**
+ * @openapi
+ * /api/v1/mercadopago/assinaturas/admin/sync-plans:
+ *   post:
+ *     summary: (Admin) Sincronizar Planos Empresariais com PreApprovalPlan
+ *     description: "Cria/garante um PreApprovalPlan no Mercado Pago para cada PlanoEmpresarial e salva o id (mpPreapprovalPlanId)."
+ *     tags: [MercadoPago - Assinaturas]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Planos sincronizados
+ */
+router.post('/admin/sync-plans', supabaseAuthMiddleware(adminRoles), AssinaturasController.adminSyncPlans);
+
+export { router as assinaturasRoutes };

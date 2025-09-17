@@ -18,6 +18,7 @@ import { prisma } from './config/prisma';
 import redis from './config/redis';
 import { errorMiddleware } from './middlewares/error';
 import { logger } from '@/utils/logger';
+import { startAssinaturasReconJob } from '@/modules/mercadopago/assinaturas/cron/reconcile';
 
 /**
  * Aplicação principal - Advance+ API
@@ -147,6 +148,12 @@ try {
   app.use('/', appRoutes);
   routerLogger.info('✅ Router principal carregado com sucesso');
   startExpiredUserCleanupJob();
+  // Cron de reconciliação de assinaturas (habilitado via env)
+  try {
+    startAssinaturasReconJob();
+  } catch (e) {
+    routerLogger.warn({ err: e }, '⚠️ Falha ao iniciar cron de assinaturas');
+  }
 } catch (error) {
   routerLogger.error({ err: error }, '❌ Erro crítico ao carregar router principal');
 

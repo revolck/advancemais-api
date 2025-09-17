@@ -93,6 +93,7 @@ enum PlanoParceiro {
   SESSENTA_DIAS     @map("60_dias")
   NOVENTA_DIAS      @map("90dias")
   CENTO_VINTE_DIAS  @map("120_dias")
+  ASSINATURA_MENSAL @map("assinatura_mensal")
   PARCEIRO          @map("parceiro")
 }
 
@@ -123,9 +124,9 @@ model EmpresaPlano {
   usuarioId          String
   planoEmpresarialId String
   tipo               PlanoParceiro
-  inicio             DateTime
+  inicio             DateTime?
   fim                DateTime?
-  ativo              Boolean         @default(true)
+  ativo              Boolean         @default(false)
   observacao         String?         @db.Text
   criadoEm           DateTime        @default(now())
   atualizadoEm       DateTime        @updatedAt
@@ -148,6 +149,24 @@ model EmpresaPlano {
   @@index([planoEmpresarialId])
 }
 
+model LogPagamento {
+  id             String   @id @default(uuid())
+  usuarioId      String?
+  empresaPlanoId String?
+  tipo           String
+  status         String?
+  externalRef    String?
+  mpResourceId   String?
+  payload        Json?
+  mensagem       String?  @db.Text
+  criadoEm       DateTime @default(now())
+
+  @@index([usuarioId])
+  @@index([empresaPlanoId])
+  @@index([tipo])
+  @@index([criadoEm])
+}
+
 model PlanoEmpresarial {
   id                       String   @id @default(uuid())
   icon                     String
@@ -162,6 +181,9 @@ model PlanoEmpresarial {
   atualizadoEm             DateTime @updatedAt
 
   empresas EmpresaPlano[]
+
+  // Integração Mercado Pago - plano recorrente reutilizável
+  mpPreapprovalPlanId String? @unique
 }
 
 model Endereco {

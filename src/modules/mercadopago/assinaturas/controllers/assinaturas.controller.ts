@@ -135,4 +135,17 @@ export class AssinaturasController {
       res.status(500).json({ success: false, code: 'SYNC_PLANS_ERROR', message: 'Erro ao sincronizar planos', error: error?.message });
     }
   };
+
+  static adminSyncPlan = async (req: Request, res: Response) => {
+    try {
+      const { planoEmpresarialId } = req.body as any;
+      if (!planoEmpresarialId) {
+        return res.status(400).json({ success: false, code: 'VALIDATION_ERROR', message: 'planoEmpresarialId é obrigatório' });
+      }
+      const mpPreapprovalPlanId = await assinaturasService.ensurePlanPreapproval(planoEmpresarialId);
+      res.json({ success: true, planoEmpresarialId, mpPreapprovalPlanId });
+    } catch (error: any) {
+      res.status(500).json({ success: false, code: 'SYNC_PLAN_ERROR', message: 'Erro ao sincronizar plano', error: error?.message });
+    }
+  };
 }

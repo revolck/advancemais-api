@@ -1,10 +1,11 @@
 import { prisma } from '@/config/prisma';
 import { mpClient, assertMercadoPagoConfigured } from '@/config/mercadopago';
 import { mercadopagoConfig, serverConfig } from '@/config/env';
-import { PreApproval, PreApprovalPlan, Payment } from 'mercadopago';
+import { PreApproval, PreApprovalPlan, Payment, Preference } from 'mercadopago';
 import crypto from 'crypto';
 import { clientesService } from '@/modules/empresas/clientes/services/clientes.service';
 import { METODO_PAGAMENTO, MODELO_PAGAMENTO, STATUS_PAGAMENTO, StatusVaga, PlanoParceiro } from '@prisma/client';
+import type { PlanoEmpresarial } from '@prisma/client';
 import { EmailService } from '@/modules/brevo/services/email-service';
 import type { StartCheckoutInput } from '@/modules/mercadopago/assinaturas/validators/assinaturas.schema';
 
@@ -14,6 +15,29 @@ type MercadoPagoResponse<T = any> = {
 };
 
 type CheckoutPagamento = NonNullable<StartCheckoutInput['pagamento']>;
+
+type PlanoSnapshot = {
+  id: string;
+  usuarioId: string;
+  planoEmpresarialId: string;
+  tipo: PlanoParceiro;
+  inicio: Date | null;
+  fim: Date | null;
+  ativo: boolean;
+  observacao: string;
+  criadoEm: Date;
+  atualizadoEm: Date;
+  modeloPagamento: MODELO_PAGAMENTO;
+  metodoPagamento: METODO_PAGAMENTO;
+  statusPagamento: STATUS_PAGAMENTO;
+  mpPreapprovalId: string | null;
+  mpSubscriptionId: string | null;
+  mpPayerId: string | null;
+  mpPaymentId: string | null;
+  proximaCobranca: Date | null;
+  graceUntil: Date | null;
+  plano: PlanoEmpresarial;
+};
 
 const pagamentoToMetodo: Record<CheckoutPagamento, METODO_PAGAMENTO> = {
   pix: METODO_PAGAMENTO.PIX,
@@ -400,13 +424,13 @@ export const assinaturasService = {
       phone: payerPhone,
     };
 
-    const planoSnapshot = {
+    const planoSnapshot: PlanoSnapshot = {
       id: checkoutId,
       usuarioId: params.usuarioId,
       planoEmpresarialId: params.planoEmpresarialId,
       tipo: PlanoParceiro.ASSINATURA_MENSAL,
-      inicio: null as Date | null,
-      fim: null as Date | null,
+      inicio: null,
+      fim: null,
       ativo: false,
       observacao: 'Aguardando confirmação de pagamento (Mercado Pago)',
       criadoEm: new Date(),
@@ -414,12 +438,12 @@ export const assinaturasService = {
       modeloPagamento,
       metodoPagamento,
       statusPagamento: STATUS_PAGAMENTO.PENDENTE,
-      mpPreapprovalId: null as string | null,
-      mpSubscriptionId: null as string | null,
-      mpPayerId: null as string | null,
-      mpPaymentId: null as string | null,
-      proximaCobranca: null as Date | null,
-      graceUntil: null as Date | null,
+      mpPreapprovalId: null,
+      mpSubscriptionId: null,
+      mpPayerId: null,
+      mpPaymentId: null,
+      proximaCobranca: null,
+      graceUntil: null,
       plano: planoBase,
     };
 

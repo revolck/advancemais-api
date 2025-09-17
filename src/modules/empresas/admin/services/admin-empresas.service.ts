@@ -3,6 +3,7 @@ import {
   MODELO_PAGAMENTO,
   STATUS_PAGAMENTO,
   Prisma,
+  Status,
   StatusVaga,
   TipoUsuario,
 } from '@prisma/client';
@@ -17,7 +18,10 @@ import type { AdminEmpresasListQuery } from '@/modules/empresas/admin/validators
 
 const planoAtivoSelect = {
   where: { ativo: true },
-  orderBy: [{ inicio: 'desc' as const }, { criadoEm: 'desc' as const }],
+  orderBy: [
+    { inicio: 'desc' },
+    { criadoEm: 'desc' },
+  ],
   take: 1,
   select: {
     id: true,
@@ -37,24 +41,27 @@ const planoAtivoSelect = {
       },
     },
   },
-} as const;
+} satisfies Prisma.Usuario$planosContratadosArgs;
 
 const usuarioListSelect = {
   id: true,
   codUsuario: true,
   nomeCompleto: true,
   avatarUrl: true,
+  cnpj: true,
   cidade: true,
   estado: true,
   criadoEm: true,
+  status: true,
   planosContratados: planoAtivoSelect,
-} as const;
+} satisfies Prisma.UsuarioSelect;
 
 const usuarioDetailSelect = {
   id: true,
   codUsuario: true,
   nomeCompleto: true,
   avatarUrl: true,
+  cnpj: true,
   descricao: true,
   instagram: true,
   linkedin: true,
@@ -62,6 +69,7 @@ const usuarioDetailSelect = {
   estado: true,
   criadoEm: true,
   tipoUsuario: true,
+  status: true,
   planosContratados: planoAtivoSelect,
   _count: {
     select: {
@@ -72,7 +80,7 @@ const usuarioDetailSelect = {
       },
     },
   },
-} as const;
+} satisfies Prisma.UsuarioSelect;
 
 type UsuarioListResult = Prisma.UsuarioGetPayload<{ select: typeof usuarioListSelect }>;
 type PlanoResumoData = UsuarioListResult['planosContratados'][number];
@@ -94,9 +102,11 @@ type AdminEmpresaListItem = {
   codUsuario: string;
   nome: string;
   avatarUrl: string | null;
+  cnpj: string | null;
   cidade: string | null;
   estado: string | null;
   criadoEm: Date;
+  ativa: boolean;
   parceira: boolean;
   diasTesteDisponibilizados: number | null;
   plano: AdminEmpresaPlanoResumo | null;
@@ -107,12 +117,14 @@ type AdminEmpresaDetail = {
   codUsuario: string;
   nome: string;
   avatarUrl: string | null;
+  cnpj: string | null;
   descricao: string | null;
   instagram: string | null;
   linkedin: string | null;
   cidade: string | null;
   estado: string | null;
   criadoEm: Date;
+  ativa: boolean;
   parceira: boolean;
   diasTesteDisponibilizados: number | null;
   plano: AdminEmpresaPlanoResumo | null;
@@ -191,9 +203,11 @@ export const adminEmpresasService = {
         codUsuario: empresa.codUsuario,
         nome: empresa.nomeCompleto,
         avatarUrl: empresa.avatarUrl,
+        cnpj: empresa.cnpj ?? null,
         cidade: empresa.cidade,
         estado: empresa.estado,
         criadoEm: empresa.criadoEm,
+        ativa: empresa.status === Status.ATIVO,
         parceira: planoAtual ? isPlanoParceiroElegivel(planoAtual.tipo) : false,
         diasTesteDisponibilizados: diasTeste,
         plano,
@@ -232,12 +246,14 @@ export const adminEmpresasService = {
       codUsuario: empresa.codUsuario,
       nome: empresa.nomeCompleto,
       avatarUrl: empresa.avatarUrl,
+      cnpj: empresa.cnpj ?? null,
       descricao: empresa.descricao,
       instagram: empresa.instagram,
       linkedin: empresa.linkedin,
       cidade: empresa.cidade,
       estado: empresa.estado,
       criadoEm: empresa.criadoEm,
+      ativa: empresa.status === Status.ATIVO,
       parceira: planoAtual ? isPlanoParceiroElegivel(planoAtual.tipo) : false,
       diasTesteDisponibilizados: diasTeste,
       plano,

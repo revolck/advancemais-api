@@ -1,8 +1,11 @@
+import bcrypt from 'bcrypt';
+
 import {
   METODO_PAGAMENTO,
   MODELO_PAGAMENTO,
   STATUS_PAGAMENTO,
   Prisma,
+  Role,
   Status,
   StatusVaga,
   TipoUsuario,
@@ -12,9 +15,15 @@ import { prisma } from '@/config/prisma';
 import {
   getPlanoParceiroDuracao,
   isPlanoParceiroElegivel,
+  mapClienteTipoToPlanoParceiro,
   mapPlanoParceiroToClienteTipo,
 } from '@/modules/empresas/shared/plano-parceiro';
-import type { AdminEmpresasListQuery } from '@/modules/empresas/admin/validators/admin-empresas.schema';
+import type {
+  AdminEmpresasCreateInput,
+  AdminEmpresasListQuery,
+  AdminEmpresasPlanoInput,
+  AdminEmpresasUpdateInput,
+} from '@/modules/empresas/admin/validators/admin-empresas.schema';
 
 const planoAtivoSelect = {
   where: { ativo: true },
@@ -140,6 +149,107 @@ type AdminEmpresaDetail = {
   };
 };
 
+const sanitizeOptionalValue = (value?: string | null) => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const sanitizeEmail = (email: string) => email.trim().toLowerCase();
+const sanitizeNome = (nome: string) => nome.trim();
+const sanitizeTelefone = (telefone: string) => telefone.trim();
+const sanitizeSupabaseId = (supabaseId: string) => supabaseId.trim();
+const sanitizeSenha = async (senha: string) => bcrypt.hash(senha, 12);
+const normalizeDocumento = (value: string) => value.replace(/\D/g, '');
+
+const sanitizeObservacao = (value?: string | null) => sanitizeOptionalValue(value);
+
+const calcularPlanoFim = (tipo: ReturnType<typeof mapClienteTipoToPlanoParceiro>, inicio: Date | null) => {
+  const duracao = getPlanoParceiroDuracao(tipo);
+
+  if (duracao === null) {
+    return null;
+  }
+
+  const base = inicio ?? new Date();
+  const fim = new Date(base.getTime());
+  fim.setDate(fim.getDate() + duracao);
+  return fim;
+};
+
+const generateCodePrefix = () => {
+  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let prefix = '';
+
+  for (let i = 0; i < 3; i++) {
+    const index = Math.floor(Math.random() * letters.length);
+    prefix += letters[index];
+  }
+
+  return prefix;
+};
+
+const generateUniqueEmpresaCode = async (tx: Prisma.TransactionClient): Promise<string> => {
+  const prefix = generateCodePrefix();
+
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const random = Math.floor(1000 + Math.random() * 9000);
+    const candidate = `${prefix}${random}`;
+    const existing = await tx.usuario.findUnique({ where: { codUsuario: candidate }, select: { id: true } });
+
+    if (!existing) {
+      return candidate;
+    }
+  }
+
+  return `${prefix}${Date.now().toString().slice(-6)}`;
+};
+
+const assignPlanoToEmpresa = async (
+  tx: Prisma.TransactionClient,
+  usuarioId: string,
+  plano: AdminEmpresasPlanoInput,
+) => {
+  const tipo = mapClienteTipoToPlanoParceiro(plano.tipo);
+  const inicio = plano.iniciarEm ?? new Date();
+  const fim = calcularPlanoFim(tipo, inicio);
+  const observacao = sanitizeObservacao(plano.observacao ?? undefined);
+
+  await tx.empresaPlano.updateMany({
+    where: { usuarioId, ativo: true },
+    data: { ativo: false, fim: new Date() },
+  });
+
+  await tx.empresaPlano.create({
+    data: {
+      usuarioId,
+      planoEmpresarialId: plano.planoEmpresarialId,
+      tipo,
+      inicio,
+      fim,
+      ...(observacao !== undefined ? { observacao } : {}),
+    },
+  });
+};
+
+const ensureEmpresaExiste = async (tx: Prisma.TransactionClient, id: string) => {
+  const empresa = await tx.usuario.findUnique({
+    where: { id },
+    select: { id: true, tipoUsuario: true },
+  });
+
+  if (!empresa || empresa.tipoUsuario !== TipoUsuario.PESSOA_JURIDICA) {
+    throw Object.assign(new Error('Empresa não encontrada'), { code: 'EMPRESA_NOT_FOUND' });
+  }
+};
+
 const buildSearchFilter = (search?: string): Prisma.UsuarioWhereInput => {
   if (!search) {
     return {};
@@ -174,6 +284,125 @@ const mapPlanoResumo = (plano?: PlanoResumoData): AdminEmpresaPlanoResumo | null
 };
 
 export const adminEmpresasService = {
+  create: async (input: AdminEmpresasCreateInput) => {
+    const senhaHash = await sanitizeSenha(input.senha);
+    const aceitarTermos = input.aceitarTermos ?? true;
+    const status = input.status ?? Status.ATIVO;
+    const cidade = sanitizeOptionalValue(input.cidade);
+    const estado = sanitizeOptionalValue(input.estado);
+    const descricao = sanitizeOptionalValue(input.descricao);
+    const instagram = sanitizeOptionalValue(input.instagram);
+    const linkedin = sanitizeOptionalValue(input.linkedin);
+    const avatarUrl = sanitizeOptionalValue(input.avatarUrl);
+
+    const empresaId = await prisma.$transaction(async (tx) => {
+      const codUsuario = await generateUniqueEmpresaCode(tx);
+      const usuario = await tx.usuario.create({
+        data: {
+          nomeCompleto: sanitizeNome(input.nome),
+          email: sanitizeEmail(input.email),
+          telefone: sanitizeTelefone(input.telefone),
+          senha: senhaHash,
+          aceitarTermos,
+          supabaseId: sanitizeSupabaseId(input.supabaseId),
+          tipoUsuario: TipoUsuario.PESSOA_JURIDICA,
+          role: Role.EMPRESA,
+          status,
+          codUsuario,
+          cnpj: normalizeDocumento(input.cnpj),
+          ...(cidade !== undefined ? { cidade } : {}),
+          ...(estado !== undefined ? { estado } : {}),
+          ...(descricao !== undefined ? { descricao } : {}),
+          ...(instagram !== undefined ? { instagram } : {}),
+          ...(linkedin !== undefined ? { linkedin } : {}),
+          ...(avatarUrl !== undefined ? { avatarUrl } : {}),
+        },
+        select: { id: true },
+      });
+
+      if (input.plano) {
+        await assignPlanoToEmpresa(tx, usuario.id, input.plano);
+      }
+
+      return usuario.id;
+    });
+
+    return adminEmpresasService.get(empresaId);
+  },
+
+  update: async (id: string, data: AdminEmpresasUpdateInput) => {
+    await prisma.$transaction(async (tx) => {
+      await ensureEmpresaExiste(tx, id);
+
+      const updates: Prisma.UsuarioUpdateInput = {};
+
+      if (data.nome !== undefined) {
+        updates.nomeCompleto = sanitizeNome(data.nome);
+      }
+
+      if (data.email !== undefined) {
+        updates.email = sanitizeEmail(data.email);
+      }
+
+      if (data.telefone !== undefined) {
+        updates.telefone = sanitizeTelefone(data.telefone);
+      }
+
+      if (data.cnpj !== undefined) {
+        updates.cnpj = data.cnpj === null ? null : normalizeDocumento(data.cnpj);
+      }
+
+      const cidade = sanitizeOptionalValue(data.cidade);
+      if (cidade !== undefined) {
+        updates.cidade = cidade;
+      }
+
+      const estado = sanitizeOptionalValue(data.estado);
+      if (estado !== undefined) {
+        updates.estado = estado;
+      }
+
+      const descricao = sanitizeOptionalValue(data.descricao);
+      if (descricao !== undefined) {
+        updates.descricao = descricao;
+      }
+
+      const instagram = sanitizeOptionalValue(data.instagram);
+      if (instagram !== undefined) {
+        updates.instagram = instagram;
+      }
+
+      const linkedin = sanitizeOptionalValue(data.linkedin);
+      if (linkedin !== undefined) {
+        updates.linkedin = linkedin;
+      }
+
+      const avatarUrl = sanitizeOptionalValue(data.avatarUrl);
+      if (avatarUrl !== undefined) {
+        updates.avatarUrl = avatarUrl;
+      }
+
+      if (data.status !== undefined) {
+        updates.status = data.status;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await tx.usuario.update({ where: { id }, data: updates });
+      }
+
+      if (data.plano === null) {
+        await tx.empresaPlano.updateMany({
+          where: { usuarioId: id, ativo: true },
+          data: { ativo: false, fim: new Date() },
+        });
+      } else if (data.plano) {
+        await assignPlanoToEmpresa(tx, id, data.plano);
+      }
+    });
+
+    return adminEmpresasService.get(id);
+  },
+
   list: async ({ page, pageSize, search }: AdminEmpresasListQuery) => {
     const where: Prisma.UsuarioWhereInput = {
       tipoUsuario: TipoUsuario.PESSOA_JURIDICA,

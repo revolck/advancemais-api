@@ -9,6 +9,55 @@ const adminRoles = ['ADMIN', 'MODERADOR'];
 /**
  * @openapi
  * /api/v1/empresas/admin:
+ *   post:
+ *     summary: (Admin) Criar empresa
+ *     description: "Cria uma nova empresa (Pessoa Jurídica) e permite opcionalmente vincular um plano ativo no momento da criação. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     tags: [Empresas - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AdminEmpresaCreateInput'
+ *     responses:
+ *       201:
+ *         description: Empresa criada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminEmpresaDetailResponse'
+ *       400:
+ *         description: Dados inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Plano empresarial informado não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: Dados duplicados
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *   get:
  *     summary: (Admin) Listar empresas
  *     description: "Retorna empresas (Pessoa Jurídica) com dados resumidos do plano ativo. Endpoint restrito aos perfis ADMIN e MODERADOR."
@@ -62,11 +111,68 @@ const adminRoles = ['ADMIN', 'MODERADOR'];
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
+router.post('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.create);
 router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list);
 
 /**
  * @openapi
  * /api/v1/empresas/admin/{id}:
+ *   put:
+ *     summary: (Admin) Atualizar empresa
+ *     description: "Atualiza dados cadastrais da empresa e permite gerenciar o plano vinculado. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     tags: [Empresas - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AdminEmpresaUpdateInput'
+ *     responses:
+ *       200:
+ *         description: Empresa atualizada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminEmpresaDetailResponse'
+ *       400:
+ *         description: Dados inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Empresa ou plano não encontrados
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: Dados duplicados
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *   get:
  *     summary: (Admin) Detalhes completos da empresa
  *     description: "Retorna informações completas da empresa incluindo plano ativo, pagamentos e métricas. Endpoint restrito aos perfis ADMIN e MODERADOR."
@@ -112,6 +218,7 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
+router.put('/:id', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.update);
 router.get('/:id', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.get);
 
 export { router as adminEmpresasRoutes };

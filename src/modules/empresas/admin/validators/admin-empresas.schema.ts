@@ -1,4 +1,110 @@
+import { Status } from '@prisma/client';
 import { z } from 'zod';
+
+import { clientePlanoTipoSchema } from '@/modules/empresas/clientes/validators/clientes.schema';
+
+const uuidSchema = z.string().uuid('Informe um identificador válido');
+
+const nullableString = z
+  .string()
+  .trim()
+  .min(1, 'Informe um valor válido')
+  .max(255, 'Valor muito longo');
+
+const nullableUrl = z
+  .string()
+  .trim()
+  .url('Informe uma URL válida')
+  .max(500, 'URL muito longa');
+
+const observacaoSchema = z
+  .string()
+  .trim()
+  .min(1, 'A observação não pode estar vazia')
+  .max(500, 'A observação deve ter no máximo 500 caracteres');
+
+export const adminEmpresasPlanoSchema = z.object({
+  planoEmpresarialId: uuidSchema,
+  tipo: clientePlanoTipoSchema,
+  iniciarEm: z.coerce.date({ invalid_type_error: 'Informe uma data válida' }).optional(),
+  observacao: observacaoSchema.optional().nullable(),
+});
+
+export type AdminEmpresasPlanoInput = z.infer<typeof adminEmpresasPlanoSchema>;
+
+export const adminEmpresasCreateSchema = z.object({
+  nome: z
+    .string({ required_error: 'Nome é obrigatório' })
+    .trim()
+    .min(1, 'Nome é obrigatório')
+    .max(255, 'Nome muito longo'),
+  email: z
+    .string({ required_error: 'E-mail é obrigatório' })
+    .trim()
+    .toLowerCase()
+    .email('Informe um e-mail válido'),
+  telefone: z
+    .string({ required_error: 'Telefone é obrigatório' })
+    .trim()
+    .min(10, 'Informe um telefone válido')
+    .max(20, 'Telefone muito longo'),
+  senha: z
+    .string({ required_error: 'Senha é obrigatória' })
+    .min(8, 'Senha deve ter pelo menos 8 caracteres')
+    .max(255, 'Senha muito longa'),
+  supabaseId: z
+    .string({ required_error: 'Supabase ID é obrigatório' })
+    .trim()
+    .min(1, 'Supabase ID é obrigatório')
+    .max(255, 'Supabase ID muito longo'),
+  cnpj: z
+    .string({ required_error: 'CNPJ é obrigatório' })
+    .trim()
+    .min(14, 'CNPJ deve ter 14 dígitos')
+    .max(18, 'CNPJ muito longo'),
+  cidade: nullableString.optional(),
+  estado: nullableString.optional(),
+  descricao: z
+    .string()
+    .trim()
+    .max(500, 'Descrição muito longa')
+    .optional(),
+  instagram: nullableString.optional(),
+  linkedin: nullableString.optional(),
+  avatarUrl: nullableUrl.optional(),
+  aceitarTermos: z.boolean().optional(),
+  status: z.nativeEnum(Status).optional(),
+  plano: adminEmpresasPlanoSchema.optional(),
+});
+
+export type AdminEmpresasCreateInput = z.infer<typeof adminEmpresasCreateSchema>;
+
+export const adminEmpresasUpdateSchema = z
+  .object({
+    nome: nullableString.optional(),
+    email: z.string().trim().toLowerCase().email('Informe um e-mail válido').optional(),
+    telefone: z.string().trim().min(10, 'Informe um telefone válido').max(20).optional(),
+    cnpj: z.string().trim().min(14, 'CNPJ deve ter 14 dígitos').max(18).optional().nullable(),
+    cidade: nullableString.optional().nullable(),
+    estado: nullableString.optional().nullable(),
+    descricao: z.string().trim().max(500, 'Descrição muito longa').optional().nullable(),
+    instagram: nullableString.optional().nullable(),
+    linkedin: nullableString.optional().nullable(),
+    avatarUrl: nullableUrl.optional().nullable(),
+    status: z.nativeEnum(Status).optional(),
+    plano: adminEmpresasPlanoSchema.optional().nullable(),
+  })
+  .refine(
+    (values) =>
+      Object.values({ ...values, plano: undefined }).some((value) => value !== undefined) ||
+      values.plano !== undefined,
+    {
+      message: 'Informe ao menos um campo para atualização',
+      path: [],
+    },
+  );
+
+export type AdminEmpresasUpdateInput = z.infer<typeof adminEmpresasUpdateSchema>;
 
 export const adminEmpresasListQuerySchema = z
   .object({

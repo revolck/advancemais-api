@@ -49,6 +49,7 @@ const planoAtivoSelect = {
       select: {
         id: true,
         nome: true,
+        valor: true,
         quantidadeVagas: true,
       },
     },
@@ -64,18 +65,34 @@ const banimentoSelect = {
   criadoEm: true,
 } satisfies Prisma.EmpresaBanimentoSelect;
 
-const usuarioListSelect = {
-  id: true,
-  codUsuario: true,
-  nomeCompleto: true,
-  avatarUrl: true,
-  cnpj: true,
-  cidade: true,
-  estado: true,
-  criadoEm: true,
-  status: true,
-  planosContratados: planoAtivoSelect,
-} satisfies Prisma.UsuarioSelect;
+const createUsuarioListSelect = () =>
+  ({
+    id: true,
+    codUsuario: true,
+    nomeCompleto: true,
+    avatarUrl: true,
+    cnpj: true,
+    cidade: true,
+    estado: true,
+    criadoEm: true,
+    status: true,
+    planosContratados: planoAtivoSelect,
+    banimentosRecebidos: {
+      where: { fim: { gt: new Date() } },
+      orderBy: { fim: 'desc' },
+      take: 1,
+      select: banimentoSelect,
+    },
+    _count: {
+      select: {
+        vagasCriadas: {
+          where: {
+            status: StatusVaga.PUBLICADO,
+          },
+        },
+      },
+    },
+  }) satisfies Prisma.UsuarioSelect;
 
 const usuarioDetailSelect = {
   id: true,
@@ -104,7 +121,8 @@ const usuarioDetailSelect = {
   },
 } satisfies Prisma.UsuarioSelect;
 
-type UsuarioListResult = Prisma.UsuarioGetPayload<{ select: typeof usuarioListSelect }>;
+type UsuarioListSelect = ReturnType<typeof createUsuarioListSelect>;
+type UsuarioListResult = Prisma.UsuarioGetPayload<{ select: UsuarioListSelect }>;
 type PlanoResumoData = UsuarioListResult['planosContratados'][number];
 type BanimentoResumoData = Prisma.EmpresaBanimentoGetPayload<{ select: typeof banimentoSelect }>;
 
@@ -117,7 +135,10 @@ type AdminEmpresaPlanoResumo = {
   modeloPagamento: MODELO_PAGAMENTO | null;
   metodoPagamento: METODO_PAGAMENTO | null;
   statusPagamento: STATUS_PAGAMENTO | null;
+  valor: string | null;
   quantidadeVagas: number | null;
+  duracaoEmDias: number | null;
+  diasRestantes: number | null;
 };
 
 type AdminEmpresaListItem = {
@@ -133,6 +154,10 @@ type AdminEmpresaListItem = {
   parceira: boolean;
   diasTesteDisponibilizados: number | null;
   plano: AdminEmpresaPlanoResumo | null;
+  vagasPublicadas: number;
+  limiteVagasPlano: number | null;
+  banida: boolean;
+  banimentoAtivo: AdminEmpresaBanimentoResumo | null;
 };
 
 type AdminEmpresaBanimentoResumo = {
@@ -192,6 +217,7 @@ type AdminEmpresaDetail = {
     publicadas: number;
     limitePlano: number | null;
   };
+  banida: boolean;
   pagamento: {
     modelo: MODELO_PAGAMENTO | null;
     metodo: METODO_PAGAMENTO | null;
@@ -356,21 +382,60 @@ const buildSearchFilter = (search?: string): Prisma.UsuarioWhereInput => {
   };
 };
 
-const mapPlanoResumo = (plano?: PlanoResumoData): AdminEmpresaPlanoResumo | null => {
+const MILLISECONDS_IN_DAY = 1000 * 60 * 60 * 24;
+
+const calculateDurationInDays = (inicio: Date | null, fim: Date | null) => {
+  if (!inicio || !fim) {
+    return null;
+  }
+
+  const diff = fim.getTime() - inicio.getTime();
+
+  if (diff <= 0) {
+    return 0;
+  }
+
+  return Math.ceil(diff / MILLISECONDS_IN_DAY);
+};
+
+const calculateDaysRemaining = (fim: Date | null, reference: Date) => {
+  if (!fim) {
+    return null;
+  }
+
+  const diff = fim.getTime() - reference.getTime();
+
+  if (diff <= 0) {
+    return 0;
+  }
+
+  return Math.ceil(diff / MILLISECONDS_IN_DAY);
+};
+
+const mapPlanoResumo = (
+  plano?: PlanoResumoData,
+  referenceDate: Date = new Date(),
+): AdminEmpresaPlanoResumo | null => {
   if (!plano) {
     return null;
   }
+
+  const inicio = plano.inicio ?? null;
+  const fim = plano.fim ?? null;
 
   return {
     id: plano.id,
     nome: plano.plano?.nome ?? null,
     tipo: mapPlanoParceiroToClienteTipo(plano.tipo),
-    inicio: plano.inicio,
-    fim: plano.fim,
+    inicio,
+    fim,
     modeloPagamento: plano.modeloPagamento ?? null,
     metodoPagamento: plano.metodoPagamento ?? null,
     statusPagamento: plano.statusPagamento ?? null,
+    valor: plano.plano?.valor ?? null,
     quantidadeVagas: plano.plano?.quantidadeVagas ?? null,
+    duracaoEmDias: calculateDurationInDays(inicio, fim),
+    diasRestantes: calculateDaysRemaining(fim, referenceDate),
   };
 };
 
@@ -531,6 +596,8 @@ export const adminEmpresasService = {
 
     const skip = (page - 1) * pageSize;
 
+    const referenceDate = new Date();
+
     const [total, empresas] = await prisma.$transaction([
       prisma.usuario.count({ where }),
       prisma.usuario.findMany({
@@ -538,14 +605,15 @@ export const adminEmpresasService = {
         orderBy: { criadoEm: 'desc' },
         skip,
         take: pageSize,
-        select: usuarioListSelect,
+        select: createUsuarioListSelect(),
       }),
     ]);
 
     const data: AdminEmpresaListItem[] = empresas.map((empresa) => {
       const planoAtual = empresa.planosContratados[0];
-      const plano = mapPlanoResumo(planoAtual);
+      const plano = mapPlanoResumo(planoAtual, referenceDate);
       const diasTeste = planoAtual ? getPlanoParceiroDuracao(planoAtual.tipo) : null;
+      const banimento = mapBanimentoResumo(empresa.banimentosRecebidos?.[0] ?? null);
 
       return {
         id: empresa.id,
@@ -560,6 +628,10 @@ export const adminEmpresasService = {
         parceira: planoAtual ? isPlanoParceiroElegivel(planoAtual.tipo) : false,
         diasTesteDisponibilizados: diasTeste,
         plano,
+        vagasPublicadas: empresa._count?.vagasCriadas ?? 0,
+        limiteVagasPlano: plano?.quantidadeVagas ?? null,
+        banida: Boolean(banimento),
+        banimentoAtivo: banimento,
       };
     });
 
@@ -584,7 +656,7 @@ export const adminEmpresasService = {
     const diasTeste = planoAtual ? getPlanoParceiroDuracao(planoAtual.tipo) : null;
     const ultimoPagamentoEm =
       planoAtual?.atualizadoEm ?? planoAtual?.inicio ?? planoAtual?.criadoEm ?? null;
-    const banimentoAtivo = await prisma.empresaBanimento.findFirst({
+    const banimentoAtivoRegistro = await prisma.empresaBanimento.findFirst({
       where: {
         usuarioId: id,
         fim: { gt: new Date() },
@@ -592,6 +664,7 @@ export const adminEmpresasService = {
       orderBy: { fim: 'desc' },
       select: banimentoSelect,
     });
+    const banimentoAtivo = mapBanimentoResumo(banimentoAtivoRegistro);
 
     return {
       id: empresa.id,
@@ -615,13 +688,14 @@ export const adminEmpresasService = {
         publicadas: empresa._count?.vagasCriadas ?? 0,
         limitePlano: plano?.quantidadeVagas ?? null,
       },
+      banida: Boolean(banimentoAtivo),
       pagamento: {
         modelo: planoAtual?.modeloPagamento ?? null,
         metodo: planoAtual?.metodoPagamento ?? null,
         status: planoAtual?.statusPagamento ?? null,
         ultimoPagamentoEm,
       },
-      banimentoAtivo: mapBanimentoResumo(banimentoAtivo),
+      banimentoAtivo,
     };
   },
 

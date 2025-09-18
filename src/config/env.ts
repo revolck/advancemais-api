@@ -82,6 +82,21 @@ const envLogger = logger.child({ module: 'EnvironmentConfig', environment: NODE_
 
 envLogger.info({ nodeEnv: NODE_ENV }, '🌍 Ambiente configurado');
 
+const parseList = (value: string | undefined, fallback: string[] = []): string[] => {
+  if (!value || value.trim().length === 0) {
+    return Array.from(new Set(fallback));
+  }
+
+  return Array.from(
+    new Set(
+      value
+        .split(',')
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0),
+    ),
+  );
+};
+
 // =============================================
 // VALIDAÇÃO DE VARIÁVEIS CRÍTICAS
 // =============================================
@@ -446,9 +461,34 @@ export const securityConfig = {
   cookieMaxAge: parseInt(process.env.COOKIE_MAX_AGE || '86400000', 10),
 } as const;
 
+const defaultRateLimitAllowedPaths = [
+  '/health',
+  '/healthz',
+  '/ready',
+  '/readyz',
+  '/status',
+  '/docs',
+  '/docs/',
+  '/swagger',
+  '/swagger/',
+  '/api-docs',
+  '/favicon.ico',
+  '/robots.txt',
+  '/api/v1/brevo/health',
+];
+
 export const rateLimitConfig = {
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
-  maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10),
+  maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '1000', 10),
+  enabled: process.env.RATE_LIMIT_ENABLED !== 'false',
+  skipFailedRequests: process.env.RATE_LIMIT_SKIP_FAILED === 'true',
+  skipSuccessfulRequests: process.env.RATE_LIMIT_SKIP_SUCCESS === 'true',
+  redisPrefix: process.env.RATE_LIMIT_REDIS_PREFIX || 'advancemais:rate-limit',
+  allowList: {
+    ips: parseList(process.env.RATE_LIMIT_WHITELIST_IPS),
+    paths: parseList(process.env.RATE_LIMIT_WHITELIST_PATHS, defaultRateLimitAllowedPaths),
+    userAgents: parseList(process.env.RATE_LIMIT_WHITELIST_USER_AGENTS),
+  },
 } as const;
 
 export const uploadConfig = {

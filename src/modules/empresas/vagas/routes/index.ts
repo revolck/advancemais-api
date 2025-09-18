@@ -14,39 +14,40 @@ const updateRoles = [Role.ADMIN, Role.MODERADOR, Role.RECRUTADOR];
  * /api/v1/empresas/vagas:
  *   get:
  *     summary: Listar vagas publicadas
- *     description: "Retorna as vagas disponíveis para visualização. Por padrão, apenas vagas PUBLICADAS são retornadas. É possível filtrar por status via query string. Importante: Para consultar vagas com status RASCUNHO ou EM_ANALISE é necessário token válido com roles: ADMIN, MODERADOR, EMPRESA ou RECRUTADOR."
+ *     description: "Retorna as vagas disponíveis para visualização. Por padrão, apenas vagas PUBLICADAS são retornadas. É possível filtrar por status via query string. Consultas envolvendo os status RASCUNHO ou EM_ANALISE exigem autenticação com roles válidas (ADMIN, MODERADOR, EMPRESA, RECRUTADOR ou ALUNO_CANDIDATO)."
  *     tags: [Empresas - Vagas]
  *     parameters:
-  *       - in: query
-  *         name: status
+ *       - in: query
+ *         name: status
  *         required: false
  *         schema:
  *           type: string
  *           example: PUBLICADO,EM_ANALISE
-  *         description: "Filtra por um ou mais status separados por vírgula. Aceita RASCUNHO, EM_ANALISE, PUBLICADO, EXPIRADO. Use ALL/TODAS para todos."
-  *       - in: query
-  *         name: usuarioId
+ *         description: "Filtra por um ou mais status separados por vírgula. Aceita RASCUNHO, EM_ANALISE, PUBLICADO ou EXPIRADO. Use ALL/TODAS/TODOS para trazer todos os status."
+ *       - in: query
+ *         name: usuarioId
  *         required: false
  *         schema:
  *           type: string
-  *         description: "Filtra vagas por usuarioId (empresa responsável pela vaga)"
-  *       - in: query
-  *         name: page
-  *         required: false
-  *         schema:
-  *           type: integer
-  *           minimum: 1
-  *           example: 1
-  *         description: "Página de resultados (inicia em 1)."
-  *       - in: query
-  *         name: pageSize
-  *         required: false
-  *         schema:
-  *           type: integer
-  *           minimum: 1
-  *           maximum: 100
-  *           example: 10
-  *         description: "Quantidade de itens por página (máx. 100)."
+ *           format: uuid
+ *         description: "Filtra vagas por usuarioId (empresa responsável pela vaga)"
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           example: 1
+ *         description: "Página de resultados (inicia em 1). Quando não informado, todos os registros elegíveis são retornados."
+ *       - in: query
+ *         name: pageSize
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           example: 10
+ *         description: "Quantidade de itens por página (máx. 100). Quando omitido, nenhuma paginação é aplicada."
  *     responses:
  *       200:
  *         description: Lista de vagas cadastradas
@@ -56,6 +57,18 @@ const updateRoles = [Role.ADMIN, Role.MODERADOR, Role.RECRUTADOR];
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/Vaga'
+ *       401:
+ *         description: Token inválido ou ausente ao consultar vagas restritas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado ao consultar vagas restritas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
  *       500:
  *         description: Erro interno do servidor
  *         content:
@@ -70,9 +83,9 @@ const updateRoles = [Role.ADMIN, Role.MODERADOR, Role.RECRUTADOR];
  *       - lang: cURL
  *         label: Consultar vagas EM_ANALISE (autenticado)
  *         source: |
- *           curl -X GET "http://localhost:3000/api/v1/empresas/vagas?status=EM_ANALISE" \\
+ *           curl -X GET "http://localhost:3000/api/v1/empresas/vagas?status=EM_ANALISE" \
  *            -H "Authorization: Bearer <TOKEN>"
- */
+*/
 router.get('/', optionalSupabaseAuth(), publicCache, VagasController.list);
 
 /**
@@ -143,6 +156,12 @@ router.get('/:id', publicCache, VagasController.get);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
  *       404:
  *         description: Empresa não encontrada para vinculação
  *         content:
@@ -150,11 +169,13 @@ router.get('/:id', publicCache, VagasController.get);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       403:
- *         description: Empresa sem plano parceiro ativo
+ *         description: Acesso negado (empresa sem plano ativo ou perfil sem permissão)
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/EmpresaSemPlanoAtivoResponse'
+ *               oneOf:
+ *                 - $ref: '#/components/schemas/EmpresaSemPlanoAtivoResponse'
+ *                 - $ref: '#/components/schemas/ForbiddenResponse'
  *       409:
  *         description: Limite de vagas simultâneas do plano atingido
  *         content:
@@ -187,7 +208,7 @@ router.get('/:id', publicCache, VagasController.get);
  *                  "cargaHoraria": "44 horas semanais (segunda a sexta)",
  *                  "inscricoesAte": "2024-12-20T23:59:59.000Z"
  *                }'
- */
+*/
 router.post('/', supabaseAuthMiddleware(protectedRoles), VagasController.create);
 
 /**
@@ -195,7 +216,7 @@ router.post('/', supabaseAuthMiddleware(protectedRoles), VagasController.create)
  * /api/v1/empresas/vagas/{id}:
  *   put:
  *     summary: Atualizar vaga
- *     description: "Permite editar os dados de uma vaga existente, incluindo o status do fluxo (RASCUNHO, EM_ANALISE, PUBLICADO ou EXPIRADO). Requer autenticação com perfil autorizado (roles: ADMIN, MODERADOR, EMPRESA, RECRUTADOR)."
+ *     description: "Permite editar os dados de uma vaga existente, incluindo o status do fluxo (RASCUNHO, EM_ANALISE, PUBLICADO ou EXPIRADO). Requer autenticação com perfil autorizado (roles: ADMIN, MODERADOR ou RECRUTADOR)."
  *     tags: [Empresas - Vagas]
  *     security:
  *       - bearerAuth: []
@@ -224,12 +245,24 @@ router.post('/', supabaseAuthMiddleware(protectedRoles), VagasController.create)
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
  *       404:
  *         description: Vaga ou empresa não encontrada
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
  *       500:
  *         description: Erro interno do servidor
  *         content:
@@ -249,7 +282,7 @@ router.post('/', supabaseAuthMiddleware(protectedRoles), VagasController.create)
  *                  "observacoes": "Processo seletivo com etapas online.",
  *                  "status": "PUBLICADO"
  *                }'
- */
+*/
 router.put('/:id', supabaseAuthMiddleware(updateRoles), VagasController.update);
 
 /**
@@ -257,7 +290,7 @@ router.put('/:id', supabaseAuthMiddleware(updateRoles), VagasController.update);
  * /api/v1/empresas/vagas/{id}:
  *   delete:
  *     summary: Remover vaga
- *     description: Exclui uma vaga cadastrada. Requer autenticação com perfil autorizado.
+ *     description: "Exclui uma vaga cadastrada. Requer autenticação com perfil autorizado (roles: ADMIN, MODERADOR, EMPRESA ou RECRUTADOR)."
  *     tags: [Empresas - Vagas]
  *     security:
  *       - bearerAuth: []
@@ -270,6 +303,18 @@ router.put('/:id', supabaseAuthMiddleware(updateRoles), VagasController.update);
  *     responses:
  *       204:
  *         description: Vaga removida com sucesso
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
  *       404:
  *         description: Vaga não encontrada
  *         content:
@@ -288,7 +333,7 @@ router.put('/:id', supabaseAuthMiddleware(updateRoles), VagasController.update);
  *         source: |
  *           curl -X DELETE "http://localhost:3000/api/v1/empresas/vagas/{id}" \
  *            -H "Authorization: Bearer <TOKEN>"
- */
+*/
 router.delete('/:id', supabaseAuthMiddleware(protectedRoles), VagasController.remove);
 
 export { router as vagasRoutes };

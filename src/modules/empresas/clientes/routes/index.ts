@@ -47,7 +47,13 @@ const adminRoles = ['ADMIN', 'MODERADOR'];
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
  *       500:
  *         description: Erro interno do servidor
  *         content:
@@ -85,7 +91,13 @@ router.get('/', supabaseAuthMiddleware(adminRoles), ClientesController.list);
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
  *       404:
  *         description: Plano parceiro não encontrado
  *         content:
@@ -134,7 +146,13 @@ router.get('/:id', supabaseAuthMiddleware(adminRoles), ClientesController.get);
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
  *       404:
  *         description: Empresa ou plano empresarial não encontrado
  *         content:
@@ -203,7 +221,13 @@ router.post('/', supabaseAuthMiddleware(adminRoles), ClientesController.assign);
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
  *       404:
  *         description: Plano parceiro ou referência não encontrada
  *         content:
@@ -254,7 +278,13 @@ router.put('/:id', supabaseAuthMiddleware(adminRoles), ClientesController.update
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
  *       404:
  *         description: Plano parceiro não encontrado
  *         content:

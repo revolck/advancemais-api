@@ -39,7 +39,13 @@ const adminRoles = ['ADMIN', 'MODERADOR'];
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
  *       404:
  *         description: Plano empresarial informado não encontrado
  *         content:
@@ -103,7 +109,13 @@ const adminRoles = ['ADMIN', 'MODERADOR'];
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
  *       500:
  *         description: Erro interno do servidor
  *         content:
@@ -154,7 +166,13 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
  *       404:
  *         description: Empresa ou plano não encontrados
  *         content:
@@ -204,7 +222,13 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
  *       404:
  *         description: Empresa não encontrada
  *         content:

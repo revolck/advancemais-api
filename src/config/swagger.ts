@@ -310,6 +310,45 @@ const options: Options = {
             error: { type: 'string', example: 'Detalhes adicionais do erro' },
           },
         },
+        UnauthorizedResponse: {
+          type: 'object',
+          properties: {
+            message: {
+              type: 'string',
+              example: 'Token de autorização necessário',
+              description:
+                'Mensagem informativa indicando ausência ou invalidação do token de acesso',
+            },
+            error: {
+              type: 'string',
+              nullable: true,
+              example: 'Token inválido ou expirado',
+            },
+          },
+        },
+        ForbiddenResponse: {
+          type: 'object',
+          properties: {
+            message: {
+              type: 'string',
+              example: 'Acesso negado: permissões insuficientes',
+              description: 'Motivo pelo qual a requisição foi bloqueada pelo controle de acesso',
+            },
+            requiredRoles: {
+              type: 'array',
+              items: { type: 'string' },
+              nullable: true,
+              example: ['ADMIN', 'MODERADOR'],
+              description: 'Roles esperadas para acessar o recurso quando disponíveis',
+            },
+            userRole: {
+              type: 'string',
+              nullable: true,
+              example: 'EMPRESA',
+              description: 'Role detectada para o usuário autenticado, se identificada',
+            },
+          },
+        },
         ValidationErrorResponse: {
           type: 'object',
           properties: {
@@ -3132,8 +3171,18 @@ const options: Options = {
               nullable: true,
               example: 'Consultoria em RH especializada em recrutamento.',
             },
-            instagram: { type: 'string', nullable: true, example: 'https://instagram.com/advancemais' },
-            linkedin: { type: 'string', nullable: true, example: 'https://linkedin.com/company/advancemais' },
+            instagram: {
+              type: 'string',
+              nullable: true,
+              example: 'https://instagram.com/advancemais',
+              description: 'Retorna null quando a vaga é publicada em modo anônimo',
+            },
+            linkedin: {
+              type: 'string',
+              nullable: true,
+              example: 'https://linkedin.com/company/advancemais',
+              description: 'Retorna null quando a vaga é publicada em modo anônimo',
+            },
             codUsuario: { type: 'string', example: 'ABC1234' },
           },
         },
@@ -3225,7 +3274,7 @@ const options: Options = {
             code: { type: 'string', example: 'EMPRESA_SEM_PLANO_ATIVO' },
             message: {
               type: 'string',
-              example: 'A empresa não possui um plano ativo no momento.',
+              example: 'A empresa não possui um plano parceiro ativo no momento.',
             },
           },
         },
@@ -3843,9 +3892,22 @@ const options: Options = {
             id: { type: 'string', example: 'candidate-uuid' },
             email: { type: 'string', example: 'candidato@example.com' },
             nomeCompleto: { type: 'string', example: 'João da Silva' },
-            role: { type: 'string', example: 'ALUNO_CANDIDATO' },
-            status: { type: 'string', example: 'ATIVO' },
-            tipoUsuario: { type: 'string', example: 'PESSOA_FISICA' },
+            role: {
+              type: 'string',
+              enum: ['ALUNO_CANDIDATO'],
+              example: 'ALUNO_CANDIDATO',
+              description: 'Role atribuído automaticamente aos perfis de candidato',
+            },
+            status: {
+              type: 'string',
+              enum: ['ATIVO', 'INATIVO', 'BANIDO', 'PENDENTE', 'SUSPENSO'],
+              example: 'ATIVO',
+            },
+            tipoUsuario: {
+              type: 'string',
+              enum: ['PESSOA_FISICA', 'PESSOA_JURIDICA'],
+              example: 'PESSOA_FISICA',
+            },
             cidade: { type: 'string', nullable: true, example: 'Maceió' },
             estado: { type: 'string', nullable: true, example: 'AL' },
             criadoEm: {
@@ -3872,10 +3934,31 @@ const options: Options = {
             pagination: {
               type: 'object',
               properties: {
-                page: { type: 'integer', example: 1 },
-                limit: { type: 'integer', example: 50 },
-                total: { type: 'integer', example: 100 },
-                pages: { type: 'integer', example: 2 },
+                page: {
+                  type: 'integer',
+                  example: 1,
+                  minimum: 1,
+                  description: 'Página atual da paginação',
+                },
+                limit: {
+                  type: 'integer',
+                  example: 50,
+                  minimum: 1,
+                  maximum: 100,
+                  description: 'Quantidade de registros retornados por página',
+                },
+                total: {
+                  type: 'integer',
+                  example: 100,
+                  minimum: 0,
+                  description: 'Total de candidatos que atendem aos filtros',
+                },
+                pages: {
+                  type: 'integer',
+                  example: 2,
+                  minimum: 0,
+                  description: 'Total de páginas calculado a partir do limite informado',
+                },
               },
             },
           },

@@ -51,9 +51,11 @@ model Usuario {
   ultimaTentativaVerificacao DateTime?
 
   // RELACIONAMENTOS EXISTENTES
-  enderecos         Endereco[]
-  vagasCriadas      Vaga[]         @relation("UsuarioVagas")
-  planosContratados EmpresaPlano[] @relation("UsuarioPlanos")
+  enderecos            Endereco[]
+  vagasCriadas         Vaga[]             @relation("UsuarioVagas")
+  planosContratados    EmpresaPlano[]     @relation("UsuarioPlanos")
+  banimentosRecebidos  EmpresaBanimento[] @relation("EmpresaBanimentosUsuario")
+  banimentosAplicados  EmpresaBanimento[] @relation("EmpresaBanimentosAdmin")
 
   @@index([tokenRecuperacao])
   @@index([emailVerificationToken])
@@ -164,6 +166,23 @@ model LogPagamento {
   @@index([empresaPlanoId])
   @@index([tipo])
   @@index([criadoEm])
+}
+
+model EmpresaBanimento {
+  id          String   @id @default(uuid())
+  usuarioId   String
+  criadoPorId String
+  dias        Int
+  motivo      String?  @db.VarChar(500)
+  inicio      DateTime @default(now())
+  fim         DateTime
+  criadoEm    DateTime @default(now())
+
+  usuario   Usuario @relation("EmpresaBanimentosUsuario", fields: [usuarioId], references: [id], onDelete: Cascade)
+  criadoPor Usuario @relation("EmpresaBanimentosAdmin", fields: [criadoPorId], references: [id])
+
+  @@index([usuarioId])
+  @@index([fim])
 }
 
 model PlanoEmpresarial {

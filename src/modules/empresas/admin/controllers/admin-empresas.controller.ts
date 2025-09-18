@@ -3,9 +3,13 @@ import { ZodError } from 'zod';
 
 import { adminEmpresasService } from '@/modules/empresas/admin/services/admin-empresas.service';
 import {
+  adminEmpresasBanSchema,
   adminEmpresasCreateSchema,
+  adminEmpresasHistoryQuerySchema,
   adminEmpresasIdParamSchema,
   adminEmpresasListQuerySchema,
+  adminEmpresasVagaParamSchema,
+  adminEmpresasVagasQuerySchema,
   adminEmpresasUpdateSchema,
 } from '@/modules/empresas/admin/validators/admin-empresas.schema';
 
@@ -169,6 +173,247 @@ export class AdminEmpresasController {
         success: false,
         code: 'ADMIN_EMPRESAS_GET_ERROR',
         message: 'Erro ao consultar a empresa',
+        error: error?.message,
+      });
+    }
+  };
+
+  static listPagamentos = async (req: Request, res: Response) => {
+    try {
+      const params = adminEmpresasIdParamSchema.parse(req.params);
+      const query = adminEmpresasHistoryQuerySchema.parse(req.query);
+      const result = await adminEmpresasService.listPagamentos(params.id, query);
+      res.json(result);
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'EMPRESA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'EMPRESA_NOT_FOUND',
+          message: 'Empresa não encontrada',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'ADMIN_EMPRESAS_PAGAMENTOS_ERROR',
+        message: 'Erro ao listar histórico de pagamentos',
+        error: error?.message,
+      });
+    }
+  };
+
+  static listVagas = async (req: Request, res: Response) => {
+    try {
+      const params = adminEmpresasIdParamSchema.parse(req.params);
+      const query = adminEmpresasVagasQuerySchema.parse(req.query);
+      const result = await adminEmpresasService.listVagas(params.id, query);
+      res.json(result);
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'EMPRESA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'EMPRESA_NOT_FOUND',
+          message: 'Empresa não encontrada',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'ADMIN_EMPRESAS_VAGAS_ERROR',
+        message: 'Erro ao listar vagas da empresa',
+        error: error?.message,
+      });
+    }
+  };
+
+  static listVagasEmAnalise = async (req: Request, res: Response) => {
+    try {
+      const params = adminEmpresasIdParamSchema.parse(req.params);
+      const query = adminEmpresasHistoryQuerySchema.parse(req.query);
+      const result = await adminEmpresasService.listVagasEmAnalise(params.id, query);
+      res.json(result);
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'EMPRESA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'EMPRESA_NOT_FOUND',
+          message: 'Empresa não encontrada',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'ADMIN_EMPRESAS_VAGAS_ANALISE_ERROR',
+        message: 'Erro ao listar vagas em análise',
+        error: error?.message,
+      });
+    }
+  };
+
+  static approveVaga = async (req: Request, res: Response) => {
+    try {
+      const params = adminEmpresasVagaParamSchema.parse(req.params);
+
+      const result = await adminEmpresasService.approveVaga(params.id, params.vagaId);
+      res.json({ vaga: result });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'EMPRESA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'EMPRESA_NOT_FOUND',
+          message: 'Empresa não encontrada',
+        });
+      }
+
+      if (error?.code === 'VAGA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'VAGA_NOT_FOUND',
+          message: 'Vaga não encontrada para a empresa informada',
+        });
+      }
+
+      if (error?.code === 'VAGA_INVALID_STATUS') {
+        return res.status(400).json({
+          success: false,
+          code: 'VAGA_INVALID_STATUS',
+          message: 'A vaga precisa estar com status EM_ANALISE para ser aprovada',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'ADMIN_EMPRESAS_VAGA_APROVAR_ERROR',
+        message: 'Erro ao aprovar a vaga',
+        error: error?.message,
+      });
+    }
+  };
+
+  static ban = async (req: Request, res: Response) => {
+    try {
+      const params = adminEmpresasIdParamSchema.parse(req.params);
+      const payload = adminEmpresasBanSchema.parse(req.body);
+
+      const adminId = req.user?.id;
+      if (!adminId) {
+        return res.status(401).json({
+          success: false,
+          code: 'UNAUTHORIZED',
+          message: 'Usuário não autenticado',
+        });
+      }
+
+      const banimento = await adminEmpresasService.aplicarBanimento(params.id, adminId, payload);
+
+      if (!banimento) {
+        return res.status(500).json({
+          success: false,
+          code: 'BANIMENTO_NOT_CREATED',
+          message: 'Não foi possível registrar o banimento',
+        });
+      }
+
+      res.status(201).json({ banimento });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Dados inválidos para banimento',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'EMPRESA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'EMPRESA_NOT_FOUND',
+          message: 'Empresa não encontrada',
+        });
+      }
+
+      if (error?.code === 'ADMIN_REQUIRED') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: 'Somente administradores ou moderadores podem aplicar banimentos',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'ADMIN_EMPRESAS_BAN_ERROR',
+        message: 'Erro ao aplicar banimento',
+        error: error?.message,
+      });
+    }
+  };
+
+  static listBanimentos = async (req: Request, res: Response) => {
+    try {
+      const params = adminEmpresasIdParamSchema.parse(req.params);
+      const query = adminEmpresasHistoryQuerySchema.parse(req.query);
+      const result = await adminEmpresasService.listarBanimentos(params.id, query);
+      res.json(result);
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'EMPRESA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'EMPRESA_NOT_FOUND',
+          message: 'Empresa não encontrada',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'ADMIN_EMPRESAS_BANIMENTOS_ERROR',
+        message: 'Erro ao listar banimentos da empresa',
         error: error?.message,
       });
     }

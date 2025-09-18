@@ -3386,6 +3386,22 @@ const options: Options = {
             },
           },
         },
+        AdminEmpresaPlanoUpdateInput: {
+          allOf: [
+            { $ref: '#/components/schemas/AdminEmpresaPlanoInput' },
+            {
+              type: 'object',
+              properties: {
+                resetPeriodo: {
+                  type: 'boolean',
+                  description:
+                    'Quando verdadeiro, reinicia os campos de início e fim do novo plano. Caso não seja enviado, mantém as datas anteriores.',
+                  example: true,
+                },
+              },
+            },
+          ],
+        },
         AdminEmpresaCreateInput: {
           type: 'object',
           required: ['nome', 'email', 'telefone', 'senha', 'supabaseId', 'cnpj'],
@@ -3529,7 +3545,7 @@ const options: Options = {
               example: 'ATIVO',
             },
             plano: {
-              allOf: [{ $ref: '#/components/schemas/AdminEmpresaPlanoInput' }],
+              allOf: [{ $ref: '#/components/schemas/AdminEmpresaPlanoUpdateInput' }],
               nullable: true,
               description: 'Envie null para encerrar o plano atual da empresa',
             },
@@ -3566,11 +3582,26 @@ const options: Options = {
             cidade: { type: 'string', nullable: true, example: 'São Paulo' },
             estado: { type: 'string', nullable: true, example: 'SP' },
             criadoEm: { type: 'string', format: 'date-time', example: '2023-11-01T08:30:00Z' },
+            status: {
+              type: 'string',
+              enum: ['ATIVO', 'INATIVO', 'BANIDO', 'PENDENTE', 'SUSPENSO'],
+              example: 'ATIVO',
+            },
+            ultimoLogin: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              example: '2024-03-15T18:45:00Z',
+            },
             ativa: { type: 'boolean', example: true },
             parceira: { type: 'boolean', example: true },
             diasTesteDisponibilizados: { type: 'integer', nullable: true, example: 30 },
             plano: {
               allOf: [{ $ref: '#/components/schemas/AdminEmpresaPlanoResumo' }],
+              nullable: true,
+            },
+            banimentoAtivo: {
+              allOf: [{ $ref: '#/components/schemas/AdminEmpresaBanimentoResumo' }],
               nullable: true,
             },
             vagas: {
@@ -3609,6 +3640,138 @@ const options: Options = {
           type: 'object',
           properties: {
             empresa: { $ref: '#/components/schemas/AdminEmpresaDetail' },
+          },
+        },
+        AdminEmpresaBanimentoResumo: {
+          type: 'object',
+          description: 'Informações resumidas sobre um banimento aplicado à empresa',
+          properties: {
+            id: { type: 'string', format: 'uuid', example: 'ban-uuid' },
+            motivo: {
+              type: 'string',
+              nullable: true,
+              example: 'Uso indevido da plataforma',
+            },
+            dias: { type: 'integer', example: 30 },
+            inicio: { type: 'string', format: 'date-time', example: '2024-04-01T00:00:00Z' },
+            fim: { type: 'string', format: 'date-time', example: '2024-04-30T23:59:59Z' },
+            criadoEm: { type: 'string', format: 'date-time', example: '2024-04-01T00:00:00Z' },
+          },
+        },
+        AdminEmpresaPagamentoLog: {
+          type: 'object',
+          description: 'Evento de pagamento registrado para a empresa',
+          properties: {
+            id: { type: 'string', format: 'uuid', example: 'log-uuid' },
+            tipo: { type: 'string', example: 'ASSINATURA' },
+            status: { type: 'string', nullable: true, example: 'APROVADO' },
+            mensagem: {
+              type: 'string',
+              nullable: true,
+              example: 'Pagamento confirmado pelo provedor',
+            },
+            externalRef: {
+              type: 'string',
+              nullable: true,
+              example: 'MP-123456789',
+            },
+            mpResourceId: {
+              type: 'string',
+              nullable: true,
+              example: 'res_ABC123',
+            },
+            criadoEm: { type: 'string', format: 'date-time', example: '2024-02-10T12:00:00Z' },
+            plano: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                id: { type: 'string', format: 'uuid', example: 'plano-uuid' },
+                nome: { type: 'string', nullable: true, example: 'Plano Premium' },
+              },
+            },
+          },
+        },
+        AdminEmpresasPagamentosResponse: {
+          type: 'object',
+          properties: {
+            data: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/AdminEmpresaPagamentoLog' },
+            },
+            pagination: { allOf: [{ $ref: '#/components/schemas/PaginationMeta' }] },
+          },
+        },
+        AdminEmpresasBanimentosResponse: {
+          type: 'object',
+          properties: {
+            data: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/AdminEmpresaBanimentoResumo' },
+            },
+            pagination: { allOf: [{ $ref: '#/components/schemas/PaginationMeta' }] },
+          },
+        },
+        AdminEmpresaBanimentoCreate: {
+          type: 'object',
+          required: ['dias'],
+          properties: {
+            dias: {
+              type: 'integer',
+              minimum: 1,
+              maximum: 3650,
+              example: 120,
+              description: 'Quantidade de dias que o banimento ficará ativo',
+            },
+            motivo: {
+              type: 'string',
+              example: 'Descumprimento do código de conduta',
+              description: 'Motivo opcional para o banimento (máximo 500 caracteres)',
+            },
+          },
+        },
+        AdminEmpresaBanimentoResponse: {
+          type: 'object',
+          properties: {
+            banimento: { $ref: '#/components/schemas/AdminEmpresaBanimentoResumo' },
+          },
+        },
+        AdminEmpresaVagaResumo: {
+          type: 'object',
+          description: 'Resumo de vaga para listagens administrativas',
+          properties: {
+            id: { type: 'string', format: 'uuid', example: 'vaga-uuid' },
+            status: { allOf: [{ $ref: '#/components/schemas/StatusVaga' }] },
+            inseridaEm: { type: 'string', format: 'date-time', example: '2024-05-10T09:00:00Z' },
+            atualizadoEm: { type: 'string', format: 'date-time', example: '2024-05-12T11:30:00Z' },
+            inscricoesAte: { type: 'string', format: 'date-time', nullable: true, example: '2024-06-01T23:59:59Z' },
+            modoAnonimo: { type: 'boolean', example: false },
+            modalidade: {
+              type: 'string',
+              enum: ['PRESENCIAL', 'REMOTO', 'HIBRIDO'],
+              example: 'REMOTO',
+            },
+            regimeDeTrabalho: {
+              type: 'string',
+              enum: ['CLT', 'TEMPORARIO', 'ESTAGIO', 'PJ', 'HOME_OFFICE', 'JOVEM_APRENDIZ'],
+              example: 'CLT',
+            },
+            paraPcd: { type: 'boolean', example: false },
+          },
+        },
+        AdminEmpresasVagasResponse: {
+          type: 'object',
+          properties: {
+            data: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/AdminEmpresaVagaResumo' },
+            },
+            pagination: { allOf: [{ $ref: '#/components/schemas/PaginationMeta' }] },
+          },
+        },
+        AdminEmpresaVagaAprovacaoResponse: {
+          type: 'object',
+          properties: {
+            vaga: { $ref: '#/components/schemas/AdminEmpresaVagaResumo' },
           },
         },
         EmpresaResumo: {

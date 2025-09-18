@@ -3333,7 +3333,25 @@ const options: Options = {
               allOf: [{ $ref: '#/components/schemas/StatusPagamento' }],
               nullable: true,
             },
+            valor: {
+              type: 'string',
+              nullable: true,
+              example: '199.90',
+              description: 'Valor bruto do plano associado, quando disponível',
+            },
             quantidadeVagas: { type: 'integer', nullable: true, example: 3 },
+            duracaoEmDias: {
+              type: 'integer',
+              nullable: true,
+              example: 30,
+              description: 'Quantidade total de dias entre o início e o fim configurado para o plano',
+            },
+            diasRestantes: {
+              type: 'integer',
+              nullable: true,
+              example: 12,
+              description: 'Dias restantes até o término do plano considerando a data atual',
+            },
           },
         },
         AdminEmpresaListItem: {
@@ -3353,6 +3371,26 @@ const options: Options = {
             diasTesteDisponibilizados: { type: 'integer', nullable: true, example: 30 },
             plano: {
               allOf: [{ $ref: '#/components/schemas/AdminEmpresaPlanoResumo' }],
+              nullable: true,
+            },
+            vagasPublicadas: {
+              type: 'integer',
+              example: 8,
+              description: 'Quantidade de vagas com status PUBLICADO criadas pela empresa',
+            },
+            limiteVagasPlano: {
+              type: 'integer',
+              nullable: true,
+              example: 10,
+              description: 'Limite de vagas simultâneas definido pelo plano atual',
+            },
+            banida: {
+              type: 'boolean',
+              example: false,
+              description: 'Indica se a empresa possui um banimento ativo no momento da consulta',
+            },
+            banimentoAtivo: {
+              allOf: [{ $ref: '#/components/schemas/AdminEmpresaBanimentoResumo' }],
               nullable: true,
             },
           },
@@ -3610,6 +3648,11 @@ const options: Options = {
                 publicadas: { type: 'integer', example: 1 },
                 limitePlano: { type: 'integer', nullable: true, example: 3 },
               },
+            },
+            banida: {
+              type: 'boolean',
+              example: false,
+              description: 'Indica se a empresa possui um banimento ativo',
             },
             pagamento: {
               type: 'object',

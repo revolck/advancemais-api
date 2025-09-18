@@ -139,15 +139,23 @@ export const adminEmpresasIdParamSchema = z.object({
 
 export type AdminEmpresasIdParam = z.infer<typeof adminEmpresasIdParamSchema>;
 
-const paginationQuerySchema = z
-  .object({
-    page: z.coerce.number().int().min(1).optional(),
-    pageSize: z.coerce.number().int().min(1).max(100).optional(),
-  })
-  .transform((values) => ({
+const paginationQueryBaseSchema = z.object({
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(100).optional(),
+});
+
+const withDefaultPaginationValues = <T extends { page?: number; pageSize?: number }>(
+  values: T,
+) =>
+  ({
+    ...values,
     page: values.page ?? 1,
     pageSize: values.pageSize ?? 20,
-  }));
+  }) as Omit<T, 'page' | 'pageSize'> & { page: number; pageSize: number };
+
+const paginationQuerySchema = paginationQueryBaseSchema.transform((values) =>
+  withDefaultPaginationValues(values),
+);
 
 export const adminEmpresasHistoryQuerySchema = paginationQuerySchema;
 export type AdminEmpresasHistoryQuery = z.infer<typeof adminEmpresasHistoryQuerySchema>;
@@ -177,9 +185,11 @@ const statusArraySchema = z
   )
   .transform((value) => value?.map((status) => status as StatusVaga));
 
-export const adminEmpresasVagasQuerySchema = paginationQuerySchema.extend({
-  status: statusArraySchema,
-});
+export const adminEmpresasVagasQuerySchema = paginationQueryBaseSchema
+  .extend({
+    status: statusArraySchema,
+  })
+  .transform((values) => withDefaultPaginationValues(values));
 
 export type AdminEmpresasVagasQuery = z.infer<typeof adminEmpresasVagasQuerySchema>;
 

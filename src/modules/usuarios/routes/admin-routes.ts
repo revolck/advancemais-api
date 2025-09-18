@@ -137,27 +137,35 @@ router.get('/usuarios', asyncHandler(adminController.listarUsuarios));
  *         name: page
  *         schema:
  *           type: integer
+ *           minimum: 1
+ *           default: 1
  *           example: 1
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 50
  *           example: 50
  *       - in: query
  *         name: status
  *         schema:
  *           type: string
+ *           enum: [ATIVO, INATIVO, BANIDO, PENDENTE, SUSPENSO]
  *           example: ATIVO
  *       - in: query
  *         name: tipoUsuario
  *         schema:
  *           type: string
+ *           enum: [PESSOA_FISICA, PESSOA_JURIDICA]
  *           example: PESSOA_FISICA
  *       - in: query
  *         name: search
  *         schema:
  *           type: string
  *           example: Joao da Silva
+ *         description: "Busca por nome, e-mail, CPF ou código do candidato. Necessário no mínimo 3 caracteres."
  *     responses:
  *       200:
  *         description: Lista de candidatos
@@ -165,6 +173,18 @@ router.get('/usuarios', asyncHandler(adminController.listarUsuarios));
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AdminCandidateListResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
  *       500:
  *         description: Erro ao listar candidatos
  *         content:
@@ -251,6 +271,18 @@ router.get('/usuarios/:userId', asyncHandler(adminController.buscarUsuario));
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AdminCandidateDetailResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
  *       404:
  *         description: Candidato não encontrado
  *         content:

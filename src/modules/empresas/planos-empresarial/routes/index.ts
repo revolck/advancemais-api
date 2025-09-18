@@ -103,6 +103,18 @@ router.get('/:id', publicCache, PlanosEmpresariaisController.get);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
  *       409:
  *         description: Limite máximo de planos atingido
  *         content:
@@ -169,12 +181,24 @@ router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), PlanosEmpresari
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
  *       404:
  *         description: Plano não encontrado
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
  *       500:
  *         description: Erro interno do servidor
  *         content:
@@ -215,6 +239,18 @@ router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), PlanosEmpresa
  *     responses:
  *       204:
  *         description: Plano removido com sucesso
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
  *       404:
  *         description: Plano não encontrado
  *         content:

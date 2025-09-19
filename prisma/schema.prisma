@@ -105,6 +105,7 @@ model Vaga {
   modoAnonimo      Boolean        @default(false)
   regimeDeTrabalho RegimeTrabalho
   modalidade       ModalidadeVaga
+  titulo           String         @db.VarChar(255)
   paraPcd          Boolean        @default(false)
   requisitos       String         @db.Text
   atividades       String         @db.Text

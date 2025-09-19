@@ -3811,6 +3811,12 @@ const options: Options = {
               example: 'B24N56',
               description: 'Identificador curto utilizado pelos administradores para localizar a vaga com rapidez.',
             },
+            titulo: {
+              type: 'string',
+              maxLength: 255,
+              example: 'Analista de Dados Pleno',
+              description: 'Nome público da vaga informado pela empresa no momento do cadastro.',
+            },
             status: { allOf: [{ $ref: '#/components/schemas/StatusVaga' }] },
             inseridaEm: { type: 'string', format: 'date-time', example: '2024-05-10T09:00:00Z' },
             atualizadoEm: { type: 'string', format: 'date-time', example: '2024-05-12T11:30:00Z' },
@@ -3896,6 +3902,11 @@ const options: Options = {
               enum: ['PRESENCIAL', 'REMOTO', 'HIBRIDO'],
               example: 'PRESENCIAL',
             },
+            titulo: {
+              type: 'string',
+              maxLength: 255,
+              example: 'Coordenador de Projetos TI',
+            },
             paraPcd: { type: 'boolean', example: false },
             requisitos: {
               type: 'string',
@@ -3969,6 +3980,7 @@ const options: Options = {
             'usuarioId',
             'regimeDeTrabalho',
             'modalidade',
+            'titulo',
             'requisitos',
             'atividades',
             'beneficios',
@@ -3994,6 +4006,12 @@ const options: Options = {
               type: 'string',
               enum: ['PRESENCIAL', 'REMOTO', 'HIBRIDO'],
               example: 'PRESENCIAL',
+            },
+            titulo: {
+              type: 'string',
+              maxLength: 255,
+              example: 'Analista de Marketing Digital',
+              description: 'Nome da vaga que será exibido nos portais e dashboards administrativos.',
             },
             paraPcd: { type: 'boolean', example: false },
             requisitos: {
@@ -4047,6 +4065,11 @@ const options: Options = {
               type: 'string',
               enum: ['PRESENCIAL', 'REMOTO', 'HIBRIDO'],
               example: 'HIBRIDO',
+            },
+            titulo: {
+              type: 'string',
+              maxLength: 255,
+              example: 'Gerente de Operações',
             },
             paraPcd: { type: 'boolean', example: true },
             requisitos: {

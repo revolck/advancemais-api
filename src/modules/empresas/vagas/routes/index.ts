@@ -200,6 +200,7 @@ router.get('/:id', publicCache, VagasController.get);
  *                  "modoAnonimo": true,
  *                  "regimeDeTrabalho": "CLT",
  *                  "modalidade": "PRESENCIAL",
+ *                  "titulo": "Analista de Sistemas",
  *                  "paraPcd": true,
  *                  "requisitos": "Experiência prévia com atendimento ao cliente e pacote Office.",
  *                  "atividades": "Atendimento ao público, abertura de chamados e acompanhamento de demandas.",

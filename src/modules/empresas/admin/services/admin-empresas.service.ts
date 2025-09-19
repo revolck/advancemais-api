@@ -70,6 +70,8 @@ const createUsuarioListSelect = () =>
     id: true,
     codUsuario: true,
     nomeCompleto: true,
+    email: true,
+    telefone: true,
     avatarUrl: true,
     cnpj: true,
     cidade: true,
@@ -98,6 +100,8 @@ const usuarioDetailSelect = {
   id: true,
   codUsuario: true,
   nomeCompleto: true,
+  email: true,
+  telefone: true,
   avatarUrl: true,
   cnpj: true,
   descricao: true,
@@ -145,6 +149,8 @@ type AdminEmpresaListItem = {
   id: string;
   codUsuario: string;
   nome: string;
+  email: string;
+  telefone: string;
   avatarUrl: string | null;
   cnpj: string | null;
   cidade: string | null;
@@ -199,6 +205,8 @@ type AdminEmpresaDetail = {
   id: string;
   codUsuario: string;
   nome: string;
+  email: string;
+  telefone: string;
   avatarUrl: string | null;
   cnpj: string | null;
   descricao: string | null;
@@ -619,6 +627,8 @@ export const adminEmpresasService = {
         id: empresa.id,
         codUsuario: empresa.codUsuario,
         nome: empresa.nomeCompleto,
+        email: empresa.email,
+        telefone: empresa.telefone,
         avatarUrl: empresa.avatarUrl,
         cnpj: empresa.cnpj ?? null,
         cidade: empresa.cidade,
@@ -670,6 +680,8 @@ export const adminEmpresasService = {
       id: empresa.id,
       codUsuario: empresa.codUsuario,
       nome: empresa.nomeCompleto,
+      email: empresa.email,
+      telefone: empresa.telefone,
       avatarUrl: empresa.avatarUrl,
       cnpj: empresa.cnpj ?? null,
       descricao: empresa.descricao,

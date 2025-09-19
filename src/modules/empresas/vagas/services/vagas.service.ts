@@ -15,6 +15,7 @@ export type CreateVagaData = {
   modoAnonimo?: boolean;
   regimeDeTrabalho: RegimeTrabalho;
   modalidade: ModalidadeVaga;
+  titulo: string;
   paraPcd?: boolean;
   requisitos: string;
   atividades: string;
@@ -109,6 +110,7 @@ const sanitizeCreateData = (data: CreateVagaData, codigo: string): Prisma.VagaUn
   modoAnonimo: data.modoAnonimo ?? false,
   regimeDeTrabalho: data.regimeDeTrabalho,
   modalidade: data.modalidade,
+  titulo: data.titulo.trim(),
   paraPcd: data.paraPcd ?? false,
   requisitos: data.requisitos.trim(),
   atividades: data.atividades.trim(),
@@ -134,6 +136,9 @@ const sanitizeUpdateData = (data: UpdateVagaData): Prisma.VagaUncheckedUpdateInp
   }
   if (data.modalidade !== undefined) {
     update.modalidade = data.modalidade;
+  }
+  if (data.titulo !== undefined) {
+    update.titulo = data.titulo.trim();
   }
   if (data.paraPcd !== undefined) {
     update.paraPcd = data.paraPcd;

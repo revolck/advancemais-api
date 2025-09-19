@@ -191,6 +191,7 @@ type AdminEmpresaPaymentLog = {
 
 type AdminEmpresaJobResumo = {
   id: string;
+  codigo: string;
   status: StatusVaga;
   inseridaEm: Date;
   atualizadoEm: Date;
@@ -802,6 +803,7 @@ export const adminEmpresasService = {
         take: pageSize,
         select: {
           id: true,
+          codigo: true,
           status: true,
           inseridaEm: true,
           atualizadoEm: true,
@@ -816,6 +818,7 @@ export const adminEmpresasService = {
 
     const data: AdminEmpresaJobResumo[] = vagas.map((vaga) => ({
       id: vaga.id,
+      codigo: vaga.codigo,
       status: vaga.status,
       inseridaEm: vaga.inseridaEm,
       atualizadoEm: vaga.atualizadoEm,
@@ -866,6 +869,7 @@ export const adminEmpresasService = {
         },
         select: {
           id: true,
+          codigo: true,
           status: true,
           inseridaEm: true,
           atualizadoEm: true,
@@ -880,6 +884,7 @@ export const adminEmpresasService = {
 
     return {
       id: vaga.id,
+      codigo: vaga.codigo,
       status: vaga.status,
       inseridaEm: vaga.inseridaEm,
       atualizadoEm: vaga.atualizadoEm,

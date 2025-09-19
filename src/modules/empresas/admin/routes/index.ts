@@ -451,7 +451,7 @@ router.post('/:id/banimentos', supabaseAuthMiddleware(adminRoles), AdminEmpresas
  * /api/v1/empresas/admin/{id}/vagas:
  *   get:
  *     summary: (Admin) Histórico de vagas da empresa
- *     description: "Lista vagas criadas pela empresa com opção de filtrar por status."
+ *     description: "Lista vagas criadas pela empresa com opção de filtrar por status, incluindo o código curto gerado automaticamente para cada vaga."
  *     tags: [Empresas - Admin]
  *     security:
  *       - bearerAuth: []

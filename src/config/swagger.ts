@@ -3805,6 +3805,12 @@ const options: Options = {
           description: 'Resumo de vaga para listagens administrativas',
           properties: {
             id: { type: 'string', format: 'uuid', example: 'vaga-uuid' },
+            codigo: {
+              type: 'string',
+              maxLength: 6,
+              example: 'B24N56',
+              description: 'Identificador curto utilizado pelos administradores para localizar a vaga com rapidez.',
+            },
             status: { allOf: [{ $ref: '#/components/schemas/StatusVaga' }] },
             inseridaEm: { type: 'string', format: 'date-time', example: '2024-05-10T09:00:00Z' },
             atualizadoEm: { type: 'string', format: 'date-time', example: '2024-05-12T11:30:00Z' },
@@ -3867,6 +3873,13 @@ const options: Options = {
           description: 'Representação completa da vaga cadastrada pela empresa',
           properties: {
             id: { type: 'string', example: 'vaga-uuid' },
+            codigo: {
+              type: 'string',
+              maxLength: 6,
+              example: 'B24N56',
+              description: 'Identificador curto da vaga gerado automaticamente para facilitar buscas internas.',
+              readOnly: true,
+            },
             usuarioId: { type: 'string', example: 'usuario-uuid' },
             empresa: {
               allOf: [{ $ref: '#/components/schemas/EmpresaResumo' }],
@@ -3950,7 +3963,8 @@ const options: Options = {
         },
         VagaCreateInput: {
           type: 'object',
-          description: 'Dados necessários para cadastrar uma vaga. O status inicial é definido automaticamente como EM_ANALISE.',
+          description:
+            'Dados necessários para cadastrar uma vaga. O status inicial é definido automaticamente como EM_ANALISE e o código alfanumérico de 6 caracteres é gerado pelo sistema.',
           required: [
             'usuarioId',
             'regimeDeTrabalho',

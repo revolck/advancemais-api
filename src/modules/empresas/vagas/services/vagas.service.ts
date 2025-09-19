@@ -1,3 +1,5 @@
+import { randomUUID } from 'crypto';
+
 import { ModalidadeVaga, Prisma, RegimeTrabalho, StatusVaga, TipoUsuario } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
@@ -61,8 +63,49 @@ const nullableText = (value?: string) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-const sanitizeCreateData = (data: CreateVagaData): Prisma.VagaUncheckedCreateInput => ({
+const VAGA_CODE_LENGTH = 6;
+const VAGA_CODE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+const createCodeCandidate = () => {
+  let result = '';
+
+  for (let index = 0; index < VAGA_CODE_LENGTH; index++) {
+    const charIndex = Math.floor(Math.random() * VAGA_CODE_ALPHABET.length);
+    result += VAGA_CODE_ALPHABET[charIndex];
+  }
+
+  return result;
+};
+
+const createFallbackCandidate = () => randomUUID().replace(/-/g, '').slice(0, VAGA_CODE_LENGTH).toUpperCase();
+
+const generateUniqueVagaCode = async (): Promise<string> => {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const candidate = createCodeCandidate();
+    const existing = await prisma.vaga.findUnique({ where: { codigo: candidate }, select: { id: true } });
+
+    if (!existing) {
+      return candidate;
+    }
+  }
+
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const candidate = createFallbackCandidate();
+    const existing = await prisma.vaga.findUnique({ where: { codigo: candidate }, select: { id: true } });
+
+    if (!existing) {
+      return candidate;
+    }
+  }
+
+  throw Object.assign(new Error('Não foi possível gerar um código único para a vaga'), {
+    code: 'VAGA_CODE_GENERATION_FAILED',
+  });
+};
+
+const sanitizeCreateData = (data: CreateVagaData, codigo: string): Prisma.VagaUncheckedCreateInput => ({
   usuarioId: data.usuarioId,
+  codigo,
   modoAnonimo: data.modoAnonimo ?? false,
   regimeDeTrabalho: data.regimeDeTrabalho,
   modalidade: data.modalidade,
@@ -233,8 +276,10 @@ export const vagasService = {
 
   create: async (data: CreateVagaData) => {
     await ensurePlanoAtivoParaUsuario(data.usuarioId);
+    const codigo = await generateUniqueVagaCode();
+
     const vaga = await prisma.vaga.create({
-      data: sanitizeCreateData(data),
+      data: sanitizeCreateData(data, codigo),
       ...includeEmpresa,
     });
 

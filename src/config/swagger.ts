@@ -3361,6 +3361,17 @@ const options: Options = {
             id: { type: 'string', format: 'uuid', example: 'empresa-uuid' },
             codUsuario: { type: 'string', example: 'EMP-123456' },
             nome: { type: 'string', example: 'Advance Tech Consultoria' },
+            email: {
+              type: 'string',
+              format: 'email',
+              example: 'contato@advance.com.br',
+              description: 'E-mail principal cadastrado pela empresa',
+            },
+            telefone: {
+              type: 'string',
+              example: '+55 11 99999-0000',
+              description: 'Telefone de contato informado no cadastro',
+            },
             avatarUrl: { type: 'string', nullable: true, example: 'https://cdn.advance.com.br/logo.png' },
             cnpj: { type: 'string', nullable: true, example: '12345678000190' },
             cidade: { type: 'string', nullable: true, example: 'São Paulo' },
@@ -3608,6 +3619,17 @@ const options: Options = {
             id: { type: 'string', format: 'uuid', example: 'empresa-uuid' },
             codUsuario: { type: 'string', example: 'EMP-123456' },
             nome: { type: 'string', example: 'Advance Tech Consultoria' },
+            email: {
+              type: 'string',
+              format: 'email',
+              example: 'contato@advance.com.br',
+              description: 'E-mail principal cadastrado pela empresa',
+            },
+            telefone: {
+              type: 'string',
+              example: '+55 11 99999-0000',
+              description: 'Telefone de contato informado no cadastro',
+            },
             avatarUrl: { type: 'string', nullable: true, example: 'https://cdn.advance.com.br/logo.png' },
             cnpj: { type: 'string', nullable: true, example: '12345678000190' },
             descricao: {

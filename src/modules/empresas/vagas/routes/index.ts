@@ -133,7 +133,7 @@ router.get('/:id', publicCache, VagasController.get);
  * /api/v1/empresas/vagas:
  *   post:
  *     summary: Criar uma nova vaga
- *     description: "Disponível para administradores, moderadores, empresas e recrutadores autenticados (roles: ADMIN, MODERADOR, EMPRESA, RECRUTADOR). Permite cadastrar vagas vinculadas a uma empresa e envia automaticamente o registro para a fila de revisão com status EM_ANALISE."
+ *     description: "Disponível para administradores, moderadores, empresas e recrutadores autenticados (roles: ADMIN, MODERADOR, EMPRESA, RECRUTADOR). Permite cadastrar vagas vinculadas a uma empresa, gera um código alfanumérico curto para facilitar a identificação e envia automaticamente o registro para a fila de revisão com status EM_ANALISE."
  *     tags: [Empresas - Vagas]
  *     security:
  *       - bearerAuth: []

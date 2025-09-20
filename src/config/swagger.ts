@@ -111,7 +111,7 @@ const options: Options = {
         description: 'Clientes (empresas) vinculados a planos pagos',
       },
       {
-        name: 'Empresas - Vagas',
+        name: 'Empresas - EmpresasVagas',
         description: 'Administração de vagas corporativas vinculadas às empresas',
       },
       {
@@ -159,7 +159,7 @@ const options: Options = {
         tags: [
           'Empresas - Planos Empresariais',
           'Empresas - Clientes',
-          'Empresas - Vagas',
+          'Empresas - EmpresasVagas',
           'Empresas - Admin',
         ],
       },
@@ -791,7 +791,7 @@ const options: Options = {
             },
           },
         },
-        EmpresaPlan: {
+        EmpresasPlano: {
           type: 'object',
           properties: {
             id: { type: 'string', example: 'plan-uuid' },
@@ -846,7 +846,7 @@ const options: Options = {
             },
           },
         },
-        EmpresaPlanCreateRequest: {
+        EmpresasPlanoCreateRequest: {
           type: 'object',
           required: [
             'nome',
@@ -897,7 +897,7 @@ const options: Options = {
             },
           },
         },
-        EmpresaPlanUpdateRequest: {
+        EmpresasPlanoUpdateRequest: {
           type: 'object',
           properties: {
             nome: { type: 'string', example: 'Plano Atualizado' },
@@ -939,30 +939,30 @@ const options: Options = {
             },
           },
         },
-        EmpresaPlanCreateResponse: {
+        EmpresasPlanoCreateResponse: {
           type: 'object',
           properties: {
             message: { type: 'string', example: 'Plano criado' },
-            plan: { $ref: '#/components/schemas/EmpresaPlan' },
+            plan: { $ref: '#/components/schemas/EmpresasPlano' },
           },
         },
-        EmpresaPlanUpdateResponse: {
+        EmpresasPlanoUpdateResponse: {
           type: 'object',
           properties: {
             message: { type: 'string', example: 'Plano atualizado' },
-            plan: { $ref: '#/components/schemas/EmpresaPlan' },
+            plan: { $ref: '#/components/schemas/EmpresasPlano' },
           },
         },
-        EmpresaPlansResponse: {
+        EmpresasPlanosResponse: {
           type: 'object',
           properties: {
             plans: {
               type: 'array',
-              items: { $ref: '#/components/schemas/EmpresaPlan' },
+              items: { $ref: '#/components/schemas/EmpresasPlano' },
             },
           },
         },
-        EmpresaPlanAssignRequest: {
+        EmpresasPlanoAssignRequest: {
           type: 'object',
           required: ['usuarioId', 'metodoPagamento'],
           properties: {
@@ -993,7 +993,7 @@ const options: Options = {
             },
           },
         },
-        EmpresaPlanAssignment: {
+        EmpresasPlanoAssignment: {
           type: 'object',
           properties: {
             id: { type: 'string', example: 'assignment-uuid' },
@@ -1046,19 +1046,19 @@ const options: Options = {
             },
           },
         },
-        EmpresaPlanAssignResponse: {
+        EmpresasPlanoAssignResponse: {
           type: 'object',
           properties: {
             message: {
               type: 'string',
               example: 'Plano vinculado à empresa',
             },
-            empresaPlano: {
-              $ref: '#/components/schemas/EmpresaPlanAssignment',
+            empresasPlano: {
+              $ref: '#/components/schemas/EmpresasPlanoAssignment',
             },
           },
         },
-        EmpresaPlanUnassignResponse: {
+        EmpresasPlanoUnassignResponse: {
           type: 'object',
           properties: {
             message: {
@@ -3324,7 +3324,7 @@ const options: Options = {
             totalPages: { type: 'integer', example: 6 },
           },
         },
-        AdminEmpresaPlanoResumo: {
+        AdminEmpresasPlanoResumo: {
           type: 'object',
           description: 'Resumo do plano ativo vinculado à empresa',
           required: ['id', 'tipo'],
@@ -3456,7 +3456,7 @@ const options: Options = {
             parceira: { type: 'boolean', example: true },
             diasTesteDisponibilizados: { type: 'integer', nullable: true, example: 30 },
             plano: {
-              allOf: [{ $ref: '#/components/schemas/AdminEmpresaPlanoResumo' }],
+              allOf: [{ $ref: '#/components/schemas/AdminEmpresasPlanoResumo' }],
               nullable: true,
             },
             vagasPublicadas: {
@@ -3536,7 +3536,7 @@ const options: Options = {
             banimentoAtivo: null,
           },
         },
-        AdminEmpresaPlanoInput: {
+        AdminEmpresasPlanoInput: {
           type: 'object',
           required: ['planoEmpresarialId', 'tipo'],
           properties: {
@@ -3571,9 +3571,9 @@ const options: Options = {
             observacao: 'Plano cortesia liberado pelo time comercial',
           },
         },
-        AdminEmpresaPlanoUpdateInput: {
+        AdminEmpresasPlanoUpdateInput: {
           allOf: [
-            { $ref: '#/components/schemas/AdminEmpresaPlanoInput' },
+            { $ref: '#/components/schemas/AdminEmpresasPlanoInput' },
             {
               type: 'object',
               properties: {
@@ -3671,7 +3671,7 @@ const options: Options = {
               description: 'Status inicial da conta da empresa. Padrão: ATIVO',
             },
             plano: {
-              allOf: [{ $ref: '#/components/schemas/AdminEmpresaPlanoInput' }],
+              allOf: [{ $ref: '#/components/schemas/AdminEmpresasPlanoInput' }],
               nullable: true,
               description: 'Dados opcionais para já vincular um plano empresarial ativo',
             },
@@ -3755,7 +3755,7 @@ const options: Options = {
               example: 'ATIVO',
             },
             plano: {
-              allOf: [{ $ref: '#/components/schemas/AdminEmpresaPlanoUpdateInput' }],
+              allOf: [{ $ref: '#/components/schemas/AdminEmpresasPlanoUpdateInput' }],
               nullable: true,
               description: 'Envie null para encerrar o plano atual da empresa',
             },
@@ -3900,7 +3900,7 @@ const options: Options = {
             parceira: { type: 'boolean', example: true },
             diasTesteDisponibilizados: { type: 'integer', nullable: true, example: 30 },
             plano: {
-              allOf: [{ $ref: '#/components/schemas/AdminEmpresaPlanoResumo' }],
+              allOf: [{ $ref: '#/components/schemas/AdminEmpresasPlanoResumo' }],
               nullable: true,
             },
             banimentoAtivo: {
@@ -5154,7 +5154,7 @@ export function setupSwagger(app: Application): void {
               // Empresas - após Website - Header Pages
               'Empresas - Planos Empresariais',
               'Empresas - Clientes',
-              'Empresas - Vagas',
+              'Empresas - EmpresasVagas',
             ];
             const ai = order.indexOf(a);
             const bi = order.indexOf(b);

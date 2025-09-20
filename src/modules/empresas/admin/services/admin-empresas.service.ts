@@ -152,7 +152,7 @@ type UsuarioListResult = Prisma.UsuariosGetPayload<{ select: UsuarioListSelect }
 type PlanoResumoData = UsuarioListResult['planosContratados'][number];
 type BanimentoResumoData = Prisma.EmpresaBanimentoGetPayload<{ select: typeof banimentoSelect }>;
 
-type AdminEmpresaPlanoResumo = {
+type AdminEmpresasPlanoResumo = {
   id: string;
   nome: string | null;
   tipo: string;
@@ -182,7 +182,7 @@ type AdminEmpresaListItem = {
   ativa: boolean;
   parceira: boolean;
   diasTesteDisponibilizados: number | null;
-  plano: AdminEmpresaPlanoResumo | null;
+  plano: AdminEmpresasPlanoResumo | null;
   vagasPublicadas: number;
   limiteVagasPlano: number | null;
   banida: boolean;
@@ -246,7 +246,7 @@ type AdminEmpresaDetail = {
   ativa: boolean;
   parceira: boolean;
   diasTesteDisponibilizados: number | null;
-  plano: AdminEmpresaPlanoResumo | null;
+  plano: AdminEmpresasPlanoResumo | null;
   vagas: {
     publicadas: number;
     limitePlano: number | null;
@@ -389,12 +389,12 @@ const assignPlanoToEmpresa = async (
   const fim = calcularPlanoFim(tipo, inicio);
   const observacao = sanitizeObservacao(plano.observacao ?? undefined);
 
-  await tx.empresaPlano.updateMany({
+  await tx.empresasPlano.updateMany({
     where: { usuarioId, ativo: true },
     data: { ativo: false, fim: new Date() },
   });
 
-  await tx.empresaPlano.create({
+  await tx.empresasPlano.create({
     data: {
       usuarioId,
       planoEmpresarialId: plano.planoEmpresarialId,
@@ -412,7 +412,7 @@ const atualizarPlanoSemReset = async (
   usuarioId: string,
   plano: AdminEmpresasPlanoInput,
 ) => {
-  const planoAtual = await tx.empresaPlano.findFirst({
+  const planoAtual = await tx.empresasPlano.findFirst({
     where: { usuarioId, ativo: true },
     orderBy: [
       { inicio: 'desc' },
@@ -428,7 +428,7 @@ const atualizarPlanoSemReset = async (
   const tipo = mapClienteTipoToPlanoParceiro(plano.tipo);
   const observacao = sanitizeObservacao(plano.observacao ?? undefined);
 
-  const data: Prisma.EmpresaPlanoUpdateInput = {
+  const data: Prisma.EmpresasPlanoUpdateInput = {
     plano: { connect: { id: plano.planoEmpresarialId } },
     tipo,
   };
@@ -437,7 +437,7 @@ const atualizarPlanoSemReset = async (
     data.observacao = observacao;
   }
 
-  await tx.empresaPlano.update({
+  await tx.empresasPlano.update({
     where: { id: planoAtual.id },
     data,
   });
@@ -504,7 +504,7 @@ const calculateDaysRemaining = (fim: Date | null, reference: Date) => {
 const mapPlanoResumo = (
   plano?: PlanoResumoData,
   referenceDate: Date = new Date(),
-): AdminEmpresaPlanoResumo | null => {
+): AdminEmpresasPlanoResumo | null => {
   if (!plano) {
     return null;
   }
@@ -654,7 +654,7 @@ export const adminEmpresasService = {
       }
 
       if (data.plano === null) {
-        await tx.empresaPlano.updateMany({
+        await tx.empresasPlano.updateMany({
           where: { usuarioId: id, ativo: true },
           data: { ativo: false, fim: new Date() },
         });
@@ -798,7 +798,7 @@ export const adminEmpresasService = {
 
     const skip = (page - 1) * pageSize;
 
-    const planosIds = await prisma.empresaPlano.findMany({
+    const planosIds = await prisma.empresasPlano.findMany({
       where: { usuarioId: id },
       select: { id: true },
     });
@@ -806,7 +806,7 @@ export const adminEmpresasService = {
 
     const orFilters: Prisma.LogPagamentoWhereInput['OR'] = [{ usuarioId: id }];
     if (planoIds.length > 0) {
-      orFilters.push({ empresaPlanoId: { in: planoIds } });
+      orFilters.push({ empresasPlanoId: { in: planoIds } });
     }
 
     const where: Prisma.LogPagamentoWhereInput = { OR: orFilters };
@@ -826,17 +826,17 @@ export const adminEmpresasService = {
           externalRef: true,
           mpResourceId: true,
           criadoEm: true,
-          empresaPlanoId: true,
+          empresasPlanoId: true,
         },
       }),
     ]);
 
     const referencedPlanoIds = Array.from(
-      new Set(logs.map((log) => log.empresaPlanoId).filter((value): value is string => Boolean(value))),
+      new Set(logs.map((log) => log.empresasPlanoId).filter((value): value is string => Boolean(value))),
     );
 
     const planosResumo = referencedPlanoIds.length
-      ? await prisma.empresaPlano.findMany({
+      ? await prisma.empresasPlano.findMany({
           where: { id: { in: referencedPlanoIds } },
           select: {
             id: true,
@@ -855,8 +855,8 @@ export const adminEmpresasService = {
       externalRef: log.externalRef ?? null,
       mpResourceId: log.mpResourceId ?? null,
       criadoEm: log.criadoEm,
-      plano: log.empresaPlanoId
-        ? { id: log.empresaPlanoId, nome: planoMap.get(log.empresaPlanoId) ?? null }
+      plano: log.empresasPlanoId
+        ? { id: log.empresasPlanoId, nome: planoMap.get(log.empresasPlanoId) ?? null }
         : null,
     }));
 
@@ -870,14 +870,14 @@ export const adminEmpresasService = {
     await ensureEmpresaExiste(prisma, id);
 
     const skip = (page - 1) * pageSize;
-    const where: Prisma.VagasWhereInput = {
+    const where: Prisma.EmpresasVagasWhereInput = {
       usuarioId: id,
       ...(status && status.length > 0 ? { status: { in: status } } : {}),
     };
 
     const [total, vagas] = await prisma.$transaction([
-      prisma.vagas.count({ where }),
-      prisma.vagas.findMany({
+      prisma.empresasVagas.count({ where }),
+      prisma.empresasVagas.findMany({
         where,
         orderBy: { inseridaEm: 'desc' },
         skip,
@@ -928,7 +928,7 @@ export const adminEmpresasService = {
     const vaga = await prisma.$transaction(async (tx) => {
       await ensureEmpresaExiste(tx, empresaId);
 
-      const vagaAtual = await tx.vaga.findFirst({
+      const vagaAtual = await tx.empresasVagas.findFirst({
         where: { id: vagaId, usuarioId: empresaId },
       });
 
@@ -944,7 +944,7 @@ export const adminEmpresasService = {
 
       const publishedAt = vagaAtual.inseridaEm ?? new Date();
 
-      return tx.vaga.update({
+      return tx.empresasVagas.update({
         where: { id: vagaAtual.id },
         data: {
           status: StatusVaga.PUBLICADO,

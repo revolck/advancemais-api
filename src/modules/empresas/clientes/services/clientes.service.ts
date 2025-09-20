@@ -44,7 +44,7 @@ const includePlanoEmpresa = {
   },
 } as const;
 
-type EmpresaPlanoWithRelations = Prisma.EmpresaPlanoGetPayload<typeof includePlanoEmpresa>;
+type EmpresasPlanoWithRelations = Prisma.EmpresasPlanoGetPayload<typeof includePlanoEmpresa>;
 
 const sanitizeObservacao = (value?: string | null) => {
   if (typeof value !== 'string') return value ?? null;
@@ -76,7 +76,7 @@ const ensureUsuarioEmpresa = async (usuarioId: string) => {
   }
 };
 
-const transformarPlano = (plano: EmpresaPlanoWithRelations) => {
+const transformarPlano = (plano: EmpresasPlanoWithRelations) => {
   const now = new Date();
   const estaVigente = plano.ativo && (!plano.fim || plano.fim > now);
   const diasRestantes =
@@ -112,8 +112,8 @@ const transformarPlano = (plano: EmpresaPlanoWithRelations) => {
   };
 };
 
-const buildWhere = (filters: ListClientePlanoQuery): Prisma.EmpresaPlanoWhereInput => {
-  const where: Prisma.EmpresaPlanoWhereInput = {};
+const buildWhere = (filters: ListClientePlanoQuery): Prisma.EmpresasPlanoWhereInput => {
+  const where: Prisma.EmpresasPlanoWhereInput = {};
 
   if (filters.usuarioId) {
     where.usuarioId = filters.usuarioId;
@@ -128,7 +128,7 @@ const buildWhere = (filters: ListClientePlanoQuery): Prisma.EmpresaPlanoWhereInp
 
 export const clientesService = {
   list: async (filters: ListClientePlanoQuery) => {
-    const planos = await prisma.empresaPlano.findMany({
+    const planos = await prisma.empresasPlano.findMany({
       where: buildWhere(filters),
       orderBy: { criadoEm: 'desc' },
       ...includePlanoEmpresa,
@@ -138,14 +138,14 @@ export const clientesService = {
   },
 
   get: async (id: string) => {
-    const plano = await prisma.empresaPlano.findUnique({ where: { id }, ...includePlanoEmpresa });
+    const plano = await prisma.empresasPlano.findUnique({ where: { id }, ...includePlanoEmpresa });
     return plano ? transformarPlano(plano) : null;
   },
 
   findActiveByUsuario: async (usuarioId: string) => {
     await ensureUsuarioEmpresa(usuarioId);
     const now = new Date();
-    const plano = await prisma.empresaPlano.findFirst({
+    const plano = await prisma.empresasPlano.findFirst({
       where: {
         usuarioId,
         ativo: true,
@@ -171,12 +171,12 @@ export const clientesService = {
     const observacao = sanitizeObservacao(data.observacao);
 
     const plano = await prisma.$transaction(async (tx) => {
-      await tx.empresaPlano.updateMany({
+      await tx.empresasPlano.updateMany({
         where: { usuarioId: data.usuarioId, ativo: true },
         data: { ativo: false, fim: new Date() },
       });
 
-      return tx.empresaPlano.create({
+      return tx.empresasPlano.create({
         data: {
           usuarioId: data.usuarioId,
           planoEmpresarialId: data.planoEmpresarialId,
@@ -193,13 +193,13 @@ export const clientesService = {
   },
 
   update: async (id: string, data: UpdateClientePlanoInput) => {
-    const planoAtual = await prisma.empresaPlano.findUnique({ where: { id } });
+    const planoAtual = await prisma.empresasPlano.findUnique({ where: { id } });
 
     if (!planoAtual) {
-      throw Object.assign(new Error('Plano da empresa não encontrado'), { code: 'EMPRESA_PLANO_NOT_FOUND' });
+      throw Object.assign(new Error('Plano da empresa não encontrado'), { code: 'EMPRESAS_PLANO_NOT_FOUND' });
     }
 
-    const updates: Prisma.EmpresaPlanoUpdateInput = {};
+    const updates: Prisma.EmpresasPlanoUpdateInput = {};
 
     if (data.planoEmpresarialId !== undefined) {
       updates.plano = { connect: { id: data.planoEmpresarialId } };
@@ -225,20 +225,20 @@ export const clientesService = {
       updates.observacao = sanitizeObservacao(data.observacao);
     }
 
-    const plano = await prisma.empresaPlano.update({ where: { id }, data: updates, ...includePlanoEmpresa });
+    const plano = await prisma.empresasPlano.update({ where: { id }, data: updates, ...includePlanoEmpresa });
     return transformarPlano(plano);
   },
 
   deactivate: async (id: string) => {
-    const planoAtual = await prisma.empresaPlano.findUnique({ where: { id } });
+    const planoAtual = await prisma.empresasPlano.findUnique({ where: { id } });
 
     if (!planoAtual) {
-      throw Object.assign(new Error('Plano da empresa não encontrado'), { code: 'EMPRESA_PLANO_NOT_FOUND' });
+      throw Object.assign(new Error('Plano da empresa não encontrado'), { code: 'EMPRESAS_PLANO_NOT_FOUND' });
     }
 
     const fim = planoAtual.fim && planoAtual.fim < new Date() ? planoAtual.fim : new Date();
 
-    await prisma.empresaPlano.update({
+    await prisma.empresasPlano.update({
       where: { id },
       data: { ativo: false, fim },
     });

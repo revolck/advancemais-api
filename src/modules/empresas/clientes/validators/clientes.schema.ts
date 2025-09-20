@@ -20,14 +20,14 @@ const observacaoSchema = z
 
 export const createClientePlanoSchema = z.object({
   usuarioId: uuidSchema,
-  planoEmpresarialId: uuidSchema,
+  planosEmpresariaisId: uuidSchema,
   tipo: clientePlanoTipoSchema,
   iniciarEm: z.coerce.date({ invalid_type_error: 'Informe uma data válida' }).optional(),
   observacao: observacaoSchema.optional().nullable(),
 });
 
 export const updateClientePlanoSchema = z.object({
-  planoEmpresarialId: uuidSchema.optional(),
+  planosEmpresariaisId: uuidSchema.optional(),
   tipo: clientePlanoTipoSchema.optional(),
   iniciarEm: z.coerce.date({ invalid_type_error: 'Informe uma data válida' }).optional(),
   observacao: observacaoSchema.optional().nullable(),

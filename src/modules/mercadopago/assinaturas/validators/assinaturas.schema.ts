@@ -12,7 +12,7 @@ const cardDataSchema = z
 export const startCheckoutSchema = z
   .object({
     usuarioId: z.string().uuid(),
-    planoEmpresarialId: z.string().uuid(),
+    planosEmpresariaisId: z.string().uuid(),
     metodo: checkoutMetodoSchema,
     pagamento: checkoutPagamentoSchema.optional(),
     card: cardDataSchema.optional(),
@@ -63,7 +63,7 @@ export const cancelSchema = z.object({
 
 export const changePlanSchema = z.object({
   usuarioId: z.string().uuid(),
-  novoPlanoEmpresarialId: z.string().uuid(),
+  novoPlanosEmpresariaisId: z.string().uuid(),
 });
 
 export const remindPaymentSchema = z.object({

@@ -126,7 +126,7 @@ const quantidadeVagasDestaqueSchema = z.preprocess(
   ]),
 );
 
-const planoEmpresarialSchema = z
+const planosEmpresariaisSchema = z
   .object({
     icon: z.string().trim().min(1, 'O ícone do plano é obrigatório'),
     nome: z.string().trim().min(1, 'O nome do plano é obrigatório'),
@@ -139,7 +139,7 @@ const planoEmpresarialSchema = z
   })
   .strict();
 
-const validatePlanoRegras = (data: z.infer<typeof planoEmpresarialSchema>, ctx: RefinementCtx) => {
+const validatePlanoRegras = (data: z.infer<typeof planosEmpresariaisSchema>, ctx: RefinementCtx) => {
   if (data.vagaEmDestaque) {
     if (data.quantidadeVagasDestaque === undefined || data.quantidadeVagasDestaque === null) {
       ctx.addIssue({
@@ -163,9 +163,9 @@ const validatePlanoRegras = (data: z.infer<typeof planoEmpresarialSchema>, ctx: 
   }
 };
 
-export const createPlanoEmpresarialSchema = planoEmpresarialSchema.superRefine(validatePlanoRegras);
+export const createPlanosEmpresariaisSchema = planosEmpresariaisSchema.superRefine(validatePlanoRegras);
 
-export const updatePlanoEmpresarialSchema = planoEmpresarialSchema
+export const updatePlanosEmpresariaisSchema = planosEmpresariaisSchema
   .partial()
   .superRefine((data, ctx) => {
     if (data.vagaEmDestaque === true) {
@@ -200,5 +200,5 @@ export const updatePlanoEmpresarialSchema = planoEmpresarialSchema
     }
   });
 
-export type CreatePlanoEmpresarialInput = z.infer<typeof createPlanoEmpresarialSchema>;
-export type UpdatePlanoEmpresarialInput = z.infer<typeof updatePlanoEmpresarialSchema>;
+export type CreatePlanosEmpresariaisInput = z.infer<typeof createPlanosEmpresariaisSchema>;
+export type UpdatePlanosEmpresariaisInput = z.infer<typeof updatePlanosEmpresariaisSchema>;

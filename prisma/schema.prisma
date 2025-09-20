@@ -50,8 +50,8 @@ model Usuarios {
 
   // RELACIONAMENTOS EXISTENTES
   enderecos            UsuariosEnderecos[]
-  vagasCriadas         Vagas[]            @relation("UsuarioVagas")
-  planosContratados    EmpresaPlano[]     @relation("UsuarioPlanos")
+  vagasCriadas         EmpresasVagas[]    @relation("UsuarioVagas")
+  planosContratados    EmpresasPlano[]    @relation("UsuarioPlanos")
   banimentosRecebidos  EmpresaBanimento[] @relation("EmpresaBanimentosUsuario")
   banimentosAplicados  EmpresaBanimento[] @relation("EmpresaBanimentosAdmin")
 
@@ -96,7 +96,7 @@ enum PlanoParceiro {
   PARCEIRO          @map("parceiro")
 }
 
-model Vagas {
+model EmpresasVagas {
   id               String         @id @default(uuid())
   codigo           String         @unique @db.VarChar(6)
   usuarioId        String
@@ -120,7 +120,7 @@ model Vagas {
   @@index([usuarioId])
 }
 
-model EmpresaPlano {
+model EmpresasPlano {
   id                 String        @id @default(uuid())
   usuarioId          String
   planoEmpresarialId String
@@ -151,9 +151,9 @@ model EmpresaPlano {
 }
 
 model LogPagamento {
-  id             String   @id @default(uuid())
-  usuarioId      String?
-  empresaPlanoId String?
+  id              String   @id @default(uuid())
+  usuarioId       String?
+  empresasPlanoId String?
   tipo           String
   status         String?
   externalRef    String?
@@ -163,7 +163,7 @@ model LogPagamento {
   criadoEm       DateTime @default(now())
 
   @@index([usuarioId])
-  @@index([empresaPlanoId])
+  @@index([empresasPlanoId])
   @@index([tipo])
   @@index([criadoEm])
 }
@@ -198,7 +198,7 @@ model PlanoEmpresarial {
   criadoEm                DateTime @default(now())
   atualizadoEm            DateTime @updatedAt
 
-  empresas EmpresaPlano[]
+  empresas EmpresasPlano[]
 
   // Integração Mercado Pago - plano recorrente reutilizável
   mpPreapprovalPlanId String? @unique

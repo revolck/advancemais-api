@@ -8,7 +8,7 @@ import {
   updateClientePlanoSchema,
 } from '@/modules/empresas/clientes/validators/clientes.schema';
 
-const PRISMA_NOT_FOUND_CODE = 'EMPRESA_PLANO_NOT_FOUND';
+const PRISMA_NOT_FOUND_CODE = 'EMPRESAS_PLANO_NOT_FOUND';
 
 export class ClientesController {
   static list = async (req: Request, res: Response) => {

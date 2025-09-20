@@ -132,7 +132,7 @@ export class PasswordRecoveryController {
         });
       }
 
-      const usuario = await prisma.usuario.findFirst({
+      const usuario = await prisma.usuarios.findFirst({
         where: {
           ...buscarPor,
           status: 'ATIVO', // Só permite recuperação para usuários ativos
@@ -171,7 +171,7 @@ export class PasswordRecoveryController {
 
         // Reset do contador se passou do tempo de cooldown
         if (agora >= tempoCooldown) {
-          await prisma.usuario.update({
+          await prisma.usuarios.update({
             where: { id: usuario.id },
             data: {
               tentativasRecuperacao: 0,
@@ -189,7 +189,7 @@ export class PasswordRecoveryController {
       );
 
       // Atualiza usuário com token e incrementa tentativas
-      await prisma.usuario.update({
+      await prisma.usuarios.update({
         where: { id: usuario.id },
         data: {
           tokenRecuperacao: token,
@@ -241,7 +241,7 @@ export class PasswordRecoveryController {
       }
 
       // Busca usuário pelo token
-      const usuario = await prisma.usuario.findFirst({
+      const usuario = await prisma.usuarios.findFirst({
         where: {
           tokenRecuperacao: token,
           status: 'ATIVO',
@@ -263,7 +263,7 @@ export class PasswordRecoveryController {
       // Verifica se token não expirou
       if (!usuario.tokenRecuperacaoExp || new Date() > usuario.tokenRecuperacaoExp) {
         // Remove token expirado
-        await prisma.usuario.update({
+        await prisma.usuarios.update({
           where: { id: usuario.id },
           data: {
             tokenRecuperacao: null,
@@ -328,7 +328,7 @@ export class PasswordRecoveryController {
       }
 
       // Busca usuário pelo token
-      const usuario = await prisma.usuario.findFirst({
+      const usuario = await prisma.usuarios.findFirst({
         where: {
           tokenRecuperacao: token,
           status: 'ATIVO',
@@ -350,7 +350,7 @@ export class PasswordRecoveryController {
 
       // Verifica se token não expirou
       if (!usuario.tokenRecuperacaoExp || new Date() > usuario.tokenRecuperacaoExp) {
-        await prisma.usuario.update({
+        await prisma.usuarios.update({
           where: { id: usuario.id },
           data: {
             tokenRecuperacao: null,
@@ -377,7 +377,7 @@ export class PasswordRecoveryController {
       const novaSenhaHash = await bcrypt.hash(novaSenha, 12);
 
       // Atualiza senha e remove token
-      await prisma.usuario.update({
+      await prisma.usuarios.update({
         where: { id: usuario.id },
         data: {
           senha: novaSenhaHash,

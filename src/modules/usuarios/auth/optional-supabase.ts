@@ -75,14 +75,14 @@ export const optionalSupabaseAuth = () => async (req: Request, res: Response, ne
           ultimoLogin: true,
         } as const;
 
-        type UsuarioCache = Prisma.UsuarioGetPayload<{
+        type UsuarioCache = Prisma.UsuariosGetPayload<{
           select: typeof usuarioSelect;
         }>;
 
         let usuario: UsuarioCache | null = await getCache<UsuarioCache>(cacheKey);
 
         if (!usuario) {
-          usuario = await prisma.usuario.findFirst({
+          usuario = await prisma.usuarios.findFirst({
             where: {
               OR: [{ supabaseId: decoded.sub as string }, { id: decoded.sub as string }],
             },

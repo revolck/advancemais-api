@@ -122,7 +122,7 @@ export class EmailService {
       method: 'sendVerificationEmailInternal',
     });
     try {
-      const usuarioExiste = await prisma.usuario.findUnique({
+      const usuarioExiste = await prisma.usuarios.findUnique({
         where: { id: userData.id },
         select: { id: true, emailVerificado: true },
       });
@@ -305,7 +305,7 @@ export class EmailService {
 
   public async verifyEmailToken(token: string) {
     try {
-      const usuario = await prisma.usuario.findFirst({
+      const usuario = await prisma.usuarios.findFirst({
         where: { emailVerificationToken: token },
         select: {
           id: true,
@@ -324,11 +324,11 @@ export class EmailService {
       }
 
       if (usuario.emailVerificationTokenExp && usuario.emailVerificationTokenExp < new Date()) {
-        await prisma.usuario.delete({ where: { id: usuario.id } });
+        await prisma.usuarios.delete({ where: { id: usuario.id } });
         return { valid: false, expired: true, userId: usuario.id, deleted: true };
       }
 
-      await prisma.usuario.update({
+      await prisma.usuarios.update({
         where: { id: usuario.id },
         data: {
           emailVerificado: true,
@@ -361,7 +361,7 @@ export class EmailService {
     token: string,
     expiration: Date,
   ): Promise<void> {
-    await prisma.usuario.update({
+    await prisma.usuarios.update({
       where: { id: userId },
       data: {
         emailVerificationToken: token,

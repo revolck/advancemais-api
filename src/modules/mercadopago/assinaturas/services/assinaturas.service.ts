@@ -218,7 +218,7 @@ function normalizeMercadoPagoError(error: unknown): { message: string; payload?:
 }
 
 async function setVagasToDraft(usuarioId: string) {
-  await prisma.vaga.updateMany({
+  await prisma.vagas.updateMany({
     where: { usuarioId, status: { in: [StatusVaga.PUBLICADO, StatusVaga.EM_ANALISE] } },
     data: { status: StatusVaga.RASCUNHO },
   });
@@ -337,7 +337,7 @@ export const assinaturasService = {
       throw new Error('PlanoEmpresarial não encontrado');
     }
 
-    const usuario = await prisma.usuario.findUnique({
+    const usuario = await prisma.usuarios.findUnique({
       where: { id: params.usuarioId },
       include: { enderecos: { take: 1, orderBy: { criadoEm: 'asc' } } },
     });
@@ -826,7 +826,7 @@ export const assinaturasService = {
       return;
     }
 
-    const usuario = await prisma.usuario.findUnique({
+    const usuario = await prisma.usuarios.findUnique({
       where: { id: plano.usuarioId },
       select: { id: true, email: true, nomeCompleto: true, tipoUsuario: true },
     });
@@ -970,7 +970,7 @@ export const assinaturasService = {
     const titulo = plano.plano.nome + ' - Renovação';
     const { success, failure, pending } = resolveCheckoutReturnUrls();
 
-    const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId }, select: { email: true, nomeCompleto: true } });
+    const usuario = await prisma.usuarios.findUnique({ where: { id: usuarioId }, select: { email: true, nomeCompleto: true } });
     const payerEmail = usuario?.email || undefined;
 
     const pref = await preference.create({
@@ -1055,7 +1055,7 @@ export const assinaturasService = {
       await setVagasToDraft(plano.usuarioId);
       await this.logEvent({ usuarioId: plano.usuarioId, empresaPlanoId: plano.id, tipo: 'RECONCILE_CANCEL', status: 'CANCELADO' });
       if (mercadopagoConfig.settings.emailsEnabled) {
-        const usuario = await prisma.usuario.findUnique({ where: { id: plano.usuarioId }, select: { email: true, nomeCompleto: true } });
+        const usuario = await prisma.usuarios.findUnique({ where: { id: plano.usuarioId }, select: { email: true, nomeCompleto: true } });
         if (usuario?.email) {
           const emailService = new EmailService();
           await emailService.sendGeneric(

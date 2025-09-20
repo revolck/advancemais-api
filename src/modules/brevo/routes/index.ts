@@ -215,7 +215,7 @@ router.get('/status/:email', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), asy
       });
     }
 
-    const usuario = await prisma.usuario.findUnique({
+    const usuario = await prisma.usuarios.findUnique({
       where: { email: email.toLowerCase().trim() },
       select: {
         id: true,

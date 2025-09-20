@@ -4,7 +4,7 @@ import { mercadopagoConfig, serverConfig } from '@/config/env';
 import { PreApproval, PreApprovalPlan, Payment, Preference } from 'mercadopago';
 import crypto from 'crypto';
 import { clientesService } from '@/modules/empresas/clientes/services/clientes.service';
-import { METODO_PAGAMENTO, MODELO_PAGAMENTO, STATUS_PAGAMENTO, StatusVaga, PlanoParceiro } from '@prisma/client';
+import { METODO_PAGAMENTO, MODELO_PAGAMENTO, STATUS_PAGAMENTO, StatusDeVagas, TiposDePlanos } from '@prisma/client';
 import type { PlanoEmpresarial } from '@prisma/client';
 import { EmailService } from '@/modules/brevo/services/email-service';
 import type { StartCheckoutInput } from '@/modules/mercadopago/assinaturas/validators/assinaturas.schema';
@@ -20,7 +20,7 @@ type PlanoSnapshot = {
   id: string;
   usuarioId: string;
   planoEmpresarialId: string;
-  tipo: PlanoParceiro;
+  tipo: TiposDePlanos;
   inicio: Date | null;
   fim: Date | null;
   ativo: boolean;
@@ -99,7 +99,7 @@ async function createOrUpdateCheckoutEmpresasPlano(params: {
   const data = {
     usuarioId: params.usuarioId,
     planoEmpresarialId: params.planoEmpresarialId,
-    tipo: PlanoParceiro.ASSINATURA_MENSAL,
+    tipo: TiposDePlanos.ASSINATURA_MENSAL,
     observacao: params.observacao ?? 'Aguardando confirmação de pagamento (Mercado Pago)',
     modeloPagamento: params.modeloPagamento,
     metodoPagamento: params.metodoPagamento,
@@ -219,8 +219,8 @@ function normalizeMercadoPagoError(error: unknown): { message: string; payload?:
 
 async function setVagasToDraft(usuarioId: string) {
   await prisma.empresasVagas.updateMany({
-    where: { usuarioId, status: { in: [StatusVaga.PUBLICADO, StatusVaga.EM_ANALISE] } },
-    data: { status: StatusVaga.RASCUNHO },
+    where: { usuarioId, status: { in: [StatusDeVagas.PUBLICADO, StatusDeVagas.EM_ANALISE] } },
+    data: { status: StatusDeVagas.RASCUNHO },
   });
 }
 
@@ -303,7 +303,7 @@ export const assinaturasService = {
         id: externalRef,
         usuarioId: checkoutLog.usuarioId,
         planoEmpresarialId,
-        tipo: PlanoParceiro.ASSINATURA_MENSAL,
+        tipo: TiposDePlanos.ASSINATURA_MENSAL,
         modeloPagamento,
         metodoPagamento: metodoPagamento ?? null,
         statusPagamento: STATUS_PAGAMENTO.PENDENTE,
@@ -428,7 +428,7 @@ export const assinaturasService = {
       id: checkoutId,
       usuarioId: params.usuarioId,
       planoEmpresarialId: params.planoEmpresarialId,
-      tipo: PlanoParceiro.ASSINATURA_MENSAL,
+      tipo: TiposDePlanos.ASSINATURA_MENSAL,
       inicio: null,
       fim: null,
       ativo: false,

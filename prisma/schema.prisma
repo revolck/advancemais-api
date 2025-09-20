@@ -78,14 +78,14 @@ enum ModalidadesDeVagas {
   HIBRIDO
 }
 
-enum StatusVaga {
+enum StatusDeVagas {
   RASCUNHO
   EM_ANALISE
   PUBLICADO
   EXPIRADO
 }
 
-enum PlanoParceiro {
+enum TiposDePlanos {
   SETE_DIAS         @map("7_dias")
   QUINZE_DIAS       @map("15_dias")
   TRINTA_DIAS       @map("30_dias")
@@ -113,7 +113,7 @@ model EmpresasVagas {
   inscricoesAte    DateTime?
   inseridaEm       DateTime       @default(now())
   atualizadoEm     DateTime       @updatedAt
-  status           StatusVaga     @default(RASCUNHO)
+  status           StatusDeVagas @default(RASCUNHO)
 
   empresa Usuarios @relation("UsuarioVagas", fields: [usuarioId], references: [id], onDelete: Cascade)
 
@@ -124,7 +124,7 @@ model EmpresasPlano {
   id                 String        @id @default(uuid())
   usuarioId          String
   planoEmpresarialId String
-  tipo               PlanoParceiro
+  tipo               TiposDePlanos
   inicio             DateTime?
   fim                DateTime?
   ativo              Boolean       @default(false)

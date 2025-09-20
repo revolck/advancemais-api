@@ -4,7 +4,7 @@ import { prisma } from '../../../config/prisma';
 import { invalidateCacheByPrefix } from '../../../utils/cache';
 import { invalidateUserCache } from '../utils/cache';
 import { Prisma } from '@prisma/client';
-import { TiposDeUsuarios, Role } from '../enums';
+import { TiposDeUsuarios, Roles } from '../enums';
 import {
   validarCPF,
   validarCNPJ,
@@ -122,11 +122,11 @@ export const criarUsuario = async (req: Request, res: Response, next: NextFuncti
 
     // Normaliza role: se inválida ou não fornecida, define padrão
     const normalizedRole =
-      role && Object.values(Role).includes(role)
+      role && Object.values(Roles).includes(role)
         ? role
         : tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
-          ? Role.EMPRESA
-          : Role.ALUNO_CANDIDATO;
+          ? Roles.EMPRESA
+          : Roles.ALUNO_CANDIDATO;
 
     // Processa dados específicos por tipo de usuário
     const processedData = await processUserTypeSpecificData(dadosUsuario, correlationId);
@@ -476,7 +476,7 @@ function buildUserDataForDatabase(params: {
   senha: string;
   telefone: string;
   tipoUsuario: TiposDeUsuarios;
-  role: Role;
+  role: Roles;
   aceitarTermos: boolean;
   supabaseId: string;
   cpfLimpo?: string;

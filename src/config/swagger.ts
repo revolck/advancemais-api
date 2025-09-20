@@ -192,6 +192,28 @@ const options: Options = {
           example: 'PESSOA_FISICA',
           description: 'Enum TiposDeUsuarios utilizado para classificar pessoas físicas e jurídicas.',
         },
+        Roles: {
+          type: 'string',
+          enum: [
+            'ADMIN',
+            'MODERADOR',
+            'FINANCEIRO',
+            'PROFESSOR',
+            'EMPRESA',
+            'PEDAGOGICO',
+            'RECRUTADOR',
+            'PSICOLOGO',
+            'ALUNO_CANDIDATO',
+          ],
+          example: 'ADMIN',
+          description: 'Enum Roles que define os perfis e permissões de acesso da plataforma.',
+        },
+        TiposDeEmails: {
+          type: 'string',
+          enum: ['BOAS_VINDAS', 'RECUPERACAO_SENHA', 'VERIFICACAO_EMAIL', 'NOTIFICACAO_SISTEMA'],
+          example: 'BOAS_VINDAS',
+          description: 'Enum TiposDeEmails utilizado nos logs transacionais de envio de email.',
+        },
         WebsiteSlidersOrientations: {
           type: 'string',
           enum: ['DESKTOP', 'TABLET_MOBILE'],
@@ -505,7 +527,7 @@ const options: Options = {
             email: { type: 'string', example: 'joao@example.com' },
             nomeCompleto: { type: 'string', example: 'João da Silva' },
             role: {
-              type: 'string',
+              allOf: [{ $ref: '#/components/schemas/Roles' }],
               description: 'Role do usuário',
               example: 'ADMIN',
             },
@@ -4599,7 +4621,10 @@ const options: Options = {
             id: { type: 'string', example: 'user-uuid' },
             email: { type: 'string', example: 'user@example.com' },
             nomeCompleto: { type: 'string', example: 'João da Silva' },
-            role: { type: 'string', example: 'ALUNO' },
+            role: {
+              allOf: [{ $ref: '#/components/schemas/Roles' }],
+              example: 'ALUNO_CANDIDATO',
+            },
             status: { type: 'string', example: 'ATIVO' },
             tipoUsuario: {
               allOf: [{ $ref: '#/components/schemas/TiposDeUsuarios' }],
@@ -4628,10 +4653,15 @@ const options: Options = {
             email: { type: 'string', example: 'candidato@example.com' },
             nomeCompleto: { type: 'string', example: 'João da Silva' },
             role: {
-              type: 'string',
-              enum: ['ALUNO_CANDIDATO'],
-              example: 'ALUNO_CANDIDATO',
-              description: 'Role atribuído automaticamente aos perfis de candidato',
+              allOf: [
+                { $ref: '#/components/schemas/Roles' },
+                {
+                  type: 'string',
+                  enum: ['ALUNO_CANDIDATO'],
+                  example: 'ALUNO_CANDIDATO',
+                  description: 'Role atribuído automaticamente aos perfis de candidato',
+                },
+              ],
             },
             status: {
               type: 'string',
@@ -4868,7 +4898,10 @@ const options: Options = {
         AdminRoleUpdateRequest: {
           type: 'object',
           properties: {
-            role: { type: 'string', example: 'MODERADOR' },
+            role: {
+              allOf: [{ $ref: '#/components/schemas/Roles' }],
+              example: 'MODERADOR',
+            },
             motivo: { type: 'string', example: 'Promoção' },
           },
           required: ['role'],

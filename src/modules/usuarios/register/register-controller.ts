@@ -20,6 +20,14 @@ import {
   type RegisterPessoaFisicaInput,
   type RegisterPessoaJuridicaInput,
 } from '../validators/auth.schema';
+import {
+  buildSocialLinksCreateData,
+  extractSocialLinksFromPayload,
+  mapSocialLinks,
+  sanitizeSocialLinks,
+  usuarioRedesSociaisSelect,
+  type UsuarioSocialLinksInput,
+} from '../utils/social-links';
 
 /**
  * Controller para criação de novos usuários
@@ -53,6 +61,7 @@ const createCorrelationLogger = (correlationId: string, action: string) =>
     action,
     correlationId,
   });
+
 
 const generateCodePrefix = (): string => {
   // Letras sem caracteres ambíguos para melhor legibilidade
@@ -163,6 +172,11 @@ export const criarUsuario = async (req: Request, res: Response, next: NextFuncti
     log.info('🔐 Gerando hash da senha');
     const senhaHash = await bcrypt.hash(senha, 12);
 
+    const socialLinksInput = extractSocialLinksFromPayload(
+      dadosUsuario as unknown as Record<string, unknown>,
+      'redesSociais',
+    );
+
     // Prepara dados para inserção no banco
     const userData = buildUserDataForDatabase({
       nomeCompleto,
@@ -177,6 +191,7 @@ export const criarUsuario = async (req: Request, res: Response, next: NextFuncti
       cnpjLimpo: processedData.cnpjLimpo,
       dataNascimento: processedData.dataNascimento,
       generoValidado: processedData.generoValidado,
+      socialLinks: socialLinksInput,
     });
 
     // Cria usuário dentro de transação
@@ -209,6 +224,7 @@ export const criarUsuario = async (req: Request, res: Response, next: NextFuncti
         status: usuario.status,
         criadoEm: usuario.criadoEm,
         codUsuario: usuario.codUsuario,
+        socialLinks: mapSocialLinks(usuario.redesSociais),
       },
       // Metadados para debugging
       correlationId,
@@ -485,10 +501,9 @@ function buildUserDataForDatabase(params: {
   generoValidado?: string;
   avatarUrl?: string | null;
   descricao?: string | null;
-  instagram?: string | null;
-  linkedin?: string | null;
+  socialLinks?: UsuarioSocialLinksInput;
 }) {
-  return {
+  const usuario = {
     nomeCompleto: params.nomeCompleto.trim(),
     email: params.email.toLowerCase().trim(),
     senha: params.senha,
@@ -503,15 +518,21 @@ function buildUserDataForDatabase(params: {
     ...(params.generoValidado && { genero: params.generoValidado }),
     ...(params.avatarUrl ? { avatarUrl: params.avatarUrl.trim() } : {}),
     ...(params.descricao ? { descricao: params.descricao.trim() } : {}),
-    ...(params.instagram ? { instagram: params.instagram.trim() } : {}),
-    ...(params.linkedin ? { linkedin: params.linkedin.trim() } : {}),
-  };
+  } satisfies Prisma.UsuariosCreateWithoutRedesSociaisInput;
+
+  const sanitizedSocialLinks = sanitizeSocialLinks(params.socialLinks);
+  const socialLinks = buildSocialLinksCreateData(sanitizedSocialLinks);
+
+  return { usuario, socialLinks };
 }
 
 /**
  * Cria usuário dentro de transação segura
  */
-async function createUserWithTransaction(userData: any, correlationId: string) {
+async function createUserWithTransaction(
+  userData: ReturnType<typeof buildUserDataForDatabase>,
+  correlationId: string,
+) {
   const log = createCorrelationLogger(correlationId, 'createUserWithTransaction');
   try {
     return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -533,8 +554,7 @@ async function createUserWithTransaction(userData: any, correlationId: string) {
         criadoEm: true,
         avatarUrl: true,
         descricao: true,
-        instagram: true,
-        linkedin: true,
+        ...usuarioRedesSociaisSelect,
         codUsuario: true,
       } as const;
 
@@ -542,13 +562,20 @@ async function createUserWithTransaction(userData: any, correlationId: string) {
 
       const usuario = await tx.usuarios.create({
         data: {
-          ...userData,
+          ...userData.usuario,
           codUsuario,
+          ...(userData.socialLinks
+            ? {
+                redesSociais: {
+                  create: userData.socialLinks,
+                },
+              }
+            : {}),
         },
         select: userSelect,
       });
 
-      if (userData.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA) {
+      if (userData.usuario.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA) {
         log.info({ userId: usuario.id }, '🏢 Usuário registrado como pessoa jurídica');
       }
 

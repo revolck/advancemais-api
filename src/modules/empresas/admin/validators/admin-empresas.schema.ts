@@ -17,6 +17,17 @@ const nullableUrl = z
   .url('Informe uma URL válida')
   .max(500, 'URL muito longa');
 
+const socialLinksSchema = z
+  .object({
+    instagram: nullableString.optional().nullable(),
+    linkedin: nullableString.optional().nullable(),
+    facebook: nullableString.optional().nullable(),
+    youtube: nullableString.optional().nullable(),
+    twitter: nullableString.optional().nullable(),
+    tiktok: nullableString.optional().nullable(),
+  })
+  .partial();
+
 const observacaoSchema = z
   .string()
   .trim()
@@ -77,6 +88,11 @@ export const adminEmpresasCreateSchema = z.object({
     .optional(),
   instagram: nullableString.optional(),
   linkedin: nullableString.optional(),
+  facebook: nullableString.optional(),
+  youtube: nullableString.optional(),
+  twitter: nullableString.optional(),
+  tiktok: nullableString.optional(),
+  socialLinks: socialLinksSchema.optional(),
   avatarUrl: nullableUrl.optional(),
   aceitarTermos: z.boolean().optional(),
   status: z.nativeEnum(Status).optional(),
@@ -96,6 +112,11 @@ export const adminEmpresasUpdateSchema = z
     descricao: z.string().trim().max(500, 'Descrição muito longa').optional().nullable(),
     instagram: nullableString.optional().nullable(),
     linkedin: nullableString.optional().nullable(),
+    facebook: nullableString.optional().nullable(),
+    youtube: nullableString.optional().nullable(),
+    twitter: nullableString.optional().nullable(),
+    tiktok: nullableString.optional().nullable(),
+    socialLinks: socialLinksSchema.optional().nullable(),
     avatarUrl: nullableUrl.optional().nullable(),
     status: z.nativeEnum(Status).optional(),
     plano: adminEmpresasPlanoUpdateSchema.optional().nullable(),

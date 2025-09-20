@@ -9,6 +9,8 @@ import { limparDocumento, validarCNPJ, validarCPF } from '@/modules/usuarios/uti
 import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
 import { formatZodErrors, loginSchema } from '../validators/auth.schema';
 import { attachEnderecoResumo, normalizeUsuarioEnderecos, UsuarioEnderecoDto } from '../utils/address';
+import { mapSocialLinks, usuarioRedesSociaisSelect } from '../utils/social-links';
+import type { UsuarioSocialLinks } from '../utils/types';
 
 /**
  * Controllers para autenticação e gestão de usuários
@@ -61,10 +63,9 @@ interface UsuarioPerfil {
   estado: string | null;
   avatarUrl: string | null;
   descricao: string | null;
-  instagram: string | null;
-  linkedin: string | null;
   codUsuario: string;
   enderecos: UsuarioEnderecoDto[];
+  redesSociais: UsuarioSocialLinks | null;
 }
 
 const USER_PROFILE_CACHE_TTL = 300;
@@ -75,6 +76,7 @@ const reviveUsuario = (usuario: UsuarioPerfil): UsuarioPerfil => {
 
   return {
     ...usuario,
+    redesSociais: mapSocialLinks(usuario.redesSociais),
     criadoEm: new Date(usuario.criadoEm),
     atualizadoEm: new Date(usuario.atualizadoEm),
     emailVerificadoEm: usuario.emailVerificadoEm ? new Date(usuario.emailVerificadoEm) : null,
@@ -85,6 +87,7 @@ const reviveUsuario = (usuario: UsuarioPerfil): UsuarioPerfil => {
     estado: principal?.estado ?? null,
   };
 };
+
 
 const buildProfileStats = (usuario: UsuarioPerfil) => ({
   accountAge: Math.floor((Date.now() - usuario.criadoEm.getTime()) / (1000 * 60 * 60 * 24)),
@@ -172,8 +175,7 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
         criadoEm: true,
         avatarUrl: true,
         descricao: true,
-        instagram: true,
-        linkedin: true,
+        ...usuarioRedesSociaisSelect,
         codUsuario: true,
         enderecos: {
           orderBy: { criadoEm: 'asc' },
@@ -295,6 +297,8 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
     );
 
     // Prepara dados de resposta (sem informações sensíveis)
+    const socialLinks = mapSocialLinks(usuario.redesSociais);
+
     const responseData = {
       id: usuario.id,
       email: usuario.email,
@@ -310,8 +314,7 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
       estado: usuario.estado,
       avatarUrl: usuario.avatarUrl,
       descricao: usuario.descricao,
-      instagram: usuario.instagram,
-      linkedin: usuario.linkedin,
+      socialLinks,
       enderecos: usuario.enderecos,
     };
 
@@ -440,8 +443,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
         codUsuario: true,
         avatarUrl: true,
         descricao: true,
-        instagram: true,
-        linkedin: true,
+        ...usuarioRedesSociaisSelect,
         emailVerificado: true,
         ultimoLogin: true,
         enderecos: {
@@ -536,6 +538,8 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
     await invalidateUserCache(usuario);
 
     // Prepara dados de resposta
+    const socialLinks = mapSocialLinks(usuario.redesSociais);
+
     const responseData = {
       id: usuario.id,
       email: usuario.email,
@@ -550,8 +554,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       estado: usuario.estado,
       avatarUrl: usuario.avatarUrl,
       descricao: usuario.descricao,
-      instagram: usuario.instagram,
-      linkedin: usuario.linkedin,
+      socialLinks,
       enderecos: usuario.enderecos,
     };
 
@@ -639,8 +642,7 @@ export const obterPerfil = async (req: Request, res: Response, next: NextFunctio
         atualizadoEm: true,
         avatarUrl: true,
         descricao: true,
-        instagram: true,
-        linkedin: true,
+        ...usuarioRedesSociaisSelect,
         codUsuario: true,
         enderecos: {
           orderBy: { criadoEm: 'asc' },

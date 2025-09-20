@@ -10,6 +10,7 @@ import {
 
 import { prisma } from '@/config/prisma';
 import { attachEnderecoResumo } from '@/modules/usuarios/utils/address';
+import { mapSocialLinks, usuarioRedesSociaisSelect } from '@/modules/usuarios/utils/social-links';
 import { clientesService } from '@/modules/empresas/clientes/services/clientes.service';
 import {
   EmpresaSemPlanoAtivoError,
@@ -49,8 +50,7 @@ const includeEmpresa = {
         nomeCompleto: true,
         avatarUrl: true,
         descricao: true,
-        instagram: true,
-        linkedin: true,
+        ...usuarioRedesSociaisSelect,
         codUsuario: true,
         role: true,
         tipoUsuario: true,
@@ -219,8 +219,7 @@ const transformVaga = (vaga: VagaWithEmpresa) => {
         cidade: empresaUsuario.cidade,
         estado: empresaUsuario.estado,
         descricao: displayDescription,
-        instagram: vaga.modoAnonimo ? null : empresaUsuario.instagram,
-        linkedin: vaga.modoAnonimo ? null : empresaUsuario.linkedin,
+        socialLinks: vaga.modoAnonimo ? null : mapSocialLinks(empresaUsuario.redesSociais),
         codUsuario: empresaUsuario.codUsuario,
         enderecos: empresaUsuario.enderecos,
       }

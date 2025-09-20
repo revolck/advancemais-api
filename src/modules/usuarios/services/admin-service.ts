@@ -5,7 +5,7 @@
  * @author Sistema Advance+
  * @version 3.0.0
  */
-import { Prisma, Role, Status, TipoUsuario } from '@prisma/client';
+import { Prisma, Role, Status, TiposDeUsuarios } from '@prisma/client';
 import { z } from 'zod';
 
 import { prisma } from '@/config/prisma';
@@ -43,8 +43,8 @@ export class AdminService {
     if (!tipoUsuario) return undefined;
 
     const normalized = tipoUsuario.trim().toUpperCase();
-    if (normalized in TipoUsuario) {
-      return TipoUsuario[normalized as keyof typeof TipoUsuario];
+    if (normalized in TiposDeUsuarios) {
+      return TiposDeUsuarios[normalized as keyof typeof TiposDeUsuarios];
     }
 
     return undefined;

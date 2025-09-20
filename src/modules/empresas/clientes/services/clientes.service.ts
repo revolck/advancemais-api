@@ -1,4 +1,4 @@
-import { TiposDePlanos, Prisma, TipoUsuario } from '@prisma/client';
+import { TiposDePlanos, Prisma, TiposDeUsuarios } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { attachEnderecoResumo } from '@/modules/usuarios/utils/address';
@@ -69,7 +69,7 @@ const ensureUsuarioEmpresa = async (usuarioId: string) => {
     select: { tipoUsuario: true },
   });
 
-  if (!usuario || usuario.tipoUsuario !== TipoUsuario.PESSOA_JURIDICA) {
+  if (!usuario || usuario.tipoUsuario !== TiposDeUsuarios.PESSOA_JURIDICA) {
     throw Object.assign(new Error('Usuário informado não é uma empresa válida'), {
       code: 'USUARIO_NAO_EMPRESA',
     });
@@ -83,7 +83,9 @@ const transformarPlano = (plano: EmpresasPlanoWithRelations) => {
     plano.fim && plano.fim > now ? Math.ceil((plano.fim.getTime() - now.getTime()) / 86400000) : null;
 
   const empresaUsuarioRaw =
-    plano.empresa && plano.empresa.tipoUsuario === TipoUsuario.PESSOA_JURIDICA ? plano.empresa : null;
+    plano.empresa && plano.empresa.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
+      ? plano.empresa
+      : null;
   const empresaUsuario = empresaUsuarioRaw ? attachEnderecoResumo(empresaUsuarioRaw)! : null;
 
   const empresa = empresaUsuario

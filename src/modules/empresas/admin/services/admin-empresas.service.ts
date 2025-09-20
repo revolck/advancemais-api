@@ -10,7 +10,7 @@ import {
   Status,
   StatusDeVagas,
   RegimesDeTrabalhos,
-  TipoUsuario,
+  TiposDeUsuarios,
 } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
@@ -453,7 +453,7 @@ const ensureEmpresaExiste = async (db: PrismaUsuarioClient, id: string) => {
     select: { id: true, tipoUsuario: true },
   });
 
-  if (!empresa || empresa.tipoUsuario !== TipoUsuario.PESSOA_JURIDICA) {
+  if (!empresa || empresa.tipoUsuario !== TiposDeUsuarios.PESSOA_JURIDICA) {
     throw Object.assign(new Error('Empresa não encontrada'), { code: 'EMPRESA_NOT_FOUND' });
   }
 };
@@ -574,7 +574,7 @@ export const adminEmpresasService = {
           senha: senhaHash,
           aceitarTermos,
           supabaseId: sanitizeSupabaseId(input.supabaseId),
-          tipoUsuario: TipoUsuario.PESSOA_JURIDICA,
+          tipoUsuario: TiposDeUsuarios.PESSOA_JURIDICA,
           role: Role.EMPRESA,
           status,
           codUsuario,
@@ -677,7 +677,7 @@ export const adminEmpresasService = {
 
   list: async ({ page, pageSize, search }: AdminEmpresasListQuery) => {
     const where: Prisma.UsuariosWhereInput = {
-      tipoUsuario: TipoUsuario.PESSOA_JURIDICA,
+      tipoUsuario: TiposDeUsuarios.PESSOA_JURIDICA,
       ...buildSearchFilter(search),
     };
 
@@ -738,7 +738,7 @@ export const adminEmpresasService = {
       select: usuarioDetailSelect,
     });
 
-    if (!empresaRecord || empresaRecord.tipoUsuario !== TipoUsuario.PESSOA_JURIDICA) {
+    if (!empresaRecord || empresaRecord.tipoUsuario !== TiposDeUsuarios.PESSOA_JURIDICA) {
       return null;
     }
 

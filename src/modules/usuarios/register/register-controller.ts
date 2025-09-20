@@ -4,7 +4,7 @@ import { prisma } from '../../../config/prisma';
 import { invalidateCacheByPrefix } from '../../../utils/cache';
 import { invalidateUserCache } from '../utils/cache';
 import { Prisma } from '@prisma/client';
-import { TipoUsuario, Role } from '../enums';
+import { TiposDeUsuarios, Role } from '../enums';
 import {
   validarCPF,
   validarCNPJ,
@@ -124,7 +124,7 @@ export const criarUsuario = async (req: Request, res: Response, next: NextFuncti
     const normalizedRole =
       role && Object.values(Role).includes(role)
         ? role
-        : tipoUsuario === TipoUsuario.PESSOA_JURIDICA
+        : tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
           ? Role.EMPRESA
           : Role.ALUNO_CANDIDATO;
 
@@ -227,7 +227,7 @@ export const criarUsuario = async (req: Request, res: Response, next: NextFuncti
     );
 
     // Resposta de sucesso
-    const userTypeLabel = tipoUsuario === TipoUsuario.PESSOA_FISICA ? 'Pessoa física' : 'Empresa';
+    const userTypeLabel = tipoUsuario === TiposDeUsuarios.PESSOA_FISICA ? 'Pessoa física' : 'Empresa';
 
     res.status(201).json({
       success: true,
@@ -283,7 +283,7 @@ async function processUserTypeSpecificData(
   try {
     const { tipoUsuario } = dadosUsuario;
 
-    if (tipoUsuario === TipoUsuario.PESSOA_FISICA) {
+    if (tipoUsuario === TiposDeUsuarios.PESSOA_FISICA) {
       const dadosPF = dadosUsuario as CriarPessoaFisicaData;
 
       // Validações específicas para Pessoa Física
@@ -336,7 +336,7 @@ async function processUserTypeSpecificData(
         dataNascimento,
         generoValidado,
       };
-    } else if (tipoUsuario === TipoUsuario.PESSOA_JURIDICA) {
+    } else if (tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA) {
       const dadosPJ = dadosUsuario as CriarPessoaJuridicaData;
 
       // Validações específicas para Pessoa Jurídica
@@ -475,7 +475,7 @@ function buildUserDataForDatabase(params: {
   email: string;
   senha: string;
   telefone: string;
-  tipoUsuario: TipoUsuario;
+  tipoUsuario: TiposDeUsuarios;
   role: Role;
   aceitarTermos: boolean;
   supabaseId: string;
@@ -548,7 +548,7 @@ async function createUserWithTransaction(userData: any, correlationId: string) {
         select: userSelect,
       });
 
-      if (userData.tipoUsuario === TipoUsuario.PESSOA_JURIDICA) {
+      if (userData.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA) {
         log.info({ userId: usuario.id }, '🏢 Usuário registrado como pessoa jurídica');
       }
 

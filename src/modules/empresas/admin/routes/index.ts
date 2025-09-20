@@ -1,10 +1,11 @@
 import { Router } from 'express';
 
 import { supabaseAuthMiddleware } from '@/modules/usuarios/auth';
+import { Roles } from '@/modules/usuarios/enums/Roles';
 import { AdminEmpresasController } from '@/modules/empresas/admin/controllers/admin-empresas.controller';
 
 const router = Router();
-const adminRoles = ['ADMIN', 'MODERADOR'];
+const adminRoles = [Roles.ADMIN, Roles.MODERADOR];
 
 /**
  * @openapi

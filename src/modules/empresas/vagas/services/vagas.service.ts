@@ -5,7 +5,7 @@ import {
   Prisma,
   RegimesDeTrabalhos,
   StatusDeVagas,
-  TipoUsuario,
+  TiposDeUsuarios,
 } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
@@ -195,7 +195,9 @@ const transformVaga = (vaga: VagaWithEmpresa) => {
   if (!vaga) return null;
 
   const empresaUsuarioRaw =
-    vaga.empresa && vaga.empresa.tipoUsuario === TipoUsuario.PESSOA_JURIDICA ? vaga.empresa : null;
+    vaga.empresa && vaga.empresa.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
+      ? vaga.empresa
+      : null;
   const empresaUsuario = empresaUsuarioRaw ? attachEnderecoResumo(empresaUsuarioRaw)! : null;
 
   const displayName = vaga.modoAnonimo
@@ -240,7 +242,7 @@ const ensurePlanoAtivoParaUsuario = async (usuarioId: string) => {
     select: { tipoUsuario: true },
   });
 
-  if (!usuarioEmpresa || usuarioEmpresa.tipoUsuario !== TipoUsuario.PESSOA_JURIDICA) {
+  if (!usuarioEmpresa || usuarioEmpresa.tipoUsuario !== TiposDeUsuarios.PESSOA_JURIDICA) {
     throw new UsuarioNaoEmpresaError();
   }
 

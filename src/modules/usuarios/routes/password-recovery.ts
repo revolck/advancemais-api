@@ -15,12 +15,15 @@ const passwordRecoveryController = new PasswordRecoveryController();
  * Solicita recuperação de senha
  * POST /recuperar-senha
  */
-/**
- * @openapi
- * /api/v1/usuarios/recuperar-senha:
- *   post:
- *     summary: Solicitar recuperação de senha por email, CPF ou CNPJ
- *     tags: [Usuários]
+ /**
+  * @openapi
+  * /api/v1/usuarios/recuperar-senha:
+  *   post:
+  *     summary: Solicitar recuperação de senha por email, CPF ou CNPJ
+  *     description: |
+  *       Inicia o fluxo de recuperação de senha e registra tentativas no recurso `UsuarioRecuperacaoSenha`.
+  *       O token é enviado por e-mail e expira conforme a configuração `passwordRecovery.tokenExpirationMinutes`.
+  *     tags: [Usuários]
  *     requestBody:
  *       required: true
  *       content:
@@ -127,12 +130,14 @@ router.post('/', passwordRecoveryController.solicitarRecuperacao);
  * Valida token de recuperação - ROTA CORRIGIDA
  * GET /recuperar-senha/validar/:token
  */
-/**
- * @openapi
- * /api/v1/usuarios/recuperar-senha/validar/{token}:
- *   get:
- *     summary: Validar token de recuperação
- *     tags: [Usuários]
+  /**
+   * @openapi
+   * /api/v1/usuarios/recuperar-senha/validar/{token}:
+   *   get:
+   *     summary: Validar token de recuperação
+   *     description: |
+   *       Consulta a entidade `UsuarioRecuperacaoSenha` para confirmar se o token ainda é válido e não expirou.
+   *     tags: [Usuários]
  *     parameters:
  *       - in: path
  *         name: token
@@ -192,12 +197,14 @@ router.get('/validar/:token([a-fA-F0-9]{64})', passwordRecoveryController.valida
  * Redefine senha com token
  * POST /recuperar-senha/redefinir
  */
-/**
- * @openapi
- * /api/v1/usuarios/recuperar-senha/redefinir:
- *   post:
- *     summary: Redefinir senha utilizando token
- *     tags: [Usuários]
+  /**
+   * @openapi
+   * /api/v1/usuarios/recuperar-senha/redefinir:
+   *   post:
+   *     summary: Redefinir senha utilizando token
+   *     description: |
+   *       Consome o token persistido em `UsuarioRecuperacaoSenha`, atualiza a senha do usuário e limpa o estado de recuperação.
+   *     tags: [Usuários]
  *     requestBody:
  *       required: true
  *       content:

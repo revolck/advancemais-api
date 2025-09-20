@@ -141,8 +141,14 @@ export class PasswordRecoveryController {
           id: true,
           email: true,
           nomeCompleto: true,
-          tentativasRecuperacao: true,
-          ultimaTentativaRecuperacao: true,
+          recuperacaoSenha: {
+            select: {
+              tokenRecuperacao: true,
+              tokenRecuperacaoExp: true,
+              tentativasRecuperacao: true,
+              ultimaTentativaRecuperacao: true,
+            },
+          },
         },
       });
 
@@ -157,12 +163,14 @@ export class PasswordRecoveryController {
       const cooldownMinutes = brevoConfig.passwordRecovery.cooldownMinutes;
       const maxAttempts = brevoConfig.passwordRecovery.maxAttempts;
 
-      if (usuario.ultimaTentativaRecuperacao) {
+      const recuperacao = usuario.recuperacaoSenha;
+
+      if (recuperacao?.ultimaTentativaRecuperacao) {
         const tempoCooldown = new Date(
-          usuario.ultimaTentativaRecuperacao.getTime() + cooldownMinutes * 60000,
+          recuperacao.ultimaTentativaRecuperacao.getTime() + cooldownMinutes * 60000,
         );
 
-        if (agora < tempoCooldown && usuario.tentativasRecuperacao >= maxAttempts) {
+        if (agora < tempoCooldown && (recuperacao.tentativasRecuperacao ?? 0) >= maxAttempts) {
           const minutosRestantes = Math.ceil((tempoCooldown.getTime() - agora.getTime()) / 60000);
           return res.status(429).json({
             message: `Muitas tentativas de recuperação. Tente novamente em ${minutosRestantes} minutos`,
@@ -171,9 +179,13 @@ export class PasswordRecoveryController {
 
         // Reset do contador se passou do tempo de cooldown
         if (agora >= tempoCooldown) {
-          await prisma.usuarios.update({
-            where: { id: usuario.id },
-            data: {
+          await prisma.usuariosRecuperacaoSenha.upsert({
+            where: { usuarioId: usuario.id },
+            update: {
+              tentativasRecuperacao: 0,
+            },
+            create: {
+              usuarioId: usuario.id,
               tentativasRecuperacao: 0,
             },
           });
@@ -188,13 +200,20 @@ export class PasswordRecoveryController {
         agora.getTime() + brevoConfig.passwordRecovery.tokenExpirationMinutes * 60000,
       );
 
-      // Atualiza usuário com token e incrementa tentativas
-      await prisma.usuarios.update({
-        where: { id: usuario.id },
-        data: {
+      // Atualiza/Cria registro de recuperação com token e incrementa tentativas
+      await prisma.usuariosRecuperacaoSenha.upsert({
+        where: { usuarioId: usuario.id },
+        update: {
           tokenRecuperacao: token,
           tokenRecuperacaoExp: tokenExpiracao,
           tentativasRecuperacao: { increment: 1 },
+          ultimaTentativaRecuperacao: agora,
+        },
+        create: {
+          usuarioId: usuario.id,
+          tokenRecuperacao: token,
+          tokenRecuperacaoExp: tokenExpiracao,
+          tentativasRecuperacao: 1,
           ultimaTentativaRecuperacao: agora,
         },
       });
@@ -240,38 +259,44 @@ export class PasswordRecoveryController {
         });
       }
 
-      // Busca usuário pelo token
-      const usuario = await prisma.usuarios.findFirst({
+      // Busca registro de recuperação pelo token
+      const recuperacao = await prisma.usuariosRecuperacaoSenha.findFirst({
         where: {
           tokenRecuperacao: token,
-          status: 'ATIVO',
+          usuario: {
+            status: 'ATIVO',
+          },
         },
         select: {
-          id: true,
-          email: true,
-          nomeCompleto: true,
           tokenRecuperacaoExp: true,
+          usuario: {
+            select: {
+              id: true,
+              email: true,
+              nomeCompleto: true,
+            },
+          },
         },
       });
 
-      if (!usuario) {
+      if (!recuperacao || !recuperacao.usuario) {
         return res.status(400).json({
           message: 'Token inválido ou expirado',
         });
       }
 
       // Verifica se token não expirou
-      if (!usuario.tokenRecuperacaoExp || new Date() > usuario.tokenRecuperacaoExp) {
+      if (!recuperacao.tokenRecuperacaoExp || new Date() > recuperacao.tokenRecuperacaoExp) {
         // Remove token expirado
-        await prisma.usuarios.update({
-          where: { id: usuario.id },
+        await prisma.usuariosRecuperacaoSenha.update({
+          where: { usuarioId: recuperacao.usuario.id },
           data: {
             tokenRecuperacao: null,
             tokenRecuperacaoExp: null,
           },
         });
 
-        await invalidateUserCache(usuario);
+        await invalidateUserCache(recuperacao.usuario);
 
         return res.status(400).json({
           message: 'Token expirado. Solicite uma nova recuperação',
@@ -281,8 +306,8 @@ export class PasswordRecoveryController {
       res.json({
         message: 'Token válido',
         usuario: {
-          email: usuario.email,
-          nomeCompleto: usuario.nomeCompleto,
+          email: recuperacao.usuario.email,
+          nomeCompleto: recuperacao.usuario.nomeCompleto,
         },
       });
     } catch (error) {
@@ -327,38 +352,44 @@ export class PasswordRecoveryController {
         });
       }
 
-      // Busca usuário pelo token
-      const usuario = await prisma.usuarios.findFirst({
+      // Busca registro de recuperação pelo token
+      const recuperacao = await prisma.usuariosRecuperacaoSenha.findFirst({
         where: {
           tokenRecuperacao: token,
-          status: 'ATIVO',
+          usuario: {
+            status: 'ATIVO',
+          },
         },
         select: {
-          id: true,
-          email: true,
-          nomeCompleto: true,
           tokenRecuperacaoExp: true,
-          senha: true,
+          usuario: {
+            select: {
+              id: true,
+              email: true,
+              nomeCompleto: true,
+              senha: true,
+            },
+          },
         },
       });
 
-      if (!usuario) {
+      if (!recuperacao || !recuperacao.usuario) {
         return res.status(400).json({
           message: 'Token inválido ou expirado',
         });
       }
 
       // Verifica se token não expirou
-      if (!usuario.tokenRecuperacaoExp || new Date() > usuario.tokenRecuperacaoExp) {
-        await prisma.usuarios.update({
-          where: { id: usuario.id },
+      if (!recuperacao.tokenRecuperacaoExp || new Date() > recuperacao.tokenRecuperacaoExp) {
+        await prisma.usuariosRecuperacaoSenha.update({
+          where: { usuarioId: recuperacao.usuario.id },
           data: {
             tokenRecuperacao: null,
             tokenRecuperacaoExp: null,
           },
         });
 
-        await invalidateUserCache(usuario);
+        await invalidateUserCache(recuperacao.usuario);
 
         return res.status(400).json({
           message: 'Token expirado. Solicite uma nova recuperação',
@@ -366,7 +397,7 @@ export class PasswordRecoveryController {
       }
 
       // Verifica se a nova senha é diferente da atual
-      const senhaIgual = await bcrypt.compare(novaSenha, usuario.senha);
+      const senhaIgual = await bcrypt.compare(novaSenha, recuperacao.usuario.senha);
       if (senhaIgual) {
         return res.status(400).json({
           message: 'A nova senha deve ser diferente da senha atual',
@@ -377,19 +408,26 @@ export class PasswordRecoveryController {
       const novaSenhaHash = await bcrypt.hash(novaSenha, 12);
 
       // Atualiza senha e remove token
-      await prisma.usuarios.update({
-        where: { id: usuario.id },
-        data: {
-          senha: novaSenhaHash,
-          tokenRecuperacao: null,
-          tokenRecuperacaoExp: null,
-          tentativasRecuperacao: 0,
-          ultimaTentativaRecuperacao: null,
-          atualizadoEm: new Date(),
-        },
-      });
+      await prisma.$transaction([
+        prisma.usuarios.update({
+          where: { id: recuperacao.usuario.id },
+          data: {
+            senha: novaSenhaHash,
+            atualizadoEm: new Date(),
+          },
+        }),
+        prisma.usuariosRecuperacaoSenha.update({
+          where: { usuarioId: recuperacao.usuario.id },
+          data: {
+            tokenRecuperacao: null,
+            tokenRecuperacaoExp: null,
+            tentativasRecuperacao: 0,
+            ultimaTentativaRecuperacao: null,
+          },
+        }),
+      ]);
 
-      await invalidateUserCache(usuario);
+      await invalidateUserCache(recuperacao.usuario);
 
       res.json({
         message: 'Senha redefinida com sucesso',

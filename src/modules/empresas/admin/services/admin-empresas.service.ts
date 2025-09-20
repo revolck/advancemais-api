@@ -4,10 +4,12 @@ import {
   METODO_PAGAMENTO,
   MODELO_PAGAMENTO,
   STATUS_PAGAMENTO,
+  ModalidadesDeVagas,
   Prisma,
   Role,
   Status,
   StatusVaga,
+  RegimesDeTrabalhos,
   TipoUsuario,
 } from '@prisma/client';
 
@@ -221,8 +223,8 @@ type AdminEmpresaJobResumo = {
   atualizadoEm: Date;
   inscricoesAte: Date | null;
   modoAnonimo: boolean;
-  modalidade: string;
-  regimeDeTrabalho: string;
+  modalidade: ModalidadesDeVagas;
+  regimeDeTrabalho: RegimesDeTrabalhos;
   paraPcd: boolean;
 };
 

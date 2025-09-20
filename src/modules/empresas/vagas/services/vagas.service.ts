@@ -1,6 +1,12 @@
 import { randomUUID } from 'crypto';
 
-import { ModalidadeVaga, Prisma, RegimeTrabalho, StatusVaga, TipoUsuario } from '@prisma/client';
+import {
+  ModalidadesDeVagas,
+  Prisma,
+  RegimesDeTrabalhos,
+  StatusVaga,
+  TipoUsuario,
+} from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { attachEnderecoResumo } from '@/modules/usuarios/utils/address';
@@ -14,8 +20,8 @@ import {
 export type CreateVagaData = {
   usuarioId: string;
   modoAnonimo?: boolean;
-  regimeDeTrabalho: RegimeTrabalho;
-  modalidade: ModalidadeVaga;
+  regimeDeTrabalho: RegimesDeTrabalhos;
+  modalidade: ModalidadesDeVagas;
   titulo: string;
   paraPcd?: boolean;
   requisitos: string;

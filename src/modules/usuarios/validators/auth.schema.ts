@@ -1,5 +1,5 @@
 import { z, type ZodError } from 'zod';
-import { Role, Status, TiposDeUsuarios } from '../enums';
+import { Roles, Status, TiposDeUsuarios } from '../enums';
 
 export const loginSchema = z.object({
   documento: z
@@ -27,7 +27,7 @@ const baseRegisterSchema = z.object({
   supabaseId: z
     .string({ required_error: 'Supabase ID é obrigatório' })
     .min(1, 'Supabase ID é obrigatório'),
-  role: z.nativeEnum(Role).optional(),
+  role: z.nativeEnum(Roles).optional(),
 });
 
 const pessoaFisicaRegisterSchema = baseRegisterSchema.extend({
@@ -53,7 +53,7 @@ export const updateStatusSchema = z.object({
 });
 
 export const updateRoleSchema = z.object({
-  role: z.nativeEnum(Role, {
+  role: z.nativeEnum(Roles, {
     required_error: 'Role é obrigatória',
     invalid_type_error: 'Role inválida',
   }),

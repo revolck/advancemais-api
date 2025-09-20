@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { AssinaturasController } from '@/modules/mercadopago/assinaturas/controllers/assinaturas.controller';
 import { supabaseAuthMiddleware } from '@/modules/usuarios/auth';
+import { Roles } from '@/modules/usuarios/enums/Roles';
 
 const router = Router();
-const adminRoles = ['ADMIN', 'MODERADOR'];
-const empresaRoles = ['ADMIN', 'MODERADOR', 'EMPRESA', 'RECRUTADOR'];
-const empresaOnly = ['EMPRESA'];
+const adminRoles = [Roles.ADMIN, Roles.MODERADOR];
+const empresaRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.EMPRESA, Roles.RECRUTADOR];
+const empresaOnly = [Roles.EMPRESA];
 
 /**
  * @openapi

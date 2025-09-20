@@ -3009,7 +3009,7 @@ const options: Options = {
             },
           },
         },
-        PlanoEmpresarial: {
+        PlanosEmpresariais: {
           type: 'object',
           properties: {
             id: { type: 'string', example: 'plano-uuid' },
@@ -3054,7 +3054,7 @@ const options: Options = {
             },
           },
         },
-        PlanoEmpresarialCreateInput: {
+        PlanosEmpresariaisCreateInput: {
           type: 'object',
           required: ['icon', 'nome', 'descricao', 'valor', 'quantidadeVagas', 'vagaEmDestaque'],
           properties: {
@@ -3101,7 +3101,7 @@ const options: Options = {
             },
           },
         },
-        PlanoEmpresarialUpdateInput: {
+        PlanosEmpresariaisUpdateInput: {
           type: 'object',
           properties: {
             icon: { type: 'string', example: 'ph-shield-check' },
@@ -3139,7 +3139,7 @@ const options: Options = {
             },
           },
         },
-        PlanoEmpresarialLimitResponse: {
+        PlanosEmpresariaisLimitResponse: {
           type: 'object',
           properties: {
             success: { type: 'boolean', example: false },
@@ -3239,7 +3239,7 @@ const options: Options = {
               allOf: [{ $ref: '#/components/schemas/ClientePlanoEmpresa' }],
               nullable: true,
             },
-            plano: { $ref: '#/components/schemas/PlanoEmpresarial' },
+            plano: { $ref: '#/components/schemas/PlanosEmpresariais' },
           },
         },
         EmpresaClientePlanoCreateInput: {
@@ -3488,7 +3488,7 @@ const options: Options = {
               description: 'Indica se a empresa possui um banimento ativo no momento da consulta',
             },
             banimentoAtivo: {
-              allOf: [{ $ref: '#/components/schemas/AdminEmpresaBanimentoResumo' }],
+              allOf: [{ $ref: '#/components/schemas/AdminEmpresasEmBanimentosResumo' }],
               nullable: true,
             },
           },
@@ -3502,17 +3502,6 @@ const options: Options = {
             cnpj: '12345678000190',
             cidade: 'São Paulo',
             estado: 'SP',
-            enderecos: [
-              {
-                id: 'end-uuid',
-                logradouro: 'Av. Paulista',
-                numero: '1578',
-                bairro: 'Bela Vista',
-                cidade: 'São Paulo',
-                estado: 'SP',
-                cep: '01310-200',
-              },
-            ],
             enderecos: [
               {
                 id: 'end-uuid',
@@ -3916,7 +3905,7 @@ const options: Options = {
               nullable: true,
             },
             banimentoAtivo: {
-              allOf: [{ $ref: '#/components/schemas/AdminEmpresaBanimentoResumo' }],
+              allOf: [{ $ref: '#/components/schemas/AdminEmpresasEmBanimentosResumo' }],
               nullable: true,
             },
             vagas: {
@@ -4057,7 +4046,7 @@ const options: Options = {
             },
           },
         },
-        AdminEmpresaBanimentoResumo: {
+        AdminEmpresasEmBanimentosResumo: {
           type: 'object',
           description: 'Informações resumidas sobre um banimento aplicado à empresa',
           required: ['id', 'dias', 'inicio', 'fim', 'criadoEm'],
@@ -4169,7 +4158,7 @@ const options: Options = {
           properties: {
             data: {
               type: 'array',
-              items: { $ref: '#/components/schemas/AdminEmpresaBanimentoResumo' },
+              items: { $ref: '#/components/schemas/AdminEmpresasEmBanimentosResumo' },
             },
             pagination: { allOf: [{ $ref: '#/components/schemas/PaginationMeta' }] },
           },
@@ -4192,7 +4181,7 @@ const options: Options = {
             },
           },
         },
-        AdminEmpresaBanimentoCreate: {
+        AdminEmpresasEmBanimentosCreate: {
           type: 'object',
           required: ['dias'],
           properties: {
@@ -4210,11 +4199,11 @@ const options: Options = {
             },
           },
         },
-        AdminEmpresaBanimentoResponse: {
+        AdminEmpresasEmBanimentosResponse: {
           type: 'object',
           required: ['banimento'],
           properties: {
-            banimento: { $ref: '#/components/schemas/AdminEmpresaBanimentoResumo' },
+            banimento: { $ref: '#/components/schemas/AdminEmpresasEmBanimentosResumo' },
           },
           example: {
             banimento: {

@@ -194,7 +194,7 @@ router.post('/admin/remind-payment', supabaseAuthMiddleware(adminRoles), Assinat
  * /api/v1/mercadopago/assinaturas/admin/sync-plans:
  *   post:
  *     summary: (Admin) Sincronizar Planos Empresariais com PreApprovalPlan
- *     description: "Cria/garante um PreApprovalPlan no Mercado Pago para cada PlanoEmpresarial e salva o id (mpPreapprovalPlanId)."
+ *     description: "Cria/garante um PreApprovalPlan no Mercado Pago para cada PlanosEmpresariais e salva o id (mpPreapprovalPlanId)."
  *     tags: [MercadoPago - Assinaturas]
  *     security:
  *       - bearerAuth: []
@@ -209,7 +209,7 @@ router.post('/admin/sync-plans', supabaseAuthMiddleware(adminRoles), Assinaturas
  * /api/v1/mercadopago/assinaturas/admin/sync-plan:
  *   post:
  *     summary: (Admin) Sincronizar um plano empresarial com PreApprovalPlan
- *     description: "Cria/garante um PreApprovalPlan no Mercado Pago para o PlanoEmpresarial informado."
+ *     description: "Cria/garante um PreApprovalPlan no Mercado Pago para o PlanosEmpresariais informado."
  *     tags: [MercadoPago - Assinaturas]
  *     security:
  *       - bearerAuth: []

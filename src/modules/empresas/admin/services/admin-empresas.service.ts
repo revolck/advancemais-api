@@ -67,7 +67,7 @@ const banimentoSelect = {
   inicio: true,
   fim: true,
   criadoEm: true,
-} satisfies Prisma.EmpresaBanimentoSelect;
+} satisfies Prisma.EmpresasEmBanimentosSelect;
 
 const createUsuarioListSelect = () =>
   ({
@@ -152,7 +152,7 @@ const usuarioDetailSelect = {
 type UsuarioListSelect = ReturnType<typeof createUsuarioListSelect>;
 type UsuarioListResult = Prisma.UsuariosGetPayload<{ select: UsuarioListSelect }>;
 type PlanoResumoData = UsuarioListResult['planosContratados'][number];
-type BanimentoResumoData = Prisma.EmpresaBanimentoGetPayload<{ select: typeof banimentoSelect }>;
+type BanimentoResumoData = Prisma.EmpresasEmBanimentosGetPayload<{ select: typeof banimentoSelect }>;
 
 type AdminEmpresasPlanoResumo = {
   id: string;
@@ -188,10 +188,10 @@ type AdminEmpresaListItem = {
   vagasPublicadas: number;
   limiteVagasPlano: number | null;
   banida: boolean;
-  banimentoAtivo: AdminEmpresaBanimentoResumo | null;
+  banimentoAtivo: AdminEmpresasEmBanimentosResumo | null;
 };
 
-type AdminEmpresaBanimentoResumo = {
+type AdminEmpresasEmBanimentosResumo = {
   id: string;
   motivo: string | null;
   dias: number;
@@ -260,7 +260,7 @@ type AdminEmpresaDetail = {
     status: STATUS_PAGAMENTO | null;
     ultimoPagamentoEm: Date | null;
   };
-  banimentoAtivo: AdminEmpresaBanimentoResumo | null;
+  banimentoAtivo: AdminEmpresasEmBanimentosResumo | null;
 };
 
 const sanitizeOptionalValue = (value?: string | null) => {
@@ -445,7 +445,7 @@ const atualizarPlanoSemReset = async (
   });
 };
 
-type PrismaUsuarioClient = Pick<Prisma.TransactionClient, 'usuario'>;
+type PrismaUsuarioClient = Pick<Prisma.TransactionClient, 'usuarios'>;
 
 const ensureEmpresaExiste = async (db: PrismaUsuarioClient, id: string) => {
   const empresa = await db.usuarios.findUnique({
@@ -530,7 +530,9 @@ const mapPlanoResumo = (
   };
 };
 
-const mapBanimentoResumo = (banimento: BanimentoResumoData | null): AdminEmpresaBanimentoResumo | null => {
+const mapBanimentoResumo = (
+  banimento: BanimentoResumoData | null,
+): AdminEmpresasEmBanimentosResumo | null => {
   if (!banimento) {
     return null;
   }
@@ -749,7 +751,7 @@ export const adminEmpresasService = {
     const diasTeste = planoAtual ? getPlanoParceiroDuracao(planoAtual.tipo) : null;
     const ultimoPagamentoEm =
       planoAtual?.atualizadoEm ?? planoAtual?.inicio ?? planoAtual?.criadoEm ?? null;
-    const banimentoAtivoRegistro = await prisma.empresaBanimento.findFirst({
+    const banimentoAtivoRegistro = await prisma.empresasEmBanimentos.findFirst({
       where: {
         usuarioId: id,
         fim: { gt: new Date() },
@@ -806,16 +808,16 @@ export const adminEmpresasService = {
     });
     const planoIds = planosIds.map((plano) => plano.id);
 
-    const orFilters: Prisma.LogPagamentoWhereInput['OR'] = [{ usuarioId: id }];
+    const orFilters: Prisma.LogsPagamentosDeAssinaturasWhereInput['OR'] = [{ usuarioId: id }];
     if (planoIds.length > 0) {
       orFilters.push({ empresasPlanoId: { in: planoIds } });
     }
 
-    const where: Prisma.LogPagamentoWhereInput = { OR: orFilters };
+    const where: Prisma.LogsPagamentosDeAssinaturasWhereInput = { OR: orFilters };
 
     const [total, logs] = await prisma.$transaction([
-      prisma.logPagamento.count({ where }),
-      prisma.logPagamento.findMany({
+      prisma.logsPagamentosDeAssinaturas.count({ where }),
+      prisma.logsPagamentosDeAssinaturas.findMany({
         where,
         orderBy: { criadoEm: 'desc' },
         skip,
@@ -1008,7 +1010,7 @@ export const adminEmpresasService = {
         data: { status: Status.BANIDO },
       });
 
-      return tx.empresaBanimento.create({
+      return tx.empresasEmBanimentos.create({
         data: {
           usuarioId: empresaId,
           criadoPorId: adminId,
@@ -1030,8 +1032,8 @@ export const adminEmpresasService = {
     const skip = (page - 1) * pageSize;
 
     const [total, banimentos] = await prisma.$transaction([
-      prisma.empresaBanimento.count({ where: { usuarioId: empresaId } }),
-      prisma.empresaBanimento.findMany({
+      prisma.empresasEmBanimentos.count({ where: { usuarioId: empresaId } }),
+      prisma.empresasEmBanimentos.findMany({
         where: { usuarioId: empresaId },
         orderBy: { criadoEm: 'desc' },
         skip,
@@ -1041,7 +1043,9 @@ export const adminEmpresasService = {
     ]);
 
     return {
-      data: banimentos.map(mapBanimentoResumo).filter((item): item is AdminEmpresaBanimentoResumo => Boolean(item)),
+      data: banimentos
+        .map(mapBanimentoResumo)
+        .filter((item): item is AdminEmpresasEmBanimentosResumo => Boolean(item)),
       pagination: buildPagination(page, pageSize, total),
     };
   },

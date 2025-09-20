@@ -4,14 +4,14 @@ import { prisma } from '@/config/prisma';
 
 export const MAX_PLANOS_EMPRESARIAIS = 4;
 
-export class PlanoEmpresarialLimitError extends Error {
+export class PlanosEmpresariaisLimitError extends Error {
   constructor() {
     super(`Limite máximo de ${MAX_PLANOS_EMPRESARIAIS} planos empresariais atingido`);
-    this.name = 'PlanoEmpresarialLimitError';
+    this.name = 'PlanosEmpresariaisLimitError';
   }
 }
 
-type CreatePlanoEmpresarialData = {
+type CreatePlanosEmpresariaisData = {
   icon: string;
   nome: string;
   descricao: string;
@@ -22,9 +22,11 @@ type CreatePlanoEmpresarialData = {
   quantidadeVagasDestaque?: number | null;
 };
 
-type UpdatePlanoEmpresarialData = Partial<CreatePlanoEmpresarialData>;
+type UpdatePlanosEmpresariaisData = Partial<CreatePlanosEmpresariaisData>;
 
-const sanitizeCreateData = (data: CreatePlanoEmpresarialData): Prisma.PlanoEmpresarialUncheckedCreateInput => ({
+const sanitizeCreateData = (
+  data: CreatePlanosEmpresariaisData,
+): Prisma.PlanosEmpresariaisUncheckedCreateInput => ({
   icon: data.icon.trim(),
   nome: data.nome.trim(),
   descricao: data.descricao.trim(),
@@ -36,9 +38,9 @@ const sanitizeCreateData = (data: CreatePlanoEmpresarialData): Prisma.PlanoEmpre
 });
 
 const sanitizeUpdateData = (
-  data: UpdatePlanoEmpresarialData,
-): Prisma.PlanoEmpresarialUncheckedUpdateInput => {
-  const update: Prisma.PlanoEmpresarialUncheckedUpdateInput = {};
+  data: UpdatePlanosEmpresariaisData,
+): Prisma.PlanosEmpresariaisUncheckedUpdateInput => {
+  const update: Prisma.PlanosEmpresariaisUncheckedUpdateInput = {};
 
   if (data.icon !== undefined) {
     update.icon = data.icon.trim();
@@ -74,23 +76,23 @@ const sanitizeUpdateData = (
 
 export const planosEmpresariaisService = {
   list: () =>
-    prisma.planoEmpresarial.findMany({
+    prisma.planosEmpresariais.findMany({
       orderBy: { criadoEm: 'asc' },
     }),
 
-  get: (id: string) => prisma.planoEmpresarial.findUnique({ where: { id } }),
+  get: (id: string) => prisma.planosEmpresariais.findUnique({ where: { id } }),
 
-  create: async (data: CreatePlanoEmpresarialData) => {
-    const totalPlanos = await prisma.planoEmpresarial.count();
+  create: async (data: CreatePlanosEmpresariaisData) => {
+    const totalPlanos = await prisma.planosEmpresariais.count();
     if (totalPlanos >= MAX_PLANOS_EMPRESARIAIS) {
-      throw new PlanoEmpresarialLimitError();
+      throw new PlanosEmpresariaisLimitError();
     }
 
-    return prisma.planoEmpresarial.create({ data: sanitizeCreateData(data) });
+    return prisma.planosEmpresariais.create({ data: sanitizeCreateData(data) });
   },
 
-  update: (id: string, data: UpdatePlanoEmpresarialData) =>
-    prisma.planoEmpresarial.update({ where: { id }, data: sanitizeUpdateData(data) }),
+  update: (id: string, data: UpdatePlanosEmpresariaisData) =>
+    prisma.planosEmpresariais.update({ where: { id }, data: sanitizeUpdateData(data) }),
 
-  remove: (id: string) => prisma.planoEmpresarial.delete({ where: { id } }),
+  remove: (id: string) => prisma.planosEmpresariais.delete({ where: { id } }),
 };

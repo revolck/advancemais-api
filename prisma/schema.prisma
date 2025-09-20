@@ -52,8 +52,8 @@ model Usuarios {
   enderecos            UsuariosEnderecos[]
   vagasCriadas         EmpresasVagas[]    @relation("UsuarioVagas")
   planosContratados    EmpresasPlano[]    @relation("UsuarioPlanos")
-  banimentosRecebidos  EmpresaBanimento[] @relation("EmpresaBanimentosUsuario")
-  banimentosAplicados  EmpresaBanimento[] @relation("EmpresaBanimentosAdmin")
+  banimentosRecebidos  EmpresasEmBanimentos[] @relation("EmpresaBanimentosUsuario")
+  banimentosAplicados  EmpresasEmBanimentos[] @relation("EmpresaBanimentosAdmin")
 
   @@index([tokenRecuperacao])
   @@index([emailVerificationToken])
@@ -144,13 +144,13 @@ model EmpresasPlano {
   graceUntil       DateTime?
 
   empresa Usuarios         @relation("UsuarioPlanos", fields: [usuarioId], references: [id], onDelete: Cascade)
-  plano   PlanoEmpresarial @relation(fields: [planoEmpresarialId], references: [id])
+  plano   PlanosEmpresariais @relation(fields: [planoEmpresarialId], references: [id])
 
   @@index([usuarioId, ativo])
   @@index([planoEmpresarialId])
 }
 
-model LogPagamento {
+model LogsPagamentosDeAssinaturas {
   id              String   @id @default(uuid())
   usuarioId       String?
   empresasPlanoId String?
@@ -168,7 +168,7 @@ model LogPagamento {
   @@index([criadoEm])
 }
 
-model EmpresaBanimento {
+model EmpresasEmBanimentos {
   id          String   @id @default(uuid())
   usuarioId   String
   criadoPorId String
@@ -185,7 +185,7 @@ model EmpresaBanimento {
   @@index([fim])
 }
 
-model PlanoEmpresarial {
+model PlanosEmpresariais {
   id                      String   @id @default(uuid())
   icon                    String
   nome                    String

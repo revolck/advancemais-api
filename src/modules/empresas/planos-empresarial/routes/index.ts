@@ -8,7 +8,7 @@ const router = Router();
 
 /**
  * @openapi
- * /api/v1/empresas/planos-empresarial:
+ * /api/v1/empresas/planos-empresariais:
  *   get:
  *     summary: Listar planos empresariais disponíveis
  *     description: "Retorna todos os planos empresariais configurados, incluindo regras de publicação de vagas. A tabela está limitada a no máximo 4 registros. Endpoint público, não requer autenticação."
@@ -21,7 +21,7 @@ const router = Router();
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/PlanoEmpresarial'
+ *                 $ref: '#/components/schemas/PlanosEmpresariais'
  *       500:
  *         description: Erro interno do servidor
  *         content:
@@ -32,13 +32,13 @@ const router = Router();
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X GET "http://localhost:3000/api/v1/empresas/planos-empresarial"
+ *           curl -X GET "http://localhost:3000/api/v1/empresas/planos-empresariais"
  */
 router.get('/', publicCache, PlanosEmpresariaisController.list);
 
 /**
  * @openapi
- * /api/v1/empresas/planos-empresarial/{id}:
+ * /api/v1/empresas/planos-empresariais/{id}:
  *   get:
  *     summary: Obter plano empresarial por ID
  *     tags: [Empresas - Planos Empresariais]
@@ -54,7 +54,7 @@ router.get('/', publicCache, PlanosEmpresariaisController.list);
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/PlanoEmpresarial'
+ *               $ref: '#/components/schemas/PlanosEmpresariais'
  *       404:
  *         description: Plano não encontrado
  *         content:
@@ -71,13 +71,13 @@ router.get('/', publicCache, PlanosEmpresariaisController.list);
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X GET "http://localhost:3000/api/v1/empresas/planos-empresarial/{id}"
+ *           curl -X GET "http://localhost:3000/api/v1/empresas/planos-empresariais/{id}"
  */
 router.get('/:id', publicCache, PlanosEmpresariaisController.get);
 
 /**
  * @openapi
- * /api/v1/empresas/planos-empresarial:
+ * /api/v1/empresas/planos-empresariais:
  *   post:
  *     summary: Criar um novo plano empresarial
  *     description: "Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR). A criação respeita o limite máximo de 4 planos ativos e permite definir descontos percentuais e regras de publicação de vagas."
@@ -89,14 +89,14 @@ router.get('/:id', publicCache, PlanosEmpresariaisController.get);
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/PlanoEmpresarialCreateInput'
+ *             $ref: '#/components/schemas/PlanosEmpresariaisCreateInput'
  *     responses:
  *       201:
  *         description: Plano empresarial criado com sucesso
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/PlanoEmpresarial'
+ *               $ref: '#/components/schemas/PlanosEmpresariais'
  *       400:
  *         description: Dados inválidos
  *         content:
@@ -120,7 +120,7 @@ router.get('/:id', publicCache, PlanosEmpresariaisController.get);
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/PlanoEmpresarialLimitResponse'
+ *               $ref: '#/components/schemas/PlanosEmpresariaisLimitResponse'
  *       500:
  *         description: Erro interno do servidor
  *         content:
@@ -131,7 +131,7 @@ router.get('/:id', publicCache, PlanosEmpresariaisController.get);
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X POST "http://localhost:3000/api/v1/empresas/planos-empresarial" \
+ *           curl -X POST "http://localhost:3000/api/v1/empresas/planos-empresariais" \
  *            -H "Authorization: Bearer <TOKEN>" \
  *            -H "Content-Type: application/json" \
  *            -d '{
@@ -149,7 +149,7 @@ router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), PlanosEmpresari
 
 /**
  * @openapi
- * /api/v1/empresas/planos-empresarial/{id}:
+ * /api/v1/empresas/planos-empresariais/{id}:
  *   put:
  *     summary: Atualizar plano empresarial
  *     description: "Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR)."
@@ -167,14 +167,14 @@ router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), PlanosEmpresari
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/PlanoEmpresarialUpdateInput'
+ *             $ref: '#/components/schemas/PlanosEmpresariaisUpdateInput'
  *     responses:
  *       200:
  *         description: Plano empresarial atualizado
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/PlanoEmpresarial'
+ *               $ref: '#/components/schemas/PlanosEmpresariais'
  *       400:
  *         description: Dados inválidos
  *         content:
@@ -209,7 +209,7 @@ router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), PlanosEmpresari
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X PUT "http://localhost:3000/api/v1/empresas/planos-empresarial/{id}" \
+ *           curl -X PUT "http://localhost:3000/api/v1/empresas/planos-empresariais/{id}" \
  *            -H "Authorization: Bearer <TOKEN>" \
  *            -H "Content-Type: application/json" \
  *            -d '{
@@ -223,7 +223,7 @@ router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), PlanosEmpresa
 
 /**
  * @openapi
- * /api/v1/empresas/planos-empresarial/{id}:
+ * /api/v1/empresas/planos-empresariais/{id}:
  *   delete:
  *     summary: Remover plano empresarial
  *     description: "Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR)."
@@ -267,7 +267,7 @@ router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), PlanosEmpresa
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X DELETE "http://localhost:3000/api/v1/empresas/planos-empresarial/{id}" \
+ *           curl -X DELETE "http://localhost:3000/api/v1/empresas/planos-empresariais/{id}" \
  *            -H "Authorization: Bearer <TOKEN>"
  */
 router.delete('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), PlanosEmpresariaisController.remove);

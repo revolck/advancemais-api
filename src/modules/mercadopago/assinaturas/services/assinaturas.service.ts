@@ -2,10 +2,11 @@ import { prisma } from '@/config/prisma';
 import { mpClient, assertMercadoPagoConfigured } from '@/config/mercadopago';
 import { mercadopagoConfig, serverConfig } from '@/config/env';
 import { PreApproval, PreApprovalPlan, Payment, Preference } from 'mercadopago';
+import type { PaymentCreateRequest } from 'mercadopago/dist/clients/payment/create/types';
 import crypto from 'crypto';
 import { clientesService } from '@/modules/empresas/clientes/services/clientes.service';
 import { METODO_PAGAMENTO, MODELO_PAGAMENTO, STATUS_PAGAMENTO, StatusVaga, PlanoParceiro } from '@prisma/client';
-import type { PlanoEmpresarial } from '@prisma/client';
+import type { PlanosEmpresariais } from '@prisma/client';
 import { EmailService } from '@/modules/brevo/services/email-service';
 import type { StartCheckoutInput } from '@/modules/mercadopago/assinaturas/validators/assinaturas.schema';
 
@@ -15,6 +16,7 @@ type MercadoPagoResponse<T = any> = {
 };
 
 type CheckoutPagamento = NonNullable<StartCheckoutInput['pagamento']>;
+type PaymentPayer = NonNullable<PaymentCreateRequest['payer']>;
 
 type PlanoSnapshot = {
   id: string;
@@ -36,7 +38,7 @@ type PlanoSnapshot = {
   mpPaymentId: string | null;
   proximaCobranca: Date | null;
   graceUntil: Date | null;
-  plano: PlanoEmpresarial;
+  plano: PlanosEmpresariais;
 };
 
 const pagamentoToMetodo: Record<CheckoutPagamento, METODO_PAGAMENTO> = {
@@ -236,7 +238,7 @@ export const assinaturasService = {
     mensagem?: string | null;
   }) {
     try {
-      await prisma.logPagamento.create({
+      await prisma.logsPagamentosDeAssinaturas.create({
         data: {
           usuarioId: data.usuarioId ?? null,
           empresasPlanoId: data.empresasPlanoId ?? null,
@@ -255,8 +257,8 @@ export const assinaturasService = {
   },
   async ensurePlanPreapproval(planId: string) {
     assertMercadoPagoConfigured();
-    const plan = await prisma.planoEmpresarial.findUnique({ where: { id: planId }, select: { id: true, nome: true, valor: true, mpPreapprovalPlanId: true } });
-    if (!plan) throw new Error('PlanoEmpresarial não encontrado');
+    const plan = await prisma.planosEmpresariais.findUnique({ where: { id: planId }, select: { id: true, nome: true, valor: true, mpPreapprovalPlanId: true } });
+    if (!plan) throw new Error('PlanosEmpresariais não encontrado');
     if (plan.mpPreapprovalPlanId) return plan.mpPreapprovalPlanId;
 
     const mp = mpClient!;
@@ -275,7 +277,7 @@ export const assinaturasService = {
     });
     const id = (created as any)?.id as string | undefined;
     if (id) {
-      await prisma.planoEmpresarial.update({ where: { id: plan.id }, data: { mpPreapprovalPlanId: id } });
+      await prisma.planosEmpresariais.update({ where: { id: plan.id }, data: { mpPreapprovalPlanId: id } });
       return id;
     }
     throw new Error('Falha ao criar PreApprovalPlan no Mercado Pago');
@@ -284,7 +286,7 @@ export const assinaturasService = {
     const existing = await prisma.empresasPlano.findUnique({ where: { id: externalRef } });
     if (existing) return existing;
 
-    const checkoutLog = await prisma.logPagamento.findFirst({
+    const checkoutLog = await prisma.logsPagamentosDeAssinaturas.findFirst({
       where: { externalRef, tipo: 'CHECKOUT_START' },
       orderBy: { criadoEm: 'desc' },
     });
@@ -315,7 +317,7 @@ export const assinaturasService = {
       },
     });
 
-    const subscriptionLog = await prisma.logPagamento.findFirst({
+    const subscriptionLog = await prisma.logsPagamentosDeAssinaturas.findFirst({
       where: { externalRef, tipo: 'PREAPPROVAL_CREATED' },
       orderBy: { criadoEm: 'desc' },
     });
@@ -325,16 +327,16 @@ export const assinaturasService = {
       updated = await prisma.empresasPlano.update({ where: { id: created.id }, data: { mpSubscriptionId: subscriptionLog.mpResourceId } });
     }
 
-    await prisma.logPagamento.updateMany({ where: { externalRef }, data: { empresasPlanoId: created.id } });
+    await prisma.logsPagamentosDeAssinaturas.updateMany({ where: { externalRef }, data: { empresasPlanoId: created.id } });
 
     return updated;
   },
   async startCheckout(params: StartCheckoutInput) {
     assertMercadoPagoConfigured();
 
-    const planoBase = await prisma.planoEmpresarial.findUnique({ where: { id: params.planoEmpresarialId } });
+    const planoBase = await prisma.planosEmpresariais.findUnique({ where: { id: params.planoEmpresarialId } });
     if (!planoBase) {
-      throw new Error('PlanoEmpresarial não encontrado');
+      throw new Error('PlanosEmpresariais não encontrado');
     }
 
     const usuario = await prisma.usuarios.findUnique({
@@ -397,16 +399,18 @@ export const assinaturasService = {
       return undefined;
     })();
     const endereco = usuario.enderecos?.[0];
-    const payerAddress = endereco
-      ? {
-          zip_code: sanitizeDigits(endereco.cep),
-          street_name: endereco.logradouro,
-          street_number: endereco.numero,
-          neighborhood: endereco.bairro,
-          city: endereco.cidade,
-          federal_unit: endereco.estado,
-        }
-      : undefined;
+    const zipCode = sanitizeDigits(endereco?.cep);
+    const payerAddress =
+      endereco && zipCode
+        ? {
+            zip_code: zipCode,
+            ...(endereco.logradouro ? { street_name: endereco.logradouro } : {}),
+            ...(endereco.numero ? { street_number: endereco.numero } : {}),
+            ...(endereco.bairro ? { neighborhood: endereco.bairro } : {}),
+            ...(endereco.cidade ? { city: endereco.cidade } : {}),
+            ...(endereco.estado ? { federal_unit: endereco.estado } : {}),
+          }
+        : undefined;
     const phoneDigits = sanitizeDigits(usuario.telefone);
     const payerPhone = phoneDigits.length >= 10
       ? {
@@ -415,13 +419,13 @@ export const assinaturasService = {
         }
       : undefined;
 
-    const payerBase = {
+    const payerBase: PaymentPayer = {
       email: usuario.email,
-      first_name: firstName,
-      last_name: lastName,
-      identification: documento && documento.number ? documento : undefined,
-      address: payerAddress && payerAddress.zip_code ? payerAddress : undefined,
-      phone: payerPhone,
+      ...(firstName ? { first_name: firstName } : {}),
+      ...(lastName ? { last_name: lastName } : {}),
+      ...(documento && documento.number ? { identification: documento } : {}),
+      ...(payerAddress ? { address: payerAddress } : {}),
+      ...(payerPhone ? { phone: payerPhone } : {}),
     };
 
     const planoSnapshot: PlanoSnapshot = {

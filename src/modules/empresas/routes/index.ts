@@ -7,7 +7,7 @@ import { adminEmpresasRoutes } from '@/modules/empresas/admin';
 
 const router = Router();
 
-router.use('/planos-empresarial', planosEmpresariaisRoutes);
+router.use('/planos-empresariais', planosEmpresariaisRoutes);
 // Rota oficial para clientes (empresas vinculadas a planos pagos)
 router.use('/clientes', clientesRoutes);
 router.use('/vagas', vagasRoutes);

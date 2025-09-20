@@ -120,7 +120,7 @@ export class AssinaturasController {
     try {
       // Busca todos os planos e cria/garante preapprovalPlan
       const { prisma } = await import('../../../../config/prisma.js');
-      const planos = await prisma.planoEmpresarial.findMany({ select: { id: true, mpPreapprovalPlanId: true } });
+      const planos = await prisma.planosEmpresariais.findMany({ select: { id: true, mpPreapprovalPlanId: true } });
       const results: Record<string, string> = {};
       for (const p of planos) {
         try {

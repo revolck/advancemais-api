@@ -525,7 +525,7 @@ router.get(
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/AdminEmpresaBanimentoCreate'
+ *             $ref: '#/components/schemas/AdminEmpresasEmBanimentosCreate'
  *           examples:
  *             default:
  *               summary: Banimento de 30 dias com motivo
@@ -538,7 +538,7 @@ router.get(
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/AdminEmpresaBanimentoResponse'
+ *               $ref: '#/components/schemas/AdminEmpresasEmBanimentosResponse'
  *             examples:
  *               created:
  *                 summary: Banimento registrado

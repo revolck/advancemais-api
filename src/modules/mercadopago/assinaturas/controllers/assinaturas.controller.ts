@@ -58,7 +58,7 @@ export class AssinaturasController {
   static upgrade = async (req: Request, res: Response) => {
     try {
       const payload = changePlanSchema.parse(req.body);
-      const result = await assinaturasService.upgrade(payload.usuarioId, payload.novoPlanoEmpresarialId);
+      const result = await assinaturasService.upgrade(payload.usuarioId, payload.novoPlanosEmpresariaisId);
       res.json({ success: true, assinatura: result });
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -71,7 +71,7 @@ export class AssinaturasController {
   static downgrade = async (req: Request, res: Response) => {
     try {
       const payload = changePlanSchema.parse(req.body);
-      const result = await assinaturasService.downgrade(payload.usuarioId, payload.novoPlanoEmpresarialId);
+      const result = await assinaturasService.downgrade(payload.usuarioId, payload.novoPlanosEmpresariaisId);
       res.json({ success: true, assinatura: result });
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -104,11 +104,11 @@ export class AssinaturasController {
   // Admin: reemitir cobrança por plano específico para um usuário
   static adminRemindPaymentForPlan = async (req: Request, res: Response) => {
     try {
-      const { usuarioId, planoEmpresarialId, metodoPagamento, successUrl, failureUrl, pendingUrl } = req.body as any;
-      if (!usuarioId || !planoEmpresarialId) {
-        return res.status(400).json({ success: false, code: 'VALIDATION_ERROR', message: 'usuarioId e planoEmpresarialId são obrigatórios' });
+      const { usuarioId, planosEmpresariaisId, metodoPagamento, successUrl, failureUrl, pendingUrl } = req.body as any;
+      if (!usuarioId || !planosEmpresariaisId) {
+        return res.status(400).json({ success: false, code: 'VALIDATION_ERROR', message: 'usuarioId e planosEmpresariaisId são obrigatórios' });
       }
-      const result = await assinaturasService.adminRemindPaymentForPlan({ usuarioId, planoEmpresarialId, metodoPagamento, successUrl, failureUrl, pendingUrl });
+      const result = await assinaturasService.adminRemindPaymentForPlan({ usuarioId, planosEmpresariaisId, metodoPagamento, successUrl, failureUrl, pendingUrl });
       res.json({ success: true, ...result });
     } catch (error: any) {
       res.status(500).json({ success: false, code: 'ADMIN_REMIND_ERROR', message: 'Erro ao reemitir cobrança para o plano', error: error?.message });
@@ -120,7 +120,7 @@ export class AssinaturasController {
     try {
       // Busca todos os planos e cria/garante preapprovalPlan
       const { prisma } = await import('../../../../config/prisma.js');
-      const planos = await prisma.planoEmpresarial.findMany({ select: { id: true, mpPreapprovalPlanId: true } });
+      const planos = await prisma.planosEmpresariais.findMany({ select: { id: true, mpPreapprovalPlanId: true } });
       const results: Record<string, string> = {};
       for (const p of planos) {
         try {
@@ -138,12 +138,12 @@ export class AssinaturasController {
 
   static adminSyncPlan = async (req: Request, res: Response) => {
     try {
-      const { planoEmpresarialId } = req.body as any;
-      if (!planoEmpresarialId) {
-        return res.status(400).json({ success: false, code: 'VALIDATION_ERROR', message: 'planoEmpresarialId é obrigatório' });
+      const { planosEmpresariaisId } = req.body as any;
+      if (!planosEmpresariaisId) {
+        return res.status(400).json({ success: false, code: 'VALIDATION_ERROR', message: 'planosEmpresariaisId é obrigatório' });
       }
-      const mpPreapprovalPlanId = await assinaturasService.ensurePlanPreapproval(planoEmpresarialId);
-      res.json({ success: true, planoEmpresarialId, mpPreapprovalPlanId });
+      const mpPreapprovalPlanId = await assinaturasService.ensurePlanPreapproval(planosEmpresariaisId);
+      res.json({ success: true, planosEmpresariaisId, mpPreapprovalPlanId });
     } catch (error: any) {
       res.status(500).json({ success: false, code: 'SYNC_PLAN_ERROR', message: 'Erro ao sincronizar plano', error: error?.message });
     }

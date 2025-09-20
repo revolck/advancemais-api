@@ -76,7 +76,7 @@ router.get('/', publicCache, (req, res) => {
       brevo: '/api/v1/brevo',
       website: '/api/v1/website',
       empresas: '/api/v1/empresas',
-      planosEmpresariais: '/api/v1/empresas/planos-empresarial',
+      planosEmpresariais: '/api/v1/empresas/planos-empresariais',
       clientesEmpresas: '/api/v1/empresas/clientes',
       vagasEmpresariais: '/api/v1/empresas/vagas',
       mercadopagoAssinaturas: '/api/v1/mercadopago/assinaturas',

@@ -18,7 +18,7 @@ const empresaRoles = ['ADMIN', 'MODERADOR', 'EMPRESA', 'RECRUTADOR'];
  *         name: usuarioId
  *         schema: { type: string, format: uuid }
  *       - in: query
- *         name: empresaPlanoId
+ *         name: empresasPlanoId
  *         schema: { type: string, format: uuid }
  *       - in: query
  *         name: tipo

@@ -17,7 +17,7 @@ async function processPendingBoletos() {
   const maxDays = mercadopagoConfig.settings.boletoWatcherMaxDays || 5;
   const cutoff = new Date(Date.now() - maxDays * 24 * 60 * 60 * 1000);
 
-  const boletos = await prisma.empresaPlano.findMany({
+  const boletos = await prisma.empresasPlano.findMany({
     where: {
       metodoPagamento: METODO_PAGAMENTO.BOLETO,
       statusPagamento: { in: [STATUS_PAGAMENTO.PENDENTE, STATUS_PAGAMENTO.EM_PROCESSAMENTO] },
@@ -62,7 +62,7 @@ async function processPendingBoletos() {
           });
           await assinaturasService.logEvent({
             usuarioId: boleto.usuarioId,
-            empresaPlanoId: boleto.id,
+            empresasPlanoId: boleto.id,
             tipo: 'BOLETO_TIMEOUT_CANCEL',
             status: STATUS_PAGAMENTO.CANCELADO,
             externalRef: boleto.id,

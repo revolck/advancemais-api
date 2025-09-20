@@ -15,7 +15,7 @@ const updateRoles = [Role.ADMIN, Role.MODERADOR, Role.RECRUTADOR];
  *   get:
  *     summary: Listar vagas publicadas
  *     description: "Retorna as vagas disponíveis para visualização. Por padrão, apenas vagas PUBLICADAS são retornadas. É possível filtrar por status via query string. Consultas envolvendo os status RASCUNHO ou EM_ANALISE exigem autenticação com roles válidas (ADMIN, MODERADOR, EMPRESA, RECRUTADOR ou ALUNO_CANDIDATO)."
- *     tags: [Empresas - Vagas]
+ *     tags: [Empresas - EmpresasVagas]
  *     parameters:
  *       - in: query
  *         name: status
@@ -94,7 +94,7 @@ router.get('/', optionalSupabaseAuth(), publicCache, VagasController.list);
  *   get:
  *     summary: Obter vaga por ID
  *     description: Recupera os detalhes de uma vaga PUBLICADA. O conteúdo é público e preserva o anonimato das empresas quando configurado.
- *     tags: [Empresas - Vagas]
+ *     tags: [Empresas - EmpresasVagas]
  *     parameters:
  *       - in: path
  *         name: id
@@ -134,7 +134,7 @@ router.get('/:id', publicCache, VagasController.get);
  *   post:
  *     summary: Criar uma nova vaga
  *     description: "Disponível para administradores, moderadores, empresas e recrutadores autenticados (roles: ADMIN, MODERADOR, EMPRESA, RECRUTADOR). Permite cadastrar vagas vinculadas a uma empresa, gera um código alfanumérico curto para facilitar a identificação e envia automaticamente o registro para a fila de revisão com status EM_ANALISE."
- *     tags: [Empresas - Vagas]
+ *     tags: [Empresas - EmpresasVagas]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -218,7 +218,7 @@ router.post('/', supabaseAuthMiddleware(protectedRoles), VagasController.create)
  *   put:
  *     summary: Atualizar vaga
  *     description: "Permite editar os dados de uma vaga existente, incluindo o status do fluxo (RASCUNHO, EM_ANALISE, PUBLICADO ou EXPIRADO). Requer autenticação com perfil autorizado (roles: ADMIN, MODERADOR ou RECRUTADOR)."
- *     tags: [Empresas - Vagas]
+ *     tags: [Empresas - EmpresasVagas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -292,7 +292,7 @@ router.put('/:id', supabaseAuthMiddleware(updateRoles), VagasController.update);
  *   delete:
  *     summary: Remover vaga
  *     description: "Exclui uma vaga cadastrada. Requer autenticação com perfil autorizado (roles: ADMIN, MODERADOR, EMPRESA ou RECRUTADOR)."
- *     tags: [Empresas - Vagas]
+ *     tags: [Empresas - EmpresasVagas]
  *     security:
  *       - bearerAuth: []
  *     parameters:

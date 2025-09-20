@@ -65,7 +65,7 @@ const includeEmpresa = {
   },
 } as const;
 
-type VagaWithEmpresa = Prisma.VagasGetPayload<typeof includeEmpresa>;
+type VagaWithEmpresa = Prisma.EmpresasVagasGetPayload<typeof includeEmpresa>;
 
 const anonymizedName = (vagaId: string) => `Oportunidade Confidencial #${vagaId.slice(0, 5).toUpperCase()}`;
 
@@ -94,7 +94,7 @@ const createFallbackCandidate = () => randomUUID().replace(/-/g, '').slice(0, VA
 const generateUniqueVagaCode = async (): Promise<string> => {
   for (let attempt = 0; attempt < 20; attempt++) {
     const candidate = createCodeCandidate();
-    const existing = await prisma.vagas.findUnique({ where: { codigo: candidate }, select: { id: true } });
+    const existing = await prisma.empresasVagas.findUnique({ where: { codigo: candidate }, select: { id: true } });
 
     if (!existing) {
       return candidate;
@@ -103,7 +103,7 @@ const generateUniqueVagaCode = async (): Promise<string> => {
 
   for (let attempt = 0; attempt < 20; attempt++) {
     const candidate = createFallbackCandidate();
-    const existing = await prisma.vagas.findUnique({ where: { codigo: candidate }, select: { id: true } });
+    const existing = await prisma.empresasVagas.findUnique({ where: { codigo: candidate }, select: { id: true } });
 
     if (!existing) {
       return candidate;
@@ -115,7 +115,7 @@ const generateUniqueVagaCode = async (): Promise<string> => {
   });
 };
 
-const sanitizeCreateData = (data: CreateVagaData, codigo: string): Prisma.VagasUncheckedCreateInput => ({
+const sanitizeCreateData = (data: CreateVagaData, codigo: string): Prisma.EmpresasVagasUncheckedCreateInput => ({
   usuarioId: data.usuarioId,
   codigo,
   modoAnonimo: data.modoAnonimo ?? false,
@@ -133,8 +133,8 @@ const sanitizeCreateData = (data: CreateVagaData, codigo: string): Prisma.VagasU
   status: data.status ?? StatusVaga.EM_ANALISE,
 });
 
-const sanitizeUpdateData = (data: UpdateVagaData): Prisma.VagasUncheckedUpdateInput => {
-  const update: Prisma.VagasUncheckedUpdateInput = {};
+const sanitizeUpdateData = (data: UpdateVagaData): Prisma.EmpresasVagasUncheckedUpdateInput => {
+  const update: Prisma.EmpresasVagasUncheckedUpdateInput = {};
 
   if (data.usuarioId !== undefined) {
     update.usuarioId = data.usuarioId;
@@ -246,7 +246,7 @@ const ensurePlanoAtivoParaUsuario = async (usuarioId: string) => {
 
   const limite = planoAtivo.plano.quantidadeVagas;
   if (typeof limite === 'number' && limite > 0) {
-    const vagasAtivas = await prisma.vagas.count({
+    const vagasAtivas = await prisma.empresasVagas.count({
       where: {
         usuarioId,
         status: { in: [StatusVaga.EM_ANALISE, StatusVaga.PUBLICADO] },
@@ -263,7 +263,7 @@ const ensurePlanoAtivoParaUsuario = async (usuarioId: string) => {
 
 export const vagasService = {
   list: async (params?: { status?: StatusVaga[]; usuarioId?: string; page?: number; pageSize?: number }) => {
-    const where: Prisma.VagasWhereInput = {
+    const where: Prisma.EmpresasVagasWhereInput = {
       ...(params?.status && params.status.length > 0
         ? { status: { in: params.status } }
         : { status: StatusVaga.PUBLICADO }),
@@ -273,7 +273,7 @@ export const vagasService = {
     const take = params?.pageSize && params.pageSize > 0 ? params.pageSize : undefined;
     const skip = take && params?.page && params.page > 1 ? (params.page - 1) * take : undefined;
 
-    const vagas = await prisma.vagas.findMany({
+    const vagas = await prisma.empresasVagas.findMany({
       where,
       ...includeEmpresa,
       orderBy: { inseridaEm: 'desc' },
@@ -285,7 +285,7 @@ export const vagasService = {
   },
 
   get: async (id: string) => {
-    const vaga = await prisma.vagas.findFirst({
+    const vaga = await prisma.empresasVagas.findFirst({
       where: { id, status: StatusVaga.PUBLICADO },
       ...includeEmpresa,
     });
@@ -297,7 +297,7 @@ export const vagasService = {
     await ensurePlanoAtivoParaUsuario(data.usuarioId);
     const codigo = await generateUniqueVagaCode();
 
-    const vaga = await prisma.vagas.create({
+    const vaga = await prisma.empresasVagas.create({
       data: sanitizeCreateData(data, codigo),
       ...includeEmpresa,
     });
@@ -306,7 +306,7 @@ export const vagasService = {
   },
 
   update: async (id: string, data: UpdateVagaData) => {
-    const vaga = await prisma.vagas.update({
+    const vaga = await prisma.empresasVagas.update({
       where: { id },
       data: sanitizeUpdateData(data),
       ...includeEmpresa,
@@ -315,5 +315,5 @@ export const vagasService = {
     return transformVaga(vaga);
   },
 
-  remove: (id: string) => prisma.vagas.delete({ where: { id } }),
+  remove: (id: string) => prisma.empresasVagas.delete({ where: { id } }),
 };

@@ -104,14 +104,14 @@ export const supabaseAuthMiddleware =
             // Não inclui senha por segurança
           } as const;
 
-          type UsuarioCache = Prisma.UsuarioGetPayload<{
+          type UsuarioCache = Prisma.UsuariosGetPayload<{
             select: typeof usuarioSelect;
           }>;
 
           let usuario: UsuarioCache | null = await getCache<UsuarioCache>(cacheKey);
 
           if (!usuario) {
-            usuario = await prisma.usuario.findFirst({
+            usuario = await prisma.usuarios.findFirst({
               where: {
                 OR: [{ supabaseId: decoded.sub as string }, { id: decoded.sub as string }],
               },

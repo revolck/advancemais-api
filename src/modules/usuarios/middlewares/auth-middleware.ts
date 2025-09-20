@@ -127,7 +127,7 @@ export const authMiddlewareWithDB = (roles?: string[]) => {
 
       try {
         // Busca usuário no banco usando supabaseId
-        const usuario = await prisma.usuario.findUnique({
+        const usuario = await prisma.usuarios.findUnique({
           where: { supabaseId: decoded.sub },
           select: {
             id: true,

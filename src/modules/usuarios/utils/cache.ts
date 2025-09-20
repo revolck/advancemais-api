@@ -15,7 +15,7 @@ export async function invalidateUserCache(
   }
 
   if (!supabaseId && id) {
-    const found = await prisma.usuario.findUnique({
+    const found = await prisma.usuarios.findUnique({
       where: { id },
       select: { supabaseId: true },
     });

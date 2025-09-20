@@ -78,7 +78,7 @@ function mapToStatusPagamento(status: string | null | undefined): STATUS_PAGAMEN
   return STATUS_PAGAMENTO.PENDENTE;
 }
 
-async function createOrUpdateCheckoutEmpresaPlano(params: {
+async function createOrUpdateCheckoutEmpresasPlano(params: {
   checkoutId: string;
   usuarioId: string;
   planoEmpresarialId: string;
@@ -115,7 +115,7 @@ async function createOrUpdateCheckoutEmpresaPlano(params: {
     mpPaymentId: params.mpPaymentId ?? null,
   };
 
-  return prisma.empresaPlano.upsert({
+  return prisma.empresasPlano.upsert({
     where: { id: params.checkoutId },
     create: {
       id: params.checkoutId,
@@ -218,7 +218,7 @@ function normalizeMercadoPagoError(error: unknown): { message: string; payload?:
 }
 
 async function setVagasToDraft(usuarioId: string) {
-  await prisma.vagas.updateMany({
+  await prisma.empresasVagas.updateMany({
     where: { usuarioId, status: { in: [StatusVaga.PUBLICADO, StatusVaga.EM_ANALISE] } },
     data: { status: StatusVaga.RASCUNHO },
   });
@@ -227,7 +227,7 @@ async function setVagasToDraft(usuarioId: string) {
 export const assinaturasService = {
   async logEvent(data: {
     usuarioId?: string | null;
-    empresaPlanoId?: string | null;
+    empresasPlanoId?: string | null;
     tipo: string;
     status?: string | null;
     externalRef?: string | null;
@@ -239,7 +239,7 @@ export const assinaturasService = {
       await prisma.logPagamento.create({
         data: {
           usuarioId: data.usuarioId ?? null,
-          empresaPlanoId: data.empresaPlanoId ?? null,
+          empresasPlanoId: data.empresasPlanoId ?? null,
           tipo: data.tipo,
           status: data.status ?? null,
           externalRef: data.externalRef ?? null,
@@ -280,8 +280,8 @@ export const assinaturasService = {
     }
     throw new Error('Falha ao criar PreApprovalPlan no Mercado Pago');
   },
-  async ensureEmpresaPlanoFromCheckout(externalRef: string) {
-    const existing = await prisma.empresaPlano.findUnique({ where: { id: externalRef } });
+  async ensureEmpresasPlanoFromCheckout(externalRef: string) {
+    const existing = await prisma.empresasPlano.findUnique({ where: { id: externalRef } });
     if (existing) return existing;
 
     const checkoutLog = await prisma.logPagamento.findFirst({
@@ -298,7 +298,7 @@ export const assinaturasService = {
     const metodoPagamento = payload.metodoPagamento as METODO_PAGAMENTO | undefined;
     const observacao = typeof payload.observacao === 'string' ? payload.observacao : 'Aguardando confirmação de pagamento (Mercado Pago)';
 
-    const created = await prisma.empresaPlano.create({
+    const created = await prisma.empresasPlano.create({
       data: {
         id: externalRef,
         usuarioId: checkoutLog.usuarioId,
@@ -322,10 +322,10 @@ export const assinaturasService = {
 
     let updated = created;
     if (subscriptionLog?.mpResourceId) {
-      updated = await prisma.empresaPlano.update({ where: { id: created.id }, data: { mpSubscriptionId: subscriptionLog.mpResourceId } });
+      updated = await prisma.empresasPlano.update({ where: { id: created.id }, data: { mpSubscriptionId: subscriptionLog.mpResourceId } });
     }
 
-    await prisma.logPagamento.updateMany({ where: { externalRef }, data: { empresaPlanoId: created.id } });
+    await prisma.logPagamento.updateMany({ where: { externalRef }, data: { empresasPlanoId: created.id } });
 
     return updated;
   },
@@ -475,7 +475,7 @@ export const assinaturasService = {
         const inicio = ativo ? new Date() : null;
         const proximaCobranca = ativo ? addMonths(new Date(), 1) : null;
 
-        await createOrUpdateCheckoutEmpresaPlano({
+        await createOrUpdateCheckoutEmpresasPlano({
           checkoutId,
           usuarioId: params.usuarioId,
           planoEmpresarialId: params.planoEmpresarialId,
@@ -494,7 +494,7 @@ export const assinaturasService = {
         });
 
         if (ativo) {
-          await prisma.empresaPlano.updateMany({
+          await prisma.empresasPlano.updateMany({
             where: { usuarioId: params.usuarioId, ativo: true, NOT: { id: checkoutId } },
             data: { ativo: false, fim: new Date() },
           });
@@ -513,7 +513,7 @@ export const assinaturasService = {
 
         await this.logEvent({
           usuarioId: params.usuarioId,
-          empresaPlanoId: checkoutId,
+          empresasPlanoId: checkoutId,
           tipo: 'PREAPPROVAL_CREATED',
           status: statusPagamento,
           externalRef: checkoutId,
@@ -550,7 +550,7 @@ export const assinaturasService = {
         const ativo = statusPagamento === STATUS_PAGAMENTO.APROVADO;
         const expiration = body?.date_of_expiration ? new Date(body.date_of_expiration) : null;
 
-        await createOrUpdateCheckoutEmpresaPlano({
+        await createOrUpdateCheckoutEmpresasPlano({
           checkoutId,
           usuarioId: params.usuarioId,
           planoEmpresarialId: params.planoEmpresarialId,
@@ -573,7 +573,7 @@ export const assinaturasService = {
 
         await this.logEvent({
           usuarioId: params.usuarioId,
-          empresaPlanoId: checkoutId,
+          empresasPlanoId: checkoutId,
           tipo: 'PAYMENT_CREATED',
           status: statusPagamento,
           externalRef: checkoutId,
@@ -617,7 +617,7 @@ export const assinaturasService = {
         const statusPagamento = mapToStatusPagamento(body?.status);
         const ativo = statusPagamento === STATUS_PAGAMENTO.APROVADO;
 
-        await createOrUpdateCheckoutEmpresaPlano({
+        await createOrUpdateCheckoutEmpresasPlano({
           checkoutId,
           usuarioId: params.usuarioId,
           planoEmpresarialId: params.planoEmpresarialId,
@@ -633,7 +633,7 @@ export const assinaturasService = {
         });
 
         if (ativo) {
-          await prisma.empresaPlano.updateMany({
+          await prisma.empresasPlano.updateMany({
             where: { usuarioId: params.usuarioId, ativo: true, NOT: { id: checkoutId } },
             data: { ativo: false, fim: new Date() },
           });
@@ -649,7 +649,7 @@ export const assinaturasService = {
 
         await this.logEvent({
           usuarioId: params.usuarioId,
-          empresaPlanoId: checkoutId,
+          empresasPlanoId: checkoutId,
           tipo: 'PAYMENT_CREATED',
           status: statusPagamento,
           externalRef: checkoutId,
@@ -692,7 +692,7 @@ export const assinaturasService = {
         return grace;
       })();
 
-      await createOrUpdateCheckoutEmpresaPlano({
+      await createOrUpdateCheckoutEmpresasPlano({
         checkoutId,
         usuarioId: params.usuarioId,
         planoEmpresarialId: params.planoEmpresarialId,
@@ -715,7 +715,7 @@ export const assinaturasService = {
 
       await this.logEvent({
         usuarioId: params.usuarioId,
-        empresaPlanoId: checkoutId,
+        empresasPlanoId: checkoutId,
         tipo: 'PAYMENT_CREATED',
         status: statusPagamento,
         externalRef: checkoutId,
@@ -761,9 +761,9 @@ export const assinaturasService = {
     const { externalRef, status, mpPaymentId, data } = params;
     if (!externalRef) return;
 
-    let plano = await prisma.empresaPlano.findUnique({ where: { id: externalRef } });
+    let plano = await prisma.empresasPlano.findUnique({ where: { id: externalRef } });
     if (!plano) {
-      plano = await this.ensureEmpresaPlanoFromCheckout(externalRef);
+      plano = await this.ensureEmpresasPlanoFromCheckout(externalRef);
     }
     if (!plano) return;
 
@@ -789,7 +789,7 @@ export const assinaturasService = {
       updateData.inicio = plano.inicio ?? new Date();
       updateData.proximaCobranca = addMonths(new Date(), 1);
       updateData.graceUntil = null;
-      await prisma.empresaPlano.updateMany({
+      await prisma.empresasPlano.updateMany({
         where: { usuarioId: plano.usuarioId, ativo: true, NOT: { id: plano.id } },
         data: { ativo: false, fim: new Date() },
       });
@@ -807,14 +807,14 @@ export const assinaturasService = {
       updateData.graceUntil = null;
     }
 
-    await prisma.empresaPlano.update({ where: { id: plano.id }, data: updateData });
+    await prisma.empresasPlano.update({ where: { id: plano.id }, data: updateData });
 
     const finalStatus: STATUS_PAGAMENTO = updateData.statusPagamento ?? statusPagamento;
     const statusChanged = plano.statusPagamento !== finalStatus;
 
     await this.logEvent({
       usuarioId: plano.usuarioId,
-      empresaPlanoId: plano.id,
+      empresasPlanoId: plano.id,
       tipo: 'PAYMENT_STATUS_UPDATE',
       status: statusPagamento,
       externalRef,
@@ -895,7 +895,7 @@ export const assinaturasService = {
       if (!mpPaymentId) return;
 
       // Buscamos plano por payment ID ou via referência (custom data)
-      // Supondo que enviamos "external_reference" como id do empresaPlano
+      // Supondo que enviamos "external_reference" como id do EmpresasPlano
       const externalRef = String(data?.external_reference ?? '');
       if (!externalRef) return;
       await this.updatePaymentStatusFromNotification({ externalRef, status: data?.status, mpPaymentId, data });
@@ -912,10 +912,10 @@ export const assinaturasService = {
 
   async cancel(usuarioId: string, motivo?: string) {
     // Desativa plano atual e aplica regra de RASCUNHO nas vagas
-    const planoAtivo = await prisma.empresaPlano.findFirst({ where: { usuarioId, ativo: true } });
+    const planoAtivo = await prisma.empresasPlano.findFirst({ where: { usuarioId, ativo: true } });
     if (!planoAtivo) return { cancelled: false };
 
-    await prisma.empresaPlano.update({
+    await prisma.empresasPlano.update({
       where: { id: planoAtivo.id },
       data: {
         ativo: false,
@@ -924,7 +924,7 @@ export const assinaturasService = {
         observacao: motivo ?? 'Cancelado pelo cliente',
       },
     });
-    await this.logEvent({ usuarioId, empresaPlanoId: planoAtivo.id, tipo: 'CANCEL', status: 'CANCELADO', mensagem: motivo || null });
+    await this.logEvent({ usuarioId, empresasPlanoId: planoAtivo.id, tipo: 'CANCEL', status: 'CANCELADO', mensagem: motivo || null });
 
     await setVagasToDraft(usuarioId);
     return { cancelled: true };
@@ -956,7 +956,7 @@ export const assinaturasService = {
 
   async remindPayment(usuarioId: string) {
     assertMercadoPagoConfigured();
-    const plano = await prisma.empresaPlano.findFirst({
+    const plano = await prisma.empresasPlano.findFirst({
       where: { usuarioId, ativo: true },
       include: { plano: true },
       orderBy: { criadoEm: 'desc' },
@@ -1001,7 +1001,7 @@ export const assinaturasService = {
       );
     }
 
-    await this.logEvent({ usuarioId, empresaPlanoId: plano.id, tipo: 'REMINDER_SENT', status: 'ENVIADO', externalRef: plano.id, mpResourceId: (pref as any)?.id || null });
+    await this.logEvent({ usuarioId, empresasPlanoId: plano.id, tipo: 'REMINDER_SENT', status: 'ENVIADO', externalRef: plano.id, mpResourceId: (pref as any)?.id || null });
 
     return { initPoint: link };
   },
@@ -1037,7 +1037,7 @@ export const assinaturasService = {
   async reconcile() {
     // Encerra planos vencidos além da tolerância e coloca vagas em rascunho
     const now = new Date();
-    const overdue = await prisma.empresaPlano.findMany({
+    const overdue = await prisma.empresasPlano.findMany({
       where: {
         ativo: true,
         OR: [
@@ -1048,12 +1048,12 @@ export const assinaturasService = {
     });
 
     for (const plano of overdue) {
-      await prisma.empresaPlano.update({
+      await prisma.empresasPlano.update({
         where: { id: plano.id },
         data: { ativo: false, fim: now, statusPagamento: STATUS_PAGAMENTO.CANCELADO },
       });
       await setVagasToDraft(plano.usuarioId);
-      await this.logEvent({ usuarioId: plano.usuarioId, empresaPlanoId: plano.id, tipo: 'RECONCILE_CANCEL', status: 'CANCELADO' });
+      await this.logEvent({ usuarioId: plano.usuarioId, empresasPlanoId: plano.id, tipo: 'RECONCILE_CANCEL', status: 'CANCELADO' });
       if (mercadopagoConfig.settings.emailsEnabled) {
         const usuario = await prisma.usuarios.findUnique({ where: { id: plano.usuarioId }, select: { email: true, nomeCompleto: true } });
         if (usuario?.email) {

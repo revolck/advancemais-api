@@ -5,11 +5,11 @@ export const logsController = {
   list: async (req: Request, res: Response) => {
     try {
       const isAdmin = ['ADMIN', 'MODERADOR'].includes((req.user as any)?.role);
-      const { usuarioId, empresaPlanoId, tipo, page, pageSize, startDate, endDate } = req.query as any;
+      const { usuarioId, empresasPlanoId, tipo, page, pageSize, startDate, endDate } = req.query as any;
       const where: any = {};
       if (usuarioId && isAdmin) where.usuarioId = usuarioId;
       if (!isAdmin) where.usuarioId = (req.user as any)?.id;
-      if (empresaPlanoId) where.empresaPlanoId = empresaPlanoId;
+      if (empresasPlanoId) where.empresasPlanoId = empresasPlanoId;
       if (tipo) where.tipo = tipo;
       const range: any = {};
       if (startDate) {

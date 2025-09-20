@@ -3216,17 +3216,10 @@ const options: Options = {
               nullable: true,
               example: 'Consultoria em RH especializada em recrutamento.',
             },
-            instagram: {
-              type: 'string',
+            socialLinks: {
+              allOf: [{ $ref: '#/components/schemas/UsuarioSocialLinks' }],
               nullable: true,
-              example: 'https://instagram.com/advancemais',
-              description: 'Retorna null quando a vaga é publicada em modo anônimo',
-            },
-            linkedin: {
-              type: 'string',
-              nullable: true,
-              example: 'https://linkedin.com/company/advancemais',
-              description: 'Retorna null quando a vaga é publicada em modo anônimo',
+              description: 'Retorna null quando a vaga é publicada em modo anônimo.',
             },
             codUsuario: { type: 'string', example: 'ABC1234' },
           },
@@ -3439,6 +3432,42 @@ const options: Options = {
             cidade: { type: 'string', nullable: true, example: 'São Paulo' },
             estado: { type: 'string', nullable: true, example: 'SP' },
             cep: { type: 'string', nullable: true, example: '01310-200' },
+          },
+        },
+        UsuarioSocialLinks: {
+          type: 'object',
+          description: 'Links de redes sociais associados ao usuário ou empresa.',
+          properties: {
+            instagram: {
+              type: 'string',
+              nullable: true,
+              example: 'https://instagram.com/advancemais',
+            },
+            linkedin: {
+              type: 'string',
+              nullable: true,
+              example: 'https://linkedin.com/company/advancemais',
+            },
+            facebook: {
+              type: 'string',
+              nullable: true,
+              example: 'https://facebook.com/advancemais',
+            },
+            youtube: {
+              type: 'string',
+              nullable: true,
+              example: 'https://youtube.com/advancemais',
+            },
+            twitter: {
+              type: 'string',
+              nullable: true,
+              example: 'https://twitter.com/advancemais',
+            },
+            tiktok: {
+              type: 'string',
+              nullable: true,
+              example: 'https://tiktok.com/@advancemais',
+            },
           },
         },
         AdminEmpresaListItem: {
@@ -3684,15 +3713,9 @@ const options: Options = {
               nullable: true,
               example: 'Consultoria especializada em recrutamento e seleção.',
             },
-            instagram: {
-              type: 'string',
+            socialLinks: {
+              allOf: [{ $ref: '#/components/schemas/UsuarioSocialLinks' }],
               nullable: true,
-              example: 'https://instagram.com/advancemais',
-            },
-            linkedin: {
-              type: 'string',
-              nullable: true,
-              example: 'https://linkedin.com/company/advancemais',
             },
             avatarUrl: {
               type: 'string',
@@ -3727,8 +3750,10 @@ const options: Options = {
             cidade: 'São Paulo',
             estado: 'SP',
             descricao: 'Consultoria especializada em recrutamento e seleção.',
-            instagram: 'https://instagram.com/advancemais',
-            linkedin: 'https://linkedin.com/company/advancemais',
+            socialLinks: {
+              instagram: 'https://instagram.com/advancemais',
+              linkedin: 'https://linkedin.com/company/advancemais',
+            },
             avatarUrl: 'https://cdn.advance.com.br/logo.png',
             aceitarTermos: true,
             plano: {
@@ -3774,15 +3799,9 @@ const options: Options = {
               nullable: true,
               example: 'Consultoria especializada em recrutamento e seleção com foco em tecnologia.',
             },
-            instagram: {
-              type: 'string',
+            socialLinks: {
+              allOf: [{ $ref: '#/components/schemas/UsuarioSocialLinks' }],
               nullable: true,
-              example: 'https://instagram.com/advancemais',
-            },
-            linkedin: {
-              type: 'string',
-              nullable: true,
-              example: 'https://linkedin.com/company/advancemais',
             },
             avatarUrl: {
               type: 'string',
@@ -3805,7 +3824,9 @@ const options: Options = {
             nome: 'Advance Tech Consultoria LTDA',
             telefone: '11912345678',
             descricao: 'Consultoria especializada em tecnologia e inovação.',
-            instagram: 'https://instagram.com/advancetech',
+            socialLinks: {
+              instagram: 'https://instagram.com/advancetech',
+            },
             status: 'ATIVO',
             plano: {
               planosEmpresariaisId: 'b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e',
@@ -3849,6 +3870,10 @@ const options: Options = {
                     cep: '01310-200',
                   },
                 ],
+                socialLinks: {
+                  instagram: 'https://instagram.com/advancemais',
+                  linkedin: 'https://linkedin.com/company/advancemais',
+                },
                 criadoEm: '2024-01-05T12:00:00Z',
                 ativa: true,
                 parceira: true,
@@ -3921,8 +3946,10 @@ const options: Options = {
               nullable: true,
               example: 'Consultoria especializada em recrutamento e seleção para empresas de tecnologia.',
             },
-            instagram: { type: 'string', nullable: true, example: 'https://instagram.com/advancemais' },
-            linkedin: { type: 'string', nullable: true, example: 'https://linkedin.com/company/advancemais' },
+            socialLinks: {
+              allOf: [{ $ref: '#/components/schemas/UsuarioSocialLinks' }],
+              nullable: true,
+            },
             cidade: { type: 'string', nullable: true, example: 'São Paulo' },
             estado: { type: 'string', nullable: true, example: 'SP' },
             criadoEm: { type: 'string', format: 'date-time', example: '2023-11-01T08:30:00Z' },
@@ -3993,8 +4020,10 @@ const options: Options = {
             avatarUrl: 'https://cdn.advance.com.br/logo.png',
             cnpj: '12345678000190',
             descricao: 'Consultoria especializada em recrutamento e seleção para empresas de tecnologia.',
-            instagram: 'https://instagram.com/advancemais',
-            linkedin: 'https://linkedin.com/company/advancemais',
+            socialLinks: {
+              instagram: 'https://instagram.com/advancemais',
+              linkedin: 'https://linkedin.com/company/advancemais',
+            },
             cidade: 'São Paulo',
             estado: 'SP',
             criadoEm: '2023-11-01T08:30:00Z',
@@ -4047,8 +4076,10 @@ const options: Options = {
               avatarUrl: 'https://cdn.advance.com.br/logo.png',
               cnpj: '12345678000190',
               descricao: 'Consultoria especializada em recrutamento e seleção para empresas de tecnologia.',
-              instagram: 'https://instagram.com/advancemais',
-              linkedin: 'https://linkedin.com/company/advancemais',
+              socialLinks: {
+                instagram: 'https://instagram.com/advancemais',
+                linkedin: 'https://linkedin.com/company/advancemais',
+              },
               cidade: 'São Paulo',
               estado: 'SP',
               criadoEm: '2023-11-01T08:30:00Z',
@@ -4382,8 +4413,10 @@ const options: Options = {
               nullable: true,
               example: 'Consultoria em RH e tecnologia especializada em recrutamento.',
             },
-            instagram: { type: 'string', nullable: true, example: 'https://instagram.com/advancemais' },
-            linkedin: { type: 'string', nullable: true, example: 'https://linkedin.com/company/advancemais' },
+            socialLinks: {
+              allOf: [{ $ref: '#/components/schemas/UsuarioSocialLinks' }],
+              nullable: true,
+            },
             codUsuario: { type: 'string', example: 'ABC1234' },
           },
         },
@@ -4775,15 +4808,9 @@ const options: Options = {
                   nullable: true,
                   example: 'Empresa focada em soluções tecnológicas para RH.',
                 },
-                instagram: {
-                  type: 'string',
+                socialLinks: {
+                  allOf: [{ $ref: '#/components/schemas/UsuarioSocialLinks' }],
                   nullable: true,
-                  example: 'https://instagram.com/advancemais',
-                },
-                linkedin: {
-                  type: 'string',
-                  nullable: true,
-                  example: 'https://linkedin.com/company/advancemais',
                 },
                 codUsuario: { type: 'string', example: 'ABC1234' },
                 enderecos: {
@@ -4839,15 +4866,9 @@ const options: Options = {
                   nullable: true,
                   example: 'Profissional com experiência em atendimento.',
                 },
-                instagram: {
-                  type: 'string',
+                socialLinks: {
+                  allOf: [{ $ref: '#/components/schemas/UsuarioSocialLinks' }],
                   nullable: true,
-                  example: 'https://instagram.com/candidato',
-                },
-                linkedin: {
-                  type: 'string',
-                  nullable: true,
-                  example: 'https://linkedin.com/in/candidato',
                 },
                 codUsuario: { type: 'string', example: 'CAN1234' },
                 enderecos: {

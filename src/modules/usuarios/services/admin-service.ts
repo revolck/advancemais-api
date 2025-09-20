@@ -12,6 +12,7 @@ import { prisma } from '@/config/prisma';
 import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
 import { logger } from '@/utils/logger';
 import { attachEnderecoResumo } from '../utils/address';
+import { mapSocialLinks, usuarioRedesSociaisSelect } from '../utils/social-links';
 export class AdminService {
   private readonly log = logger.child({ module: 'AdminService' });
 
@@ -224,8 +225,7 @@ export class AdminService {
         atualizadoEm: true,
         avatarUrl: true,
         descricao: true,
-        instagram: true,
-        linkedin: true,
+        ...usuarioRedesSociaisSelect,
         codUsuario: true,
         enderecos: {
           orderBy: { criadoEm: 'asc' },
@@ -246,7 +246,16 @@ export class AdminService {
       return null;
     }
 
-    return attachEnderecoResumo(usuario);
+    const usuarioNormalizado = attachEnderecoResumo(usuario);
+
+    if (!usuarioNormalizado) {
+      return null;
+    }
+
+    return {
+      ...usuarioNormalizado,
+      redesSociais: mapSocialLinks(usuario.redesSociais),
+    };
   }
 
   /**
@@ -280,8 +289,7 @@ export class AdminService {
         atualizadoEm: true,
         avatarUrl: true,
         descricao: true,
-        instagram: true,
-        linkedin: true,
+        ...usuarioRedesSociaisSelect,
         codUsuario: true,
         enderecos: {
           orderBy: { criadoEm: 'asc' },
@@ -302,7 +310,16 @@ export class AdminService {
       return null;
     }
 
-    return attachEnderecoResumo(candidato);
+    const candidatoNormalizado = attachEnderecoResumo(candidato);
+
+    if (!candidatoNormalizado) {
+      return null;
+    }
+
+    return {
+      ...candidatoNormalizado,
+      redesSociais: mapSocialLinks(candidato.redesSociais),
+    };
   }
 
   /**

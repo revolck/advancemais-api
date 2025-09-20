@@ -63,7 +63,7 @@ model Usuarios {
   @@index([criadoEm])
 }
 
-enum RegimeTrabalho {
+enum RegimesDeTrabalhos {
   CLT
   TEMPORARIO
   ESTAGIO
@@ -72,7 +72,7 @@ enum RegimeTrabalho {
   JOVEM_APRENDIZ
 }
 
-enum ModalidadeVaga {
+enum ModalidadesDeVagas {
   PRESENCIAL
   REMOTO
   HIBRIDO
@@ -101,8 +101,8 @@ model EmpresasVagas {
   codigo           String         @unique @db.VarChar(6)
   usuarioId        String
   modoAnonimo      Boolean        @default(false)
-  regimeDeTrabalho RegimeTrabalho
-  modalidade       ModalidadeVaga
+  regimeDeTrabalho RegimesDeTrabalhos
+  modalidade       ModalidadesDeVagas
   titulo           String         @db.VarChar(255)
   paraPcd          Boolean        @default(false)
   requisitos       String         @db.Text

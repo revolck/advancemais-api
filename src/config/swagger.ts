@@ -3315,6 +3315,18 @@ const options: Options = {
           enum: ['RASCUNHO', 'EM_ANALISE', 'PUBLICADO', 'EXPIRADO'],
           example: 'EM_ANALISE',
         },
+        RegimesDeTrabalhos: {
+          type: 'string',
+          description: 'Formatos de contratação oferecidos pelas empresas nas vagas.',
+          enum: ['CLT', 'TEMPORARIO', 'ESTAGIO', 'PJ', 'HOME_OFFICE', 'JOVEM_APRENDIZ'],
+          example: 'CLT',
+        },
+        ModalidadesDeVagas: {
+          type: 'string',
+          description: 'Modalidades de atuação disponíveis para a vaga.',
+          enum: ['PRESENCIAL', 'REMOTO', 'HIBRIDO'],
+          example: 'REMOTO',
+        },
         PaginationMeta: {
           type: 'object',
           properties: {
@@ -4249,16 +4261,8 @@ const options: Options = {
             atualizadoEm: { type: 'string', format: 'date-time', example: '2024-05-12T11:30:00Z' },
             inscricoesAte: { type: 'string', format: 'date-time', nullable: true, example: '2024-06-01T23:59:59Z' },
             modoAnonimo: { type: 'boolean', example: false },
-            modalidade: {
-              type: 'string',
-              enum: ['PRESENCIAL', 'REMOTO', 'HIBRIDO'],
-              example: 'REMOTO',
-            },
-            regimeDeTrabalho: {
-              type: 'string',
-              enum: ['CLT', 'TEMPORARIO', 'ESTAGIO', 'PJ', 'HOME_OFFICE', 'JOVEM_APRENDIZ'],
-              example: 'CLT',
-            },
+            modalidade: { allOf: [{ $ref: '#/components/schemas/ModalidadesDeVagas' }] },
+            regimeDeTrabalho: { allOf: [{ $ref: '#/components/schemas/RegimesDeTrabalhos' }] },
             paraPcd: { type: 'boolean', example: false },
           },
           example: {
@@ -4372,16 +4376,8 @@ const options: Options = {
               nullable: true,
             },
             modoAnonimo: { type: 'boolean', example: true },
-            regimeDeTrabalho: {
-              type: 'string',
-              enum: ['CLT', 'TEMPORARIO', 'ESTAGIO', 'PJ', 'HOME_OFFICE', 'JOVEM_APRENDIZ'],
-              example: 'CLT',
-            },
-            modalidade: {
-              type: 'string',
-              enum: ['PRESENCIAL', 'REMOTO', 'HIBRIDO'],
-              example: 'PRESENCIAL',
-            },
+            regimeDeTrabalho: { allOf: [{ $ref: '#/components/schemas/RegimesDeTrabalhos' }] },
+            modalidade: { allOf: [{ $ref: '#/components/schemas/ModalidadesDeVagas' }] },
             titulo: {
               type: 'string',
               maxLength: 255,
@@ -4477,16 +4473,8 @@ const options: Options = {
               example: true,
               description: 'Quando verdadeiro, oculta o nome e a logo da empresa nas listagens públicas',
             },
-            regimeDeTrabalho: {
-              type: 'string',
-              enum: ['CLT', 'TEMPORARIO', 'ESTAGIO', 'PJ', 'HOME_OFFICE', 'JOVEM_APRENDIZ'],
-              example: 'CLT',
-            },
-            modalidade: {
-              type: 'string',
-              enum: ['PRESENCIAL', 'REMOTO', 'HIBRIDO'],
-              example: 'PRESENCIAL',
-            },
+            regimeDeTrabalho: { allOf: [{ $ref: '#/components/schemas/RegimesDeTrabalhos' }] },
+            modalidade: { allOf: [{ $ref: '#/components/schemas/ModalidadesDeVagas' }] },
             titulo: {
               type: 'string',
               maxLength: 255,
@@ -4536,16 +4524,8 @@ const options: Options = {
               example: 'f1d7a9c2-4e0b-4f6d-90ad-8c6b84a0f1a1',
             },
             modoAnonimo: { type: 'boolean', example: false },
-            regimeDeTrabalho: {
-              type: 'string',
-              enum: ['CLT', 'TEMPORARIO', 'ESTAGIO', 'PJ', 'HOME_OFFICE', 'JOVEM_APRENDIZ'],
-              example: 'PJ',
-            },
-            modalidade: {
-              type: 'string',
-              enum: ['PRESENCIAL', 'REMOTO', 'HIBRIDO'],
-              example: 'HIBRIDO',
-            },
+            regimeDeTrabalho: { allOf: [{ $ref: '#/components/schemas/RegimesDeTrabalhos' }] },
+            modalidade: { allOf: [{ $ref: '#/components/schemas/ModalidadesDeVagas' }] },
             titulo: {
               type: 'string',
               maxLength: 255,

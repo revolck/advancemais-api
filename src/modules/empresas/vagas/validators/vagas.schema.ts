@@ -1,4 +1,4 @@
-import { ModalidadeVaga, RegimeTrabalho, StatusVaga } from '@prisma/client';
+import { ModalidadesDeVagas, RegimesDeTrabalhos, StatusVaga } from '@prisma/client';
 import { z } from 'zod';
 
 const longTextField = (field: string) =>
@@ -23,11 +23,11 @@ const baseVagaSchema = z.object({
     .string({ required_error: 'O ID do usuário é obrigatório', invalid_type_error: 'O ID do usuário deve ser uma string' })
     .uuid('O ID do usuário deve ser um UUID válido'),
   modoAnonimo: z.boolean({ invalid_type_error: 'modoAnonimo deve ser verdadeiro ou falso' }).optional(),
-  regimeDeTrabalho: z.nativeEnum(RegimeTrabalho, {
+  regimeDeTrabalho: z.nativeEnum(RegimesDeTrabalhos, {
     required_error: 'O regime de trabalho é obrigatório',
     invalid_type_error: 'regimeDeTrabalho inválido',
   }),
-  modalidade: z.nativeEnum(ModalidadeVaga, {
+  modalidade: z.nativeEnum(ModalidadesDeVagas, {
     required_error: 'A modalidade da vaga é obrigatória',
     invalid_type_error: 'modalidade inválida',
   }),

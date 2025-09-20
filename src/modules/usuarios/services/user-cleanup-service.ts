@@ -8,7 +8,7 @@ const cleanupLogger = logger.child({ module: 'UserCleanupService' });
  * @returns quantidade de registros removidos
  */
 export async function deleteExpiredUnverifiedUsers(): Promise<number> {
-  const result = await prisma.usuario.deleteMany({
+  const result = await prisma.usuarios.deleteMany({
     where: {
       emailVerificado: false,
       emailVerificationTokenExp: {

@@ -8,7 +8,7 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model Usuario {
+model Usuarios {
   id            String      @id @default(uuid())
   nomeCompleto  String
   supabaseId    String      @unique
@@ -20,8 +20,6 @@ model Usuario {
   email         String      @unique
   senha         String
   matricula     String?
-  cidade        String?
-  estado        String?
   avatarUrl     String?
   descricao     String?     @db.VarChar(500)
   instagram     String?
@@ -51,8 +49,8 @@ model Usuario {
   ultimaTentativaVerificacao DateTime?
 
   // RELACIONAMENTOS EXISTENTES
-  enderecos            Endereco[]
-  vagasCriadas         Vaga[]             @relation("UsuarioVagas")
+  enderecos            Enderecos[]
+  vagasCriadas         Vagas[]            @relation("UsuarioVagas")
   planosContratados    EmpresaPlano[]     @relation("UsuarioPlanos")
   banimentosRecebidos  EmpresaBanimento[] @relation("EmpresaBanimentosUsuario")
   banimentosAplicados  EmpresaBanimento[] @relation("EmpresaBanimentosAdmin")
@@ -98,7 +96,7 @@ enum PlanoParceiro {
   PARCEIRO          @map("parceiro")
 }
 
-model Vaga {
+model Vagas {
   id               String         @id @default(uuid())
   codigo           String         @unique @db.VarChar(6)
   usuarioId        String
@@ -117,7 +115,7 @@ model Vaga {
   atualizadoEm     DateTime       @updatedAt
   status           StatusVaga     @default(RASCUNHO)
 
-  empresa Usuario @relation("UsuarioVagas", fields: [usuarioId], references: [id], onDelete: Cascade)
+  empresa Usuarios @relation("UsuarioVagas", fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([usuarioId])
 }
@@ -145,7 +143,7 @@ model EmpresaPlano {
   proximaCobranca  DateTime?
   graceUntil       DateTime?
 
-  empresa Usuario          @relation("UsuarioPlanos", fields: [usuarioId], references: [id], onDelete: Cascade)
+  empresa Usuarios         @relation("UsuarioPlanos", fields: [usuarioId], references: [id], onDelete: Cascade)
   plano   PlanoEmpresarial @relation(fields: [planoEmpresarialId], references: [id])
 
   @@index([usuarioId, ativo])
@@ -180,8 +178,8 @@ model EmpresaBanimento {
   fim         DateTime
   criadoEm    DateTime @default(now())
 
-  usuario   Usuario @relation("EmpresaBanimentosUsuario", fields: [usuarioId], references: [id], onDelete: Cascade)
-  criadoPor Usuario @relation("EmpresaBanimentosAdmin", fields: [criadoPorId], references: [id])
+  usuario   Usuarios @relation("EmpresaBanimentosUsuario", fields: [usuarioId], references: [id], onDelete: Cascade)
+  criadoPor Usuarios @relation("EmpresaBanimentosAdmin", fields: [criadoPorId], references: [id])
 
   @@index([usuarioId])
   @@index([fim])
@@ -206,18 +204,18 @@ model PlanoEmpresarial {
   mpPreapprovalPlanId String? @unique
 }
 
-model Endereco {
+model Enderecos {
   id           String   @id @default(uuid())
   usuarioId    String
-  logradouro   String
-  numero       String
-  bairro       String
-  cidade       String
-  estado       String
-  cep          String
+  logradouro   String?
+  numero       String?
+  bairro       String?
+  cidade       String?
+  estado       String?
+  cep          String?
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
-  usuario      Usuario  @relation(fields: [usuarioId], references: [id])
+  usuario      Usuarios @relation(fields: [usuarioId], references: [id])
 }
 
 model LogEmail {

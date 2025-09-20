@@ -18,6 +18,8 @@ import {
   mapClienteTipoToPlanoParceiro,
   mapPlanoParceiroToClienteTipo,
 } from '@/modules/empresas/shared/plano-parceiro';
+import { attachEnderecoResumo } from '@/modules/usuarios/utils/address';
+import type { UsuarioEnderecoDto } from '@/modules/usuarios/utils/address';
 import type {
   AdminEmpresasBanInput,
   AdminEmpresasCreateInput,
@@ -54,7 +56,7 @@ const planoAtivoSelect = {
       },
     },
   },
-} satisfies Prisma.Usuario$planosContratadosArgs;
+} satisfies Prisma.Usuarios$planosContratadosArgs;
 
 const banimentoSelect = {
   id: true,
@@ -74,8 +76,6 @@ const createUsuarioListSelect = () =>
     telefone: true,
     avatarUrl: true,
     cnpj: true,
-    cidade: true,
-    estado: true,
     criadoEm: true,
     status: true,
     planosContratados: planoAtivoSelect,
@@ -84,6 +84,18 @@ const createUsuarioListSelect = () =>
       orderBy: { fim: 'desc' },
       take: 1,
       select: banimentoSelect,
+    },
+    enderecos: {
+      orderBy: { criadoEm: 'asc' },
+      select: {
+        id: true,
+        logradouro: true,
+        numero: true,
+        bairro: true,
+        cidade: true,
+        estado: true,
+        cep: true,
+      },
     },
     _count: {
       select: {
@@ -94,7 +106,7 @@ const createUsuarioListSelect = () =>
         },
       },
     },
-  }) satisfies Prisma.UsuarioSelect;
+  }) satisfies Prisma.UsuariosSelect;
 
 const usuarioDetailSelect = {
   id: true,
@@ -107,13 +119,23 @@ const usuarioDetailSelect = {
   descricao: true,
   instagram: true,
   linkedin: true,
-  cidade: true,
-  estado: true,
   criadoEm: true,
   tipoUsuario: true,
   status: true,
   ultimoLogin: true,
   planosContratados: planoAtivoSelect,
+  enderecos: {
+    orderBy: { criadoEm: 'asc' },
+    select: {
+      id: true,
+      logradouro: true,
+      numero: true,
+      bairro: true,
+      cidade: true,
+      estado: true,
+      cep: true,
+    },
+  },
   _count: {
     select: {
       vagasCriadas: {
@@ -123,10 +145,10 @@ const usuarioDetailSelect = {
       },
     },
   },
-} satisfies Prisma.UsuarioSelect;
+} satisfies Prisma.UsuariosSelect;
 
 type UsuarioListSelect = ReturnType<typeof createUsuarioListSelect>;
-type UsuarioListResult = Prisma.UsuarioGetPayload<{ select: UsuarioListSelect }>;
+type UsuarioListResult = Prisma.UsuariosGetPayload<{ select: UsuarioListSelect }>;
 type PlanoResumoData = UsuarioListResult['planosContratados'][number];
 type BanimentoResumoData = Prisma.EmpresaBanimentoGetPayload<{ select: typeof banimentoSelect }>;
 
@@ -155,6 +177,7 @@ type AdminEmpresaListItem = {
   cnpj: string | null;
   cidade: string | null;
   estado: string | null;
+  enderecos: UsuarioEnderecoDto[];
   criadoEm: Date;
   ativa: boolean;
   parceira: boolean;
@@ -216,6 +239,7 @@ type AdminEmpresaDetail = {
   linkedin: string | null;
   cidade: string | null;
   estado: string | null;
+  enderecos: UsuarioEnderecoDto[];
   criadoEm: Date;
   status: Status;
   ultimoLogin: Date | null;
@@ -272,6 +296,61 @@ const calcularPlanoFim = (tipo: ReturnType<typeof mapClienteTipoToPlanoParceiro>
   return fim;
 };
 
+const upsertEnderecoPrincipal = async (
+  tx: Prisma.TransactionClient,
+  usuarioId: string,
+  endereco: { cidade?: string | null; estado?: string | null },
+) => {
+  const dataToUpdate: Prisma.EnderecosUpdateInput = {};
+  const dataToCreate: Prisma.EnderecosUncheckedCreateInput = { usuarioId };
+
+  let hasDefinedField = false;
+  let hasCreateValue = false;
+
+  if (endereco.cidade !== undefined) {
+    dataToUpdate.cidade = endereco.cidade;
+    dataToCreate.cidade = endereco.cidade ?? null;
+    hasDefinedField = true;
+    if (endereco.cidade && endereco.cidade.length > 0) {
+      hasCreateValue = true;
+    }
+  }
+
+  if (endereco.estado !== undefined) {
+    dataToUpdate.estado = endereco.estado;
+    dataToCreate.estado = endereco.estado ?? null;
+    hasDefinedField = true;
+    if (endereco.estado && endereco.estado.length > 0) {
+      hasCreateValue = true;
+    }
+  }
+
+  if (!hasDefinedField) {
+    return;
+  }
+
+  const principalEndereco = await tx.enderecos.findFirst({
+    where: { usuarioId },
+    orderBy: { criadoEm: 'asc' },
+  });
+
+  if (principalEndereco) {
+    await tx.enderecos.update({
+      where: { id: principalEndereco.id },
+      data: dataToUpdate,
+    });
+    return;
+  }
+
+  if (!hasCreateValue) {
+    return;
+  }
+
+  await tx.enderecos.create({
+    data: dataToCreate,
+  });
+};
+
 const generateCodePrefix = () => {
   const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
   let prefix = '';
@@ -290,7 +369,7 @@ const generateUniqueEmpresaCode = async (tx: Prisma.TransactionClient): Promise<
   for (let attempt = 0; attempt < 10; attempt++) {
     const random = Math.floor(1000 + Math.random() * 9000);
     const candidate = `${prefix}${random}`;
-    const existing = await tx.usuario.findUnique({ where: { codUsuario: candidate }, select: { id: true } });
+    const existing = await tx.usuarios.findUnique({ where: { codUsuario: candidate }, select: { id: true } });
 
     if (!existing) {
       return candidate;
@@ -367,7 +446,7 @@ const atualizarPlanoSemReset = async (
 type PrismaUsuarioClient = Pick<Prisma.TransactionClient, 'usuario'>;
 
 const ensureEmpresaExiste = async (db: PrismaUsuarioClient, id: string) => {
-  const empresa = await db.usuario.findUnique({
+  const empresa = await db.usuarios.findUnique({
     where: { id },
     select: { id: true, tipoUsuario: true },
   });
@@ -377,7 +456,7 @@ const ensureEmpresaExiste = async (db: PrismaUsuarioClient, id: string) => {
   }
 };
 
-const buildSearchFilter = (search?: string): Prisma.UsuarioWhereInput => {
+const buildSearchFilter = (search?: string): Prisma.UsuariosWhereInput => {
   if (!search) {
     return {};
   }
@@ -485,7 +564,7 @@ export const adminEmpresasService = {
 
     const empresaId = await prisma.$transaction(async (tx) => {
       const codUsuario = await generateUniqueEmpresaCode(tx);
-      const usuario = await tx.usuario.create({
+      const usuario = await tx.usuarios.create({
         data: {
           nomeCompleto: sanitizeNome(input.nome),
           email: sanitizeEmail(input.email),
@@ -498,8 +577,6 @@ export const adminEmpresasService = {
           status,
           codUsuario,
           cnpj: normalizeDocumento(input.cnpj),
-          ...(cidade !== undefined ? { cidade } : {}),
-          ...(estado !== undefined ? { estado } : {}),
           ...(descricao !== undefined ? { descricao } : {}),
           ...(instagram !== undefined ? { instagram } : {}),
           ...(linkedin !== undefined ? { linkedin } : {}),
@@ -507,6 +584,8 @@ export const adminEmpresasService = {
         },
         select: { id: true },
       });
+
+      await upsertEnderecoPrincipal(tx, usuario.id, { cidade, estado });
 
       if (input.plano) {
         await assignPlanoToEmpresa(tx, usuario.id, input.plano);
@@ -522,7 +601,7 @@ export const adminEmpresasService = {
     await prisma.$transaction(async (tx) => {
       await ensureEmpresaExiste(tx, id);
 
-      const updates: Prisma.UsuarioUpdateInput = {};
+      const updates: Prisma.UsuariosUpdateInput = {};
 
       if (data.nome !== undefined) {
         updates.nomeCompleto = sanitizeNome(data.nome);
@@ -541,14 +620,8 @@ export const adminEmpresasService = {
       }
 
       const cidade = sanitizeOptionalValue(data.cidade);
-      if (cidade !== undefined) {
-        updates.cidade = cidade;
-      }
 
       const estado = sanitizeOptionalValue(data.estado);
-      if (estado !== undefined) {
-        updates.estado = estado;
-      }
 
       const descricao = sanitizeOptionalValue(data.descricao);
       if (descricao !== undefined) {
@@ -570,12 +643,14 @@ export const adminEmpresasService = {
         updates.avatarUrl = avatarUrl;
       }
 
+      await upsertEnderecoPrincipal(tx, id, { cidade, estado });
+
       if (data.status !== undefined) {
         updates.status = data.status;
       }
 
       if (Object.keys(updates).length > 0) {
-        await tx.usuario.update({ where: { id }, data: updates });
+        await tx.usuarios.update({ where: { id }, data: updates });
       }
 
       if (data.plano === null) {
@@ -599,7 +674,7 @@ export const adminEmpresasService = {
   },
 
   list: async ({ page, pageSize, search }: AdminEmpresasListQuery) => {
-    const where: Prisma.UsuarioWhereInput = {
+    const where: Prisma.UsuariosWhereInput = {
       tipoUsuario: TipoUsuario.PESSOA_JURIDICA,
       ...buildSearchFilter(search),
     };
@@ -609,8 +684,8 @@ export const adminEmpresasService = {
     const referenceDate = new Date();
 
     const [total, empresas] = await prisma.$transaction([
-      prisma.usuario.count({ where }),
-      prisma.usuario.findMany({
+      prisma.usuarios.count({ where }),
+      prisma.usuarios.findMany({
         where,
         orderBy: { criadoEm: 'desc' },
         skip,
@@ -619,7 +694,8 @@ export const adminEmpresasService = {
       }),
     ]);
 
-    const data: AdminEmpresaListItem[] = empresas.map((empresa) => {
+    const data: AdminEmpresaListItem[] = empresas.map((empresaRaw) => {
+      const empresa = attachEnderecoResumo(empresaRaw)!;
       const planoAtual = empresa.planosContratados[0];
       const plano = mapPlanoResumo(planoAtual, referenceDate);
       const diasTeste = planoAtual ? getPlanoParceiroDuracao(planoAtual.tipo) : null;
@@ -635,6 +711,7 @@ export const adminEmpresasService = {
         cnpj: empresa.cnpj ?? null,
         cidade: empresa.cidade,
         estado: empresa.estado,
+        enderecos: empresa.enderecos,
         criadoEm: empresa.criadoEm,
         ativa: empresa.status === Status.ATIVO,
         parceira: planoAtual ? isPlanoParceiroElegivel(planoAtual.tipo) : false,
@@ -654,14 +731,16 @@ export const adminEmpresasService = {
   },
 
   get: async (id: string): Promise<AdminEmpresaDetail | null> => {
-    const empresa = await prisma.usuario.findUnique({
+    const empresaRecord = await prisma.usuarios.findUnique({
       where: { id },
       select: usuarioDetailSelect,
     });
 
-    if (!empresa || empresa.tipoUsuario !== TipoUsuario.PESSOA_JURIDICA) {
+    if (!empresaRecord || empresaRecord.tipoUsuario !== TipoUsuario.PESSOA_JURIDICA) {
       return null;
     }
+
+    const empresa = attachEnderecoResumo(empresaRecord)!;
 
     const planoAtual = empresa.planosContratados[0];
     const plano = mapPlanoResumo(planoAtual);
@@ -691,6 +770,7 @@ export const adminEmpresasService = {
       linkedin: empresa.linkedin,
       cidade: empresa.cidade,
       estado: empresa.estado,
+      enderecos: empresa.enderecos,
       criadoEm: empresa.criadoEm,
       status: empresa.status,
       ultimoLogin: empresa.ultimoLogin ?? null,
@@ -790,14 +870,14 @@ export const adminEmpresasService = {
     await ensureEmpresaExiste(prisma, id);
 
     const skip = (page - 1) * pageSize;
-    const where: Prisma.VagaWhereInput = {
+    const where: Prisma.VagasWhereInput = {
       usuarioId: id,
       ...(status && status.length > 0 ? { status: { in: status } } : {}),
     };
 
     const [total, vagas] = await prisma.$transaction([
-      prisma.vaga.count({ where }),
-      prisma.vaga.findMany({
+      prisma.vagas.count({ where }),
+      prisma.vagas.findMany({
         where,
         orderBy: { inseridaEm: 'desc' },
         skip,
@@ -910,7 +990,7 @@ export const adminEmpresasService = {
     const banimento = await prisma.$transaction(async (tx) => {
       await ensureEmpresaExiste(tx, empresaId);
 
-      const admin = await tx.usuario.findUnique({
+      const admin = await tx.usuarios.findUnique({
         where: { id: adminId },
         select: { id: true, role: true },
       });
@@ -921,7 +1001,7 @@ export const adminEmpresasService = {
         });
       }
 
-      await tx.usuario.update({
+      await tx.usuarios.update({
         where: { id: empresaId },
         data: { status: Status.BANIDO },
       });

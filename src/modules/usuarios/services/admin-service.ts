@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { prisma } from '@/config/prisma';
 import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
 import { logger } from '@/utils/logger';
+import { attachEnderecoResumo } from '../utils/address';
 export class AdminService {
   private readonly log = logger.child({ module: 'AdminService' });
 
@@ -66,7 +67,7 @@ export class AdminService {
     const skip = (page - 1) * pageSize;
 
     // Construir filtros dinamicamente
-    const where: Prisma.UsuarioWhereInput = {};
+    const where: Prisma.UsuariosWhereInput = {};
     const statusFilter = this.getStatusFilter(status);
     const tipoUsuarioFilter = this.getTipoUsuarioFilter(tipoUsuario);
 
@@ -77,7 +78,7 @@ export class AdminService {
     if (tipoUsuarioFilter) where.tipoUsuario = tipoUsuarioFilter;
 
     const [usuarios, total] = await Promise.all([
-      prisma.usuario.findMany({
+      prisma.usuarios.findMany({
         where,
         select: {
           id: true,
@@ -93,7 +94,7 @@ export class AdminService {
         skip,
         take: pageSize,
       }),
-      prisma.usuario.count({ where }),
+      prisma.usuarios.count({ where }),
     ]);
 
     return {
@@ -124,7 +125,7 @@ export class AdminService {
     const pageSize = Math.min(Number(limit) || 50, 100);
     const skip = (page - 1) * pageSize;
 
-    const where: Prisma.UsuarioWhereInput = {
+    const where: Prisma.UsuariosWhereInput = {
       role: Role.ALUNO_CANDIDATO,
     };
 
@@ -149,7 +150,7 @@ export class AdminService {
     }
 
     const [candidatos, total] = await Promise.all([
-      prisma.usuario.findMany({
+      prisma.usuarios.findMany({
         where,
         select: {
           id: true,
@@ -160,19 +161,31 @@ export class AdminService {
           tipoUsuario: true,
           criadoEm: true,
           ultimoLogin: true,
-          cidade: true,
-          estado: true,
+          enderecos: {
+            orderBy: { criadoEm: 'asc' },
+            select: {
+              id: true,
+              logradouro: true,
+              numero: true,
+              bairro: true,
+              cidade: true,
+              estado: true,
+              cep: true,
+            },
+          },
         },
         orderBy: { criadoEm: 'desc' },
         skip,
         take: pageSize,
       }),
-      prisma.usuario.count({ where }),
+      prisma.usuarios.count({ where }),
     ]);
+
+    const candidatosComEndereco = candidatos.map((candidato) => attachEnderecoResumo(candidato)!);
 
     return {
       message: 'Lista de candidatos',
-      candidatos,
+      candidatos: candidatosComEndereco,
       pagination: {
         page,
         limit: pageSize,
@@ -190,7 +203,7 @@ export class AdminService {
       throw new Error('ID do usuário é obrigatório');
     }
 
-    const usuario = await prisma.usuario.findUnique({
+    const usuario = await prisma.usuarios.findUnique({
       where: { id: userId },
       select: {
         id: true,
@@ -209,14 +222,13 @@ export class AdminService {
         ultimoLogin: true,
         criadoEm: true,
         atualizadoEm: true,
-        cidade: true,
-        estado: true,
         avatarUrl: true,
         descricao: true,
         instagram: true,
         linkedin: true,
         codUsuario: true,
         enderecos: {
+          orderBy: { criadoEm: 'asc' },
           select: {
             id: true,
             logradouro: true,
@@ -233,7 +245,8 @@ export class AdminService {
     if (!usuario) {
       return null;
     }
-    return usuario;
+
+    return attachEnderecoResumo(usuario);
   }
 
   /**
@@ -244,7 +257,7 @@ export class AdminService {
       throw new Error('ID do candidato é obrigatório');
     }
 
-    const candidato = await prisma.usuario.findFirst({
+    const candidato = await prisma.usuarios.findFirst({
       where: {
         id: userId,
         role: Role.ALUNO_CANDIDATO,
@@ -265,14 +278,13 @@ export class AdminService {
         ultimoLogin: true,
         criadoEm: true,
         atualizadoEm: true,
-        cidade: true,
-        estado: true,
         avatarUrl: true,
         descricao: true,
         instagram: true,
         linkedin: true,
         codUsuario: true,
         enderecos: {
+          orderBy: { criadoEm: 'asc' },
           select: {
             id: true,
             logradouro: true,
@@ -290,7 +302,7 @@ export class AdminService {
       return null;
     }
 
-    return candidato;
+    return attachEnderecoResumo(candidato);
   }
 
   /**
@@ -306,7 +318,7 @@ export class AdminService {
     const statusEnum = status.trim();
 
     // Buscar dados antes da atualização
-    const usuarioAntes = await prisma.usuario.findUnique({
+    const usuarioAntes = await prisma.usuarios.findUnique({
       where: { id: userId },
       select: { status: true, email: true, nomeCompleto: true },
     });
@@ -316,7 +328,7 @@ export class AdminService {
     }
 
     // Atualizar status - CORREÇÃO: usando enum
-    const usuario = await prisma.usuario.update({
+    const usuario = await prisma.usuarios.update({
       where: { id: userId },
       data: { status: statusEnum as any },
       select: {
@@ -367,7 +379,7 @@ export class AdminService {
       throw new Error('Você não pode alterar sua própria role para uma função não-administrativa');
     }
 
-    const usuario = await prisma.usuario.update({
+    const usuario = await prisma.usuarios.update({
       where: { id: userId },
       data: { role: roleEnum as any },
       select: {

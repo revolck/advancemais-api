@@ -46,9 +46,9 @@ export class StatsService {
     }
 
     const [totalUsuarios, usuariosAtivos, usuariosHoje] = await Promise.all([
-      prisma.usuario.count(),
-      prisma.usuario.count({ where: { status: 'ATIVO' } }),
-      prisma.usuario.count({
+      prisma.usuarios.count(),
+      prisma.usuarios.count({ where: { status: 'ATIVO' } }),
+      prisma.usuarios.count({
         where: {
           criadoEm: {
             gte: new Date(new Date().setHours(0, 0, 0, 0)),
@@ -99,20 +99,20 @@ export class StatsService {
 
     const [usuariosPorPeriodo, usuariosPorStatus, usuariosPorTipo] = (await Promise.all([
       // Usuários por período
-      prisma.usuario.groupBy({
+      prisma.usuarios.groupBy({
         by: ['criadoEm'],
         where: { criadoEm: { gte: dataInicio } },
         _count: { id: true },
       }),
 
       // Por status
-      prisma.usuario.groupBy({
+      prisma.usuarios.groupBy({
         by: ['status'],
         _count: { id: true },
       }),
 
       // Por tipo
-      prisma.usuario.groupBy({
+      prisma.usuarios.groupBy({
         by: ['tipoUsuario'],
         _count: { id: true },
       }),

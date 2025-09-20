@@ -12,6 +12,7 @@ const adminRoles = ['ADMIN', 'MODERADOR'];
  *   post:
  *     summary: (Admin) Criar empresa
  *     description: "Cria uma nova empresa (Pessoa Jurídica) e permite opcionalmente vincular um plano ativo no momento da criação. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     operationId: adminEmpresasCreate
  *     tags: [Empresas - Admin]
  *     security:
  *       - bearerAuth: []
@@ -21,6 +22,23 @@ const adminRoles = ['ADMIN', 'MODERADOR'];
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/AdminEmpresaCreateInput'
+ *           examples:
+ *             default:
+ *               summary: Cadastro completo com plano vinculado
+ *               value:
+ *                 nome: Advance Tech Consultoria
+ *                 email: contato@advancetech.com.br
+ *                 telefone: '11987654321'
+ *                 senha: SenhaForte123!
+ *                 supabaseId: supabase-user-id
+ *                 cnpj: '12345678000190'
+ *                 cidade: São Paulo
+ *                 estado: SP
+ *                 descricao: Consultoria especializada em recrutamento e seleção.
+ *                 aceitarTermos: true
+ *                 plano:
+ *                   planoEmpresarialId: b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e
+ *                   tipo: 30_dias
  *     responses:
  *       201:
  *         description: Empresa criada com sucesso
@@ -28,6 +46,21 @@ const adminRoles = ['ADMIN', 'MODERADOR'];
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AdminEmpresaDetailResponse'
+ *             examples:
+ *               created:
+ *                 summary: Empresa criada
+ *                 value:
+ *                   empresa:
+ *                     id: f66fbad9-4d3c-41f7-90df-2f4f0f32af10
+ *                     codUsuario: EMP-123456
+ *                     nome: Advance Tech Consultoria
+ *                     email: contato@advance.com.br
+ *                     telefone: '+55 11 99999-0000'
+ *                     status: ATIVO
+ *                     criadoEm: '2024-01-05T12:00:00Z'
+ *                     plano:
+ *                       id: 38f73d2d-40fa-47a6-9657-6a4f7f1bb610
+ *                       tipo: assinatura_mensal
  *       400:
  *         description: Dados inválidos
  *         content:
@@ -67,6 +100,7 @@ const adminRoles = ['ADMIN', 'MODERADOR'];
  *   get:
  *     summary: (Admin) Listar empresas
  *     description: "Retorna empresas (Pessoa Jurídica) com dados resumidos do plano ativo. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     operationId: adminEmpresasList
  *     tags: [Empresas - Admin]
  *     security:
  *       - bearerAuth: []
@@ -90,7 +124,7 @@ const adminRoles = ['ADMIN', 'MODERADOR'];
  *         name: search
  *         schema:
  *           type: string
- *         description: "Filtro por nome, código da empresa, e-mail ou CNPJ"
+ *         description: "Filtro por nome, código da empresa, e-mail ou CNPJ (mínimo 3 caracteres)"
  *     responses:
  *       200:
  *         description: Empresas listadas com sucesso
@@ -98,6 +132,24 @@ const adminRoles = ['ADMIN', 'MODERADOR'];
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AdminEmpresasListResponse'
+ *             examples:
+ *               default:
+ *                 summary: Lista paginada de empresas
+ *                 value:
+ *                   data:
+ *                     - id: f66fbad9-4d3c-41f7-90df-2f4f0f32af10
+ *                       codUsuario: EMP-123456
+ *                       nome: Advance Tech Consultoria
+ *                       email: contato@advance.com.br
+ *                       telefone: '+55 11 99999-0000'
+ *                       ativa: true
+ *                       parceira: true
+ *                       vagasPublicadas: 8
+ *                   pagination:
+ *                     page: 1
+ *                     pageSize: 20
+ *                     total: 1
+ *                     totalPages: 1
  *       400:
  *         description: Parâmetros inválidos
  *         content:
@@ -132,6 +184,7 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  *   put:
  *     summary: (Admin) Atualizar empresa
  *     description: "Atualiza dados cadastrais da empresa e permite gerenciar o plano vinculado. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     operationId: adminEmpresasUpdate
  *     tags: [Empresas - Admin]
  *     security:
  *       - bearerAuth: []
@@ -148,6 +201,16 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/AdminEmpresaUpdateInput'
+ *           examples:
+ *             default:
+ *               summary: Atualização de dados cadastrais e plano
+ *               value:
+ *                 telefone: '11912345678'
+ *                 descricao: Consultoria especializada em tecnologia e inovação.
+ *                 status: ATIVO
+ *                 plano:
+ *                   planoEmpresarialId: b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e
+ *                   tipo: 60_dias
  *     responses:
  *       200:
  *         description: Empresa atualizada com sucesso
@@ -155,6 +218,18 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AdminEmpresaDetailResponse'
+ *             examples:
+ *               updated:
+ *                 summary: Empresa atualizada
+ *                 value:
+ *                   empresa:
+ *                     id: f66fbad9-4d3c-41f7-90df-2f4f0f32af10
+ *                     nome: Advance Tech Consultoria LTDA
+ *                     telefone: '+55 11 91234-5678'
+ *                     status: ATIVO
+ *                     plano:
+ *                       id: 38f73d2d-40fa-47a6-9657-6a4f7f1bb610
+ *                       tipo: 60_dias
  *       400:
  *         description: Dados inválidos
  *         content:
@@ -194,6 +269,7 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  *   get:
  *     summary: (Admin) Detalhes completos da empresa
  *     description: "Retorna informações completas da empresa incluindo plano ativo, pagamentos e métricas. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     operationId: adminEmpresasGet
  *     tags: [Empresas - Admin]
  *     security:
  *       - bearerAuth: []
@@ -211,6 +287,18 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AdminEmpresaDetailResponse'
+ *             examples:
+ *               default:
+ *                 summary: Empresa detalhada
+ *                 value:
+ *                   empresa:
+ *                     id: f66fbad9-4d3c-41f7-90df-2f4f0f32af10
+ *                     codUsuario: EMP-123456
+ *                     nome: Advance Tech Consultoria
+ *                     email: contato@advance.com.br
+ *                     vagas:
+ *                       publicadas: 8
+ *                       limitePlano: 10
  *       400:
  *         description: Parâmetros inválidos
  *         content:
@@ -251,6 +339,7 @@ router.get('/:id', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.g
  *   get:
  *     summary: (Admin) Histórico de pagamentos da empresa
  *     description: "Lista eventos de pagamento relacionados à empresa sem expor dados sensíveis de cartão. Apenas perfis ADMIN e MODERADOR podem acessar."
+ *     operationId: adminEmpresasListPagamentos
  *     tags: [Empresas - Admin]
  *     security:
  *       - bearerAuth: []
@@ -283,6 +372,21 @@ router.get('/:id', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.g
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AdminEmpresasPagamentosResponse'
+ *             examples:
+ *               default:
+ *                 summary: Histórico paginado
+ *                 value:
+ *                   data:
+ *                     - id: 729480a9-8e05-4b42-b826-f8db7e5a4d2c
+ *                       tipo: ASSINATURA
+ *                       status: APROVADO
+ *                       mensagem: Pagamento confirmado pelo provedor
+ *                       criadoEm: '2024-02-10T12:00:00Z'
+ *                   pagination:
+ *                     page: 1
+ *                     pageSize: 20
+ *                     total: 1
+ *                     totalPages: 1
  *       400:
  *         description: Parâmetros inválidos
  *         content:
@@ -326,6 +430,7 @@ router.get(
  *   get:
  *     summary: (Admin) Listar banimentos aplicados
  *     description: "Retorna histórico de banimentos aplicados a uma empresa, incluindo motivo e vigência."
+ *     operationId: adminEmpresasListBanimentos
  *     tags: [Empresas - Admin]
  *     security:
  *       - bearerAuth: []
@@ -356,6 +461,21 @@ router.get(
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AdminEmpresasBanimentosResponse'
+ *             examples:
+ *               default:
+ *                 summary: Banimentos da empresa
+ *                 value:
+ *                   data:
+ *                     - id: c0b3ad1e-88af-4b94-9e67-71b7dcb845e0
+ *                       motivo: Uso indevido da plataforma
+ *                       dias: 30
+ *                       inicio: '2024-04-01T00:00:00Z'
+ *                       fim: '2024-04-30T23:59:59Z'
+ *                   pagination:
+ *                     page: 1
+ *                     pageSize: 20
+ *                     total: 1
+ *                     totalPages: 1
  *       400:
  *         description: Parâmetros inválidos
  *         content:
@@ -389,6 +509,7 @@ router.get(
  *   post:
  *     summary: (Admin) Aplicar banimento à empresa
  *     description: "Aplica banimento temporário a uma empresa por quantidade de dias definida pelo administrador."
+ *     operationId: adminEmpresasAplicarBanimento
  *     tags: [Empresas - Admin]
  *     security:
  *       - bearerAuth: []
@@ -405,6 +526,12 @@ router.get(
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/AdminEmpresaBanimentoCreate'
+ *           examples:
+ *             default:
+ *               summary: Banimento de 30 dias com motivo
+ *               value:
+ *                 dias: 30
+ *                 motivo: Uso indevido da plataforma
  *     responses:
  *       201:
  *         description: Banimento aplicado com sucesso
@@ -412,6 +539,16 @@ router.get(
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AdminEmpresaBanimentoResponse'
+ *             examples:
+ *               created:
+ *                 summary: Banimento registrado
+ *                 value:
+ *                   banimento:
+ *                     id: c0b3ad1e-88af-4b94-9e67-71b7dcb845e0
+ *                     motivo: Uso indevido da plataforma
+ *                     dias: 30
+ *                     inicio: '2024-04-01T00:00:00Z'
+ *                     fim: '2024-04-30T23:59:59Z'
  *       400:
  *         description: Dados inválidos
  *         content:
@@ -452,6 +589,7 @@ router.post('/:id/banimentos', supabaseAuthMiddleware(adminRoles), AdminEmpresas
  *   get:
  *     summary: (Admin) Histórico de vagas da empresa
  *     description: "Lista vagas criadas pela empresa com opção de filtrar por status, incluindo o código curto gerado automaticamente para cada vaga."
+ *     operationId: adminEmpresasListVagas
  *     tags: [Empresas - Admin]
  *     security:
  *       - bearerAuth: []
@@ -487,6 +625,22 @@ router.post('/:id/banimentos', supabaseAuthMiddleware(adminRoles), AdminEmpresas
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AdminEmpresasVagasResponse'
+ *             examples:
+ *               default:
+ *                 summary: Vagas publicadas e em análise
+ *                 value:
+ *                   data:
+ *                     - id: 7a5b9c1d-2f80-44a6-82da-6b8c1f00ec91
+ *                       codigo: B24N56
+ *                       titulo: Analista de Dados Pleno
+ *                       status: PUBLICADO
+ *                       inseridaEm: '2024-05-10T09:00:00Z'
+ *                       atualizadoEm: '2024-05-12T11:30:00Z'
+ *                   pagination:
+ *                     page: 1
+ *                     pageSize: 20
+ *                     total: 1
+ *                     totalPages: 1
  *       400:
  *         description: Parâmetros inválidos
  *         content:
@@ -526,6 +680,7 @@ router.get('/:id/vagas', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *   get:
  *     summary: (Admin) Vagas em análise da empresa
  *     description: "Retorna vagas da empresa com status EM_ANALISE aguardando aprovação."
+ *     operationId: adminEmpresasListVagasAnalise
  *     tags: [Empresas - Admin]
  *     security:
  *       - bearerAuth: []
@@ -556,6 +711,22 @@ router.get('/:id/vagas', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AdminEmpresasVagasResponse'
+ *             examples:
+ *               default:
+ *                 summary: Vaga aguardando aprovação
+ *                 value:
+ *                   data:
+ *                     - id: 9b57ab89-0f8e-4bb6-9183-5a4b7bd6c001
+ *                       codigo: K45L89
+ *                       titulo: Coordenador de Projetos TI
+ *                       status: EM_ANALISE
+ *                       inseridaEm: '2024-05-15T09:30:00Z'
+ *                       atualizadoEm: '2024-05-16T11:45:00Z'
+ *                   pagination:
+ *                     page: 1
+ *                     pageSize: 20
+ *                     total: 1
+ *                     totalPages: 1
  *       400:
  *         description: Parâmetros inválidos
  *         content:
@@ -599,6 +770,7 @@ router.get(
  *   post:
  *     summary: (Admin) Aprovar vaga em análise
  *     description: "Altera o status da vaga para PUBLICADO caso esteja em análise."
+ *     operationId: adminEmpresasAprovarVaga
  *     tags: [Empresas - Admin]
  *     security:
  *       - bearerAuth: []
@@ -622,6 +794,17 @@ router.get(
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AdminEmpresaVagaAprovacaoResponse'
+ *             examples:
+ *               approved:
+ *                 summary: Vaga liberada para publicação
+ *                 value:
+ *                   vaga:
+ *                     id: 7a5b9c1d-2f80-44a6-82da-6b8c1f00ec91
+ *                     codigo: B24N56
+ *                     titulo: Analista de Dados Pleno
+ *                     status: PUBLICADO
+ *                     inseridaEm: '2024-05-10T09:00:00Z'
+ *                     atualizadoEm: '2024-05-12T11:30:00Z'
  *       400:
  *         description: Dados inválidos ou vaga em status incorreto
  *         content:

@@ -3470,6 +3470,50 @@ const options: Options = {
             },
           },
         },
+        UsuarioRecuperacaoSenha: {
+          type: 'object',
+          description:
+            'Estado de recuperação de senha associado ao usuário. Persistido na tabela UsuariosRecuperacaoSenha e utilizado para controlar tentativas, tokens e expiração.',
+          properties: {
+            id: { type: 'string', format: 'uuid', example: 'c1d8c1e0-1234-4b2e-8c44-4f5123456789' },
+            usuarioId: { type: 'string', format: 'uuid', example: 'usuario-uuid' },
+            tokenRecuperacao: {
+              type: 'string',
+              nullable: true,
+              example: 'd41d8cd98f00b204e9800998ecf8427e',
+              description: 'Token hex gerado para redefinição de senha. Nulo quando não há fluxo ativo.',
+            },
+            tokenRecuperacaoExp: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              example: '2025-03-13T14:30:00.000Z',
+              description: 'Data limite para utilização do token. Após expirar o token é invalidado automaticamente.',
+            },
+            tentativasRecuperacao: {
+              type: 'integer',
+              example: 1,
+              description: 'Quantidade de tentativas de disparo de e-mail de recuperação dentro do período de cooldown.',
+            },
+            ultimaTentativaRecuperacao: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              example: '2025-03-13T14:00:00.000Z',
+              description: 'Momento da última solicitação registrada para cálculo do cooldown.',
+            },
+            criadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2025-03-13T13:45:00.000Z',
+            },
+            atualizadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2025-03-13T14:00:00.000Z',
+            },
+          },
+        },
         AdminEmpresaListItem: {
           type: 'object',
           description: 'Dados resumidos da empresa para listagem administrativa',

@@ -52,8 +52,8 @@ model Usuarios {
   enderecos            UsuariosEnderecos[]
   vagasCriadas         EmpresasVagas[]    @relation("UsuarioVagas")
   planosContratados    EmpresasPlano[]    @relation("UsuarioPlanos")
-  banimentosRecebidos  EmpresaBanimento[] @relation("EmpresaBanimentosUsuario")
-  banimentosAplicados  EmpresaBanimento[] @relation("EmpresaBanimentosAdmin")
+  banimentosRecebidos  EmpresasEmBanimentos[] @relation("EmpresasEmBanimentosUsuario")
+  banimentosAplicados  EmpresasEmBanimentos[] @relation("EmpresasEmBanimentosAdmin")
 
   @@index([tokenRecuperacao])
   @@index([emailVerificationToken])
@@ -121,16 +121,16 @@ model EmpresasVagas {
 }
 
 model EmpresasPlano {
-  id                 String        @id @default(uuid())
-  usuarioId          String
-  planoEmpresarialId String
-  tipo               TiposDePlanos
-  inicio             DateTime?
-  fim                DateTime?
-  ativo              Boolean       @default(false)
-  observacao         String?       @db.Text
-  criadoEm           DateTime      @default(now())
-  atualizadoEm       DateTime      @updatedAt
+  id                    String        @id @default(uuid())
+  usuarioId             String
+  planosEmpresariaisId  String
+  tipo                  TiposDePlanos
+  inicio                DateTime?
+  fim                   DateTime?
+  ativo                 Boolean       @default(false)
+  observacao            String?       @db.Text
+  criadoEm              DateTime      @default(now())
+  atualizadoEm          DateTime      @updatedAt
 
   // Integração de pagamentos/assinaturas (Mercado Pago)
   modeloPagamento  MODELO_PAGAMENTO?
@@ -143,14 +143,14 @@ model EmpresasPlano {
   proximaCobranca  DateTime?
   graceUntil       DateTime?
 
-  empresa Usuarios         @relation("UsuarioPlanos", fields: [usuarioId], references: [id], onDelete: Cascade)
-  plano   PlanoEmpresarial @relation(fields: [planoEmpresarialId], references: [id])
+  empresa Usuarios            @relation("UsuarioPlanos", fields: [usuarioId], references: [id], onDelete: Cascade)
+  plano   PlanosEmpresariais @relation(fields: [planosEmpresariaisId], references: [id])
 
   @@index([usuarioId, ativo])
-  @@index([planoEmpresarialId])
+  @@index([planosEmpresariaisId])
 }
 
-model LogPagamento {
+model LogsPagamentosDeAssinaturas {
   id              String   @id @default(uuid())
   usuarioId       String?
   empresasPlanoId String?
@@ -168,7 +168,7 @@ model LogPagamento {
   @@index([criadoEm])
 }
 
-model EmpresaBanimento {
+model EmpresasEmBanimentos {
   id          String   @id @default(uuid())
   usuarioId   String
   criadoPorId String
@@ -178,14 +178,14 @@ model EmpresaBanimento {
   fim         DateTime
   criadoEm    DateTime @default(now())
 
-  usuario   Usuarios @relation("EmpresaBanimentosUsuario", fields: [usuarioId], references: [id], onDelete: Cascade)
-  criadoPor Usuarios @relation("EmpresaBanimentosAdmin", fields: [criadoPorId], references: [id])
+  usuario   Usuarios @relation("EmpresasEmBanimentosUsuario", fields: [usuarioId], references: [id], onDelete: Cascade)
+  criadoPor Usuarios @relation("EmpresasEmBanimentosAdmin", fields: [criadoPorId], references: [id])
 
   @@index([usuarioId])
   @@index([fim])
 }
 
-model PlanoEmpresarial {
+model PlanosEmpresariais {
   id                      String   @id @default(uuid())
   icon                    String
   nome                    String

@@ -174,7 +174,7 @@ router.get('/:id', supabaseAuthMiddleware(adminRoles), ClientesController.get);
  *            -H "Content-Type: application/json" \
  *            -d '{
  *                  "usuarioId": "f1d7a9c2-4e0b-4f6d-90ad-8c6b84a0f1a1",
- *                  "planoEmpresarialId": "31b3b0e1-4d9d-4a3c-9a77-51b872d59bf0",
+ *                  "planosEmpresariaisId": "31b3b0e1-4d9d-4a3c-9a77-51b872d59bf0",
  *                  "tipo": "7_dias",
  *                  "observacao": "Período de teste liberado pela equipe comercial"
  *                }'

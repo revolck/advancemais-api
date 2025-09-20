@@ -30,8 +30,8 @@ export const logsController = {
       const take = pageSize ? Math.min(100, Math.max(1, parseInt(pageSize))) : 20;
       const skip = page ? (Math.max(1, parseInt(page)) - 1) * take : 0;
       const [items, total] = await Promise.all([
-        prisma.logPagamento.findMany({ where, orderBy: { criadoEm: 'desc' }, take, skip }),
-        prisma.logPagamento.count({ where }),
+        prisma.logsPagamentosDeAssinaturas.findMany({ where, orderBy: { criadoEm: 'desc' }, take, skip }),
+        prisma.logsPagamentosDeAssinaturas.count({ where }),
       ]);
       res.json({ items, total, page: page ? parseInt(page) : 1, pageSize: take });
     } catch (error: any) {
@@ -41,7 +41,7 @@ export const logsController = {
   get: async (req: Request, res: Response) => {
     try {
       const isAdmin = ['ADMIN', 'MODERADOR'].includes((req.user as any)?.role);
-      const item = await prisma.logPagamento.findUnique({ where: { id: req.params.id } });
+      const item = await prisma.logsPagamentosDeAssinaturas.findUnique({ where: { id: req.params.id } });
       if (!item) return res.status(404).json({ success: false, code: 'LOG_NOT_FOUND' });
       if (!isAdmin && item.usuarioId !== (req.user as any)?.id) {
         return res.status(403).json({ success: false, code: 'FORBIDDEN' });

@@ -5,7 +5,7 @@ import { PreApproval, PreApprovalPlan, Payment, Preference } from 'mercadopago';
 import crypto from 'crypto';
 import { clientesService } from '@/modules/empresas/clientes/services/clientes.service';
 import { METODO_PAGAMENTO, MODELO_PAGAMENTO, STATUS_PAGAMENTO, StatusDeVagas, TiposDePlanos } from '@prisma/client';
-import type { PlanoEmpresarial } from '@prisma/client';
+import type { PlanosEmpresariais } from '@prisma/client';
 import { EmailService } from '@/modules/brevo/services/email-service';
 import type { StartCheckoutInput } from '@/modules/mercadopago/assinaturas/validators/assinaturas.schema';
 
@@ -16,10 +16,10 @@ type MercadoPagoResponse<T = any> = {
 
 type CheckoutPagamento = NonNullable<StartCheckoutInput['pagamento']>;
 
-type PlanoSnapshot = {
+type PlanosEmpresariaisSnapshot = {
   id: string;
   usuarioId: string;
-  planoEmpresarialId: string;
+  planosEmpresariaisId: string;
   tipo: TiposDePlanos;
   inicio: Date | null;
   fim: Date | null;
@@ -36,7 +36,7 @@ type PlanoSnapshot = {
   mpPaymentId: string | null;
   proximaCobranca: Date | null;
   graceUntil: Date | null;
-  plano: PlanoEmpresarial;
+  plano: PlanosEmpresariais;
 };
 
 const pagamentoToMetodo: Record<CheckoutPagamento, METODO_PAGAMENTO> = {
@@ -81,7 +81,7 @@ function mapToStatusPagamento(status: string | null | undefined): STATUS_PAGAMEN
 async function createOrUpdateCheckoutEmpresasPlano(params: {
   checkoutId: string;
   usuarioId: string;
-  planoEmpresarialId: string;
+  planosEmpresariaisId: string;
   metodoPagamento: METODO_PAGAMENTO;
   modeloPagamento: MODELO_PAGAMENTO;
   statusPagamento: STATUS_PAGAMENTO;
@@ -98,7 +98,7 @@ async function createOrUpdateCheckoutEmpresasPlano(params: {
 }) {
   const data = {
     usuarioId: params.usuarioId,
-    planoEmpresarialId: params.planoEmpresarialId,
+    planosEmpresariaisId: params.planosEmpresariaisId,
     tipo: TiposDePlanos.ASSINATURA_MENSAL,
     observacao: params.observacao ?? 'Aguardando confirmação de pagamento (Mercado Pago)',
     modeloPagamento: params.modeloPagamento,
@@ -236,7 +236,7 @@ export const assinaturasService = {
     mensagem?: string | null;
   }) {
     try {
-      await prisma.logPagamento.create({
+      await prisma.logsPagamentosDeAssinaturas.create({
         data: {
           usuarioId: data.usuarioId ?? null,
           empresasPlanoId: data.empresasPlanoId ?? null,
@@ -255,8 +255,8 @@ export const assinaturasService = {
   },
   async ensurePlanPreapproval(planId: string) {
     assertMercadoPagoConfigured();
-    const plan = await prisma.planoEmpresarial.findUnique({ where: { id: planId }, select: { id: true, nome: true, valor: true, mpPreapprovalPlanId: true } });
-    if (!plan) throw new Error('PlanoEmpresarial não encontrado');
+    const plan = await prisma.planosEmpresariais.findUnique({ where: { id: planId }, select: { id: true, nome: true, valor: true, mpPreapprovalPlanId: true } });
+    if (!plan) throw new Error('PlanosEmpresariais não encontrado');
     if (plan.mpPreapprovalPlanId) return plan.mpPreapprovalPlanId;
 
     const mp = mpClient!;
@@ -275,7 +275,7 @@ export const assinaturasService = {
     });
     const id = (created as any)?.id as string | undefined;
     if (id) {
-      await prisma.planoEmpresarial.update({ where: { id: plan.id }, data: { mpPreapprovalPlanId: id } });
+      await prisma.planosEmpresariais.update({ where: { id: plan.id }, data: { mpPreapprovalPlanId: id } });
       return id;
     }
     throw new Error('Falha ao criar PreApprovalPlan no Mercado Pago');
@@ -284,15 +284,15 @@ export const assinaturasService = {
     const existing = await prisma.empresasPlano.findUnique({ where: { id: externalRef } });
     if (existing) return existing;
 
-    const checkoutLog = await prisma.logPagamento.findFirst({
+    const checkoutLog = await prisma.logsPagamentosDeAssinaturas.findFirst({
       where: { externalRef, tipo: 'CHECKOUT_START' },
       orderBy: { criadoEm: 'desc' },
     });
 
     if (!checkoutLog?.usuarioId) return null;
     const payload = (checkoutLog.payload as any) || {};
-    const planoEmpresarialId = payload.planoEmpresarialId as string | undefined;
-    if (!planoEmpresarialId) return null;
+    const planosEmpresariaisId = payload.planosEmpresariaisId as string | undefined;
+    if (!planosEmpresariaisId) return null;
 
     const modeloPagamento = (payload.modeloPagamento as MODELO_PAGAMENTO | undefined) ?? MODELO_PAGAMENTO.ASSINATURA;
     const metodoPagamento = payload.metodoPagamento as METODO_PAGAMENTO | undefined;
@@ -302,7 +302,7 @@ export const assinaturasService = {
       data: {
         id: externalRef,
         usuarioId: checkoutLog.usuarioId,
-        planoEmpresarialId,
+        planosEmpresariaisId,
         tipo: TiposDePlanos.ASSINATURA_MENSAL,
         modeloPagamento,
         metodoPagamento: metodoPagamento ?? null,
@@ -315,7 +315,7 @@ export const assinaturasService = {
       },
     });
 
-    const subscriptionLog = await prisma.logPagamento.findFirst({
+    const subscriptionLog = await prisma.logsPagamentosDeAssinaturas.findFirst({
       where: { externalRef, tipo: 'PREAPPROVAL_CREATED' },
       orderBy: { criadoEm: 'desc' },
     });
@@ -325,16 +325,16 @@ export const assinaturasService = {
       updated = await prisma.empresasPlano.update({ where: { id: created.id }, data: { mpSubscriptionId: subscriptionLog.mpResourceId } });
     }
 
-    await prisma.logPagamento.updateMany({ where: { externalRef }, data: { empresasPlanoId: created.id } });
+    await prisma.logsPagamentosDeAssinaturas.updateMany({ where: { externalRef }, data: { empresasPlanoId: created.id } });
 
     return updated;
   },
   async startCheckout(params: StartCheckoutInput) {
     assertMercadoPagoConfigured();
 
-    const planoBase = await prisma.planoEmpresarial.findUnique({ where: { id: params.planoEmpresarialId } });
+    const planoBase = await prisma.planosEmpresariais.findUnique({ where: { id: params.planosEmpresariaisId } });
     if (!planoBase) {
-      throw new Error('PlanoEmpresarial não encontrado');
+      throw new Error('PlanosEmpresariais não encontrado');
     }
 
     const usuario = await prisma.usuarios.findUnique({
@@ -370,7 +370,7 @@ export const assinaturasService = {
       status: 'PENDENTE',
       externalRef: checkoutId,
       payload: {
-        planoEmpresarialId: params.planoEmpresarialId,
+        planosEmpresariaisId: params.planosEmpresariaisId,
         metodo: params.metodo,
         pagamento: pagamentoSelecionado,
         modeloPagamento,
@@ -424,10 +424,10 @@ export const assinaturasService = {
       phone: payerPhone,
     };
 
-    const planoSnapshot: PlanoSnapshot = {
+    const planoSnapshot: PlanosEmpresariaisSnapshot = {
       id: checkoutId,
       usuarioId: params.usuarioId,
-      planoEmpresarialId: params.planoEmpresarialId,
+      planosEmpresariaisId: params.planosEmpresariaisId,
       tipo: TiposDePlanos.ASSINATURA_MENSAL,
       inicio: null,
       fim: null,
@@ -450,7 +450,7 @@ export const assinaturasService = {
     try {
       if (isAssinatura) {
         const preapproval = new PreApproval(mp);
-        const preapprovalPlanId = await this.ensurePlanPreapproval(params.planoEmpresarialId);
+        const preapprovalPlanId = await this.ensurePlanPreapproval(params.planosEmpresariaisId);
         const requestBody: Record<string, any> = {
           reason: titulo,
           external_reference: checkoutId,
@@ -478,7 +478,7 @@ export const assinaturasService = {
         await createOrUpdateCheckoutEmpresasPlano({
           checkoutId,
           usuarioId: params.usuarioId,
-          planoEmpresarialId: params.planoEmpresarialId,
+          planosEmpresariaisId: params.planosEmpresariaisId,
           metodoPagamento,
           modeloPagamento,
           statusPagamento,
@@ -553,7 +553,7 @@ export const assinaturasService = {
         await createOrUpdateCheckoutEmpresasPlano({
           checkoutId,
           usuarioId: params.usuarioId,
-          planoEmpresarialId: params.planoEmpresarialId,
+          planosEmpresariaisId: params.planosEmpresariaisId,
           metodoPagamento,
           modeloPagamento,
           statusPagamento,
@@ -620,7 +620,7 @@ export const assinaturasService = {
         await createOrUpdateCheckoutEmpresasPlano({
           checkoutId,
           usuarioId: params.usuarioId,
-          planoEmpresarialId: params.planoEmpresarialId,
+          planosEmpresariaisId: params.planosEmpresariaisId,
           metodoPagamento,
           modeloPagamento,
           statusPagamento,
@@ -695,7 +695,7 @@ export const assinaturasService = {
       await createOrUpdateCheckoutEmpresasPlano({
         checkoutId,
         usuarioId: params.usuarioId,
-        planoEmpresarialId: params.planoEmpresarialId,
+        planosEmpresariaisId: params.planosEmpresariaisId,
         metodoPagamento,
         modeloPagamento,
         statusPagamento,
@@ -930,11 +930,11 @@ export const assinaturasService = {
     return { cancelled: true };
   },
 
-  async downgrade(usuarioId: string, novoPlanoEmpresarialId: string) {
+  async downgrade(usuarioId: string, novoPlanosEmpresariaisId: string) {
     // Cria nova vinculação com downgrade e coloca vagas em rascunho
     const result = await clientesService.assign({
       usuarioId,
-      planoEmpresarialId: novoPlanoEmpresarialId,
+      planosEmpresariaisId: novoPlanosEmpresariaisId,
       tipo: 'parceiro',
       observacao: 'Downgrade de plano via Mercado Pago',
     } as any);
@@ -943,11 +943,11 @@ export const assinaturasService = {
     return result;
   },
 
-  async upgrade(usuarioId: string, novoPlanoEmpresarialId: string) {
+  async upgrade(usuarioId: string, novoPlanosEmpresariaisId: string) {
     // Cria nova vinculação sem alterar status das vagas
     const result = await clientesService.assign({
       usuarioId,
-      planoEmpresarialId: novoPlanoEmpresarialId,
+      planosEmpresariaisId: novoPlanosEmpresariaisId,
       tipo: 'parceiro',
       observacao: 'Upgrade de plano via Mercado Pago',
     } as any);
@@ -1008,7 +1008,7 @@ export const assinaturasService = {
 
   async adminRemindPaymentForPlan(params: {
     usuarioId: string;
-    planoEmpresarialId: string;
+    planosEmpresariaisId: string;
     metodoPagamento?: METODO_PAGAMENTO;
     successUrl?: string;
     failureUrl?: string;
@@ -1025,7 +1025,7 @@ export const assinaturasService = {
 
     return this.startCheckout({
       usuarioId: params.usuarioId,
-      planoEmpresarialId: params.planoEmpresarialId,
+      planosEmpresariaisId: params.planosEmpresariaisId,
       metodo: 'pagamento',
       pagamento,
       successUrl: params.successUrl,

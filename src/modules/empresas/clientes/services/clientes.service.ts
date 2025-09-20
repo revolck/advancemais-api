@@ -179,7 +179,7 @@ export const clientesService = {
       return tx.empresasPlano.create({
         data: {
           usuarioId: data.usuarioId,
-          planoEmpresarialId: data.planoEmpresarialId,
+          planosEmpresariaisId: data.planosEmpresariaisId,
           tipo,
           inicio,
           fim,
@@ -201,8 +201,8 @@ export const clientesService = {
 
     const updates: Prisma.EmpresasPlanoUpdateInput = {};
 
-    if (data.planoEmpresarialId !== undefined) {
-      updates.plano = { connect: { id: data.planoEmpresarialId } };
+    if (data.planosEmpresariaisId !== undefined) {
+      updates.plano = { connect: { id: data.planosEmpresariaisId } };
     }
 
     let inicio = planoAtual.inicio ?? null;

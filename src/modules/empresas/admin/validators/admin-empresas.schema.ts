@@ -24,7 +24,7 @@ const observacaoSchema = z
   .max(500, 'A observação deve ter no máximo 500 caracteres');
 
 export const adminEmpresasPlanoSchema = z.object({
-  planoEmpresarialId: uuidSchema,
+  planosEmpresariaisId: uuidSchema,
   tipo: clientePlanoTipoSchema,
   iniciarEm: z.coerce.date({ invalid_type_error: 'Informe uma data válida' }).optional(),
   observacao: observacaoSchema.optional().nullable(),

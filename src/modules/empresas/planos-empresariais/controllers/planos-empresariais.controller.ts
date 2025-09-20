@@ -3,13 +3,13 @@ import { ZodError } from 'zod';
 
 import {
   MAX_PLANOS_EMPRESARIAIS,
-  PlanoEmpresarialLimitError,
+  PlanosEmpresariaisLimitError,
   planosEmpresariaisService,
-} from '@/modules/empresas/planos-empresarial/services/planos-empresariais.service';
+} from '@/modules/empresas/planos-empresariais/services/planos-empresariais.service';
 import {
-  createPlanoEmpresarialSchema,
-  updatePlanoEmpresarialSchema,
-} from '@/modules/empresas/planos-empresarial/validators/planos-empresariais.schema';
+  createPlanosEmpresariaisSchema,
+  updatePlanosEmpresariaisSchema,
+} from '@/modules/empresas/planos-empresariais/validators/planos-empresariais.schema';
 
 export class PlanosEmpresariaisController {
   static list = async (_req: Request, res: Response) => {
@@ -52,7 +52,7 @@ export class PlanosEmpresariaisController {
 
   static create = async (req: Request, res: Response) => {
     try {
-      const data = createPlanoEmpresarialSchema.parse(req.body);
+      const data = createPlanosEmpresariaisSchema.parse(req.body);
       const plano = await planosEmpresariaisService.create(data);
       res.status(201).json(plano);
     } catch (error: any) {
@@ -65,7 +65,7 @@ export class PlanosEmpresariaisController {
         });
       }
 
-      if (error instanceof PlanoEmpresarialLimitError) {
+      if (error instanceof PlanosEmpresariaisLimitError) {
         return res.status(409).json({
           success: false,
           code: 'PLANOS_EMPRESARIAIS_LIMIT_REACHED',
@@ -86,7 +86,7 @@ export class PlanosEmpresariaisController {
   static update = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const data = updatePlanoEmpresarialSchema.parse(req.body);
+      const data = updatePlanosEmpresariaisSchema.parse(req.body);
 
       if (Object.keys(data).length === 0) {
         return res.status(400).json({

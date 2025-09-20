@@ -218,10 +218,10 @@ const options: Options = {
         },
         CheckoutIntent: {
           type: 'object',
-          required: ['usuarioId', 'planoEmpresarialId', 'metodo'],
+          required: ['usuarioId', 'planosEmpresariaisId', 'metodo'],
           properties: {
             usuarioId: { type: 'string', format: 'uuid' },
-            planoEmpresarialId: { type: 'string', format: 'uuid' },
+            planosEmpresariaisId: { type: 'string', format: 'uuid' },
             metodo: { $ref: '#/components/schemas/CheckoutMetodo' },
             pagamento: {
               $ref: '#/components/schemas/CheckoutPagamento',
@@ -3009,7 +3009,7 @@ const options: Options = {
             },
           },
         },
-        PlanoEmpresarial: {
+        PlanosEmpresariais: {
           type: 'object',
           properties: {
             id: { type: 'string', example: 'plano-uuid' },
@@ -3054,7 +3054,7 @@ const options: Options = {
             },
           },
         },
-        PlanoEmpresarialCreateInput: {
+        PlanosEmpresariaisCreateInput: {
           type: 'object',
           required: ['icon', 'nome', 'descricao', 'valor', 'quantidadeVagas', 'vagaEmDestaque'],
           properties: {
@@ -3101,7 +3101,7 @@ const options: Options = {
             },
           },
         },
-        PlanoEmpresarialUpdateInput: {
+        PlanosEmpresariaisUpdateInput: {
           type: 'object',
           properties: {
             icon: { type: 'string', example: 'ph-shield-check' },
@@ -3139,7 +3139,7 @@ const options: Options = {
             },
           },
         },
-        PlanoEmpresarialLimitResponse: {
+        PlanosEmpresariaisLimitResponse: {
           type: 'object',
           properties: {
             success: { type: 'boolean', example: false },
@@ -3207,7 +3207,7 @@ const options: Options = {
           properties: {
             id: { type: 'string', example: 'parceria-uuid' },
             usuarioId: { type: 'string', example: 'usuario-uuid' },
-            planoEmpresarialId: { type: 'string', example: 'plano-uuid' },
+            planosEmpresariaisId: { type: 'string', example: 'plano-uuid' },
             tipo: { $ref: '#/components/schemas/ClientePlanoTipo' },
             inicio: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00Z' },
             fim: {
@@ -3239,15 +3239,15 @@ const options: Options = {
               allOf: [{ $ref: '#/components/schemas/ClientePlanoEmpresa' }],
               nullable: true,
             },
-            plano: { $ref: '#/components/schemas/PlanoEmpresarial' },
+            plano: { $ref: '#/components/schemas/PlanosEmpresariais' },
           },
         },
         EmpresaClientePlanoCreateInput: {
           type: 'object',
-          required: ['usuarioId', 'planoEmpresarialId', 'tipo'],
+          required: ['usuarioId', 'planosEmpresariaisId', 'tipo'],
           properties: {
             usuarioId: { type: 'string', format: 'uuid', example: 'usuario-uuid' },
-            planoEmpresarialId: { type: 'string', format: 'uuid', example: 'plano-uuid' },
+            planosEmpresariaisId: { type: 'string', format: 'uuid', example: 'plano-uuid' },
             tipo: { $ref: '#/components/schemas/ClientePlanoTipo' },
             iniciarEm: {
               type: 'string',
@@ -3265,7 +3265,7 @@ const options: Options = {
         EmpresaClientePlanoUpdateInput: {
           type: 'object',
           properties: {
-            planoEmpresarialId: {
+            planosEmpresariaisId: {
               type: 'string',
               format: 'uuid',
               example: 'novo-plano-uuid',
@@ -3488,7 +3488,7 @@ const options: Options = {
               description: 'Indica se a empresa possui um banimento ativo no momento da consulta',
             },
             banimentoAtivo: {
-              allOf: [{ $ref: '#/components/schemas/AdminEmpresaBanimentoResumo' }],
+              allOf: [{ $ref: '#/components/schemas/AdminEmpresasEmBanimentosResumo' }],
               nullable: true,
             },
           },
@@ -3550,9 +3550,9 @@ const options: Options = {
         },
         AdminEmpresasPlanoInput: {
           type: 'object',
-          required: ['planoEmpresarialId', 'tipo'],
+          required: ['planosEmpresariaisId', 'tipo'],
           properties: {
-            planoEmpresarialId: {
+            planosEmpresariaisId: {
               type: 'string',
               format: 'uuid',
               example: 'plano-uuid',
@@ -3577,7 +3577,7 @@ const options: Options = {
             },
           },
           example: {
-            planoEmpresarialId: 'b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e',
+            planosEmpresariaisId: 'b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e',
             tipo: '30_dias',
             iniciarEm: '2024-03-01T12:00:00Z',
             observacao: 'Plano cortesia liberado pelo time comercial',
@@ -3599,7 +3599,7 @@ const options: Options = {
             },
           ],
           example: {
-            planoEmpresarialId: 'b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e',
+            planosEmpresariaisId: 'b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e',
             tipo: '60_dias',
             resetPeriodo: true,
             observacao: 'Extensão negociada com o cliente',
@@ -3703,7 +3703,7 @@ const options: Options = {
             avatarUrl: 'https://cdn.advance.com.br/logo.png',
             aceitarTermos: true,
             plano: {
-              planoEmpresarialId: 'b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e',
+              planosEmpresariaisId: 'b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e',
               tipo: '30_dias',
             },
           },
@@ -3779,7 +3779,7 @@ const options: Options = {
             instagram: 'https://instagram.com/advancetech',
             status: 'ATIVO',
             plano: {
-              planoEmpresarialId: 'b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e',
+              planosEmpresariaisId: 'b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e',
               tipo: '60_dias',
               resetPeriodo: false,
             },
@@ -3916,7 +3916,7 @@ const options: Options = {
               nullable: true,
             },
             banimentoAtivo: {
-              allOf: [{ $ref: '#/components/schemas/AdminEmpresaBanimentoResumo' }],
+              allOf: [{ $ref: '#/components/schemas/AdminEmpresasEmBanimentosResumo' }],
               nullable: true,
             },
             vagas: {
@@ -4057,7 +4057,7 @@ const options: Options = {
             },
           },
         },
-        AdminEmpresaBanimentoResumo: {
+        AdminEmpresasEmBanimentosResumo: {
           type: 'object',
           description: 'Informações resumidas sobre um banimento aplicado à empresa',
           required: ['id', 'dias', 'inicio', 'fim', 'criadoEm'],
@@ -4169,7 +4169,7 @@ const options: Options = {
           properties: {
             data: {
               type: 'array',
-              items: { $ref: '#/components/schemas/AdminEmpresaBanimentoResumo' },
+              items: { $ref: '#/components/schemas/AdminEmpresasEmBanimentosResumo' },
             },
             pagination: { allOf: [{ $ref: '#/components/schemas/PaginationMeta' }] },
           },
@@ -4192,7 +4192,7 @@ const options: Options = {
             },
           },
         },
-        AdminEmpresaBanimentoCreate: {
+        AdminEmpresasEmBanimentosCreate: {
           type: 'object',
           required: ['dias'],
           properties: {
@@ -4210,11 +4210,11 @@ const options: Options = {
             },
           },
         },
-        AdminEmpresaBanimentoResponse: {
+        AdminEmpresasEmBanimentosResponse: {
           type: 'object',
           required: ['banimento'],
           properties: {
-            banimento: { $ref: '#/components/schemas/AdminEmpresaBanimentoResumo' },
+            banimento: { $ref: '#/components/schemas/AdminEmpresasEmBanimentosResumo' },
           },
           example: {
             banimento: {

@@ -1,4 +1,4 @@
-import { PlanoParceiro, Prisma, TipoUsuario } from '@prisma/client';
+import { TiposDePlanos, Prisma, TipoUsuario } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { attachEnderecoResumo } from '@/modules/usuarios/utils/address';
@@ -8,10 +8,10 @@ import {
   UpdateClientePlanoInput,
 } from '@/modules/empresas/clientes/validators/clientes.schema';
 import {
-  getPlanoParceiroDuracao,
-  mapClienteTipoToPlanoParceiro,
-  mapPlanoParceiroToClienteTipo,
-} from '@/modules/empresas/shared/plano-parceiro';
+  getTipoDePlanoDuracao,
+  mapClienteTipoToTipoDePlano,
+  mapTipoDePlanoToClienteTipo,
+} from '@/modules/empresas/shared/tipos-de-planos';
 
 const includePlanoEmpresa = {
   include: {
@@ -52,8 +52,8 @@ const sanitizeObservacao = (value?: string | null) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-const calcularDataFim = (tipo: PlanoParceiro, inicio: Date | null) => {
-  const duracao = getPlanoParceiroDuracao(tipo);
+const calcularDataFim = (tipo: TiposDePlanos, inicio: Date | null) => {
+  const duracao = getTipoDePlanoDuracao(tipo);
   if (duracao === null) {
     return null;
   }
@@ -106,7 +106,7 @@ const transformarPlano = (plano: EmpresasPlanoWithRelations) => {
   return {
     ...restoPlano,
     empresa,
-    tipo: mapPlanoParceiroToClienteTipo(plano.tipo),
+    tipo: mapTipoDePlanoToClienteTipo(plano.tipo),
     estaVigente,
     diasRestantes: diasRestantes !== null && diasRestantes < 0 ? 0 : diasRestantes,
   };
@@ -159,13 +159,13 @@ export const clientesService = {
 
     return {
       ...plano,
-      tipo: mapPlanoParceiroToClienteTipo(plano.tipo),
+      tipo: mapTipoDePlanoToClienteTipo(plano.tipo),
     };
   },
 
   assign: async (data: CreateClientePlanoInput) => {
     await ensureUsuarioEmpresa(data.usuarioId);
-    const tipo = mapClienteTipoToPlanoParceiro(data.tipo);
+    const tipo = mapClienteTipoToTipoDePlano(data.tipo);
     const inicio = data.iniciarEm ?? new Date();
     const fim = calcularDataFim(tipo, inicio);
     const observacao = sanitizeObservacao(data.observacao);
@@ -213,7 +213,7 @@ export const clientesService = {
 
     let tipo = planoAtual.tipo;
     if (data.tipo !== undefined) {
-      tipo = mapClienteTipoToPlanoParceiro(data.tipo);
+      tipo = mapClienteTipoToTipoDePlano(data.tipo);
       updates.tipo = tipo;
     }
 

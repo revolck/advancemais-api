@@ -1,4 +1,4 @@
-import { ModalidadesDeVagas, RegimesDeTrabalhos, StatusVaga } from '@prisma/client';
+import { ModalidadesDeVagas, RegimesDeTrabalhos, StatusDeVagas } from '@prisma/client';
 import { z } from 'zod';
 
 const longTextField = (field: string) =>
@@ -64,7 +64,7 @@ export const updateVagaSchema = baseVagaSchema.partial().extend({
     .optional(),
   inseridaEm: dateField('A data de publicação da vaga').optional(),
   status: z
-    .nativeEnum(StatusVaga, {
+    .nativeEnum(StatusDeVagas, {
       invalid_type_error: 'status inválido',
       required_error: 'O status da vaga é obrigatório',
     })

@@ -1,4 +1,4 @@
-import { Status, StatusVaga } from '@prisma/client';
+import { Status, StatusDeVagas } from '@prisma/client';
 import { z } from 'zod';
 
 import { clientePlanoTipoSchema } from '@/modules/empresas/clientes/validators/clientes.schema';
@@ -178,12 +178,12 @@ const statusArraySchema = z
   .refine(
     (value) =>
       value === undefined ||
-      value.every((status) => Object.prototype.hasOwnProperty.call(StatusVaga, status as StatusVaga)),
+      value.every((status) => Object.prototype.hasOwnProperty.call(StatusDeVagas, status as StatusDeVagas)),
     {
       message: 'Informe status válidos (RASCUNHO, EM_ANALISE, PUBLICADO ou EXPIRADO)',
     },
   )
-  .transform((value) => value?.map((status) => status as StatusVaga));
+  .transform((value) => value?.map((status) => status as StatusDeVagas));
 
 export const adminEmpresasVagasQuerySchema = paginationQueryBaseSchema
   .extend({

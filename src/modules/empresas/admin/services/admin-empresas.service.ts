@@ -8,18 +8,18 @@ import {
   Prisma,
   Role,
   Status,
-  StatusVaga,
+  StatusDeVagas,
   RegimesDeTrabalhos,
   TipoUsuario,
 } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import {
-  getPlanoParceiroDuracao,
-  isPlanoParceiroElegivel,
-  mapClienteTipoToPlanoParceiro,
-  mapPlanoParceiroToClienteTipo,
-} from '@/modules/empresas/shared/plano-parceiro';
+  getTipoDePlanoDuracao,
+  isTipoDePlanoElegivel,
+  mapClienteTipoToTipoDePlano,
+  mapTipoDePlanoToClienteTipo,
+} from '@/modules/empresas/shared/tipos-de-planos';
 import { attachEnderecoResumo } from '@/modules/usuarios/utils/address';
 import type { UsuarioEnderecoDto } from '@/modules/usuarios/utils/address';
 import type {
@@ -103,7 +103,7 @@ const createUsuarioListSelect = () =>
       select: {
         vagasCriadas: {
           where: {
-            status: StatusVaga.PUBLICADO,
+            status: StatusDeVagas.PUBLICADO,
           },
         },
       },
@@ -142,7 +142,7 @@ const usuarioDetailSelect = {
     select: {
       vagasCriadas: {
         where: {
-          status: StatusVaga.PUBLICADO,
+          status: StatusDeVagas.PUBLICADO,
         },
       },
     },
@@ -218,7 +218,7 @@ type AdminEmpresaJobResumo = {
   id: string;
   codigo: string;
   titulo: string;
-  status: StatusVaga;
+  status: StatusDeVagas;
   inseridaEm: Date;
   atualizadoEm: Date;
   inscricoesAte: Date | null;
@@ -285,8 +285,8 @@ const normalizeDocumento = (value: string) => value.replace(/\D/g, '');
 
 const sanitizeObservacao = (value?: string | null) => sanitizeOptionalValue(value);
 
-const calcularPlanoFim = (tipo: ReturnType<typeof mapClienteTipoToPlanoParceiro>, inicio: Date | null) => {
-  const duracao = getPlanoParceiroDuracao(tipo);
+const calcularPlanoFim = (tipo: ReturnType<typeof mapClienteTipoToTipoDePlano>, inicio: Date | null) => {
+  const duracao = getTipoDePlanoDuracao(tipo);
 
   if (duracao === null) {
     return null;
@@ -386,7 +386,7 @@ const assignPlanoToEmpresa = async (
   usuarioId: string,
   plano: AdminEmpresasPlanoInput,
 ) => {
-  const tipo = mapClienteTipoToPlanoParceiro(plano.tipo);
+  const tipo = mapClienteTipoToTipoDePlano(plano.tipo);
   const inicio = plano.iniciarEm ?? new Date();
   const fim = calcularPlanoFim(tipo, inicio);
   const observacao = sanitizeObservacao(plano.observacao ?? undefined);
@@ -427,7 +427,7 @@ const atualizarPlanoSemReset = async (
     return;
   }
 
-  const tipo = mapClienteTipoToPlanoParceiro(plano.tipo);
+  const tipo = mapClienteTipoToTipoDePlano(plano.tipo);
   const observacao = sanitizeObservacao(plano.observacao ?? undefined);
 
   const data: Prisma.EmpresasPlanoUpdateInput = {
@@ -517,7 +517,7 @@ const mapPlanoResumo = (
   return {
     id: plano.id,
     nome: plano.plano?.nome ?? null,
-    tipo: mapPlanoParceiroToClienteTipo(plano.tipo),
+    tipo: mapTipoDePlanoToClienteTipo(plano.tipo),
     inicio,
     fim,
     modeloPagamento: plano.modeloPagamento ?? null,
@@ -700,7 +700,7 @@ export const adminEmpresasService = {
       const empresa = attachEnderecoResumo(empresaRaw)!;
       const planoAtual = empresa.planosContratados[0];
       const plano = mapPlanoResumo(planoAtual, referenceDate);
-      const diasTeste = planoAtual ? getPlanoParceiroDuracao(planoAtual.tipo) : null;
+      const diasTeste = planoAtual ? getTipoDePlanoDuracao(planoAtual.tipo) : null;
       const banimento = mapBanimentoResumo(empresa.banimentosRecebidos?.[0] ?? null);
 
       return {
@@ -716,7 +716,7 @@ export const adminEmpresasService = {
         enderecos: empresa.enderecos,
         criadoEm: empresa.criadoEm,
         ativa: empresa.status === Status.ATIVO,
-        parceira: planoAtual ? isPlanoParceiroElegivel(planoAtual.tipo) : false,
+        parceira: planoAtual ? isTipoDePlanoElegivel(planoAtual.tipo) : false,
         diasTesteDisponibilizados: diasTeste,
         plano,
         vagasPublicadas: empresa._count?.vagasCriadas ?? 0,
@@ -746,7 +746,7 @@ export const adminEmpresasService = {
 
     const planoAtual = empresa.planosContratados[0];
     const plano = mapPlanoResumo(planoAtual);
-    const diasTeste = planoAtual ? getPlanoParceiroDuracao(planoAtual.tipo) : null;
+    const diasTeste = planoAtual ? getTipoDePlanoDuracao(planoAtual.tipo) : null;
     const ultimoPagamentoEm =
       planoAtual?.atualizadoEm ?? planoAtual?.inicio ?? planoAtual?.criadoEm ?? null;
     const banimentoAtivoRegistro = await prisma.empresaBanimento.findFirst({
@@ -777,7 +777,7 @@ export const adminEmpresasService = {
       status: empresa.status,
       ultimoLogin: empresa.ultimoLogin ?? null,
       ativa: empresa.status === Status.ATIVO,
-      parceira: planoAtual ? isPlanoParceiroElegivel(planoAtual.tipo) : false,
+      parceira: planoAtual ? isTipoDePlanoElegivel(planoAtual.tipo) : false,
       diasTesteDisponibilizados: diasTeste,
       plano,
       vagas: {
@@ -923,7 +923,7 @@ export const adminEmpresasService = {
   listVagasEmAnalise: async (id: string, query: AdminEmpresasHistoryQuery) =>
     adminEmpresasService.listVagas(id, {
       ...query,
-      status: [StatusVaga.EM_ANALISE],
+      status: [StatusDeVagas.EM_ANALISE],
     }),
 
   approveVaga: async (empresaId: string, vagaId: string) => {
@@ -938,7 +938,7 @@ export const adminEmpresasService = {
         throw Object.assign(new Error('Vaga não encontrada'), { code: 'VAGA_NOT_FOUND' });
       }
 
-      if (vagaAtual.status !== StatusVaga.EM_ANALISE) {
+      if (vagaAtual.status !== StatusDeVagas.EM_ANALISE) {
         throw Object.assign(new Error('Vaga não está em análise'), {
           code: 'VAGA_INVALID_STATUS',
         });
@@ -949,7 +949,7 @@ export const adminEmpresasService = {
       return tx.empresasVagas.update({
         where: { id: vagaAtual.id },
         data: {
-          status: StatusVaga.PUBLICADO,
+          status: StatusDeVagas.PUBLICADO,
           inseridaEm: publishedAt,
         },
         select: {

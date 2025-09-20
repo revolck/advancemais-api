@@ -22,8 +22,6 @@ model Usuarios {
   matricula     String?
   avatarUrl     String?
   descricao     String?     @db.VarChar(500)
-  instagram     String?
-  linkedin      String?
   codUsuario    String      @unique
   tipoUsuario   TiposDeUsuarios
   role          Roles
@@ -54,6 +52,7 @@ model Usuarios {
   planosContratados    EmpresasPlano[]    @relation("UsuarioPlanos")
   banimentosRecebidos  EmpresasEmBanimentos[] @relation("EmpresasEmBanimentosUsuario")
   banimentosAplicados  EmpresasEmBanimentos[] @relation("EmpresasEmBanimentosAdmin")
+  redesSociais         UsuariosRedesSociais?
 
   @@index([tokenRecuperacao])
   @@index([emailVerificationToken])
@@ -584,6 +583,23 @@ model WebsiteInformacoes {
   atualizadoEm DateTime @updatedAt
 
   horarios WebsiteHorarioFuncionamento[]
+}
+
+model UsuariosRedesSociais {
+  id         String   @id @default(uuid())
+  usuarioId  String   @unique
+  instagram  String?
+  linkedin   String?
+  facebook   String?
+  youtube    String?
+  twitter    String?
+  tiktok     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  usuario Usuarios @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
 }
 
 model WebsiteHorarioFuncionamento {

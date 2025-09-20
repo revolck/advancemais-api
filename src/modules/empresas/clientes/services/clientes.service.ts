@@ -2,6 +2,7 @@ import { TiposDePlanos, Prisma, TiposDeUsuarios } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { attachEnderecoResumo } from '@/modules/usuarios/utils/address';
+import { mapSocialLinks, usuarioRedesSociaisSelect } from '@/modules/usuarios/utils/social-links';
 import {
   CreateClientePlanoInput,
   ListClientePlanoQuery,
@@ -21,8 +22,7 @@ const includePlanoEmpresa = {
         nomeCompleto: true,
         avatarUrl: true,
         descricao: true,
-        instagram: true,
-        linkedin: true,
+        ...usuarioRedesSociaisSelect,
         codUsuario: true,
         role: true,
         tipoUsuario: true,
@@ -96,8 +96,7 @@ const transformarPlano = (plano: EmpresasPlanoWithRelations) => {
         cidade: empresaUsuario.cidade,
         estado: empresaUsuario.estado,
         descricao: empresaUsuario.descricao,
-        instagram: empresaUsuario.instagram,
-        linkedin: empresaUsuario.linkedin,
+        socialLinks: mapSocialLinks(empresaUsuario.redesSociais),
         codUsuario: empresaUsuario.codUsuario,
         enderecos: empresaUsuario.enderecos,
       }

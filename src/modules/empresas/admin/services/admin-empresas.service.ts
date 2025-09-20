@@ -22,6 +22,15 @@ import {
 } from '@/modules/empresas/shared/tipos-de-planos';
 import { attachEnderecoResumo } from '@/modules/usuarios/utils/address';
 import type { UsuarioEnderecoDto } from '@/modules/usuarios/utils/address';
+import type { UsuarioSocialLinks } from '@/modules/usuarios/utils/types';
+import {
+  buildSocialLinksCreateData,
+  buildSocialLinksUpdateData,
+  extractSocialLinksFromPayload,
+  mapSocialLinks,
+  sanitizeSocialLinks,
+  usuarioRedesSociaisSelect,
+} from '@/modules/usuarios/utils/social-links';
 import type {
   AdminEmpresasBanInput,
   AdminEmpresasCreateInput,
@@ -119,8 +128,7 @@ const usuarioDetailSelect = {
   avatarUrl: true,
   cnpj: true,
   descricao: true,
-  instagram: true,
-  linkedin: true,
+  ...usuarioRedesSociaisSelect,
   criadoEm: true,
   tipoUsuario: true,
   status: true,
@@ -237,8 +245,7 @@ type AdminEmpresaDetail = {
   avatarUrl: string | null;
   cnpj: string | null;
   descricao: string | null;
-  instagram: string | null;
-  linkedin: string | null;
+  socialLinks: UsuarioSocialLinks | null;
   cidade: string | null;
   estado: string | null;
   enderecos: UsuarioEnderecoDto[];
@@ -560,9 +567,12 @@ export const adminEmpresasService = {
     const cidade = sanitizeOptionalValue(input.cidade);
     const estado = sanitizeOptionalValue(input.estado);
     const descricao = sanitizeOptionalValue(input.descricao);
-    const instagram = sanitizeOptionalValue(input.instagram);
-    const linkedin = sanitizeOptionalValue(input.linkedin);
     const avatarUrl = sanitizeOptionalValue(input.avatarUrl);
+    const socialLinksInput = extractSocialLinksFromPayload(
+      input as unknown as Record<string, unknown>,
+    );
+    const socialLinksSanitized = sanitizeSocialLinks(socialLinksInput);
+    const socialLinksCreate = buildSocialLinksCreateData(socialLinksSanitized);
 
     const empresaId = await prisma.$transaction(async (tx) => {
       const codUsuario = await generateUniqueEmpresaCode(tx);
@@ -580,9 +590,14 @@ export const adminEmpresasService = {
           codUsuario,
           cnpj: normalizeDocumento(input.cnpj),
           ...(descricao !== undefined ? { descricao } : {}),
-          ...(instagram !== undefined ? { instagram } : {}),
-          ...(linkedin !== undefined ? { linkedin } : {}),
           ...(avatarUrl !== undefined ? { avatarUrl } : {}),
+          ...(socialLinksCreate
+            ? {
+                redesSociais: {
+                  create: socialLinksCreate,
+                },
+              }
+            : {}),
         },
         select: { id: true },
       });
@@ -604,6 +619,11 @@ export const adminEmpresasService = {
       await ensureEmpresaExiste(tx, id);
 
       const updates: Prisma.UsuariosUpdateInput = {};
+      const socialLinksInput = extractSocialLinksFromPayload(
+        data as unknown as Record<string, unknown>,
+      );
+      const socialLinksSanitized = sanitizeSocialLinks(socialLinksInput);
+      const socialLinksUpdate = buildSocialLinksUpdateData(socialLinksSanitized);
 
       if (data.nome !== undefined) {
         updates.nomeCompleto = sanitizeNome(data.nome);
@@ -630,16 +650,6 @@ export const adminEmpresasService = {
         updates.descricao = descricao;
       }
 
-      const instagram = sanitizeOptionalValue(data.instagram);
-      if (instagram !== undefined) {
-        updates.instagram = instagram;
-      }
-
-      const linkedin = sanitizeOptionalValue(data.linkedin);
-      if (linkedin !== undefined) {
-        updates.linkedin = linkedin;
-      }
-
       const avatarUrl = sanitizeOptionalValue(data.avatarUrl);
       if (avatarUrl !== undefined) {
         updates.avatarUrl = avatarUrl;
@@ -653,6 +663,21 @@ export const adminEmpresasService = {
 
       if (Object.keys(updates).length > 0) {
         await tx.usuarios.update({ where: { id }, data: updates });
+      }
+
+      if (socialLinksSanitized) {
+        if (socialLinksSanitized.hasAnyValue) {
+          await tx.usuariosRedesSociais.upsert({
+            where: { usuarioId: id },
+            create: {
+              usuarioId: id,
+              ...socialLinksSanitized.values,
+            },
+            update: socialLinksUpdate ?? socialLinksSanitized.values,
+          });
+        } else {
+          await tx.usuariosRedesSociais.deleteMany({ where: { usuarioId: id } });
+        }
       }
 
       if (data.plano === null) {
@@ -768,8 +793,7 @@ export const adminEmpresasService = {
       avatarUrl: empresa.avatarUrl,
       cnpj: empresa.cnpj ?? null,
       descricao: empresa.descricao,
-      instagram: empresa.instagram,
-      linkedin: empresa.linkedin,
+      socialLinks: mapSocialLinks(empresa.redesSociais),
       cidade: empresa.cidade,
       estado: empresa.estado,
       enderecos: empresa.enderecos,

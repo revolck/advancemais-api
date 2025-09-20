@@ -1,4 +1,4 @@
 export { TiposDeUsuarios } from './TiposDeUsuarios';
-export { Role } from './Role';
+export { Roles } from './Roles';
 export { Status } from './Status';
 export { Genero } from './Genero';

@@ -26,7 +26,7 @@ model Usuarios {
   linkedin      String?
   codUsuario    String      @unique
   tipoUsuario   TiposDeUsuarios
-  role          Role
+  role          Roles
   status        Status      @default(ATIVO)
   aceitarTermos Boolean     @default(false)
   criadoEm      DateTime    @default(now())
@@ -222,7 +222,7 @@ model LogEmail {
   id           String      @id @default(uuid())
   usuarioId    String?
   email        String
-  tipoEmail    TipoEmail
+  tipoEmail    TiposDeEmails
   status       StatusEmail
   tentativas   Int         @default(1)
   erro         String?
@@ -619,7 +619,7 @@ enum TiposDeUsuarios {
   PESSOA_JURIDICA
 }
 
-enum Role {
+enum Roles {
   ADMIN
   MODERADOR
   FINANCEIRO
@@ -639,7 +639,7 @@ enum Status {
   SUSPENSO
 }
 
-enum TipoEmail {
+enum TiposDeEmails {
   BOAS_VINDAS
   RECUPERACAO_SENHA
   VERIFICACAO_EMAIL

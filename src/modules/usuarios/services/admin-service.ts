@@ -5,7 +5,7 @@
  * @author Sistema Advance+
  * @version 3.0.0
  */
-import { Prisma, Role, Status, TiposDeUsuarios } from '@prisma/client';
+import { Prisma, Roles, Status, TiposDeUsuarios } from '@prisma/client';
 import { z } from 'zod';
 
 import { prisma } from '@/config/prisma';
@@ -32,8 +32,8 @@ export class AdminService {
     if (!role) return undefined;
 
     const normalized = role.trim().toUpperCase();
-    if (normalized in Role) {
-      return Role[normalized as keyof typeof Role];
+    if (normalized in Roles) {
+      return Roles[normalized as keyof typeof Roles];
     }
 
     return undefined;
@@ -126,7 +126,7 @@ export class AdminService {
     const skip = (page - 1) * pageSize;
 
     const where: Prisma.UsuariosWhereInput = {
-      role: Role.ALUNO_CANDIDATO,
+      role: Roles.ALUNO_CANDIDATO,
     };
 
     const statusFilter = this.getStatusFilter(status);
@@ -260,7 +260,7 @@ export class AdminService {
     const candidato = await prisma.usuarios.findFirst({
       where: {
         id: userId,
-        role: Role.ALUNO_CANDIDATO,
+        role: Roles.ALUNO_CANDIDATO,
       },
       select: {
         id: true,
@@ -375,13 +375,13 @@ export class AdminService {
     const roleEnum = role.trim();
 
     // Prevenir auto-demoção de ADMIN
-    if (adminId === userId && roleEnum !== 'ADMIN') {
+    if (adminId === userId && roleEnum !== Roles.ADMIN) {
       throw new Error('Você não pode alterar sua própria role para uma função não-administrativa');
     }
 
     const usuario = await prisma.usuarios.update({
       where: { id: userId },
-      data: { role: roleEnum as any },
+      data: { role: roleEnum as Roles },
       select: {
         id: true,
         email: true,

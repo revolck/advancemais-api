@@ -1,6 +1,7 @@
 import { PlanoParceiro, Prisma, TipoUsuario } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
+import { attachEnderecoResumo } from '@/modules/usuarios/utils/address';
 import {
   CreateClientePlanoInput,
   ListClientePlanoQuery,
@@ -19,14 +20,24 @@ const includePlanoEmpresa = {
         id: true,
         nomeCompleto: true,
         avatarUrl: true,
-        cidade: true,
-        estado: true,
         descricao: true,
         instagram: true,
         linkedin: true,
         codUsuario: true,
         role: true,
         tipoUsuario: true,
+        enderecos: {
+          orderBy: { criadoEm: 'asc' },
+          select: {
+            id: true,
+            logradouro: true,
+            numero: true,
+            bairro: true,
+            cidade: true,
+            estado: true,
+            cep: true,
+          },
+        },
       },
     },
     plano: true,
@@ -53,7 +64,7 @@ const calcularDataFim = (tipo: PlanoParceiro, inicio: Date | null) => {
 };
 
 const ensureUsuarioEmpresa = async (usuarioId: string) => {
-  const usuario = await prisma.usuario.findUnique({
+  const usuario = await prisma.usuarios.findUnique({
     where: { id: usuarioId },
     select: { tipoUsuario: true },
   });
@@ -71,8 +82,9 @@ const transformarPlano = (plano: EmpresaPlanoWithRelations) => {
   const diasRestantes =
     plano.fim && plano.fim > now ? Math.ceil((plano.fim.getTime() - now.getTime()) / 86400000) : null;
 
-  const empresaUsuario =
+  const empresaUsuarioRaw =
     plano.empresa && plano.empresa.tipoUsuario === TipoUsuario.PESSOA_JURIDICA ? plano.empresa : null;
+  const empresaUsuario = empresaUsuarioRaw ? attachEnderecoResumo(empresaUsuarioRaw)! : null;
 
   const empresa = empresaUsuario
     ? {
@@ -85,6 +97,7 @@ const transformarPlano = (plano: EmpresaPlanoWithRelations) => {
         instagram: empresaUsuario.instagram,
         linkedin: empresaUsuario.linkedin,
         codUsuario: empresaUsuario.codUsuario,
+        enderecos: empresaUsuario.enderecos,
       }
     : null;
 

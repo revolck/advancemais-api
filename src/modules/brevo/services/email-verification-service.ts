@@ -65,7 +65,7 @@ export class EmailVerificationService {
       }
 
       // Verifica se usuário já está verificado
-      const usuario = await prisma.usuario.findUnique({
+      const usuario = await prisma.usuarios.findUnique({
         where: { id: userData.id },
         select: { emailVerificado: true, email: true },
       });
@@ -160,7 +160,7 @@ export class EmailVerificationService {
       log.info('🔄 Reenviando verificação');
 
       // Busca usuário
-      const usuario = await prisma.usuario.findUnique({
+      const usuario = await prisma.usuarios.findUnique({
         where: { email: email.toLowerCase().trim() },
         select: {
           id: true,
@@ -209,7 +209,7 @@ export class EmailVerificationService {
       });
       log.info('🔍 Verificando token');
 
-      const usuario = await prisma.usuario.findFirst({
+      const usuario = await prisma.usuarios.findFirst({
         where: { emailVerificationToken: token },
         select: {
           id: true,
@@ -228,7 +228,7 @@ export class EmailVerificationService {
       }
 
       if (usuario.emailVerificationTokenExp && usuario.emailVerificationTokenExp < new Date()) {
-        await prisma.usuario.delete({ where: { id: usuario.id } });
+        await prisma.usuarios.delete({ where: { id: usuario.id } });
         return {
           valid: false,
           expired: true,
@@ -238,7 +238,7 @@ export class EmailVerificationService {
       }
 
       // Token válido - marca como verificado
-      await prisma.usuario.update({
+      await prisma.usuarios.update({
         where: { id: usuario.id },
         data: {
           emailVerificado: true,
@@ -316,7 +316,7 @@ export class EmailVerificationService {
     correlationId: string,
   ): Promise<void> {
     try {
-      await prisma.usuario.update({
+      await prisma.usuarios.update({
         where: { id: userId },
         data: {
           emailVerificationToken: token,

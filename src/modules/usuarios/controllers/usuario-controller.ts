@@ -8,6 +8,7 @@ import { generateTokenPair } from '@/modules/usuarios/utils/auth';
 import { limparDocumento, validarCNPJ, validarCPF } from '@/modules/usuarios/utils';
 import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
 import { formatZodErrors, loginSchema } from '../validators/auth.schema';
+import { attachEnderecoResumo, normalizeUsuarioEnderecos, UsuarioEnderecoDto } from '../utils/address';
 
 /**
  * Controllers para autenticação e gestão de usuários
@@ -37,16 +38,6 @@ const createControllerLogger = (req: Request, action: string) =>
     correlationId: req.id,
   });
 
-interface UsuarioEndereco {
-  id: string;
-  logradouro: string | null;
-  numero: string | null;
-  bairro: string | null;
-  cidade: string | null;
-  estado: string | null;
-  cep: string | null;
-}
-
 interface UsuarioPerfil {
   id: string;
   email: string;
@@ -73,43 +64,32 @@ interface UsuarioPerfil {
   instagram: string | null;
   linkedin: string | null;
   codUsuario: string;
-  enderecos: UsuarioEndereco[];
+  enderecos: UsuarioEnderecoDto[];
 }
 
 const USER_PROFILE_CACHE_TTL = 300;
 
-const ensureEnderecosArray = (enderecos: unknown): UsuarioEndereco[] => {
-  if (!Array.isArray(enderecos)) {
-    return [];
-  }
+const reviveUsuario = (usuario: UsuarioPerfil): UsuarioPerfil => {
+  const enderecos = normalizeUsuarioEnderecos(usuario.enderecos);
+  const [principal] = enderecos;
 
-  return (enderecos as UsuarioEndereco[])
-    .filter((endereco) => typeof endereco === 'object' && endereco !== null)
-    .map((endereco) => ({
-      id: endereco.id,
-      logradouro: endereco.logradouro ?? null,
-      numero: endereco.numero ?? null,
-      bairro: endereco.bairro ?? null,
-      cidade: endereco.cidade ?? null,
-      estado: endereco.estado ?? null,
-      cep: endereco.cep ?? null,
-    }));
+  return {
+    ...usuario,
+    criadoEm: new Date(usuario.criadoEm),
+    atualizadoEm: new Date(usuario.atualizadoEm),
+    emailVerificadoEm: usuario.emailVerificadoEm ? new Date(usuario.emailVerificadoEm) : null,
+    ultimoLogin: usuario.ultimoLogin ? new Date(usuario.ultimoLogin) : null,
+    dataNasc: usuario.dataNasc ? new Date(usuario.dataNasc) : null,
+    enderecos,
+    cidade: principal?.cidade ?? null,
+    estado: principal?.estado ?? null,
+  };
 };
-
-const reviveUsuario = (usuario: UsuarioPerfil): UsuarioPerfil => ({
-  ...usuario,
-  criadoEm: new Date(usuario.criadoEm),
-  atualizadoEm: new Date(usuario.atualizadoEm),
-  emailVerificadoEm: usuario.emailVerificadoEm ? new Date(usuario.emailVerificadoEm) : null,
-  ultimoLogin: usuario.ultimoLogin ? new Date(usuario.ultimoLogin) : null,
-  dataNasc: usuario.dataNasc ? new Date(usuario.dataNasc) : null,
-  enderecos: ensureEnderecosArray(usuario.enderecos),
-});
 
 const buildProfileStats = (usuario: UsuarioPerfil) => ({
   accountAge: Math.floor((Date.now() - usuario.criadoEm.getTime()) / (1000 * 60 * 60 * 24)),
   hasCompletedProfile: !!(usuario.telefone && usuario.nomeCompleto),
-  hasAddress: ensureEnderecosArray(usuario.enderecos).length > 0,
+  hasAddress: usuario.enderecos.length > 0,
   totalOrders: 0,
   totalSubscriptions: 0,
   emailVerificationStatus: {
@@ -175,7 +155,7 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
     );
 
     // Busca usuário no banco com todos os campos necessários
-    const usuario = await prisma.usuario.findUnique({
+    const usuarioRecord = await prisma.usuarios.findUnique({
       where: campoBusca === 'cpf' ? { cpf: documentoLimpo } : { cnpj: documentoLimpo },
       select: {
         id: true,
@@ -190,17 +170,27 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
         emailVerificadoEm: true,
         ultimoLogin: true,
         criadoEm: true,
-        cidade: true,
-        estado: true,
         avatarUrl: true,
         descricao: true,
         instagram: true,
         linkedin: true,
         codUsuario: true,
+        enderecos: {
+          orderBy: { criadoEm: 'asc' },
+          select: {
+            id: true,
+            logradouro: true,
+            numero: true,
+            bairro: true,
+            cidade: true,
+            estado: true,
+            cep: true,
+          },
+        },
       },
     });
 
-    if (!usuario) {
+    if (!usuarioRecord) {
       log.warn(
         {
           documentoPrefix:
@@ -212,6 +202,16 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
       return res.status(401).json({
         success: false,
         message: 'Credenciais inválidas',
+        correlationId,
+      });
+    }
+
+    const usuario = attachEnderecoResumo(usuarioRecord);
+    if (!usuario) {
+      log.error({ documento: campoBusca }, '❌ Falha ao montar dados do usuário');
+      return res.status(500).json({
+        success: false,
+        message: 'Erro ao montar dados do usuário',
         correlationId,
       });
     }
@@ -277,7 +277,7 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
 
     // Atualiza último login e armazena refresh token
     log.info({ userId: usuario.id }, '💾 Atualizando último login');
-    await prisma.usuario.update({
+    await prisma.usuarios.update({
       where: { id: usuario.id },
       data: {
         ultimoLogin: new Date(),
@@ -312,6 +312,7 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
       descricao: usuario.descricao,
       instagram: usuario.instagram,
       linkedin: usuario.linkedin,
+      enderecos: usuario.enderecos,
     };
 
     // Retorna dados do usuário autenticado com tokens
@@ -372,7 +373,7 @@ export const logoutUsuario = async (req: Request, res: Response, next: NextFunct
     log.info({ userId }, '🚪 Iniciando logout');
 
     // Remove refresh token do banco (invalidação de sessão)
-    await prisma.usuario.update({
+    await prisma.usuarios.update({
       where: { id: userId },
       data: {
         refreshToken: null,
@@ -426,7 +427,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
     log.info({ tokenPrefix: refreshToken.substring(0, 10) }, '🔄 Validando refresh token');
 
     // Busca usuário pelo refresh token
-    const usuario = await prisma.usuario.findFirst({
+    const usuarioRecord = await prisma.usuarios.findFirst({
       where: { refreshToken },
       select: {
         id: true,
@@ -437,23 +438,43 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
         tipoUsuario: true,
         supabaseId: true,
         codUsuario: true,
-        cidade: true,
-        estado: true,
         avatarUrl: true,
         descricao: true,
         instagram: true,
         linkedin: true,
         emailVerificado: true,
         ultimoLogin: true,
+        enderecos: {
+          orderBy: { criadoEm: 'asc' },
+          select: {
+            id: true,
+            logradouro: true,
+            numero: true,
+            bairro: true,
+            cidade: true,
+            estado: true,
+            cep: true,
+          },
+        },
       },
     });
 
-    if (!usuario) {
+    if (!usuarioRecord) {
       log.warn('⚠️ Refresh token inválido ou não encontrado');
       return res.status(401).json({
         success: false,
         message: 'Refresh token inválido',
         code: 'INVALID_REFRESH_TOKEN',
+        correlationId,
+      });
+    }
+
+    const usuario = attachEnderecoResumo(usuarioRecord);
+    if (!usuario) {
+      log.error({ refreshTokenPrefix: refreshToken.substring(0, 10) }, '❌ Falha ao reconstruir usuário no refresh token');
+      return res.status(500).json({
+        success: false,
+        message: 'Erro ao reconstruir dados do usuário',
         correlationId,
       });
     }
@@ -465,7 +486,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       log.warn({ userId: usuario.id, status: usuario.status }, '⚠️ Conta inativa durante refresh');
 
       // Remove refresh token inválido
-      await prisma.usuario.update({
+      await prisma.usuarios.update({
         where: { id: usuario.id },
         data: { refreshToken: null },
       });
@@ -486,7 +507,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       log.warn({ userId: usuario.id }, '⚠️ Email não verificado durante refresh');
 
       // Remove refresh token
-      await prisma.usuario.update({
+      await prisma.usuarios.update({
         where: { id: usuario.id },
         data: { refreshToken: null },
       });
@@ -504,7 +525,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
     log.info({ userId: usuario.id }, '✅ Refresh token validado com sucesso');
 
     // Atualiza último acesso
-    await prisma.usuario.update({
+    await prisma.usuarios.update({
       where: { id: usuario.id },
       data: {
         ultimoLogin: new Date(),
@@ -531,6 +552,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       descricao: usuario.descricao,
       instagram: usuario.instagram,
       linkedin: usuario.linkedin,
+      enderecos: usuario.enderecos,
     };
 
     res.json({
@@ -594,7 +616,7 @@ export const obterPerfil = async (req: Request, res: Response, next: NextFunctio
     }
 
     // Busca dados completos do usuário (excluindo informações sensíveis)
-    const usuarioDb = await prisma.usuario.findUnique({
+    const usuarioDb = await prisma.usuarios.findUnique({
       where: { id: userId },
       select: {
         id: true,
@@ -615,14 +637,13 @@ export const obterPerfil = async (req: Request, res: Response, next: NextFunctio
         ultimoLogin: true,
         criadoEm: true,
         atualizadoEm: true,
-        cidade: true,
-        estado: true,
         avatarUrl: true,
         descricao: true,
         instagram: true,
         linkedin: true,
         codUsuario: true,
         enderecos: {
+          orderBy: { criadoEm: 'asc' },
           select: {
             id: true,
             logradouro: true,
@@ -637,12 +658,7 @@ export const obterPerfil = async (req: Request, res: Response, next: NextFunctio
       },
     });
 
-    const usuario = usuarioDb
-      ? ({
-          ...usuarioDb,
-          enderecos: ensureEnderecosArray(usuarioDb.enderecos),
-        } as UsuarioPerfil)
-      : null;
+    const usuario = attachEnderecoResumo(usuarioDb) as UsuarioPerfil | null;
 
     if (!usuario) {
       log.warn({ userId }, '⚠️ Usuário não encontrado ao obter perfil');

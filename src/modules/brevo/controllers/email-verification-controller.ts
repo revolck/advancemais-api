@@ -133,7 +133,7 @@ export class EmailVerificationController {
       log.info({ email }, '🔄 Reenviando verificação');
 
       // Busca usuário
-      const usuario = await prisma.usuario.findUnique({
+      const usuario = await prisma.usuarios.findUnique({
         where: { email: email.toLowerCase().trim() },
         select: {
           id: true,
@@ -227,7 +227,7 @@ export class EmailVerificationController {
         return;
       }
 
-      const usuario = await prisma.usuario.findUnique({
+      const usuario = await prisma.usuarios.findUnique({
         where: { id: userId },
         select: {
           id: true,

@@ -69,7 +69,7 @@ const generateUniqueUserCode = async (tx: Prisma.TransactionClient): Promise<str
   for (let attempt = 0; attempt < 10; attempt++) {
     const random = Math.floor(1000 + Math.random() * 9000);
     const candidate = `${prefix}${random}`;
-    const existing = await tx.usuario.findUnique({ where: { codUsuario: candidate }, select: { id: true } });
+    const existing = await tx.usuarios.findUnique({ where: { codUsuario: candidate }, select: { id: true } });
     if (!existing) {
       return candidate;
     }
@@ -414,7 +414,7 @@ async function checkForDuplicates(
     }
 
     // Busca com tipagem correta
-    const usuarioExistente = await prisma.usuario.findFirst({
+    const usuarioExistente = await prisma.usuarios.findFirst({
       where: { OR: orConditions },
       select: {
         id: true,
@@ -433,7 +433,7 @@ async function checkForDuplicates(
         usuarioExistente.emailVerificationTokenExp &&
         usuarioExistente.emailVerificationTokenExp < new Date()
       ) {
-        await prisma.usuario.delete({ where: { id: usuarioExistente.id } });
+        await prisma.usuarios.delete({ where: { id: usuarioExistente.id } });
         log.info({ email: usuarioExistente.email }, '🧹 Usuário com verificação expirada removido');
         return { found: false };
       }
@@ -483,8 +483,6 @@ function buildUserDataForDatabase(params: {
   cnpjLimpo?: string;
   dataNascimento?: Date;
   generoValidado?: string;
-  cidade?: string | null;
-  estado?: string | null;
   avatarUrl?: string | null;
   descricao?: string | null;
   instagram?: string | null;
@@ -503,8 +501,6 @@ function buildUserDataForDatabase(params: {
     ...(params.cnpjLimpo && { cnpj: params.cnpjLimpo }),
     ...(params.dataNascimento && { dataNasc: params.dataNascimento }),
     ...(params.generoValidado && { genero: params.generoValidado }),
-    ...(params.cidade ? { cidade: params.cidade.trim() } : {}),
-    ...(params.estado ? { estado: params.estado.trim() } : {}),
     ...(params.avatarUrl ? { avatarUrl: params.avatarUrl.trim() } : {}),
     ...(params.descricao ? { descricao: params.descricao.trim() } : {}),
     ...(params.instagram ? { instagram: params.instagram.trim() } : {}),
@@ -535,8 +531,6 @@ async function createUserWithTransaction(userData: any, correlationId: string) {
         status: true,
         supabaseId: true,
         criadoEm: true,
-        cidade: true,
-        estado: true,
         avatarUrl: true,
         descricao: true,
         instagram: true,
@@ -546,7 +540,7 @@ async function createUserWithTransaction(userData: any, correlationId: string) {
 
       const codUsuario = await generateUniqueUserCode(tx);
 
-      const usuario = await tx.usuario.create({
+      const usuario = await tx.usuarios.create({
         data: {
           ...userData,
           codUsuario,

@@ -32,12 +32,6 @@ model Usuarios {
   ultimoLogin   DateTime?
   refreshToken  String?
 
-  // CAMPOS PARA RECUPERAÇÃO DE SENHA
-  tokenRecuperacao           String?
-  tokenRecuperacaoExp        DateTime?
-  tentativasRecuperacao      Int       @default(0)
-  ultimaTentativaRecuperacao DateTime?
-
   // CAMPOS PARA VERIFICAÇÃO DE EMAIL (NOVOS)
   emailVerificado            Boolean   @default(false)
   emailVerificadoEm          DateTime?
@@ -53,13 +47,28 @@ model Usuarios {
   banimentosRecebidos  EmpresasEmBanimentos[] @relation("EmpresasEmBanimentosUsuario")
   banimentosAplicados  EmpresasEmBanimentos[] @relation("EmpresasEmBanimentosAdmin")
   redesSociais         UsuariosRedesSociais?
+  recuperacaoSenha     UsuariosRecuperacaoSenha?
 
-  @@index([tokenRecuperacao])
   @@index([emailVerificationToken])
   @@index([status])
   @@index([role])
   @@index([tipoUsuario])
   @@index([criadoEm])
+}
+
+model UsuariosRecuperacaoSenha {
+  id                          String   @id @default(uuid())
+  usuarioId                   String   @unique
+  tokenRecuperacao            String?
+  tokenRecuperacaoExp         DateTime?
+  tentativasRecuperacao       Int      @default(0)
+  ultimaTentativaRecuperacao  DateTime?
+  criadoEm                    DateTime @default(now())
+  atualizadoEm                DateTime @updatedAt
+
+  usuario Usuarios @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([tokenRecuperacao])
 }
 
 enum RegimesDeTrabalhos {

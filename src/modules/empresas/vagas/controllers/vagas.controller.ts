@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { ZodError } from 'zod';
-import type { StatusVaga } from '@prisma/client';
+import type { StatusDeVagas } from '@prisma/client';
 import { setCacheHeaders, DEFAULT_TTL } from '@/utils/cache';
 import { Role } from '@/modules/usuarios/enums/Role';
 
@@ -21,8 +21,8 @@ export class VagasController {
         pageSize?: string;
       };
 
-      const validStatuses = new Set<StatusVaga>(['RASCUNHO', 'EM_ANALISE', 'PUBLICADO', 'EXPIRADO'] as const);
-      const restrictedStatuses = new Set<StatusVaga>(['RASCUNHO', 'EM_ANALISE']);
+      const validStatuses = new Set<StatusDeVagas>(['RASCUNHO', 'EM_ANALISE', 'PUBLICADO', 'EXPIRADO'] as const);
+      const restrictedStatuses = new Set<StatusDeVagas>(['RASCUNHO', 'EM_ANALISE']);
       const allowedRoles: Role[] = [
         Role.ADMIN,
         Role.MODERADOR,
@@ -30,7 +30,7 @@ export class VagasController {
         Role.RECRUTADOR,
         Role.ALUNO_CANDIDATO,
       ];
-      let statusesFilter: StatusVaga[] | undefined = undefined;
+      let statusesFilter: StatusDeVagas[] | undefined = undefined;
 
       if (typeof status === 'string' && status.trim() !== '') {
         const normalized = status.trim().toUpperCase();
@@ -38,7 +38,7 @@ export class VagasController {
           statusesFilter = ['RASCUNHO', 'EM_ANALISE', 'PUBLICADO', 'EXPIRADO'];
         } else {
           const parts = normalized.split(',').map((s) => s.trim()).filter(Boolean);
-          const chosen = parts.filter((s): s is StatusVaga => validStatuses.has(s as StatusVaga));
+          const chosen = parts.filter((s): s is StatusDeVagas => validStatuses.has(s as StatusDeVagas));
           if (chosen.length > 0) {
             statusesFilter = chosen;
           }

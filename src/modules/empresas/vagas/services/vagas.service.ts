@@ -4,7 +4,7 @@ import {
   ModalidadesDeVagas,
   Prisma,
   RegimesDeTrabalhos,
-  StatusVaga,
+  StatusDeVagas,
   TipoUsuario,
 } from '@prisma/client';
 
@@ -31,7 +31,7 @@ export type CreateVagaData = {
   cargaHoraria: string;
   inscricoesAte?: Date;
   inseridaEm?: Date;
-  status?: StatusVaga;
+  status?: StatusDeVagas;
 };
 
 export type UpdateVagaData = Omit<Partial<CreateVagaData>, 'inscricoesAte'> & {
@@ -136,7 +136,7 @@ const sanitizeCreateData = (data: CreateVagaData, codigo: string): Prisma.Empres
   cargaHoraria: data.cargaHoraria.trim(),
   inscricoesAte: data.inscricoesAte ?? null,
   inseridaEm: data.inseridaEm ?? new Date(),
-  status: data.status ?? StatusVaga.EM_ANALISE,
+  status: data.status ?? StatusDeVagas.EM_ANALISE,
 });
 
 const sanitizeUpdateData = (data: UpdateVagaData): Prisma.EmpresasVagasUncheckedUpdateInput => {
@@ -183,7 +183,7 @@ const sanitizeUpdateData = (data: UpdateVagaData): Prisma.EmpresasVagasUnchecked
   }
   if (data.status !== undefined) {
     update.status = data.status;
-    if (data.status === StatusVaga.PUBLICADO && data.inseridaEm === undefined) {
+    if (data.status === StatusDeVagas.PUBLICADO && data.inseridaEm === undefined) {
       update.inseridaEm = new Date();
     }
   }
@@ -255,7 +255,7 @@ const ensurePlanoAtivoParaUsuario = async (usuarioId: string) => {
     const vagasAtivas = await prisma.empresasVagas.count({
       where: {
         usuarioId,
-        status: { in: [StatusVaga.EM_ANALISE, StatusVaga.PUBLICADO] },
+      status: { in: [StatusDeVagas.EM_ANALISE, StatusDeVagas.PUBLICADO] },
       },
     });
 
@@ -268,11 +268,11 @@ const ensurePlanoAtivoParaUsuario = async (usuarioId: string) => {
 };
 
 export const vagasService = {
-  list: async (params?: { status?: StatusVaga[]; usuarioId?: string; page?: number; pageSize?: number }) => {
+  list: async (params?: { status?: StatusDeVagas[]; usuarioId?: string; page?: number; pageSize?: number }) => {
     const where: Prisma.EmpresasVagasWhereInput = {
       ...(params?.status && params.status.length > 0
         ? { status: { in: params.status } }
-        : { status: StatusVaga.PUBLICADO }),
+        : { status: StatusDeVagas.PUBLICADO }),
       ...(params?.usuarioId ? { usuarioId: params.usuarioId } : {}),
     };
 
@@ -292,7 +292,7 @@ export const vagasService = {
 
   get: async (id: string) => {
     const vaga = await prisma.empresasVagas.findFirst({
-      where: { id, status: StatusVaga.PUBLICADO },
+      where: { id, status: StatusDeVagas.PUBLICADO },
       ...includeEmpresa,
     });
 

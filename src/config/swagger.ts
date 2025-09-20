@@ -3309,7 +3309,7 @@ const options: Options = {
             limite: { type: 'integer', example: 10 },
           },
         },
-        StatusVaga: {
+        StatusDeVagas: {
           type: 'string',
           description: 'Etapas do fluxo de publicação da vaga',
           enum: ['RASCUNHO', 'EM_ANALISE', 'PUBLICADO', 'EXPIRADO'],
@@ -4256,7 +4256,7 @@ const options: Options = {
               example: 'Analista de Dados Pleno',
               description: 'Nome público da vaga informado pela empresa no momento do cadastro.',
             },
-            status: { allOf: [{ $ref: '#/components/schemas/StatusVaga' }] },
+            status: { allOf: [{ $ref: '#/components/schemas/StatusDeVagas' }] },
             inseridaEm: { type: 'string', format: 'date-time', example: '2024-05-10T09:00:00Z' },
             atualizadoEm: { type: 'string', format: 'date-time', example: '2024-05-12T11:30:00Z' },
             inscricoesAte: { type: 'string', format: 'date-time', nullable: true, example: '2024-06-01T23:59:59Z' },
@@ -4422,7 +4422,7 @@ const options: Options = {
               example: '2024-10-05T09:00:00Z',
             },
             status: {
-              allOf: [{ $ref: '#/components/schemas/StatusVaga' }],
+              allOf: [{ $ref: '#/components/schemas/StatusDeVagas' }],
               description: 'Status atual da vaga dentro do fluxo de aprovação',
             },
             nomeExibicao: {
@@ -4564,7 +4564,7 @@ const options: Options = {
               example: '2024-10-05T09:00:00Z',
             },
             status: {
-              allOf: [{ $ref: '#/components/schemas/StatusVaga' }],
+              allOf: [{ $ref: '#/components/schemas/StatusDeVagas' }],
               description: 'Atualização manual do status da vaga',
             },
           },

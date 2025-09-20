@@ -1,5 +1,5 @@
 import { z, type ZodError } from 'zod';
-import { Role, Status, TipoUsuario } from '../enums';
+import { Role, Status, TiposDeUsuarios } from '../enums';
 
 export const loginSchema = z.object({
   documento: z
@@ -31,14 +31,14 @@ const baseRegisterSchema = z.object({
 });
 
 const pessoaFisicaRegisterSchema = baseRegisterSchema.extend({
-  tipoUsuario: z.literal(TipoUsuario.PESSOA_FISICA),
+  tipoUsuario: z.literal(TiposDeUsuarios.PESSOA_FISICA),
   cpf: z.string({ required_error: 'CPF é obrigatório' }).min(1, 'CPF é obrigatório'),
   dataNasc: z.string().optional(),
   genero: z.string().optional(),
 });
 
 const pessoaJuridicaRegisterSchema = baseRegisterSchema.extend({
-  tipoUsuario: z.literal(TipoUsuario.PESSOA_JURIDICA),
+  tipoUsuario: z.literal(TiposDeUsuarios.PESSOA_JURIDICA),
   cnpj: z.string({ required_error: 'CNPJ é obrigatório' }).min(1, 'CNPJ é obrigatório'),
 });
 

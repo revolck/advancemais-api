@@ -25,7 +25,7 @@ model Usuarios {
   instagram     String?
   linkedin      String?
   codUsuario    String      @unique
-  tipoUsuario   TipoUsuario
+  tipoUsuario   TiposDeUsuarios
   role          Role
   status        Status      @default(ATIVO)
   aceitarTermos Boolean     @default(false)
@@ -387,7 +387,7 @@ model WebsiteSliderOrdem {
   id              String            @id @default(uuid())
   websiteSliderId String            @unique
   ordem           Int
-  orientacao      SliderOrientation
+  orientacao      WebsiteSlidersOrientations
   status          WebsiteStatus     @default(RASCUNHO)
   criadoEm        DateTime          @default(now())
 
@@ -614,7 +614,7 @@ model WebsiteHeaderPage {
 // ENUMS EXISTENTES
 // =============================================
 
-enum TipoUsuario {
+enum TiposDeUsuarios {
   PESSOA_FISICA
   PESSOA_JURIDICA
 }
@@ -666,7 +666,7 @@ enum StatusSMS {
 
 // Métodos de pagamento aceitos para planos
 
-enum SliderOrientation {
+enum WebsiteSlidersOrientations {
   DESKTOP
   TABLET_MOBILE
 }

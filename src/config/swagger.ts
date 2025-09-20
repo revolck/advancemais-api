@@ -186,6 +186,19 @@ const options: Options = {
           example: 'PIX',
           description: 'Meios de pagamento aceitos',
         },
+        TiposDeUsuarios: {
+          type: 'string',
+          enum: ['PESSOA_FISICA', 'PESSOA_JURIDICA'],
+          example: 'PESSOA_FISICA',
+          description: 'Enum TiposDeUsuarios utilizado para classificar pessoas físicas e jurídicas.',
+        },
+        WebsiteSlidersOrientations: {
+          type: 'string',
+          enum: ['DESKTOP', 'TABLET_MOBILE'],
+          example: 'DESKTOP',
+          description:
+            'Enum WebsiteSlidersOrientations que determina em quais orientações os sliders são exibidos.',
+        },
         CheckoutMetodo: {
           type: 'string',
           enum: ['pagamento', 'assinatura'],
@@ -445,10 +458,8 @@ const options: Options = {
               example: 'uuid-supabase',
             },
             tipoUsuario: {
-              type: 'string',
-              description: 'Tipo do usuário',
-              enum: ['PESSOA_FISICA', 'PESSOA_JURIDICA'],
-              example: 'PESSOA_FISICA',
+              allOf: [{ $ref: '#/components/schemas/TiposDeUsuarios' }],
+              description: 'Tipo do usuário representado pelo enum TiposDeUsuarios.',
             },
           },
         },
@@ -499,8 +510,7 @@ const options: Options = {
               example: 'ADMIN',
             },
             tipoUsuario: {
-              type: 'string',
-              example: 'PESSOA_FISICA',
+              allOf: [{ $ref: '#/components/schemas/TiposDeUsuarios' }],
             },
             supabaseId: { type: 'string', example: 'uuid-supabase' },
             emailVerificado: { type: 'boolean', example: true },
@@ -1431,9 +1441,8 @@ const options: Options = {
               example: 'https://example.com',
             },
             orientacao: {
-              type: 'string',
-              enum: ['DESKTOP', 'TABLET_MOBILE'],
-              description: 'Orientação em que o slider será exibido',
+              allOf: [{ $ref: '#/components/schemas/WebsiteSlidersOrientations' }],
+              description: 'Orientação em que o slider será exibido.',
               example: 'DESKTOP',
             },
             status: {
@@ -1491,9 +1500,8 @@ const options: Options = {
               example: 'https://example.com',
             },
             orientacao: {
-              type: 'string',
-              enum: ['DESKTOP', 'TABLET_MOBILE'],
-              description: 'Orientação em que o slider será exibido',
+              allOf: [{ $ref: '#/components/schemas/WebsiteSlidersOrientations' }],
+              description: 'Orientação em que o slider será exibido.',
               example: 'DESKTOP',
             },
             status: {
@@ -1530,9 +1538,8 @@ const options: Options = {
               example: 'https://example.com',
             },
             orientacao: {
-              type: 'string',
-              enum: ['DESKTOP', 'TABLET_MOBILE'],
-              description: 'Orientação em que o slider será exibido',
+              allOf: [{ $ref: '#/components/schemas/WebsiteSlidersOrientations' }],
+              description: 'Orientação em que o slider será exibido.',
               example: 'TABLET_MOBILE',
             },
             status: {
@@ -4594,7 +4601,10 @@ const options: Options = {
             nomeCompleto: { type: 'string', example: 'João da Silva' },
             role: { type: 'string', example: 'ALUNO' },
             status: { type: 'string', example: 'ATIVO' },
-            tipoUsuario: { type: 'string', example: 'ALUNO' },
+            tipoUsuario: {
+              allOf: [{ $ref: '#/components/schemas/TiposDeUsuarios' }],
+              example: 'PESSOA_FISICA',
+            },
             criadoEm: {
               type: 'string',
               format: 'date-time',
@@ -4629,8 +4639,7 @@ const options: Options = {
               example: 'ATIVO',
             },
             tipoUsuario: {
-              type: 'string',
-              enum: ['PESSOA_FISICA', 'PESSOA_JURIDICA'],
+              allOf: [{ $ref: '#/components/schemas/TiposDeUsuarios' }],
               example: 'PESSOA_FISICA',
             },
             cidade: { type: 'string', nullable: true, example: 'Maceió' },

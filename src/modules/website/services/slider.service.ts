@@ -1,4 +1,4 @@
-import { SliderOrientation, WebsiteStatus } from '@prisma/client';
+import { WebsiteSlidersOrientations, WebsiteStatus } from '@prisma/client';
 import { prisma } from '@/config/prisma';
 import { getCache, setCache, invalidateCache } from '@/utils/cache';
 import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
@@ -55,7 +55,7 @@ export const sliderService = {
     sliderName: string;
     imagemUrl: string;
     link?: string;
-    orientacao: SliderOrientation;
+    orientacao: WebsiteSlidersOrientations;
     status?: WebsiteStatus;
   }) => {
     const max = await prisma.websiteSliderOrdem.aggregate({
@@ -102,7 +102,7 @@ export const sliderService = {
       sliderName?: string;
       imagemUrl?: string;
       link?: string;
-      orientacao?: SliderOrientation;
+      orientacao?: WebsiteSlidersOrientations;
       status?: WebsiteStatus;
       ordem?: number;
     },

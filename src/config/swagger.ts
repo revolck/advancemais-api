@@ -3387,7 +3387,8 @@ const options: Options = {
         },
         UsuarioEndereco: {
           type: 'object',
-          description: 'Endereço cadastrado para o usuário. Campos podem ser preenchidos parcialmente conforme o fluxo do microserviço de endereços.',
+          description:
+            'Endereço cadastrado para o usuário, persistido na tabela UsuariosEnderecos (anteriormente Enderecos). Campos podem ser preenchidos parcialmente conforme o fluxo do microserviço de endereços.',
           required: ['id'],
           properties: {
             id: { type: 'string', format: 'uuid', example: 'end-uuid' },

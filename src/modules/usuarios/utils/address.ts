@@ -1,4 +1,4 @@
-import type { Enderecos } from '@prisma/client';
+import type { UsuariosEnderecos } from '@prisma/client';
 
 export interface UsuarioEnderecoDto {
   id: string;
@@ -10,7 +10,7 @@ export interface UsuarioEnderecoDto {
   cep: string | null;
 }
 
-type MaybeEndereco = Partial<UsuarioEnderecoDto> | Enderecos;
+type MaybeEndereco = Partial<UsuarioEnderecoDto> | UsuariosEnderecos;
 
 export const normalizeUsuarioEnderecos = (
   enderecos?: MaybeEndereco[] | null,

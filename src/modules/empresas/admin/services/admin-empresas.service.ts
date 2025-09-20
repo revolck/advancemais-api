@@ -301,8 +301,8 @@ const upsertEnderecoPrincipal = async (
   usuarioId: string,
   endereco: { cidade?: string | null; estado?: string | null },
 ) => {
-  const dataToUpdate: Prisma.EnderecosUpdateInput = {};
-  const dataToCreate: Prisma.EnderecosUncheckedCreateInput = { usuarioId };
+  const dataToUpdate: Prisma.UsuariosEnderecosUpdateInput = {};
+  const dataToCreate: Prisma.UsuariosEnderecosUncheckedCreateInput = { usuarioId };
 
   let hasDefinedField = false;
   let hasCreateValue = false;
@@ -329,13 +329,13 @@ const upsertEnderecoPrincipal = async (
     return;
   }
 
-  const principalEndereco = await tx.enderecos.findFirst({
+  const principalEndereco = await tx.usuariosEnderecos.findFirst({
     where: { usuarioId },
     orderBy: { criadoEm: 'asc' },
   });
 
   if (principalEndereco) {
-    await tx.enderecos.update({
+    await tx.usuariosEnderecos.update({
       where: { id: principalEndereco.id },
       data: dataToUpdate,
     });
@@ -346,7 +346,7 @@ const upsertEnderecoPrincipal = async (
     return;
   }
 
-  await tx.enderecos.create({
+  await tx.usuariosEnderecos.create({
     data: dataToCreate,
   });
 };

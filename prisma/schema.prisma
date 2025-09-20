@@ -49,7 +49,7 @@ model Usuarios {
   ultimaTentativaVerificacao DateTime?
 
   // RELACIONAMENTOS EXISTENTES
-  enderecos            Enderecos[]
+  enderecos            UsuariosEnderecos[]
   vagasCriadas         Vagas[]            @relation("UsuarioVagas")
   planosContratados    EmpresaPlano[]     @relation("UsuarioPlanos")
   banimentosRecebidos  EmpresaBanimento[] @relation("EmpresaBanimentosUsuario")
@@ -204,7 +204,7 @@ model PlanoEmpresarial {
   mpPreapprovalPlanId String? @unique
 }
 
-model Enderecos {
+model UsuariosEnderecos {
   id           String   @id @default(uuid())
   usuarioId    String
   logradouro   String?

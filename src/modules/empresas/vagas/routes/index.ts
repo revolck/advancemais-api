@@ -4,6 +4,7 @@ import { publicCache } from '@/middlewares/cache-control';
 import { supabaseAuthMiddleware, optionalSupabaseAuth } from '@/modules/usuarios/auth';
 import { Roles } from '@/modules/usuarios/enums/Roles';
 import { VagasController } from '@/modules/empresas/vagas/controllers/vagas.controller';
+import { vagasProcessosRoutes } from '@/modules/empresas/vagas-processos';
 
 const router = Router();
 const protectedRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.EMPRESA, Roles.RECRUTADOR];
@@ -126,6 +127,8 @@ router.get('/', optionalSupabaseAuth(), publicCache, VagasController.list);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/empresas/vagas/{id}"
  */
+router.use('/:vagaId/processos', supabaseAuthMiddleware(protectedRoles), vagasProcessosRoutes);
+
 router.get('/:id', publicCache, VagasController.get);
 
 /**

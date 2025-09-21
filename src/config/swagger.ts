@@ -119,6 +119,14 @@ const options: Options = {
         description:
           'Gestão administrativa completa das empresas: cadastro, planos, pagamentos, vagas, banimentos e monitoramento operacional',
       },
+      {
+        name: 'Candidatos',
+        description: 'Recursos públicos e administrativos relacionados aos candidatos',
+      },
+      {
+        name: 'Candidatos - Áreas de Interesse',
+        description: 'Gestão das áreas de interesse disponíveis para candidatos',
+      },
       { name: 'MercadoPago - Assinaturas', description: 'Assinaturas e cobranças recorrentes (Mercado Pago)' },
     ],
     'x-tagGroups': [
@@ -162,6 +170,10 @@ const options: Options = {
           'Empresas - EmpresasVagas',
           'Empresas - Admin',
         ],
+      },
+      {
+        name: 'Candidatos',
+        tags: ['Candidatos', 'Candidatos - Áreas de Interesse'],
       },
       { name: 'Pagamentos', tags: ['MercadoPago - Assinaturas'] },
     ],
@@ -756,7 +768,9 @@ const options: Options = {
                 usuarios: '/api/v1/usuarios',
                 brevo: '/api/v1/brevo',
                 website: '/api/v1/website',
-                empresa: '/api/v1/empresa',
+                empresas: '/api/v1/empresas',
+                candidatos: '/api/v1/candidatos',
+                candidatosAreasInteresse: '/api/v1/candidatos/areas-interesse',
                 health: '/health',
               },
             },
@@ -1294,6 +1308,91 @@ const options: Options = {
             message: {
               type: 'string',
               example: 'Plano desvinculado da empresa',
+            },
+          },
+        },
+        CandidatosModuleInfo: {
+          type: 'object',
+          properties: {
+            message: { type: 'string', example: 'Candidatos Module API' },
+            version: { type: 'string', example: 'v1' },
+            timestamp: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-01-01T12:00:00Z',
+            },
+            endpoints: {
+              type: 'object',
+              properties: {
+                areasInteresse: { type: 'string', example: '/areas-interesse' },
+              },
+            },
+            status: { type: 'string', example: 'operational' },
+          },
+        },
+        CandidatoAreaInteresse: {
+          type: 'object',
+          properties: {
+            id: { type: 'integer', example: 1 },
+            categoria: {
+              type: 'string',
+              example: 'Tecnologia da Informação',
+            },
+            subareas: {
+              type: 'array',
+              items: {
+                type: 'string',
+                example: 'Desenvolvimento de Software',
+              },
+            },
+            criadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-01-01T12:00:00Z',
+            },
+            atualizadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-01-01T12:00:00Z',
+            },
+          },
+        },
+        CandidatoAreaInteresseCreateInput: {
+          type: 'object',
+          required: ['categoria', 'subareas'],
+          properties: {
+            categoria: {
+              type: 'string',
+              example: 'Tecnologia da Informação',
+              maxLength: 120,
+            },
+            subareas: {
+              type: 'array',
+              minItems: 1,
+              items: {
+                type: 'string',
+                example: 'Desenvolvimento de Software',
+                maxLength: 120,
+              },
+            },
+          },
+        },
+        CandidatoAreaInteresseUpdateInput: {
+          type: 'object',
+          properties: {
+            categoria: {
+              type: 'string',
+              example: 'Tecnologia',
+              maxLength: 120,
+            },
+            subareas: {
+              type: 'array',
+              minItems: 1,
+              items: {
+                type: 'string',
+                example: 'Segurança da Informação',
+                maxLength: 120,
+              },
             },
           },
         },
@@ -3545,6 +3644,13 @@ const options: Options = {
           enum: ['CLT', 'TEMPORARIO', 'ESTAGIO', 'PJ', 'HOME_OFFICE', 'JOVEM_APRENDIZ'],
           example: 'CLT',
         },
+        Jornadas: {
+          type: 'string',
+          description:
+            'Opções de jornada de trabalho oferecidas na vaga, alinhadas com a carga horária prevista.',
+          enum: ['INTEGRAL', 'MEIO_PERIODO', 'FLEXIVEL', 'TURNOS', 'NOTURNO'],
+          example: 'INTEGRAL',
+        },
         ModalidadesDeVagas: {
           type: 'string',
           description: 'Modalidades de atuação disponíveis para a vaga.',
@@ -4912,9 +5018,9 @@ const options: Options = {
               nullable: true,
               example: 'Processo seletivo confidencial com etapas online.',
             },
-            cargaHoraria: {
-              type: 'string',
-              example: '44 horas semanais (segunda a sexta-feira)',
+            jornada: {
+              allOf: [{ $ref: '#/components/schemas/Jornadas' }],
+              description: 'Classificação padronizada da carga horária da vaga.',
             },
             inscricoesAte: {
               type: 'string',
@@ -4971,7 +5077,7 @@ const options: Options = {
             'requisitos',
             'atividades',
             'beneficios',
-            'cargaHoraria',
+            'jornada',
           ],
           properties: {
             usuarioId: {
@@ -5009,9 +5115,10 @@ const options: Options = {
               type: 'string',
               example: 'Processo seletivo confidencial com etapas online.',
             },
-            cargaHoraria: {
-              type: 'string',
-              example: '44 horas semanais (segunda a sexta-feira)',
+            jornada: {
+              allOf: [{ $ref: '#/components/schemas/Jornadas' }],
+              description: 'Selecione a jornada que melhor descreve a carga horária combinada.',
+              example: 'INTEGRAL',
             },
             inscricoesAte: {
               type: 'string',
@@ -5059,9 +5166,10 @@ const options: Options = {
               type: 'string',
               example: 'Processo seletivo com etapas online.',
             },
-            cargaHoraria: {
-              type: 'string',
-              example: '30 horas semanais (segunda a sexta-feira)',
+            jornada: {
+              allOf: [{ $ref: '#/components/schemas/Jornadas' }],
+              description: 'Atualize a jornada quando houver mudança na carga horária prevista.',
+              example: 'MEIO_PERIODO',
             },
             inscricoesAte: {
               type: 'string',

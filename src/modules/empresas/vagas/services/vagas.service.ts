@@ -5,6 +5,7 @@ import {
   ModalidadesDeVagas,
   Prisma,
   RegimesDeTrabalhos,
+  Senioridade,
   StatusDeVagas,
   TiposDeUsuarios,
 } from '@prisma/client';
@@ -32,6 +33,7 @@ export type CreateVagaData = {
   beneficios: string;
   observacoes?: string;
   jornada: Jornadas;
+  senioridade: Senioridade;
   inscricoesAte?: Date;
   inseridaEm?: Date;
   status?: StatusDeVagas;
@@ -137,6 +139,7 @@ const sanitizeCreateData = (data: CreateVagaData, codigo: string): Prisma.Empres
   beneficios: data.beneficios.trim(),
   observacoes: nullableText(data.observacoes),
   jornada: data.jornada,
+  senioridade: data.senioridade,
   inscricoesAte: data.inscricoesAte ?? null,
   inseridaEm: data.inseridaEm ?? new Date(),
   status: data.status ?? StatusDeVagas.EM_ANALISE,
@@ -177,6 +180,9 @@ const sanitizeUpdateData = (data: UpdateVagaData): Prisma.EmpresasVagasUnchecked
   }
   if (data.jornada !== undefined) {
     update.jornada = data.jornada;
+  }
+  if (data.senioridade !== undefined) {
+    update.senioridade = data.senioridade;
   }
   if (data.inscricoesAte !== undefined) {
     update.inscricoesAte = data.inscricoesAte ?? null;
@@ -262,7 +268,7 @@ const ensurePlanoAtivoParaUsuario = async (usuarioId: string) => {
     const vagasAtivas = await prisma.empresasVagas.count({
       where: {
         usuarioId,
-      status: { in: [StatusDeVagas.EM_ANALISE, StatusDeVagas.PUBLICADO] },
+        status: { in: [StatusDeVagas.EM_ANALISE, StatusDeVagas.PUBLICADO, StatusDeVagas.PAUSADA] },
       },
     });
 

@@ -1,4 +1,4 @@
-import { Jornadas, ModalidadesDeVagas, RegimesDeTrabalhos, StatusDeVagas } from '@prisma/client';
+import { Jornadas, ModalidadesDeVagas, RegimesDeTrabalhos, Senioridade, StatusDeVagas } from '@prisma/client';
 import { z } from 'zod';
 
 const longTextField = (field: string) =>
@@ -44,6 +44,10 @@ const baseVagaSchema = z.object({
   jornada: z.nativeEnum(Jornadas, {
     required_error: 'A jornada é obrigatória',
     invalid_type_error: 'jornada inválida',
+  }),
+  senioridade: z.nativeEnum(Senioridade, {
+    required_error: 'A senioridade da vaga é obrigatória',
+    invalid_type_error: 'senioridade inválida',
   }),
   inscricoesAte: dateField('A data limite de inscrições').optional(),
   inseridaEm: dateField('A data de publicação da vaga').optional(),

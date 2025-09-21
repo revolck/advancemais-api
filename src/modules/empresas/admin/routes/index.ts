@@ -637,7 +637,7 @@ router.post('/:id/banimentos', supabaseAuthMiddleware(adminRoles), AdminEmpresas
  *         name: status
  *         schema:
  *           type: string
- *         description: "Lista de status separados por vírgula (RASCUNHO, EM_ANALISE, PUBLICADO, EXPIRADO)"
+ *         description: "Lista de status separados por vírgula (RASCUNHO, EM_ANALISE, PUBLICADO, DESPUBLICADA, PAUSADA, ENCERRADA ou EXPIRADO)"
  *       - in: query
  *         name: page
  *         schema:

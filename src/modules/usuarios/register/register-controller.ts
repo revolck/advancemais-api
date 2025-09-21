@@ -28,6 +28,7 @@ import {
   usuarioRedesSociaisSelect,
   type UsuarioSocialLinksInput,
 } from '../utils/social-links';
+import { emailVerificationSelect, normalizeEmailVerification } from '../utils/email-verification';
 
 /**
  * Controller para criação de novos usuários
@@ -438,16 +439,19 @@ async function checkForDuplicates(
         cpf: true,
         cnpj: true,
         supabaseId: true,
-        emailVerificado: true,
-        emailVerificationTokenExp: true,
+        emailVerification: {
+          select: emailVerificationSelect,
+        },
       },
     });
 
     if (usuarioExistente) {
+      const verification = normalizeEmailVerification(usuarioExistente.emailVerification);
+
       if (
-        !usuarioExistente.emailVerificado &&
-        usuarioExistente.emailVerificationTokenExp &&
-        usuarioExistente.emailVerificationTokenExp < new Date()
+        !verification.emailVerificado &&
+        verification.emailVerificationTokenExp &&
+        verification.emailVerificationTokenExp < new Date()
       ) {
         await prisma.usuarios.delete({ where: { id: usuarioExistente.id } });
         log.info({ email: usuarioExistente.email }, '🧹 Usuário com verificação expirada removido');
@@ -564,6 +568,9 @@ async function createUserWithTransaction(
         data: {
           ...userData.usuario,
           codUsuario,
+          emailVerification: {
+            create: {},
+          },
           ...(userData.socialLinks
             ? {
                 redesSociais: {

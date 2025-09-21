@@ -1,5 +1,6 @@
+import type { CookieOptions, Request, Response } from 'express';
 import jwt, { SignOptions } from 'jsonwebtoken';
-import { jwtConfig } from '../../../config/env';
+import { authSessionConfig, jwtConfig } from '../../../config/env';
 import { logger } from '@/utils/logger';
 
 const authLogger = logger.child({ module: 'AuthUtils' });
@@ -19,6 +20,11 @@ interface AccessTokenPayload {
 interface RefreshTokenPayload {
   id: string;
   type: 'refresh';
+}
+
+interface TokenPairOptions {
+  rememberMe?: boolean;
+  refreshExpiresIn?: string;
 }
 
 /**
@@ -49,14 +55,14 @@ export const generateToken = (id: string, role: string): string => {
  * @param id - ID único do usuário
  * @returns Refresh token válido conforme configuração
  */
-export const generateRefreshToken = (id: string): string => {
+export const generateRefreshToken = (id: string, expiresIn?: string): string => {
   const payload: RefreshTokenPayload = {
     id,
     type: 'refresh',
   };
 
   const options: SignOptions = {
-    expiresIn: jwtConfig.refreshExpiresIn as any,
+    expiresIn: (expiresIn || jwtConfig.refreshExpiresIn) as any,
     issuer: 'advancemais-api',
     audience: 'advancemais-refresh',
     subject: id,
@@ -171,11 +177,114 @@ export const isTokenNearExpiry = (token: string, thresholdMinutes: number = 5): 
  * @param role - Role do usuário
  * @returns Objeto com ambos os tokens
  */
-export const generateTokenPair = (id: string, role: string) => {
+const REFRESH_DURATION_FALLBACK_MS = 1000 * 60 * 60 * 24 * 30; // 30 dias
+
+const durationRegex = /^(\d+)(ms|s|m|h|d|w)$/i;
+const durationMultipliers: Record<string, number> = {
+  ms: 1,
+  s: 1000,
+  m: 60 * 1000,
+  h: 60 * 60 * 1000,
+  d: 24 * 60 * 60 * 1000,
+  w: 7 * 24 * 60 * 60 * 1000,
+};
+
+export const durationStringToMs = (duration: string | undefined): number => {
+  if (!duration) return REFRESH_DURATION_FALLBACK_MS;
+
+  const trimmed = duration.trim();
+  const match = durationRegex.exec(trimmed);
+
+  if (!match) {
+    authLogger.warn({ duration }, '⚠️ Valor de expiração inválido. Usando fallback padrão de 30 dias.');
+    return REFRESH_DURATION_FALLBACK_MS;
+  }
+
+  const value = Number.parseInt(match[1], 10);
+  const unit = match[2].toLowerCase();
+  const multiplier = durationMultipliers[unit];
+
+  if (!Number.isFinite(value) || value <= 0 || !multiplier) {
+    authLogger.warn({ duration }, '⚠️ Valor de expiração inválido. Usando fallback padrão de 30 dias.');
+    return REFRESH_DURATION_FALLBACK_MS;
+  }
+
+  return value * multiplier;
+};
+
+export const getRefreshTokenExpiration = (rememberMe: boolean) => {
+  const expiresIn = rememberMe
+    ? jwtConfig.refreshPersistentExpiresIn
+    : jwtConfig.refreshExpiresIn;
+  const maxAgeMs = durationStringToMs(expiresIn);
+  const expiresAt = new Date(Date.now() + maxAgeMs);
+
+  return { expiresIn, maxAgeMs, expiresAt };
+};
+
+const buildBaseCookieOptions = (): CookieOptions => {
+  const options: CookieOptions = {
+    httpOnly: true,
+    secure: authSessionConfig.secure,
+    sameSite: authSessionConfig.sameSite as CookieOptions['sameSite'],
+    path: authSessionConfig.cookiePath || '/',
+  };
+
+  if (authSessionConfig.cookieDomain) {
+    options.domain = authSessionConfig.cookieDomain;
+  }
+
+  return options;
+};
+
+export const setRefreshTokenCookie = (res: Response, token: string, rememberMe: boolean) => {
+  const { maxAgeMs } = getRefreshTokenExpiration(rememberMe);
+  const options = buildBaseCookieOptions();
+  options.maxAge = maxAgeMs;
+  res.cookie(authSessionConfig.refreshTokenCookieName, token, options);
+};
+
+export const clearRefreshTokenCookie = (res: Response) => {
+  const options = buildBaseCookieOptions();
+  options.maxAge = 0;
+  options.expires = new Date(0);
+  res.clearCookie(authSessionConfig.refreshTokenCookieName, options);
+};
+
+export const extractRefreshTokenFromRequest = (req: Request): string | undefined => {
+  const bodyToken = typeof req.body?.refreshToken === 'string' ? req.body.refreshToken.trim() : undefined;
+  if (bodyToken) {
+    return bodyToken;
+  }
+
+  const cookies = ((req as unknown as { cookies?: Record<string, unknown> }).cookies ?? {}) as Record<
+    string,
+    unknown
+  >;
+
+  const cookieToken = cookies[authSessionConfig.refreshTokenCookieName];
+  if (typeof cookieToken === 'string' && cookieToken.trim().length > 0) {
+    return cookieToken.trim();
+  }
+
+  const headerToken = req.get('x-refresh-token');
+  if (headerToken && headerToken.trim().length > 0) {
+    return headerToken.trim();
+  }
+
+  return undefined;
+};
+
+export const generateTokenPair = (id: string, role: string, options: TokenPairOptions = {}) => {
+  const refreshExpiresIn =
+    options.refreshExpiresIn ||
+    (options.rememberMe ? jwtConfig.refreshPersistentExpiresIn : jwtConfig.refreshExpiresIn);
+
   return {
     accessToken: generateToken(id, role),
-    refreshToken: generateRefreshToken(id),
+    refreshToken: generateRefreshToken(id, refreshExpiresIn),
     tokenType: 'Bearer',
     expiresIn: jwtConfig.expiresIn,
+    refreshExpiresIn,
   };
 };

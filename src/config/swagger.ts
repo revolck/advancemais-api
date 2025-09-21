@@ -420,12 +420,20 @@ const options: Options = {
               format: 'password',
               example: 'senha123',
             },
+            rememberMe: {
+              type: 'boolean',
+              description:
+                'Quando true, mantém o refresh token válido por mais tempo e o salva em cookie HTTP-only neste dispositivo.',
+              default: false,
+              example: true,
+            },
           },
         },
         UserLoginResponse: {
           type: 'object',
           properties: {
             success: { type: 'boolean', example: true },
+            message: { type: 'string', example: 'Login realizado com sucesso' },
             token: {
               type: 'string',
               description: 'JWT de acesso',
@@ -436,9 +444,46 @@ const options: Options = {
               description: 'Token para renovação de sessão',
               example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
             },
+            tokenType: { type: 'string', example: 'Bearer' },
+            expiresIn: { type: 'string', example: '1h' },
+            rememberMe: { type: 'boolean', example: true },
+            refreshTokenExpiresIn: { type: 'string', example: '90d' },
+            refreshTokenExpiresAt: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-06-10T12:00:00.000Z',
+            },
+            session: {
+              type: 'object',
+              description: 'Resumo da sessão criada para o refresh token.',
+              properties: {
+                id: { type: 'string', example: 'f9e88a12-0b88-4d43-9b1f-1234567890ab' },
+                rememberMe: { type: 'boolean', example: true },
+                createdAt: {
+                  type: 'string',
+                  format: 'date-time',
+                  example: '2024-03-12T10:15:00.000Z',
+                },
+                expiresAt: {
+                  type: 'string',
+                  format: 'date-time',
+                  example: '2024-06-10T12:00:00.000Z',
+                },
+              },
+            },
             usuario: {
               allOf: [{ $ref: '#/components/schemas/UserProfile' }],
               description: 'Perfil básico retornado no momento da autenticação.',
+            },
+            correlationId: {
+              type: 'string',
+              format: 'uuid',
+              example: 'd4e8c2a7-ff52-4f42-b6de-1234567890ab',
+            },
+            timestamp: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-03-12T10:15:01.234Z',
             },
           },
         },
@@ -515,11 +560,11 @@ const options: Options = {
         },
         RefreshTokenRequest: {
           type: 'object',
-          required: ['refreshToken'],
           properties: {
             refreshToken: {
               type: 'string',
-              description: 'Token de renovação válido',
+              description:
+                'Token de renovação válido. Opcional quando o cookie HTTP-only (`AUTH_REFRESH_COOKIE_NAME`) ou o header `x-refresh-token` estiver presente.',
               example: '<refresh-token>',
             },
           },
@@ -619,7 +664,53 @@ const options: Options = {
           properties: {
             success: { type: 'boolean', example: true },
             message: { type: 'string', example: 'Token renovado com sucesso' },
+            token: {
+              type: 'string',
+              description: 'Novo JWT de acesso',
+              example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            },
+            refreshToken: {
+              type: 'string',
+              description: 'Novo refresh token rotacionado',
+              example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            },
+            tokenType: { type: 'string', example: 'Bearer' },
+            expiresIn: { type: 'string', example: '1h' },
+            rememberMe: { type: 'boolean', example: true },
+            refreshTokenExpiresIn: { type: 'string', example: '90d' },
+            refreshTokenExpiresAt: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-06-10T12:00:00.000Z',
+            },
+            session: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', example: 'f9e88a12-0b88-4d43-9b1f-1234567890ab' },
+                rememberMe: { type: 'boolean', example: true },
+                createdAt: {
+                  type: 'string',
+                  format: 'date-time',
+                  example: '2024-03-12T10:15:00.000Z',
+                },
+                expiresAt: {
+                  type: 'string',
+                  format: 'date-time',
+                  example: '2024-06-10T12:00:00.000Z',
+                },
+              },
+            },
             usuario: { $ref: '#/components/schemas/UserProfile' },
+            correlationId: {
+              type: 'string',
+              format: 'uuid',
+              example: 'd4e8c2a7-ff52-4f42-b6de-1234567890ab',
+            },
+            timestamp: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-03-12T10:18:01.234Z',
+            },
           },
         },
         LogoutResponse: {
@@ -627,6 +718,16 @@ const options: Options = {
           properties: {
             success: { type: 'boolean', example: true },
             message: { type: 'string', example: 'Logout realizado' },
+            correlationId: {
+              type: 'string',
+              format: 'uuid',
+              example: 'd4e8c2a7-ff52-4f42-b6de-1234567890ab',
+            },
+            timestamp: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-03-12T10:20:01.234Z',
+            },
           },
         },
         BasicMessage: {

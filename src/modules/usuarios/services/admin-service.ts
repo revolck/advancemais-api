@@ -114,17 +114,29 @@ export class AdminService {
   /**
    * Lista candidatos (role ALUNO_CANDIDATO) com filtros e paginação
    */
-  async listarCandidatos(query: unknown) {
+  async listarCandidatos(
+    query: unknown,
+    options?: { defaultLimit?: number; maxLimit?: number; forceLimit?: number },
+  ) {
+    const { defaultLimit = 50, maxLimit = 100, forceLimit } = options ?? {};
+
     const querySchema = z.object({
       page: z.coerce.number().int().min(1).default(1),
-      limit: z.coerce.number().int().min(1).default(50),
+      limit: z.coerce
+        .number()
+        .int()
+        .min(1)
+        .max(maxLimit)
+        .default(Math.min(defaultLimit, maxLimit)),
       status: z.string().optional(),
       tipoUsuario: z.string().optional(),
       search: z.string().optional(),
     });
 
     const { page, limit, status, tipoUsuario, search } = querySchema.parse(query);
-    const pageSize = Math.min(Number(limit) || 50, 100);
+    const pageSize = forceLimit
+      ? Math.max(1, Math.min(forceLimit, maxLimit))
+      : limit;
     const skip = (page - 1) * pageSize;
 
     const where: Prisma.UsuariosWhereInput = {
@@ -141,17 +153,24 @@ export class AdminService {
       where.tipoUsuario = tipoUsuarioFilter;
     }
 
-    if (search && search.trim() !== '') {
-      const term = search.trim();
+    const searchTerm = search?.trim();
+    if (searchTerm && searchTerm.length < 3) {
+      throw Object.assign(new Error('Busca deve conter pelo menos 3 caracteres'), {
+        statusCode: 400,
+        code: 'SEARCH_TERM_TOO_SHORT',
+      });
+    }
+
+    if (searchTerm) {
       where.OR = [
-        { nomeCompleto: { contains: term, mode: 'insensitive' } },
-        { email: { contains: term, mode: 'insensitive' } },
-        { cpf: { contains: term, mode: 'insensitive' } },
-        { codUsuario: { contains: term, mode: 'insensitive' } },
+        { nomeCompleto: { contains: searchTerm, mode: 'insensitive' } },
+        { email: { contains: searchTerm, mode: 'insensitive' } },
+        { cpf: { contains: searchTerm, mode: 'insensitive' } },
+        { codUsuario: { contains: searchTerm, mode: 'insensitive' } },
       ];
     }
 
-    const [candidatos, total] = await Promise.all([
+    const [candidatos, total] = await prisma.$transaction([
       prisma.usuarios.findMany({
         where,
         select: {

@@ -9,6 +9,7 @@ import { limparDocumento, validarCNPJ, validarCPF } from '@/modules/usuarios/uti
 import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
 import { formatZodErrors, loginSchema } from '../validators/auth.schema';
 import { attachEnderecoResumo, normalizeUsuarioEnderecos, UsuarioEnderecoDto } from '../utils/address';
+import { mapUsuarioInformacoes, mergeUsuarioInformacoes, usuarioInformacoesSelect } from '../utils/information';
 import { mapSocialLinks, usuarioRedesSociaisSelect } from '../utils/social-links';
 import type { UsuarioSocialLinks } from '../utils/types';
 import {
@@ -68,6 +69,8 @@ interface UsuarioPerfil {
   estado: string | null;
   avatarUrl: string | null;
   descricao: string | null;
+  aceitarTermos: boolean;
+  informacoes: ReturnType<typeof mapUsuarioInformacoes>;
   codUsuario: string;
   emailVerification: ReturnType<typeof buildEmailVerificationSummary>;
   enderecos: UsuarioEnderecoDto[];
@@ -81,6 +84,8 @@ const reviveUsuario = (usuario: UsuarioPerfil): UsuarioPerfil => {
     usuario.emailVerification ?? buildEmailVerificationSummary();
   const enderecos = normalizeUsuarioEnderecos(usuario.enderecos);
   const [principal] = enderecos;
+  const informacoes = mapUsuarioInformacoes(usuario.informacoes);
+  const dataNasc = informacoes.dataNasc ?? (usuario.dataNasc ? new Date(usuario.dataNasc) : null);
 
   return {
     ...usuario,
@@ -89,7 +94,17 @@ const reviveUsuario = (usuario: UsuarioPerfil): UsuarioPerfil => {
     atualizadoEm: new Date(usuario.atualizadoEm),
     emailVerificadoEm: usuario.emailVerificadoEm ? new Date(usuario.emailVerificadoEm) : null,
     ultimoLogin: usuario.ultimoLogin ? new Date(usuario.ultimoLogin) : null,
-    dataNasc: usuario.dataNasc ? new Date(usuario.dataNasc) : null,
+    dataNasc,
+    telefone: informacoes.telefone,
+    genero: informacoes.genero,
+    matricula: informacoes.matricula,
+    avatarUrl: informacoes.avatarUrl,
+    descricao: informacoes.descricao,
+    aceitarTermos: informacoes.aceitarTermos,
+    informacoes: {
+      ...informacoes,
+      dataNasc,
+    },
     emailVerification: {
       ...emailVerificationSummary,
       verifiedAt: emailVerificationSummary.verifiedAt
@@ -192,10 +207,11 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
         supabaseId: true,
         ultimoLogin: true,
         criadoEm: true,
-        avatarUrl: true,
-        descricao: true,
         ...usuarioRedesSociaisSelect,
         codUsuario: true,
+        informacoes: {
+          select: usuarioInformacoesSelect,
+        },
         enderecos: {
           orderBy: { criadoEm: 'asc' },
           select: {
@@ -232,12 +248,13 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
 
     const { emailVerification, ...usuarioSemVerificacao } = usuarioRecord;
     const verification = normalizeEmailVerification(emailVerification);
-    const usuario = attachEnderecoResumo({
+    const usuarioComInformacoes = mergeUsuarioInformacoes({
       ...usuarioSemVerificacao,
       emailVerificado: verification.emailVerificado,
       emailVerificadoEm: verification.emailVerificadoEm,
       emailVerification: buildEmailVerificationSummary(emailVerification),
     });
+    const usuario = attachEnderecoResumo(usuarioComInformacoes);
     if (!usuario) {
       log.error({ documento: campoBusca }, '❌ Falha ao montar dados do usuário');
       return res.status(500).json({
@@ -332,6 +349,10 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
       id: usuario.id,
       email: usuario.email,
       nomeCompleto: usuario.nomeCompleto,
+      telefone: usuario.telefone,
+      genero: usuario.genero,
+      dataNasc: usuario.dataNasc,
+      matricula: usuario.matricula,
       role: usuario.role,
       tipoUsuario: usuario.tipoUsuario,
       supabaseId: usuario.supabaseId,
@@ -344,6 +365,8 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
       estado: usuario.estado,
       avatarUrl: usuario.avatarUrl,
       descricao: usuario.descricao,
+      aceitarTermos: usuario.aceitarTermos,
+      informacoes: usuario.informacoes,
       socialLinks,
       enderecos: usuario.enderecos,
     };
@@ -471,10 +494,11 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
         tipoUsuario: true,
         supabaseId: true,
         codUsuario: true,
-        avatarUrl: true,
-        descricao: true,
         ...usuarioRedesSociaisSelect,
         ultimoLogin: true,
+        informacoes: {
+          select: usuarioInformacoesSelect,
+        },
         enderecos: {
           orderBy: { criadoEm: 'asc' },
           select: {
@@ -505,12 +529,13 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
 
     const { emailVerification, ...usuarioSemVerificacao } = usuarioRecord;
     const verification = normalizeEmailVerification(emailVerification);
-    const usuario = attachEnderecoResumo({
+    const usuarioComInformacoes = mergeUsuarioInformacoes({
       ...usuarioSemVerificacao,
       emailVerificado: verification.emailVerificado,
       emailVerificadoEm: verification.emailVerificadoEm,
       emailVerification: buildEmailVerificationSummary(emailVerification),
     });
+    const usuario = attachEnderecoResumo(usuarioComInformacoes);
     if (!usuario) {
       log.error({ refreshTokenPrefix: refreshToken.substring(0, 10) }, '❌ Falha ao reconstruir usuário no refresh token');
       return res.status(500).json({
@@ -583,6 +608,10 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       id: usuario.id,
       email: usuario.email,
       nomeCompleto: usuario.nomeCompleto,
+      telefone: usuario.telefone,
+      genero: usuario.genero,
+      dataNasc: usuario.dataNasc,
+      matricula: usuario.matricula,
       role: usuario.role,
       tipoUsuario: usuario.tipoUsuario,
       supabaseId: usuario.supabaseId,
@@ -593,6 +622,8 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       estado: usuario.estado,
       avatarUrl: usuario.avatarUrl,
       descricao: usuario.descricao,
+      aceitarTermos: usuario.aceitarTermos,
+      informacoes: usuario.informacoes,
       socialLinks,
       enderecos: usuario.enderecos,
     };
@@ -666,10 +697,6 @@ export const obterPerfil = async (req: Request, res: Response, next: NextFunctio
         nomeCompleto: true,
         cpf: true,
         cnpj: true,
-        telefone: true,
-        dataNasc: true,
-        genero: true,
-        matricula: true,
         role: true,
         status: true,
         tipoUsuario: true,
@@ -677,10 +704,11 @@ export const obterPerfil = async (req: Request, res: Response, next: NextFunctio
         ultimoLogin: true,
         criadoEm: true,
         atualizadoEm: true,
-        avatarUrl: true,
-        descricao: true,
         ...usuarioRedesSociaisSelect,
         codUsuario: true,
+        informacoes: {
+          select: usuarioInformacoesSelect,
+        },
         enderecos: {
           orderBy: { criadoEm: 'asc' },
           select: {
@@ -704,12 +732,12 @@ export const obterPerfil = async (req: Request, res: Response, next: NextFunctio
     const verification = normalizeEmailVerification(emailVerification);
     const usuario = attachEnderecoResumo(
       usuarioDb
-        ? {
+        ? mergeUsuarioInformacoes({
             ...usuarioSemVerificacao,
             emailVerificado: verification.emailVerificado,
             emailVerificadoEm: verification.emailVerificadoEm,
             emailVerification: buildEmailVerificationSummary(emailVerification),
-          }
+          })
         : null,
     ) as UsuarioPerfil | null;
 

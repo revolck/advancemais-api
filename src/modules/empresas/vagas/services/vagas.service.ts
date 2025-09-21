@@ -10,6 +10,7 @@ import {
 
 import { prisma } from '@/config/prisma';
 import { attachEnderecoResumo } from '@/modules/usuarios/utils/address';
+import { mergeUsuarioInformacoes, usuarioInformacoesSelect } from '@/modules/usuarios/utils/information';
 import { mapSocialLinks, usuarioRedesSociaisSelect } from '@/modules/usuarios/utils/social-links';
 import { clientesService } from '@/modules/empresas/clientes/services/clientes.service';
 import {
@@ -48,8 +49,9 @@ const includeEmpresa = {
       select: {
         id: true,
         nomeCompleto: true,
-        avatarUrl: true,
-        descricao: true,
+        informacoes: {
+          select: usuarioInformacoesSelect,
+        },
         ...usuarioRedesSociaisSelect,
         codUsuario: true,
         role: true,
@@ -198,7 +200,9 @@ const transformVaga = (vaga: VagaWithEmpresa) => {
     vaga.empresa && vaga.empresa.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
       ? vaga.empresa
       : null;
-  const empresaUsuario = empresaUsuarioRaw ? attachEnderecoResumo(empresaUsuarioRaw)! : null;
+  const empresaUsuario = empresaUsuarioRaw
+    ? attachEnderecoResumo(mergeUsuarioInformacoes(empresaUsuarioRaw))!
+    : null;
 
   const displayName = vaga.modoAnonimo
     ? anonymizedName(vaga.id)
@@ -222,6 +226,7 @@ const transformVaga = (vaga: VagaWithEmpresa) => {
         socialLinks: vaga.modoAnonimo ? null : mapSocialLinks(empresaUsuario.redesSociais),
         codUsuario: empresaUsuario.codUsuario,
         enderecos: empresaUsuario.enderecos,
+        informacoes: empresaUsuario.informacoes,
       }
     : null;
 

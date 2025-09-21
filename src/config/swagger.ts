@@ -436,6 +436,10 @@ const options: Options = {
               description: 'Token para renovação de sessão',
               example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
             },
+            usuario: {
+              allOf: [{ $ref: '#/components/schemas/UserProfile' }],
+              description: 'Perfil básico retornado no momento da autenticação.',
+            },
           },
         },
         UserRegisterRequest: {
@@ -526,6 +530,15 @@ const options: Options = {
             id: { type: 'string', example: 'b9e1d9b0-7c9f-4d1a-8f2a-1234567890ab' },
             email: { type: 'string', example: 'joao@example.com' },
             nomeCompleto: { type: 'string', example: 'João da Silva' },
+            telefone: { type: 'string', example: '+55 11 99999-0000' },
+            genero: { type: 'string', nullable: true, example: 'MASCULINO' },
+            dataNasc: {
+              type: 'string',
+              format: 'date',
+              nullable: true,
+              example: '1990-01-01',
+            },
+            matricula: { type: 'string', nullable: true, example: 'MAT123' },
             role: {
               allOf: [{ $ref: '#/components/schemas/Roles' }],
               description: 'Role do usuário',
@@ -541,6 +554,32 @@ const options: Options = {
               format: 'date-time',
               nullable: true,
               example: '2024-01-01T12:00:00Z',
+            },
+            cidade: { type: 'string', nullable: true, example: 'São Paulo' },
+            estado: { type: 'string', nullable: true, example: 'SP' },
+            codUsuario: { type: 'string', example: 'ABC1234' },
+            avatarUrl: {
+              type: 'string',
+              nullable: true,
+              example: 'https://cdn.advance.com.br/avatar.png',
+            },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Profissional com experiência em atendimento.',
+            },
+            aceitarTermos: { type: 'boolean', example: true },
+            informacoes: {
+              allOf: [{ $ref: '#/components/schemas/UsuarioInformacoes' }],
+              description: 'Dados completos vindos da entidade UsuariosInformation.',
+            },
+            socialLinks: {
+              allOf: [{ $ref: '#/components/schemas/UsuarioSocialLinks' }],
+              nullable: true,
+            },
+            enderecos: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/UsuarioEndereco' },
             },
             emailVerification: {
               type: 'object',
@@ -3280,6 +3319,10 @@ const options: Options = {
               description: 'Retorna null quando a vaga é publicada em modo anônimo.',
             },
             codUsuario: { type: 'string', example: 'ABC1234' },
+            informacoes: {
+              allOf: [{ $ref: '#/components/schemas/UsuarioInformacoes' }],
+              description: 'Dados complementares da empresa obtidos via UsuariosInformation.',
+            },
           },
         },
         EmpresaClientePlano: {
@@ -3492,6 +3535,37 @@ const options: Options = {
             cep: { type: 'string', nullable: true, example: '01310-200' },
           },
         },
+        UsuarioInformacoes: {
+          type: 'object',
+          description:
+            'Informações complementares do usuário persistidas na tabela UsuariosInformation após a refatoração do domínio.',
+          properties: {
+            telefone: { type: 'string', example: '+55 11 99999-0000' },
+            genero: { type: 'string', nullable: true, example: 'MASCULINO' },
+            dataNasc: {
+              type: 'string',
+              format: 'date',
+              nullable: true,
+              example: '1990-01-01',
+            },
+            matricula: { type: 'string', nullable: true, example: 'MAT123' },
+            avatarUrl: {
+              type: 'string',
+              nullable: true,
+              example: 'https://cdn.advance.com.br/avatar.png',
+            },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Consultoria especializada em tecnologia e recrutamento.',
+            },
+            aceitarTermos: {
+              type: 'boolean',
+              example: true,
+              description: 'Indica se o usuário aceitou os termos e políticas vigentes.',
+            },
+          },
+        },
         UsuarioSocialLinks: {
           type: 'object',
           description: 'Links de redes sociais associados ao usuário ou empresa.',
@@ -3624,6 +3698,10 @@ const options: Options = {
               items: { $ref: '#/components/schemas/UsuarioEndereco' },
             },
             criadoEm: { type: 'string', format: 'date-time', example: '2024-01-05T12:00:00Z' },
+            informacoes: {
+              allOf: [{ $ref: '#/components/schemas/UsuarioInformacoes' }],
+              description: 'Dados complementares consolidados da tabela UsuariosInformation.',
+            },
             ativa: { type: 'boolean', example: true },
             parceira: { type: 'boolean', example: true },
             diasTesteDisponibilizados: { type: 'integer', nullable: true, example: 30 },
@@ -4047,6 +4125,10 @@ const options: Options = {
               type: 'string',
               nullable: true,
               example: 'Consultoria especializada em recrutamento e seleção para empresas de tecnologia.',
+            },
+            informacoes: {
+              allOf: [{ $ref: '#/components/schemas/UsuarioInformacoes' }],
+              description: 'Dados complementares da empresa conforme armazenados em UsuariosInformation.',
             },
             socialLinks: {
               allOf: [{ $ref: '#/components/schemas/UsuarioSocialLinks' }],
@@ -4520,6 +4602,10 @@ const options: Options = {
               nullable: true,
             },
             codUsuario: { type: 'string', example: 'ABC1234' },
+            informacoes: {
+              allOf: [{ $ref: '#/components/schemas/UsuarioInformacoes' }],
+              description: 'Dados complementares utilizados para montar a exibição da empresa na vaga.',
+            },
           },
         },
         Vaga: {
@@ -4910,6 +4996,15 @@ const options: Options = {
                   nullable: true,
                   example: 'Empresa focada em soluções tecnológicas para RH.',
                 },
+                aceitarTermos: {
+                  type: 'boolean',
+                  example: true,
+                  description: 'Indica se o usuário aceitou os termos vigentes durante o cadastro.',
+                },
+                informacoes: {
+                  allOf: [{ $ref: '#/components/schemas/UsuarioInformacoes' }],
+                  description: 'Objeto com os dados complementares provenientes da tabela UsuariosInformation.',
+                },
                 socialLinks: {
                   allOf: [{ $ref: '#/components/schemas/UsuarioSocialLinks' }],
                   nullable: true,
@@ -4967,6 +5062,15 @@ const options: Options = {
                   type: 'string',
                   nullable: true,
                   example: 'Profissional com experiência em atendimento.',
+                },
+                aceitarTermos: {
+                  type: 'boolean',
+                  example: true,
+                  description: 'Confirma o aceite dos termos pelo candidato.',
+                },
+                informacoes: {
+                  allOf: [{ $ref: '#/components/schemas/UsuarioInformacoes' }],
+                  description: 'Dados complementares extraídos da entidade UsuariosInformation.',
                 },
                 socialLinks: {
                   allOf: [{ $ref: '#/components/schemas/UsuarioSocialLinks' }],

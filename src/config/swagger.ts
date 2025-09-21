@@ -3634,9 +3634,10 @@ const options: Options = {
         },
         StatusDeVagas: {
           type: 'string',
-          description: 'Etapas do fluxo de publicação da vaga',
-          enum: ['RASCUNHO', 'EM_ANALISE', 'PUBLICADO', 'EXPIRADO'],
-          example: 'EM_ANALISE',
+          description:
+            'Etapas do fluxo de publicação da vaga (RASCUNHO, EM_ANALISE, PUBLICADO, DESPUBLICADA, PAUSADA, EXPIRADO ou ENCERRADA).',
+          enum: ['RASCUNHO', 'EM_ANALISE', 'PUBLICADO', 'DESPUBLICADA', 'PAUSADA', 'EXPIRADO', 'ENCERRADA'],
+          example: 'PUBLICADO',
         },
         RegimesDeTrabalhos: {
           type: 'string',
@@ -3656,6 +3657,13 @@ const options: Options = {
           description: 'Modalidades de atuação disponíveis para a vaga.',
           enum: ['PRESENCIAL', 'REMOTO', 'HIBRIDO'],
           example: 'REMOTO',
+        },
+        Senioridade: {
+          type: 'string',
+          description:
+            'Faixas de senioridade aceitas pela empresa para a vaga (ABERTO, ESTAGIARIO, JUNIOR, PLENO, SENIOR, ESPECIALISTA ou LIDER).',
+          enum: ['ABERTO', 'ESTAGIARIO', 'JUNIOR', 'PLENO', 'SENIOR', 'ESPECIALISTA', 'LIDER'],
+          example: 'PLENO',
         },
         PaginationMeta: {
           type: 'object',
@@ -5022,6 +5030,10 @@ const options: Options = {
               allOf: [{ $ref: '#/components/schemas/Jornadas' }],
               description: 'Classificação padronizada da carga horária da vaga.',
             },
+            senioridade: {
+              allOf: [{ $ref: '#/components/schemas/Senioridade' }],
+              description: 'Faixa de senioridade aceita para a posição.',
+            },
             inscricoesAte: {
               type: 'string',
               format: 'date-time',
@@ -5078,6 +5090,7 @@ const options: Options = {
             'atividades',
             'beneficios',
             'jornada',
+            'senioridade',
           ],
           properties: {
             usuarioId: {
@@ -5120,6 +5133,11 @@ const options: Options = {
               description: 'Selecione a jornada que melhor descreve a carga horária combinada.',
               example: 'INTEGRAL',
             },
+            senioridade: {
+              allOf: [{ $ref: '#/components/schemas/Senioridade' }],
+              description: 'Informe a faixa de senioridade aceita para a vaga.',
+              example: 'PLENO',
+            },
             inscricoesAte: {
               type: 'string',
               format: 'date-time',
@@ -5134,7 +5152,8 @@ const options: Options = {
         },
         VagaUpdateInput: {
           type: 'object',
-          description: 'Campos permitidos para atualização da vaga, inclusive o status do fluxo de aprovação.',
+          description:
+            'Campos permitidos para atualização da vaga, inclusive o status do fluxo de aprovação (RASCUNHO, EM_ANALISE, PUBLICADO, DESPUBLICADA, PAUSADA, EXPIRADO ou ENCERRADA).',
           properties: {
             usuarioId: {
               type: 'string',
@@ -5170,6 +5189,11 @@ const options: Options = {
               allOf: [{ $ref: '#/components/schemas/Jornadas' }],
               description: 'Atualize a jornada quando houver mudança na carga horária prevista.',
               example: 'MEIO_PERIODO',
+            },
+            senioridade: {
+              allOf: [{ $ref: '#/components/schemas/Senioridade' }],
+              description: 'Atualize a faixa de senioridade aceita para a vaga.',
+              example: 'SENIOR',
             },
             inscricoesAte: {
               type: 'string',

@@ -21,8 +21,22 @@ export class VagasController {
         pageSize?: string;
       };
 
-      const validStatuses = new Set<StatusDeVagas>(['RASCUNHO', 'EM_ANALISE', 'PUBLICADO', 'EXPIRADO'] as const);
-      const restrictedStatuses = new Set<StatusDeVagas>(['RASCUNHO', 'EM_ANALISE']);
+      const validStatuses = new Set<StatusDeVagas>([
+        'RASCUNHO',
+        'EM_ANALISE',
+        'PUBLICADO',
+        'EXPIRADO',
+        'DESPUBLICADA',
+        'PAUSADA',
+        'ENCERRADA',
+      ] as const);
+      const restrictedStatuses = new Set<StatusDeVagas>([
+        'RASCUNHO',
+        'EM_ANALISE',
+        'DESPUBLICADA',
+        'PAUSADA',
+        'ENCERRADA',
+      ]);
       const allowedRoles: Roles[] = [
         Roles.ADMIN,
         Roles.MODERADOR,
@@ -35,7 +49,15 @@ export class VagasController {
       if (typeof status === 'string' && status.trim() !== '') {
         const normalized = status.trim().toUpperCase();
         if (normalized === 'ALL' || normalized === 'TODAS' || normalized === 'TODOS') {
-          statusesFilter = ['RASCUNHO', 'EM_ANALISE', 'PUBLICADO', 'EXPIRADO'];
+          statusesFilter = [
+            'RASCUNHO',
+            'EM_ANALISE',
+            'PUBLICADO',
+            'EXPIRADO',
+            'DESPUBLICADA',
+            'PAUSADA',
+            'ENCERRADA',
+          ];
         } else {
           const parts = normalized.split(',').map((s) => s.trim()).filter(Boolean);
           const chosen = parts.filter((s): s is StatusDeVagas => validStatuses.has(s as StatusDeVagas));

@@ -60,7 +60,7 @@ router.post('/webhook', AssinaturasController.webhook);
  * /api/v1/mercadopago/assinaturas/cancelar:
  *   post:
  *     summary: Cancelar assinatura
- *     description: "Cancela o plano ativo do cliente. Todas as vagas PUBLICADO/EM_ANALISE são colocadas em RASCUNHO."
+ *     description: "Cancela o plano ativo do cliente. Todas as vagas PUBLICADO/EM_ANALISE/PAUSADA são colocadas em RASCUNHO."
  *     tags: [MercadoPago - Assinaturas]
  *     security:
  *       - bearerAuth: []
@@ -108,7 +108,7 @@ router.post('/upgrade', supabaseAuthMiddleware(empresaRoles), AssinaturasControl
  * /api/v1/mercadopago/assinaturas/downgrade:
  *   post:
  *     summary: Downgrade de plano
- *     description: "Realiza downgrade do plano do cliente e coloca vagas PUBLICADO/EM_ANALISE em RASCUNHO."
+ *     description: "Realiza downgrade do plano do cliente e coloca vagas PUBLICADO/EM_ANALISE/PAUSADA em RASCUNHO."
  *     tags: [MercadoPago - Assinaturas]
  *     security:
  *       - bearerAuth: []

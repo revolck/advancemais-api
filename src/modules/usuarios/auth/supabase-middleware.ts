@@ -95,30 +95,41 @@ export const supabaseAuthMiddleware =
             nomeCompleto: true,
             cpf: true,
             cnpj: true,
-            telefone: true,
             role: true,
             status: true,
             tipoUsuario: true,
             supabaseId: true,
             ultimoLogin: true,
+            informacoes: {
+              select: { telefone: true },
+            },
             // Não inclui senha por segurança
           } as const;
 
-          type UsuarioCache = Prisma.UsuariosGetPayload<{
+          type UsuarioSelect = Prisma.UsuariosGetPayload<{
             select: typeof usuarioSelect;
           }>;
+
+          type UsuarioCache = Omit<UsuarioSelect, 'informacoes'> & {
+            telefone: string | null;
+          };
 
           let usuario: UsuarioCache | null = await getCache<UsuarioCache>(cacheKey);
 
           if (!usuario) {
-            usuario = await prisma.usuarios.findFirst({
+            const usuarioDb = await prisma.usuarios.findFirst({
               where: {
                 OR: [{ supabaseId: decoded.sub as string }, { id: decoded.sub as string }],
               },
               select: usuarioSelect,
             });
 
-            if (usuario) {
+            if (usuarioDb) {
+              const { informacoes, ...rest } = usuarioDb;
+              usuario = {
+                ...rest,
+                telefone: informacoes?.telefone ?? null,
+              };
               await setCache(cacheKey, usuario, 300);
             }
           }

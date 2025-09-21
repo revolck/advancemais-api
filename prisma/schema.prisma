@@ -8,6 +8,10 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// =============================================
+// MODELS
+// =============================================
+
 model Usuarios {
   id           String      @id @default(uuid())
   nomeCompleto String
@@ -131,109 +135,6 @@ model UsuariosSessoes {
 
   @@index([usuarioId, rememberMe])
   @@index([expiraEm])
-}
-
-enum RegimesDeTrabalhos {
-  CLT
-  TEMPORARIO
-  ESTAGIO
-  PJ
-  HOME_OFFICE
-  JOVEM_APRENDIZ
-}
-
-enum ModalidadesDeVagas {
-  PRESENCIAL
-  REMOTO
-  HIBRIDO
-}
-
-enum Jornadas {
-  INTEGRAL
-  MEIO_PERIODO
-  FLEXIVEL
-  TURNOS
-  NOTURNO
-}
-
-enum StatusDeVagas {
-  RASCUNHO
-  EM_ANALISE
-  PUBLICADO
-  EXPIRADO
-  DESPUBLICADA
-  PAUSADA
-  ENCERRADA
-}
-
-enum StatusProcesso {
-  RECEBIDA
-  EM_ANALISE
-  EM_TRIAGEM
-  ENTREVISTA
-  DESAFIO
-  DOCUMENTACAO
-  CONTRATADO
-  RECUSADO
-  DESISTIU
-  NAO_COMPARECEU
-  ARQUIVADO
-  CANCELADO
-}
-
-enum OrigemVagas {
-  SITE
-  DASHBOARD
-  OUTROS
-}
-
-enum Senioridade {
-  ABERTO
-  ESTAGIARIO
-  JUNIOR
-  PLENO
-  SENIOR
-  ESPECIALISTA
-  LIDER
-}
-
-enum TiposDePlanos {
-  SETE_DIAS         @map("7_dias")
-  QUINZE_DIAS       @map("15_dias")
-  TRINTA_DIAS       @map("30_dias")
-  SESSENTA_DIAS     @map("60_dias")
-  NOVENTA_DIAS      @map("90dias")
-  CENTO_VINTE_DIAS  @map("120_dias")
-  ASSINATURA_MENSAL @map("assinatura_mensal")
-  PARCEIRO          @map("parceiro")
-}
-
-enum TiposDeBanimentos {
-  TEMPORARIO
-  PERMANENTE
-  RESTRICAO_DE_RECURSO
-}
-
-enum StatusDeBanimentos {
-  ATIVO
-  EM_REVISAO
-  REVOGADO
-  EXPIRADO
-}
-
-enum MotivosDeBanimentos {
-  SPAM
-  VIOLACAO_POLITICAS
-  FRAUDE
-  ABUSO_DE_RECURSOS
-  OUTROS
-}
-
-enum AcoesDeLogDeBanimento {
-  CRIACAO
-  ATUALIZACAO
-  REVOGACAO
-  REAVALIACAO
 }
 
 model EmpresasVagas {
@@ -846,7 +747,7 @@ model WebsiteHeaderPage {
 }
 
 // =============================================
-// ENUMS EXISTENTES
+// ENUMS
 // =============================================
 
 enum TiposDeUsuarios {
@@ -900,7 +801,6 @@ enum StatusSMS {
 }
 
 // Métodos de pagamento aceitos para planos
-
 enum WebsiteSlidersOrientations {
   DESKTOP
   TABLET_MOBILE
@@ -950,4 +850,111 @@ enum METODO_PAGAMENTO {
   BOLETO
   TRANSFERENCIA
   DINHEIRO
+}
+
+// ===============================
+// ENUMS DE VAGAS/EMPRESAS
+// ===============================
+
+enum RegimesDeTrabalhos {
+  CLT
+  TEMPORARIO
+  ESTAGIO
+  PJ
+  HOME_OFFICE
+  JOVEM_APRENDIZ
+}
+
+enum ModalidadesDeVagas {
+  PRESENCIAL
+  REMOTO
+  HIBRIDO
+}
+
+enum Jornadas {
+  INTEGRAL
+  MEIO_PERIODO
+  FLEXIVEL
+  TURNOS
+  NOTURNO
+}
+
+enum StatusDeVagas {
+  RASCUNHO
+  EM_ANALISE
+  PUBLICADO
+  EXPIRADO
+  DESPUBLICADA
+  PAUSADA
+  ENCERRADA
+}
+
+enum StatusProcesso {
+  RECEBIDA
+  EM_ANALISE
+  EM_TRIAGEM
+  ENTREVISTA
+  DESAFIO
+  DOCUMENTACAO
+  CONTRATADO
+  RECUSADO
+  DESISTIU
+  NAO_COMPARECEU
+  ARQUIVADO
+  CANCELADO
+}
+
+enum OrigemVagas {
+  SITE
+  DASHBOARD
+  OUTROS
+}
+
+enum Senioridade {
+  ABERTO
+  ESTAGIARIO
+  JUNIOR
+  PLENO
+  SENIOR
+  ESPECIALISTA
+  LIDER
+}
+
+enum TiposDePlanos {
+  SETE_DIAS         @map("7_dias")
+  QUINZE_DIAS       @map("15_dias")
+  TRINTA_DIAS       @map("30_dias")
+  SESSENTA_DIAS     @map("60_dias")
+  NOVENTA_DIAS      @map("90dias")
+  CENTO_VINTE_DIAS  @map("120_dias")
+  ASSINATURA_MENSAL @map("assinatura_mensal")
+  PARCEIRO          @map("parceiro")
+}
+
+enum TiposDeBanimentos {
+  TEMPORARIO
+  PERMANENTE
+  RESTRICAO_DE_RECURSO
+}
+
+enum StatusDeBanimentos {
+  ATIVO
+  EM_REVISAO
+  REVOGADO
+  EXPIRADO
+}
+
+enum MotivosDeBanimentos {
+  SPAM
+  VIOLACAO_POLITICAS
+  FRAUDE
+  ABUSO_DE_RECURSOS
+  OUTROS
+}
+
+enum AcoesDeLogDeBanimento {
+  CRIACAO
+  ATUALIZACAO
+  REVOGACAO
+  REAVALIACAO
 }

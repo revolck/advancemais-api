@@ -6,6 +6,10 @@ export const loginSchema = z.object({
     .string({ required_error: 'Documento é obrigatório' })
     .min(1, 'Documento é obrigatório'),
   senha: z.string({ required_error: 'Senha é obrigatória' }).min(1, 'Senha é obrigatória'),
+  rememberMe: z
+    .boolean({ invalid_type_error: 'Remember me deve ser um valor booleano' })
+    .optional()
+    .default(false),
 });
 
 const baseRegisterSchema = z.object({

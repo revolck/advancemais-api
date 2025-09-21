@@ -24,6 +24,7 @@ model Usuarios {
   atualizadoEm DateTime    @updatedAt
   ultimoLogin  DateTime?
   refreshToken String?
+  sessoes      UsuariosSessoes[]
 
   // RELACIONAMENTOS EXISTENTES
   enderecos            UsuariosEnderecos[]
@@ -83,6 +84,24 @@ model UsuariosRecuperacaoSenha {
   usuario Usuarios @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([tokenRecuperacao])
+}
+
+model UsuariosSessoes {
+  id          String   @id @default(uuid())
+  usuarioId   String
+  refreshToken String   @unique
+  rememberMe  Boolean  @default(false)
+  ip          String?  @db.VarChar(45)
+  userAgent   String?  @db.VarChar(512)
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+  expiraEm    DateTime
+  revogadoEm  DateTime?
+
+  usuario Usuarios @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, rememberMe])
+  @@index([expiraEm])
 }
 
 enum RegimesDeTrabalhos {

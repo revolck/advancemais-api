@@ -97,6 +97,23 @@ const parseList = (value: string | undefined, fallback: string[] = []): string[]
   );
 };
 
+const parseSameSite = (value: string | undefined): 'lax' | 'strict' | 'none' => {
+  if (!value) {
+    return isProduction ? 'none' : 'lax';
+  }
+
+  const normalized = value.toLowerCase();
+  if (normalized === 'lax' || normalized === 'strict' || normalized === 'none') {
+    return normalized;
+  }
+
+  envLogger.warn(
+    { provided: value },
+    '⚠️ Valor inválido para AUTH_COOKIE_SAMESITE. Utilizando fallback seguro.',
+  );
+  return isProduction ? 'none' : 'lax';
+};
+
 // =============================================
 // VALIDAÇÃO DE VARIÁVEIS CRÍTICAS
 // =============================================
@@ -176,6 +193,7 @@ export const jwtConfig = {
   refreshSecret: process.env.JWT_REFRESH_SECRET || '',
   expiresIn: (process.env.JWT_EXPIRATION || '1h') as string,
   refreshExpiresIn: (process.env.JWT_REFRESH_EXPIRATION || '30d') as string,
+  refreshPersistentExpiresIn: (process.env.JWT_REFRESH_PERSISTENT_EXPIRATION || '90d') as string,
 
   // Validação da configuração
   isValid(): boolean {
@@ -204,6 +222,27 @@ export const jwtConfig = {
       issues,
     };
   },
+} as const;
+
+const cookieSameSite = parseSameSite(process.env.AUTH_COOKIE_SAMESITE);
+let cookieSecure =
+  process.env.AUTH_COOKIE_SECURE !== undefined
+    ? process.env.AUTH_COOKIE_SECURE === 'true'
+    : isProduction;
+
+if (cookieSameSite === 'none' && !cookieSecure) {
+  envLogger.warn(
+    '⚠️ AUTH_COOKIE_SAMESITE=none requer cookies seguros. Forçando secure=true para evitar bloqueio pelo navegador.',
+  );
+  cookieSecure = true;
+}
+
+export const authSessionConfig = {
+  refreshTokenCookieName: process.env.AUTH_REFRESH_COOKIE_NAME || 'adv_refresh_token',
+  cookieDomain: process.env.AUTH_COOKIE_DOMAIN || '',
+  cookiePath: process.env.AUTH_COOKIE_PATH || '/',
+  sameSite: cookieSameSite,
+  secure: cookieSecure,
 } as const;
 
 // =============================================

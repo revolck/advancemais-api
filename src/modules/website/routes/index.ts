@@ -20,6 +20,7 @@ import { headerPagesRoutes } from './header-pages';
 import { depoimentosRoutes } from './depoimentos';
 import { informacoesGeraisRoutes } from './informacoes-gerais';
 import { imagemLoginRoutes } from './imagem-login';
+import { websiteScriptsRoutes } from './scripts';
 
 const router = Router();
 
@@ -74,6 +75,7 @@ router.get('/', publicCache, (req, res) => {
       depoimentos: '/depoimentos',
       informacoesGerais: '/informacoes-gerais',
       imagemLogin: '/imagem-login',
+      scripts: '/scripts',
     },
     status: 'operational',
   });
@@ -99,5 +101,6 @@ router.use('/header-pages', headerPagesRoutes);
 router.use('/depoimentos', depoimentosRoutes);
 router.use('/informacoes-gerais', informacoesGeraisRoutes);
 router.use('/imagem-login', imagemLoginRoutes);
+router.use('/scripts', websiteScriptsRoutes);
 
 export { router as websiteRoutes };

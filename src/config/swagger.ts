@@ -103,6 +103,10 @@ const options: Options = {
         description: 'Cabeçalhos de páginas',
       },
       {
+        name: 'Website - Scripts',
+        description: 'Scripts e pixels do site',
+      },
+      {
         name: 'Empresas - Planos Empresariais',
         description: 'Gestão dos planos empresariais corporativos',
       },
@@ -167,6 +171,7 @@ const options: Options = {
           'Website - InformacoesGerais',
           'Website - ImagemLogin',
           'Website - Header Pages',
+          'Website - Scripts',
         ],
       },
       {
@@ -1552,6 +1557,7 @@ const options: Options = {
                   example: '/informacoes-gerais',
                 },
                 imagemLogin: { type: 'string', example: '/imagem-login' },
+                scripts: { type: 'string', example: '/scripts' },
               },
             },
             status: { type: 'string', example: 'operational' },
@@ -1561,6 +1567,108 @@ const options: Options = {
           type: 'string',
           enum: ['PUBLICADO', 'RASCUNHO'],
           example: 'PUBLICADO',
+        },
+        WebsiteScriptOrientation: {
+          type: 'string',
+          enum: ['HEADER', 'BODY', 'FOOTER'],
+          example: 'HEADER',
+          description: 'Define em qual parte do documento o script será injetado.',
+        },
+        WebsiteScript: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', example: 'script-uuid' },
+            nome: {
+              type: 'string',
+              nullable: true,
+              example: 'Facebook Pixel',
+            },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Script utilizado para monitoramento de conversões.',
+            },
+            codigo: {
+              type: 'string',
+              description: 'Código completo do script/pixel a ser injetado.',
+              example: '<script>/* código do pixel */</script>',
+            },
+            orientacao: {
+              $ref: '#/components/schemas/WebsiteScriptOrientation',
+            },
+            status: {
+              $ref: '#/components/schemas/WebsiteStatus',
+            },
+            criadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-01-01T12:00:00Z',
+            },
+            atualizadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-01-02T15:30:00Z',
+            },
+          },
+        },
+        WebsiteScriptCreateInput: {
+          type: 'object',
+          required: ['codigo', 'orientacao'],
+          properties: {
+            nome: {
+              type: 'string',
+              nullable: true,
+              example: 'Facebook Pixel',
+            },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Script utilizado para monitoramento de conversões.',
+            },
+            codigo: {
+              type: 'string',
+              description: 'Conteúdo do script/pixel. Aceita HTML e JavaScript.',
+              example: '<script>/* código do pixel */</script>',
+            },
+            orientacao: {
+              $ref: '#/components/schemas/WebsiteScriptOrientation',
+            },
+            status: {
+              description:
+                'Estado de publicação. Aceita boolean (true = PUBLICADO, false = RASCUNHO) ou string.',
+              oneOf: [{ $ref: '#/components/schemas/WebsiteStatus' }, { type: 'boolean' }],
+              example: 'PUBLICADO',
+            },
+          },
+        },
+        WebsiteScriptUpdateInput: {
+          type: 'object',
+          properties: {
+            nome: {
+              type: 'string',
+              nullable: true,
+              example: 'Facebook Pixel',
+            },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Script utilizado para monitoramento de conversões.',
+            },
+            codigo: {
+              type: 'string',
+              description: 'Conteúdo atualizado do script/pixel.',
+              example: '<script>/* novo código */</script>',
+            },
+            orientacao: {
+              $ref: '#/components/schemas/WebsiteScriptOrientation',
+            },
+            status: {
+              description:
+                'Estado de publicação. Aceita boolean (true = PUBLICADO, false = RASCUNHO) ou string.',
+              oneOf: [{ $ref: '#/components/schemas/WebsiteStatus' }, { type: 'boolean' }],
+              example: false,
+            },
+          },
         },
         WebsiteBanner: {
           type: 'object',

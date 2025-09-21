@@ -158,6 +158,19 @@ enum StatusDeVagas {
   EM_ANALISE
   PUBLICADO
   EXPIRADO
+  DESPUBLICADA
+  PAUSADA
+  ENCERRADA
+}
+
+enum Senioridade {
+  ABERTO
+  ESTAGIARIO
+  JUNIOR
+  PLENO
+  SENIOR
+  ESPECIALISTA
+  LIDER
 }
 
 enum TiposDePlanos {
@@ -213,6 +226,7 @@ model EmpresasVagas {
   beneficios       String         @db.Text
   observacoes      String?        @db.Text
   jornada          Jornadas
+  senioridade      Senioridade    @default(ABERTO)
   inscricoesAte    DateTime?
   inseridaEm       DateTime       @default(now())
   atualizadoEm     DateTime       @updatedAt

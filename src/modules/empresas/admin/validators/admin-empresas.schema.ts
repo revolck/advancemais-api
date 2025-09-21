@@ -201,7 +201,8 @@ const statusArraySchema = z
       value === undefined ||
       value.every((status) => Object.prototype.hasOwnProperty.call(StatusDeVagas, status as StatusDeVagas)),
     {
-      message: 'Informe status válidos (RASCUNHO, EM_ANALISE, PUBLICADO ou EXPIRADO)',
+      message:
+        'Informe status válidos (RASCUNHO, EM_ANALISE, PUBLICADO, DESPUBLICADA, PAUSADA, ENCERRADA ou EXPIRADO)',
     },
   )
   .transform((value) => value?.map((status) => status as StatusDeVagas));

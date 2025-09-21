@@ -14,7 +14,7 @@ const updateRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.RECRUTADOR];
  * /api/v1/empresas/vagas:
  *   get:
  *     summary: Listar vagas publicadas
- *     description: "Retorna as vagas disponíveis para visualização. Por padrão, apenas vagas PUBLICADAS são retornadas. É possível filtrar por status via query string. Consultas envolvendo os status RASCUNHO ou EM_ANALISE exigem autenticação com roles válidas (ADMIN, MODERADOR, EMPRESA, RECRUTADOR ou ALUNO_CANDIDATO)."
+ *     description: "Retorna as vagas disponíveis para visualização. Por padrão, apenas vagas PUBLICADAS são retornadas. É possível filtrar por status via query string. Consultas envolvendo os status RASCUNHO, EM_ANALISE, DESPUBLICADA, PAUSADA ou ENCERRADA exigem autenticação com roles válidas (ADMIN, MODERADOR, EMPRESA, RECRUTADOR ou ALUNO_CANDIDATO)."
  *     tags: [Empresas - EmpresasVagas]
  *     parameters:
  *       - in: query
@@ -23,7 +23,7 @@ const updateRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.RECRUTADOR];
  *         schema:
  *           type: string
  *           example: PUBLICADO,EM_ANALISE
- *         description: "Filtra por um ou mais status separados por vírgula. Aceita RASCUNHO, EM_ANALISE, PUBLICADO ou EXPIRADO. Use ALL/TODAS/TODOS para trazer todos os status."
+ *         description: "Filtra por um ou mais status separados por vírgula. Aceita RASCUNHO, EM_ANALISE, PUBLICADO, DESPUBLICADA, PAUSADA, ENCERRADA ou EXPIRADO. Use ALL/TODAS/TODOS para trazer todos os status."
  *       - in: query
  *         name: usuarioId
  *         required: false
@@ -207,6 +207,7 @@ router.get('/:id', publicCache, VagasController.get);
  *                  "beneficios": "Vale transporte, vale alimentação e plano de saúde.",
  *                  "observacoes": "Processo seletivo confidencial.",
  *                  "jornada": "INTEGRAL",
+ *                  "senioridade": "PLENO",
  *                  "inscricoesAte": "2024-12-20T23:59:59.000Z"
  *                }'
 */
@@ -217,7 +218,7 @@ router.post('/', supabaseAuthMiddleware(protectedRoles), VagasController.create)
  * /api/v1/empresas/vagas/{id}:
  *   put:
  *     summary: Atualizar vaga
- *     description: "Permite editar os dados de uma vaga existente, incluindo o status do fluxo (RASCUNHO, EM_ANALISE, PUBLICADO ou EXPIRADO). Requer autenticação com perfil autorizado (roles: ADMIN, MODERADOR ou RECRUTADOR)."
+ *     description: "Permite editar os dados de uma vaga existente, incluindo o status do fluxo (RASCUNHO, EM_ANALISE, PUBLICADO, DESPUBLICADA, PAUSADA, EXPIRADO ou ENCERRADA). Requer autenticação com perfil autorizado (roles: ADMIN, MODERADOR ou RECRUTADOR)."
  *     tags: [Empresas - EmpresasVagas]
  *     security:
  *       - bearerAuth: []

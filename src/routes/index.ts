@@ -9,6 +9,7 @@ import { EmailVerificationController } from '@/modules/brevo/controllers/email-v
 import { usuarioRoutes } from '@/modules/usuarios';
 import { websiteRoutes } from '@/modules/website';
 import { empresasRoutes } from '@/modules/empresas';
+import { candidatosRoutes } from '@/modules/candidatos';
 import { setCacheHeaders, DEFAULT_TTL } from '@/utils/cache';
 import { logger } from '@/utils/logger';
 
@@ -76,6 +77,8 @@ router.get('/', publicCache, (req, res) => {
       brevo: '/api/v1/brevo',
       website: '/api/v1/website',
       empresas: '/api/v1/empresas',
+      candidatos: '/api/v1/candidatos',
+      candidatosAreasInteresse: '/api/v1/candidatos/areas-interesse',
       planosEmpresariais: '/api/v1/empresas/planos-empresariais',
       clientesEmpresas: '/api/v1/empresas/clientes',
       vagasEmpresariais: '/api/v1/empresas/vagas',
@@ -189,6 +192,7 @@ router.get('/health', publicCache, async (req, res) => {
       brevo: '✅ active',
       website: '✅ active',
       empresas: '✅ active',
+      candidatos: '✅ active',
       mercadopago: '✅ active',
       redis: redisStatus,
     },
@@ -282,6 +286,21 @@ if (empresasRoutes) {
   }
 } else {
   routesLogger.error({ feature: 'EmpresasModule' }, '❌ empresasRoutes não está definido');
+}
+
+/**
+ * Módulo Candidatos - COM VALIDAÇÃO
+ * /api/v1/candidatos/*
+ */
+if (candidatosRoutes) {
+  try {
+    router.use('/api/v1/candidatos', candidatosRoutes);
+    routesLogger.info({ feature: 'CandidatosModule' }, '✅ Módulo Candidatos registrado com sucesso');
+  } catch (error) {
+    routesLogger.error({ feature: 'CandidatosModule', err: error }, '❌ ERRO - Módulo Candidatos');
+  }
+} else {
+  routesLogger.error({ feature: 'CandidatosModule' }, '❌ candidatosRoutes não está definido');
 }
 
 /**

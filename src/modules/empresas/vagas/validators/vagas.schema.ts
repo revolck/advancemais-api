@@ -1,4 +1,4 @@
-import { ModalidadesDeVagas, RegimesDeTrabalhos, StatusDeVagas } from '@prisma/client';
+import { Jornadas, ModalidadesDeVagas, RegimesDeTrabalhos, StatusDeVagas } from '@prisma/client';
 import { z } from 'zod';
 
 const longTextField = (field: string) =>
@@ -41,14 +41,10 @@ const baseVagaSchema = z.object({
   atividades: longTextField('As atividades da vaga'),
   beneficios: longTextField('Os benefícios da vaga'),
   observacoes: optionalLongTextField('As observações da vaga'),
-  cargaHoraria: z
-    .string({
-      required_error: 'A carga horária é obrigatória',
-      invalid_type_error: 'A carga horária deve ser um texto',
-    })
-    .trim()
-    .min(1, 'A carga horária é obrigatória')
-    .max(255, 'A carga horária deve ter no máximo 255 caracteres'),
+  jornada: z.nativeEnum(Jornadas, {
+    required_error: 'A jornada é obrigatória',
+    invalid_type_error: 'jornada inválida',
+  }),
   inscricoesAte: dateField('A data limite de inscrições').optional(),
   inseridaEm: dateField('A data de publicação da vaga').optional(),
 });

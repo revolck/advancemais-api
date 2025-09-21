@@ -196,7 +196,10 @@ export const durationStringToMs = (duration: string | undefined): number => {
   const match = durationRegex.exec(trimmed);
 
   if (!match) {
-    authLogger.warn({ duration }, '⚠️ Valor de expiração inválido. Usando fallback padrão de 30 dias.');
+    authLogger.warn(
+      { duration },
+      '⚠️ Valor de expiração inválido. Usando fallback padrão de 30 dias.',
+    );
     return REFRESH_DURATION_FALLBACK_MS;
   }
 
@@ -205,7 +208,10 @@ export const durationStringToMs = (duration: string | undefined): number => {
   const multiplier = durationMultipliers[unit];
 
   if (!Number.isFinite(value) || value <= 0 || !multiplier) {
-    authLogger.warn({ duration }, '⚠️ Valor de expiração inválido. Usando fallback padrão de 30 dias.');
+    authLogger.warn(
+      { duration },
+      '⚠️ Valor de expiração inválido. Usando fallback padrão de 30 dias.',
+    );
     return REFRESH_DURATION_FALLBACK_MS;
   }
 
@@ -213,9 +219,7 @@ export const durationStringToMs = (duration: string | undefined): number => {
 };
 
 export const getRefreshTokenExpiration = (rememberMe: boolean) => {
-  const expiresIn = rememberMe
-    ? jwtConfig.refreshPersistentExpiresIn
-    : jwtConfig.refreshExpiresIn;
+  const expiresIn = rememberMe ? jwtConfig.refreshPersistentExpiresIn : jwtConfig.refreshExpiresIn;
   const maxAgeMs = durationStringToMs(expiresIn);
   const expiresAt = new Date(Date.now() + maxAgeMs);
 
@@ -252,15 +256,14 @@ export const clearRefreshTokenCookie = (res: Response) => {
 };
 
 export const extractRefreshTokenFromRequest = (req: Request): string | undefined => {
-  const bodyToken = typeof req.body?.refreshToken === 'string' ? req.body.refreshToken.trim() : undefined;
+  const bodyToken =
+    typeof req.body?.refreshToken === 'string' ? req.body.refreshToken.trim() : undefined;
   if (bodyToken) {
     return bodyToken;
   }
 
-  const cookies = ((req as unknown as { cookies?: Record<string, unknown> }).cookies ?? {}) as Record<
-    string,
-    unknown
-  >;
+  const cookies = ((req as unknown as { cookies?: Record<string, unknown> }).cookies ??
+    {}) as Record<string, unknown>;
 
   const cookieToken = cookies[authSessionConfig.refreshTokenCookieName];
   if (typeof cookieToken === 'string' && cookieToken.trim().length > 0) {

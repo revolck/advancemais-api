@@ -86,7 +86,7 @@ const updateRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.RECRUTADOR];
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/empresas/vagas?status=EM_ANALISE" \
  *            -H "Authorization: Bearer <TOKEN>"
-*/
+ */
 router.get('/', optionalSupabaseAuth(), publicCache, VagasController.list);
 
 /**
@@ -242,7 +242,7 @@ router.get('/:id', publicCache, VagasController.get);
  *                  "inscricoesAte": "2024-12-20T23:59:59.000Z",
  *                  "vagaEmDestaque": true
  *                }'
-*/
+ */
 router.post('/', supabaseAuthMiddleware(protectedRoles), VagasController.create);
 
 /**
@@ -344,7 +344,7 @@ router.post('/', supabaseAuthMiddleware(protectedRoles), VagasController.create)
  *                  "inseridaEm": "2024-10-10T09:00:00Z",
  *                  "vagaEmDestaque": false
  *                }'
-*/
+ */
 router.put('/:id', supabaseAuthMiddleware(updateRoles), VagasController.update);
 
 /**
@@ -395,7 +395,7 @@ router.put('/:id', supabaseAuthMiddleware(updateRoles), VagasController.update);
  *         source: |
  *           curl -X DELETE "http://localhost:3000/api/v1/empresas/vagas/{id}" \
  *            -H "Authorization: Bearer <TOKEN>"
-*/
+ */
 router.delete('/:id', supabaseAuthMiddleware(protectedRoles), VagasController.remove);
 
 export { router as vagasRoutes };

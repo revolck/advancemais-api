@@ -12,7 +12,10 @@ import {
   PlanoNaoPermiteVagaDestaqueError,
   VagaAreaSubareaError,
 } from '@/modules/empresas/vagas/services/errors';
-import { createVagaSchema, updateVagaSchema } from '@/modules/empresas/vagas/validators/vagas.schema';
+import {
+  createVagaSchema,
+  updateVagaSchema,
+} from '@/modules/empresas/vagas/validators/vagas.schema';
 
 export class VagasController {
   static list = async (_req: Request, res: Response) => {
@@ -62,8 +65,13 @@ export class VagasController {
             'ENCERRADA',
           ];
         } else {
-          const parts = normalized.split(',').map((s) => s.trim()).filter(Boolean);
-          const chosen = parts.filter((s): s is StatusDeVagas => validStatuses.has(s as StatusDeVagas));
+          const parts = normalized
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+          const chosen = parts.filter((s): s is StatusDeVagas =>
+            validStatuses.has(s as StatusDeVagas),
+          );
           if (chosen.length > 0) {
             statusesFilter = chosen;
           }
@@ -102,7 +110,11 @@ export class VagasController {
       const ttl = Number(process.env.VAGAS_CACHE_TTL || DEFAULT_TTL);
       const etag = setCacheHeaders(res, vagas, ttl);
       const ifNoneMatch = _req.headers['if-none-match'];
-      const tags = Array.isArray(ifNoneMatch) ? ifNoneMatch : typeof ifNoneMatch === 'string' ? ifNoneMatch.split(',').map((v) => v.trim().replace(/^W\//, '').replace(/"/g, '')) : [];
+      const tags = Array.isArray(ifNoneMatch)
+        ? ifNoneMatch
+        : typeof ifNoneMatch === 'string'
+          ? ifNoneMatch.split(',').map((v) => v.trim().replace(/^W\//, '').replace(/"/g, ''))
+          : [];
       if (tags.includes(etag)) {
         return res.status(304).end();
       }

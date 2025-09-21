@@ -30,6 +30,13 @@ export interface EmailTemplate {
   text: string;
 }
 
+export interface PlanEmailDataBase {
+  nomeCompleto: string;
+  planName: string;
+  vagas?: number | null;
+  supportUrl?: string;
+}
+
 /**
  * Templates de email com design limpo e profissional
  * Foco na legibilidade e experiência do usuário
@@ -387,5 +394,303 @@ export class EmailTemplates {
 
   public static generateWelcomeEmail(data: AccountConfirmationEmailData): EmailTemplate {
     return this.generateAccountConfirmationEmail(data);
+  }
+
+  // ========= Assinaturas / Planos =========
+
+  public static generatePlanActivatedEmail(data: PlanEmailDataBase): EmailTemplate {
+    const firstName = data.nomeCompleto.split(' ')[0];
+    const currentYear = this.getCurrentYear();
+    const vagasText = typeof data.vagas === 'number' ? `${data.vagas} vagas` : 'vagas';
+
+    const subject = `Seu acesso ${data.planName} foi liberado.`;
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assinatura Ativada - Advance+</title>
+  ${this.getBaseStyles()}
+</head>
+<body>
+  <div class="email-wrapper">
+    <div class="email-container">
+      <div class="header">
+        <div class="logo">
+          <img src="https://advancemais.com/images/logos/logo_branco.png" alt="Advance+" />
+        </div>
+      </div>
+      <div class="content">
+        <div class="greeting">Bem-vindo(a), ${firstName}!</div>
+        <div class="message">
+          É um prazer ter você com a gente. Seu plano <strong>${data.planName}</strong> foi ativado.
+        </div>
+        <div class="info-box">
+          <p class="info-text">
+            O <strong>${data.planName}</strong> oferece a você <strong>${vagasText} por mês</strong> em nosso site. Tenha o
+            controle de novas solicitações de candidatos, conheça os perfis e aumente suas chances de match!
+          </p>
+        </div>
+      </div>
+      <div class="footer">
+        <div class="footer-text">Advance+ © ${currentYear} todos os direitos reservados.</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+    const text = `Bem-vindo(a), ${firstName}!
+
+É um prazer ter você com a gente. Seu plano ${data.planName} foi ativado.
+
+O ${data.planName} oferece a você ${vagasText} por mês em nosso site. Tenha o controle de novas solicitações de candidatos, conheça os perfis e aumente suas chances de match!
+
+© ${currentYear} Advance+ - Todos os direitos reservados`;
+
+    return { subject, html, text };
+  }
+
+  public static generatePlanPaymentRejectedEmail(data: PlanEmailDataBase): EmailTemplate {
+    const firstName = data.nomeCompleto.split(' ')[0];
+    const currentYear = this.getCurrentYear();
+    const subject = `Pagamento recusado para o plano ${data.planName}`;
+    const link = data.supportUrl ?? '#';
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pagamento Recusado - Advance+</title>
+  ${this.getBaseStyles()}
+</head>
+<body>
+  <div class="email-wrapper">
+    <div class="email-container">
+      <div class="header">
+        <div class="logo">
+          <img src="https://advancemais.com/images/logos/logo_branco.png" alt="Advance+" />
+        </div>
+      </div>
+      <div class="content">
+        <div class="greeting">Olá, ${firstName}!</div>
+        <div class="message">
+          Não foi possível concluir a compra do seu plano <strong>${data.planName}</strong>. O pagamento foi recusado.
+        </div>
+        <div class="fallback-section">
+          <div class="fallback-title">Que tal tentar novamente?</div>
+          <div>Você pode atualizar seus dados de pagamento e refazer a tentativa no link abaixo:</div>
+          <div style="margin-top: 8px;">
+            <a href="${link}" class="fallback-link">${link}</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer">
+        <div class="footer-text">Advance+ © ${currentYear} todos os direitos reservados.</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    const text = `Olá, ${firstName}!
+
+Não foi possível concluir a compra do seu plano ${data.planName}. O pagamento foi recusado.
+Atualize seus dados ou tente novamente: ${link}
+
+© ${currentYear} Advance+ - Todos os direitos reservados`;
+    return { subject, html, text };
+  }
+
+  public static generatePlanUpgradedEmail(data: PlanEmailDataBase): EmailTemplate {
+    const firstName = data.nomeCompleto.split(' ')[0];
+    const currentYear = this.getCurrentYear();
+    const vagasText = typeof data.vagas === 'number' ? `${data.vagas} vagas` : 'vagas';
+    const subject = `Seu plano foi atualizado para ${data.planName}`;
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plano Atualizado - Advance+</title>
+  ${this.getBaseStyles()}
+</head>
+<body>
+  <div class="email-wrapper">
+    <div class="email-container">
+      <div class="header">
+        <div class="logo">
+          <img src="https://advancemais.com/images/logos/logo_branco.png" alt="Advance+" />
+        </div>
+      </div>
+      <div class="content">
+        <div class="greeting">Olá, ${firstName}!</div>
+        <div class="message">
+          Seu plano foi atualizado para <strong>${data.planName}</strong>.
+        </div>
+        <div class="info-box">
+          <p class="info-text">Agora você conta com <strong>${vagasText} por mês</strong> para publicar e gerenciar no site.</p>
+        </div>
+      </div>
+      <div class="footer">
+        <div class="footer-text">Advance+ © ${currentYear} todos os direitos reservados.</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+    const text = `Olá, ${firstName}!
+
+Seu plano foi atualizado para ${data.planName}.
+Agora você conta com ${vagasText} por mês para publicar e gerenciar no site.
+
+© ${currentYear} Advance+ - Todos os direitos reservados`;
+    return { subject, html, text };
+  }
+
+  public static generatePlanDowngradedEmail(data: PlanEmailDataBase): EmailTemplate {
+    const firstName = data.nomeCompleto.split(' ')[0];
+    const currentYear = this.getCurrentYear();
+    const vagasText = typeof data.vagas === 'number' ? `${data.vagas} vagas` : 'vagas';
+    const subject = `Seu plano foi alterado para ${data.planName}`;
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plano Alterado - Advance+</title>
+  ${this.getBaseStyles()}
+</head>
+<body>
+  <div class="email-wrapper">
+    <div class="email-container">
+      <div class="header">
+        <div class="logo">
+          <img src="https://advancemais.com/images/logos/logo_branco.png" alt="Advance+" />
+        </div>
+      </div>
+      <div class="content">
+        <div class="greeting">Olá, ${firstName}!</div>
+        <div class="message">
+          Seu plano foi alterado para <strong>${data.planName}</strong>.
+        </div>
+        <div class="warning-box">
+          <div class="warning-title">Importante</div>
+          <p class="warning-text">Todas as vagas da sua empresa foram movidas para rascunho conforme a política de downgrade.</p>
+        </div>
+        <div class="info-box">
+          <p class="info-text">O <strong>${data.planName}</strong> oferece ${vagasText} por mês.</p>
+        </div>
+      </div>
+      <div class="footer">
+        <div class="footer-text">Advance+ © ${currentYear} todos os direitos reservados.</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+    const text = `Olá, ${firstName}!
+
+Seu plano foi alterado para ${data.planName}. Todas as vagas foram movidas para rascunho. O ${data.planName} oferece ${vagasText} por mês.
+
+© ${currentYear} Advance+ - Todos os direitos reservados`;
+    return { subject, html, text };
+  }
+
+  // ========= Banimentos =========
+  public static generateUserBannedEmail(data: {
+    nomeCompleto: string;
+    motivo: string;
+    fim?: Date | null;
+  }): EmailTemplate {
+    const firstName = data.nomeCompleto.split(' ')[0];
+    const currentYear = this.getCurrentYear();
+    const untilText = data.fim
+      ? `até ${new Date(data.fim).toLocaleString('pt-BR')}`
+      : 'por tempo indeterminado';
+    const subject = `Sua conta foi banida`;
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Banimento - Advance+</title>
+  ${this.getBaseStyles()}
+</head>
+<body>
+  <div class="email-wrapper">
+    <div class="email-container">
+      <div class="header">
+        <div class="logo">
+          <img src="https://advancemais.com/images/logos/logo_branco.png" alt="Advance+" />
+        </div>
+      </div>
+      <div class="content">
+        <div class="greeting">Olá, ${firstName}.</div>
+        <div class="message">
+          Informamos que sua conta foi <strong>banida</strong> ${untilText}.
+        </div>
+        <div class="info-box">
+          <p class="info-text"><strong>Motivo:</strong> ${data.motivo}</p>
+          <p class="info-text">Caso acredite que foi um engano, responda este email com mais detalhes.</p>
+        </div>
+      </div>
+      <div class="footer">
+        <div class="footer-text">Advance+ © ${currentYear} todos os direitos reservados.</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+    const text = `Olá, ${firstName}.
+
+Informamos que sua conta foi banida ${untilText}.
+Motivo: ${data.motivo}.
+
+Se acreditar que foi um engano, responda este email com mais detalhes.
+
+© ${currentYear} Advance+ - Todos os direitos reservados`;
+    return { subject, html, text };
+  }
+
+  public static generateUserUnbannedEmail(data: { nomeCompleto: string }): EmailTemplate {
+    const firstName = data.nomeCompleto.split(' ')[0];
+    const currentYear = this.getCurrentYear();
+    const subject = `Bem-vindo(a) de volta!`;
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Banimento Revogado - Advance+</title>
+  ${this.getBaseStyles()}
+</head>
+<body>
+  <div class="email-wrapper">
+    <div class="email-container">
+      <div class="header">
+        <div class="logo">
+          <img src="https://advancemais.com/images/logos/logo_branco.png" alt="Advance+" />
+        </div>
+      </div>
+      <div class="content">
+        <div class="greeting">Olá, ${firstName}!</div>
+        <div class="message">
+          Seu banimento foi <strong>revogado</strong>. Seu acesso foi restaurado.
+        </div>
+      </div>
+      <div class="footer">
+        <div class="footer-text">Advance+ © ${currentYear} todos os direitos reservados.</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+    const text = `Olá, ${firstName}!
+
+Seu banimento foi revogado. Seu acesso foi restaurado.
+
+© ${currentYear} Advance+ - Todos os direitos reservados`;
+    return { subject, html, text };
   }
 }

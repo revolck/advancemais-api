@@ -64,7 +64,6 @@ const createCorrelationLogger = (correlationId: string, action: string) =>
     correlationId,
   });
 
-
 const generateCodePrefix = (): string => {
   // Letras sem caracteres ambíguos para melhor legibilidade
   const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -80,7 +79,10 @@ const generateUniqueUserCode = async (tx: Prisma.TransactionClient): Promise<str
   for (let attempt = 0; attempt < 10; attempt++) {
     const random = Math.floor(1000 + Math.random() * 9000);
     const candidate = `${prefix}${random}`;
-    const existing = await tx.usuarios.findUnique({ where: { codUsuario: candidate }, select: { id: true } });
+    const existing = await tx.usuarios.findUnique({
+      where: { codUsuario: candidate },
+      select: { id: true },
+    });
     if (!existing) {
       return candidate;
     }
@@ -120,16 +122,8 @@ export const criarUsuario = async (req: Request, res: Response, next: NextFuncti
     const dadosUsuario: CriarUsuarioData = parseResult.data;
 
     // Extrai dados validados
-    const {
-      nomeCompleto,
-      telefone,
-      email,
-      senha,
-      aceitarTermos,
-      supabaseId,
-      tipoUsuario,
-      role,
-    } = dadosUsuario;
+    const { nomeCompleto, telefone, email, senha, aceitarTermos, supabaseId, tipoUsuario, role } =
+      dadosUsuario;
 
     // Normaliza role: se inválida ou não fornecida, define padrão
     const normalizedRole =
@@ -245,7 +239,8 @@ export const criarUsuario = async (req: Request, res: Response, next: NextFuncti
     );
 
     // Resposta de sucesso
-    const userTypeLabel = tipoUsuario === TiposDeUsuarios.PESSOA_FISICA ? 'Pessoa física' : 'Empresa';
+    const userTypeLabel =
+      tipoUsuario === TiposDeUsuarios.PESSOA_FISICA ? 'Pessoa física' : 'Empresa';
 
     res.status(201).json({
       success: true,
@@ -517,7 +512,7 @@ function buildUserDataForDatabase(params: {
     supabaseId: params.supabaseId,
     ...(params.cpfLimpo && { cpf: params.cpfLimpo }),
     ...(params.cnpjLimpo && { cnpj: params.cnpjLimpo }),
-  } satisfies Prisma.UsuariosCreateWithoutRedesSociaisInput;
+  };
 
   const informacoes: Prisma.UsuariosInformationCreateWithoutUsuarioInput = {
     telefone: params.telefone.trim(),

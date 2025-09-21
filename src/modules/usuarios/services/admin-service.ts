@@ -163,6 +163,7 @@ export class AdminService {
           tipoUsuario: true,
           criadoEm: true,
           ultimoLogin: true,
+          informacoes: { select: usuarioInformacoesSelect },
           enderecos: {
             orderBy: { criadoEm: 'asc' },
             select: {
@@ -183,8 +184,8 @@ export class AdminService {
       prisma.usuarios.count({ where }),
     ]);
 
-    const candidatosComEndereco = candidatos.map((candidato) =>
-      attachEnderecoResumo(mergeUsuarioInformacoes(candidato))!,
+    const candidatosComEndereco = candidatos.map(
+      (candidato) => attachEnderecoResumo(mergeUsuarioInformacoes(candidato))!,
     );
 
     return {

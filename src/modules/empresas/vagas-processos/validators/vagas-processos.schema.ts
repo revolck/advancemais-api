@@ -16,11 +16,15 @@ const observacoesSchema = z
   });
 
 export const vagaProcessoParamsSchema = z.object({
-  vagaId: z.string({ required_error: 'O identificador da vaga é obrigatório.' }).uuid('Informe um ID de vaga válido.'),
+  vagaId: z
+    .string({ required_error: 'O identificador da vaga é obrigatório.' })
+    .uuid('Informe um ID de vaga válido.'),
 });
 
 export const vagaProcessoDetailParamsSchema = vagaProcessoParamsSchema.extend({
-  processoId: z.string({ required_error: 'O identificador do processo é obrigatório.' }).uuid('Informe um ID de processo válido.'),
+  processoId: z
+    .string({ required_error: 'O identificador do processo é obrigatório.' })
+    .uuid('Informe um ID de processo válido.'),
 });
 
 export const vagaProcessoListQuerySchema = z

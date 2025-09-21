@@ -300,9 +300,9 @@ router.post(
   createAuthRateLimit(3, 10), // 3 tentativas por 10 minutos
   async (req, res, next) => {
     const correlationId = req.headers['x-correlation-id'];
-    usuarioRoutesLogger.child({ correlationId, route: 'registrar' }).info(
-      '📝 Iniciando processo de registro',
-    );
+    usuarioRoutesLogger
+      .child({ correlationId, route: 'registrar' })
+      .info('📝 Iniciando processo de registro');
     next();
   },
   asyncHandler(criarUsuario), // Controller principal que cria usuário
@@ -437,7 +437,10 @@ router.post(
     const correlationId = req.headers['x-correlation-id'];
     usuarioRoutesLogger
       .child({ correlationId, route: 'login' })
-      .info({ documento: req.body.documento || 'documento não fornecido' }, '🔐 Tentativa de login');
+      .info(
+        { documento: req.body.documento || 'documento não fornecido' },
+        '🔐 Tentativa de login',
+      );
     next();
   },
   asyncHandler(loginUsuario),
@@ -646,13 +649,13 @@ router.post(
  *               tipoUsuario: "PESSOA_FISICA"
  *               supabaseId: "uuid-supabase"
  *               emailVerificado: true
-  *               emailVerificadoEm: "2024-01-01T12:00:00Z"
-  *               emailVerification:
-  *                 verified: true
-  *                 verifiedAt: "2024-01-01T12:00:00Z"
-  *                 tokenExpiration: "2024-01-02T12:00:00Z"
-  *                 attempts: 1
-  *                 lastAttemptAt: "2024-01-01T12:30:00Z"
+ *               emailVerificadoEm: "2024-01-01T12:00:00Z"
+ *               emailVerification:
+ *                 verified: true
+ *                 verifiedAt: "2024-01-01T12:00:00Z"
+ *                 tokenExpiration: "2024-01-02T12:00:00Z"
+ *                 attempts: 1
+ *                 lastAttemptAt: "2024-01-01T12:30:00Z"
  *               ultimoLogin: "2024-01-01T12:00:00Z"
  *       401:
  *         description: Não autenticado

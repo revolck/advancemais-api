@@ -4,18 +4,23 @@ import { Prisma, StatusDeVagas, TiposDeUsuarios } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { attachEnderecoResumo } from '@/modules/usuarios/utils/address';
-import { mergeUsuarioInformacoes, usuarioInformacoesSelect } from '@/modules/usuarios/utils/information';
+import {
+  mergeUsuarioInformacoes,
+  usuarioInformacoesSelect,
+} from '@/modules/usuarios/utils/information';
 import { mapSocialLinks, usuarioRedesSociaisSelect } from '@/modules/usuarios/utils/social-links';
 import { clientesService } from '@/modules/empresas/clientes/services/clientes.service';
 import {
   EmpresaSemPlanoAtivoError,
   LimiteVagasDestaqueAtingidoError,
-  LimiteVagasPlanoAtingidoError,
   PlanoNaoPermiteVagaDestaqueError,
   VagaAreaSubareaError,
   UsuarioNaoEmpresaError,
 } from '@/modules/empresas/vagas/services/errors';
-import type { CreateVagaInput, UpdateVagaInput } from '@/modules/empresas/vagas/validators/vagas.schema';
+import type {
+  CreateVagaInput,
+  UpdateVagaInput,
+} from '@/modules/empresas/vagas/validators/vagas.schema';
 export type CreateVagaData = CreateVagaInput;
 export type UpdateVagaData = UpdateVagaInput;
 
@@ -131,7 +136,8 @@ const assertVagasDestaqueDisponiveis = async (
   }
 };
 
-const anonymizedName = (vagaId: string) => `Oportunidade Confidencial #${vagaId.slice(0, 5).toUpperCase()}`;
+const anonymizedName = (vagaId: string) =>
+  `Oportunidade Confidencial #${vagaId.slice(0, 5).toUpperCase()}`;
 
 const nullableText = (value?: string) => {
   if (typeof value !== 'string') return null;
@@ -153,12 +159,16 @@ const createCodeCandidate = () => {
   return result;
 };
 
-const createFallbackCandidate = () => randomUUID().replace(/-/g, '').slice(0, VAGA_CODE_LENGTH).toUpperCase();
+const createFallbackCandidate = () =>
+  randomUUID().replace(/-/g, '').slice(0, VAGA_CODE_LENGTH).toUpperCase();
 
 const generateUniqueVagaCode = async (): Promise<string> => {
   for (let attempt = 0; attempt < 20; attempt++) {
     const candidate = createCodeCandidate();
-    const existing = await prisma.empresasVagas.findUnique({ where: { codigo: candidate }, select: { id: true } });
+    const existing = await prisma.empresasVagas.findUnique({
+      where: { codigo: candidate },
+      select: { id: true },
+    });
 
     if (!existing) {
       return candidate;
@@ -167,7 +177,10 @@ const generateUniqueVagaCode = async (): Promise<string> => {
 
   for (let attempt = 0; attempt < 20; attempt++) {
     const candidate = createFallbackCandidate();
-    const existing = await prisma.empresasVagas.findUnique({ where: { codigo: candidate }, select: { id: true } });
+    const existing = await prisma.empresasVagas.findUnique({
+      where: { codigo: candidate },
+      select: { id: true },
+    });
 
     if (!existing) {
       return candidate;
@@ -182,9 +195,7 @@ const generateUniqueVagaCode = async (): Promise<string> => {
 const sanitizeStringArray = (values: string[] | undefined) => {
   if (!Array.isArray(values)) return [];
 
-  const sanitized = values
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0);
+  const sanitized = values.map((value) => value.trim()).filter((value) => value.length > 0);
 
   return Array.from(new Set(sanitized));
 };
@@ -207,25 +218,31 @@ const sanitizeBeneficios = (
   value: CreateVagaData['beneficios'] | NonNullable<UpdateVagaData['beneficios']>,
 ): Prisma.JsonObject => ({
   lista: sanitizeStringArray(value.lista),
-  observacoes:
-    value.observacoes !== undefined ? nullableText(value.observacoes) : null,
+  observacoes: value.observacoes !== undefined ? nullableText(value.observacoes) : null,
 });
 
 const sanitizeLocalizacao = (
-  value: CreateVagaData['localizacao'] | NonNullable<UpdateVagaData['localizacao']> | null | undefined,
+  value:
+    | CreateVagaData['localizacao']
+    | NonNullable<UpdateVagaData['localizacao']>
+    | null
+    | undefined,
 ) => {
   if (!value) {
     return null;
   }
 
-  const entries = Object.entries(value).reduce<Record<string, string>>((accumulator, [key, raw]) => {
-    if (typeof raw !== 'string') return accumulator;
-    const trimmed = raw.trim();
-    if (trimmed.length === 0) return accumulator;
+  const entries = Object.entries(value).reduce<Record<string, string>>(
+    (accumulator, [key, raw]) => {
+      if (typeof raw !== 'string') return accumulator;
+      const trimmed = raw.trim();
+      if (trimmed.length === 0) return accumulator;
 
-    accumulator[key] = trimmed;
-    return accumulator;
-  }, {});
+      accumulator[key] = trimmed;
+      return accumulator;
+    },
+    {},
+  );
 
   return Object.keys(entries).length > 0 ? (entries as Prisma.JsonObject) : null;
 };
@@ -288,8 +305,12 @@ const resolveAreaSubareaUpdate = async (
     return null;
   }
 
-  const targetAreaId = areaProvided ? data.areaInteresseId ?? null : vagaAtual.areaInteresseId ?? null;
-  const targetSubareaId = subareaProvided ? data.subareaInteresseId ?? null : vagaAtual.subareaInteresseId ?? null;
+  const targetAreaId = areaProvided
+    ? (data.areaInteresseId ?? null)
+    : (vagaAtual.areaInteresseId ?? null);
+  const targetSubareaId = subareaProvided
+    ? (data.subareaInteresseId ?? null)
+    : (vagaAtual.subareaInteresseId ?? null);
 
   if (targetSubareaId == null) {
     throw new VagaAreaSubareaError('SUBAREA_REQUIRED');
@@ -306,7 +327,10 @@ const resolveAreaSubareaUpdate = async (
   } as const;
 };
 
-const sanitizeCreateData = (data: CreateVagaData, codigo: string): Prisma.EmpresasVagasUncheckedCreateInput => {
+const sanitizeCreateData = (
+  data: CreateVagaData,
+  codigo: string,
+): Prisma.EmpresasVagasUncheckedCreateInput => {
   const localizacao = sanitizeLocalizacao(data.localizacao ?? null);
 
   return {
@@ -330,7 +354,7 @@ const sanitizeCreateData = (data: CreateVagaData, codigo: string): Prisma.Empres
     senioridade: data.senioridade,
     inscricoesAte: data.inscricoesAte ?? null,
     inseridaEm: data.inseridaEm ?? new Date(),
-    status: data.status ?? StatusDeVagas.EM_ANALISE,
+    // status default handled by DB (RASCUNHO/EM_ANALISE)
     ...(localizacao ? { localizacao } : {}),
     salarioMin: data.salarioMin ?? undefined,
     salarioMax: data.salarioMax ?? undefined,
@@ -374,16 +398,20 @@ const sanitizeUpdateData = (data: UpdateVagaData): Prisma.EmpresasVagasUnchecked
     update.descricao = nullableText(data.descricao ?? undefined);
   }
   if (data.requisitos !== undefined) {
-    update.requisitos = data.requisitos === null ? Prisma.DbNull : sanitizeRequisitos(data.requisitos);
+    update.requisitos =
+      data.requisitos === null ? Prisma.JsonNull : sanitizeRequisitos(data.requisitos);
   }
   if (data.atividades !== undefined) {
-    update.atividades = data.atividades === null ? Prisma.DbNull : sanitizeAtividades(data.atividades);
+    update.atividades =
+      data.atividades === null ? Prisma.JsonNull : sanitizeAtividades(data.atividades);
   }
   if (data.beneficios !== undefined) {
-    update.beneficios = data.beneficios === null ? Prisma.DbNull : sanitizeBeneficios(data.beneficios);
+    update.beneficios =
+      data.beneficios === null ? Prisma.JsonNull : sanitizeBeneficios(data.beneficios);
   }
   if (data.observacoes !== undefined) {
-    update.observacoes = nullableText(data.observacoes);
+    update.observacoes =
+      data.observacoes === null ? null : (nullableText(data.observacoes) ?? undefined);
   }
   if (data.jornada !== undefined) {
     update.jornada = data.jornada;
@@ -399,10 +427,10 @@ const sanitizeUpdateData = (data: UpdateVagaData): Prisma.EmpresasVagasUnchecked
   }
   if (data.localizacao !== undefined) {
     if (data.localizacao === null) {
-      update.localizacao = Prisma.DbNull;
+      update.localizacao = Prisma.JsonNull;
     } else {
       const localizacao = sanitizeLocalizacao(data.localizacao);
-      update.localizacao = localizacao ?? Prisma.DbNull;
+      update.localizacao = localizacao ?? Prisma.JsonNull;
     }
   }
   if (data.salarioMin !== undefined) {
@@ -415,7 +443,8 @@ const sanitizeUpdateData = (data: UpdateVagaData): Prisma.EmpresasVagasUnchecked
     update.salarioConfidencial = data.salarioConfidencial;
   }
   if (data.maxCandidaturasPorUsuario !== undefined) {
-    update.maxCandidaturasPorUsuario = data.maxCandidaturasPorUsuario === null ? null : data.maxCandidaturasPorUsuario;
+    update.maxCandidaturasPorUsuario =
+      data.maxCandidaturasPorUsuario === null ? null : data.maxCandidaturasPorUsuario;
   }
   if (data.areaInteresseId !== undefined) {
     update.areaInteresseId = data.areaInteresseId;
@@ -439,7 +468,8 @@ const transformVaga = (vaga: VagaWithEmpresa) => {
   const { destaque, destaqueInfo, areaInteresse, subareaInteresse, ...vagaSemMetadados } = vaga;
 
   const empresaUsuarioRaw =
-    vagaSemMetadados.empresa && vagaSemMetadados.empresa.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
+    vagaSemMetadados.empresa &&
+    vagaSemMetadados.empresa.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
       ? vagaSemMetadados.empresa
       : null;
   const empresaUsuario = empresaUsuarioRaw
@@ -448,14 +478,14 @@ const transformVaga = (vaga: VagaWithEmpresa) => {
 
   const displayName = vagaSemMetadados.modoAnonimo
     ? anonymizedName(vagaSemMetadados.id)
-    : empresaUsuario?.nomeCompleto ?? null;
-  const displayLogo = vagaSemMetadados.modoAnonimo ? null : empresaUsuario?.avatarUrl ?? null;
+    : (empresaUsuario?.nomeCompleto ?? null);
+  const displayLogo = vagaSemMetadados.modoAnonimo ? null : (empresaUsuario?.avatarUrl ?? null);
   const rawDescricao = empresaUsuario?.descricao;
   const displayDescription = vagaSemMetadados.modoAnonimo
     ? ANON_DESCRIPTION
     : typeof rawDescricao === 'string' && rawDescricao.trim().length > 0
       ? rawDescricao.trim()
-      : rawDescricao ?? null;
+      : (rawDescricao ?? null);
 
   const empresa = empresaUsuario
     ? {
@@ -465,7 +495,9 @@ const transformVaga = (vaga: VagaWithEmpresa) => {
         cidade: empresaUsuario.cidade,
         estado: empresaUsuario.estado,
         descricao: displayDescription,
-        socialLinks: vagaSemMetadados.modoAnonimo ? null : mapSocialLinks(empresaUsuario.redesSociais),
+        socialLinks: vagaSemMetadados.modoAnonimo
+          ? null
+          : mapSocialLinks(empresaUsuario.redesSociais),
         codUsuario: empresaUsuario.codUsuario,
         enderecos: empresaUsuario.enderecos,
         informacoes: empresaUsuario.informacoes,
@@ -523,25 +555,19 @@ const ensurePlanoAtivoParaUsuario = async (usuarioId: string) => {
     throw new EmpresaSemPlanoAtivoError();
   }
 
-  const limite = planoAtivo.plano.quantidadeVagas;
-  if (typeof limite === 'number' && limite > 0) {
-    const vagasAtivas = await prisma.empresasVagas.count({
-      where: {
-        usuarioId,
-        status: { in: [StatusDeVagas.EM_ANALISE, StatusDeVagas.PUBLICADO, StatusDeVagas.PAUSADA] },
-      },
-    });
-
-    if (vagasAtivas >= limite) {
-      throw new LimiteVagasPlanoAtingidoError(limite);
-    }
-  }
+  // Observação: a partir de agora, apenas vagas PUBLICADAS contam no limite do plano.
+  // Permite enviar quantas vagas quiser para análise; o limite será validado na aprovação.
 
   return planoAtivo;
 };
 
 export const vagasService = {
-  list: async (params?: { status?: StatusDeVagas[]; usuarioId?: string; page?: number; pageSize?: number }) => {
+  list: async (params?: {
+    status?: StatusDeVagas[];
+    usuarioId?: string;
+    page?: number;
+    pageSize?: number;
+  }) => {
     const where: Prisma.EmpresasVagasWhereInput = {
       ...(params?.status && params.status.length > 0
         ? { status: { in: params.status } }

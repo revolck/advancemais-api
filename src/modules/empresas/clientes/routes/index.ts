@@ -24,10 +24,11 @@ const adminRoles = [Roles.ADMIN, Roles.MODERADOR];
  *           format: uuid
  *         description: "Filtra os registros pelo identificador do cliente (empresa - PJ)"
  *       - in: query
- *         name: ativo
+ *         name: status
  *         schema:
- *           type: boolean
- *         description: "Quando informado, retorna apenas os registros com o status ativo correspondente"
+ *           type: string
+ *           enum: [ATIVO, SUSPENSO, EXPIRADO, CANCELADO]
+ *         description: "Quando informado, filtra pelo status do vínculo do plano"
  *     responses:
  *       200:
  *         description: Lista de planos parceiros vinculados
@@ -176,8 +177,8 @@ router.get('/:id', supabaseAuthMiddleware(adminRoles), ClientesController.get);
  *            -d '{
  *                  "usuarioId": "f1d7a9c2-4e0b-4f6d-90ad-8c6b84a0f1a1",
  *                  "planosEmpresariaisId": "31b3b0e1-4d9d-4a3c-9a77-51b872d59bf0",
- *                  "tipo": "7_dias",
- *                  "observacao": "Período de teste liberado pela equipe comercial"
+ *                  "modo": "teste",
+ *                  "diasTeste": 7
  *                }'
  */
 router.post('/', supabaseAuthMiddleware(adminRoles), ClientesController.assign);
@@ -249,8 +250,7 @@ router.post('/', supabaseAuthMiddleware(adminRoles), ClientesController.assign);
  *            -H "Authorization: Bearer <TOKEN>" \
  *            -H "Content-Type: application/json" \
  *            -d '{
- *                  "tipo": "parceiro",
- *                  "observacao": "Parceiro oficial da Advance+"
+ *                  "modo": "parceiro"
  *                }'
  */
 router.put('/:id', supabaseAuthMiddleware(adminRoles), ClientesController.update);

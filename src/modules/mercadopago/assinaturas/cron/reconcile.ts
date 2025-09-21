@@ -21,4 +21,3 @@ export function startAssinaturasReconJob() {
   });
   log.info({ schedule }, '⏱️ Cron de reconciliação agendado');
 }
-

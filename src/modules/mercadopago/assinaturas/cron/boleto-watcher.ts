@@ -46,7 +46,8 @@ async function processPendingBoletos() {
 
       const currentStatus = body?.status ? mapStatus(body.status) : boleto.statusPagamento;
       const stillPending =
-        currentStatus === STATUS_PAGAMENTO.PENDENTE || currentStatus === STATUS_PAGAMENTO.EM_PROCESSAMENTO;
+        currentStatus === STATUS_PAGAMENTO.PENDENTE ||
+        currentStatus === STATUS_PAGAMENTO.EM_PROCESSAMENTO;
 
       if (stillPending) {
         const createdAt = boleto.criadoEm || new Date();
@@ -72,7 +73,10 @@ async function processPendingBoletos() {
         }
       }
     } catch (err) {
-      log.warn({ err, mpPaymentId: boleto.mpPaymentId, planoId: boleto.id }, '⚠️ Falha ao consultar boleto no Mercado Pago');
+      log.warn(
+        { err, mpPaymentId: boleto.mpPaymentId, planoId: boleto.id },
+        '⚠️ Falha ao consultar boleto no Mercado Pago',
+      );
     }
   }
 }
@@ -81,10 +85,13 @@ function mapStatus(status: string): STATUS_PAGAMENTO {
   const normalized = status.toLowerCase();
   if (['approved', 'accredited'].includes(normalized)) return STATUS_PAGAMENTO.APROVADO;
   if (['pending', 'in_process'].includes(normalized)) return STATUS_PAGAMENTO.EM_PROCESSAMENTO;
-  if (['cancelled', 'cancelled_by_user', 'cancelled_by_collector', 'expired'].includes(normalized)) {
+  if (
+    ['cancelled', 'cancelled_by_user', 'cancelled_by_collector', 'expired'].includes(normalized)
+  ) {
     return STATUS_PAGAMENTO.CANCELADO;
   }
-  if (['rejected', 'charged_back', 'chargeback'].includes(normalized)) return STATUS_PAGAMENTO.RECUSADO;
+  if (['rejected', 'charged_back', 'chargeback'].includes(normalized))
+    return STATUS_PAGAMENTO.RECUSADO;
   return STATUS_PAGAMENTO.PENDENTE;
 }
 

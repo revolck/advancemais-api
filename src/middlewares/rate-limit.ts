@@ -229,8 +229,11 @@ const handleLimitExceeded: RateLimitExceededEventHandler = (req, res, _next, opt
 
   res.status(optionsUsed.statusCode).json({
     message: 'Muitas requisições detectadas. Tente novamente em instantes.',
-    details: 'O limite de requisições para esta origem foi atingido. Aguarde e tente novamente em breve.',
-    limit: info?.limit ?? (typeof optionsUsed.limit === 'number' ? optionsUsed.limit : rateLimitConfig.maxRequests),
+    details:
+      'O limite de requisições para esta origem foi atingido. Aguarde e tente novamente em breve.',
+    limit:
+      info?.limit ??
+      (typeof optionsUsed.limit === 'number' ? optionsUsed.limit : rateLimitConfig.maxRequests),
     remaining: info?.remaining ?? 0,
     retryAfterSeconds,
     resetTime: info?.resetTime?.toISOString(),

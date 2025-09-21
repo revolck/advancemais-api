@@ -428,7 +428,10 @@ export class EmailVerificationService {
         messageId,
       };
     } catch (error) {
-      this.log.error({ correlationId, err: error, email: emailData.to }, '❌ Erro no envio via Brevo');
+      this.log.error(
+        { correlationId, err: error, email: emailData.to },
+        '❌ Erro no envio via Brevo',
+      );
 
       // Fallback para simulação
       this.log.warn({ correlationId, email: emailData.to }, '🎭 Fallback para modo simulado');

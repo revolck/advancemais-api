@@ -38,86 +38,90 @@ function getKey(header: any, callback: any) {
  * - Se houver token e for válido: popula req.user com dados do banco
  * - Se houver token e for inválido: responde 401
  */
-export const optionalSupabaseAuth = () => async (req: Request, res: Response, next: NextFunction) => {
-  const log = optionalAuthLogger.child({ path: req.originalUrl, method: req.method, correlationId: req.id });
-  const token = req.headers.authorization?.split(' ')[1] || req.cookies?.token;
+export const optionalSupabaseAuth =
+  () => async (req: Request, res: Response, next: NextFunction) => {
+    const log = optionalAuthLogger.child({
+      path: req.originalUrl,
+      method: req.method,
+      correlationId: req.id,
+    });
+    const token = req.headers.authorization?.split(' ')[1] || req.cookies?.token;
 
-  if (!token) {
-    return next();
-  }
+    if (!token) {
+      return next();
+    }
 
-  jwt.verify(
-    token,
-    getKey,
-    { algorithms: ['RS256', 'ES256', 'HS256'] },
-    async (err: any, decoded: any) => {
-      if (err) {
-        return res.status(401).json({
-          message: 'Token inválido ou expirado',
-          error: err.message,
-        });
-      }
-
-      try {
-        const cacheKey = `user:${decoded.sub}`;
-
-        const usuarioSelect = {
-          id: true,
-          email: true,
-          nomeCompleto: true,
-          cpf: true,
-          cnpj: true,
-          telefone: true,
-          role: true,
-          status: true,
-          tipoUsuario: true,
-          supabaseId: true,
-          ultimoLogin: true,
-        } as const;
-
-        type UsuarioCache = Prisma.UsuariosGetPayload<{
-          select: typeof usuarioSelect;
-        }>;
-
-        let usuario: UsuarioCache | null = await getCache<UsuarioCache>(cacheKey);
-
-        if (!usuario) {
-          usuario = await prisma.usuarios.findFirst({
-            where: {
-              OR: [{ supabaseId: decoded.sub as string }, { id: decoded.sub as string }],
-            },
-            select: usuarioSelect,
+    jwt.verify(
+      token,
+      getKey,
+      { algorithms: ['RS256', 'ES256', 'HS256'] },
+      async (err: any, decoded: any) => {
+        if (err) {
+          return res.status(401).json({
+            message: 'Token inválido ou expirado',
+            error: err.message,
           });
+        }
 
-          if (usuario) {
-            await setCache(cacheKey, usuario, 300);
+        try {
+          const cacheKey = `user:${decoded.sub}`;
+
+          const usuarioSelect = {
+            id: true,
+            email: true,
+            nomeCompleto: true,
+            cpf: true,
+            cnpj: true,
+            telefone: true,
+            role: true,
+            status: true,
+            tipoUsuario: true,
+            supabaseId: true,
+            ultimoLogin: true,
+          } as const;
+
+          type UsuarioCache = Prisma.UsuariosGetPayload<{
+            select: typeof usuarioSelect;
+          }>;
+
+          let usuario: UsuarioCache | null = await getCache<UsuarioCache>(cacheKey);
+
+          if (!usuario) {
+            usuario = await prisma.usuarios.findFirst({
+              where: {
+                OR: [{ supabaseId: decoded.sub as string }, { id: decoded.sub as string }],
+              },
+              select: usuarioSelect,
+            });
+
+            if (usuario) {
+              await setCache(cacheKey, usuario, 300);
+            }
           }
-        }
 
-        if (!usuario) {
-          return res.status(401).json({ message: 'Usuário não encontrado no sistema' });
-        }
+          if (!usuario) {
+            return res.status(401).json({ message: 'Usuário não encontrado no sistema' });
+          }
 
-        if (usuario.status !== 'ATIVO') {
-          return res.status(403).json({
-            message: `Acesso negado: usuário está ${usuario.status.toLowerCase()}`,
+          if (usuario.status !== 'ATIVO') {
+            return res.status(403).json({
+              message: `Acesso negado: usuário está ${usuario.status.toLowerCase()}`,
+            });
+          }
+
+          req.user = {
+            ...decoded,
+            ...usuario,
+          };
+
+          next();
+        } catch (error) {
+          log.error({ err: error }, 'Erro na autenticação opcional');
+          return res.status(500).json({
+            message: 'Erro interno do servidor',
+            error: error instanceof Error ? error.message : 'Erro desconhecido',
           });
         }
-
-        req.user = {
-          ...decoded,
-          ...usuario,
-        };
-
-        next();
-      } catch (error) {
-        log.error({ err: error }, 'Erro na autenticação opcional');
-        return res.status(500).json({
-          message: 'Erro interno do servidor',
-          error: error instanceof Error ? error.message : 'Erro desconhecido',
-        });
-      }
-    },
-  );
-};
-
+      },
+    );
+  };

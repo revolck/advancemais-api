@@ -12,6 +12,7 @@ import {
   LimiteVagasDestaqueAtingidoError,
   LimiteVagasPlanoAtingidoError,
   PlanoNaoPermiteVagaDestaqueError,
+  VagaAreaSubareaError,
   UsuarioNaoEmpresaError,
 } from '@/modules/empresas/vagas/services/errors';
 import type { CreateVagaInput, UpdateVagaInput } from '@/modules/empresas/vagas/validators/vagas.schema';
@@ -55,6 +56,19 @@ const includeEmpresa = {
         ativo: true,
         ativadoEm: true,
         desativadoEm: true,
+      },
+    },
+    areaInteresse: {
+      select: {
+        id: true,
+        categoria: true,
+      },
+    },
+    subareaInteresse: {
+      select: {
+        id: true,
+        nome: true,
+        areaId: true,
       },
     },
   },
@@ -216,6 +230,82 @@ const sanitizeLocalizacao = (
   return Object.keys(entries).length > 0 ? (entries as Prisma.JsonObject) : null;
 };
 
+const hasOwn = <T extends object>(target: T, property: PropertyKey) =>
+  Object.prototype.hasOwnProperty.call(target, property);
+
+const ensureAreaAndSubarea = async ({
+  areaId,
+  subareaId,
+}: {
+  areaId?: number | null;
+  subareaId?: number | null;
+}) => {
+  if (subareaId == null) {
+    throw new VagaAreaSubareaError('SUBAREA_REQUIRED');
+  }
+
+  const subarea = await prisma.candidatosSubareasInteresse.findUnique({
+    where: { id: subareaId },
+    select: {
+      id: true,
+      areaId: true,
+      area: {
+        select: {
+          id: true,
+        },
+      },
+    },
+  });
+
+  if (!subarea) {
+    throw new VagaAreaSubareaError('SUBAREA_NOT_FOUND');
+  }
+
+  if (!subarea.area) {
+    throw new VagaAreaSubareaError('AREA_NOT_FOUND');
+  }
+
+  const finalAreaId = areaId ?? subarea.areaId;
+
+  if (subarea.areaId !== finalAreaId) {
+    throw new VagaAreaSubareaError('MISMATCH');
+  }
+
+  return {
+    areaId: finalAreaId,
+    subareaId: subarea.id,
+  } as const;
+};
+
+const resolveAreaSubareaUpdate = async (
+  vagaAtual: { areaInteresseId: number | null; subareaInteresseId: number | null },
+  data: UpdateVagaData,
+) => {
+  const areaProvided = hasOwn(data, 'areaInteresseId');
+  const subareaProvided = hasOwn(data, 'subareaInteresseId');
+
+  if (!areaProvided && !subareaProvided) {
+    return null;
+  }
+
+  const targetAreaId = areaProvided ? data.areaInteresseId ?? null : vagaAtual.areaInteresseId ?? null;
+  const targetSubareaId = subareaProvided ? data.subareaInteresseId ?? null : vagaAtual.subareaInteresseId ?? null;
+
+  if (targetSubareaId == null) {
+    throw new VagaAreaSubareaError('SUBAREA_REQUIRED');
+  }
+
+  const { areaId, subareaId } = await ensureAreaAndSubarea({
+    areaId: targetAreaId ?? undefined,
+    subareaId: targetSubareaId,
+  });
+
+  return {
+    areaInteresseId: areaId,
+    subareaInteresseId: subareaId,
+  } as const;
+};
+
 const sanitizeCreateData = (data: CreateVagaData, codigo: string): Prisma.EmpresasVagasUncheckedCreateInput => {
   const localizacao = sanitizeLocalizacao(data.localizacao ?? null);
 
@@ -223,6 +313,8 @@ const sanitizeCreateData = (data: CreateVagaData, codigo: string): Prisma.Empres
     usuarioId: data.usuarioId,
     slug: data.slug.trim().toLowerCase(),
     codigo,
+    areaInteresseId: data.areaInteresseId,
+    subareaInteresseId: data.subareaInteresseId,
     modoAnonimo: data.modoAnonimo ?? false,
     regimeDeTrabalho: data.regimeDeTrabalho,
     modalidade: data.modalidade,
@@ -325,6 +417,12 @@ const sanitizeUpdateData = (data: UpdateVagaData): Prisma.EmpresasVagasUnchecked
   if (data.maxCandidaturasPorUsuario !== undefined) {
     update.maxCandidaturasPorUsuario = data.maxCandidaturasPorUsuario === null ? null : data.maxCandidaturasPorUsuario;
   }
+  if (data.areaInteresseId !== undefined) {
+    update.areaInteresseId = data.areaInteresseId;
+  }
+  if (data.subareaInteresseId !== undefined) {
+    update.subareaInteresseId = data.subareaInteresseId;
+  }
   if (data.status !== undefined) {
     update.status = data.status;
     if (data.status === StatusDeVagas.PUBLICADO && data.inseridaEm === undefined) {
@@ -338,7 +436,7 @@ const sanitizeUpdateData = (data: UpdateVagaData): Prisma.EmpresasVagasUnchecked
 const transformVaga = (vaga: VagaWithEmpresa) => {
   if (!vaga) return null;
 
-  const { destaque, destaqueInfo, ...vagaSemMetadados } = vaga;
+  const { destaque, destaqueInfo, areaInteresse, subareaInteresse, ...vagaSemMetadados } = vaga;
 
   const empresaUsuarioRaw =
     vagaSemMetadados.empresa && vagaSemMetadados.empresa.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
@@ -386,6 +484,19 @@ const transformVaga = (vaga: VagaWithEmpresa) => {
 
   return {
     ...vagaSemMetadados,
+    areaInteresse: areaInteresse
+      ? {
+          id: areaInteresse.id,
+          categoria: areaInteresse.categoria,
+        }
+      : null,
+    subareaInteresse: subareaInteresse
+      ? {
+          id: subareaInteresse.id,
+          nome: subareaInteresse.nome,
+          areaId: subareaInteresse.areaId,
+        }
+      : null,
     empresa,
     nomeExibicao: displayName,
     logoExibicao: displayLogo,
@@ -462,6 +573,15 @@ export const vagasService = {
   },
 
   create: async (data: CreateVagaData) => {
+    const { areaId, subareaId } = await ensureAreaAndSubarea({
+      areaId: data.areaInteresseId,
+      subareaId: data.subareaInteresseId,
+    });
+    const dataComArea: CreateVagaData = {
+      ...data,
+      areaInteresseId: areaId,
+      subareaInteresseId: subareaId,
+    };
     const planoAtivo = await ensurePlanoAtivoParaUsuario(data.usuarioId);
     const codigo = await generateUniqueVagaCode();
     const shouldHighlight = data.vagaEmDestaque ?? false;
@@ -473,7 +593,7 @@ export const vagasService = {
       }
 
       const created = await tx.empresasVagas.create({
-        data: sanitizeCreateData(data, codigo),
+        data: sanitizeCreateData(dataComArea, codigo),
       });
 
       if (shouldHighlight) {
@@ -504,6 +624,9 @@ export const vagasService = {
       throw Object.assign(new Error('Vaga não encontrada'), { code: 'P2025' });
     }
 
+    const areaUpdate = await resolveAreaSubareaUpdate(vagaAtual, data);
+    const dataParaAtualizar: UpdateVagaData = areaUpdate ? { ...data, ...areaUpdate } : data;
+
     const novoUsuarioId = data.usuarioId ?? vagaAtual.usuarioId;
     const shouldActivateHighlight = data.vagaEmDestaque === true && !vagaAtual.destaque;
     const shouldDeactivateHighlight = data.vagaEmDestaque === false && vagaAtual.destaque;
@@ -525,7 +648,7 @@ export const vagasService = {
 
       const atualizada = await tx.empresasVagas.update({
         where: { id },
-        data: sanitizeUpdateData(data),
+        data: sanitizeUpdateData(dataParaAtualizar),
       });
 
       if (planoAtivo && (shouldActivateHighlight || shouldReassignHighlightPlan)) {

@@ -4896,6 +4896,10 @@ const options: Options = {
             'requisitos',
             'atividades',
             'beneficios',
+            'areaInteresseId',
+            'subareaInteresseId',
+            'areaInteresse',
+            'subareaInteresse',
             'salarioConfidencial',
             'vagaEmDestaque',
             'destaqueInfo',
@@ -5027,6 +5031,37 @@ const options: Options = {
               example: 1,
               description: 'Limite de candidaturas permitidas por usuário nesta vaga.',
             },
+            areaInteresseId: {
+              type: 'integer',
+              nullable: true,
+              example: 3,
+              description: 'Identificador da área de interesse selecionada para a vaga.',
+            },
+            subareaInteresseId: {
+              type: 'integer',
+              nullable: true,
+              example: 7,
+              description: 'Identificador da subárea vinculada (sempre pertencente à área selecionada).',
+            },
+            areaInteresse: {
+              type: 'object',
+              nullable: true,
+              description: 'Dados da área de interesse definida pela empresa.',
+              properties: {
+                id: { type: 'integer', example: 3 },
+                categoria: { type: 'string', example: 'Tecnologia da Informação' },
+              },
+            },
+            subareaInteresse: {
+              type: 'object',
+              nullable: true,
+              description: 'Dados da subárea de interesse definida para a vaga.',
+              properties: {
+                id: { type: 'integer', example: 7 },
+                nome: { type: 'string', example: 'Desenvolvimento Front-end' },
+                areaId: { type: 'integer', example: 3 },
+              },
+            },
             vagaEmDestaque: {
               type: 'boolean',
               example: true,
@@ -5083,6 +5118,10 @@ const options: Options = {
             salarioMax: '6500.00',
             salarioConfidencial: false,
             maxCandidaturasPorUsuario: 1,
+            areaInteresseId: 3,
+            subareaInteresseId: 7,
+            areaInteresse: { id: 3, categoria: 'Tecnologia da Informação' },
+            subareaInteresse: { id: 7, nome: 'Desenvolvimento Front-end', areaId: 3 },
             vagaEmDestaque: true,
             destaqueInfo: {
               empresasPlanoId: '8c5e0d56-4f2b-4c8f-9a18-91b3f4d2c7a1',
@@ -5138,6 +5177,10 @@ const options: Options = {
                 salarioMax: '6500.00',
                 salarioConfidencial: false,
                 maxCandidaturasPorUsuario: 1,
+                areaInteresseId: 3,
+                subareaInteresseId: 7,
+                areaInteresse: { id: 3, categoria: 'Tecnologia da Informação' },
+                subareaInteresse: { id: 7, nome: 'Desenvolvimento Front-end', areaId: 3 },
                 vagaEmDestaque: true,
                 destaqueInfo: {
                   empresasPlanoId: '8c5e0d56-4f2b-4c8f-9a18-91b3f4d2c7a1',
@@ -5196,6 +5239,10 @@ const options: Options = {
               salarioMax: '6500.00',
               salarioConfidencial: false,
               maxCandidaturasPorUsuario: 1,
+              areaInteresseId: 3,
+              subareaInteresseId: 7,
+              areaInteresse: { id: 3, categoria: 'Tecnologia da Informação' },
+              subareaInteresse: { id: 7, nome: 'Desenvolvimento Front-end', areaId: 3 },
               vagaEmDestaque: true,
               destaqueInfo: {
                 empresasPlanoId: '8c5e0d56-4f2b-4c8f-9a18-91b3f4d2c7a1',
@@ -5388,6 +5435,37 @@ const options: Options = {
               nullable: true,
               example: 1,
             },
+            areaInteresseId: {
+              type: 'integer',
+              nullable: true,
+              example: 3,
+              description: 'Identificador da área de interesse associada à vaga.',
+            },
+            subareaInteresseId: {
+              type: 'integer',
+              nullable: true,
+              example: 7,
+              description: 'Identificador da subárea de interesse associada à vaga.',
+            },
+            areaInteresse: {
+              type: 'object',
+              nullable: true,
+              description: 'Dados resumidos da área de interesse escolhida para classificar a vaga.',
+              properties: {
+                id: { type: 'integer', example: 3 },
+                categoria: { type: 'string', example: 'Tecnologia da Informação' },
+              },
+            },
+            subareaInteresse: {
+              type: 'object',
+              nullable: true,
+              description: 'Dados resumidos da subárea vinculada à vaga.',
+              properties: {
+                id: { type: 'integer', example: 7 },
+                nome: { type: 'string', example: 'Desenvolvimento Front-end' },
+                areaId: { type: 'integer', example: 3 },
+              },
+            },
             nomeExibicao: {
               type: 'string',
               nullable: true,
@@ -5417,6 +5495,8 @@ const options: Options = {
             'Dados necessários para cadastrar uma vaga. O status inicial é definido automaticamente como EM_ANALISE e o código alfanumérico de 6 caracteres é gerado pelo sistema.',
           required: [
             'usuarioId',
+            'areaInteresseId',
+            'subareaInteresseId',
             'slug',
             'regimeDeTrabalho',
             'modalidade',
@@ -5432,6 +5512,16 @@ const options: Options = {
               type: 'string',
               format: 'uuid',
               example: 'f1d7a9c2-4e0b-4f6d-90ad-8c6b84a0f1a1',
+            },
+            areaInteresseId: {
+              type: 'integer',
+              example: 3,
+              description: 'ID da categoria (área) selecionada na jornada de cadastro da vaga.',
+            },
+            subareaInteresseId: {
+              type: 'integer',
+              example: 7,
+              description: 'ID da subcategoria associada à área escolhida para a vaga.',
             },
             slug: {
               type: 'string',
@@ -5597,6 +5687,16 @@ const options: Options = {
               type: 'string',
               format: 'uuid',
               example: 'f1d7a9c2-4e0b-4f6d-90ad-8c6b84a0f1a1',
+            },
+            areaInteresseId: {
+              type: 'integer',
+              example: 3,
+              description: 'Atualize a categoria (área) associada à vaga. Informe junto uma subárea válida.',
+            },
+            subareaInteresseId: {
+              type: 'integer',
+              example: 7,
+              description: 'Atualize a subcategoria vinculada à área informada.',
             },
             modoAnonimo: { type: 'boolean', example: false },
             regimeDeTrabalho: { allOf: [{ $ref: '#/components/schemas/RegimesDeTrabalhos' }] },

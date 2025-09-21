@@ -4,6 +4,10 @@ import { EmailVerificationController } from '../controllers/email-verification-c
 import { prisma } from '../../../config/prisma';
 import { supabaseAuthMiddleware } from '../../usuarios/auth';
 import { logger } from '@/utils/logger';
+import {
+  emailVerificationSelect,
+  normalizeEmailVerification,
+} from '@/modules/usuarios/utils/email-verification';
 
 const router = Router();
 
@@ -220,9 +224,10 @@ router.get('/status/:email', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), asy
       select: {
         id: true,
         email: true,
-        emailVerificado: true,
         status: true,
-        emailVerificationTokenExp: true,
+        emailVerification: {
+          select: emailVerificationSelect,
+        },
       },
     });
 
@@ -234,8 +239,10 @@ router.get('/status/:email', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), asy
       });
     }
 
-    const hasValidToken = usuario.emailVerificationTokenExp
-      ? usuario.emailVerificationTokenExp > new Date()
+    const verification = normalizeEmailVerification(usuario.emailVerification);
+
+    const hasValidToken = verification.emailVerificationTokenExp
+      ? verification.emailVerificationTokenExp > new Date()
       : false;
 
     res.json({
@@ -243,10 +250,17 @@ router.get('/status/:email', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), asy
       data: {
         userId: usuario.id,
         email: usuario.email,
-        emailVerified: usuario.emailVerificado,
+        emailVerified: verification.emailVerificado,
         accountStatus: usuario.status,
         hasValidToken,
-        tokenExpiration: usuario.emailVerificationTokenExp,
+        tokenExpiration: verification.emailVerificationTokenExp,
+        emailVerification: {
+          verified: verification.emailVerificado,
+          verifiedAt: verification.emailVerificadoEm,
+          tokenExpiration: verification.emailVerificationTokenExp,
+          attempts: verification.emailVerificationAttempts,
+          lastAttemptAt: verification.ultimaTentativaVerificacao,
+        },
       },
     });
   } catch (error) {

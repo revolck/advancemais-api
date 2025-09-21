@@ -3,6 +3,10 @@ import { EmailService } from '../services/email-service';
 import { prisma } from '../../../config/prisma';
 import { BrevoConfigManager } from '../config/brevo-config';
 import { logger } from '../../../utils/logger';
+import {
+  emailVerificationSelect,
+  normalizeEmailVerification,
+} from '@/modules/usuarios/utils/email-verification';
 
 /**
  * Controller para verificação de email
@@ -140,8 +144,10 @@ export class EmailVerificationController {
           email: true,
           nomeCompleto: true,
           tipoUsuario: true,
-          emailVerificado: true,
           status: true,
+          emailVerification: {
+            select: emailVerificationSelect,
+          },
         },
       });
 
@@ -154,7 +160,9 @@ export class EmailVerificationController {
         return;
       }
 
-      if (usuario.emailVerificado) {
+      const verification = normalizeEmailVerification(usuario.emailVerification);
+
+      if (verification.emailVerificado) {
         res.status(400).json({
           success: false,
           message: 'Este email já foi verificado',
@@ -232,9 +240,10 @@ export class EmailVerificationController {
         select: {
           id: true,
           email: true,
-          emailVerificado: true,
           status: true,
-          emailVerificationTokenExp: true,
+          emailVerification: {
+            select: emailVerificationSelect,
+          },
         },
       });
 
@@ -247,8 +256,10 @@ export class EmailVerificationController {
         return;
       }
 
-      const hasValidToken = usuario.emailVerificationTokenExp
-        ? usuario.emailVerificationTokenExp > new Date()
+      const verification = normalizeEmailVerification(usuario.emailVerification);
+
+      const hasValidToken = verification.emailVerificationTokenExp
+        ? verification.emailVerificationTokenExp > new Date()
         : false;
 
       res.json({
@@ -256,10 +267,17 @@ export class EmailVerificationController {
         data: {
           userId: usuario.id,
           email: usuario.email,
-          emailVerified: usuario.emailVerificado,
+          emailVerified: verification.emailVerificado,
           accountStatus: usuario.status,
           hasValidToken,
-          tokenExpiration: usuario.emailVerificationTokenExp,
+          tokenExpiration: verification.emailVerificationTokenExp,
+          emailVerification: {
+            verified: verification.emailVerificado,
+            verifiedAt: verification.emailVerificadoEm,
+            tokenExpiration: verification.emailVerificationTokenExp,
+            attempts: verification.emailVerificationAttempts,
+            lastAttemptAt: verification.ultimaTentativaVerificacao,
+          },
         },
       });
     } catch (error) {

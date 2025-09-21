@@ -11,6 +11,11 @@ import { formatZodErrors, loginSchema } from '../validators/auth.schema';
 import { attachEnderecoResumo, normalizeUsuarioEnderecos, UsuarioEnderecoDto } from '../utils/address';
 import { mapSocialLinks, usuarioRedesSociaisSelect } from '../utils/social-links';
 import type { UsuarioSocialLinks } from '../utils/types';
+import {
+  buildEmailVerificationSummary,
+  emailVerificationSelect,
+  normalizeEmailVerification,
+} from '../utils/email-verification';
 
 /**
  * Controllers para autenticação e gestão de usuários
@@ -64,6 +69,7 @@ interface UsuarioPerfil {
   avatarUrl: string | null;
   descricao: string | null;
   codUsuario: string;
+  emailVerification: ReturnType<typeof buildEmailVerificationSummary>;
   enderecos: UsuarioEnderecoDto[];
   redesSociais: UsuarioSocialLinks | null;
 }
@@ -71,6 +77,8 @@ interface UsuarioPerfil {
 const USER_PROFILE_CACHE_TTL = 300;
 
 const reviveUsuario = (usuario: UsuarioPerfil): UsuarioPerfil => {
+  const emailVerificationSummary =
+    usuario.emailVerification ?? buildEmailVerificationSummary();
   const enderecos = normalizeUsuarioEnderecos(usuario.enderecos);
   const [principal] = enderecos;
 
@@ -82,6 +90,18 @@ const reviveUsuario = (usuario: UsuarioPerfil): UsuarioPerfil => {
     emailVerificadoEm: usuario.emailVerificadoEm ? new Date(usuario.emailVerificadoEm) : null,
     ultimoLogin: usuario.ultimoLogin ? new Date(usuario.ultimoLogin) : null,
     dataNasc: usuario.dataNasc ? new Date(usuario.dataNasc) : null,
+    emailVerification: {
+      ...emailVerificationSummary,
+      verifiedAt: emailVerificationSummary.verifiedAt
+        ? new Date(emailVerificationSummary.verifiedAt)
+        : null,
+      tokenExpiration: emailVerificationSummary.tokenExpiration
+        ? new Date(emailVerificationSummary.tokenExpiration)
+        : null,
+      lastAttemptAt: emailVerificationSummary.lastAttemptAt
+        ? new Date(emailVerificationSummary.lastAttemptAt)
+        : null,
+    },
     enderecos,
     cidade: principal?.cidade ?? null,
     estado: principal?.estado ?? null,
@@ -96,8 +116,9 @@ const buildProfileStats = (usuario: UsuarioPerfil) => ({
   totalOrders: 0,
   totalSubscriptions: 0,
   emailVerificationStatus: {
-    verified: usuario.emailVerificado,
-    verifiedAt: usuario.emailVerificadoEm,
+    verified: usuario.emailVerification.verified,
+    verifiedAt: usuario.emailVerification.verifiedAt,
+    tokenExpiration: usuario.emailVerification.tokenExpiration,
   },
 });
 
@@ -169,8 +190,6 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
         status: true,
         tipoUsuario: true,
         supabaseId: true,
-        emailVerificado: true, // CAMPO CRÍTICO PARA VERIFICAÇÃO
-        emailVerificadoEm: true,
         ultimoLogin: true,
         criadoEm: true,
         avatarUrl: true,
@@ -188,6 +207,9 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
             estado: true,
             cep: true,
           },
+        },
+        emailVerification: {
+          select: emailVerificationSelect,
         },
       },
     });
@@ -208,7 +230,14 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
       });
     }
 
-    const usuario = attachEnderecoResumo(usuarioRecord);
+    const { emailVerification, ...usuarioSemVerificacao } = usuarioRecord;
+    const verification = normalizeEmailVerification(emailVerification);
+    const usuario = attachEnderecoResumo({
+      ...usuarioSemVerificacao,
+      emailVerificado: verification.emailVerificado,
+      emailVerificadoEm: verification.emailVerificadoEm,
+      emailVerification: buildEmailVerificationSummary(emailVerification),
+    });
     if (!usuario) {
       log.error({ documento: campoBusca }, '❌ Falha ao montar dados do usuário');
       return res.status(500).json({
@@ -308,6 +337,7 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
       supabaseId: usuario.supabaseId,
       emailVerificado: usuario.emailVerificado,
       emailVerificadoEm: usuario.emailVerificadoEm,
+      emailVerification: usuario.emailVerification,
       ultimoLogin: new Date().toISOString(),
       codUsuario: usuario.codUsuario,
       cidade: usuario.cidade,
@@ -444,7 +474,6 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
         avatarUrl: true,
         descricao: true,
         ...usuarioRedesSociaisSelect,
-        emailVerificado: true,
         ultimoLogin: true,
         enderecos: {
           orderBy: { criadoEm: 'asc' },
@@ -457,6 +486,9 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
             estado: true,
             cep: true,
           },
+        },
+        emailVerification: {
+          select: emailVerificationSelect,
         },
       },
     });
@@ -471,7 +503,14 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       });
     }
 
-    const usuario = attachEnderecoResumo(usuarioRecord);
+    const { emailVerification, ...usuarioSemVerificacao } = usuarioRecord;
+    const verification = normalizeEmailVerification(emailVerification);
+    const usuario = attachEnderecoResumo({
+      ...usuarioSemVerificacao,
+      emailVerificado: verification.emailVerificado,
+      emailVerificadoEm: verification.emailVerificadoEm,
+      emailVerification: buildEmailVerificationSummary(emailVerification),
+    });
     if (!usuario) {
       log.error({ refreshTokenPrefix: refreshToken.substring(0, 10) }, '❌ Falha ao reconstruir usuário no refresh token');
       return res.status(500).json({
@@ -635,8 +674,6 @@ export const obterPerfil = async (req: Request, res: Response, next: NextFunctio
         status: true,
         tipoUsuario: true,
         supabaseId: true,
-        emailVerificado: true,
-        emailVerificadoEm: true,
         ultimoLogin: true,
         criadoEm: true,
         atualizadoEm: true,
@@ -656,11 +693,25 @@ export const obterPerfil = async (req: Request, res: Response, next: NextFunctio
             cep: true,
           },
         },
+        emailVerification: {
+          select: emailVerificationSelect,
+        },
         // Estatísticas de pagamentos removidas
       },
     });
 
-    const usuario = attachEnderecoResumo(usuarioDb) as UsuarioPerfil | null;
+    const { emailVerification, ...usuarioSemVerificacao } = usuarioDb ?? {};
+    const verification = normalizeEmailVerification(emailVerification);
+    const usuario = attachEnderecoResumo(
+      usuarioDb
+        ? {
+            ...usuarioSemVerificacao,
+            emailVerificado: verification.emailVerificado,
+            emailVerificadoEm: verification.emailVerificadoEm,
+            emailVerification: buildEmailVerificationSummary(emailVerification),
+          }
+        : null,
+    ) as UsuarioPerfil | null;
 
     if (!usuario) {
       log.warn({ userId }, '⚠️ Usuário não encontrado ao obter perfil');

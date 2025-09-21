@@ -32,14 +32,6 @@ model Usuarios {
   ultimoLogin   DateTime?
   refreshToken  String?
 
-  // CAMPOS PARA VERIFICAÇÃO DE EMAIL (NOVOS)
-  emailVerificado            Boolean   @default(false)
-  emailVerificadoEm          DateTime?
-  emailVerificationToken     String?   @unique
-  emailVerificationTokenExp  DateTime?
-  emailVerificationAttempts  Int       @default(0)
-  ultimaTentativaVerificacao DateTime?
-
   // RELACIONAMENTOS EXISTENTES
   enderecos            UsuariosEnderecos[]
   vagasCriadas         EmpresasVagas[]    @relation("UsuarioVagas")
@@ -48,12 +40,27 @@ model Usuarios {
   banimentosAplicados  EmpresasEmBanimentos[] @relation("EmpresasEmBanimentosAdmin")
   redesSociais         UsuariosRedesSociais?
   recuperacaoSenha     UsuariosRecuperacaoSenha?
+  emailVerification    UsuariosVerificacaoEmail?
 
-  @@index([emailVerificationToken])
   @@index([status])
   @@index([role])
   @@index([tipoUsuario])
   @@index([criadoEm])
+}
+
+model UsuariosVerificacaoEmail {
+  usuarioId                  String   @id
+  emailVerificado            Boolean  @default(false)
+  emailVerificadoEm          DateTime?
+  emailVerificationToken     String?  @unique
+  emailVerificationTokenExp  DateTime?
+  emailVerificationAttempts  Int      @default(0)
+  ultimaTentativaVerificacao DateTime?
+
+  usuario Usuarios @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([emailVerificationToken])
+  @@index([emailVerificationTokenExp])
 }
 
 model UsuariosRecuperacaoSenha {

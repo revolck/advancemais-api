@@ -7,7 +7,9 @@ import { Roles } from '@/modules/usuarios/enums/Roles';
 import { vagasService } from '@/modules/empresas/vagas/services/vagas.service';
 import {
   EmpresaSemPlanoAtivoError,
+  LimiteVagasDestaqueAtingidoError,
   LimiteVagasPlanoAtingidoError,
+  PlanoNaoPermiteVagaDestaqueError,
 } from '@/modules/empresas/vagas/services/errors';
 import { createVagaSchema, updateVagaSchema } from '@/modules/empresas/vagas/validators/vagas.schema';
 
@@ -178,6 +180,23 @@ export class VagasController {
         });
       }
 
+      if (error instanceof PlanoNaoPermiteVagaDestaqueError) {
+        return res.status(403).json({
+          success: false,
+          code: error.code,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof LimiteVagasDestaqueAtingidoError) {
+        return res.status(409).json({
+          success: false,
+          code: error.code,
+          message: error.message,
+          limite: error.limite,
+        });
+      }
+
       res.status(500).json({
         success: false,
         code: 'VAGAS_CREATE_ERROR',
@@ -226,6 +245,31 @@ export class VagasController {
           success: false,
           code: 'VAGA_NOT_FOUND',
           message: 'Vaga não encontrada',
+        });
+      }
+
+      if (error instanceof EmpresaSemPlanoAtivoError) {
+        return res.status(403).json({
+          success: false,
+          code: error.code,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof PlanoNaoPermiteVagaDestaqueError) {
+        return res.status(403).json({
+          success: false,
+          code: error.code,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof LimiteVagasDestaqueAtingidoError) {
+        return res.status(409).json({
+          success: false,
+          code: error.code,
+          message: error.message,
+          limite: error.limite,
         });
       }
 

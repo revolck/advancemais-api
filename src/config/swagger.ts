@@ -3632,6 +3632,35 @@ const options: Options = {
             limite: { type: 'integer', example: 10 },
           },
         },
+        PlanoClienteLimiteVagasDestaqueResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: false },
+            code: {
+              type: 'string',
+              example: 'PLANO_EMPRESARIAL_LIMIT_DESTAQUE',
+            },
+            message: {
+              type: 'string',
+              example: 'O limite de vagas em destaque do plano foi atingido.',
+            },
+            limite: { type: 'integer', example: 3 },
+          },
+        },
+        PlanoSemRecursoDestaqueResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: false },
+            code: {
+              type: 'string',
+              example: 'PLANO_EMPRESARIAL_SEM_DESTAQUE',
+            },
+            message: {
+              type: 'string',
+              example: 'O plano atual não permite publicar vagas em destaque.',
+            },
+          },
+        },
         StatusDeVagas: {
           type: 'string',
           description:
@@ -4868,6 +4897,8 @@ const options: Options = {
             'atividades',
             'beneficios',
             'salarioConfidencial',
+            'vagaEmDestaque',
+            'destaqueInfo',
           ],
           properties: {
             id: { type: 'string', format: 'uuid', example: 'vaga-uuid' },
@@ -4996,6 +5027,26 @@ const options: Options = {
               example: 1,
               description: 'Limite de candidaturas permitidas por usuário nesta vaga.',
             },
+            vagaEmDestaque: {
+              type: 'boolean',
+              example: true,
+              description: 'Informa se a vaga está utilizando um slot de destaque do plano ativo da empresa.',
+            },
+            destaqueInfo: {
+              type: 'object',
+              nullable: true,
+              description: 'Metadados do vínculo da vaga com o recurso de destaque do plano empresarial.',
+              properties: {
+                empresasPlanoId: {
+                  type: 'string',
+                  format: 'uuid',
+                  example: '8c5e0d56-4f2b-4c8f-9a18-91b3f4d2c7a1',
+                },
+                ativo: { type: 'boolean', example: true },
+                ativadoEm: { type: 'string', format: 'date-time', example: '2024-05-10T09:00:00Z' },
+                desativadoEm: { type: 'string', format: 'date-time', nullable: true, example: null },
+              },
+            },
           },
           example: {
             id: '7a5b9c1d-2f80-44a6-82da-6b8c1f00ec91',
@@ -5032,6 +5083,13 @@ const options: Options = {
             salarioMax: '6500.00',
             salarioConfidencial: false,
             maxCandidaturasPorUsuario: 1,
+            vagaEmDestaque: true,
+            destaqueInfo: {
+              empresasPlanoId: '8c5e0d56-4f2b-4c8f-9a18-91b3f4d2c7a1',
+              ativo: true,
+              ativadoEm: '2024-05-10T09:00:00Z',
+              desativadoEm: null,
+            },
           },
         },
         AdminEmpresasVagasResponse: {
@@ -5080,6 +5138,13 @@ const options: Options = {
                 salarioMax: '6500.00',
                 salarioConfidencial: false,
                 maxCandidaturasPorUsuario: 1,
+                vagaEmDestaque: true,
+                destaqueInfo: {
+                  empresasPlanoId: '8c5e0d56-4f2b-4c8f-9a18-91b3f4d2c7a1',
+                  ativo: true,
+                  ativadoEm: '2024-05-10T09:00:00Z',
+                  desativadoEm: null,
+                },
               },
             ],
             pagination: {
@@ -5131,6 +5196,13 @@ const options: Options = {
               salarioMax: '6500.00',
               salarioConfidencial: false,
               maxCandidaturasPorUsuario: 1,
+              vagaEmDestaque: true,
+              destaqueInfo: {
+                empresasPlanoId: '8c5e0d56-4f2b-4c8f-9a18-91b3f4d2c7a1',
+                ativo: true,
+                ativadoEm: '2024-05-10T09:00:00Z',
+                desativadoEm: null,
+              },
             },
           },
         },
@@ -5382,6 +5454,12 @@ const options: Options = {
               description: 'Nome da vaga que será exibido nos portais e dashboards administrativos.',
             },
             paraPcd: { type: 'boolean', example: false },
+            vagaEmDestaque: {
+              type: 'boolean',
+              example: false,
+              description:
+                'Quando verdadeiro, reserva um slot de destaque do plano ativo da empresa (requer plano com recurso habilitado).',
+            },
             numeroVagas: {
               type: 'integer',
               minimum: 1,
@@ -5535,6 +5613,11 @@ const options: Options = {
               example: 'gerente-operacoes-rio-de-janeiro',
             },
             paraPcd: { type: 'boolean', example: true },
+            vagaEmDestaque: {
+              type: 'boolean',
+              description: 'Ativa ou remove o destaque da vaga conforme as regras do plano ativo.',
+              example: true,
+            },
             numeroVagas: { type: 'integer', minimum: 1, example: 3 },
             descricao: {
               type: 'string',

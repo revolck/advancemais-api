@@ -48,6 +48,26 @@ const pessoaJuridicaRegisterSchema = baseRegisterSchema.extend({
 
 export const registerSchema = z.union([pessoaFisicaRegisterSchema, pessoaJuridicaRegisterSchema]);
 
+const adminBaseRegisterSchema = baseRegisterSchema.extend({
+  aceitarTermos: baseRegisterSchema.shape.aceitarTermos.optional().default(true),
+  supabaseId: baseRegisterSchema.shape.supabaseId.optional(),
+  status: z.nativeEnum(Status).optional(),
+});
+
+const adminPessoaFisicaSchema = adminBaseRegisterSchema.extend({
+  tipoUsuario: z.literal(TiposDeUsuarios.PESSOA_FISICA),
+  cpf: z.string({ required_error: 'CPF é obrigatório' }).min(1, 'CPF é obrigatório'),
+  dataNasc: z.string().optional(),
+  genero: z.string().optional(),
+});
+
+const adminPessoaJuridicaSchema = adminBaseRegisterSchema.extend({
+  tipoUsuario: z.literal(TiposDeUsuarios.PESSOA_JURIDICA),
+  cnpj: z.string({ required_error: 'CNPJ é obrigatório' }).min(1, 'CNPJ é obrigatório'),
+});
+
+export const adminCreateUserSchema = z.union([adminPessoaFisicaSchema, adminPessoaJuridicaSchema]);
+
 export const updateStatusSchema = z.object({
   status: z.nativeEnum(Status, {
     required_error: 'Status é obrigatório',
@@ -70,6 +90,7 @@ export type RegisterPessoaFisicaInput = z.infer<typeof pessoaFisicaRegisterSchem
 export type RegisterPessoaJuridicaInput = z.infer<typeof pessoaJuridicaRegisterSchema>;
 export type UpdateStatusInput = z.infer<typeof updateStatusSchema>;
 export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
+export type AdminCreateUserInput = z.infer<typeof adminCreateUserSchema>;
 
 export const formatZodErrors = (error: ZodError) =>
   error.issues.map((issue) => ({

@@ -4,6 +4,10 @@ import { BrevoConfigManager } from '../config/brevo-config';
 import { EmailTemplates } from '../templates/email-templates';
 import { prisma } from '../../../config/prisma';
 import { invalidateUserCache } from '../../usuarios/utils/cache';
+import {
+  emailVerificationSelect,
+  normalizeEmailVerification,
+} from '@/modules/usuarios/utils/email-verification';
 import { logger } from '@/utils/logger';
 
 /**
@@ -67,14 +71,21 @@ export class EmailVerificationService {
       // Verifica se usuário já está verificado
       const usuario = await prisma.usuarios.findUnique({
         where: { id: userData.id },
-        select: { emailVerificado: true, email: true },
+        select: {
+          email: true,
+          emailVerification: {
+            select: emailVerificationSelect,
+          },
+        },
       });
 
       if (!usuario) {
         throw new Error('Usuário não encontrado');
       }
 
-      if (usuario.emailVerificado) {
+      const verification = normalizeEmailVerification(usuario.emailVerification);
+
+      if (verification.emailVerificado) {
         log.info('ℹ️ Email já verificado');
         return { success: true, simulated: true };
       }
@@ -167,8 +178,10 @@ export class EmailVerificationService {
           email: true,
           nomeCompleto: true,
           tipoUsuario: true,
-          emailVerificado: true,
           status: true,
+          emailVerification: {
+            select: emailVerificationSelect,
+          },
         },
       });
 
@@ -176,7 +189,9 @@ export class EmailVerificationService {
         return { success: false, error: 'Usuário não encontrado' };
       }
 
-      if (usuario.emailVerificado) {
+      const verification = normalizeEmailVerification(usuario.emailVerification);
+
+      if (verification.emailVerificado) {
         return { success: false, error: 'Email já verificado' };
       }
 
@@ -209,49 +224,65 @@ export class EmailVerificationService {
       });
       log.info('🔍 Verificando token');
 
-      const usuario = await prisma.usuarios.findFirst({
+      const verification = await prisma.usuariosVerificacaoEmail.findFirst({
         where: { emailVerificationToken: token },
-        select: {
-          id: true,
-          email: true,
-          emailVerificado: true,
-          emailVerificationTokenExp: true,
+        include: {
+          usuario: {
+            select: {
+              id: true,
+              email: true,
+              status: true,
+            },
+          },
         },
       });
 
-      if (!usuario) {
+      if (!verification || !verification.usuario) {
         return { valid: false, error: 'Token inválido' };
       }
 
-      if (usuario.emailVerificado) {
-        return { valid: false, alreadyVerified: true, userId: usuario.id };
+      const normalized = normalizeEmailVerification(verification);
+
+      if (normalized.emailVerificado) {
+        return { valid: false, alreadyVerified: true, userId: verification.usuario.id };
       }
 
-      if (usuario.emailVerificationTokenExp && usuario.emailVerificationTokenExp < new Date()) {
-        await prisma.usuarios.delete({ where: { id: usuario.id } });
+      if (
+        normalized.emailVerificationTokenExp &&
+        normalized.emailVerificationTokenExp < new Date()
+      ) {
+        await prisma.usuarios.delete({ where: { id: verification.usuarioId } });
         return {
           valid: false,
           expired: true,
-          userId: usuario.id,
+          userId: verification.usuarioId,
           deleted: true,
         };
       }
 
       // Token válido - marca como verificado
-      await prisma.usuarios.update({
-        where: { id: usuario.id },
-        data: {
-          emailVerificado: true,
-          emailVerificationToken: null,
-          emailVerificationTokenExp: null,
-          status: 'ATIVO',
-        },
-      });
+      await prisma.$transaction([
+        prisma.usuariosVerificacaoEmail.update({
+          where: { usuarioId: verification.usuarioId },
+          data: {
+            emailVerificado: true,
+            emailVerificadoEm: new Date(),
+            emailVerificationToken: null,
+            emailVerificationTokenExp: null,
+          },
+        }),
+        prisma.usuarios.update({
+          where: { id: verification.usuarioId },
+          data: {
+            status: 'ATIVO',
+          },
+        }),
+      ]);
 
-      await invalidateUserCache(usuario);
+      await invalidateUserCache({ id: verification.usuarioId });
 
-      log.info({ userId: usuario.id }, '✅ Email verificado com sucesso');
-      return { valid: true, userId: usuario.id };
+      log.info({ userId: verification.usuarioId }, '✅ Email verificado com sucesso');
+      return { valid: true, userId: verification.usuarioId };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
       this.log.error({ error: errorMsg }, '❌ Erro na verificação de token');
@@ -316,13 +347,30 @@ export class EmailVerificationService {
     correlationId: string,
   ): Promise<void> {
     try {
-      await prisma.usuarios.update({
-        where: { id: userId },
-        data: {
-          emailVerificationToken: token,
-          emailVerificationTokenExp: expiration,
-        },
-      });
+      await prisma.$transaction([
+        prisma.usuariosVerificacaoEmail.upsert({
+          where: { usuarioId: userId },
+          update: {
+            emailVerificado: false,
+            emailVerificationToken: token,
+            emailVerificationTokenExp: expiration,
+            emailVerificationAttempts: { increment: 1 },
+            ultimaTentativaVerificacao: new Date(),
+          },
+          create: {
+            usuarioId: userId,
+            emailVerificado: false,
+            emailVerificationToken: token,
+            emailVerificationTokenExp: expiration,
+            emailVerificationAttempts: 1,
+            ultimaTentativaVerificacao: new Date(),
+          },
+        }),
+        prisma.usuarios.update({
+          where: { id: userId },
+          data: { status: 'PENDENTE' },
+        }),
+      ]);
 
       await invalidateUserCache({ id: userId });
 

@@ -215,22 +215,30 @@ enum AcoesDeLogDeBanimento {
 model EmpresasVagas {
   id               String         @id @default(uuid())
   codigo           String         @unique @db.VarChar(6)
+  slug             String         @unique @db.VarChar(120)
   usuarioId        String
   modoAnonimo      Boolean        @default(false)
   regimeDeTrabalho RegimesDeTrabalhos
   modalidade       ModalidadesDeVagas
   titulo           String         @db.VarChar(255)
   paraPcd          Boolean        @default(false)
-  requisitos       String         @db.Text
-  atividades       String         @db.Text
-  beneficios       String         @db.Text
+  numeroVagas      Int            @default(1)
+  descricao        String?        @db.Text
+  requisitos       Json
+  atividades       Json
+  beneficios       Json
   observacoes      String?        @db.Text
-  jornada          Jornadas
+  jornada          Jornadas       @default(INTEGRAL)
   senioridade      Senioridade    @default(ABERTO)
   inscricoesAte    DateTime?
   inseridaEm       DateTime       @default(now())
   atualizadoEm     DateTime       @updatedAt
   status           StatusDeVagas @default(RASCUNHO)
+  localizacao      Json?
+  salarioMin       Decimal?       @db.Decimal(12, 2)
+  salarioMax       Decimal?       @db.Decimal(12, 2)
+  salarioConfidencial Boolean     @default(true)
+  maxCandidaturasPorUsuario Int?
 
   empresa Usuarios @relation("UsuarioVagas", fields: [usuarioId], references: [id], onDelete: Cascade)
 
@@ -355,6 +363,7 @@ model UsuariosEnderecos {
   atualizadoEm DateTime @updatedAt
   usuario      Usuarios @relation(fields: [usuarioId], references: [id])
 }
+
 
 model LogEmail {
   id           String      @id @default(uuid())

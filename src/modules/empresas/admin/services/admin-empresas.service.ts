@@ -8,6 +8,7 @@ import {
   ModalidadesDeVagas,
   MotivosDeBanimentos,
   Prisma,
+  Jornadas,
   Roles,
   RegimesDeTrabalhos,
   Senioridade,
@@ -290,6 +291,7 @@ type AdminEmpresaPaymentLog = {
 type AdminEmpresaJobResumo = {
   id: string;
   codigo: string;
+  slug: string;
   titulo: string;
   status: StatusDeVagas;
   inseridaEm: Date;
@@ -300,6 +302,18 @@ type AdminEmpresaJobResumo = {
   regimeDeTrabalho: RegimesDeTrabalhos;
   paraPcd: boolean;
   senioridade: Senioridade;
+  numeroVagas: number;
+  descricao: string | null;
+  jornada: Jornadas;
+  requisitos: Prisma.JsonValue;
+  atividades: Prisma.JsonValue;
+  beneficios: Prisma.JsonValue;
+  observacoes: string | null;
+  localizacao: Prisma.JsonValue | null;
+  salarioMin: Prisma.Decimal | null;
+  salarioMax: Prisma.Decimal | null;
+  salarioConfidencial: boolean;
+  maxCandidaturasPorUsuario: number | null;
 };
 
 type AdminEmpresaDetail = {
@@ -1034,6 +1048,7 @@ export const adminEmpresasService = {
         select: {
           id: true,
           codigo: true,
+          slug: true,
           titulo: true,
           status: true,
           inseridaEm: true,
@@ -1044,6 +1059,18 @@ export const adminEmpresasService = {
           regimeDeTrabalho: true,
           paraPcd: true,
           senioridade: true,
+          numeroVagas: true,
+          descricao: true,
+          jornada: true,
+          requisitos: true,
+          atividades: true,
+          beneficios: true,
+          observacoes: true,
+          localizacao: true,
+          salarioMin: true,
+          salarioMax: true,
+          salarioConfidencial: true,
+          maxCandidaturasPorUsuario: true,
         },
       }),
     ]);
@@ -1051,6 +1078,7 @@ export const adminEmpresasService = {
     const data: AdminEmpresaJobResumo[] = vagas.map((vaga) => ({
       id: vaga.id,
       codigo: vaga.codigo,
+      slug: vaga.slug,
       titulo: vaga.titulo,
       status: vaga.status,
       inseridaEm: vaga.inseridaEm,
@@ -1061,6 +1089,18 @@ export const adminEmpresasService = {
       regimeDeTrabalho: vaga.regimeDeTrabalho,
       paraPcd: vaga.paraPcd,
       senioridade: vaga.senioridade,
+      numeroVagas: vaga.numeroVagas,
+      descricao: vaga.descricao ?? null,
+      jornada: vaga.jornada,
+      requisitos: vaga.requisitos,
+      atividades: vaga.atividades,
+      beneficios: vaga.beneficios,
+      observacoes: vaga.observacoes ?? null,
+      localizacao: vaga.localizacao ?? null,
+      salarioMin: vaga.salarioMin ?? null,
+      salarioMax: vaga.salarioMax ?? null,
+      salarioConfidencial: vaga.salarioConfidencial,
+      maxCandidaturasPorUsuario: vaga.maxCandidaturasPorUsuario ?? null,
     }));
 
     return {
@@ -1104,6 +1144,7 @@ export const adminEmpresasService = {
         select: {
           id: true,
           codigo: true,
+          slug: true,
           titulo: true,
           status: true,
           inseridaEm: true,
@@ -1114,6 +1155,18 @@ export const adminEmpresasService = {
           regimeDeTrabalho: true,
           paraPcd: true,
           senioridade: true,
+          numeroVagas: true,
+          descricao: true,
+          jornada: true,
+          requisitos: true,
+          atividades: true,
+          beneficios: true,
+          observacoes: true,
+          localizacao: true,
+          salarioMin: true,
+          salarioMax: true,
+          salarioConfidencial: true,
+          maxCandidaturasPorUsuario: true,
         },
       });
     });
@@ -1121,6 +1174,7 @@ export const adminEmpresasService = {
     return {
       id: vaga.id,
       codigo: vaga.codigo,
+      slug: vaga.slug,
       titulo: vaga.titulo,
       status: vaga.status,
       inseridaEm: vaga.inseridaEm,
@@ -1131,6 +1185,18 @@ export const adminEmpresasService = {
       regimeDeTrabalho: vaga.regimeDeTrabalho,
       paraPcd: vaga.paraPcd,
       senioridade: vaga.senioridade,
+      numeroVagas: vaga.numeroVagas,
+      descricao: vaga.descricao ?? null,
+      jornada: vaga.jornada,
+      requisitos: vaga.requisitos,
+      atividades: vaga.atividades,
+      beneficios: vaga.beneficios,
+      observacoes: vaga.observacoes ?? null,
+      localizacao: vaga.localizacao ?? null,
+      salarioMin: vaga.salarioMin ?? null,
+      salarioMax: vaga.salarioMax ?? null,
+      salarioConfidencial: vaga.salarioConfidencial,
+      maxCandidaturasPorUsuario: vaga.maxCandidaturasPorUsuario ?? null,
     } satisfies AdminEmpresaJobResumo;
   },
 

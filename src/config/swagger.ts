@@ -1454,6 +1454,7 @@ const options: Options = {
         },
         CandidatoAreaInteresse: {
           type: 'object',
+          description: 'Representa um registro da tabela CandidatosAreasInteresse utilizando a nomenclatura padrão do schema Prisma.',
           properties: {
             id: { type: 'integer', example: 1 },
             categoria: {
@@ -1481,6 +1482,7 @@ const options: Options = {
         },
         CandidatoAreaInteresseCreateInput: {
           type: 'object',
+          description: 'Payload para criação de registros em CandidatosAreasInteresse e suas subáreas relacionadas.',
           required: ['categoria', 'subareas'],
           properties: {
             categoria: {
@@ -1501,6 +1503,7 @@ const options: Options = {
         },
         CandidatoAreaInteresseUpdateInput: {
           type: 'object',
+          description: 'Payload para atualização de registros em CandidatosAreasInteresse mantendo a convenção padrão de nomes.',
           properties: {
             categoria: {
               type: 'string',

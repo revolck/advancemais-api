@@ -5,6 +5,10 @@ import { prisma } from '../../../config/prisma';
 import { brevoConfig } from '../../../config/env';
 import { invalidateUserCache } from '../../usuarios/utils/cache';
 import { logger } from '@/utils/logger';
+import {
+  emailVerificationSelect,
+  normalizeEmailVerification,
+} from '@/modules/usuarios/utils/email-verification';
 
 export interface EmailResult {
   success: boolean;
@@ -124,14 +128,21 @@ export class EmailService {
     try {
       const usuarioExiste = await prisma.usuarios.findUnique({
         where: { id: userData.id },
-        select: { id: true, emailVerificado: true },
+        select: {
+          id: true,
+          emailVerification: {
+            select: emailVerificationSelect,
+          },
+        },
       });
 
       if (!usuarioExiste) {
         throw new Error(`Usuário ${userData.id} não encontrado`);
       }
 
-      if (usuarioExiste.emailVerificado) {
+      const verification = normalizeEmailVerification(usuarioExiste.emailVerification);
+
+      if (verification.emailVerificado) {
         return { success: true, simulated: true };
       }
 
@@ -305,42 +316,56 @@ export class EmailService {
 
   public async verifyEmailToken(token: string) {
     try {
-      const usuario = await prisma.usuarios.findFirst({
+      const verification = await prisma.usuariosVerificacaoEmail.findFirst({
         where: { emailVerificationToken: token },
-        select: {
-          id: true,
-          email: true,
-          emailVerificado: true,
-          emailVerificationTokenExp: true,
+        include: {
+          usuario: {
+            select: {
+              id: true,
+              email: true,
+              status: true,
+            },
+          },
         },
       });
 
-      if (!usuario) {
+      if (!verification || !verification.usuario) {
         return { valid: false, error: 'Token inválido' };
       }
 
-      if (usuario.emailVerificado) {
-        return { valid: false, alreadyVerified: true, userId: usuario.id };
+      const normalized = normalizeEmailVerification(verification);
+
+      if (normalized.emailVerificado) {
+        return { valid: false, alreadyVerified: true, userId: verification.usuario.id };
       }
 
-      if (usuario.emailVerificationTokenExp && usuario.emailVerificationTokenExp < new Date()) {
-        await prisma.usuarios.delete({ where: { id: usuario.id } });
-        return { valid: false, expired: true, userId: usuario.id, deleted: true };
+      if (
+        normalized.emailVerificationTokenExp &&
+        normalized.emailVerificationTokenExp < new Date()
+      ) {
+        await prisma.usuarios.delete({ where: { id: verification.usuarioId } });
+        return { valid: false, expired: true, userId: verification.usuarioId, deleted: true };
       }
 
-      await prisma.usuarios.update({
-        where: { id: usuario.id },
-        data: {
-          emailVerificado: true,
-          emailVerificationToken: null,
-          emailVerificationTokenExp: null,
-          status: 'ATIVO',
-        },
-      });
+      await prisma.$transaction([
+        prisma.usuariosVerificacaoEmail.update({
+          where: { usuarioId: verification.usuarioId },
+          data: {
+            emailVerificado: true,
+            emailVerificadoEm: new Date(),
+            emailVerificationToken: null,
+            emailVerificationTokenExp: null,
+          },
+        }),
+        prisma.usuarios.update({
+          where: { id: verification.usuarioId },
+          data: { status: 'ATIVO' },
+        }),
+      ]);
 
-      await invalidateUserCache(usuario);
+      await invalidateUserCache({ id: verification.usuarioId });
 
-      return { valid: true, userId: usuario.id };
+      return { valid: true, userId: verification.usuarioId };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
       return { valid: false, error: errorMsg };
@@ -361,14 +386,30 @@ export class EmailService {
     token: string,
     expiration: Date,
   ): Promise<void> {
-    await prisma.usuarios.update({
-      where: { id: userId },
-      data: {
-        emailVerificationToken: token,
-        emailVerificationTokenExp: expiration,
-        status: 'PENDENTE',
-      },
-    });
+    await prisma.$transaction([
+      prisma.usuariosVerificacaoEmail.upsert({
+        where: { usuarioId: userId },
+        update: {
+          emailVerificado: false,
+          emailVerificationToken: token,
+          emailVerificationTokenExp: expiration,
+          emailVerificationAttempts: { increment: 1 },
+          ultimaTentativaVerificacao: new Date(),
+        },
+        create: {
+          usuarioId: userId,
+          emailVerificado: false,
+          emailVerificationToken: token,
+          emailVerificationTokenExp: expiration,
+          emailVerificationAttempts: 1,
+          ultimaTentativaVerificacao: new Date(),
+        },
+      }),
+      prisma.usuarios.update({
+        where: { id: userId },
+        data: { status: 'PENDENTE' },
+      }),
+    ]);
 
     await invalidateUserCache({ id: userId });
   }

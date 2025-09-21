@@ -598,6 +598,13 @@ router.post(
  *               tipoUsuario: "PESSOA_FISICA"
  *               supabaseId: "uuid-supabase"
  *               emailVerificado: true
+  *               emailVerificadoEm: "2024-01-01T12:00:00Z"
+  *               emailVerification:
+  *                 verified: true
+  *                 verifiedAt: "2024-01-01T12:00:00Z"
+  *                 tokenExpiration: "2024-01-02T12:00:00Z"
+  *                 attempts: 1
+  *                 lastAttemptAt: "2024-01-01T12:30:00Z"
  *               ultimoLogin: "2024-01-01T12:00:00Z"
  *       401:
  *         description: Não autenticado

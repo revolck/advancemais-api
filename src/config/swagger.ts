@@ -536,6 +536,38 @@ const options: Options = {
             },
             supabaseId: { type: 'string', example: 'uuid-supabase' },
             emailVerificado: { type: 'boolean', example: true },
+            emailVerificadoEm: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              example: '2024-01-01T12:00:00Z',
+            },
+            emailVerification: {
+              type: 'object',
+              description: 'Detalhes completos da verificação de email',
+              properties: {
+                verified: { type: 'boolean', example: true },
+                verifiedAt: {
+                  type: 'string',
+                  format: 'date-time',
+                  nullable: true,
+                  example: '2024-01-01T12:00:00Z',
+                },
+                tokenExpiration: {
+                  type: 'string',
+                  format: 'date-time',
+                  nullable: true,
+                  example: '2024-01-02T12:00:00Z',
+                },
+                attempts: { type: 'integer', example: 2 },
+                lastAttemptAt: {
+                  type: 'string',
+                  format: 'date-time',
+                  nullable: true,
+                  example: '2024-01-01T13:00:00Z',
+                },
+              },
+            },
             ultimoLogin: {
               type: 'string',
               format: 'date-time',
@@ -743,6 +775,32 @@ const options: Options = {
                   type: 'string',
                   format: 'date-time',
                   example: '2024-01-01T12:00:00Z',
+                },
+                emailVerification: {
+                  type: 'object',
+                  description: 'Informações detalhadas de verificação',
+                  properties: {
+                    verified: { type: 'boolean', example: false },
+                    verifiedAt: {
+                      type: 'string',
+                      format: 'date-time',
+                      nullable: true,
+                      example: null,
+                    },
+                    tokenExpiration: {
+                      type: 'string',
+                      format: 'date-time',
+                      nullable: true,
+                      example: '2024-01-01T12:00:00Z',
+                    },
+                    attempts: { type: 'integer', example: 1 },
+                    lastAttemptAt: {
+                      type: 'string',
+                      format: 'date-time',
+                      nullable: true,
+                      example: '2024-01-01T10:00:00Z',
+                    },
+                  },
                 },
               },
             },

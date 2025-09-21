@@ -1,4 +1,4 @@
-import { WebsiteScriptOrientation, WebsiteStatus } from '@prisma/client';
+import { Prisma, WebsiteScriptOrientation, WebsiteStatus } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
@@ -23,7 +23,7 @@ const selectFields = {
   status: true,
   criadoEm: true,
   atualizadoEm: true,
-} satisfies Parameters<typeof prisma.websiteScript.findMany>[0]['select'];
+} satisfies Prisma.WebsiteScriptSelect;
 
 export const websiteScriptsService = {
   list: async (filters: ListFilters = {}) => {

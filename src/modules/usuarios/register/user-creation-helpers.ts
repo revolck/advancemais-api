@@ -14,6 +14,7 @@ import {
 import { emailVerificationSelect, normalizeEmailVerification } from '../utils/email-verification';
 import { mergeUsuarioInformacoes, usuarioInformacoesSelect } from '../utils/information';
 import {
+  type AdminCreateUserInput,
   type RegisterInput,
   type RegisterPessoaFisicaInput,
   type RegisterPessoaJuridicaInput,
@@ -65,9 +66,18 @@ export interface ProcessUserTypeSpecificDataResult {
   generoValidado?: string;
 }
 
-type CriarPessoaFisicaData = RegisterPessoaFisicaInput;
-type CriarPessoaJuridicaData = RegisterPessoaJuridicaInput;
-type CriarUsuarioData = RegisterInput;
+type AdminPessoaFisicaInput = Extract<
+  AdminCreateUserInput,
+  { tipoUsuario: TiposDeUsuarios.PESSOA_FISICA }
+>;
+type AdminPessoaJuridicaInput = Extract<
+  AdminCreateUserInput,
+  { tipoUsuario: TiposDeUsuarios.PESSOA_JURIDICA }
+>;
+
+type CriarPessoaFisicaData = RegisterPessoaFisicaInput | AdminPessoaFisicaInput;
+type CriarPessoaJuridicaData = RegisterPessoaJuridicaInput | AdminPessoaJuridicaInput;
+type CriarUsuarioData = RegisterInput | AdminCreateUserInput;
 
 const generateCodePrefix = (): string => {
   const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -269,7 +279,7 @@ export interface BuildUserDataForDatabaseParams {
 }
 
 export const buildUserDataForDatabase = (params: BuildUserDataForDatabaseParams) => {
-  const usuario: Prisma.UsuariosCreateInput = {
+  const usuario: Omit<Prisma.UsuariosCreateInput, 'codUsuario'> = {
     nomeCompleto: params.nomeCompleto.trim(),
     email: params.email.toLowerCase().trim(),
     senha: params.senha,

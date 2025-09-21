@@ -5,6 +5,7 @@ import { adminEmpresasService } from '@/modules/empresas/admin/services/admin-em
 import {
   adminEmpresasBanSchema,
   adminEmpresasCreateSchema,
+  adminEmpresasDashboardListQuerySchema,
   adminEmpresasHistoryQuerySchema,
   adminEmpresasIdParamSchema,
   adminEmpresasListQuerySchema,
@@ -150,6 +151,30 @@ export class AdminEmpresasController {
         success: false,
         code: 'ADMIN_EMPRESAS_UPDATE_ERROR',
         message: 'Erro ao atualizar empresa',
+        error: error?.message,
+      });
+    }
+  };
+
+  static listDashboard = async (req: Request, res: Response) => {
+    try {
+      const filters = adminEmpresasDashboardListQuerySchema.parse(req.query);
+      const result = await adminEmpresasService.listDashboard(filters);
+      res.json(result);
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros de busca inválidos',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'ADMIN_EMPRESAS_DASHBOARD_LIST_ERROR',
+        message: 'Erro ao listar empresas para o dashboard',
         error: error?.message,
       });
     }

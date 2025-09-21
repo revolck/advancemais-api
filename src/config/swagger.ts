@@ -3827,7 +3827,7 @@ const options: Options = {
               description: 'Indica se a empresa possui um banimento ativo no momento da consulta',
             },
             banimentoAtivo: {
-              allOf: [{ $ref: '#/components/schemas/AdminEmpresasEmBanimentosResumo' }],
+              allOf: [{ $ref: '#/components/schemas/AdminUsuariosEmBanimentosResumo' }],
               nullable: true,
             },
           },
@@ -4257,7 +4257,7 @@ const options: Options = {
               nullable: true,
             },
             banimentoAtivo: {
-              allOf: [{ $ref: '#/components/schemas/AdminEmpresasEmBanimentosResumo' }],
+              allOf: [{ $ref: '#/components/schemas/AdminUsuariosEmBanimentosResumo' }],
               nullable: true,
             },
             vagas: {
@@ -4402,29 +4402,138 @@ const options: Options = {
             },
           },
         },
-        AdminEmpresasEmBanimentosResumo: {
+        AdminUsuariosBanimentoAlvo: {
           type: 'object',
-          description: 'Informações resumidas sobre um banimento aplicado à empresa',
-          required: ['id', 'dias', 'inicio', 'fim', 'criadoEm'],
+          description: 'Identificação do alvo banido',
+          required: ['tipo', 'id', 'nome', 'role'],
           properties: {
-            id: { type: 'string', format: 'uuid', example: 'ban-uuid' },
+            tipo: {
+              type: 'string',
+              enum: ['EMPRESA', 'USUARIO', 'ESTUDANTE'],
+              example: 'EMPRESA',
+              description: 'Tipo de perfil afetado pelo banimento.',
+            },
+            id: {
+              type: 'string',
+              example: 'cmp_112233',
+              description: 'Identificador do usuário banido no sistema.',
+            },
+            nome: {
+              type: 'string',
+              example: 'Empresa XPTO',
+              description: 'Nome exibido para o alvo do banimento.',
+            },
+            role: {
+              type: 'string',
+              example: 'EMPRESA',
+              description: 'Perfil do usuário (role) no sistema.',
+            },
+          },
+        },
+        AdminUsuariosBanimentoResponsavel: {
+          type: 'object',
+          description: 'Responsável pela aplicação do banimento',
+          required: ['id', 'nome', 'role'],
+          properties: {
+            id: { type: 'string', example: 'adm_002' },
+            nome: { type: 'string', example: 'Carlos Supervisor' },
+            role: { type: 'string', example: 'ADMIN' },
+          },
+        },
+        AdminUsuariosBanimentoDados: {
+          type: 'object',
+          description: 'Detalhes do banimento',
+          required: ['tipo', 'motivo', 'status', 'inicio'],
+          properties: {
+            tipo: {
+              type: 'string',
+              enum: ['TEMPORARIO', 'PERMANENTE', 'RESTRICAO_DE_RECURSO'],
+              example: 'TEMPORARIO',
+            },
             motivo: {
               type: 'string',
-              nullable: true,
-              example: 'Uso indevido da plataforma',
+              enum: ['SPAM', 'VIOLACAO_POLITICAS', 'FRAUDE', 'ABUSO_DE_RECURSOS', 'OUTROS'],
+              example: 'VIOLACAO_POLITICAS',
             },
-            dias: { type: 'integer', example: 30 },
-            inicio: { type: 'string', format: 'date-time', example: '2024-04-01T00:00:00Z' },
-            fim: { type: 'string', format: 'date-time', example: '2024-04-30T23:59:59Z' },
-            criadoEm: { type: 'string', format: 'date-time', example: '2024-04-01T00:00:00Z' },
+            status: {
+              type: 'string',
+              enum: ['ATIVO', 'EM_REVISAO', 'REVOGADO', 'EXPIRADO'],
+              example: 'ATIVO',
+            },
+            inicio: {
+              type: 'string',
+              format: 'date-time',
+              example: '2025-09-20T14:00:00Z',
+            },
+            fim: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              example: '2025-10-20T14:00:00Z',
+            },
+            observacoes: {
+              type: 'string',
+              nullable: true,
+              example: 'Uso indevido de dados pessoais de candidatos.',
+            },
+          },
+        },
+        AdminUsuariosBanimentoAuditoria: {
+          type: 'object',
+          description: 'Metadados de criação e atualização do banimento',
+          required: ['criadoEm', 'atualizadoEm'],
+          properties: {
+            criadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2025-09-20T14:05:00Z',
+            },
+            atualizadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2025-09-20T14:05:00Z',
+            },
+          },
+        },
+        AdminUsuariosEmBanimentosResumo: {
+          type: 'object',
+          description: 'Resumo completo do banimento aplicado ao usuário',
+          required: ['id', 'alvo', 'banimento', 'auditoria'],
+          properties: {
+            id: { type: 'string', format: 'uuid', example: 'ban_123456' },
+            alvo: { allOf: [{ $ref: '#/components/schemas/AdminUsuariosBanimentoAlvo' }] },
+            banimento: { allOf: [{ $ref: '#/components/schemas/AdminUsuariosBanimentoDados' }] },
+            aplicadoPor: {
+              allOf: [{ $ref: '#/components/schemas/AdminUsuariosBanimentoResponsavel' }],
+              nullable: true,
+            },
+            auditoria: { allOf: [{ $ref: '#/components/schemas/AdminUsuariosBanimentoAuditoria' }] },
           },
           example: {
-            id: 'c0b3ad1e-88af-4b94-9e67-71b7dcb845e0',
-            motivo: 'Uso indevido da plataforma',
-            dias: 30,
-            inicio: '2024-04-01T00:00:00Z',
-            fim: '2024-04-30T23:59:59Z',
-            criadoEm: '2024-04-01T00:00:00Z',
+            id: 'ban_123456',
+            alvo: {
+              tipo: 'EMPRESA',
+              id: 'cmp_112233',
+              nome: 'Empresa XPTO',
+              role: 'EMPRESA',
+            },
+            banimento: {
+              tipo: 'TEMPORARIO',
+              motivo: 'VIOLACAO_POLITICAS',
+              status: 'ATIVO',
+              inicio: '2025-09-20T14:00:00Z',
+              fim: '2025-10-20T14:00:00Z',
+              observacoes: 'Uso indevido de dados pessoais de candidatos.',
+            },
+            aplicadoPor: {
+              id: 'adm_002',
+              nome: 'Carlos Supervisor',
+              role: 'ADMIN',
+            },
+            auditoria: {
+              criadoEm: '2025-09-20T14:05:00Z',
+              atualizadoEm: '2025-09-20T14:05:00Z',
+            },
           },
         },
         AdminEmpresaPagamentoLog: {
@@ -4508,25 +4617,43 @@ const options: Options = {
             },
           },
         },
-        AdminEmpresasBanimentosResponse: {
+        AdminUsuariosBanimentosResponse: {
           type: 'object',
           required: ['data', 'pagination'],
           properties: {
             data: {
               type: 'array',
-              items: { $ref: '#/components/schemas/AdminEmpresasEmBanimentosResumo' },
+              items: { $ref: '#/components/schemas/AdminUsuariosEmBanimentosResumo' },
             },
             pagination: { allOf: [{ $ref: '#/components/schemas/PaginationMeta' }] },
           },
           example: {
             data: [
               {
-                id: 'c0b3ad1e-88af-4b94-9e67-71b7dcb845e0',
-                motivo: 'Uso indevido da plataforma',
-                dias: 30,
-                inicio: '2024-04-01T00:00:00Z',
-                fim: '2024-04-30T23:59:59Z',
-                criadoEm: '2024-04-01T00:00:00Z',
+                id: 'ban_123456',
+                alvo: {
+                  tipo: 'EMPRESA',
+                  id: 'cmp_112233',
+                  nome: 'Empresa XPTO',
+                  role: 'EMPRESA',
+                },
+                banimento: {
+                  tipo: 'TEMPORARIO',
+                  motivo: 'VIOLACAO_POLITICAS',
+                  status: 'ATIVO',
+                  inicio: '2025-09-20T14:00:00Z',
+                  fim: '2025-10-20T14:00:00Z',
+                  observacoes: 'Uso indevido de dados pessoais de candidatos.',
+                },
+                aplicadoPor: {
+                  id: 'adm_002',
+                  nome: 'Carlos Supervisor',
+                  role: 'ADMIN',
+                },
+                auditoria: {
+                  criadoEm: '2025-09-20T14:05:00Z',
+                  atualizadoEm: '2025-09-20T14:05:00Z',
+                },
               },
             ],
             pagination: {
@@ -4537,38 +4664,71 @@ const options: Options = {
             },
           },
         },
-        AdminEmpresasEmBanimentosCreate: {
+        AdminUsuariosEmBanimentosCreate: {
           type: 'object',
-          required: ['dias'],
+          required: ['tipo', 'motivo'],
           properties: {
+            tipo: {
+              type: 'string',
+              enum: ['TEMPORARIO', 'PERMANENTE', 'RESTRICAO_DE_RECURSO'],
+              example: 'TEMPORARIO',
+              description: 'Tipo do banimento aplicado.',
+            },
+            motivo: {
+              type: 'string',
+              enum: ['SPAM', 'VIOLACAO_POLITICAS', 'FRAUDE', 'ABUSO_DE_RECURSOS', 'OUTROS'],
+              example: 'VIOLACAO_POLITICAS',
+              description: 'Motivo categorizado do banimento.',
+            },
             dias: {
               type: 'integer',
               minimum: 1,
               maximum: 3650,
-              example: 120,
-              description: 'Quantidade de dias que o banimento ficará ativo',
+              nullable: true,
+              example: 30,
+              description: 'Vigência em dias (obrigatório para banimentos temporários).',
             },
-            motivo: {
+            observacoes: {
               type: 'string',
-              example: 'Descumprimento do código de conduta',
-              description: 'Motivo opcional para o banimento (máximo 500 caracteres)',
+              nullable: true,
+              maxLength: 500,
+              example: 'Uso indevido de dados pessoais de candidatos.',
+              description: 'Observações adicionais registradas pelo administrador.',
             },
           },
         },
-        AdminEmpresasEmBanimentosResponse: {
+        AdminUsuariosEmBanimentosResponse: {
           type: 'object',
           required: ['banimento'],
           properties: {
-            banimento: { $ref: '#/components/schemas/AdminEmpresasEmBanimentosResumo' },
+            banimento: { $ref: '#/components/schemas/AdminUsuariosEmBanimentosResumo' },
           },
           example: {
             banimento: {
-              id: 'c0b3ad1e-88af-4b94-9e67-71b7dcb845e0',
-              motivo: 'Uso indevido da plataforma',
-              dias: 30,
-              inicio: '2024-04-01T00:00:00Z',
-              fim: '2024-04-30T23:59:59Z',
-              criadoEm: '2024-04-01T00:00:00Z',
+              id: 'ban_123456',
+              alvo: {
+                tipo: 'EMPRESA',
+                id: 'cmp_112233',
+                nome: 'Empresa XPTO',
+                role: 'EMPRESA',
+              },
+              banimento: {
+                tipo: 'TEMPORARIO',
+                motivo: 'VIOLACAO_POLITICAS',
+                status: 'ATIVO',
+                inicio: '2025-09-20T14:00:00Z',
+                fim: '2025-10-20T14:00:00Z',
+                observacoes: 'Uso indevido de dados pessoais de candidatos.',
+              },
+              aplicadoPor: {
+                id: 'adm_002',
+                nome: 'Carlos Supervisor',
+                role: 'ADMIN',
+              },
+              auditoria: {
+                criadoEm: '2025-09-20T14:05:00Z',
+                atualizadoEm: '2025-09-20T14:05:00Z',
+              },
             },
           },
         },

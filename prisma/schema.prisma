@@ -30,8 +30,9 @@ model Usuarios {
   enderecos            UsuariosEnderecos[]
   vagasCriadas         EmpresasVagas[]    @relation("UsuarioVagas")
   planosContratados    EmpresasPlano[]    @relation("UsuarioPlanos")
-  banimentosRecebidos  EmpresasEmBanimentos[] @relation("EmpresasEmBanimentosUsuario")
-  banimentosAplicados  EmpresasEmBanimentos[] @relation("EmpresasEmBanimentosAdmin")
+  banimentosRecebidos  UsuariosEmBanimentos[] @relation("UsuariosEmBanimentosUsuario")
+  banimentosAplicados  UsuariosEmBanimentos[] @relation("UsuariosEmBanimentosAdmin")
+  banimentosLogsCriados UsuariosEmBanimentosLogs[] @relation("UsuariosEmBanimentosLogsAdmin")
   redesSociais         UsuariosRedesSociais?
   recuperacaoSenha     UsuariosRecuperacaoSenha?
   emailVerification    UsuariosVerificacaoEmail?
@@ -137,6 +138,34 @@ enum TiposDePlanos {
   PARCEIRO          @map("parceiro")
 }
 
+enum TiposDeBanimentos {
+  TEMPORARIO
+  PERMANENTE
+  RESTRICAO_DE_RECURSO
+}
+
+enum StatusDeBanimentos {
+  ATIVO
+  EM_REVISAO
+  REVOGADO
+  EXPIRADO
+}
+
+enum MotivosDeBanimentos {
+  SPAM
+  VIOLACAO_POLITICAS
+  FRAUDE
+  ABUSO_DE_RECURSOS
+  OUTROS
+}
+
+enum AcoesDeLogDeBanimento {
+  CRIACAO
+  ATUALIZACAO
+  REVOGACAO
+  REAVALIACAO
+}
+
 model EmpresasVagas {
   id               String         @id @default(uuid())
   codigo           String         @unique @db.VarChar(6)
@@ -209,21 +238,42 @@ model LogsPagamentosDeAssinaturas {
   @@index([criadoEm])
 }
 
-model EmpresasEmBanimentos {
-  id          String   @id @default(uuid())
-  usuarioId   String
-  criadoPorId String
-  dias        Int
-  motivo      String?  @db.VarChar(500)
-  inicio      DateTime @default(now())
-  fim         DateTime
-  criadoEm    DateTime @default(now())
+model UsuariosEmBanimentos {
+  id            String              @id @default(uuid())
+  usuarioId     String
+  aplicadoPorId String
+  tipo          TiposDeBanimentos
+  motivo        MotivosDeBanimentos
+  status        StatusDeBanimentos @default(ATIVO)
+  inicio        DateTime           @default(now())
+  fim           DateTime?
+  observacoes   String?            @db.VarChar(500)
+  criadoEm      DateTime           @default(now())
+  atualizadoEm  DateTime           @updatedAt
 
-  usuario   Usuarios @relation("EmpresasEmBanimentosUsuario", fields: [usuarioId], references: [id], onDelete: Cascade)
-  criadoPor Usuarios @relation("EmpresasEmBanimentosAdmin", fields: [criadoPorId], references: [id])
+  usuario     Usuarios                   @relation("UsuariosEmBanimentosUsuario", fields: [usuarioId], references: [id], onDelete: Cascade)
+  aplicadoPor Usuarios                   @relation("UsuariosEmBanimentosAdmin", fields: [aplicadoPorId], references: [id])
+  logs        UsuariosEmBanimentosLogs[]
 
   @@index([usuarioId])
+  @@index([status])
   @@index([fim])
+}
+
+model UsuariosEmBanimentosLogs {
+  id           String                 @id @default(uuid())
+  banimentoId  String
+  acao         AcoesDeLogDeBanimento
+  descricao    String?                @db.VarChar(500)
+  criadoPorId  String
+  criadoEm     DateTime               @default(now())
+
+  banimento UsuariosEmBanimentos @relation(fields: [banimentoId], references: [id], onDelete: Cascade)
+  criadoPor Usuarios             @relation("UsuariosEmBanimentosLogsAdmin", fields: [criadoPorId], references: [id])
+
+  @@index([banimentoId])
+  @@index([criadoPorId])
+  @@index([criadoEm])
 }
 
 model PlanosEmpresariais {

@@ -4852,6 +4852,7 @@ const options: Options = {
           required: [
             'id',
             'codigo',
+            'slug',
             'titulo',
             'status',
             'inseridaEm',
@@ -4860,6 +4861,13 @@ const options: Options = {
             'modalidade',
             'regimeDeTrabalho',
             'paraPcd',
+            'senioridade',
+            'jornada',
+            'numeroVagas',
+            'requisitos',
+            'atividades',
+            'beneficios',
+            'salarioConfidencial',
           ],
           properties: {
             id: { type: 'string', format: 'uuid', example: 'vaga-uuid' },
@@ -4868,6 +4876,12 @@ const options: Options = {
               maxLength: 6,
               example: 'B24N56',
               description: 'Identificador curto utilizado pelos administradores para localizar a vaga com rapidez.',
+            },
+            slug: {
+              type: 'string',
+              maxLength: 120,
+              example: 'analista-dados-pleno-sao-paulo',
+              description: 'Identificador amigável utilizado nas rotas públicas da vaga.',
             },
             titulo: {
               type: 'string',
@@ -4883,10 +4897,110 @@ const options: Options = {
             modalidade: { allOf: [{ $ref: '#/components/schemas/ModalidadesDeVagas' }] },
             regimeDeTrabalho: { allOf: [{ $ref: '#/components/schemas/RegimesDeTrabalhos' }] },
             paraPcd: { type: 'boolean', example: false },
+            senioridade: { allOf: [{ $ref: '#/components/schemas/Senioridade' }] },
+            jornada: { allOf: [{ $ref: '#/components/schemas/Jornadas' }] },
+            numeroVagas: {
+              type: 'integer',
+              example: 2,
+              minimum: 1,
+              description: 'Quantidade de posições abertas para a vaga.',
+            },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Responsável por construir dashboards e monitorar KPIs do time de negócios.',
+            },
+            requisitos: {
+              type: 'object',
+              required: ['obrigatorios', 'desejaveis'],
+              properties: {
+                obrigatorios: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  example: ['Experiência com SQL', 'Conhecimento em Python'],
+                },
+                desejaveis: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  example: ['Vivência com Looker Studio'],
+                },
+              },
+            },
+            atividades: {
+              type: 'object',
+              required: ['principais', 'extras'],
+              properties: {
+                principais: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  example: ['Construir pipelines de dados', 'Acompanhar resultados de campanhas'],
+                },
+                extras: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  example: ['Participar de eventos do setor'],
+                },
+              },
+            },
+            beneficios: {
+              type: 'object',
+              required: ['lista', 'observacoes'],
+              properties: {
+                lista: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  example: ['Vale refeição', 'Plano de saúde', 'Gympass'],
+                },
+                observacoes: {
+                  type: 'string',
+                  nullable: true,
+                  example: 'Auxílio home office de R$ 120,00',
+                },
+              },
+            },
+            observacoes: {
+              type: 'string',
+              nullable: true,
+              example: 'Processo seletivo com etapas presenciais na sede da empresa.',
+            },
+            localizacao: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                cidade: { type: 'string', example: 'São Paulo' },
+                estado: { type: 'string', example: 'SP' },
+                bairro: { type: 'string', example: 'Pinheiros' },
+              },
+              additionalProperties: { type: 'string' },
+            },
+            salarioMin: {
+              type: 'string',
+              nullable: true,
+              example: '4500.00',
+              description: 'Valor mínimo da faixa salarial mensal (em BRL).',
+            },
+            salarioMax: {
+              type: 'string',
+              nullable: true,
+              example: '6500.00',
+              description: 'Valor máximo da faixa salarial mensal (em BRL).',
+            },
+            salarioConfidencial: {
+              type: 'boolean',
+              example: true,
+              description: 'Indica se a faixa salarial deve permanecer confidencial para candidatos.',
+            },
+            maxCandidaturasPorUsuario: {
+              type: 'integer',
+              nullable: true,
+              example: 1,
+              description: 'Limite de candidaturas permitidas por usuário nesta vaga.',
+            },
           },
           example: {
             id: '7a5b9c1d-2f80-44a6-82da-6b8c1f00ec91',
             codigo: 'B24N56',
+            slug: 'analista-dados-pleno-sao-paulo',
             titulo: 'Analista de Dados Pleno',
             status: 'PUBLICADO',
             inseridaEm: '2024-05-10T09:00:00Z',
@@ -4896,6 +5010,28 @@ const options: Options = {
             modalidade: 'REMOTO',
             regimeDeTrabalho: 'CLT',
             paraPcd: false,
+            senioridade: 'PLENO',
+            jornada: 'INTEGRAL',
+            numeroVagas: 2,
+            descricao: 'Oportunidade para compor o time de dados com foco em análises preditivas.',
+            requisitos: {
+              obrigatorios: ['Experiência com SQL', 'Vivência com Python'],
+              desejaveis: ['Conhecimento em Power BI'],
+            },
+            atividades: {
+              principais: ['Construir dashboards executivos', 'Garantir a governança dos dados'],
+              extras: ['Representar a área em encontros estratégicos'],
+            },
+            beneficios: {
+              lista: ['Vale alimentação', 'Plano de saúde', 'Seguro de vida'],
+              observacoes: 'Auxílio home office de R$ 150,00',
+            },
+            observacoes: 'Processo seletivo com etapas remotas e presenciais.',
+            localizacao: { cidade: 'São Paulo', estado: 'SP' },
+            salarioMin: '4500.00',
+            salarioMax: '6500.00',
+            salarioConfidencial: false,
+            maxCandidaturasPorUsuario: 1,
           },
         },
         AdminEmpresasVagasResponse: {
@@ -4913,6 +5049,7 @@ const options: Options = {
               {
                 id: '7a5b9c1d-2f80-44a6-82da-6b8c1f00ec91',
                 codigo: 'B24N56',
+                slug: 'analista-dados-pleno-sao-paulo',
                 titulo: 'Analista de Dados Pleno',
                 status: 'PUBLICADO',
                 inseridaEm: '2024-05-10T09:00:00Z',
@@ -4922,6 +5059,27 @@ const options: Options = {
                 modalidade: 'REMOTO',
                 regimeDeTrabalho: 'CLT',
                 paraPcd: false,
+                senioridade: 'PLENO',
+                jornada: 'INTEGRAL',
+                numeroVagas: 2,
+                requisitos: {
+                  obrigatorios: ['Experiência com SQL'],
+                  desejaveis: ['Conhecimento em Power BI'],
+                },
+                atividades: {
+                  principais: ['Construir dashboards executivos'],
+                  extras: [],
+                },
+                beneficios: {
+                  lista: ['Vale alimentação', 'Plano de saúde'],
+                  observacoes: 'Auxílio home office de R$ 150,00',
+                },
+                observacoes: 'Processo seletivo híbrido.',
+                localizacao: { cidade: 'São Paulo', estado: 'SP' },
+                salarioMin: '4500.00',
+                salarioMax: '6500.00',
+                salarioConfidencial: false,
+                maxCandidaturasPorUsuario: 1,
               },
             ],
             pagination: {
@@ -4942,6 +5100,7 @@ const options: Options = {
             vaga: {
               id: '7a5b9c1d-2f80-44a6-82da-6b8c1f00ec91',
               codigo: 'B24N56',
+              slug: 'analista-dados-pleno-sao-paulo',
               titulo: 'Analista de Dados Pleno',
               status: 'PUBLICADO',
               inseridaEm: '2024-05-10T09:00:00Z',
@@ -4951,6 +5110,27 @@ const options: Options = {
               modalidade: 'REMOTO',
               regimeDeTrabalho: 'CLT',
               paraPcd: false,
+              senioridade: 'PLENO',
+              jornada: 'INTEGRAL',
+              numeroVagas: 2,
+              requisitos: {
+                obrigatorios: ['Experiência com SQL'],
+                desejaveis: ['Conhecimento em Power BI'],
+              },
+              atividades: {
+                principais: ['Construir dashboards executivos'],
+                extras: [],
+              },
+              beneficios: {
+                lista: ['Vale alimentação', 'Plano de saúde'],
+                observacoes: 'Auxílio home office de R$ 150,00',
+              },
+              observacoes: 'Processo seletivo híbrido.',
+              localizacao: { cidade: 'São Paulo', estado: 'SP' },
+              salarioMin: '4500.00',
+              salarioMax: '6500.00',
+              salarioConfidencial: false,
+              maxCandidaturasPorUsuario: 1,
             },
           },
         },
@@ -4995,6 +5175,12 @@ const options: Options = {
               description: 'Identificador curto da vaga gerado automaticamente para facilitar buscas internas.',
               readOnly: true,
             },
+            slug: {
+              type: 'string',
+              maxLength: 120,
+              example: 'analista-dados-pleno-sao-paulo',
+              description: 'Identificador amigável usado nas rotas públicas e compartilhamentos.',
+            },
             usuarioId: { type: 'string', example: 'usuario-uuid' },
             empresa: {
               allOf: [{ $ref: '#/components/schemas/EmpresaResumo' }],
@@ -5009,17 +5195,64 @@ const options: Options = {
               example: 'Coordenador de Projetos TI',
             },
             paraPcd: { type: 'boolean', example: false },
-            requisitos: {
+            numeroVagas: {
+              type: 'integer',
+              minimum: 1,
+              example: 2,
+              description: 'Quantidade de posições abertas para esta vaga.',
+            },
+            descricao: {
               type: 'string',
-              example: 'Experiência com atendimento ao cliente e pacote Office avançado.',
+              nullable: true,
+              example: 'Responsável por liderar projetos multidisciplinares e garantir a execução do roadmap.',
+            },
+            requisitos: {
+              type: 'object',
+              required: ['obrigatorios', 'desejaveis'],
+              properties: {
+                obrigatorios: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  example: ['Experiência com gestão de projetos', 'Domínio de metodologias ágeis'],
+                },
+                desejaveis: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  example: ['Certificação PMP', 'Conhecimento em OKRs'],
+                },
+              },
             },
             atividades: {
-              type: 'string',
-              example: 'Atendimento a clientes, elaboração de relatórios e acompanhamento de indicadores.',
+              type: 'object',
+              required: ['principais', 'extras'],
+              properties: {
+                principais: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  example: ['Coordenar squads multidisciplinares', 'Monitorar KPIs estratégicos'],
+                },
+                extras: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  example: ['Representar a empresa em eventos do setor'],
+                },
+              },
             },
             beneficios: {
-              type: 'string',
-              example: 'Vale transporte, vale alimentação, plano de saúde e day-off no aniversário.',
+              type: 'object',
+              required: ['lista', 'observacoes'],
+              properties: {
+                lista: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  example: ['Vale refeição', 'Plano odontológico', 'Gympass'],
+                },
+                observacoes: {
+                  type: 'string',
+                  nullable: true,
+                  example: 'Auxílio home office de R$ 120,00',
+                },
+              },
             },
             observacoes: {
               type: 'string',
@@ -5033,6 +5266,19 @@ const options: Options = {
             senioridade: {
               allOf: [{ $ref: '#/components/schemas/Senioridade' }],
               description: 'Faixa de senioridade aceita para a posição.',
+            },
+            localizacao: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                logradouro: { type: 'string', example: 'Av. Paulista' },
+                numero: { type: 'string', example: '1000' },
+                bairro: { type: 'string', example: 'Bela Vista' },
+                cidade: { type: 'string', example: 'São Paulo' },
+                estado: { type: 'string', example: 'SP' },
+                cep: { type: 'string', example: '01310-100' },
+              },
+              additionalProperties: { type: 'string' },
             },
             inscricoesAte: {
               type: 'string',
@@ -5053,6 +5299,22 @@ const options: Options = {
             status: {
               allOf: [{ $ref: '#/components/schemas/StatusDeVagas' }],
               description: 'Status atual da vaga dentro do fluxo de aprovação',
+            },
+            salarioMin: {
+              type: 'string',
+              nullable: true,
+              example: '4500.00',
+            },
+            salarioMax: {
+              type: 'string',
+              nullable: true,
+              example: '6500.00',
+            },
+            salarioConfidencial: { type: 'boolean', example: true },
+            maxCandidaturasPorUsuario: {
+              type: 'integer',
+              nullable: true,
+              example: 1,
             },
             nomeExibicao: {
               type: 'string',
@@ -5083,6 +5345,7 @@ const options: Options = {
             'Dados necessários para cadastrar uma vaga. O status inicial é definido automaticamente como EM_ANALISE e o código alfanumérico de 6 caracteres é gerado pelo sistema.',
           required: [
             'usuarioId',
+            'slug',
             'regimeDeTrabalho',
             'modalidade',
             'titulo',
@@ -5098,6 +5361,13 @@ const options: Options = {
               format: 'uuid',
               example: 'f1d7a9c2-4e0b-4f6d-90ad-8c6b84a0f1a1',
             },
+            slug: {
+              type: 'string',
+              maxLength: 120,
+              pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$',
+              example: 'analista-marketing-digital-sao-paulo',
+              description: 'Identificador amigável da vaga utilizado nas rotas públicas (apenas letras minúsculas, números e hífens).',
+            },
             modoAnonimo: {
               type: 'boolean',
               example: true,
@@ -5112,20 +5382,72 @@ const options: Options = {
               description: 'Nome da vaga que será exibido nos portais e dashboards administrativos.',
             },
             paraPcd: { type: 'boolean', example: false },
-            requisitos: {
+            numeroVagas: {
+              type: 'integer',
+              minimum: 1,
+              example: 2,
+              description: 'Quantidade de posições disponíveis. Quando omitido, assume 1.',
+            },
+            descricao: {
               type: 'string',
-              example: 'Experiência com atendimento ao cliente e pacote Office avançado.',
+              nullable: true,
+              example: 'Responsável por executar estratégias de marketing digital e otimizar campanhas.',
+            },
+            requisitos: {
+              type: 'object',
+              required: ['obrigatorios'],
+              properties: {
+                obrigatorios: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  minItems: 1,
+                  example: ['Experiência com inbound marketing', 'Domínio de Google Analytics'],
+                },
+                desejaveis: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  example: ['Certificação HubSpot'],
+                  description: 'Competências desejáveis (opcional).',
+                },
+              },
             },
             atividades: {
-              type: 'string',
-              example: 'Atendimento a clientes, elaboração de relatórios e acompanhamento de indicadores.',
+              type: 'object',
+              required: ['principais'],
+              properties: {
+                principais: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  minItems: 1,
+                  example: ['Planejar calendário editorial', 'Monitorar métricas de campanhas'],
+                },
+                extras: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  example: ['Participar de eventos do setor'],
+                },
+              },
             },
             beneficios: {
-              type: 'string',
-              example: 'Vale transporte, vale alimentação, plano de saúde e day-off no aniversário.',
+              type: 'object',
+              required: ['lista'],
+              properties: {
+                lista: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  minItems: 1,
+                  example: ['Vale refeição', 'Plano de saúde', 'Day-off no aniversário'],
+                },
+                observacoes: {
+                  type: 'string',
+                  nullable: true,
+                  example: 'Auxílio home office de R$ 150,00',
+                },
+              },
             },
             observacoes: {
               type: 'string',
+              nullable: true,
               example: 'Processo seletivo confidencial com etapas online.',
             },
             jornada: {
@@ -5138,6 +5460,20 @@ const options: Options = {
               description: 'Informe a faixa de senioridade aceita para a vaga.',
               example: 'PLENO',
             },
+            localizacao: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                logradouro: { type: 'string', example: 'Av. Paulista' },
+                numero: { type: 'string', example: '1000' },
+                bairro: { type: 'string', example: 'Bela Vista' },
+                cidade: { type: 'string', example: 'São Paulo' },
+                estado: { type: 'string', example: 'SP' },
+                cep: { type: 'string', example: '01310-100' },
+                complemento: { type: 'string', example: 'Conjunto 1201' },
+                referencia: { type: 'string', example: 'Próximo ao metrô Trianon-Masp' },
+              },
+            },
             inscricoesAte: {
               type: 'string',
               format: 'date-time',
@@ -5147,6 +5483,30 @@ const options: Options = {
               type: 'string',
               format: 'date-time',
               example: '2024-10-01T09:00:00Z',
+            },
+            salarioMin: {
+              type: 'string',
+              nullable: true,
+              pattern: '^\\d+(?:[.,]\\d{1,2})?$',
+              example: '4500.00',
+            },
+            salarioMax: {
+              type: 'string',
+              nullable: true,
+              pattern: '^\\d+(?:[.,]\\d{1,2})?$',
+              example: '6500.00',
+            },
+            salarioConfidencial: {
+              type: 'boolean',
+              example: true,
+              description: 'Indica se a faixa salarial ficará visível para candidatos.',
+            },
+            maxCandidaturasPorUsuario: {
+              type: 'integer',
+              nullable: true,
+              minimum: 1,
+              example: 1,
+              description: 'Limite de candidaturas permitidas por usuário.',
             },
           },
         },
@@ -5168,21 +5528,58 @@ const options: Options = {
               maxLength: 255,
               example: 'Gerente de Operações',
             },
-            paraPcd: { type: 'boolean', example: true },
-            requisitos: {
+            slug: {
               type: 'string',
-              example: 'Vivência em rotinas administrativas e atendimento ao cliente.',
+              maxLength: 120,
+              pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$',
+              example: 'gerente-operacoes-rio-de-janeiro',
+            },
+            paraPcd: { type: 'boolean', example: true },
+            numeroVagas: { type: 'integer', minimum: 1, example: 3 },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Atuação no planejamento e evolução dos sistemas corporativos.',
+            },
+            requisitos: {
+              oneOf: [
+                {
+                  type: 'object',
+                  properties: {
+                    obrigatorios: { type: 'array', items: { type: 'string' } },
+                    desejaveis: { type: 'array', items: { type: 'string' } },
+                  },
+                },
+                { type: 'null' },
+              ],
             },
             atividades: {
-              type: 'string',
-              example: 'Gestão de indicadores, acompanhamento de metas e organização de agendas.',
+              oneOf: [
+                {
+                  type: 'object',
+                  properties: {
+                    principais: { type: 'array', items: { type: 'string' } },
+                    extras: { type: 'array', items: { type: 'string' } },
+                  },
+                },
+                { type: 'null' },
+              ],
             },
             beneficios: {
-              type: 'string',
-              example: 'Vale transporte, auxílio home office e plano odontológico.',
+              oneOf: [
+                {
+                  type: 'object',
+                  properties: {
+                    lista: { type: 'array', items: { type: 'string' } },
+                    observacoes: { type: 'string', nullable: true },
+                  },
+                },
+                { type: 'null' },
+              ],
             },
             observacoes: {
               type: 'string',
+              nullable: true,
               example: 'Processo seletivo com etapas online.',
             },
             jornada: {
@@ -5209,6 +5606,46 @@ const options: Options = {
             status: {
               allOf: [{ $ref: '#/components/schemas/StatusDeVagas' }],
               description: 'Atualização manual do status da vaga',
+            },
+            localizacao: {
+              oneOf: [
+                {
+                  type: 'object',
+                  properties: {
+                    logradouro: { type: 'string' },
+                    numero: { type: 'string' },
+                    bairro: { type: 'string' },
+                    cidade: { type: 'string' },
+                    estado: { type: 'string' },
+                    cep: { type: 'string' },
+                    complemento: { type: 'string' },
+                    referencia: { type: 'string' },
+                  },
+                },
+                { type: 'null' },
+              ],
+            },
+            salarioMin: {
+              oneOf: [
+                { type: 'string', pattern: '^\\d+(?:[.,]\\d{1,2})?$' },
+                { type: 'null' },
+              ],
+              example: '5000.00',
+            },
+            salarioMax: {
+              oneOf: [
+                { type: 'string', pattern: '^\\d+(?:[.,]\\d{1,2})?$' },
+                { type: 'null' },
+              ],
+              example: '7000.00',
+            },
+            salarioConfidencial: { type: 'boolean', example: false },
+            maxCandidaturasPorUsuario: {
+              oneOf: [
+                { type: 'integer', minimum: 1 },
+                { type: 'null' },
+              ],
+              example: 1,
             },
           },
         },

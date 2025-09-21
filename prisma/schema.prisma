@@ -239,10 +239,28 @@ model EmpresasVagas {
   salarioMax       Decimal?       @db.Decimal(12, 2)
   salarioConfidencial Boolean     @default(true)
   maxCandidaturasPorUsuario Int?
+  destaque         Boolean        @default(false)
 
   empresa Usuarios @relation("UsuarioVagas", fields: [usuarioId], references: [id], onDelete: Cascade)
+  destaqueInfo EmpresasVagasDestaque?
 
   @@index([usuarioId])
+}
+
+model EmpresasVagasDestaque {
+  id               String     @id @default(uuid())
+  vagaId           String     @unique
+  empresasPlanoId  String
+  ativo            Boolean    @default(true)
+  ativadoEm        DateTime   @default(now())
+  desativadoEm     DateTime?
+  criadoEm         DateTime   @default(now())
+  atualizadoEm     DateTime   @updatedAt
+
+  vaga  EmpresasVagas @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  plano EmpresasPlano @relation(fields: [empresasPlanoId], references: [id], onDelete: Cascade)
+
+  @@index([empresasPlanoId, ativo])
 }
 
 model EmpresasPlano {
@@ -270,6 +288,7 @@ model EmpresasPlano {
 
   empresa Usuarios            @relation("UsuarioPlanos", fields: [usuarioId], references: [id], onDelete: Cascade)
   plano   PlanosEmpresariais @relation(fields: [planosEmpresariaisId], references: [id])
+  vagasDestaque EmpresasVagasDestaque[]
 
   @@index([usuarioId, ativo])
   @@index([planosEmpresariaisId])

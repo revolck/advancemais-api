@@ -1,14 +1,6 @@
 import { randomUUID } from 'crypto';
 
-import {
-  Jornadas,
-  ModalidadesDeVagas,
-  Prisma,
-  RegimesDeTrabalhos,
-  Senioridade,
-  StatusDeVagas,
-  TiposDeUsuarios,
-} from '@prisma/client';
+import { Prisma, StatusDeVagas, TiposDeUsuarios } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { attachEnderecoResumo } from '@/modules/usuarios/utils/address';
@@ -20,28 +12,9 @@ import {
   LimiteVagasPlanoAtingidoError,
   UsuarioNaoEmpresaError,
 } from '@/modules/empresas/vagas/services/errors';
-
-export type CreateVagaData = {
-  usuarioId: string;
-  modoAnonimo?: boolean;
-  regimeDeTrabalho: RegimesDeTrabalhos;
-  modalidade: ModalidadesDeVagas;
-  titulo: string;
-  paraPcd?: boolean;
-  requisitos: string;
-  atividades: string;
-  beneficios: string;
-  observacoes?: string;
-  jornada: Jornadas;
-  senioridade: Senioridade;
-  inscricoesAte?: Date;
-  inseridaEm?: Date;
-  status?: StatusDeVagas;
-};
-
-export type UpdateVagaData = Omit<Partial<CreateVagaData>, 'inscricoesAte'> & {
-  inscricoesAte?: Date | null;
-};
+import type { CreateVagaInput, UpdateVagaInput } from '@/modules/empresas/vagas/validators/vagas.schema';
+export type CreateVagaData = CreateVagaInput;
+export type UpdateVagaData = UpdateVagaInput;
 
 const ANON_DESCRIPTION =
   'Esta empresa optou por manter suas informações confidenciais até avançar nas etapas do processo seletivo.';
@@ -126,24 +99,87 @@ const generateUniqueVagaCode = async (): Promise<string> => {
   });
 };
 
-const sanitizeCreateData = (data: CreateVagaData, codigo: string): Prisma.EmpresasVagasUncheckedCreateInput => ({
-  usuarioId: data.usuarioId,
-  codigo,
-  modoAnonimo: data.modoAnonimo ?? false,
-  regimeDeTrabalho: data.regimeDeTrabalho,
-  modalidade: data.modalidade,
-  titulo: data.titulo.trim(),
-  paraPcd: data.paraPcd ?? false,
-  requisitos: data.requisitos.trim(),
-  atividades: data.atividades.trim(),
-  beneficios: data.beneficios.trim(),
-  observacoes: nullableText(data.observacoes),
-  jornada: data.jornada,
-  senioridade: data.senioridade,
-  inscricoesAte: data.inscricoesAte ?? null,
-  inseridaEm: data.inseridaEm ?? new Date(),
-  status: data.status ?? StatusDeVagas.EM_ANALISE,
+const sanitizeStringArray = (values: string[] | undefined) => {
+  if (!Array.isArray(values)) return [];
+
+  const sanitized = values
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+
+  return Array.from(new Set(sanitized));
+};
+
+const sanitizeRequisitos = (
+  value: CreateVagaData['requisitos'] | NonNullable<UpdateVagaData['requisitos']>,
+): Prisma.JsonObject => ({
+  obrigatorios: sanitizeStringArray(value.obrigatorios),
+  desejaveis: sanitizeStringArray(value.desejaveis ?? []),
 });
+
+const sanitizeAtividades = (
+  value: CreateVagaData['atividades'] | NonNullable<UpdateVagaData['atividades']>,
+): Prisma.JsonObject => ({
+  principais: sanitizeStringArray(value.principais),
+  extras: sanitizeStringArray(value.extras ?? []),
+});
+
+const sanitizeBeneficios = (
+  value: CreateVagaData['beneficios'] | NonNullable<UpdateVagaData['beneficios']>,
+): Prisma.JsonObject => ({
+  lista: sanitizeStringArray(value.lista),
+  observacoes:
+    value.observacoes !== undefined ? nullableText(value.observacoes) : null,
+});
+
+const sanitizeLocalizacao = (
+  value: CreateVagaData['localizacao'] | NonNullable<UpdateVagaData['localizacao']> | null | undefined,
+) => {
+  if (!value) {
+    return null;
+  }
+
+  const entries = Object.entries(value).reduce<Record<string, string>>((accumulator, [key, raw]) => {
+    if (typeof raw !== 'string') return accumulator;
+    const trimmed = raw.trim();
+    if (trimmed.length === 0) return accumulator;
+
+    accumulator[key] = trimmed;
+    return accumulator;
+  }, {});
+
+  return Object.keys(entries).length > 0 ? (entries as Prisma.JsonObject) : null;
+};
+
+const sanitizeCreateData = (data: CreateVagaData, codigo: string): Prisma.EmpresasVagasUncheckedCreateInput => {
+  const localizacao = sanitizeLocalizacao(data.localizacao ?? null);
+
+  return {
+    usuarioId: data.usuarioId,
+    slug: data.slug.trim().toLowerCase(),
+    codigo,
+    modoAnonimo: data.modoAnonimo ?? false,
+    regimeDeTrabalho: data.regimeDeTrabalho,
+    modalidade: data.modalidade,
+    titulo: data.titulo.trim(),
+    paraPcd: data.paraPcd ?? false,
+    numeroVagas: data.numeroVagas ?? 1,
+    descricao: nullableText(data.descricao),
+    requisitos: sanitizeRequisitos(data.requisitos),
+    atividades: sanitizeAtividades(data.atividades),
+    beneficios: sanitizeBeneficios(data.beneficios),
+    observacoes: nullableText(data.observacoes),
+    jornada: data.jornada,
+    senioridade: data.senioridade,
+    inscricoesAte: data.inscricoesAte ?? null,
+    inseridaEm: data.inseridaEm ?? new Date(),
+    status: data.status ?? StatusDeVagas.EM_ANALISE,
+    ...(localizacao ? { localizacao } : {}),
+    salarioMin: data.salarioMin ?? undefined,
+    salarioMax: data.salarioMax ?? undefined,
+    salarioConfidencial: data.salarioConfidencial ?? true,
+    maxCandidaturasPorUsuario: data.maxCandidaturasPorUsuario ?? undefined,
+  };
+};
 
 const sanitizeUpdateData = (data: UpdateVagaData): Prisma.EmpresasVagasUncheckedUpdateInput => {
   const update: Prisma.EmpresasVagasUncheckedUpdateInput = {};
@@ -166,14 +202,23 @@ const sanitizeUpdateData = (data: UpdateVagaData): Prisma.EmpresasVagasUnchecked
   if (data.paraPcd !== undefined) {
     update.paraPcd = data.paraPcd;
   }
+  if (data.slug !== undefined) {
+    update.slug = data.slug.trim().toLowerCase();
+  }
+  if (data.numeroVagas !== undefined) {
+    update.numeroVagas = data.numeroVagas;
+  }
+  if (data.descricao !== undefined) {
+    update.descricao = nullableText(data.descricao ?? undefined);
+  }
   if (data.requisitos !== undefined) {
-    update.requisitos = data.requisitos.trim();
+    update.requisitos = data.requisitos === null ? Prisma.DbNull : sanitizeRequisitos(data.requisitos);
   }
   if (data.atividades !== undefined) {
-    update.atividades = data.atividades.trim();
+    update.atividades = data.atividades === null ? Prisma.DbNull : sanitizeAtividades(data.atividades);
   }
   if (data.beneficios !== undefined) {
-    update.beneficios = data.beneficios.trim();
+    update.beneficios = data.beneficios === null ? Prisma.DbNull : sanitizeBeneficios(data.beneficios);
   }
   if (data.observacoes !== undefined) {
     update.observacoes = nullableText(data.observacoes);
@@ -189,6 +234,26 @@ const sanitizeUpdateData = (data: UpdateVagaData): Prisma.EmpresasVagasUnchecked
   }
   if (data.inseridaEm !== undefined) {
     update.inseridaEm = data.inseridaEm;
+  }
+  if (data.localizacao !== undefined) {
+    if (data.localizacao === null) {
+      update.localizacao = Prisma.DbNull;
+    } else {
+      const localizacao = sanitizeLocalizacao(data.localizacao);
+      update.localizacao = localizacao ?? Prisma.DbNull;
+    }
+  }
+  if (data.salarioMin !== undefined) {
+    update.salarioMin = data.salarioMin === null ? null : data.salarioMin;
+  }
+  if (data.salarioMax !== undefined) {
+    update.salarioMax = data.salarioMax === null ? null : data.salarioMax;
+  }
+  if (data.salarioConfidencial !== undefined) {
+    update.salarioConfidencial = data.salarioConfidencial;
+  }
+  if (data.maxCandidaturasPorUsuario !== undefined) {
+    update.maxCandidaturasPorUsuario = data.maxCandidaturasPorUsuario === null ? null : data.maxCandidaturasPorUsuario;
   }
   if (data.status !== undefined) {
     update.status = data.status;

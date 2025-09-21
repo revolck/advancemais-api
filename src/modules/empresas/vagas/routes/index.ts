@@ -197,17 +197,40 @@ router.get('/:id', publicCache, VagasController.get);
  *            -H "Content-Type: application/json" \
  *            -d '{
  *                  "usuarioId": "f1d7a9c2-4e0b-4f6d-90ad-8c6b84a0f1a1",
+ *                  "slug": "analista-sistemas-pleno-sao-paulo",
  *                  "modoAnonimo": true,
  *                  "regimeDeTrabalho": "CLT",
  *                  "modalidade": "PRESENCIAL",
  *                  "titulo": "Analista de Sistemas",
  *                  "paraPcd": true,
- *                  "requisitos": "Experiência prévia com atendimento ao cliente e pacote Office.",
- *                  "atividades": "Atendimento ao público, abertura de chamados e acompanhamento de demandas.",
- *                  "beneficios": "Vale transporte, vale alimentação e plano de saúde.",
+ *                  "numeroVagas": 2,
+ *                  "descricao": "Responsável pelo suporte técnico e evolução dos sistemas internos da empresa.",
+ *                  "requisitos": {
+ *                    "obrigatorios": ["Experiência com suporte N2", "Conhecimento em ITIL"],
+ *                    "desejaveis": ["Certificação COBIT"]
+ *                  },
+ *                  "atividades": {
+ *                    "principais": [
+ *                      "Monitorar chamados e garantir SLA",
+ *                      "Atuar na análise de problemas técnicos"
+ *                    ],
+ *                    "extras": ["Apoiar treinamentos internos"]
+ *                  },
+ *                  "beneficios": {
+ *                    "lista": ["Vale transporte", "Vale alimentação", "Plano de saúde"],
+ *                    "observacoes": "Modelo híbrido com auxílio home office"
+ *                  },
  *                  "observacoes": "Processo seletivo confidencial.",
  *                  "jornada": "INTEGRAL",
  *                  "senioridade": "PLENO",
+ *                  "localizacao": {
+ *                    "cidade": "São Paulo",
+ *                    "estado": "SP"
+ *                  },
+ *                  "salarioMin": "4500.00",
+ *                  "salarioMax": "6500.00",
+ *                  "salarioConfidencial": false,
+ *                  "maxCandidaturasPorUsuario": 1,
  *                  "inscricoesAte": "2024-12-20T23:59:59.000Z"
  *                }'
 */
@@ -279,10 +302,29 @@ router.post('/', supabaseAuthMiddleware(protectedRoles), VagasController.create)
  *            -H "Authorization: Bearer <TOKEN>" \
  *            -H "Content-Type: application/json" \
  *            -d '{
- *                  "modoAnonimo": false,
- *                  "beneficios": "Vale transporte, vale alimentação, plano de saúde e day-off no aniversário.",
- *                  "observacoes": "Processo seletivo com etapas online.",
- *                  "status": "PUBLICADO"
+ *                  "titulo": "Analista de Sistemas Pleno",
+ *                  "slug": "analista-sistemas-pleno-sao-paulo",
+ *                  "numeroVagas": 3,
+ *                  "descricao": "Atuação no planejamento e na evolução dos sistemas corporativos.",
+ *                  "requisitos": {
+ *                    "obrigatorios": ["Experiência com bancos de dados relacionais"],
+ *                    "desejaveis": ["Vivência com cloud"]
+ *                  },
+ *                  "atividades": {
+ *                    "principais": [
+ *                      "Acompanhar roadmap de produtos",
+ *                      "Conduzir diagnósticos técnicos"
+ *                    ]
+ *                  },
+ *                  "beneficios": {
+ *                    "lista": ["Vale refeição", "Plano odontológico"]
+ *                  },
+ *                  "salarioMin": "5000.00",
+ *                  "salarioMax": "7000.00",
+ *                  "salarioConfidencial": false,
+ *                  "maxCandidaturasPorUsuario": 1,
+ *                  "status": "PUBLICADO",
+ *                  "inseridaEm": "2024-10-10T09:00:00Z"
  *                }'
 */
 router.put('/:id', supabaseAuthMiddleware(updateRoles), VagasController.update);

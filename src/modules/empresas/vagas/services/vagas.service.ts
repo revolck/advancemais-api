@@ -9,7 +9,9 @@ import { mapSocialLinks, usuarioRedesSociaisSelect } from '@/modules/usuarios/ut
 import { clientesService } from '@/modules/empresas/clientes/services/clientes.service';
 import {
   EmpresaSemPlanoAtivoError,
+  LimiteVagasDestaqueAtingidoError,
   LimiteVagasPlanoAtingidoError,
+  PlanoNaoPermiteVagaDestaqueError,
   UsuarioNaoEmpresaError,
 } from '@/modules/empresas/vagas/services/errors';
 import type { CreateVagaInput, UpdateVagaInput } from '@/modules/empresas/vagas/validators/vagas.schema';
@@ -46,10 +48,74 @@ const includeEmpresa = {
         },
       },
     },
+    destaqueInfo: {
+      select: {
+        id: true,
+        empresasPlanoId: true,
+        ativo: true,
+        ativadoEm: true,
+        desativadoEm: true,
+      },
+    },
   },
 } as const;
 
 type VagaWithEmpresa = Prisma.EmpresasVagasGetPayload<typeof includeEmpresa>;
+
+const HIGHLIGHT_ACTIVE_STATUSES: StatusDeVagas[] = [
+  StatusDeVagas.EM_ANALISE,
+  StatusDeVagas.PUBLICADO,
+  StatusDeVagas.PAUSADA,
+];
+
+type PlanoAtivo = Awaited<ReturnType<typeof clientesService.findActiveByUsuario>>;
+
+const resolvePlanoDestaqueLimite = (planoAtivo: PlanoAtivo): number | null => {
+  if (!planoAtivo?.plano?.vagaEmDestaque) {
+    return null;
+  }
+
+  const limite = planoAtivo.plano.quantidadeVagasDestaque ?? null;
+  if (limite === null || limite <= 0) {
+    return null;
+  }
+
+  return limite;
+};
+
+const assertPlanoPermiteVagaDestaque = (planoAtivo: PlanoAtivo): number => {
+  const limite = resolvePlanoDestaqueLimite(planoAtivo);
+
+  if (limite === null) {
+    throw new PlanoNaoPermiteVagaDestaqueError();
+  }
+
+  return limite;
+};
+
+const assertVagasDestaqueDisponiveis = async (
+  tx: Prisma.TransactionClient,
+  empresasPlanoId: string,
+  limite: number,
+  vagaIdToIgnorar?: string,
+) => {
+  if (limite <= 0) {
+    throw new PlanoNaoPermiteVagaDestaqueError();
+  }
+
+  const destaquesAtivos = await tx.empresasVagasDestaque.count({
+    where: {
+      empresasPlanoId,
+      ativo: true,
+      ...(vagaIdToIgnorar ? { vagaId: { not: vagaIdToIgnorar } } : {}),
+      vaga: { status: { in: HIGHLIGHT_ACTIVE_STATUSES } },
+    },
+  });
+
+  if (destaquesAtivos >= limite) {
+    throw new LimiteVagasDestaqueAtingidoError(limite);
+  }
+};
 
 const anonymizedName = (vagaId: string) => `Oportunidade Confidencial #${vagaId.slice(0, 5).toUpperCase()}`;
 
@@ -178,6 +244,7 @@ const sanitizeCreateData = (data: CreateVagaData, codigo: string): Prisma.Empres
     salarioMax: data.salarioMax ?? undefined,
     salarioConfidencial: data.salarioConfidencial ?? true,
     maxCandidaturasPorUsuario: data.maxCandidaturasPorUsuario ?? undefined,
+    destaque: data.vagaEmDestaque ?? false,
   };
 };
 
@@ -204,6 +271,9 @@ const sanitizeUpdateData = (data: UpdateVagaData): Prisma.EmpresasVagasUnchecked
   }
   if (data.slug !== undefined) {
     update.slug = data.slug.trim().toLowerCase();
+  }
+  if (data.vagaEmDestaque !== undefined) {
+    update.destaque = data.vagaEmDestaque;
   }
   if (data.numeroVagas !== undefined) {
     update.numeroVagas = data.numeroVagas;
@@ -268,20 +338,22 @@ const sanitizeUpdateData = (data: UpdateVagaData): Prisma.EmpresasVagasUnchecked
 const transformVaga = (vaga: VagaWithEmpresa) => {
   if (!vaga) return null;
 
+  const { destaque, destaqueInfo, ...vagaSemMetadados } = vaga;
+
   const empresaUsuarioRaw =
-    vaga.empresa && vaga.empresa.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
-      ? vaga.empresa
+    vagaSemMetadados.empresa && vagaSemMetadados.empresa.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
+      ? vagaSemMetadados.empresa
       : null;
   const empresaUsuario = empresaUsuarioRaw
     ? attachEnderecoResumo(mergeUsuarioInformacoes(empresaUsuarioRaw))!
     : null;
 
-  const displayName = vaga.modoAnonimo
-    ? anonymizedName(vaga.id)
+  const displayName = vagaSemMetadados.modoAnonimo
+    ? anonymizedName(vagaSemMetadados.id)
     : empresaUsuario?.nomeCompleto ?? null;
-  const displayLogo = vaga.modoAnonimo ? null : empresaUsuario?.avatarUrl ?? null;
+  const displayLogo = vagaSemMetadados.modoAnonimo ? null : empresaUsuario?.avatarUrl ?? null;
   const rawDescricao = empresaUsuario?.descricao;
-  const displayDescription = vaga.modoAnonimo
+  const displayDescription = vagaSemMetadados.modoAnonimo
     ? ANON_DESCRIPTION
     : typeof rawDescricao === 'string' && rawDescricao.trim().length > 0
       ? rawDescricao.trim()
@@ -291,24 +363,36 @@ const transformVaga = (vaga: VagaWithEmpresa) => {
     ? {
         id: empresaUsuario.id,
         nome: empresaUsuario.nomeCompleto,
-        avatarUrl: vaga.modoAnonimo ? null : empresaUsuario.avatarUrl,
+        avatarUrl: vagaSemMetadados.modoAnonimo ? null : empresaUsuario.avatarUrl,
         cidade: empresaUsuario.cidade,
         estado: empresaUsuario.estado,
         descricao: displayDescription,
-        socialLinks: vaga.modoAnonimo ? null : mapSocialLinks(empresaUsuario.redesSociais),
+        socialLinks: vagaSemMetadados.modoAnonimo ? null : mapSocialLinks(empresaUsuario.redesSociais),
         codUsuario: empresaUsuario.codUsuario,
         enderecos: empresaUsuario.enderecos,
         informacoes: empresaUsuario.informacoes,
       }
     : null;
 
+  const destaqueDetalhes = destaqueInfo
+    ? {
+        id: destaqueInfo.id,
+        empresasPlanoId: destaqueInfo.empresasPlanoId,
+        ativo: destaqueInfo.ativo,
+        ativadoEm: destaqueInfo.ativadoEm,
+        desativadoEm: destaqueInfo.desativadoEm ?? null,
+      }
+    : null;
+
   return {
-    ...vaga,
+    ...vagaSemMetadados,
     empresa,
     nomeExibicao: displayName,
     logoExibicao: displayLogo,
-    mensagemAnonimato: vaga.modoAnonimo ? ANON_DESCRIPTION : null,
+    mensagemAnonimato: vagaSemMetadados.modoAnonimo ? ANON_DESCRIPTION : null,
     descricaoExibicao: displayDescription,
+    vagaEmDestaque: destaque,
+    destaqueInfo: destaqueDetalhes,
   };
 };
 
@@ -378,22 +462,99 @@ export const vagasService = {
   },
 
   create: async (data: CreateVagaData) => {
-    await ensurePlanoAtivoParaUsuario(data.usuarioId);
+    const planoAtivo = await ensurePlanoAtivoParaUsuario(data.usuarioId);
     const codigo = await generateUniqueVagaCode();
+    const shouldHighlight = data.vagaEmDestaque ?? false;
 
-    const vaga = await prisma.empresasVagas.create({
-      data: sanitizeCreateData(data, codigo),
-      ...includeEmpresa,
+    const vaga = await prisma.$transaction(async (tx) => {
+      if (shouldHighlight) {
+        const limite = assertPlanoPermiteVagaDestaque(planoAtivo);
+        await assertVagasDestaqueDisponiveis(tx, planoAtivo.id, limite);
+      }
+
+      const created = await tx.empresasVagas.create({
+        data: sanitizeCreateData(data, codigo),
+      });
+
+      if (shouldHighlight) {
+        await tx.empresasVagasDestaque.create({
+          data: {
+            vagaId: created.id,
+            empresasPlanoId: planoAtivo.id,
+          },
+        });
+      }
+
+      return tx.empresasVagas.findUniqueOrThrow({
+        where: { id: created.id },
+        ...includeEmpresa,
+      });
     });
 
     return transformVaga(vaga);
   },
 
   update: async (id: string, data: UpdateVagaData) => {
-    const vaga = await prisma.empresasVagas.update({
+    const vagaAtual = await prisma.empresasVagas.findUnique({
       where: { id },
-      data: sanitizeUpdateData(data),
-      ...includeEmpresa,
+      include: { destaqueInfo: true },
+    });
+
+    if (!vagaAtual) {
+      throw Object.assign(new Error('Vaga não encontrada'), { code: 'P2025' });
+    }
+
+    const novoUsuarioId = data.usuarioId ?? vagaAtual.usuarioId;
+    const shouldActivateHighlight = data.vagaEmDestaque === true && !vagaAtual.destaque;
+    const shouldDeactivateHighlight = data.vagaEmDestaque === false && vagaAtual.destaque;
+    const manterHighlightAtivo = vagaAtual.destaque && !shouldDeactivateHighlight;
+    const shouldReassignHighlightPlan = manterHighlightAtivo && data.usuarioId !== undefined;
+
+    let planoAtivo: PlanoAtivo = null;
+    let limiteDestaque: number | null = null;
+
+    if (shouldActivateHighlight || shouldReassignHighlightPlan) {
+      planoAtivo = await ensurePlanoAtivoParaUsuario(novoUsuarioId);
+      limiteDestaque = assertPlanoPermiteVagaDestaque(planoAtivo);
+    }
+
+    const vaga = await prisma.$transaction(async (tx) => {
+      if (planoAtivo && limiteDestaque !== null) {
+        await assertVagasDestaqueDisponiveis(tx, planoAtivo.id, limiteDestaque);
+      }
+
+      const atualizada = await tx.empresasVagas.update({
+        where: { id },
+        data: sanitizeUpdateData(data),
+      });
+
+      if (planoAtivo && (shouldActivateHighlight || shouldReassignHighlightPlan)) {
+        await tx.empresasVagasDestaque.upsert({
+          where: { vagaId: atualizada.id },
+          update: {
+            empresasPlanoId: planoAtivo.id,
+            ativo: true,
+            ativadoEm: new Date(),
+            desativadoEm: null,
+          },
+          create: {
+            vagaId: atualizada.id,
+            empresasPlanoId: planoAtivo.id,
+          },
+        });
+      }
+
+      if (shouldDeactivateHighlight) {
+        await tx.empresasVagasDestaque.updateMany({
+          where: { vagaId: atualizada.id },
+          data: { ativo: false, desativadoEm: new Date() },
+        });
+      }
+
+      return tx.empresasVagas.findUniqueOrThrow({
+        where: { id: atualizada.id },
+        ...includeEmpresa,
+      });
     });
 
     return transformVaga(vaga);

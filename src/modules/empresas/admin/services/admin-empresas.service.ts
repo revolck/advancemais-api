@@ -314,6 +314,13 @@ type AdminEmpresaJobResumo = {
   salarioMax: Prisma.Decimal | null;
   salarioConfidencial: boolean;
   maxCandidaturasPorUsuario: number | null;
+  vagaEmDestaque: boolean;
+  destaqueInfo: {
+    empresasPlanoId: string;
+    ativo: boolean;
+    ativadoEm: Date;
+    desativadoEm: Date | null;
+  } | null;
 };
 
 type AdminEmpresaDetail = {
@@ -1071,6 +1078,15 @@ export const adminEmpresasService = {
           salarioMax: true,
           salarioConfidencial: true,
           maxCandidaturasPorUsuario: true,
+          destaque: true,
+          destaqueInfo: {
+            select: {
+              empresasPlanoId: true,
+              ativo: true,
+              ativadoEm: true,
+              desativadoEm: true,
+            },
+          },
         },
       }),
     ]);
@@ -1101,6 +1117,15 @@ export const adminEmpresasService = {
       salarioMax: vaga.salarioMax ?? null,
       salarioConfidencial: vaga.salarioConfidencial,
       maxCandidaturasPorUsuario: vaga.maxCandidaturasPorUsuario ?? null,
+      vagaEmDestaque: vaga.destaque,
+      destaqueInfo: vaga.destaqueInfo
+        ? {
+            empresasPlanoId: vaga.destaqueInfo.empresasPlanoId,
+            ativo: vaga.destaqueInfo.ativo,
+            ativadoEm: vaga.destaqueInfo.ativadoEm,
+            desativadoEm: vaga.destaqueInfo.desativadoEm ?? null,
+          }
+        : null,
     }));
 
     return {
@@ -1167,6 +1192,15 @@ export const adminEmpresasService = {
           salarioMax: true,
           salarioConfidencial: true,
           maxCandidaturasPorUsuario: true,
+          destaque: true,
+          destaqueInfo: {
+            select: {
+              empresasPlanoId: true,
+              ativo: true,
+              ativadoEm: true,
+              desativadoEm: true,
+            },
+          },
         },
       });
     });
@@ -1197,6 +1231,15 @@ export const adminEmpresasService = {
       salarioMax: vaga.salarioMax ?? null,
       salarioConfidencial: vaga.salarioConfidencial,
       maxCandidaturasPorUsuario: vaga.maxCandidaturasPorUsuario ?? null,
+      vagaEmDestaque: vaga.destaque,
+      destaqueInfo: vaga.destaqueInfo
+        ? {
+            empresasPlanoId: vaga.destaqueInfo.empresasPlanoId,
+            ativo: vaga.destaqueInfo.ativo,
+            ativadoEm: vaga.destaqueInfo.ativadoEm,
+            desativadoEm: vaga.destaqueInfo.desativadoEm ?? null,
+          }
+        : null,
     } satisfies AdminEmpresaJobResumo;
   },
 

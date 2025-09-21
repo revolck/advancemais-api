@@ -26,3 +26,23 @@ export class LimiteVagasPlanoAtingidoError extends Error {
     this.limite = limite;
   }
 }
+
+export class PlanoNaoPermiteVagaDestaqueError extends Error {
+  code = 'PLANO_EMPRESARIAL_SEM_DESTAQUE';
+
+  constructor() {
+    super('O plano atual não permite publicar vagas em destaque.');
+    this.name = 'PlanoNaoPermiteVagaDestaqueError';
+  }
+}
+
+export class LimiteVagasDestaqueAtingidoError extends Error {
+  code = 'PLANO_EMPRESARIAL_LIMIT_DESTAQUE';
+  readonly limite: number;
+
+  constructor(limite: number) {
+    super('O limite de vagas em destaque do plano foi atingido.');
+    this.name = 'LimiteVagasDestaqueAtingidoError';
+    this.limite = limite;
+  }
+}

@@ -115,6 +115,10 @@ const options: Options = {
         description: 'Administração de vagas corporativas vinculadas às empresas',
       },
       {
+        name: 'Empresas - VagasProcessos',
+        description: 'Gestão das etapas e candidatos vinculados aos processos seletivos das vagas',
+      },
+      {
         name: 'Empresas - Admin',
         description:
           'Gestão administrativa completa das empresas: cadastro, planos, pagamentos, vagas, banimentos e monitoramento operacional',
@@ -168,6 +172,7 @@ const options: Options = {
           'Empresas - Planos Empresariais',
           'Empresas - Clientes',
           'Empresas - EmpresasVagas',
+          'Empresas - VagasProcessos',
           'Empresas - Admin',
         ],
       },
@@ -3668,6 +3673,32 @@ const options: Options = {
           enum: ['RASCUNHO', 'EM_ANALISE', 'PUBLICADO', 'DESPUBLICADA', 'PAUSADA', 'EXPIRADO', 'ENCERRADA'],
           example: 'PUBLICADO',
         },
+        StatusProcesso: {
+          type: 'string',
+          description:
+            'Etapas do acompanhamento do candidato durante o processo seletivo da vaga.',
+          enum: [
+            'RECEBIDA',
+            'EM_ANALISE',
+            'EM_TRIAGEM',
+            'ENTREVISTA',
+            'DESAFIO',
+            'DOCUMENTACAO',
+            'CONTRATADO',
+            'RECUSADO',
+            'DESISTIU',
+            'NAO_COMPARECEU',
+            'ARQUIVADO',
+            'CANCELADO',
+          ],
+          example: 'EM_ANALISE',
+        },
+        OrigemVagas: {
+          type: 'string',
+          description: 'Origem do cadastro do processo seletivo associado à vaga.',
+          enum: ['SITE', 'DASHBOARD', 'OUTROS'],
+          example: 'DASHBOARD',
+        },
         RegimesDeTrabalhos: {
           type: 'string',
           description: 'Formatos de contratação oferecidos pelas empresas nas vagas.',
@@ -3889,6 +3920,159 @@ const options: Options = {
               example: '2025-03-13T14:00:00.000Z',
             },
           },
+        },
+        VagaProcessoCandidato: {
+          type: 'object',
+          description: 'Resumo do candidato vinculado a um processo seletivo da vaga.',
+          properties: {
+            id: { type: 'string', format: 'uuid', example: 'candidate-uuid' },
+            nomeCompleto: { type: 'string', example: 'João da Silva' },
+            email: { type: 'string', example: 'candidato@example.com' },
+            codUsuario: { type: 'string', example: 'ALU1234' },
+            role: {
+              allOf: [{ $ref: '#/components/schemas/Roles' }],
+              example: 'ALUNO_CANDIDATO',
+            },
+            status: {
+              allOf: [{ $ref: '#/components/schemas/Status' }],
+              example: 'ATIVO',
+            },
+            tipoUsuario: {
+              allOf: [{ $ref: '#/components/schemas/TiposDeUsuarios' }],
+              example: 'PESSOA_FISICA',
+            },
+            criadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-01-01T12:00:00Z',
+            },
+            ultimoLogin: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              example: '2024-02-10T09:30:00Z',
+            },
+            telefone: { type: 'string', nullable: true, example: '+55 82 99999-0000' },
+            genero: { type: 'string', nullable: true, example: 'FEMININO' },
+            dataNasc: {
+              type: 'string',
+              format: 'date',
+              nullable: true,
+              example: '1995-07-15',
+            },
+            matricula: { type: 'string', nullable: true, example: 'MAT-2024-001' },
+            avatarUrl: {
+              type: 'string',
+              nullable: true,
+              example: 'https://cdn.advance.com.br/candidates/avatar.png',
+            },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Desenvolvedora full-stack com foco em produtos digitais.',
+            },
+            aceitarTermos: {
+              type: 'boolean',
+              example: true,
+              description: 'Indica se o candidato aceitou os termos durante o cadastro.',
+            },
+            informacoes: {
+              allOf: [{ $ref: '#/components/schemas/UsuarioInformacoes' }],
+              description: 'Dados complementares persistidos na tabela UsuariosInformation.',
+            },
+            enderecos: {
+              type: 'array',
+              description: 'Endereços cadastrados pelo candidato. O primeiro item representa o endereço principal.',
+              items: { $ref: '#/components/schemas/UsuarioEndereco' },
+            },
+            cidade: { type: 'string', nullable: true, example: 'Maceió' },
+            estado: { type: 'string', nullable: true, example: 'AL' },
+          },
+        },
+        VagaProcesso: {
+          type: 'object',
+          description: 'Representa o acompanhamento de um candidato dentro de uma vaga corporativa.',
+          required: ['id', 'vagaId', 'candidatoId', 'status', 'origem', 'criadoEm', 'atualizadoEm'],
+          properties: {
+            id: { type: 'string', format: 'uuid', example: 'processo-uuid' },
+            vagaId: { type: 'string', format: 'uuid', example: 'vaga-uuid' },
+            candidatoId: { type: 'string', format: 'uuid', example: 'candidate-uuid' },
+            status: { allOf: [{ $ref: '#/components/schemas/StatusProcesso' }] },
+            origem: { allOf: [{ $ref: '#/components/schemas/OrigemVagas' }] },
+            observacoes: {
+              type: 'string',
+              nullable: true,
+              example: 'Candidato com excelente aderência técnica, aguardando entrevista final.',
+            },
+            agendadoEm: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              example: '2025-03-20T14:00:00Z',
+            },
+            criadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2025-03-15T12:34:00Z',
+            },
+            atualizadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2025-03-18T09:10:00Z',
+            },
+            candidato: {
+              allOf: [{ $ref: '#/components/schemas/VagaProcessoCandidato' }],
+              nullable: true,
+            },
+          },
+        },
+        VagaProcessoCreateInput: {
+          type: 'object',
+          required: ['candidatoId'],
+          properties: {
+            candidatoId: { type: 'string', format: 'uuid', example: 'candidate-uuid' },
+            status: {
+              allOf: [{ $ref: '#/components/schemas/StatusProcesso' }],
+              nullable: true,
+              description: 'Quando omitido, o status padrão RECEBIDA é aplicado automaticamente.',
+            },
+            origem: {
+              allOf: [{ $ref: '#/components/schemas/OrigemVagas' }],
+              nullable: true,
+              description: 'Origem da candidatura. O valor padrão é SITE.',
+            },
+            observacoes: {
+              type: 'string',
+              nullable: true,
+              example: 'Candidato indicado por parceiro estratégico.',
+            },
+            agendadoEm: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              example: '2025-03-21T10:00:00Z',
+            },
+          },
+        },
+        VagaProcessoUpdateInput: {
+          type: 'object',
+          description: 'Campos disponíveis para atualização parcial do processo seletivo vinculado à vaga.',
+          properties: {
+            status: { allOf: [{ $ref: '#/components/schemas/StatusProcesso' }] },
+            origem: { allOf: [{ $ref: '#/components/schemas/OrigemVagas' }] },
+            observacoes: {
+              type: 'string',
+              nullable: true,
+              example: 'Feedback registrado após a entrevista técnica.',
+            },
+            agendadoEm: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              example: '2025-03-22T15:00:00Z',
+            },
+          },
+          minProperties: 1,
         },
         AdminEmpresaListItem: {
           type: 'object',
@@ -6417,6 +6601,7 @@ export function setupSwagger(app: Application): void {
               'Empresas - Planos Empresariais',
               'Empresas - Clientes',
               'Empresas - EmpresasVagas',
+              'Empresas - VagasProcessos',
             ];
             const ai = order.indexOf(a);
             const bi = order.indexOf(b);

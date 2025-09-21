@@ -75,7 +75,6 @@ model CandidatosAreasInteresse {
   criadoEm  DateTime                       @default(now())
   atualizadoEm DateTime                     @updatedAt
 
-  @@map("candidatos_areas_interesse")
   @@index([categoria])
 }
 
@@ -88,8 +87,6 @@ model CandidatosSubareasInteresse {
   atualizadoEm DateTime                @updatedAt
 
   area CandidatosAreasInteresse @relation(fields: [areaId], references: [id], onDelete: Cascade)
-
-  @@map("candidatos_subareas_interesse")
   @@unique([areaId, nome])
   @@index([nome])
 }

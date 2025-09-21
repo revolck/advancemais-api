@@ -1,4 +1,4 @@
-import { Status, StatusDeVagas } from '@prisma/client';
+import { MotivosDeBanimentos, Status, StatusDeVagas, TiposDeBanimentos } from '@prisma/client';
 import { z } from 'zod';
 
 import { clientePlanoTipoSchema } from '@/modules/empresas/clientes/validators/clientes.schema';
@@ -214,15 +214,33 @@ export const adminEmpresasVagasQuerySchema = paginationQueryBaseSchema
 
 export type AdminEmpresasVagasQuery = z.infer<typeof adminEmpresasVagasQuerySchema>;
 
-export const adminEmpresasBanSchema = z.object({
-  dias: z.coerce.number().int().min(1, 'Informe pelo menos 1 dia de banimento').max(3650).describe('Quantidade de dias para banimento'),
-  motivo: z
-    .string()
-    .trim()
-    .min(3, 'Informe um motivo com pelo menos 3 caracteres')
-    .max(500, 'Motivo deve ter no máximo 500 caracteres')
-    .optional(),
-});
+export const adminEmpresasBanSchema = z
+  .object({
+    tipo: z.nativeEnum(TiposDeBanimentos, { required_error: 'Tipo de banimento é obrigatório' }),
+    motivo: z.nativeEnum(MotivosDeBanimentos, { required_error: 'Motivo do banimento é obrigatório' }),
+    dias: z.coerce
+      .number()
+      .int()
+      .min(1, 'Informe pelo menos 1 dia de banimento')
+      .max(3650, 'Banimento temporário deve ter no máximo 10 anos')
+      .describe('Quantidade de dias para banimento temporário')
+      .optional(),
+    observacoes: z
+      .string()
+      .trim()
+      .min(3, 'Informe observações com pelo menos 3 caracteres')
+      .max(500, 'Observações devem ter no máximo 500 caracteres')
+      .optional(),
+  })
+  .refine(
+    (values) =>
+      values.tipo !== TiposDeBanimentos.TEMPORARIO ||
+      (values.dias !== undefined && Number.isFinite(values.dias) && values.dias > 0),
+    {
+      message: 'Informe a quantidade de dias para banimentos temporários',
+      path: ['dias'],
+    },
+  );
 
 export type AdminEmpresasBanInput = z.infer<typeof adminEmpresasBanSchema>;
 

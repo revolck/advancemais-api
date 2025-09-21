@@ -204,6 +204,78 @@ router.get('/', asyncHandler(adminController.getAdminInfo));
 router.get('/usuarios', asyncHandler(adminController.listarUsuarios));
 
 /**
+ * @openapi
+ * /api/v1/usuarios/admin/usuarios:
+ *   post:
+ *     summary: Criar usuário (admin/moderador)
+ *     description: Cria um usuário de pessoa física ou jurídica já com email validado, sem exigir confirmação de token.
+ *     tags: [Usuários - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AdminCreateUserRequest'
+ *     responses:
+ *       201:
+ *         description: Usuário criado com sucesso e com email marcado como verificado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminCreateUserResponse'
+ *       400:
+ *         description: Dados inválidos para criação do usuário
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       409:
+ *         description: Usuário já cadastrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/usuarios/admin/usuarios" \
+ *            -H "Content-Type: application/json" \
+ *            -H "Authorization: Bearer <TOKEN>" \
+ *            -d '{
+ *                 "nomeCompleto": "Maria Souza",
+ *                 "telefone": "559999999999",
+ *                 "email": "maria@example.com",
+ *                 "senha": "SenhaForte123",
+ *                 "confirmarSenha": "SenhaForte123",
+ *                 "tipoUsuario": "PESSOA_FISICA",
+ *                 "cpf": "11122233344",
+ *                 "role": "ALUNO_CANDIDATO"
+ *               }'
+ */
+router.post('/usuarios', asyncHandler(adminController.criarUsuario));
+
+/**
  * Listar candidatos com filtros
  * GET /admin/candidatos
  */

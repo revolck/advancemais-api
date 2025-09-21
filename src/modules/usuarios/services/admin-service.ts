@@ -6,18 +6,41 @@
  * @version 3.0.0
  */
 import { Prisma, Roles, Status, TiposDeUsuarios } from '@prisma/client';
+import bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 import { z } from 'zod';
 
 import { prisma } from '@/config/prisma';
 import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
 import { logger } from '@/utils/logger';
+import { invalidateCacheByPrefix } from '@/utils/cache';
 import { attachEnderecoResumo } from '../utils/address';
 import { mergeUsuarioInformacoes, usuarioInformacoesSelect } from '../utils/information';
 import { mapSocialLinks, usuarioRedesSociaisSelect } from '../utils/social-links';
+import {
+  buildUserDataForDatabase,
+  checkForDuplicates,
+  createUserWithTransaction,
+  extractAdminSocialLinks,
+  processUserTypeSpecificData,
+} from '../register/user-creation-helpers';
+import type { AdminCreateUserInput } from '../validators/auth.schema';
 export class AdminService {
   private readonly log = logger.child({ module: 'AdminService' });
 
   constructor() {}
+
+  private createServiceError(message: string, statusCode: number, code?: string, details?: unknown) {
+    const error = new Error(message);
+    (error as any).statusCode = statusCode;
+    if (code) {
+      (error as any).code = code;
+    }
+    if (details) {
+      (error as any).details = details;
+    }
+    return error;
+  }
 
   private getStatusFilter(status?: string) {
     if (!status) return undefined;
@@ -444,6 +467,122 @@ export class AdminService {
     return {
       message: 'Role do usuário atualizada com sucesso',
       usuario,
+    };
+  }
+
+  async criarUsuario(
+    dados: AdminCreateUserInput,
+    options?: { correlationId?: string; adminId?: string },
+  ) {
+    const log = this.log.child({
+      action: 'criarUsuarioAdmin',
+      correlationId: options?.correlationId,
+      adminId: options?.adminId,
+    });
+
+    log.info('Iniciando criação administrativa de usuário');
+
+    if (dados.senha !== dados.confirmarSenha) {
+      throw this.createServiceError('Senhas não conferem', 400, 'PASSWORD_MISMATCH');
+    }
+
+    const aceitarTermos = dados.aceitarTermos ?? true;
+    const supabaseId = dados.supabaseId?.trim() || randomUUID();
+    const normalizedRole =
+      dados.role && Object.values(Roles).includes(dados.role)
+        ? dados.role
+        : dados.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
+          ? Roles.EMPRESA
+          : Roles.ALUNO_CANDIDATO;
+
+    const helperLogger = log.child({ scope: 'createUserHelpers' });
+
+    const processedData = await processUserTypeSpecificData(dados, { logger: helperLogger });
+    if (!processedData.success) {
+      log.warn({ error: processedData.error }, 'Validação específica falhou');
+      throw this.createServiceError(
+        processedData.error ?? 'Dados inválidos para criação de usuário',
+        400,
+        'VALIDATION_ERROR',
+      );
+    }
+
+    const duplicateCheck = await checkForDuplicates(
+      {
+        email: dados.email,
+        supabaseId,
+        cpf: processedData.cpfLimpo,
+        cnpj: processedData.cnpjLimpo,
+      },
+      { logger: helperLogger },
+    );
+
+    if (duplicateCheck.found) {
+      log.warn({ reason: duplicateCheck.reason }, 'Usuário duplicado identificado');
+      throw this.createServiceError(
+        duplicateCheck.reason ?? 'Usuário já cadastrado',
+        409,
+        'USER_ALREADY_EXISTS',
+      );
+    }
+
+    const senhaHash = await bcrypt.hash(dados.senha, 12);
+
+    const socialLinksInput = extractAdminSocialLinks(dados as unknown as Record<string, unknown>);
+
+    const userData = buildUserDataForDatabase({
+      nomeCompleto: dados.nomeCompleto,
+      email: dados.email,
+      senha: senhaHash,
+      telefone: dados.telefone,
+      tipoUsuario: dados.tipoUsuario,
+      role: normalizedRole,
+      aceitarTermos,
+      supabaseId,
+      cpfLimpo: processedData.cpfLimpo,
+      cnpjLimpo: processedData.cnpjLimpo,
+      dataNascimento: processedData.dataNascimento,
+      generoValidado: processedData.generoValidado,
+      socialLinks: socialLinksInput,
+      status: dados.status ?? Status.ATIVO,
+    });
+
+    const usuario = await createUserWithTransaction(userData, {
+      logger: helperLogger,
+      markEmailVerified: true,
+    });
+
+    await invalidateUserCache(usuario);
+
+    try {
+      await invalidateCacheByPrefix('dashboard:');
+    } catch (error) {
+      log.warn({ err: error }, 'Falha ao limpar cache de dashboard');
+    }
+
+    log.info({ userId: usuario.id }, 'Usuário criado com sucesso via admin');
+
+    return {
+      success: true,
+      message: 'Usuário criado com sucesso',
+      usuario: {
+        id: usuario.id,
+        email: usuario.email,
+        nomeCompleto: usuario.nomeCompleto,
+        tipoUsuario: usuario.tipoUsuario,
+        role: usuario.role,
+        status: usuario.status,
+        criadoEm: usuario.criadoEm,
+        codUsuario: usuario.codUsuario,
+        emailVerificado: true,
+        emailVerificadoEm: new Date(),
+        socialLinks: mapSocialLinks(usuario.redesSociais),
+      },
+      meta: {
+        correlationId: options?.correlationId,
+        createdBy: options?.adminId,
+        emailVerificationBypassed: true,
+      },
     };
   }
 }

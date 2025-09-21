@@ -4,9 +4,18 @@ import { mercadopagoConfig, serverConfig } from '@/config/env';
 import { PreApproval, PreApprovalPlan, Payment, Preference } from 'mercadopago';
 import crypto from 'crypto';
 import { clientesService } from '@/modules/empresas/clientes/services/clientes.service';
-import { METODO_PAGAMENTO, MODELO_PAGAMENTO, STATUS_PAGAMENTO, StatusDeVagas, TiposDePlanos } from '@prisma/client';
+import {
+  METODO_PAGAMENTO,
+  MODELO_PAGAMENTO,
+  STATUS_PAGAMENTO,
+  StatusDeVagas,
+  EmpresasPlanoStatus,
+  EmpresasPlanoModo,
+} from '@prisma/client';
 import type { PlanosEmpresariais } from '@prisma/client';
 import { EmailService } from '@/modules/brevo/services/email-service';
+import { EmailTemplates } from '@/modules/brevo/templates/email-templates';
+import { logger } from '@/utils/logger';
 import type { StartCheckoutInput } from '@/modules/mercadopago/assinaturas/validators/assinaturas.schema';
 
 type MercadoPagoResponse<T = any> = {
@@ -20,11 +29,10 @@ type PlanosEmpresariaisSnapshot = {
   id: string;
   usuarioId: string;
   planosEmpresariaisId: string;
-  tipo: TiposDePlanos;
+  modo: null;
+  status: EmpresasPlanoStatus;
   inicio: Date | null;
   fim: Date | null;
-  ativo: boolean;
-  observacao: string;
   criadoEm: Date;
   atualizadoEm: Date;
   modeloPagamento: MODELO_PAGAMENTO;
@@ -45,10 +53,21 @@ const pagamentoToMetodo: Record<CheckoutPagamento, METODO_PAGAMENTO> = {
   boleto: METODO_PAGAMENTO.BOLETO,
 };
 
-const PAYMENT_APPROVED_STATUSES = new Set(['approved', 'accredited', 'authorized', 'authorized_for_collect', 'active']);
+const PAYMENT_APPROVED_STATUSES = new Set([
+  'approved',
+  'accredited',
+  'authorized',
+  'authorized_for_collect',
+  'active',
+]);
 const PAYMENT_PENDING_STATUSES = new Set(['pending', 'in_process']);
 const PAYMENT_REJECTED_STATUSES = new Set(['rejected', 'charged_back', 'chargeback']);
-const PAYMENT_CANCELLED_STATUSES = new Set(['cancelled', 'cancelled_by_collector', 'cancelled_by_user', 'expired']);
+const PAYMENT_CANCELLED_STATUSES = new Set([
+  'cancelled',
+  'cancelled_by_collector',
+  'cancelled_by_user',
+  'expired',
+]);
 
 function addMonths(date: Date, months: number) {
   const d = new Date(date);
@@ -86,7 +105,7 @@ async function createOrUpdateCheckoutEmpresasPlano(params: {
   modeloPagamento: MODELO_PAGAMENTO;
   statusPagamento: STATUS_PAGAMENTO;
   observacao?: string;
-  ativo?: boolean;
+  status?: EmpresasPlanoStatus;
   inicio?: Date | null;
   fim?: Date | null;
   proximaCobranca?: Date | null;
@@ -99,12 +118,11 @@ async function createOrUpdateCheckoutEmpresasPlano(params: {
   const data = {
     usuarioId: params.usuarioId,
     planosEmpresariaisId: params.planosEmpresariaisId,
-    tipo: TiposDePlanos.ASSINATURA_MENSAL,
-    observacao: params.observacao ?? 'Aguardando confirmação de pagamento (Mercado Pago)',
+    status: params.status ?? EmpresasPlanoStatus.SUSPENSO,
+    origin: 'CHECKOUT' as any,
     modeloPagamento: params.modeloPagamento,
     metodoPagamento: params.metodoPagamento,
     statusPagamento: params.statusPagamento,
-    ativo: params.ativo ?? false,
     inicio: params.inicio ?? null,
     fim: params.fim ?? null,
     proximaCobranca: params.proximaCobranca ?? null,
@@ -147,13 +165,7 @@ export function extractInitPoint(result: MercadoPagoResponse): string | null {
 function extractResourceId(result: MercadoPagoResponse): string | null {
   if (!result) return null;
   const body = result.body ?? result;
-  return (
-    body?.id ||
-    body?.preapproval_id ||
-    body?.preference_id ||
-    result?.id ||
-    null
-  );
+  return body?.id || body?.preapproval_id || body?.preference_id || result?.id || null;
 }
 
 function firstNonEmptyUrl(...urls: (string | null | undefined)[]): string | null {
@@ -183,18 +195,33 @@ export function resolveCheckoutReturnUrls(params?: {
     ) || serverConfig.frontendUrl;
 
   const success =
-    firstNonEmptyUrl(overrides.successUrl, mercadopagoConfig.returnUrls.success, fallbackBase) || fallbackBase;
+    firstNonEmptyUrl(overrides.successUrl, mercadopagoConfig.returnUrls.success, fallbackBase) ||
+    fallbackBase;
   const failure =
-    firstNonEmptyUrl(overrides.failureUrl, mercadopagoConfig.returnUrls.failure, success, fallbackBase) || success;
+    firstNonEmptyUrl(
+      overrides.failureUrl,
+      mercadopagoConfig.returnUrls.failure,
+      success,
+      fallbackBase,
+    ) || success;
   const pending =
-    firstNonEmptyUrl(overrides.pendingUrl, mercadopagoConfig.returnUrls.pending, success, failure, fallbackBase) || success;
+    firstNonEmptyUrl(
+      overrides.pendingUrl,
+      mercadopagoConfig.returnUrls.pending,
+      success,
+      failure,
+      fallbackBase,
+    ) || success;
 
   return { success, failure, pending };
 }
 
 function normalizeMercadoPagoError(error: unknown): { message: string; payload?: any } {
   if (error instanceof Error) {
-    return { message: error.message, payload: { name: error.name, message: error.message, stack: error.stack } };
+    return {
+      message: error.message,
+      payload: { name: error.name, message: error.message, stack: error.stack },
+    };
   }
 
   if (error && typeof error === 'object') {
@@ -258,7 +285,10 @@ export const assinaturasService = {
   },
   async ensurePlanPreapproval(planId: string) {
     assertMercadoPagoConfigured();
-    const plan = await prisma.planosEmpresariais.findUnique({ where: { id: planId }, select: { id: true, nome: true, valor: true, mpPreapprovalPlanId: true } });
+    const plan = await prisma.planosEmpresariais.findUnique({
+      where: { id: planId },
+      select: { id: true, nome: true, valor: true, mpPreapprovalPlanId: true },
+    });
     if (!plan) throw new Error('PlanosEmpresariais não encontrado');
     if (plan.mpPreapprovalPlanId) return plan.mpPreapprovalPlanId;
 
@@ -278,7 +308,10 @@ export const assinaturasService = {
     });
     const id = (created as any)?.id as string | undefined;
     if (id) {
-      await prisma.planosEmpresariais.update({ where: { id: plan.id }, data: { mpPreapprovalPlanId: id } });
+      await prisma.planosEmpresariais.update({
+        where: { id: plan.id },
+        data: { mpPreapprovalPlanId: id },
+      });
       return id;
     }
     throw new Error('Falha ao criar PreApprovalPlan no Mercado Pago');
@@ -297,24 +330,22 @@ export const assinaturasService = {
     const planosEmpresariaisId = payload.planosEmpresariaisId as string | undefined;
     if (!planosEmpresariaisId) return null;
 
-    const modeloPagamento = (payload.modeloPagamento as MODELO_PAGAMENTO | undefined) ?? MODELO_PAGAMENTO.ASSINATURA;
+    const modeloPagamento =
+      (payload.modeloPagamento as MODELO_PAGAMENTO | undefined) ?? MODELO_PAGAMENTO.ASSINATURA;
     const metodoPagamento = payload.metodoPagamento as METODO_PAGAMENTO | undefined;
-    const observacao = typeof payload.observacao === 'string' ? payload.observacao : 'Aguardando confirmação de pagamento (Mercado Pago)';
-
     const created = await prisma.empresasPlano.create({
       data: {
         id: externalRef,
         usuarioId: checkoutLog.usuarioId,
         planosEmpresariaisId,
-        tipo: TiposDePlanos.ASSINATURA_MENSAL,
         modeloPagamento,
         metodoPagamento: metodoPagamento ?? null,
         statusPagamento: STATUS_PAGAMENTO.PENDENTE,
-        observacao,
         inicio: null,
         proximaCobranca: null,
         graceUntil: null,
-        ativo: false,
+        status: EmpresasPlanoStatus.SUSPENSO,
+        origin: 'CHECKOUT' as any,
       },
     });
 
@@ -325,30 +356,44 @@ export const assinaturasService = {
 
     let updated = created;
     if (subscriptionLog?.mpResourceId) {
-      updated = await prisma.empresasPlano.update({ where: { id: created.id }, data: { mpSubscriptionId: subscriptionLog.mpResourceId } });
+      updated = await prisma.empresasPlano.update({
+        where: { id: created.id },
+        data: { mpSubscriptionId: subscriptionLog.mpResourceId },
+      });
     }
 
-    await prisma.logsPagamentosDeAssinaturas.updateMany({ where: { externalRef }, data: { empresasPlanoId: created.id } });
+    await prisma.logsPagamentosDeAssinaturas.updateMany({
+      where: { externalRef },
+      data: { empresasPlanoId: created.id },
+    });
 
     return updated;
   },
   async startCheckout(params: StartCheckoutInput) {
     assertMercadoPagoConfigured();
 
-    const planoBase = await prisma.planosEmpresariais.findUnique({ where: { id: params.planosEmpresariaisId } });
+    const planoBase = await prisma.planosEmpresariais.findUnique({
+      where: { id: params.planosEmpresariaisId },
+    });
     if (!planoBase) {
       throw new Error('PlanosEmpresariais não encontrado');
     }
 
     const usuario = await prisma.usuarios.findUnique({
       where: { id: params.usuarioId },
-      include: { enderecos: { take: 1, orderBy: { criadoEm: 'asc' } } },
+      include: {
+        enderecos: { take: 1, orderBy: { criadoEm: 'asc' } },
+        informacoes: { select: { telefone: true } },
+      },
     });
     if (!usuario) {
       throw new Error('Usuário não encontrado');
     }
 
-    const checkoutId = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
+    const checkoutId =
+      typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : crypto.randomBytes(16).toString('hex');
     const isAssinatura = params.metodo === 'assinatura';
     const pagamentoSelecionado: CheckoutPagamento = isAssinatura
       ? (params.pagamento ?? 'card')
@@ -361,11 +406,7 @@ export const assinaturasService = {
       : pagamentoSelecionado === 'card' && params.card?.installments && params.card.installments > 1
         ? MODELO_PAGAMENTO.PAGAMENTO_PARCELADO
         : MODELO_PAGAMENTO.PAGAMENTO_UNICO;
-    const paymentMode = isAssinatura
-      ? params.card?.token
-        ? 'DIRECT'
-        : 'CHECKOUT_PRO'
-      : 'DIRECT';
+    const paymentMode = isAssinatura ? (params.card?.token ? 'DIRECT' : 'CHECKOUT_PRO') : 'DIRECT';
 
     await this.logEvent({
       usuarioId: params.usuarioId,
@@ -402,21 +443,22 @@ export const assinaturasService = {
     const endereco = usuario.enderecos?.[0];
     const payerAddress = endereco
       ? {
-          zip_code: sanitizeDigits(endereco.cep),
-          street_name: endereco.logradouro,
-          street_number: endereco.numero,
-          neighborhood: endereco.bairro,
-          city: endereco.cidade,
-          federal_unit: endereco.estado,
+          zip_code: sanitizeDigits(endereco.cep ?? ''),
+          street_name: endereco.logradouro ?? undefined,
+          street_number: endereco.numero ?? undefined,
+          neighborhood: endereco.bairro ?? undefined,
+          city: endereco.cidade ?? undefined,
+          federal_unit: endereco.estado ?? undefined,
         }
       : undefined;
-    const phoneDigits = sanitizeDigits(usuario.telefone);
-    const payerPhone = phoneDigits.length >= 10
-      ? {
-          area_code: phoneDigits.slice(0, 2),
-          number: phoneDigits.slice(2),
-        }
-      : undefined;
+    const phoneDigits = sanitizeDigits(usuario.informacoes?.telefone ?? '');
+    const payerPhone =
+      phoneDigits.length >= 10
+        ? {
+            area_code: phoneDigits.slice(0, 2),
+            number: phoneDigits.slice(2),
+          }
+        : undefined;
 
     const payerBase = {
       email: usuario.email,
@@ -431,11 +473,10 @@ export const assinaturasService = {
       id: checkoutId,
       usuarioId: params.usuarioId,
       planosEmpresariaisId: params.planosEmpresariaisId,
-      tipo: TiposDePlanos.ASSINATURA_MENSAL,
+      modo: null,
+      status: EmpresasPlanoStatus.SUSPENSO,
       inicio: null,
       fim: null,
-      ativo: false,
-      observacao: 'Aguardando confirmação de pagamento (Mercado Pago)',
       criadoEm: new Date(),
       atualizadoEm: new Date(),
       modeloPagamento,
@@ -472,7 +513,11 @@ export const assinaturasService = {
         const result = (await preapproval.create({ body: requestBody })) as MercadoPagoResponse;
         const body = result.body ?? result;
         const subscriptionId = extractResourceId(result);
-        const mpPayerId = body?.payer_id ? String(body.payer_id) : body?.payer?.id ? String(body.payer.id) : null;
+        const mpPayerId = body?.payer_id
+          ? String(body.payer_id)
+          : body?.payer?.id
+            ? String(body.payer.id)
+            : null;
         const statusPagamento = mapToStatusPagamento(body?.status);
         const ativo = statusPagamento === STATUS_PAGAMENTO.APROVADO;
         const inicio = ativo ? new Date() : null;
@@ -485,34 +530,32 @@ export const assinaturasService = {
           metodoPagamento,
           modeloPagamento,
           statusPagamento,
-          ativo,
+          status: ativo ? EmpresasPlanoStatus.ATIVO : EmpresasPlanoStatus.SUSPENSO,
           inicio,
           proximaCobranca,
           mpPreapprovalId: subscriptionId,
           mpSubscriptionId: subscriptionId,
           mpPayerId,
-          observacao: ativo
-            ? 'Assinatura confirmada com cartão via Mercado Pago'
-            : 'Assinatura aguardando confirmação de cartão via Mercado Pago',
         });
 
         if (ativo) {
           await prisma.empresasPlano.updateMany({
-            where: { usuarioId: params.usuarioId, ativo: true, NOT: { id: checkoutId } },
-            data: { ativo: false, fim: new Date() },
+            where: {
+              usuarioId: params.usuarioId,
+              status: EmpresasPlanoStatus.ATIVO,
+              NOT: { id: checkoutId },
+            },
+            data: { status: EmpresasPlanoStatus.CANCELADO, fim: new Date() },
           });
         }
 
         planoSnapshot.statusPagamento = statusPagamento;
-        planoSnapshot.ativo = ativo;
+        planoSnapshot.status = ativo ? EmpresasPlanoStatus.ATIVO : EmpresasPlanoStatus.SUSPENSO;
         planoSnapshot.inicio = inicio;
         planoSnapshot.proximaCobranca = proximaCobranca;
         planoSnapshot.mpPreapprovalId = subscriptionId;
         planoSnapshot.mpSubscriptionId = subscriptionId;
         planoSnapshot.mpPayerId = mpPayerId;
-        planoSnapshot.observacao = ativo
-          ? 'Assinatura confirmada com cartão via Mercado Pago'
-          : 'Assinatura aguardando confirmação de cartão via Mercado Pago';
 
         await this.logEvent({
           usuarioId: params.usuarioId,
@@ -560,19 +603,17 @@ export const assinaturasService = {
           metodoPagamento,
           modeloPagamento,
           statusPagamento,
-          ativo,
+          status: ativo ? EmpresasPlanoStatus.ATIVO : EmpresasPlanoStatus.SUSPENSO,
           mpPaymentId: mpPaymentId ?? null,
           proximaCobranca: expiration,
           graceUntil: expiration,
-          observacao: 'Pagamento PIX aguardando confirmação via Mercado Pago',
         });
 
         planoSnapshot.statusPagamento = statusPagamento;
-        planoSnapshot.ativo = ativo;
+        planoSnapshot.status = ativo ? EmpresasPlanoStatus.ATIVO : EmpresasPlanoStatus.SUSPENSO;
         planoSnapshot.mpPaymentId = mpPaymentId ?? null;
         planoSnapshot.proximaCobranca = expiration;
         planoSnapshot.graceUntil = expiration;
-        planoSnapshot.observacao = 'Pagamento PIX aguardando confirmação via Mercado Pago';
 
         await this.logEvent({
           usuarioId: params.usuarioId,
@@ -627,28 +668,26 @@ export const assinaturasService = {
           metodoPagamento,
           modeloPagamento,
           statusPagamento,
-          ativo,
+          status: ativo ? EmpresasPlanoStatus.ATIVO : EmpresasPlanoStatus.SUSPENSO,
           inicio: ativo ? new Date() : null,
-          observacao: ativo
-            ? 'Pagamento aprovado com cartão via Mercado Pago'
-            : 'Pagamento com cartão aguardando confirmação via Mercado Pago',
           mpPaymentId: mpPaymentId ?? null,
         });
 
         if (ativo) {
           await prisma.empresasPlano.updateMany({
-            where: { usuarioId: params.usuarioId, ativo: true, NOT: { id: checkoutId } },
-            data: { ativo: false, fim: new Date() },
+            where: {
+              usuarioId: params.usuarioId,
+              status: EmpresasPlanoStatus.ATIVO,
+              NOT: { id: checkoutId },
+            },
+            data: { status: EmpresasPlanoStatus.CANCELADO, fim: new Date() },
           });
         }
 
         planoSnapshot.statusPagamento = statusPagamento;
-        planoSnapshot.ativo = ativo;
+        planoSnapshot.status = ativo ? EmpresasPlanoStatus.ATIVO : EmpresasPlanoStatus.SUSPENSO;
         planoSnapshot.inicio = ativo ? new Date() : null;
         planoSnapshot.mpPaymentId = mpPaymentId ?? null;
-        planoSnapshot.observacao = ativo
-          ? 'Pagamento aprovado com cartão via Mercado Pago'
-          : 'Pagamento com cartão aguardando confirmação via Mercado Pago';
 
         await this.logEvent({
           usuarioId: params.usuarioId,
@@ -702,19 +741,17 @@ export const assinaturasService = {
         metodoPagamento,
         modeloPagamento,
         statusPagamento,
-        ativo,
+        status: ativo ? EmpresasPlanoStatus.ATIVO : EmpresasPlanoStatus.SUSPENSO,
         mpPaymentId: mpPaymentId ?? null,
         proximaCobranca: expiration,
         graceUntil,
-        observacao: 'Boleto aguardando compensação via Mercado Pago',
       });
 
       planoSnapshot.statusPagamento = statusPagamento;
-      planoSnapshot.ativo = ativo;
+      planoSnapshot.status = ativo ? EmpresasPlanoStatus.ATIVO : EmpresasPlanoStatus.SUSPENSO;
       planoSnapshot.mpPaymentId = mpPaymentId ?? null;
       planoSnapshot.proximaCobranca = expiration;
       planoSnapshot.graceUntil = graceUntil;
-      planoSnapshot.observacao = 'Boleto aguardando compensação via Mercado Pago';
 
       await this.logEvent({
         usuarioId: params.usuarioId,
@@ -726,8 +763,15 @@ export const assinaturasService = {
         payload: body,
       });
 
-      const barcode = body?.barcode?.content || body?.barcode || body?.transaction_details?.external_resource_url || null;
-      const boletoUrl = body?.transaction_details?.external_resource_url || body?.point_of_interaction?.transaction_data?.ticket_url || null;
+      const barcode =
+        body?.barcode?.content ||
+        body?.barcode ||
+        body?.transaction_details?.external_resource_url ||
+        null;
+      const boletoUrl =
+        body?.transaction_details?.external_resource_url ||
+        body?.point_of_interaction?.transaction_data?.ticket_url ||
+        null;
 
       return {
         checkoutId,
@@ -788,13 +832,17 @@ export const assinaturasService = {
     }
 
     if (PAYMENT_APPROVED_STATUSES.has(normalized)) {
-      updateData.ativo = true;
+      updateData.status = EmpresasPlanoStatus.ATIVO;
       updateData.inicio = plano.inicio ?? new Date();
       updateData.proximaCobranca = addMonths(new Date(), 1);
       updateData.graceUntil = null;
       await prisma.empresasPlano.updateMany({
-        where: { usuarioId: plano.usuarioId, ativo: true, NOT: { id: plano.id } },
-        data: { ativo: false, fim: new Date() },
+        where: {
+          usuarioId: plano.usuarioId,
+          status: EmpresasPlanoStatus.ATIVO,
+          NOT: { id: plano.id },
+        },
+        data: { status: EmpresasPlanoStatus.CANCELADO, fim: new Date() },
       });
     } else if (PAYMENT_PENDING_STATUSES.has(normalized)) {
       updateData.statusPagamento = STATUS_PAGAMENTO.EM_PROCESSAMENTO;
@@ -802,10 +850,10 @@ export const assinaturasService = {
       const grace = new Date();
       grace.setDate(grace.getDate() + (mercadopagoConfig.settings.graceDays || 5));
       updateData.graceUntil = grace;
-      updateData.ativo = false;
+      updateData.status = EmpresasPlanoStatus.SUSPENSO;
     } else if (PAYMENT_CANCELLED_STATUSES.has(normalized)) {
       updateData.statusPagamento = STATUS_PAGAMENTO.CANCELADO;
-      updateData.ativo = false;
+      updateData.status = EmpresasPlanoStatus.CANCELADO;
       updateData.fim = new Date();
       updateData.graceUntil = null;
     }
@@ -840,13 +888,20 @@ export const assinaturasService = {
     const emailService = new EmailService();
 
     if (PAYMENT_APPROVED_STATUSES.has(normalized)) {
+      const planoInfo = await prisma.planosEmpresariais.findUnique({
+        where: { id: plano.planosEmpresariaisId },
+        select: { nome: true, quantidadeVagas: true },
+      });
+      const planName = planoInfo?.nome ?? 'seu plano';
+      const vagas = planoInfo?.quantidadeVagas ?? null;
+      const template = EmailTemplates.generatePlanActivatedEmail({
+        nomeCompleto: usuario.nomeCompleto,
+        planName,
+        vagas,
+      });
       await emailService.sendAssinaturaNotificacao(
         { id: usuario.id, email: usuario.email, nomeCompleto: usuario.nomeCompleto },
-        {
-          subject: '✅ Assinatura ativada',
-          html: `<p>Olá, ${usuario.nomeCompleto}!</p><p>Sua assinatura foi ativada com sucesso.</p>`,
-          text: `Olá, ${usuario.nomeCompleto}! Sua assinatura foi ativada com sucesso.`,
-        },
+        template,
       );
       return;
     }
@@ -864,14 +919,21 @@ export const assinaturasService = {
     }
 
     if (PAYMENT_REJECTED_STATUSES.has(normalized)) {
-      const url = mercadopagoConfig.settings.billingPortalUrl || mercadopagoConfig.returnUrls.failure;
+      const planoInfo = await prisma.planosEmpresariais.findUnique({
+        where: { id: plano.planosEmpresariaisId },
+        select: { nome: true },
+      });
+      const planName = planoInfo?.nome ?? 'seu plano';
+      const url =
+        mercadopagoConfig.settings.billingPortalUrl || mercadopagoConfig.returnUrls.failure;
+      const template = EmailTemplates.generatePlanPaymentRejectedEmail({
+        nomeCompleto: usuario.nomeCompleto,
+        planName,
+        supportUrl: url,
+      });
       await emailService.sendAssinaturaNotificacao(
         { id: usuario.id, email: usuario.email, nomeCompleto: usuario.nomeCompleto },
-        {
-          subject: '⚠️ Problema na cobrança da sua assinatura',
-          html: `<p>Olá, ${usuario.nomeCompleto}!</p><p>Não foi possível cobrar seu método de pagamento. Seu acesso será mantido por enquanto. Por favor, atualize seus dados de pagamento: <a href="${url}">${url}</a>.</p>`,
-          text: `Olá, ${usuario.nomeCompleto}! Não foi possível cobrar seu método de pagamento. Atualize seus dados: ${url}.`,
-        },
+        template,
       );
       return;
     }
@@ -901,7 +963,12 @@ export const assinaturasService = {
       // Supondo que enviamos "external_reference" como id do EmpresasPlano
       const externalRef = String(data?.external_reference ?? '');
       if (!externalRef) return;
-      await this.updatePaymentStatusFromNotification({ externalRef, status: data?.status, mpPaymentId, data });
+      await this.updatePaymentStatusFromNotification({
+        externalRef,
+        status: data?.status,
+        mpPaymentId,
+        data,
+      });
     }
 
     if (type === 'subscription' || type === 'preapproval') {
@@ -909,25 +976,36 @@ export const assinaturasService = {
       const externalRef = String(body?.external_reference ?? body?.externalReference ?? '');
       if (!externalRef) return;
 
-      await this.updatePaymentStatusFromNotification({ externalRef, status: body?.status, data: body });
+      await this.updatePaymentStatusFromNotification({
+        externalRef,
+        status: body?.status,
+        data: body,
+      });
     }
   },
 
   async cancel(usuarioId: string, motivo?: string) {
     // Desativa plano atual e aplica regra de RASCUNHO nas vagas
-    const planoAtivo = await prisma.empresasPlano.findFirst({ where: { usuarioId, ativo: true } });
+    const planoAtivo = await prisma.empresasPlano.findFirst({
+      where: { usuarioId, status: EmpresasPlanoStatus.ATIVO },
+    });
     if (!planoAtivo) return { cancelled: false };
 
     await prisma.empresasPlano.update({
       where: { id: planoAtivo.id },
       data: {
-        ativo: false,
+        status: EmpresasPlanoStatus.CANCELADO,
         fim: new Date(),
         statusPagamento: STATUS_PAGAMENTO.CANCELADO,
-        observacao: motivo ?? 'Cancelado pelo cliente',
       },
     });
-    await this.logEvent({ usuarioId, empresasPlanoId: planoAtivo.id, tipo: 'CANCEL', status: 'CANCELADO', mensagem: motivo || null });
+    await this.logEvent({
+      usuarioId,
+      empresasPlanoId: planoAtivo.id,
+      tipo: 'CANCEL',
+      status: 'CANCELADO',
+      mensagem: motivo || null,
+    });
 
     await setVagasToDraft(usuarioId);
     return { cancelled: true };
@@ -938,11 +1016,39 @@ export const assinaturasService = {
     const result = await clientesService.assign({
       usuarioId,
       planosEmpresariaisId: novoPlanosEmpresariaisId,
-      tipo: 'parceiro',
-      observacao: 'Downgrade de plano via Mercado Pago',
+      modo: 'parceiro',
     } as any);
 
     await setVagasToDraft(usuarioId);
+    try {
+      const usuario = await prisma.usuarios.findUnique({
+        where: { id: usuarioId },
+        select: { id: true, email: true, nomeCompleto: true },
+      });
+      const plano = await prisma.planosEmpresariais.findUnique({
+        where: { id: novoPlanosEmpresariaisId },
+        select: { nome: true, quantidadeVagas: true },
+      });
+      if (usuario?.email) {
+        const emailService = new EmailService();
+        const name = plano?.nome ?? 'plano';
+        const vagas = plano?.quantidadeVagas ?? null;
+        const template = EmailTemplates.generatePlanDowngradedEmail({
+          nomeCompleto: usuario.nomeCompleto,
+          planName: name,
+          vagas,
+        });
+        await emailService.sendAssinaturaNotificacao(
+          { id: usuario.id, email: usuario.email, nomeCompleto: usuario.nomeCompleto },
+          template,
+        );
+      }
+    } catch (err) {
+      logger.warn(
+        { err, usuarioId, novoPlanosEmpresariaisId },
+        'Falha ao enviar email de downgrade',
+      );
+    }
     return result;
   },
 
@@ -951,16 +1057,41 @@ export const assinaturasService = {
     const result = await clientesService.assign({
       usuarioId,
       planosEmpresariaisId: novoPlanosEmpresariaisId,
-      tipo: 'parceiro',
-      observacao: 'Upgrade de plano via Mercado Pago',
+      modo: 'parceiro',
     } as any);
+    try {
+      const usuario = await prisma.usuarios.findUnique({
+        where: { id: usuarioId },
+        select: { id: true, email: true, nomeCompleto: true },
+      });
+      const plano = await prisma.planosEmpresariais.findUnique({
+        where: { id: novoPlanosEmpresariaisId },
+        select: { nome: true, quantidadeVagas: true },
+      });
+      if (usuario?.email) {
+        const emailService = new EmailService();
+        const name = plano?.nome ?? 'plano';
+        const vagas = plano?.quantidadeVagas ?? null;
+        const template = EmailTemplates.generatePlanUpgradedEmail({
+          nomeCompleto: usuario.nomeCompleto,
+          planName: name,
+          vagas,
+        });
+        await emailService.sendAssinaturaNotificacao(
+          { id: usuario.id, email: usuario.email, nomeCompleto: usuario.nomeCompleto },
+          template,
+        );
+      }
+    } catch (err) {
+      logger.warn({ err, usuarioId, novoPlanosEmpresariaisId }, 'Falha ao enviar email de upgrade');
+    }
     return result;
   },
 
   async remindPayment(usuarioId: string) {
     assertMercadoPagoConfigured();
     const plano = await prisma.empresasPlano.findFirst({
-      where: { usuarioId, ativo: true },
+      where: { usuarioId, status: EmpresasPlanoStatus.ATIVO },
       include: { plano: true },
       orderBy: { criadoEm: 'desc' },
     });
@@ -973,7 +1104,10 @@ export const assinaturasService = {
     const titulo = plano.plano.nome + ' - Renovação';
     const { success, failure, pending } = resolveCheckoutReturnUrls();
 
-    const usuario = await prisma.usuarios.findUnique({ where: { id: usuarioId }, select: { email: true, nomeCompleto: true } });
+    const usuario = await prisma.usuarios.findUnique({
+      where: { id: usuarioId },
+      select: { email: true, nomeCompleto: true },
+    });
     const payerEmail = usuario?.email || undefined;
 
     const pref = await preference.create({
@@ -981,7 +1115,15 @@ export const assinaturasService = {
         external_reference: plano.id,
         auto_return: 'approved',
         back_urls: { success, failure, pending },
-        items: [{ id: plano.plano.id, title: titulo, quantity: 1, unit_price: valor, currency_id: mercadopagoConfig.settings.defaultCurrency }],
+        items: [
+          {
+            id: plano.plano.id,
+            title: titulo,
+            quantity: 1,
+            unit_price: valor,
+            currency_id: mercadopagoConfig.settings.defaultCurrency,
+          },
+        ],
         payer: payerEmail ? { email: payerEmail } : undefined,
       },
     });
@@ -1004,7 +1146,14 @@ export const assinaturasService = {
       );
     }
 
-    await this.logEvent({ usuarioId, empresasPlanoId: plano.id, tipo: 'REMINDER_SENT', status: 'ENVIADO', externalRef: plano.id, mpResourceId: (pref as any)?.id || null });
+    await this.logEvent({
+      usuarioId,
+      empresasPlanoId: plano.id,
+      tipo: 'REMINDER_SENT',
+      status: 'ENVIADO',
+      externalRef: plano.id,
+      mpResourceId: (pref as any)?.id || null,
+    });
 
     return { initPoint: link };
   },
@@ -1038,11 +1187,29 @@ export const assinaturasService = {
   },
 
   async reconcile() {
-    // Encerra planos vencidos além da tolerância e coloca vagas em rascunho
+    // Expira trials vencidos e encerra assinaturas vencidas além da tolerância
     const now = new Date();
+
+    // 1) Trials vencidos
+    const trialsToExpire = await prisma.empresasPlano.findMany({
+      where: { modo: EmpresasPlanoModo.TESTE, status: EmpresasPlanoStatus.ATIVO, fim: { lt: now } },
+      select: { id: true, usuarioId: true },
+    });
+    for (const trial of trialsToExpire) {
+      await prisma.empresasPlano.update({
+        where: { id: trial.id },
+        data: { status: EmpresasPlanoStatus.EXPIRADO },
+      });
+      await this.logEvent({
+        usuarioId: trial.usuarioId,
+        empresasPlanoId: trial.id,
+        tipo: 'TRIAL_EXPIRED',
+        status: 'EXPIRADO',
+      });
+    }
     const overdue = await prisma.empresasPlano.findMany({
       where: {
-        ativo: true,
+        status: EmpresasPlanoStatus.ATIVO,
         OR: [
           { graceUntil: { lt: now } },
           { proximaCobranca: { lt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000) } },
@@ -1053,12 +1220,24 @@ export const assinaturasService = {
     for (const plano of overdue) {
       await prisma.empresasPlano.update({
         where: { id: plano.id },
-        data: { ativo: false, fim: now, statusPagamento: STATUS_PAGAMENTO.CANCELADO },
+        data: {
+          status: EmpresasPlanoStatus.CANCELADO,
+          fim: now,
+          statusPagamento: STATUS_PAGAMENTO.CANCELADO,
+        },
       });
       await setVagasToDraft(plano.usuarioId);
-      await this.logEvent({ usuarioId: plano.usuarioId, empresasPlanoId: plano.id, tipo: 'RECONCILE_CANCEL', status: 'CANCELADO' });
+      await this.logEvent({
+        usuarioId: plano.usuarioId,
+        empresasPlanoId: plano.id,
+        tipo: 'RECONCILE_CANCEL',
+        status: 'CANCELADO',
+      });
       if (mercadopagoConfig.settings.emailsEnabled) {
-        const usuario = await prisma.usuarios.findUnique({ where: { id: plano.usuarioId }, select: { email: true, nomeCompleto: true } });
+        const usuario = await prisma.usuarios.findUnique({
+          where: { id: plano.usuarioId },
+          select: { email: true, nomeCompleto: true },
+        });
         if (usuario?.email) {
           const emailService = new EmailService();
           await emailService.sendGeneric(

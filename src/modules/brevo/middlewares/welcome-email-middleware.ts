@@ -149,7 +149,10 @@ export class WelcomeEmailMiddleware {
           } else {
             log.info({ email: userData.email, duration }, '✅ Email enviado com sucesso');
             if (result.messageId) {
-              log.info({ email: userData.email, messageId: result.messageId }, '📧 Message ID registrado');
+              log.info(
+                { email: userData.email, messageId: result.messageId },
+                '📧 Message ID registrado',
+              );
             }
           }
         } else {

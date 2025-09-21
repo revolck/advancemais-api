@@ -1,19 +1,18 @@
-import { TiposDePlanos, Prisma, TiposDeUsuarios } from '@prisma/client';
+import { EmpresasPlanoModo, EmpresasPlanoStatus, Prisma, TiposDeUsuarios } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { attachEnderecoResumo } from '@/modules/usuarios/utils/address';
-import { mergeUsuarioInformacoes, usuarioInformacoesSelect } from '@/modules/usuarios/utils/information';
+import {
+  mergeUsuarioInformacoes,
+  usuarioInformacoesSelect,
+} from '@/modules/usuarios/utils/information';
 import { mapSocialLinks, usuarioRedesSociaisSelect } from '@/modules/usuarios/utils/social-links';
 import {
   CreateClientePlanoInput,
   ListClientePlanoQuery,
   UpdateClientePlanoInput,
 } from '@/modules/empresas/clientes/validators/clientes.schema';
-import {
-  getTipoDePlanoDuracao,
-  mapClienteTipoToTipoDePlano,
-  mapTipoDePlanoToClienteTipo,
-} from '@/modules/empresas/shared/tipos-de-planos';
+import { calcularFim, isVigente } from '@/modules/empresas/shared/planos';
 
 const includePlanoEmpresa = {
   include: {
@@ -48,22 +47,8 @@ const includePlanoEmpresa = {
 
 type EmpresasPlanoWithRelations = Prisma.EmpresasPlanoGetPayload<typeof includePlanoEmpresa>;
 
-const sanitizeObservacao = (value?: string | null) => {
-  if (typeof value !== 'string') return value ?? null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-};
-
-const calcularDataFim = (tipo: TiposDePlanos, inicio: Date | null) => {
-  const duracao = getTipoDePlanoDuracao(tipo);
-  if (duracao === null) {
-    return null;
-  }
-  const base = inicio ?? new Date();
-  const data = new Date(base.getTime());
-  data.setDate(data.getDate() + duracao);
-  return data;
-};
+const sanitizeUndefined = <T>(value: T | undefined | null) =>
+  value === undefined ? undefined : (value ?? null);
 
 const ensureUsuarioEmpresa = async (usuarioId: string) => {
   const usuario = await prisma.usuarios.findUnique({
@@ -80,9 +65,11 @@ const ensureUsuarioEmpresa = async (usuarioId: string) => {
 
 const transformarPlano = (plano: EmpresasPlanoWithRelations) => {
   const now = new Date();
-  const estaVigente = plano.ativo && (!plano.fim || plano.fim > now);
+  const estaVigente = isVigente(plano.status, plano.fim ?? null, now);
   const diasRestantes =
-    plano.fim && plano.fim > now ? Math.ceil((plano.fim.getTime() - now.getTime()) / 86400000) : null;
+    plano.fim && plano.fim > now
+      ? Math.ceil((plano.fim.getTime() - now.getTime()) / 86400000)
+      : null;
 
   const empresaUsuarioRaw =
     plano.empresa && plano.empresa.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
@@ -112,7 +99,8 @@ const transformarPlano = (plano: EmpresasPlanoWithRelations) => {
   return {
     ...restoPlano,
     empresa,
-    tipo: mapTipoDePlanoToClienteTipo(plano.tipo),
+    modo: plano.modo,
+    status: plano.status,
     estaVigente,
     diasRestantes: diasRestantes !== null && diasRestantes < 0 ? 0 : diasRestantes,
   };
@@ -125,8 +113,9 @@ const buildWhere = (filters: ListClientePlanoQuery): Prisma.EmpresasPlanoWhereIn
     where.usuarioId = filters.usuarioId;
   }
 
-  if (filters.ativo !== undefined) {
-    where.ativo = filters.ativo;
+  if (filters.status !== undefined) {
+    // Accept both enum and string
+    where.status = filters.status as any;
   }
 
   return where;
@@ -154,7 +143,7 @@ export const clientesService = {
     const plano = await prisma.empresasPlano.findFirst({
       where: {
         usuarioId,
-        ativo: true,
+        status: EmpresasPlanoStatus.ATIVO,
         OR: [{ fim: null }, { fim: { gt: now } }],
       },
       orderBy: { inicio: 'desc' },
@@ -165,31 +154,32 @@ export const clientesService = {
 
     return {
       ...plano,
-      tipo: mapTipoDePlanoToClienteTipo(plano.tipo),
+      modo: plano.modo,
     };
   },
 
   assign: async (data: CreateClientePlanoInput) => {
     await ensureUsuarioEmpresa(data.usuarioId);
-    const tipo = mapClienteTipoToTipoDePlano(data.tipo);
     const inicio = data.iniciarEm ?? new Date();
-    const fim = calcularDataFim(tipo, inicio);
-    const observacao = sanitizeObservacao(data.observacao);
+    const modo = data.modo as EmpresasPlanoModo;
+    const fim = calcularFim(modo, inicio, sanitizeUndefined<number>(data.diasTeste) ?? undefined);
+    const status = EmpresasPlanoStatus.ATIVO;
 
     const plano = await prisma.$transaction(async (tx) => {
       await tx.empresasPlano.updateMany({
-        where: { usuarioId: data.usuarioId, ativo: true },
-        data: { ativo: false, fim: new Date() },
+        where: { usuarioId: data.usuarioId, status: EmpresasPlanoStatus.ATIVO },
+        data: { status: EmpresasPlanoStatus.CANCELADO, fim: new Date() },
       });
 
       return tx.empresasPlano.create({
         data: {
           usuarioId: data.usuarioId,
           planosEmpresariaisId: data.planosEmpresariaisId,
-          tipo,
+          modo,
+          status,
+          origin: 'ADMIN',
           inicio,
           fim,
-          observacao,
         },
         ...includePlanoEmpresa,
       });
@@ -202,7 +192,9 @@ export const clientesService = {
     const planoAtual = await prisma.empresasPlano.findUnique({ where: { id } });
 
     if (!planoAtual) {
-      throw Object.assign(new Error('Plano da empresa não encontrado'), { code: 'EMPRESAS_PLANO_NOT_FOUND' });
+      throw Object.assign(new Error('Plano da empresa não encontrado'), {
+        code: 'EMPRESAS_PLANO_NOT_FOUND',
+      });
     }
 
     const updates: Prisma.EmpresasPlanoUpdateInput = {};
@@ -217,21 +209,29 @@ export const clientesService = {
       updates.inicio = inicio;
     }
 
-    let tipo = planoAtual.tipo;
-    if (data.tipo !== undefined) {
-      tipo = mapClienteTipoToTipoDePlano(data.tipo);
-      updates.tipo = tipo;
+    let modo = planoAtual.modo;
+    if (data.modo !== undefined) {
+      modo = data.modo as EmpresasPlanoModo;
+      updates.modo = modo;
+      // Ajusta status automaticamente para testes/parceiro
+      if (modo === EmpresasPlanoModo.TESTE || modo === EmpresasPlanoModo.PARCEIRO) {
+        updates.status = EmpresasPlanoStatus.ATIVO;
+      }
     }
 
-    if (data.tipo !== undefined || data.iniciarEm !== undefined) {
-      updates.fim = calcularDataFim(tipo, inicio);
+    if (data.modo !== undefined || data.iniciarEm !== undefined || data.diasTeste !== undefined) {
+      updates.fim = calcularFim(
+        modo,
+        inicio,
+        sanitizeUndefined<number>(data.diasTeste) ?? undefined,
+      );
     }
 
-    if (data.observacao !== undefined) {
-      updates.observacao = sanitizeObservacao(data.observacao);
-    }
-
-    const plano = await prisma.empresasPlano.update({ where: { id }, data: updates, ...includePlanoEmpresa });
+    const plano = await prisma.empresasPlano.update({
+      where: { id },
+      data: updates,
+      ...includePlanoEmpresa,
+    });
     return transformarPlano(plano);
   },
 
@@ -239,14 +239,16 @@ export const clientesService = {
     const planoAtual = await prisma.empresasPlano.findUnique({ where: { id } });
 
     if (!planoAtual) {
-      throw Object.assign(new Error('Plano da empresa não encontrado'), { code: 'EMPRESAS_PLANO_NOT_FOUND' });
+      throw Object.assign(new Error('Plano da empresa não encontrado'), {
+        code: 'EMPRESAS_PLANO_NOT_FOUND',
+      });
     }
 
     const fim = planoAtual.fim && planoAtual.fim < new Date() ? planoAtual.fim : new Date();
 
     await prisma.empresasPlano.update({
       where: { id },
-      data: { ativo: false, fim },
+      data: { status: EmpresasPlanoStatus.CANCELADO, fim },
     });
   },
 };

@@ -145,7 +145,11 @@ router.get('/:id', publicCache, PlanosEmpresariaisController.get);
  *                  "quantidadeVagasDestaque": 2
  *                }'
  */
-router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), PlanosEmpresariaisController.create);
+router.post(
+  '/',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  PlanosEmpresariaisController.create,
+);
 
 /**
  * @openapi
@@ -219,7 +223,11 @@ router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), PlanosEmpresari
  *                  "vagaEmDestaque": false
  *                }'
  */
-router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), PlanosEmpresariaisController.update);
+router.put(
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  PlanosEmpresariaisController.update,
+);
 
 /**
  * @openapi
@@ -270,6 +278,10 @@ router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), PlanosEmpresa
  *           curl -X DELETE "http://localhost:3000/api/v1/empresas/planos-empresariais/{id}" \
  *            -H "Authorization: Bearer <TOKEN>"
  */
-router.delete('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), PlanosEmpresariaisController.remove);
+router.delete(
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  PlanosEmpresariaisController.remove,
+);
 
 export { router as planosEmpresariaisRoutes };

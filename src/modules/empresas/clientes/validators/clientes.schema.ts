@@ -1,64 +1,52 @@
+import { EmpresasPlanoStatus } from '@prisma/client';
 import { z } from 'zod';
 
-export const clientePlanoTipoSchema = z.enum([
-  '7_dias',
-  '15_dias',
-  '30_dias',
-  '60_dias',
-  '90dias',
-  '120_dias',
-  'parceiro',
-]);
+export const clientePlanoModoSchema = z.enum(['teste', 'parceiro']);
 
 const uuidSchema = z.string().uuid('Informe um identificador válido');
 
-const observacaoSchema = z
-  .string()
-  .trim()
-  .min(1, 'A observação não pode estar vazia')
-  .max(500, 'A observação deve ter no máximo 500 caracteres');
+const diasTesteSchema = z
+  .number({ invalid_type_error: 'Informe um número de dias válido' })
+  .int('Informe um número inteiro de dias')
+  .positive('Dias de teste deve ser maior que zero')
+  .max(365, 'Máximo de 365 dias')
+  .optional();
 
-export const createClientePlanoSchema = z.object({
-  usuarioId: uuidSchema,
-  planosEmpresariaisId: uuidSchema,
-  tipo: clientePlanoTipoSchema,
-  iniciarEm: z.coerce.date({ invalid_type_error: 'Informe uma data válida' }).optional(),
-  observacao: observacaoSchema.optional().nullable(),
-});
+export const createClientePlanoSchema = z
+  .object({
+    usuarioId: uuidSchema,
+    planosEmpresariaisId: uuidSchema,
+    modo: clientePlanoModoSchema,
+    iniciarEm: z.coerce.date({ invalid_type_error: 'Informe uma data válida' }).optional(),
+    diasTeste: diasTesteSchema,
+  })
+  .refine((val) => (val.modo !== 'teste' ? true : typeof val.diasTeste === 'number'), {
+    message: 'Informe diasTeste para o modo teste',
+    path: ['diasTeste'],
+  });
 
 export const updateClientePlanoSchema = z.object({
   planosEmpresariaisId: uuidSchema.optional(),
-  tipo: clientePlanoTipoSchema.optional(),
+  modo: clientePlanoModoSchema.optional(),
   iniciarEm: z.coerce.date({ invalid_type_error: 'Informe uma data válida' }).optional(),
-  observacao: observacaoSchema.optional().nullable(),
+  diasTeste: diasTesteSchema,
 });
 
 export const listClientePlanoQuerySchema = z.object({
   usuarioId: uuidSchema.optional(),
-  ativo: z
-    .preprocess((value) => {
-      if (value === undefined || value === null) {
-        return undefined;
-      }
-
-      if (typeof value === 'boolean') {
-        return value;
-      }
-
-      const raw = Array.isArray(value) ? value[0] : value;
-      if (typeof raw !== 'string') {
-        return raw;
-      }
-
-      const normalized = raw.trim().toLowerCase();
-      if (['true', '1'].includes(normalized)) return true;
-      if (['false', '0'].includes(normalized)) return false;
-
-      return raw;
-    }, z.boolean({ invalid_type_error: 'Valor inválido para o filtro ativo' }).optional()),
+  status: z
+    .nativeEnum(EmpresasPlanoStatus)
+    .or(
+      z
+        .string()
+        .trim()
+        .toUpperCase()
+        .transform((v) => v as any),
+    )
+    .optional(),
 });
 
 export type CreateClientePlanoInput = z.infer<typeof createClientePlanoSchema>;
 export type UpdateClientePlanoInput = z.infer<typeof updateClientePlanoSchema>;
 export type ListClientePlanoQuery = z.infer<typeof listClientePlanoQuerySchema>;
-export type ClientePlanoTipo = z.infer<typeof clientePlanoTipoSchema>;
+export type ClientePlanoModo = z.infer<typeof clientePlanoModoSchema>;

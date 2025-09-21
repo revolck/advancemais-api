@@ -148,7 +148,11 @@ router.post('/downgrade', supabaseAuthMiddleware(empresaRoles), AssinaturasContr
  *       200:
  *         description: Lembrete enviado
  */
-router.post('/remind-payment', supabaseAuthMiddleware(empresaOnly), AssinaturasController.remindPayment);
+router.post(
+  '/remind-payment',
+  supabaseAuthMiddleware(empresaOnly),
+  AssinaturasController.remindPayment,
+);
 
 /**
  * @openapi
@@ -188,7 +192,11 @@ router.post('/reconcile', supabaseAuthMiddleware(adminRoles), AssinaturasControl
  *       200:
  *         description: Preferência criada com sucesso
  */
-router.post('/admin/remind-payment', supabaseAuthMiddleware(adminRoles), AssinaturasController.adminRemindPaymentForPlan);
+router.post(
+  '/admin/remind-payment',
+  supabaseAuthMiddleware(adminRoles),
+  AssinaturasController.adminRemindPaymentForPlan,
+);
 
 /**
  * @openapi
@@ -203,7 +211,11 @@ router.post('/admin/remind-payment', supabaseAuthMiddleware(adminRoles), Assinat
  *       200:
  *         description: Planos sincronizados
  */
-router.post('/admin/sync-plans', supabaseAuthMiddleware(adminRoles), AssinaturasController.adminSyncPlans);
+router.post(
+  '/admin/sync-plans',
+  supabaseAuthMiddleware(adminRoles),
+  AssinaturasController.adminSyncPlans,
+);
 
 /**
  * @openapi
@@ -226,6 +238,10 @@ router.post('/admin/sync-plans', supabaseAuthMiddleware(adminRoles), Assinaturas
  *       200:
  *         description: Plano sincronizado
  */
-router.post('/admin/sync-plan', supabaseAuthMiddleware(adminRoles), AssinaturasController.adminSyncPlan);
+router.post(
+  '/admin/sync-plan',
+  supabaseAuthMiddleware(adminRoles),
+  AssinaturasController.adminSyncPlan,
+);
 
 export { router as assinaturasRoutes };

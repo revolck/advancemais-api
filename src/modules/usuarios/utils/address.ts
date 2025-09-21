@@ -41,9 +41,7 @@ export const normalizeUsuarioEnderecos = (
     .filter((endereco): endereco is UsuarioEnderecoDto => Boolean(endereco));
 };
 
-export const extractEnderecoResumo = (
-  enderecos?: MaybeEndereco[] | null,
-) => {
+export const extractEnderecoResumo = (enderecos?: MaybeEndereco[] | null) => {
   const normalized = normalizeUsuarioEnderecos(enderecos);
   const [principal] = normalized;
 
@@ -54,14 +52,14 @@ export const extractEnderecoResumo = (
   };
 };
 
-export const attachEnderecoResumo = <T extends { enderecos?: MaybeEndereco[] | null }>(
+export const attachEnderecoResumo = <T extends Record<string, any>>(
   usuario: T | null | undefined,
 ) => {
   if (!usuario) {
     return null;
   }
 
-  const { enderecos, cidade, estado } = extractEnderecoResumo(usuario.enderecos ?? []);
+  const { enderecos, cidade, estado } = extractEnderecoResumo((usuario as any).enderecos ?? []);
 
   return {
     ...usuario,

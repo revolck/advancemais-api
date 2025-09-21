@@ -14,8 +14,16 @@ import {
 import { limparDocumento, validarCNPJ, validarCPF } from '@/modules/usuarios/utils';
 import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
 import { formatZodErrors, loginSchema } from '../validators/auth.schema';
-import { attachEnderecoResumo, normalizeUsuarioEnderecos, UsuarioEnderecoDto } from '../utils/address';
-import { mapUsuarioInformacoes, mergeUsuarioInformacoes, usuarioInformacoesSelect } from '../utils/information';
+import {
+  attachEnderecoResumo,
+  normalizeUsuarioEnderecos,
+  UsuarioEnderecoDto,
+} from '../utils/address';
+import {
+  mapUsuarioInformacoes,
+  mergeUsuarioInformacoes,
+  usuarioInformacoesSelect,
+} from '../utils/information';
 import { mapSocialLinks, usuarioRedesSociaisSelect } from '../utils/social-links';
 import type { UsuarioSocialLinks } from '../utils/types';
 import {
@@ -86,8 +94,7 @@ interface UsuarioPerfil {
 const USER_PROFILE_CACHE_TTL = 300;
 
 const reviveUsuario = (usuario: UsuarioPerfil): UsuarioPerfil => {
-  const emailVerificationSummary =
-    usuario.emailVerification ?? buildEmailVerificationSummary();
+  const emailVerificationSummary = usuario.emailVerification ?? buildEmailVerificationSummary();
   const enderecos = normalizeUsuarioEnderecos(usuario.enderecos);
   const [principal] = enderecos;
   const informacoes = mapUsuarioInformacoes(usuario.informacoes);
@@ -128,7 +135,6 @@ const reviveUsuario = (usuario: UsuarioPerfil): UsuarioPerfil => {
     estado: principal?.estado ?? null,
   };
 };
-
 
 const buildProfileStats = (usuario: UsuarioPerfil) => ({
   accountAge: Math.floor((Date.now() - usuario.criadoEm.getTime()) / (1000 * 60 * 60 * 24)),
@@ -647,7 +653,10 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
     });
     const usuario = attachEnderecoResumo(usuarioComInformacoes);
     if (!usuario) {
-      log.error({ sessionId: sessionRecord.id }, '❌ Falha ao reconstruir usuário no refresh token');
+      log.error(
+        { sessionId: sessionRecord.id },
+        '❌ Falha ao reconstruir usuário no refresh token',
+      );
       await prisma.usuariosSessoes.update({
         where: { id: sessionRecord.id },
         data: { revogadoEm: new Date() },
@@ -660,7 +669,10 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       });
     }
 
-    log.info({ userId: usuario.id, email: usuario.email, sessionId: sessionRecord.id }, '👤 Refresh token válido');
+    log.info(
+      { userId: usuario.id, email: usuario.email, sessionId: sessionRecord.id },
+      '👤 Refresh token válido',
+    );
 
     if (usuario.status !== 'ATIVO') {
       log.warn({ userId: usuario.id, status: usuario.status }, '⚠️ Conta inativa durante refresh');
@@ -740,7 +752,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       },
     });
 
-    await invalidateUserCache({ ...usuario, ultimoLogin: updatedUser.ultimoLogin });
+    await invalidateUserCache(usuario.id);
 
     setRefreshTokenCookie(res, tokens.refreshToken, sessionRecord.rememberMe);
 

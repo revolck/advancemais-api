@@ -1,2 +1,1 @@
 export { assinaturasRoutes } from './routes';
-

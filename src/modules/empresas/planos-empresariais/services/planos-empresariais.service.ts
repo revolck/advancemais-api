@@ -34,7 +34,7 @@ const sanitizeCreateData = (
   desconto: data.desconto ?? null,
   quantidadeVagas: data.quantidadeVagas,
   vagaEmDestaque: data.vagaEmDestaque,
-  quantidadeVagasDestaque: data.vagaEmDestaque ? data.quantidadeVagasDestaque ?? null : null,
+  quantidadeVagasDestaque: data.vagaEmDestaque ? (data.quantidadeVagasDestaque ?? null) : null,
 });
 
 const sanitizeUpdateData = (

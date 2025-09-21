@@ -3,6 +3,7 @@ import { Router, type Request } from 'express';
 import redis from '@/config/redis';
 import { publicCache } from '@/middlewares/cache-control';
 import { docsRoutes } from '@/modules/docs';
+import { getBanimentosWatcherMetrics } from '@/modules/usuarios/banimentos/cron/ban-watcher';
 import { brevoRoutes } from '@/modules/brevo/routes';
 import { mercadopagoRoutes } from '@/modules/mercadopago';
 import { EmailVerificationController } from '@/modules/brevo/controllers/email-verification-controller';
@@ -196,6 +197,9 @@ router.get('/health', publicCache, async (req, res) => {
       mercadopago: '✅ active',
       redis: redisStatus,
     },
+    metrics: {
+      bans: getBanimentosWatcherMetrics(),
+    },
   };
 
   const etag = setCacheHeaders(res, payload, ttl);
@@ -220,7 +224,10 @@ router.get('/verificar-email', emailVerificationController.verifyEmail);
 if (usuarioRoutes) {
   try {
     router.use('/api/v1/usuarios', usuarioRoutes);
-    routesLogger.info({ feature: 'UsuariosModule' }, '✅ Módulo de usuários registrado com sucesso');
+    routesLogger.info(
+      { feature: 'UsuariosModule' },
+      '✅ Módulo de usuários registrado com sucesso',
+    );
   } catch (error) {
     routesLogger.error({ feature: 'UsuariosModule', err: error }, '❌ ERRO - Módulo de usuários');
   }
@@ -250,9 +257,15 @@ if (brevoRoutes) {
 if (mercadopagoRoutes) {
   try {
     router.use('/api/v1/mercadopago', mercadopagoRoutes);
-    routesLogger.info({ feature: 'MercadoPagoModule' }, '✅ Módulo Mercado Pago registrado com sucesso');
+    routesLogger.info(
+      { feature: 'MercadoPagoModule' },
+      '✅ Módulo Mercado Pago registrado com sucesso',
+    );
   } catch (error) {
-    routesLogger.error({ feature: 'MercadoPagoModule', err: error }, '❌ ERRO - Módulo Mercado Pago');
+    routesLogger.error(
+      { feature: 'MercadoPagoModule', err: error },
+      '❌ ERRO - Módulo Mercado Pago',
+    );
   }
 } else {
   routesLogger.error({ feature: 'MercadoPagoModule' }, '❌ mercadopagoRoutes não está definido');
@@ -295,7 +308,10 @@ if (empresasRoutes) {
 if (candidatosRoutes) {
   try {
     router.use('/api/v1/candidatos', candidatosRoutes);
-    routesLogger.info({ feature: 'CandidatosModule' }, '✅ Módulo Candidatos registrado com sucesso');
+    routesLogger.info(
+      { feature: 'CandidatosModule' },
+      '✅ Módulo Candidatos registrado com sucesso',
+    );
   } catch (error) {
     routesLogger.error({ feature: 'CandidatosModule', err: error }, '❌ ERRO - Módulo Candidatos');
   }

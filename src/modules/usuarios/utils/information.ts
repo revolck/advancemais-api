@@ -16,11 +16,7 @@ export type UsuarioInformacoesRecord = Prisma.UsuariosInformationGetPayload<{
   select: UsuarioInformacoesSelect;
 }>;
 
-type UsuarioInformacoesInput =
-  | UsuarioInformacoesRecord
-  | UsuarioInformacoesDto
-  | null
-  | undefined;
+type UsuarioInformacoesInput = UsuarioInformacoesRecord | UsuarioInformacoesDto | null | undefined;
 
 export interface UsuarioInformacoesDto {
   telefone: string | null;
@@ -53,8 +49,10 @@ export const mapUsuarioInformacoes = (
 });
 
 export const mergeUsuarioInformacoes = <
-  T extends { informacoes?: UsuarioInformacoesRecord | null }
->(usuario: T): Omit<T, 'informacoes'> & {
+  T extends { informacoes?: UsuarioInformacoesRecord | null },
+>(
+  usuario: T,
+): Omit<T, 'informacoes'> & {
   informacoes: UsuarioInformacoesDto;
   telefone: string | null;
   genero: string | null;

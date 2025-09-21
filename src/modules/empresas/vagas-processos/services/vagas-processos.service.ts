@@ -2,7 +2,10 @@ import { Prisma, OrigemVagas, StatusProcesso } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { attachEnderecoResumo } from '@/modules/usuarios/utils/address';
-import { mergeUsuarioInformacoes, usuarioInformacoesSelect } from '@/modules/usuarios/utils/information';
+import {
+  mergeUsuarioInformacoes,
+  usuarioInformacoesSelect,
+} from '@/modules/usuarios/utils/information';
 import {
   VagaProcessoCandidatoInvalidoError,
   VagaProcessoCandidatoNaoEncontradoError,

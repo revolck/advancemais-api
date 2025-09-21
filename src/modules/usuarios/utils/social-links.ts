@@ -93,7 +93,12 @@ export const extractSocialLinksFromPayload = (
   const result: Record<string, string | null> = {};
 
   const assignValue = (key: keyof UsuarioSocialLinks) => {
-    if (nested && typeof nested === 'object' && nested !== null && key in (nested as Record<string, unknown>)) {
+    if (
+      nested &&
+      typeof nested === 'object' &&
+      nested !== null &&
+      key in (nested as Record<string, unknown>)
+    ) {
       const value = (nested as Record<string, unknown>)[key];
       if (value !== undefined) {
         result[key] = value === null ? null : String(value);
@@ -109,14 +114,14 @@ export const extractSocialLinksFromPayload = (
     }
   };
 
-  (['instagram', 'linkedin', 'facebook', 'youtube', 'twitter', 'tiktok'] as const).forEach(assignValue);
+  (['instagram', 'linkedin', 'facebook', 'youtube', 'twitter', 'tiktok'] as const).forEach(
+    assignValue,
+  );
 
   return Object.keys(result).length > 0 ? (result as UsuarioSocialLinksInput) : undefined;
 };
 
-export const mapSocialLinks = (
-  links?: UsuarioSocialLinks | null,
-): UsuarioSocialLinks | null => {
+export const mapSocialLinks = (links?: UsuarioSocialLinks | null): UsuarioSocialLinks | null => {
   if (!links) {
     return null;
   }

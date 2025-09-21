@@ -133,7 +133,10 @@ export class EmailVerificationMiddleware {
             log.info({ email: userData.email, duration }, '🎭 Email de verificação simulado');
           } else {
             log.info({ email: userData.email, duration }, '✅ Email de verificação enviado');
-            log.info({ email: userData.email, messageId: result.messageId }, '📧 Message ID registrado');
+            log.info(
+              { email: userData.email, messageId: result.messageId },
+              '📧 Message ID registrado',
+            );
             log.info(
               {
                 email: userData.email,
@@ -143,7 +146,10 @@ export class EmailVerificationMiddleware {
             );
           }
         } else {
-          log.error({ email: userData.email, error: result.error }, '❌ Falha no email de verificação');
+          log.error(
+            { email: userData.email, error: result.error },
+            '❌ Falha no email de verificação',
+          );
         }
       } catch (error) {
         log.error(

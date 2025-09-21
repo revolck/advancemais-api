@@ -403,7 +403,8 @@ export const mercadopagoConfig = {
     if (!this.returnUrls.success) issues.push('MP_RETURN_SUCCESS_URL não configurado');
     if (!this.returnUrls.failure) issues.push('MP_RETURN_FAILURE_URL não configurado');
     if (!this.returnUrls.pending) issues.push('MP_RETURN_PENDING_URL não configurado');
-    if (!this.settings.billingPortalUrl) issues.push('MP_BILLING_PORTAL_URL não configurado (opcional, recomendado)');
+    if (!this.settings.billingPortalUrl)
+      issues.push('MP_BILLING_PORTAL_URL não configurado (opcional, recomendado)');
     return { configured: issues.length === 0, issues };
   },
 } as const;

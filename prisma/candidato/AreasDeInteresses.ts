@@ -83,7 +83,12 @@ export const CANDIDATE_INTEREST_AREAS: CandidateInterestAreaSeed[] = [
   {
     id: 12,
     categoria: 'Educação',
-    subareas: ['Ensino Fundamental e Médio', 'Ensino Superior', 'Cursos Técnicos', 'Treinamentos Corporativos'],
+    subareas: [
+      'Ensino Fundamental e Médio',
+      'Ensino Superior',
+      'Cursos Técnicos',
+      'Treinamentos Corporativos',
+    ],
   },
   {
     id: 13,

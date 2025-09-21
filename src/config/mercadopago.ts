@@ -7,9 +7,10 @@ export const mpClient = accessToken ? new MercadoPagoConfig({ accessToken }) : n
 
 export function assertMercadoPagoConfigured() {
   if (!mpClient) {
-    throw new Error('Mercado Pago não configurado. Defina MP_ACCESS_TOKEN ou MP_TEST_ACCESS_TOKEN.');
+    throw new Error(
+      'Mercado Pago não configurado. Defina MP_ACCESS_TOKEN ou MP_TEST_ACCESS_TOKEN.',
+    );
   }
 }
 
 export { mercadopagoConfig };
-

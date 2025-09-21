@@ -35,7 +35,13 @@ export class EmailService {
   }
 
   // Expor método simples para envio genérico (assinaturas etc.)
-  public async sendGeneric(to: string, toName: string, subject: string, html: string, text: string) {
+  public async sendGeneric(
+    to: string,
+    toName: string,
+    subject: string,
+    html: string,
+    text: string,
+  ) {
     return this.client.sendEmail({ to, toName, subject, html, text });
   }
 
@@ -231,7 +237,12 @@ export class EmailService {
     content: { subject: string; html: string; text: string },
   ): Promise<EmailResult> {
     const correlationId = this.generateCorrelationId();
-    const log = this.log.child({ correlationId, userId: usuario.id, email: usuario.email, method: 'sendAssinaturaNotificacao' });
+    const log = this.log.child({
+      correlationId,
+      userId: usuario.id,
+      email: usuario.email,
+      method: 'sendAssinaturaNotificacao',
+    });
     try {
       const result = await this.client.sendEmail({
         to: usuario.email,
@@ -245,7 +256,11 @@ export class EmailService {
         await this.logEmailSuccess(usuario.id, 'NOTIFICACAO_SISTEMA', result.messageId);
         log.info({ messageId: result.messageId }, '✅ Email de assinatura enviado');
       } else {
-        await this.logEmailError(usuario.id, 'NOTIFICACAO_SISTEMA', result.error || 'Erro desconhecido');
+        await this.logEmailError(
+          usuario.id,
+          'NOTIFICACAO_SISTEMA',
+          result.error || 'Erro desconhecido',
+        );
       }
 
       return result;

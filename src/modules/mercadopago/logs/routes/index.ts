@@ -62,4 +62,3 @@ router.get('/', supabaseAuthMiddleware(empresaRoles), logsController.list);
 router.get('/:id', supabaseAuthMiddleware(empresaRoles), logsController.get);
 
 export { router as logsRoutes };
-

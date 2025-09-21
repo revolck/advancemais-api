@@ -1,7 +1,4 @@
-import {
-  CandidatosAreasInteresse,
-  CandidatosSubareasInteresse,
-} from '@prisma/client';
+import { CandidatosAreasInteresse, CandidatosSubareasInteresse } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 

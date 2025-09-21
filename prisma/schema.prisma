@@ -34,6 +34,9 @@ model Usuarios {
   enderecos            UsuariosEnderecos[]
   vagasCriadas         EmpresasVagas[]    @relation("UsuarioVagas")
   processosCandidatados EmpresasVagasProcesso[] @relation("UsuariosProcessos")
+  curriculos            UsuariosCurriculos[]
+  candidaturasFeitas    EmpresasCandidatos[]   @relation("CandidatoUsuario")
+  candidaturasRecebidas EmpresasCandidatos[]   @relation("EmpresaUsuario")
   planosContratados    EmpresasPlano[]    @relation("UsuarioPlanos")
   banimentosRecebidos  UsuariosEmBanimentos[] @relation("UsuariosEmBanimentosUsuario")
   banimentosAplicados  UsuariosEmBanimentos[] @relation("UsuariosEmBanimentosAdmin")
@@ -173,10 +176,12 @@ model EmpresasVagas {
   areaInteresse   CandidatosAreasInteresse?    @relation("EmpresasVagasAreaInteresse", fields: [areaInteresseId], references: [id], onDelete: SetNull)
   subareaInteresse CandidatosSubareasInteresse? @relation("EmpresasVagasSubareaInteresse", fields: [subareaInteresseId], references: [id], onDelete: SetNull)
   processos        EmpresasVagasProcesso[]
+  candidaturas     EmpresasCandidatos[]
 
   @@index([usuarioId])
   @@index([areaInteresseId])
   @@index([subareaInteresseId])
+  @@index([status, inseridaEm])
 }
 
 model EmpresasVagasProcesso {
@@ -216,24 +221,71 @@ model EmpresasVagasDestaque {
   @@index([empresasPlanoId, ativo])
 }
 
+model UsuariosCurriculos {
+  id                  String   @id @default(uuid())
+  usuarioId           String
+  titulo              String?  @db.VarChar(255)
+  resumo              String?  @db.Text
+  objetivo            String?  @db.VarChar(1000)
+  areasInteresse      Json?
+  preferencias        Json?
+  habilidades         Json?
+  idiomas             Json?
+  experiencias        Json?
+  formacao            Json?
+  cursosCertificacoes Json?
+  premiosPublicacoes  Json?
+  acessibilidade      Json?
+  consentimentos      Json?
+  ultimaAtualizacao   DateTime @default(now())
+  criadoEm            DateTime @default(now())
+  atualizadoEm        DateTime @updatedAt
+
+  usuario      Usuarios           @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  candidaturas EmpresasCandidatos[]
+
+  @@index([usuarioId, criadoEm])
+}
+
+model EmpresasCandidatos {
+  id               String         @id @default(uuid())
+  vagaId           String
+  candidatoId      String
+  curriculoId      String
+  empresaUsuarioId String
+  status           StatusProcesso @default(RECEBIDA)
+  origem           OrigemVagas    @default(SITE)
+  aplicadaEm       DateTime       @default(now())
+  atualizadaEm     DateTime       @updatedAt
+  consentimentos   Json?
+
+  vaga       EmpresasVagas      @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  candidato  Usuarios           @relation("CandidatoUsuario", fields: [candidatoId], references: [id], onDelete: Cascade)
+  curriculo  UsuariosCurriculos @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
+  empresa    Usuarios           @relation("EmpresaUsuario", fields: [empresaUsuarioId], references: [id])
+
+  @@unique([vagaId, candidatoId, curriculoId])
+  @@index([vagaId, candidatoId])
+}
+
 model EmpresasPlano {
-  id                    String        @id @default(uuid())
-  usuarioId             String
-  planosEmpresariaisId  String
-  tipo                  TiposDePlanos
-  inicio                DateTime?
-  fim                   DateTime?
-  ativo                 Boolean       @default(false)
-  observacao            String?       @db.Text
-  criadoEm              DateTime      @default(now())
-  atualizadoEm          DateTime      @updatedAt
+  id                   String               @id @default(uuid())
+  usuarioId            String
+  planosEmpresariaisId String
+  modo                 EmpresasPlanoModo?
+  status               EmpresasPlanoStatus  @default(SUSPENSO)
+  origin               EmpresasPlanoOrigin  @default(CHECKOUT)
+  inicio               DateTime?
+  fim                  DateTime?
+  criadoEm             DateTime             @default(now())
+  atualizadoEm         DateTime             @updatedAt
 
   // Integração de pagamentos/assinaturas (Mercado Pago)
   modeloPagamento  MODELO_PAGAMENTO?
   metodoPagamento  METODO_PAGAMENTO?
-  statusPagamento  STATUS_PAGAMENTO? @default(PENDENTE)
-  mpPreapprovalId  String?           @unique
-  mpSubscriptionId String?           @unique
+  statusPagamento  STATUS_PAGAMENTO?       @default(PENDENTE)
+  mpPreapprovalId  String?                 @unique
+  mpSubscriptionId String?                 @unique
   mpPayerId        String?
   mpPaymentId      String?
   proximaCobranca  DateTime?
@@ -243,7 +295,7 @@ model EmpresasPlano {
   plano   PlanosEmpresariais @relation(fields: [planosEmpresariaisId], references: [id])
   vagasDestaque EmpresasVagasDestaque[]
 
-  @@index([usuarioId, ativo])
+  @@index([usuarioId, status])
   @@index([planosEmpresariaisId])
 }
 
@@ -920,15 +972,22 @@ enum Senioridade {
   LIDER
 }
 
-enum TiposDePlanos {
-  SETE_DIAS         @map("7_dias")
-  QUINZE_DIAS       @map("15_dias")
-  TRINTA_DIAS       @map("30_dias")
-  SESSENTA_DIAS     @map("60_dias")
-  NOVENTA_DIAS      @map("90dias")
-  CENTO_VINTE_DIAS  @map("120_dias")
-  ASSINATURA_MENSAL @map("assinatura_mensal")
-  PARCEIRO          @map("parceiro")
+enum EmpresasPlanoStatus {
+  ATIVO
+  SUSPENSO
+  EXPIRADO
+  CANCELADO
+}
+
+enum EmpresasPlanoModo {
+  TESTE
+  PARCEIRO
+}
+
+enum EmpresasPlanoOrigin {
+  CHECKOUT
+  ADMIN
+  IMPORT
 }
 
 enum TiposDeBanimentos {

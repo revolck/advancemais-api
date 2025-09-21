@@ -1,7 +1,7 @@
 import { MotivosDeBanimentos, Status, StatusDeVagas, TiposDeBanimentos } from '@prisma/client';
 import { z } from 'zod';
 
-import { clientePlanoTipoSchema } from '@/modules/empresas/clientes/validators/clientes.schema';
+import { clientePlanoModoSchema } from '@/modules/empresas/clientes/validators/clientes.schema';
 
 const uuidSchema = z.string().uuid('Informe um identificador válido');
 
@@ -11,11 +11,7 @@ const nullableString = z
   .min(1, 'Informe um valor válido')
   .max(255, 'Valor muito longo');
 
-const nullableUrl = z
-  .string()
-  .trim()
-  .url('Informe uma URL válida')
-  .max(500, 'URL muito longa');
+const nullableUrl = z.string().trim().url('Informe uma URL válida').max(500, 'URL muito longa');
 
 const socialLinksSchema = z
   .object({
@@ -28,24 +24,32 @@ const socialLinksSchema = z
   })
   .partial();
 
-const observacaoSchema = z
-  .string()
-  .trim()
-  .min(1, 'A observação não pode estar vazia')
-  .max(500, 'A observação deve ter no máximo 500 caracteres');
+const diasTesteSchema = z
+  .number({ invalid_type_error: 'Informe um número de dias válido' })
+  .int('Informe um número inteiro de dias')
+  .positive('Dias de teste deve ser maior que zero')
+  .max(365, 'Máximo de 365 dias');
 
-export const adminEmpresasPlanoSchema = z.object({
+const adminEmpresasPlanoBase = z.object({
   planosEmpresariaisId: uuidSchema,
-  tipo: clientePlanoTipoSchema,
+  modo: clientePlanoModoSchema,
   iniciarEm: z.coerce.date({ invalid_type_error: 'Informe uma data válida' }).optional(),
-  observacao: observacaoSchema.optional().nullable(),
+  diasTeste: diasTesteSchema.optional(),
 });
+
+export const adminEmpresasPlanoSchema = adminEmpresasPlanoBase.refine(
+  (val) => (val.modo !== 'teste' ? true : typeof val.diasTeste === 'number'),
+  { message: 'Informe diasTeste para o modo teste', path: ['diasTeste'] },
+);
 
 export type AdminEmpresasPlanoInput = z.infer<typeof adminEmpresasPlanoSchema>;
 
-export const adminEmpresasPlanoUpdateSchema = adminEmpresasPlanoSchema.extend({
-  resetPeriodo: z.boolean().optional(),
-});
+export const adminEmpresasPlanoUpdateSchema = adminEmpresasPlanoBase
+  .extend({ resetPeriodo: z.boolean().optional() })
+  .refine((val) => (val.modo !== 'teste' ? true : typeof val.diasTeste === 'number'), {
+    message: 'Informe diasTeste para o modo teste',
+    path: ['diasTeste'],
+  });
 
 export type AdminEmpresasPlanoUpdateInput = z.infer<typeof adminEmpresasPlanoUpdateSchema>;
 
@@ -81,11 +85,7 @@ export const adminEmpresasCreateSchema = z.object({
     .max(18, 'CNPJ muito longo'),
   cidade: nullableString.optional(),
   estado: nullableString.optional(),
-  descricao: z
-    .string()
-    .trim()
-    .max(500, 'Descrição muito longa')
-    .optional(),
+  descricao: z.string().trim().max(500, 'Descrição muito longa').optional(),
   instagram: nullableString.optional(),
   linkedin: nullableString.optional(),
   facebook: nullableString.optional(),
@@ -165,9 +165,7 @@ const paginationQueryBaseSchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).optional(),
 });
 
-const withDefaultPaginationValues = <T extends { page?: number; pageSize?: number }>(
-  values: T,
-) =>
+const withDefaultPaginationValues = <T extends { page?: number; pageSize?: number }>(values: T) =>
   ({
     ...values,
     page: values.page ?? 1,
@@ -187,9 +185,7 @@ const statusArraySchema = z
   .transform((value) => {
     if (!value) return undefined;
 
-    const list = Array.isArray(value)
-      ? value.flatMap((item) => item.split(','))
-      : value.split(',');
+    const list = Array.isArray(value) ? value.flatMap((item) => item.split(',')) : value.split(',');
 
     const normalized = list
       .map((item) => item.trim().toUpperCase())
@@ -199,7 +195,9 @@ const statusArraySchema = z
   .refine(
     (value) =>
       value === undefined ||
-      value.every((status) => Object.prototype.hasOwnProperty.call(StatusDeVagas, status as StatusDeVagas)),
+      value.every((status) =>
+        Object.prototype.hasOwnProperty.call(StatusDeVagas, status as StatusDeVagas),
+      ),
     {
       message:
         'Informe status válidos (RASCUNHO, EM_ANALISE, PUBLICADO, DESPUBLICADA, PAUSADA, ENCERRADA ou EXPIRADO)',
@@ -218,7 +216,9 @@ export type AdminEmpresasVagasQuery = z.infer<typeof adminEmpresasVagasQuerySche
 export const adminEmpresasBanSchema = z
   .object({
     tipo: z.nativeEnum(TiposDeBanimentos, { required_error: 'Tipo de banimento é obrigatório' }),
-    motivo: z.nativeEnum(MotivosDeBanimentos, { required_error: 'Motivo do banimento é obrigatório' }),
+    motivo: z.nativeEnum(MotivosDeBanimentos, {
+      required_error: 'Motivo do banimento é obrigatório',
+    }),
     dias: z.coerce
       .number()
       .int()

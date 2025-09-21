@@ -63,6 +63,40 @@ export class AdminEmpresasController {
     }
   };
 
+  static unban = async (req: Request, res: Response) => {
+    try {
+      const params = adminEmpresasIdParamSchema.parse(req.params);
+      const adminId = req.user?.id;
+      if (!adminId) return res.status(401).json({ success: false, code: 'UNAUTHORIZED' });
+      const { observacoes } = (req.body || {}) as { observacoes?: string };
+      await adminEmpresasService.revogarBanimento(params.id, adminId, observacoes);
+      res.status(204).send();
+    } catch (error: any) {
+      if (error?.code === 'EMPRESA_NOT_FOUND') {
+        return res
+          .status(404)
+          .json({ success: false, code: 'EMPRESA_NOT_FOUND', message: 'Empresa não encontrada' });
+      }
+      if (error?.code === 'BANIMENTO_NOT_FOUND') {
+        return res
+          .status(404)
+          .json({
+            success: false,
+            code: 'BANIMENTO_NOT_FOUND',
+            message: 'Nenhum banimento ativo encontrado',
+          });
+      }
+      res
+        .status(500)
+        .json({
+          success: false,
+          code: 'ADMIN_EMPRESAS_UNBAN_ERROR',
+          message: 'Erro ao revogar banimento',
+          error: error?.message,
+        });
+    }
+  };
+
   static update = async (req: Request, res: Response) => {
     try {
       const params = adminEmpresasIdParamSchema.parse(req.params);

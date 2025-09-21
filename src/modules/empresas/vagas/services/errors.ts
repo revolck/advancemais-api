@@ -49,7 +49,10 @@ export class LimiteVagasDestaqueAtingidoError extends Error {
 
 type AreaSubareaReason = 'SUBAREA_REQUIRED' | 'SUBAREA_NOT_FOUND' | 'AREA_NOT_FOUND' | 'MISMATCH';
 
-const AREA_SUBAREA_MESSAGES: Record<AreaSubareaReason, { message: string; code: string; status: number }> = {
+const AREA_SUBAREA_MESSAGES: Record<
+  AreaSubareaReason,
+  { message: string; code: string; status: number }
+> = {
   SUBAREA_REQUIRED: {
     code: 'VAGA_SUBAREA_OBRIGATORIA',
     status: 400,

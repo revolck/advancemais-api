@@ -17,16 +17,24 @@ export class AssinaturasController {
       res.status(201).json({ success: true, ...result });
     } catch (error: any) {
       if (error instanceof ZodError) {
-        return res.status(400).json({ success: false, code: 'VALIDATION_ERROR', issues: error.flatten().fieldErrors });
+        return res
+          .status(400)
+          .json({ success: false, code: 'VALIDATION_ERROR', issues: error.flatten().fieldErrors });
       }
-      res.status(500).json({ success: false, code: 'CHECKOUT_ERROR', message: 'Erro ao iniciar checkout', error: error?.message });
+      res.status(500).json({
+        success: false,
+        code: 'CHECKOUT_ERROR',
+        message: 'Erro ao iniciar checkout',
+        error: error?.message,
+      });
     }
   };
 
   static webhook = async (req: Request, res: Response) => {
     try {
       const secret = mercadopagoConfig.webhookSecret;
-      const signature = (req.headers['x-signature'] as string) || (req.headers['x-hub-signature'] as string) || '';
+      const signature =
+        (req.headers['x-signature'] as string) || (req.headers['x-hub-signature'] as string) || '';
       if (secret && signature) {
         const raw = (req as any).rawBody || JSON.stringify(req.body || {});
         const computed = 'sha256=' + crypto.createHmac('sha256', secret).update(raw).digest('hex');
@@ -35,10 +43,19 @@ export class AssinaturasController {
         }
       }
 
-      await assinaturasService.handleWebhook({ type: (req.body as any)?.type, action: (req.body as any)?.action, data: (req.body as any)?.data || req.body });
+      await assinaturasService.handleWebhook({
+        type: (req.body as any)?.type,
+        action: (req.body as any)?.action,
+        data: (req.body as any)?.data || req.body,
+      });
       res.status(200).json({ received: true });
     } catch (error: any) {
-      res.status(500).json({ success: false, code: 'WEBHOOK_ERROR', message: 'Erro ao processar webhook', error: error?.message });
+      res.status(500).json({
+        success: false,
+        code: 'WEBHOOK_ERROR',
+        message: 'Erro ao processar webhook',
+        error: error?.message,
+      });
     }
   };
 
@@ -49,46 +66,81 @@ export class AssinaturasController {
       res.json({ success: true, ...result });
     } catch (error: any) {
       if (error instanceof ZodError) {
-        return res.status(400).json({ success: false, code: 'VALIDATION_ERROR', issues: error.flatten().fieldErrors });
+        return res
+          .status(400)
+          .json({ success: false, code: 'VALIDATION_ERROR', issues: error.flatten().fieldErrors });
       }
-      res.status(500).json({ success: false, code: 'CANCEL_ERROR', message: 'Erro ao cancelar assinatura', error: error?.message });
+      res.status(500).json({
+        success: false,
+        code: 'CANCEL_ERROR',
+        message: 'Erro ao cancelar assinatura',
+        error: error?.message,
+      });
     }
   };
 
   static upgrade = async (req: Request, res: Response) => {
     try {
       const payload = changePlanSchema.parse(req.body);
-      const result = await assinaturasService.upgrade(payload.usuarioId, payload.novoPlanosEmpresariaisId);
+      const result = await assinaturasService.upgrade(
+        payload.usuarioId,
+        payload.novoPlanosEmpresariaisId,
+      );
       res.json({ success: true, assinatura: result });
     } catch (error: any) {
       if (error instanceof ZodError) {
-        return res.status(400).json({ success: false, code: 'VALIDATION_ERROR', issues: error.flatten().fieldErrors });
+        return res
+          .status(400)
+          .json({ success: false, code: 'VALIDATION_ERROR', issues: error.flatten().fieldErrors });
       }
-      res.status(500).json({ success: false, code: 'UPGRADE_ERROR', message: 'Erro no upgrade', error: error?.message });
+      res.status(500).json({
+        success: false,
+        code: 'UPGRADE_ERROR',
+        message: 'Erro no upgrade',
+        error: error?.message,
+      });
     }
   };
 
   static downgrade = async (req: Request, res: Response) => {
     try {
       const payload = changePlanSchema.parse(req.body);
-      const result = await assinaturasService.downgrade(payload.usuarioId, payload.novoPlanosEmpresariaisId);
+      const result = await assinaturasService.downgrade(
+        payload.usuarioId,
+        payload.novoPlanosEmpresariaisId,
+      );
       res.json({ success: true, assinatura: result });
     } catch (error: any) {
       if (error instanceof ZodError) {
-        return res.status(400).json({ success: false, code: 'VALIDATION_ERROR', issues: error.flatten().fieldErrors });
+        return res
+          .status(400)
+          .json({ success: false, code: 'VALIDATION_ERROR', issues: error.flatten().fieldErrors });
       }
-      res.status(500).json({ success: false, code: 'DOWNGRADE_ERROR', message: 'Erro no downgrade', error: error?.message });
+      res.status(500).json({
+        success: false,
+        code: 'DOWNGRADE_ERROR',
+        message: 'Erro no downgrade',
+        error: error?.message,
+      });
     }
   };
 
   static remindPayment = async (req: Request, res: Response) => {
     try {
       const { usuarioId } = req.body as { usuarioId?: string };
-      if (!usuarioId) return res.status(400).json({ success: false, code: 'VALIDATION_ERROR', message: 'usuarioId é obrigatório' });
+      if (!usuarioId)
+        return res
+          .status(400)
+          .json({ success: false, code: 'VALIDATION_ERROR', message: 'usuarioId é obrigatório' });
       const result = await assinaturasService.remindPayment(usuarioId);
       res.json({ success: true, ...result });
     } catch (error: any) {
-      res.status(500).json({ success: false, code: 'REMIND_ERROR', message: 'Erro ao reemitir cobrança', error: error?.message });
+      res.status(500).json({
+        success: false,
+        code: 'REMIND_ERROR',
+        message: 'Erro ao reemitir cobrança',
+        error: error?.message,
+      });
     }
   };
 
@@ -97,21 +149,49 @@ export class AssinaturasController {
       const result = await assinaturasService.reconcile();
       res.json({ success: true, ...result });
     } catch (error: any) {
-      res.status(500).json({ success: false, code: 'RECONCILE_ERROR', message: 'Erro na reconciliação', error: error?.message });
+      res.status(500).json({
+        success: false,
+        code: 'RECONCILE_ERROR',
+        message: 'Erro na reconciliação',
+        error: error?.message,
+      });
     }
   };
 
   // Admin: reemitir cobrança por plano específico para um usuário
   static adminRemindPaymentForPlan = async (req: Request, res: Response) => {
     try {
-      const { usuarioId, planosEmpresariaisId, metodoPagamento, successUrl, failureUrl, pendingUrl } = req.body as any;
+      const {
+        usuarioId,
+        planosEmpresariaisId,
+        metodoPagamento,
+        successUrl,
+        failureUrl,
+        pendingUrl,
+      } = req.body as any;
       if (!usuarioId || !planosEmpresariaisId) {
-        return res.status(400).json({ success: false, code: 'VALIDATION_ERROR', message: 'usuarioId e planosEmpresariaisId são obrigatórios' });
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'usuarioId e planosEmpresariaisId são obrigatórios',
+        });
       }
-      const result = await assinaturasService.adminRemindPaymentForPlan({ usuarioId, planosEmpresariaisId, metodoPagamento, successUrl, failureUrl, pendingUrl });
+      const result = await assinaturasService.adminRemindPaymentForPlan({
+        usuarioId,
+        planosEmpresariaisId,
+        metodoPagamento,
+        successUrl,
+        failureUrl,
+        pendingUrl,
+      });
       res.json({ success: true, ...result });
     } catch (error: any) {
-      res.status(500).json({ success: false, code: 'ADMIN_REMIND_ERROR', message: 'Erro ao reemitir cobrança para o plano', error: error?.message });
+      res.status(500).json({
+        success: false,
+        code: 'ADMIN_REMIND_ERROR',
+        message: 'Erro ao reemitir cobrança para o plano',
+        error: error?.message,
+      });
     }
   };
 
@@ -120,7 +200,9 @@ export class AssinaturasController {
     try {
       // Busca todos os planos e cria/garante preapprovalPlan
       const { prisma } = await import('../../../../config/prisma.js');
-      const planos = await prisma.planosEmpresariais.findMany({ select: { id: true, mpPreapprovalPlanId: true } });
+      const planos = await prisma.planosEmpresariais.findMany({
+        select: { id: true, mpPreapprovalPlanId: true },
+      });
       const results: Record<string, string> = {};
       for (const p of planos) {
         try {
@@ -132,7 +214,12 @@ export class AssinaturasController {
       }
       res.json({ success: true, count: planos.length, results });
     } catch (error: any) {
-      res.status(500).json({ success: false, code: 'SYNC_PLANS_ERROR', message: 'Erro ao sincronizar planos', error: error?.message });
+      res.status(500).json({
+        success: false,
+        code: 'SYNC_PLANS_ERROR',
+        message: 'Erro ao sincronizar planos',
+        error: error?.message,
+      });
     }
   };
 
@@ -140,12 +227,22 @@ export class AssinaturasController {
     try {
       const { planosEmpresariaisId } = req.body as any;
       if (!planosEmpresariaisId) {
-        return res.status(400).json({ success: false, code: 'VALIDATION_ERROR', message: 'planosEmpresariaisId é obrigatório' });
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'planosEmpresariaisId é obrigatório',
+        });
       }
-      const mpPreapprovalPlanId = await assinaturasService.ensurePlanPreapproval(planosEmpresariaisId);
+      const mpPreapprovalPlanId =
+        await assinaturasService.ensurePlanPreapproval(planosEmpresariaisId);
       res.json({ success: true, planosEmpresariaisId, mpPreapprovalPlanId });
     } catch (error: any) {
-      res.status(500).json({ success: false, code: 'SYNC_PLAN_ERROR', message: 'Erro ao sincronizar plano', error: error?.message });
+      res.status(500).json({
+        success: false,
+        code: 'SYNC_PLAN_ERROR',
+        message: 'Erro ao sincronizar plano',
+        error: error?.message,
+      });
     }
   };
 }

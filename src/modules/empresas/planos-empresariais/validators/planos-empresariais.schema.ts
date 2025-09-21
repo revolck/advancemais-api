@@ -134,12 +134,17 @@ const planosEmpresariaisSchema = z
     valor: valorPlanoSchema,
     desconto: percentualDescontoSchema,
     quantidadeVagas: quantidadeVagasSchema,
-    vagaEmDestaque: z.boolean({ invalid_type_error: 'vagaEmDestaque deve ser verdadeiro ou falso' }),
+    vagaEmDestaque: z.boolean({
+      invalid_type_error: 'vagaEmDestaque deve ser verdadeiro ou falso',
+    }),
     quantidadeVagasDestaque: quantidadeVagasDestaqueSchema,
   })
   .strict();
 
-const validatePlanoRegras = (data: z.infer<typeof planosEmpresariaisSchema>, ctx: RefinementCtx) => {
+const validatePlanoRegras = (
+  data: z.infer<typeof planosEmpresariaisSchema>,
+  ctx: RefinementCtx,
+) => {
   if (data.vagaEmDestaque) {
     if (data.quantidadeVagasDestaque === undefined || data.quantidadeVagasDestaque === null) {
       ctx.addIssue({
@@ -147,11 +152,15 @@ const validatePlanoRegras = (data: z.infer<typeof planosEmpresariaisSchema>, ctx
         path: ['quantidadeVagasDestaque'],
         message: 'Informe a quantidade de vagas em destaque quando vagaEmDestaque for verdadeiro',
       });
-    } else if (data.quantidadeVagas !== undefined && data.quantidadeVagasDestaque > data.quantidadeVagas) {
+    } else if (
+      data.quantidadeVagas !== undefined &&
+      data.quantidadeVagasDestaque > data.quantidadeVagas
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['quantidadeVagasDestaque'],
-        message: 'A quantidade de vagas em destaque não pode superar a quantidade total de vagas do plano',
+        message:
+          'A quantidade de vagas em destaque não pode superar a quantidade total de vagas do plano',
       });
     }
   } else if (data.quantidadeVagasDestaque !== undefined && data.quantidadeVagasDestaque !== null) {
@@ -163,7 +172,8 @@ const validatePlanoRegras = (data: z.infer<typeof planosEmpresariaisSchema>, ctx
   }
 };
 
-export const createPlanosEmpresariaisSchema = planosEmpresariaisSchema.superRefine(validatePlanoRegras);
+export const createPlanosEmpresariaisSchema =
+  planosEmpresariaisSchema.superRefine(validatePlanoRegras);
 
 export const updatePlanosEmpresariaisSchema = planosEmpresariaisSchema
   .partial()
@@ -178,7 +188,11 @@ export const updatePlanosEmpresariaisSchema = planosEmpresariaisSchema
       }
     }
 
-    if (data.vagaEmDestaque === false && data.quantidadeVagasDestaque !== undefined && data.quantidadeVagasDestaque !== null) {
+    if (
+      data.vagaEmDestaque === false &&
+      data.quantidadeVagasDestaque !== undefined &&
+      data.quantidadeVagasDestaque !== null
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['quantidadeVagasDestaque'],
@@ -195,7 +209,8 @@ export const updatePlanosEmpresariaisSchema = planosEmpresariaisSchema
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['quantidadeVagasDestaque'],
-        message: 'A quantidade de vagas em destaque não pode superar a quantidade total de vagas do plano',
+        message:
+          'A quantidade de vagas em destaque não pode superar a quantidade total de vagas do plano',
       });
     }
   });

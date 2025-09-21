@@ -131,7 +131,10 @@ const options: Options = {
         name: 'Candidatos - Áreas de Interesse',
         description: 'Gestão das áreas de interesse disponíveis para candidatos',
       },
-      { name: 'MercadoPago - Assinaturas', description: 'Assinaturas e cobranças recorrentes (Mercado Pago)' },
+      {
+        name: 'MercadoPago - Assinaturas',
+        description: 'Assinaturas e cobranças recorrentes (Mercado Pago)',
+      },
     ],
     'x-tagGroups': [
       { name: 'Default', tags: ['Default'] },
@@ -182,12 +185,20 @@ const options: Options = {
       },
       { name: 'Pagamentos', tags: ['MercadoPago - Assinaturas'] },
     ],
-        components: {
-          schemas: {
+    components: {
+      schemas: {
         // Enums de Pagamento (para uso geral)
         StatusPagamento: {
           type: 'string',
-          enum: ['PENDENTE', 'EM_PROCESSAMENTO', 'APROVADO', 'CONCLUIDO', 'RECUSADO', 'ESTORNADO', 'CANCELADO'],
+          enum: [
+            'PENDENTE',
+            'EM_PROCESSAMENTO',
+            'APROVADO',
+            'CONCLUIDO',
+            'RECUSADO',
+            'ESTORNADO',
+            'CANCELADO',
+          ],
           example: 'PENDENTE',
           description: 'Estados possíveis de um pagamento/processamento de transação',
         },
@@ -207,7 +218,8 @@ const options: Options = {
           type: 'string',
           enum: ['PESSOA_FISICA', 'PESSOA_JURIDICA'],
           example: 'PESSOA_FISICA',
-          description: 'Enum TiposDeUsuarios utilizado para classificar pessoas físicas e jurídicas.',
+          description:
+            'Enum TiposDeUsuarios utilizado para classificar pessoas físicas e jurídicas.',
         },
         Roles: {
           type: 'string',
@@ -281,7 +293,8 @@ const options: Options = {
             },
             card: {
               $ref: '#/components/schemas/CheckoutCardData',
-              description: 'Obrigatório para pagamento com cartão e para assinatura direta (sem redirect).',
+              description:
+                'Obrigatório para pagamento com cartão e para assinatura direta (sem redirect).',
             },
             successUrl: { type: 'string', format: 'uri', nullable: true },
             failureUrl: { type: 'string', format: 'uri', nullable: true },
@@ -791,6 +804,43 @@ const options: Options = {
               type: 'string',
               format: 'date-time',
               example: '2024-01-01T12:00:00Z',
+            },
+            environment: { type: 'string', example: 'development' },
+            memory: {
+              type: 'object',
+              properties: {
+                used: { type: 'string', example: '120 MB' },
+                total: { type: 'string', example: '512 MB' },
+              },
+            },
+            modules: {
+              type: 'object',
+              properties: {
+                usuarios: { type: 'string', example: '✅ active' },
+                brevo: { type: 'string', example: '✅ active' },
+                website: { type: 'string', example: '✅ active' },
+                empresas: { type: 'string', example: '✅ active' },
+                candidatos: { type: 'string', example: '✅ active' },
+                mercadopago: { type: 'string', example: '✅ active' },
+                redis: { type: 'string', example: '✅ active' },
+              },
+            },
+            metrics: {
+              type: 'object',
+              properties: {
+                bans: {
+                  type: 'object',
+                  properties: {
+                    totalProcessed: { type: 'integer', example: 42 },
+                    processedLastRun: { type: 'integer', example: 3 },
+                    lastRunAt: {
+                      type: 'string',
+                      format: 'date-time',
+                      example: '2025-09-21T15:05:00Z',
+                    },
+                  },
+                },
+              },
             },
           },
         },
@@ -1330,10 +1380,77 @@ const options: Options = {
               type: 'object',
               properties: {
                 areasInteresse: { type: 'string', example: '/areas-interesse' },
+                curriculos: { type: 'string', example: '/curriculos' },
+                aplicar: { type: 'string', example: '/aplicar' },
               },
             },
             status: { type: 'string', example: 'operational' },
           },
+        },
+        VagaPublica: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            slug: { type: 'string' },
+            titulo: { type: 'string' },
+            inseridaEm: { type: 'string', format: 'date-time' },
+            modalidade: { $ref: '#/components/schemas/ModalidadesDeVagas' },
+            regimeDeTrabalho: { $ref: '#/components/schemas/RegimesDeTrabalhos' },
+            senioridade: { $ref: '#/components/schemas/Senioridade' },
+            cidade: { type: 'string', nullable: true },
+            estado: { type: 'string', nullable: true },
+            empresa: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', nullable: true },
+                nome: { type: 'string', nullable: true },
+              },
+            },
+          },
+        },
+        UsuarioCurriculo: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            usuarioId: { type: 'string', format: 'uuid' },
+            titulo: { type: 'string', nullable: true },
+            resumo: { type: 'string', nullable: true },
+            objetivo: { type: 'string', nullable: true },
+            areasInteresse: { type: 'object', nullable: true },
+            preferencias: { type: 'object', nullable: true },
+            habilidades: { type: 'object', nullable: true },
+            idiomas: { type: 'array', nullable: true, items: { type: 'object' } },
+            experiencias: { type: 'array', nullable: true, items: { type: 'object' } },
+            formacao: { type: 'array', nullable: true, items: { type: 'object' } },
+            cursosCertificacoes: { type: 'array', nullable: true, items: { type: 'object' } },
+            premiosPublicacoes: { type: 'array', nullable: true, items: { type: 'object' } },
+            acessibilidade: { type: 'object', nullable: true },
+            consentimentos: { type: 'object', nullable: true },
+            ultimaAtualizacao: { type: 'string', format: 'date-time' },
+            criadoEm: { type: 'string', format: 'date-time' },
+            atualizadoEm: { type: 'string', format: 'date-time' },
+          },
+        },
+        UsuarioCurriculoCreate: { allOf: [{ $ref: '#/components/schemas/UsuarioCurriculo' }] },
+        UsuarioCurriculoUpdate: { allOf: [{ $ref: '#/components/schemas/UsuarioCurriculo' }] },
+        EmpresasCandidatos: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            vagaId: { type: 'string', format: 'uuid' },
+            candidatoId: { type: 'string', format: 'uuid' },
+            curriculoId: { type: 'string', format: 'uuid' },
+            empresaUsuarioId: { type: 'string', format: 'uuid' },
+            status: { $ref: '#/components/schemas/StatusProcesso' },
+            origem: { $ref: '#/components/schemas/OrigemVagas' },
+            aplicadaEm: { type: 'string', format: 'date-time' },
+            atualizadaEm: { type: 'string', format: 'date-time' },
+            consentimentos: { type: 'object', nullable: true },
+          },
+        },
+        EmpresasCandidatosResumo: { allOf: [{ $ref: '#/components/schemas/EmpresasCandidatos' }] },
+        EmpresasCandidatosRecebida: {
+          allOf: [{ $ref: '#/components/schemas/EmpresasCandidatos' }],
         },
         CandidatoAreaInteresse: {
           type: 'object',
@@ -3360,7 +3477,8 @@ const options: Options = {
             quantidadeVagas: {
               type: 'integer',
               example: 10,
-              description: 'Quantidade de vagas que a empresa pode manter entre PUBLICADO e EM_ANALISE',
+              description:
+                'Quantidade de vagas que a empresa pode manter entre PUBLICADO e EM_ANALISE',
             },
             vagaEmDestaque: {
               type: 'boolean',
@@ -3466,7 +3584,8 @@ const options: Options = {
               type: 'integer',
               nullable: true,
               example: 0,
-              description: 'Limite de vagas em destaque. Deve ser omitido quando vagaEmDestaque for falso',
+              description:
+                'Limite de vagas em destaque. Deve ser omitido quando vagaEmDestaque for falso',
             },
           },
         },
@@ -3485,17 +3604,21 @@ const options: Options = {
             limite: { type: 'integer', example: 4 },
           },
         },
-        ClientePlanoTipo: {
+        ClientePlanoModo: {
           type: 'string',
-          enum: ['7_dias', '15_dias', '30_dias', '60_dias', '90dias', '120_dias', 'parceiro'],
-          example: '7_dias',
+          enum: ['teste', 'parceiro'],
+          example: 'teste',
         },
         ClientePlanoEmpresa: {
           type: 'object',
           properties: {
             id: { type: 'string', example: 'empresa-uuid' },
             nome: { type: 'string', example: 'Advance Tech Consultoria' },
-            avatarUrl: { type: 'string', nullable: true, example: 'https://cdn.advance.com.br/avatar.png' },
+            avatarUrl: {
+              type: 'string',
+              nullable: true,
+              example: 'https://cdn.advance.com.br/avatar.png',
+            },
             cidade: {
               type: 'string',
               nullable: true,
@@ -3510,7 +3633,8 @@ const options: Options = {
             },
             enderecos: {
               type: 'array',
-              description: 'Relação completa de endereços da empresa. O primeiro item corresponde ao endereço principal.',
+              description:
+                'Relação completa de endereços da empresa. O primeiro item corresponde ao endereço principal.',
               items: { $ref: '#/components/schemas/UsuarioEndereco' },
             },
             descricao: {
@@ -3536,7 +3660,10 @@ const options: Options = {
             id: { type: 'string', example: 'parceria-uuid' },
             usuarioId: { type: 'string', example: 'usuario-uuid' },
             planosEmpresariaisId: { type: 'string', example: 'plano-uuid' },
-            tipo: { $ref: '#/components/schemas/ClientePlanoTipo' },
+            modo: { allOf: [{ $ref: '#/components/schemas/ClientePlanoModo' }], nullable: true },
+            origin: { type: 'string', enum: ['CHECKOUT', 'ADMIN', 'IMPORT'], example: 'CHECKOUT' },
+            //
+            //
             inicio: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00Z' },
             fim: {
               type: 'string',
@@ -3544,11 +3671,10 @@ const options: Options = {
               nullable: true,
               example: '2024-01-08T12:00:00Z',
             },
-            ativo: { type: 'boolean', example: true },
-            observacao: {
+            status: {
               type: 'string',
-              nullable: true,
-              example: 'Teste liberado pelo time comercial',
+              enum: ['ATIVO', 'SUSPENSO', 'EXPIRADO', 'CANCELADO'],
+              example: 'ATIVO',
             },
             estaVigente: {
               type: 'boolean',
@@ -3572,21 +3698,17 @@ const options: Options = {
         },
         EmpresaClientePlanoCreateInput: {
           type: 'object',
-          required: ['usuarioId', 'planosEmpresariaisId', 'tipo'],
+          required: ['usuarioId', 'planosEmpresariaisId', 'modo'],
           properties: {
             usuarioId: { type: 'string', format: 'uuid', example: 'usuario-uuid' },
             planosEmpresariaisId: { type: 'string', format: 'uuid', example: 'plano-uuid' },
-            tipo: { $ref: '#/components/schemas/ClientePlanoTipo' },
+            modo: { $ref: '#/components/schemas/ClientePlanoModo' },
+            diasTeste: { type: 'integer', nullable: true, example: 7 },
             iniciarEm: {
               type: 'string',
               format: 'date-time',
               nullable: true,
               example: '2024-01-01T08:00:00Z',
-            },
-            observacao: {
-              type: 'string',
-              nullable: true,
-              example: 'Plano liberado para demonstração por 7 dias',
             },
           },
         },
@@ -3598,16 +3720,12 @@ const options: Options = {
               format: 'uuid',
               example: 'novo-plano-uuid',
             },
-            tipo: { $ref: '#/components/schemas/ClientePlanoTipo' },
+            modo: { $ref: '#/components/schemas/ClientePlanoModo' },
+            diasTeste: { type: 'integer', nullable: true, example: 14 },
             iniciarEm: {
               type: 'string',
               format: 'date-time',
               example: '2024-01-05T09:00:00Z',
-            },
-            observacao: {
-              type: 'string',
-              nullable: true,
-              example: 'Parceiro oficial, acesso ilimitado',
             },
           },
         },
@@ -3670,13 +3788,20 @@ const options: Options = {
           type: 'string',
           description:
             'Etapas do fluxo de publicação da vaga (RASCUNHO, EM_ANALISE, PUBLICADO, DESPUBLICADA, PAUSADA, EXPIRADO ou ENCERRADA).',
-          enum: ['RASCUNHO', 'EM_ANALISE', 'PUBLICADO', 'DESPUBLICADA', 'PAUSADA', 'EXPIRADO', 'ENCERRADA'],
+          enum: [
+            'RASCUNHO',
+            'EM_ANALISE',
+            'PUBLICADO',
+            'DESPUBLICADA',
+            'PAUSADA',
+            'EXPIRADO',
+            'ENCERRADA',
+          ],
           example: 'PUBLICADO',
         },
         StatusProcesso: {
           type: 'string',
-          description:
-            'Etapas do acompanhamento do candidato durante o processo seletivo da vaga.',
+          description: 'Etapas do acompanhamento do candidato durante o processo seletivo da vaga.',
           enum: [
             'RECEBIDA',
             'EM_ANALISE',
@@ -3737,17 +3862,29 @@ const options: Options = {
         AdminEmpresasPlanoResumo: {
           type: 'object',
           description: 'Resumo do plano ativo vinculado à empresa',
-          required: ['id', 'tipo'],
+          required: ['id', 'status'],
           properties: {
             id: { type: 'string', format: 'uuid', example: 'plano-uuid' },
             nome: { type: 'string', nullable: true, example: 'Plano Avançado' },
-            tipo: {
+            modo: { type: 'string', enum: ['teste', 'parceiro'], nullable: true, example: null },
+            status: {
               type: 'string',
-              enum: ['7_dias', '15_dias', '30_dias', '60_dias', '90dias', '120_dias', 'assinatura_mensal', 'parceiro'],
-              example: 'parceiro',
+              enum: ['ATIVO', 'SUSPENSO', 'EXPIRADO', 'CANCELADO'],
+              example: 'ATIVO',
             },
-            inicio: { type: 'string', format: 'date-time', nullable: true, example: '2024-01-10T12:00:00Z' },
-            fim: { type: 'string', format: 'date-time', nullable: true, example: '2024-02-10T12:00:00Z' },
+            origin: { type: 'string', enum: ['CHECKOUT', 'ADMIN', 'IMPORT'], example: 'CHECKOUT' },
+            inicio: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              example: '2024-01-10T12:00:00Z',
+            },
+            fim: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              example: '2024-02-10T12:00:00Z',
+            },
             modeloPagamento: {
               allOf: [{ $ref: '#/components/schemas/ModeloPagamento' }],
               nullable: true,
@@ -3771,7 +3908,8 @@ const options: Options = {
               type: 'integer',
               nullable: true,
               example: 30,
-              description: 'Quantidade total de dias entre o início e o fim configurado para o plano',
+              description:
+                'Quantidade total de dias entre o início e o fim configurado para o plano',
             },
             diasRestantes: {
               type: 'integer',
@@ -3783,7 +3921,7 @@ const options: Options = {
           example: {
             id: '38f73d2d-40fa-47a6-9657-6a4f7f1bb610',
             nome: 'Plano Avançado',
-            tipo: 'assinatura_mensal',
+            modo: null,
             inicio: '2024-01-10T12:00:00Z',
             fim: null,
             modeloPagamento: 'ASSINATURA',
@@ -3888,19 +4026,22 @@ const options: Options = {
               type: 'string',
               nullable: true,
               example: 'd41d8cd98f00b204e9800998ecf8427e',
-              description: 'Token hex gerado para redefinição de senha. Nulo quando não há fluxo ativo.',
+              description:
+                'Token hex gerado para redefinição de senha. Nulo quando não há fluxo ativo.',
             },
             tokenRecuperacaoExp: {
               type: 'string',
               format: 'date-time',
               nullable: true,
               example: '2025-03-13T14:30:00.000Z',
-              description: 'Data limite para utilização do token. Após expirar o token é invalidado automaticamente.',
+              description:
+                'Data limite para utilização do token. Após expirar o token é invalidado automaticamente.',
             },
             tentativasRecuperacao: {
               type: 'integer',
               example: 1,
-              description: 'Quantidade de tentativas de disparo de e-mail de recuperação dentro do período de cooldown.',
+              description:
+                'Quantidade de tentativas de disparo de e-mail de recuperação dentro do período de cooldown.',
             },
             ultimaTentativaRecuperacao: {
               type: 'string',
@@ -3982,7 +4123,8 @@ const options: Options = {
             },
             enderecos: {
               type: 'array',
-              description: 'Endereços cadastrados pelo candidato. O primeiro item representa o endereço principal.',
+              description:
+                'Endereços cadastrados pelo candidato. O primeiro item representa o endereço principal.',
               items: { $ref: '#/components/schemas/UsuarioEndereco' },
             },
             cidade: { type: 'string', nullable: true, example: 'Maceió' },
@@ -3991,7 +4133,8 @@ const options: Options = {
         },
         VagaProcesso: {
           type: 'object',
-          description: 'Representa o acompanhamento de um candidato dentro de uma vaga corporativa.',
+          description:
+            'Representa o acompanhamento de um candidato dentro de uma vaga corporativa.',
           required: ['id', 'vagaId', 'candidatoId', 'status', 'origem', 'criadoEm', 'atualizadoEm'],
           properties: {
             id: { type: 'string', format: 'uuid', example: 'processo-uuid' },
@@ -4056,7 +4199,8 @@ const options: Options = {
         },
         VagaProcessoUpdateInput: {
           type: 'object',
-          description: 'Campos disponíveis para atualização parcial do processo seletivo vinculado à vaga.',
+          description:
+            'Campos disponíveis para atualização parcial do processo seletivo vinculado à vaga.',
           properties: {
             status: { allOf: [{ $ref: '#/components/schemas/StatusProcesso' }] },
             origem: { allOf: [{ $ref: '#/components/schemas/OrigemVagas' }] },
@@ -4106,7 +4250,11 @@ const options: Options = {
               example: '+55 11 99999-0000',
               description: 'Telefone de contato informado no cadastro',
             },
-            avatarUrl: { type: 'string', nullable: true, example: 'https://cdn.advance.com.br/logo.png' },
+            avatarUrl: {
+              type: 'string',
+              nullable: true,
+              example: 'https://cdn.advance.com.br/logo.png',
+            },
             cnpj: { type: 'string', nullable: true, example: '12345678000190' },
             cidade: {
               type: 'string',
@@ -4122,7 +4270,8 @@ const options: Options = {
             },
             enderecos: {
               type: 'array',
-              description: 'Lista completa de endereços associados ao usuário. O primeiro item representa o endereço principal.',
+              description:
+                'Lista completa de endereços associados ao usuário. O primeiro item representa o endereço principal.',
               items: { $ref: '#/components/schemas/UsuarioEndereco' },
             },
             criadoEm: { type: 'string', format: 'date-time', example: '2024-01-05T12:00:00Z' },
@@ -4179,17 +4328,6 @@ const options: Options = {
                 cep: '01310-200',
               },
             ],
-            enderecos: [
-              {
-                id: 'end-uuid',
-                logradouro: 'Av. Paulista',
-                numero: '1578',
-                bairro: 'Bela Vista',
-                cidade: 'São Paulo',
-                estado: 'SP',
-                cep: '01310-200',
-              },
-            ],
             criadoEm: '2024-01-05T12:00:00Z',
             ativa: true,
             parceira: true,
@@ -4197,7 +4335,7 @@ const options: Options = {
             plano: {
               id: '38f73d2d-40fa-47a6-9657-6a4f7f1bb610',
               nome: 'Plano Avançado',
-              tipo: 'assinatura_mensal',
+              modo: null,
               inicio: '2024-01-10T12:00:00Z',
               fim: null,
               modeloPagamento: 'ASSINATURA',
@@ -4216,7 +4354,7 @@ const options: Options = {
         },
         AdminEmpresasPlanoInput: {
           type: 'object',
-          required: ['planosEmpresariaisId', 'tipo'],
+          required: ['planosEmpresariaisId', 'modo'],
           properties: {
             planosEmpresariaisId: {
               type: 'string',
@@ -4224,9 +4362,15 @@ const options: Options = {
               example: 'plano-uuid',
               description: 'Identificador do plano empresarial que será vinculado à empresa',
             },
-            tipo: {
-              allOf: [{ $ref: '#/components/schemas/ClientePlanoTipo' }],
-              description: 'Tipo de duração/liberação do plano parceiro',
+            modo: {
+              allOf: [{ $ref: '#/components/schemas/ClientePlanoModo' }],
+              description: 'Origem do vínculo do plano (assinatura, teste, parceiro)',
+            },
+            diasTeste: {
+              type: 'integer',
+              nullable: true,
+              example: 30,
+              description: 'Obrigatório quando modo=teste',
             },
             iniciarEm: {
               type: 'string',
@@ -4235,18 +4379,12 @@ const options: Options = {
               example: '2024-01-01T12:00:00Z',
               description: 'Data de início do plano. Quando omitido, utiliza a data atual',
             },
-            observacao: {
-              type: 'string',
-              nullable: true,
-              example: 'Plano cortesia liberado pelo time comercial',
-              description: 'Observação interna sobre a concessão do plano',
-            },
           },
           example: {
             planosEmpresariaisId: 'b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e',
-            tipo: '30_dias',
+            modo: 'teste',
+            diasTeste: 30,
             iniciarEm: '2024-03-01T12:00:00Z',
-            observacao: 'Plano cortesia liberado pelo time comercial',
           },
         },
         AdminEmpresasPlanoUpdateInput: {
@@ -4266,9 +4404,8 @@ const options: Options = {
           ],
           example: {
             planosEmpresariaisId: 'b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e',
-            tipo: '60_dias',
+            modo: 'parceiro',
             resetPeriodo: true,
-            observacao: 'Extensão negociada com o cliente',
           },
         },
         AdminEmpresaCreateInput: {
@@ -4366,7 +4503,8 @@ const options: Options = {
             aceitarTermos: true,
             plano: {
               planosEmpresariaisId: 'b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e',
-              tipo: '30_dias',
+              modo: 'teste',
+              diasTeste: 30,
             },
           },
         },
@@ -4405,7 +4543,8 @@ const options: Options = {
             descricao: {
               type: 'string',
               nullable: true,
-              example: 'Consultoria especializada em recrutamento e seleção com foco em tecnologia.',
+              example:
+                'Consultoria especializada em recrutamento e seleção com foco em tecnologia.',
             },
             socialLinks: {
               allOf: [{ $ref: '#/components/schemas/UsuarioSocialLinks' }],
@@ -4438,7 +4577,7 @@ const options: Options = {
             status: 'ATIVO',
             plano: {
               planosEmpresariaisId: 'b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e',
-              tipo: '60_dias',
+              modo: 'parceiro',
               resetPeriodo: false,
             },
           },
@@ -4489,7 +4628,8 @@ const options: Options = {
                 plano: {
                   id: '38f73d2d-40fa-47a6-9657-6a4f7f1bb610',
                   nome: 'Plano Avançado',
-                  tipo: 'assinatura_mensal',
+                  modo: null,
+                  status: 'ATIVO',
                   inicio: '2024-01-10T12:00:00Z',
                   fim: null,
                   modeloPagamento: 'ASSINATURA',
@@ -4547,16 +4687,22 @@ const options: Options = {
               example: '+55 11 99999-0000',
               description: 'Telefone de contato informado no cadastro',
             },
-            avatarUrl: { type: 'string', nullable: true, example: 'https://cdn.advance.com.br/logo.png' },
+            avatarUrl: {
+              type: 'string',
+              nullable: true,
+              example: 'https://cdn.advance.com.br/logo.png',
+            },
             cnpj: { type: 'string', nullable: true, example: '12345678000190' },
             descricao: {
               type: 'string',
               nullable: true,
-              example: 'Consultoria especializada em recrutamento e seleção para empresas de tecnologia.',
+              example:
+                'Consultoria especializada em recrutamento e seleção para empresas de tecnologia.',
             },
             informacoes: {
               allOf: [{ $ref: '#/components/schemas/UsuarioInformacoes' }],
-              description: 'Dados complementares da empresa conforme armazenados em UsuariosInformation.',
+              description:
+                'Dados complementares da empresa conforme armazenados em UsuariosInformation.',
             },
             socialLinks: {
               allOf: [{ $ref: '#/components/schemas/UsuarioSocialLinks' }],
@@ -4631,7 +4777,8 @@ const options: Options = {
             telefone: '+55 11 99999-0000',
             avatarUrl: 'https://cdn.advance.com.br/logo.png',
             cnpj: '12345678000190',
-            descricao: 'Consultoria especializada em recrutamento e seleção para empresas de tecnologia.',
+            descricao:
+              'Consultoria especializada em recrutamento e seleção para empresas de tecnologia.',
             socialLinks: {
               instagram: 'https://instagram.com/advancemais',
               linkedin: 'https://linkedin.com/company/advancemais',
@@ -4647,7 +4794,7 @@ const options: Options = {
             plano: {
               id: '38f73d2d-40fa-47a6-9657-6a4f7f1bb610',
               nome: 'Plano Avançado',
-              tipo: 'assinatura_mensal',
+              modo: null,
               inicio: '2024-01-10T12:00:00Z',
               fim: null,
               modeloPagamento: 'ASSINATURA',
@@ -4687,7 +4834,8 @@ const options: Options = {
               telefone: '+55 11 99999-0000',
               avatarUrl: 'https://cdn.advance.com.br/logo.png',
               cnpj: '12345678000190',
-              descricao: 'Consultoria especializada em recrutamento e seleção para empresas de tecnologia.',
+              descricao:
+                'Consultoria especializada em recrutamento e seleção para empresas de tecnologia.',
               socialLinks: {
                 instagram: 'https://instagram.com/advancemais',
                 linkedin: 'https://linkedin.com/company/advancemais',
@@ -4703,7 +4851,8 @@ const options: Options = {
               plano: {
                 id: '38f73d2d-40fa-47a6-9657-6a4f7f1bb610',
                 nome: 'Plano Avançado',
-                tipo: 'assinatura_mensal',
+                modo: null,
+                status: 'ATIVO',
                 inicio: '2024-01-10T12:00:00Z',
                 fim: null,
                 modeloPagamento: 'ASSINATURA',
@@ -4834,7 +4983,9 @@ const options: Options = {
               allOf: [{ $ref: '#/components/schemas/AdminUsuariosBanimentoResponsavel' }],
               nullable: true,
             },
-            auditoria: { allOf: [{ $ref: '#/components/schemas/AdminUsuariosBanimentoAuditoria' }] },
+            auditoria: {
+              allOf: [{ $ref: '#/components/schemas/AdminUsuariosBanimentoAuditoria' }],
+            },
           },
           example: {
             id: 'ban_123456',
@@ -4866,7 +5017,16 @@ const options: Options = {
         AdminEmpresaPagamentoLog: {
           type: 'object',
           description: 'Evento de pagamento registrado para a empresa',
-          required: ['id', 'tipo', 'status', 'mensagem', 'externalRef', 'mpResourceId', 'criadoEm', 'plano'],
+          required: [
+            'id',
+            'tipo',
+            'status',
+            'mensagem',
+            'externalRef',
+            'mpResourceId',
+            'criadoEm',
+            'plano',
+          ],
           properties: {
             id: { type: 'string', format: 'uuid', example: 'log-uuid' },
             tipo: { type: 'string', example: 'ASSINATURA' },
@@ -5094,7 +5254,8 @@ const options: Options = {
               type: 'string',
               maxLength: 6,
               example: 'B24N56',
-              description: 'Identificador curto utilizado pelos administradores para localizar a vaga com rapidez.',
+              description:
+                'Identificador curto utilizado pelos administradores para localizar a vaga com rapidez.',
             },
             slug: {
               type: 'string',
@@ -5111,7 +5272,12 @@ const options: Options = {
             status: { allOf: [{ $ref: '#/components/schemas/StatusDeVagas' }] },
             inseridaEm: { type: 'string', format: 'date-time', example: '2024-05-10T09:00:00Z' },
             atualizadoEm: { type: 'string', format: 'date-time', example: '2024-05-12T11:30:00Z' },
-            inscricoesAte: { type: 'string', format: 'date-time', nullable: true, example: '2024-06-01T23:59:59Z' },
+            inscricoesAte: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              example: '2024-06-01T23:59:59Z',
+            },
             modoAnonimo: { type: 'boolean', example: false },
             modalidade: { allOf: [{ $ref: '#/components/schemas/ModalidadesDeVagas' }] },
             regimeDeTrabalho: { allOf: [{ $ref: '#/components/schemas/RegimesDeTrabalhos' }] },
@@ -5207,7 +5373,8 @@ const options: Options = {
             salarioConfidencial: {
               type: 'boolean',
               example: true,
-              description: 'Indica se a faixa salarial deve permanecer confidencial para candidatos.',
+              description:
+                'Indica se a faixa salarial deve permanecer confidencial para candidatos.',
             },
             maxCandidaturasPorUsuario: {
               type: 'integer',
@@ -5225,7 +5392,8 @@ const options: Options = {
               type: 'integer',
               nullable: true,
               example: 7,
-              description: 'Identificador da subárea vinculada (sempre pertencente à área selecionada).',
+              description:
+                'Identificador da subárea vinculada (sempre pertencente à área selecionada).',
             },
             areaInteresse: {
               type: 'object',
@@ -5249,12 +5417,14 @@ const options: Options = {
             vagaEmDestaque: {
               type: 'boolean',
               example: true,
-              description: 'Informa se a vaga está utilizando um slot de destaque do plano ativo da empresa.',
+              description:
+                'Informa se a vaga está utilizando um slot de destaque do plano ativo da empresa.',
             },
             destaqueInfo: {
               type: 'object',
               nullable: true,
-              description: 'Metadados do vínculo da vaga com o recurso de destaque do plano empresarial.',
+              description:
+                'Metadados do vínculo da vaga com o recurso de destaque do plano empresarial.',
               properties: {
                 empresasPlanoId: {
                   type: 'string',
@@ -5263,7 +5433,12 @@ const options: Options = {
                 },
                 ativo: { type: 'boolean', example: true },
                 ativadoEm: { type: 'string', format: 'date-time', example: '2024-05-10T09:00:00Z' },
-                desativadoEm: { type: 'string', format: 'date-time', nullable: true, example: null },
+                desativadoEm: {
+                  type: 'string',
+                  format: 'date-time',
+                  nullable: true,
+                  example: null,
+                },
               },
             },
           },
@@ -5462,7 +5637,8 @@ const options: Options = {
             codUsuario: { type: 'string', example: 'ABC1234' },
             informacoes: {
               allOf: [{ $ref: '#/components/schemas/UsuarioInformacoes' }],
-              description: 'Dados complementares utilizados para montar a exibição da empresa na vaga.',
+              description:
+                'Dados complementares utilizados para montar a exibição da empresa na vaga.',
             },
           },
         },
@@ -5475,7 +5651,8 @@ const options: Options = {
               type: 'string',
               maxLength: 6,
               example: 'B24N56',
-              description: 'Identificador curto da vaga gerado automaticamente para facilitar buscas internas.',
+              description:
+                'Identificador curto da vaga gerado automaticamente para facilitar buscas internas.',
               readOnly: true,
             },
             slug: {
@@ -5507,7 +5684,8 @@ const options: Options = {
             descricao: {
               type: 'string',
               nullable: true,
-              example: 'Responsável por liderar projetos multidisciplinares e garantir a execução do roadmap.',
+              example:
+                'Responsável por liderar projetos multidisciplinares e garantir a execução do roadmap.',
             },
             requisitos: {
               type: 'object',
@@ -5634,7 +5812,8 @@ const options: Options = {
             areaInteresse: {
               type: 'object',
               nullable: true,
-              description: 'Dados resumidos da área de interesse escolhida para classificar a vaga.',
+              description:
+                'Dados resumidos da área de interesse escolhida para classificar a vaga.',
               properties: {
                 id: { type: 'integer', example: 3 },
                 categoria: { type: 'string', example: 'Tecnologia da Informação' },
@@ -5712,12 +5891,14 @@ const options: Options = {
               maxLength: 120,
               pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$',
               example: 'analista-marketing-digital-sao-paulo',
-              description: 'Identificador amigável da vaga utilizado nas rotas públicas (apenas letras minúsculas, números e hífens).',
+              description:
+                'Identificador amigável da vaga utilizado nas rotas públicas (apenas letras minúsculas, números e hífens).',
             },
             modoAnonimo: {
               type: 'boolean',
               example: true,
-              description: 'Quando verdadeiro, oculta o nome e a logo da empresa nas listagens públicas',
+              description:
+                'Quando verdadeiro, oculta o nome e a logo da empresa nas listagens públicas',
             },
             regimeDeTrabalho: { allOf: [{ $ref: '#/components/schemas/RegimesDeTrabalhos' }] },
             modalidade: { allOf: [{ $ref: '#/components/schemas/ModalidadesDeVagas' }] },
@@ -5725,7 +5906,8 @@ const options: Options = {
               type: 'string',
               maxLength: 255,
               example: 'Analista de Marketing Digital',
-              description: 'Nome da vaga que será exibido nos portais e dashboards administrativos.',
+              description:
+                'Nome da vaga que será exibido nos portais e dashboards administrativos.',
             },
             paraPcd: { type: 'boolean', example: false },
             vagaEmDestaque: {
@@ -5743,7 +5925,8 @@ const options: Options = {
             descricao: {
               type: 'string',
               nullable: true,
-              example: 'Responsável por executar estratégias de marketing digital e otimizar campanhas.',
+              example:
+                'Responsável por executar estratégias de marketing digital e otimizar campanhas.',
             },
             requisitos: {
               type: 'object',
@@ -5875,7 +6058,8 @@ const options: Options = {
             areaInteresseId: {
               type: 'integer',
               example: 3,
-              description: 'Atualize a categoria (área) associada à vaga. Informe junto uma subárea válida.',
+              description:
+                'Atualize a categoria (área) associada à vaga. Informe junto uma subárea válida.',
             },
             subareaInteresseId: {
               type: 'integer',
@@ -5993,25 +6177,16 @@ const options: Options = {
               ],
             },
             salarioMin: {
-              oneOf: [
-                { type: 'string', pattern: '^\\d+(?:[.,]\\d{1,2})?$' },
-                { type: 'null' },
-              ],
+              oneOf: [{ type: 'string', pattern: '^\\d+(?:[.,]\\d{1,2})?$' }, { type: 'null' }],
               example: '5000.00',
             },
             salarioMax: {
-              oneOf: [
-                { type: 'string', pattern: '^\\d+(?:[.,]\\d{1,2})?$' },
-                { type: 'null' },
-              ],
+              oneOf: [{ type: 'string', pattern: '^\\d+(?:[.,]\\d{1,2})?$' }, { type: 'null' }],
               example: '7000.00',
             },
             salarioConfidencial: { type: 'boolean', example: false },
             maxCandidaturasPorUsuario: {
-              oneOf: [
-                { type: 'integer', minimum: 1 },
-                { type: 'null' },
-              ],
+              oneOf: [{ type: 'integer', minimum: 1 }, { type: 'null' }],
               example: 1,
             },
           },
@@ -6200,7 +6375,8 @@ const options: Options = {
                 },
                 informacoes: {
                   allOf: [{ $ref: '#/components/schemas/UsuarioInformacoes' }],
-                  description: 'Objeto com os dados complementares provenientes da tabela UsuariosInformation.',
+                  description:
+                    'Objeto com os dados complementares provenientes da tabela UsuariosInformation.',
                 },
                 socialLinks: {
                   allOf: [{ $ref: '#/components/schemas/UsuarioSocialLinks' }],

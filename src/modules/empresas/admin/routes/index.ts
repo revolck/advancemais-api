@@ -613,8 +613,43 @@ router.get(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/:id/banimentos', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.listBanimentos);
+router.get(
+  '/:id/banimentos',
+  supabaseAuthMiddleware(adminRoles),
+  AdminEmpresasController.listBanimentos,
+);
 router.post('/:id/banimentos', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.ban);
+/**
+ * @openapi
+ * /api/v1/empresas/admin/{id}/banimentos/revogar:
+ *   post:
+ *     summary: (Admin) Revogar banimento ativo
+ *     description: "Revoga o banimento ativo da empresa, restaura o status do usuário e notifica por email."
+ *     tags: [Empresas - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               observacoes: { type: string }
+ *     responses:
+ *       204:
+ *         description: Revogado com sucesso
+ */
+router.post(
+  '/:id/banimentos/revogar',
+  supabaseAuthMiddleware(adminRoles),
+  AdminEmpresasController.unban,
+);
 
 /**
  * @openapi

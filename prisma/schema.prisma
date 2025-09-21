@@ -226,6 +226,7 @@ model UsuariosCurriculos {
   titulo              String?  @db.VarChar(255)
   resumo              String?  @db.Text
   objetivo            String?  @db.VarChar(1000)
+  principal           Boolean  @default(false)
   areasInteresse      Json?
   preferencias        Json?
   habilidades         Json?

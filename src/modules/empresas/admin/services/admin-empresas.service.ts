@@ -22,6 +22,11 @@ import {
 } from '@/modules/empresas/shared/tipos-de-planos';
 import { attachEnderecoResumo } from '@/modules/usuarios/utils/address';
 import type { UsuarioEnderecoDto } from '@/modules/usuarios/utils/address';
+import {
+  mapUsuarioInformacoes,
+  mergeUsuarioInformacoes,
+  usuarioInformacoesSelect,
+} from '@/modules/usuarios/utils/information';
 import type { UsuarioSocialLinks } from '@/modules/usuarios/utils/types';
 import {
   buildSocialLinksCreateData,
@@ -84,11 +89,12 @@ const createUsuarioListSelect = () =>
     codUsuario: true,
     nomeCompleto: true,
     email: true,
-    telefone: true,
-    avatarUrl: true,
     cnpj: true,
     criadoEm: true,
     status: true,
+    informacoes: {
+      select: usuarioInformacoesSelect,
+    },
     planosContratados: planoAtivoSelect,
     banimentosRecebidos: {
       where: { fim: { gt: new Date() } },
@@ -124,15 +130,15 @@ const usuarioDetailSelect = {
   codUsuario: true,
   nomeCompleto: true,
   email: true,
-  telefone: true,
-  avatarUrl: true,
   cnpj: true,
-  descricao: true,
   ...usuarioRedesSociaisSelect,
   criadoEm: true,
   tipoUsuario: true,
   status: true,
   ultimoLogin: true,
+  informacoes: {
+    select: usuarioInformacoesSelect,
+  },
   planosContratados: planoAtivoSelect,
   enderecos: {
     orderBy: { criadoEm: 'asc' },
@@ -197,6 +203,7 @@ type AdminEmpresaListItem = {
   limiteVagasPlano: number | null;
   banida: boolean;
   banimentoAtivo: AdminEmpresasEmBanimentosResumo | null;
+  informacoes: ReturnType<typeof mapUsuarioInformacoes>;
 };
 
 type AdminEmpresasEmBanimentosResumo = {
@@ -268,6 +275,7 @@ type AdminEmpresaDetail = {
     ultimoPagamentoEm: Date | null;
   };
   banimentoAtivo: AdminEmpresasEmBanimentosResumo | null;
+  informacoes: ReturnType<typeof mapUsuarioInformacoes>;
 };
 
 const sanitizeOptionalValue = (value?: string | null) => {
@@ -580,17 +588,21 @@ export const adminEmpresasService = {
         data: {
           nomeCompleto: sanitizeNome(input.nome),
           email: sanitizeEmail(input.email),
-          telefone: sanitizeTelefone(input.telefone),
           senha: senhaHash,
-          aceitarTermos,
           supabaseId: sanitizeSupabaseId(input.supabaseId),
           tipoUsuario: TiposDeUsuarios.PESSOA_JURIDICA,
           role: Roles.EMPRESA,
           status,
           codUsuario,
           cnpj: normalizeDocumento(input.cnpj),
-          ...(descricao !== undefined ? { descricao } : {}),
-          ...(avatarUrl !== undefined ? { avatarUrl } : {}),
+          informacoes: {
+            create: {
+              telefone: sanitizeTelefone(input.telefone),
+              aceitarTermos,
+              ...(descricao !== undefined ? { descricao } : {}),
+              ...(avatarUrl !== undefined ? { avatarUrl } : {}),
+            },
+          },
           ...(socialLinksCreate
             ? {
                 redesSociais: {
@@ -619,6 +631,7 @@ export const adminEmpresasService = {
       await ensureEmpresaExiste(tx, id);
 
       const updates: Prisma.UsuariosUpdateInput = {};
+      const informacoesUpdates: Prisma.UsuariosInformationUpdateInput = {};
       const socialLinksInput = extractSocialLinksFromPayload(
         data as unknown as Record<string, unknown>,
       );
@@ -634,7 +647,7 @@ export const adminEmpresasService = {
       }
 
       if (data.telefone !== undefined) {
-        updates.telefone = sanitizeTelefone(data.telefone);
+        informacoesUpdates.telefone = sanitizeTelefone(data.telefone);
       }
 
       if (data.cnpj !== undefined) {
@@ -647,18 +660,22 @@ export const adminEmpresasService = {
 
       const descricao = sanitizeOptionalValue(data.descricao);
       if (descricao !== undefined) {
-        updates.descricao = descricao;
+        informacoesUpdates.descricao = descricao;
       }
 
       const avatarUrl = sanitizeOptionalValue(data.avatarUrl);
       if (avatarUrl !== undefined) {
-        updates.avatarUrl = avatarUrl;
+        informacoesUpdates.avatarUrl = avatarUrl;
       }
 
       await upsertEnderecoPrincipal(tx, id, { cidade, estado });
 
       if (data.status !== undefined) {
         updates.status = data.status;
+      }
+
+      if (Object.keys(informacoesUpdates).length > 0) {
+        updates.informacoes = { update: informacoesUpdates };
       }
 
       if (Object.keys(updates).length > 0) {
@@ -722,7 +739,7 @@ export const adminEmpresasService = {
     ]);
 
     const data: AdminEmpresaListItem[] = empresas.map((empresaRaw) => {
-      const empresa = attachEnderecoResumo(empresaRaw)!;
+      const empresa = attachEnderecoResumo(mergeUsuarioInformacoes(empresaRaw))!;
       const planoAtual = empresa.planosContratados[0];
       const plano = mapPlanoResumo(planoAtual, referenceDate);
       const diasTeste = planoAtual ? getTipoDePlanoDuracao(planoAtual.tipo) : null;
@@ -748,6 +765,7 @@ export const adminEmpresasService = {
         limiteVagasPlano: plano?.quantidadeVagas ?? null,
         banida: Boolean(banimento),
         banimentoAtivo: banimento,
+        informacoes: empresa.informacoes,
       };
     });
 
@@ -767,7 +785,7 @@ export const adminEmpresasService = {
       return null;
     }
 
-    const empresa = attachEnderecoResumo(empresaRecord)!;
+    const empresa = attachEnderecoResumo(mergeUsuarioInformacoes(empresaRecord))!;
 
     const planoAtual = empresa.planosContratados[0];
     const plano = mapPlanoResumo(planoAtual);
@@ -816,6 +834,7 @@ export const adminEmpresasService = {
         ultimoPagamentoEm,
       },
       banimentoAtivo,
+      informacoes: empresa.informacoes,
     };
   },
 

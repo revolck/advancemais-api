@@ -29,6 +29,7 @@ import {
   type UsuarioSocialLinksInput,
 } from '../utils/social-links';
 import { emailVerificationSelect, normalizeEmailVerification } from '../utils/email-verification';
+import { mergeUsuarioInformacoes, usuarioInformacoesSelect } from '../utils/information';
 
 /**
  * Controller para criação de novos usuários
@@ -511,23 +512,40 @@ function buildUserDataForDatabase(params: {
     nomeCompleto: params.nomeCompleto.trim(),
     email: params.email.toLowerCase().trim(),
     senha: params.senha,
-    telefone: params.telefone.trim(),
     tipoUsuario: params.tipoUsuario,
     role: params.role,
-    aceitarTermos: params.aceitarTermos,
     supabaseId: params.supabaseId,
     ...(params.cpfLimpo && { cpf: params.cpfLimpo }),
     ...(params.cnpjLimpo && { cnpj: params.cnpjLimpo }),
-    ...(params.dataNascimento && { dataNasc: params.dataNascimento }),
-    ...(params.generoValidado && { genero: params.generoValidado }),
-    ...(params.avatarUrl ? { avatarUrl: params.avatarUrl.trim() } : {}),
-    ...(params.descricao ? { descricao: params.descricao.trim() } : {}),
   } satisfies Prisma.UsuariosCreateWithoutRedesSociaisInput;
+
+  const informacoes: Prisma.UsuariosInformationCreateWithoutUsuarioInput = {
+    telefone: params.telefone.trim(),
+    aceitarTermos: params.aceitarTermos,
+  };
+
+  if (params.dataNascimento) {
+    informacoes.dataNasc = params.dataNascimento;
+  }
+
+  if (params.generoValidado) {
+    informacoes.genero = params.generoValidado;
+  }
+
+  const avatarUrl = typeof params.avatarUrl === 'string' ? params.avatarUrl.trim() : null;
+  if (avatarUrl) {
+    informacoes.avatarUrl = avatarUrl;
+  }
+
+  const descricao = typeof params.descricao === 'string' ? params.descricao.trim() : null;
+  if (descricao) {
+    informacoes.descricao = descricao;
+  }
 
   const sanitizedSocialLinks = sanitizeSocialLinks(params.socialLinks);
   const socialLinks = buildSocialLinksCreateData(sanitizedSocialLinks);
 
-  return { usuario, socialLinks };
+  return { usuario, informacoes, socialLinks };
 }
 
 /**
@@ -548,18 +566,16 @@ async function createUserWithTransaction(
         nomeCompleto: true,
         cpf: true,
         cnpj: true,
-        telefone: true,
-        dataNasc: true,
-        genero: true,
         tipoUsuario: true,
         role: true,
         status: true,
         supabaseId: true,
         criadoEm: true,
-        avatarUrl: true,
-        descricao: true,
         ...usuarioRedesSociaisSelect,
         codUsuario: true,
+        informacoes: {
+          select: usuarioInformacoesSelect,
+        },
       } as const;
 
       const codUsuario = await generateUniqueUserCode(tx);
@@ -570,6 +586,9 @@ async function createUserWithTransaction(
           codUsuario,
           emailVerification: {
             create: {},
+          },
+          informacoes: {
+            create: userData.informacoes,
           },
           ...(userData.socialLinks
             ? {
@@ -588,7 +607,7 @@ async function createUserWithTransaction(
 
       log.info({ userId: usuario.id }, '✅ Usuário inserido com sucesso');
 
-      return usuario;
+      return mergeUsuarioInformacoes(usuario);
     });
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));

@@ -12,6 +12,7 @@ import { prisma } from '@/config/prisma';
 import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
 import { logger } from '@/utils/logger';
 import { attachEnderecoResumo } from '../utils/address';
+import { mergeUsuarioInformacoes, usuarioInformacoesSelect } from '../utils/information';
 import { mapSocialLinks, usuarioRedesSociaisSelect } from '../utils/social-links';
 export class AdminService {
   private readonly log = logger.child({ module: 'AdminService' });
@@ -182,7 +183,9 @@ export class AdminService {
       prisma.usuarios.count({ where }),
     ]);
 
-    const candidatosComEndereco = candidatos.map((candidato) => attachEnderecoResumo(candidato)!);
+    const candidatosComEndereco = candidatos.map((candidato) =>
+      attachEnderecoResumo(mergeUsuarioInformacoes(candidato))!,
+    );
 
     return {
       message: 'Lista de candidatos',
@@ -212,10 +215,6 @@ export class AdminService {
         nomeCompleto: true,
         cpf: true,
         cnpj: true,
-        telefone: true,
-        dataNasc: true,
-        genero: true,
-        matricula: true,
         role: true,
         status: true,
         tipoUsuario: true,
@@ -223,10 +222,11 @@ export class AdminService {
         ultimoLogin: true,
         criadoEm: true,
         atualizadoEm: true,
-        avatarUrl: true,
-        descricao: true,
         ...usuarioRedesSociaisSelect,
         codUsuario: true,
+        informacoes: {
+          select: usuarioInformacoesSelect,
+        },
         enderecos: {
           orderBy: { criadoEm: 'asc' },
           select: {
@@ -246,7 +246,8 @@ export class AdminService {
       return null;
     }
 
-    const usuarioNormalizado = attachEnderecoResumo(usuario);
+    const usuarioComInformacoes = mergeUsuarioInformacoes(usuario);
+    const usuarioNormalizado = attachEnderecoResumo(usuarioComInformacoes);
 
     if (!usuarioNormalizado) {
       return null;
@@ -255,6 +256,7 @@ export class AdminService {
     return {
       ...usuarioNormalizado,
       redesSociais: mapSocialLinks(usuario.redesSociais),
+      informacoes: usuarioComInformacoes.informacoes,
     };
   }
 
@@ -276,10 +278,6 @@ export class AdminService {
         email: true,
         nomeCompleto: true,
         cpf: true,
-        telefone: true,
-        dataNasc: true,
-        genero: true,
-        matricula: true,
         role: true,
         status: true,
         tipoUsuario: true,
@@ -287,10 +285,11 @@ export class AdminService {
         ultimoLogin: true,
         criadoEm: true,
         atualizadoEm: true,
-        avatarUrl: true,
-        descricao: true,
         ...usuarioRedesSociaisSelect,
         codUsuario: true,
+        informacoes: {
+          select: usuarioInformacoesSelect,
+        },
         enderecos: {
           orderBy: { criadoEm: 'asc' },
           select: {
@@ -310,7 +309,8 @@ export class AdminService {
       return null;
     }
 
-    const candidatoNormalizado = attachEnderecoResumo(candidato);
+    const candidatoComInformacoes = mergeUsuarioInformacoes(candidato);
+    const candidatoNormalizado = attachEnderecoResumo(candidatoComInformacoes);
 
     if (!candidatoNormalizado) {
       return null;
@@ -319,6 +319,7 @@ export class AdminService {
     return {
       ...candidatoNormalizado,
       redesSociais: mapSocialLinks(candidato.redesSociais),
+      informacoes: candidatoComInformacoes.informacoes,
     };
   }
 

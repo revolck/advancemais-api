@@ -217,6 +217,8 @@ model EmpresasVagas {
   codigo           String         @unique @db.VarChar(6)
   slug             String         @unique @db.VarChar(120)
   usuarioId        String
+  areaInteresseId  Int?
+  subareaInteresseId Int?
   modoAnonimo      Boolean        @default(false)
   regimeDeTrabalho RegimesDeTrabalhos
   modalidade       ModalidadesDeVagas
@@ -243,8 +245,12 @@ model EmpresasVagas {
 
   empresa Usuarios @relation("UsuarioVagas", fields: [usuarioId], references: [id], onDelete: Cascade)
   destaqueInfo EmpresasVagasDestaque?
+  areaInteresse   CandidatosAreasInteresse?    @relation(fields: [areaInteresseId], references: [id], onDelete: SetNull)
+  subareaInteresse CandidatosSubareasInteresse? @relation(fields: [subareaInteresseId], references: [id], onDelete: SetNull)
 
   @@index([usuarioId])
+  @@index([areaInteresseId])
+  @@index([subareaInteresseId])
 }
 
 model EmpresasVagasDestaque {

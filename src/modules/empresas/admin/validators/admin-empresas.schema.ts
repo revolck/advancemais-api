@@ -154,6 +154,28 @@ export const adminEmpresasListQuerySchema = z
 
 export type AdminEmpresasListQuery = z.infer<typeof adminEmpresasListQuerySchema>;
 
+export const adminEmpresasDashboardListQuerySchema = z
+  .object({
+    page: z.coerce.number().int().min(1).optional(),
+    search: z
+      .string()
+      .trim()
+      .transform((value) => (value.length === 0 ? undefined : value))
+      .refine((value) => value === undefined || value.length >= 3, {
+        message: 'A busca deve conter pelo menos 3 caracteres',
+      })
+      .optional(),
+  })
+  .transform((values) => ({
+    page: values.page ?? 1,
+    pageSize: 10,
+    search: values.search,
+  }));
+
+export type AdminEmpresasDashboardListQuery = z.infer<
+  typeof adminEmpresasDashboardListQuerySchema
+>;
+
 export const adminEmpresasIdParamSchema = z.object({
   id: z.string().uuid(),
 });

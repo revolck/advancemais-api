@@ -6,6 +6,104 @@ import { AdminEmpresasController } from '@/modules/empresas/admin/controllers/ad
 
 const router = Router();
 const adminRoles = [Roles.ADMIN, Roles.MODERADOR];
+const dashboardRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.RECRUTADOR];
+
+/**
+ * @openapi
+ * /api/v1/empresas/admin/dashboard:
+ *   get:
+ *     summary: (Admin/Moderador/Recrutador) Listar empresas para dashboard
+ *     description: "Retorna uma listagem paginada otimizada com até 10 empresas por página para exibição em dashboards administrativos. Disponível para ADMIN, MODERADOR e RECRUTADOR."
+ *     operationId: adminEmpresasDashboardList
+ *     tags: [Empresas - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Página atual da paginação (10 resultados por página)
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *           minimum: 3
+ *         description: Filtra resultados por nome, código, e-mail ou CNPJ
+ *     responses:
+ *       200:
+ *         description: Lista paginada de empresas para o dashboard
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminEmpresasDashboardListResponse'
+ *             examples:
+ *               default:
+ *                 summary: Página inicial do dashboard
+ *                 value:
+ *                   data:
+ *                     - id: f66fbad9-4d3c-41f7-90df-2f4f0f32af10
+ *                       codUsuario: EMP-123456
+ *                       nome: Advance Tech Consultoria
+ *                       email: contato@advance.com.br
+ *                       telefone: '+55 11 99999-0000'
+ *                       avatarUrl: https://cdn.advance.com.br/logo.png
+ *                       cnpj: '12345678000190'
+ *                       status: ATIVO
+ *                       criadoEm: '2024-01-05T12:00:00Z'
+ *                       vagasPublicadas: 8
+ *                       limiteVagasPlano: 10
+ *                       plano:
+ *                         id: 38f73d2d-40fa-47a6-9657-6a4f7f1bb610
+ *                         nome: Plano Avançado
+ *                         modo: parceiro
+ *                         status: ATIVO
+ *                         inicio: '2024-01-10T12:00:00Z'
+ *                         fim: null
+ *                         modeloPagamento: ASSINATURA
+ *                         metodoPagamento: PIX
+ *                         statusPagamento: APROVADO
+ *                         valor: '249.90'
+ *                         quantidadeVagas: 10
+ *                         duracaoEmDias: null
+ *                         diasRestantes: 18
+ *                   pagination:
+ *                     page: 1
+ *                     pageSize: 10
+ *                     total: 42
+ *                     totalPages: 5
+ *       400:
+ *         description: Parâmetros inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       500:
+ *         description: Erro interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get(
+  '/dashboard',
+  supabaseAuthMiddleware(dashboardRoles),
+  AdminEmpresasController.listDashboard,
+);
 
 /**
  * @openapi

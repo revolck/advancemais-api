@@ -4,7 +4,13 @@ import bcrypt from 'bcrypt';
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import { getCache, setCache } from '@/utils/cache';
-import { generateTokenPair } from '@/modules/usuarios/utils/auth';
+import {
+  clearRefreshTokenCookie,
+  extractRefreshTokenFromRequest,
+  generateTokenPair,
+  getRefreshTokenExpiration,
+  setRefreshTokenCookie,
+} from '@/modules/usuarios/utils/auth';
 import { limparDocumento, validarCNPJ, validarCPF } from '@/modules/usuarios/utils';
 import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
 import { formatZodErrors, loginSchema } from '../validators/auth.schema';
@@ -163,7 +169,7 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
       });
     }
 
-    const { documento, senha } = validation.data;
+    const { documento, senha, rememberMe } = validation.data;
 
     // Remove caracteres especiais do documento para comparação
     const documentoLimpo = limparDocumento(documento);
@@ -321,7 +327,8 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
     }
 
     // Gera tokens de acesso e refresh
-    const tokens = generateTokenPair(usuario.id, usuario.role);
+    const tokens = generateTokenPair(usuario.id, usuario.role, { rememberMe });
+    const refreshSettings = getRefreshTokenExpiration(rememberMe);
 
     // Atualiza último login e armazena refresh token
     log.info({ userId: usuario.id }, '💾 Atualizando último login');
@@ -334,11 +341,47 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
       },
     });
 
+    // Remove sessões expiradas antes de criar a nova
+    await prisma.usuariosSessoes.updateMany({
+      where: {
+        usuarioId: usuario.id,
+        revogadoEm: null,
+        expiraEm: { lt: new Date() },
+      },
+      data: { revogadoEm: new Date() },
+    });
+
+    const session = await prisma.usuariosSessoes.create({
+      data: {
+        usuarioId: usuario.id,
+        refreshToken: tokens.refreshToken,
+        rememberMe,
+        ip: req.ip || null,
+        userAgent: req.get('user-agent')?.slice(0, 512) || null,
+        expiraEm: refreshSettings.expiresAt,
+      },
+      select: {
+        id: true,
+        rememberMe: true,
+        criadoEm: true,
+        expiraEm: true,
+      },
+    });
+
+    setRefreshTokenCookie(res, tokens.refreshToken, rememberMe);
+
     await invalidateUserCache(usuario);
 
     const duration = Date.now() - startTime;
     log.info(
-      { duration, userId: usuario.id, email: usuario.email },
+      {
+        duration,
+        userId: usuario.id,
+        email: usuario.email,
+        sessionId: session.id,
+        rememberMe,
+        refreshExpiresAt: session.expiraEm,
+      },
       '✅ Login realizado com sucesso',
     );
 
@@ -380,6 +423,15 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
       refreshToken: tokens.refreshToken,
       tokenType: tokens.tokenType,
       expiresIn: tokens.expiresIn,
+      rememberMe,
+      refreshTokenExpiresIn: tokens.refreshExpiresIn,
+      refreshTokenExpiresAt: refreshSettings.expiresAt.toISOString(),
+      session: {
+        id: session.id,
+        rememberMe: session.rememberMe,
+        createdAt: session.criadoEm.toISOString(),
+        expiresAt: session.expiraEm.toISOString(),
+      },
       correlationId,
       timestamp: new Date().toISOString(),
     });
@@ -428,6 +480,27 @@ export const logoutUsuario = async (req: Request, res: Response, next: NextFunct
 
     log.info({ userId }, '🚪 Iniciando logout');
 
+    const refreshTokenFromRequest = extractRefreshTokenFromRequest(req);
+    let revokedSessions = 0;
+
+    if (refreshTokenFromRequest) {
+      const result = await prisma.usuariosSessoes.updateMany({
+        where: {
+          usuarioId: userId,
+          refreshToken: refreshTokenFromRequest,
+          revogadoEm: null,
+        },
+        data: { revogadoEm: new Date() },
+      });
+      revokedSessions = result.count;
+    } else {
+      const result = await prisma.usuariosSessoes.updateMany({
+        where: { usuarioId: userId, revogadoEm: null },
+        data: { revogadoEm: new Date() },
+      });
+      revokedSessions = result.count;
+    }
+
     // Remove refresh token do banco (invalidação de sessão)
     await prisma.usuarios.update({
       where: { id: userId },
@@ -439,7 +512,9 @@ export const logoutUsuario = async (req: Request, res: Response, next: NextFunct
 
     await invalidateUserCache({ id: userId });
 
-    log.info({ userId }, '✅ Logout realizado com sucesso');
+    clearRefreshTokenCookie(res);
+
+    log.info({ userId, revokedSessions }, '✅ Logout realizado com sucesso');
 
     res.json({
       success: true,
@@ -469,9 +544,9 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
   const correlationId = req.id;
 
   try {
-    const { refreshToken } = req.body;
+    const incomingRefreshToken = extractRefreshTokenFromRequest(req);
 
-    if (!refreshToken) {
+    if (!incomingRefreshToken) {
       log.warn('⚠️ Refresh token não fornecido');
       return res.status(400).json({
         success: false,
@@ -480,45 +555,57 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       });
     }
 
-    log.info({ tokenPrefix: refreshToken.substring(0, 10) }, '🔄 Validando refresh token');
+    log.info({ tokenPrefix: incomingRefreshToken.substring(0, 10) }, '🔄 Validando refresh token');
 
-    // Busca usuário pelo refresh token
-    const usuarioRecord = await prisma.usuarios.findFirst({
-      where: { refreshToken },
+    const sessionRecord = await prisma.usuariosSessoes.findFirst({
+      where: {
+        refreshToken: incomingRefreshToken,
+        revogadoEm: null,
+      },
       select: {
         id: true,
-        email: true,
-        nomeCompleto: true,
-        role: true,
-        status: true,
-        tipoUsuario: true,
-        supabaseId: true,
-        codUsuario: true,
-        ...usuarioRedesSociaisSelect,
-        ultimoLogin: true,
-        informacoes: {
-          select: usuarioInformacoesSelect,
-        },
-        enderecos: {
-          orderBy: { criadoEm: 'asc' },
+        usuarioId: true,
+        rememberMe: true,
+        expiraEm: true,
+        criadoEm: true,
+        usuario: {
           select: {
             id: true,
-            logradouro: true,
-            numero: true,
-            bairro: true,
-            cidade: true,
-            estado: true,
-            cep: true,
+            email: true,
+            nomeCompleto: true,
+            role: true,
+            status: true,
+            tipoUsuario: true,
+            supabaseId: true,
+            codUsuario: true,
+            ...usuarioRedesSociaisSelect,
+            ultimoLogin: true,
+            informacoes: {
+              select: usuarioInformacoesSelect,
+            },
+            enderecos: {
+              orderBy: { criadoEm: 'asc' },
+              select: {
+                id: true,
+                logradouro: true,
+                numero: true,
+                bairro: true,
+                cidade: true,
+                estado: true,
+                cep: true,
+              },
+            },
+            emailVerification: {
+              select: emailVerificationSelect,
+            },
           },
-        },
-        emailVerification: {
-          select: emailVerificationSelect,
         },
       },
     });
 
-    if (!usuarioRecord) {
-      log.warn('⚠️ Refresh token inválido ou não encontrado');
+    if (!sessionRecord || !sessionRecord.usuario) {
+      log.warn('⚠️ Sessão não encontrada para o refresh token informado');
+      clearRefreshTokenCookie(res);
       return res.status(401).json({
         success: false,
         message: 'Refresh token inválido',
@@ -527,6 +614,29 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       });
     }
 
+    if (sessionRecord.expiraEm <= new Date()) {
+      await prisma.usuariosSessoes.update({
+        where: { id: sessionRecord.id },
+        data: { revogadoEm: new Date() },
+      });
+
+      await prisma.usuarios.update({
+        where: { id: sessionRecord.usuarioId },
+        data: { refreshToken: null },
+      });
+
+      clearRefreshTokenCookie(res);
+
+      log.warn({ sessionId: sessionRecord.id }, '⚠️ Refresh token expirado');
+      return res.status(401).json({
+        success: false,
+        message: 'Refresh token expirado',
+        code: 'REFRESH_TOKEN_EXPIRED',
+        correlationId,
+      });
+    }
+
+    const { usuario: usuarioRecord } = sessionRecord;
     const { emailVerification, ...usuarioSemVerificacao } = usuarioRecord;
     const verification = normalizeEmailVerification(emailVerification);
     const usuarioComInformacoes = mergeUsuarioInformacoes({
@@ -537,7 +647,12 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
     });
     const usuario = attachEnderecoResumo(usuarioComInformacoes);
     if (!usuario) {
-      log.error({ refreshTokenPrefix: refreshToken.substring(0, 10) }, '❌ Falha ao reconstruir usuário no refresh token');
+      log.error({ sessionId: sessionRecord.id }, '❌ Falha ao reconstruir usuário no refresh token');
+      await prisma.usuariosSessoes.update({
+        where: { id: sessionRecord.id },
+        data: { revogadoEm: new Date() },
+      });
+      clearRefreshTokenCookie(res);
       return res.status(500).json({
         success: false,
         message: 'Erro ao reconstruir dados do usuário',
@@ -545,18 +660,22 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       });
     }
 
-    log.info({ userId: usuario.id, email: usuario.email }, '👤 Refresh token válido');
+    log.info({ userId: usuario.id, email: usuario.email, sessionId: sessionRecord.id }, '👤 Refresh token válido');
 
-    // Verifica se a conta ainda está ativa
     if (usuario.status !== 'ATIVO') {
       log.warn({ userId: usuario.id, status: usuario.status }, '⚠️ Conta inativa durante refresh');
 
-      // Remove refresh token inválido
+      await prisma.usuariosSessoes.update({
+        where: { id: sessionRecord.id },
+        data: { revogadoEm: new Date() },
+      });
+
       await prisma.usuarios.update({
         where: { id: usuario.id },
         data: { refreshToken: null },
       });
 
+      clearRefreshTokenCookie(res);
       await invalidateUserCache(usuario);
 
       return res.status(403).json({
@@ -568,16 +687,20 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       });
     }
 
-    // Verifica se email ainda está verificado (caso tenha sido revertido por admin)
     if (!usuario.emailVerificado) {
       log.warn({ userId: usuario.id }, '⚠️ Email não verificado durante refresh');
 
-      // Remove refresh token
+      await prisma.usuariosSessoes.update({
+        where: { id: sessionRecord.id },
+        data: { revogadoEm: new Date() },
+      });
+
       await prisma.usuarios.update({
         where: { id: usuario.id },
         data: { refreshToken: null },
       });
 
+      clearRefreshTokenCookie(res);
       await invalidateUserCache(usuario);
 
       return res.status(403).json({
@@ -588,20 +711,39 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       });
     }
 
-    log.info({ userId: usuario.id }, '✅ Refresh token validado com sucesso');
+    const tokens = generateTokenPair(usuario.id, usuario.role, {
+      rememberMe: sessionRecord.rememberMe,
+    });
+    const refreshSettings = getRefreshTokenExpiration(sessionRecord.rememberMe);
 
-    // Atualiza último acesso
-    await prisma.usuarios.update({
+    const updatedUser = await prisma.usuarios.update({
       where: { id: usuario.id },
       data: {
         ultimoLogin: new Date(),
+        refreshToken: tokens.refreshToken,
         atualizadoEm: new Date(),
       },
     });
 
-    await invalidateUserCache(usuario);
+    const updatedSession = await prisma.usuariosSessoes.update({
+      where: { id: sessionRecord.id },
+      data: {
+        refreshToken: tokens.refreshToken,
+        expiraEm: refreshSettings.expiresAt,
+        revogadoEm: null,
+      },
+      select: {
+        id: true,
+        rememberMe: true,
+        criadoEm: true,
+        expiraEm: true,
+      },
+    });
 
-    // Prepara dados de resposta
+    await invalidateUserCache({ ...usuario, ultimoLogin: updatedUser.ultimoLogin });
+
+    setRefreshTokenCookie(res, tokens.refreshToken, sessionRecord.rememberMe);
+
     const socialLinks = mapSocialLinks(usuario.redesSociais);
 
     const responseData = {
@@ -616,7 +758,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       tipoUsuario: usuario.tipoUsuario,
       supabaseId: usuario.supabaseId,
       emailVerificado: usuario.emailVerificado,
-      ultimoLogin: usuario.ultimoLogin,
+      ultimoLogin: updatedUser.ultimoLogin,
       codUsuario: usuario.codUsuario,
       cidade: usuario.cidade,
       estado: usuario.estado,
@@ -628,10 +770,33 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       enderecos: usuario.enderecos,
     };
 
+    log.info(
+      {
+        userId: usuario.id,
+        sessionId: updatedSession.id,
+        rememberMe: updatedSession.rememberMe,
+        refreshExpiresAt: updatedSession.expiraEm,
+      },
+      '✅ Tokens renovados com sucesso',
+    );
+
     res.json({
       success: true,
       message: 'Token renovado com sucesso',
       usuario: responseData,
+      token: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      tokenType: tokens.tokenType,
+      expiresIn: tokens.expiresIn,
+      rememberMe: updatedSession.rememberMe,
+      refreshTokenExpiresIn: tokens.refreshExpiresIn,
+      refreshTokenExpiresAt: refreshSettings.expiresAt.toISOString(),
+      session: {
+        id: updatedSession.id,
+        rememberMe: updatedSession.rememberMe,
+        createdAt: updatedSession.criadoEm.toISOString(),
+        expiresAt: updatedSession.expiraEm.toISOString(),
+      },
       correlationId,
       timestamp: new Date().toISOString(),
     });

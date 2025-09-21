@@ -342,6 +342,9 @@ router.post(
  * /api/v1/usuarios/login:
  *   post:
  *     summary: Login de usuário
+ *     description: |-
+ *       Autentica o usuário, gera par de tokens JWT e define um cookie HTTP-only com o refresh token.
+ *       Marque `rememberMe` para manter a sessão ativa por mais tempo no mesmo dispositivo/navegador.
  *     tags: [Usuários]
  *     requestBody:
  *       required: true
@@ -358,8 +361,26 @@ router.post(
  *               $ref: '#/components/schemas/UserLoginResponse'
  *             example:
  *               success: true
+ *               message: "Login realizado com sucesso"
  *               token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  *               refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *               tokenType: "Bearer"
+ *               expiresIn: "1h"
+ *               rememberMe: true
+ *               refreshTokenExpiresIn: "90d"
+ *               refreshTokenExpiresAt: "2024-06-10T12:00:00.000Z"
+ *               session:
+ *                 id: "f9e88a12-0b88-4d43-9b1f-1234567890ab"
+ *                 rememberMe: true
+ *                 createdAt: "2024-03-12T10:15:00.000Z"
+ *                 expiresAt: "2024-06-10T12:00:00.000Z"
+ *               correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
+ *               timestamp: "2024-03-12T10:15:01.234Z"
+ *         headers:
+ *           Set-Cookie:
+ *             schema:
+ *               type: string
+ *             description: Cookie HTTP-only com o refresh token (`AUTH_REFRESH_COOKIE_NAME`).
  *       400:
  *         description: Dados ausentes ou inválidos
  *         content:
@@ -406,7 +427,8 @@ router.post(
  *         source: |
  *           curl -X POST "http://localhost:3000/api/v1/usuarios/login" \
  *            -H "Content-Type: application/json" \
- *            -d '{"documento":"12345678900","senha":"senha123"}'
+ *            -d '{"documento":"12345678900","senha":"senha123","rememberMe":true}' \
+ *            -c cookies.txt
  */
 router.post(
   '/login',
@@ -430,13 +452,18 @@ router.post(
  * /api/v1/usuarios/refresh:
  *   post:
  *     summary: Atualizar token JWT
+ *     description: |-
+ *       Gera um novo par de tokens a partir do refresh token enviado no corpo, cookie HTTP-only ou header `x-refresh-token`.
+ *       O cookie de refresh token é renovado conforme a preferência de `rememberMe` definida durante o login.
  *     tags: [Usuários]
  *     requestBody:
- *       required: true
+ *       required: false
  *       content:
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/RefreshTokenRequest'
+ *           example:
+ *             refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  *     responses:
  *       200:
  *         description: Token renovado
@@ -447,10 +474,22 @@ router.post(
  *             example:
  *               success: true
  *               message: "Token renovado com sucesso"
- *               usuario:
- *                 id: "b9e1d9b0-7c9f-4d1a-8f2a-1234567890ab"
- *                 email: "joao@example.com"
- *                 nomeCompleto: "João da Silva"
+ *               token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *               refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *               rememberMe: true
+ *               refreshTokenExpiresAt: "2024-06-10T12:00:00.000Z"
+ *               session:
+ *                 id: "f9e88a12-0b88-4d43-9b1f-1234567890ab"
+ *                 rememberMe: true
+ *                 createdAt: "2024-03-12T10:15:00.000Z"
+ *                 expiresAt: "2024-06-10T12:00:00.000Z"
+ *               correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
+ *               timestamp: "2024-03-12T10:18:01.234Z"
+ *         headers:
+ *           Set-Cookie:
+ *             schema:
+ *               type: string
+ *             description: Cookie HTTP-only atualizado com o refresh token (`AUTH_REFRESH_COOKIE_NAME`).
  *       400:
  *         description: Refresh token ausente
  *         content:
@@ -497,7 +536,8 @@ router.post(
  *         source: |
  *           curl -X POST "http://localhost:3000/api/v1/usuarios/refresh" \\
  *            -H "Content-Type: application/json" \\
- *            -d '{"refreshToken":"<TOKEN>"}'
+ *            -d '{"refreshToken":"<TOKEN>"}' \\
+ *            -b cookies.txt -c cookies.txt
  */
 router.post(
   '/refresh',
@@ -518,6 +558,7 @@ router.post(
  * /api/v1/usuarios/logout:
  *   post:
  *     summary: Logout do usuário
+ *     description: Revoga sessões ativas do usuário autenticado, remove o refresh token do banco e limpa o cookie HTTP-only de sessão.
  *     tags: [Usuários]
  *     security:
  *       - bearerAuth: []
@@ -531,6 +572,13 @@ router.post(
  *             example:
  *               success: true
  *               message: "Logout realizado"
+ *               correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
+ *               timestamp: "2024-03-12T10:20:01.234Z"
+ *         headers:
+ *           Set-Cookie:
+ *             schema:
+ *               type: string
+ *             description: Cookie HTTP-only de refresh token removido (`AUTH_REFRESH_COOKIE_NAME`).
  *       401:
  *         description: Não autenticado
  *         content:

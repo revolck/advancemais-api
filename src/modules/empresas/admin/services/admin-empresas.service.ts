@@ -10,6 +10,7 @@ import {
   Prisma,
   Roles,
   RegimesDeTrabalhos,
+  Senioridade,
   Status,
   StatusDeBanimentos,
   StatusDeVagas,
@@ -298,6 +299,7 @@ type AdminEmpresaJobResumo = {
   modalidade: ModalidadesDeVagas;
   regimeDeTrabalho: RegimesDeTrabalhos;
   paraPcd: boolean;
+  senioridade: Senioridade;
 };
 
 type AdminEmpresaDetail = {
@@ -1041,6 +1043,7 @@ export const adminEmpresasService = {
           modalidade: true,
           regimeDeTrabalho: true,
           paraPcd: true,
+          senioridade: true,
         },
       }),
     ]);
@@ -1057,6 +1060,7 @@ export const adminEmpresasService = {
       modalidade: vaga.modalidade,
       regimeDeTrabalho: vaga.regimeDeTrabalho,
       paraPcd: vaga.paraPcd,
+      senioridade: vaga.senioridade,
     }));
 
     return {
@@ -1109,6 +1113,7 @@ export const adminEmpresasService = {
           modalidade: true,
           regimeDeTrabalho: true,
           paraPcd: true,
+          senioridade: true,
         },
       });
     });
@@ -1125,6 +1130,7 @@ export const adminEmpresasService = {
       modalidade: vaga.modalidade,
       regimeDeTrabalho: vaga.regimeDeTrabalho,
       paraPcd: vaga.paraPcd,
+      senioridade: vaga.senioridade,
     } satisfies AdminEmpresaJobResumo;
   },
 

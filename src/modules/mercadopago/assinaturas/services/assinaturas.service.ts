@@ -219,7 +219,10 @@ function normalizeMercadoPagoError(error: unknown): { message: string; payload?:
 
 async function setVagasToDraft(usuarioId: string) {
   await prisma.empresasVagas.updateMany({
-    where: { usuarioId, status: { in: [StatusDeVagas.PUBLICADO, StatusDeVagas.EM_ANALISE] } },
+    where: {
+      usuarioId,
+      status: { in: [StatusDeVagas.PUBLICADO, StatusDeVagas.EM_ANALISE, StatusDeVagas.PAUSADA] },
+    },
     data: { status: StatusDeVagas.RASCUNHO },
   });
 }

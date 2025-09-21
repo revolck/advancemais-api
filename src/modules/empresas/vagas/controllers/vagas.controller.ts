@@ -10,6 +10,7 @@ import {
   LimiteVagasDestaqueAtingidoError,
   LimiteVagasPlanoAtingidoError,
   PlanoNaoPermiteVagaDestaqueError,
+  VagaAreaSubareaError,
 } from '@/modules/empresas/vagas/services/errors';
 import { createVagaSchema, updateVagaSchema } from '@/modules/empresas/vagas/validators/vagas.schema';
 
@@ -163,6 +164,14 @@ export class VagasController {
         });
       }
 
+      if (error instanceof VagaAreaSubareaError) {
+        return res.status(error.status).json({
+          success: false,
+          code: error.code,
+          message: error.message,
+        });
+      }
+
       if (error instanceof EmpresaSemPlanoAtivoError) {
         return res.status(403).json({
           success: false,
@@ -245,6 +254,14 @@ export class VagasController {
           success: false,
           code: 'VAGA_NOT_FOUND',
           message: 'Vaga não encontrada',
+        });
+      }
+
+      if (error instanceof VagaAreaSubareaError) {
+        return res.status(error.status).json({
+          success: false,
+          code: error.code,
+          message: error.message,
         });
       }
 

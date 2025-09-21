@@ -200,6 +200,8 @@ router.get('/:id', publicCache, VagasController.get);
  *            -H "Content-Type: application/json" \
  *            -d '{
  *                  "usuarioId": "f1d7a9c2-4e0b-4f6d-90ad-8c6b84a0f1a1",
+ *                  "areaInteresseId": 3,
+ *                  "subareaInteresseId": 7,
  *                  "slug": "analista-sistemas-pleno-sao-paulo",
  *                  "modoAnonimo": true,
  *                  "regimeDeTrabalho": "CLT",
@@ -313,6 +315,8 @@ router.post('/', supabaseAuthMiddleware(protectedRoles), VagasController.create)
  *            -H "Content-Type: application/json" \
  *            -d '{
  *                  "titulo": "Analista de Sistemas Pleno",
+ *                  "areaInteresseId": 3,
+ *                  "subareaInteresseId": 8,
  *                  "slug": "analista-sistemas-pleno-sao-paulo",
  *                  "numeroVagas": 3,
  *                  "descricao": "Atuação no planejamento e na evolução dos sistemas corporativos.",

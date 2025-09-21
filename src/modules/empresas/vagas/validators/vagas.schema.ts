@@ -145,6 +145,20 @@ const baseVagaSchema = z
     usuarioId: z
       .string({ required_error: 'O ID do usuário é obrigatório', invalid_type_error: 'O ID do usuário deve ser uma string' })
       .uuid('O ID do usuário deve ser um UUID válido'),
+    areaInteresseId: z.coerce
+      .number({
+        required_error: 'A área de interesse é obrigatória',
+        invalid_type_error: 'A área de interesse deve ser um número',
+      })
+      .int('A área de interesse deve ser um número inteiro')
+      .positive('A área de interesse deve ser maior que zero'),
+    subareaInteresseId: z.coerce
+      .number({
+        required_error: 'A subárea de interesse é obrigatória',
+        invalid_type_error: 'A subárea de interesse deve ser um número',
+      })
+      .int('A subárea de interesse deve ser um número inteiro')
+      .positive('A subárea de interesse deve ser maior que zero'),
     slug: slugField,
     modoAnonimo: z.boolean({ invalid_type_error: 'modoAnonimo deve ser verdadeiro ou falso' }).optional(),
     regimeDeTrabalho: z.nativeEnum(RegimesDeTrabalhos, {
@@ -236,6 +250,17 @@ export const updateVagaSchema = baseVagaSchema.partial().extend({
     .positive('O limite de candidaturas deve ser maior que zero')
     .or(z.null())
     .optional(),
+}).superRefine((data, ctx) => {
+  const areaProvided = Object.prototype.hasOwnProperty.call(data, 'areaInteresseId');
+  const subareaProvided = Object.prototype.hasOwnProperty.call(data, 'subareaInteresseId');
+
+  if (areaProvided && !subareaProvided) {
+    ctx.addIssue({
+      path: ['subareaInteresseId'],
+      code: z.ZodIssueCode.custom,
+      message: 'Informe a subárea de interesse ao alterar a área.',
+    });
+  }
 });
 
 export type CreateVagaInput = z.infer<typeof createVagaSchema>;

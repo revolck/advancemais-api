@@ -46,3 +46,41 @@ export class LimiteVagasDestaqueAtingidoError extends Error {
     this.limite = limite;
   }
 }
+
+type AreaSubareaReason = 'SUBAREA_REQUIRED' | 'SUBAREA_NOT_FOUND' | 'AREA_NOT_FOUND' | 'MISMATCH';
+
+const AREA_SUBAREA_MESSAGES: Record<AreaSubareaReason, { message: string; code: string; status: number }> = {
+  SUBAREA_REQUIRED: {
+    code: 'VAGA_SUBAREA_OBRIGATORIA',
+    status: 400,
+    message: 'Selecione uma subárea de interesse válida para a vaga.',
+  },
+  SUBAREA_NOT_FOUND: {
+    code: 'VAGA_SUBAREA_INTERESSE_NAO_ENCONTRADA',
+    status: 404,
+    message: 'A subárea de interesse informada não foi encontrada.',
+  },
+  AREA_NOT_FOUND: {
+    code: 'VAGA_AREA_INTERESSE_NAO_ENCONTRADA',
+    status: 404,
+    message: 'A área de interesse informada não foi encontrada.',
+  },
+  MISMATCH: {
+    code: 'VAGA_AREA_SUBAREA_INCONSISTENTE',
+    status: 400,
+    message: 'A subárea selecionada não pertence à área de interesse informada.',
+  },
+};
+
+export class VagaAreaSubareaError extends Error {
+  readonly code: string;
+  readonly status: number;
+
+  constructor(reason: AreaSubareaReason) {
+    const { message, code, status } = AREA_SUBAREA_MESSAGES[reason];
+    super(message);
+    this.name = 'VagaAreaSubareaError';
+    this.code = code;
+    this.status = status;
+  }
+}

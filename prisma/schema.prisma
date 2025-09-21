@@ -29,6 +29,7 @@ model Usuarios {
   // RELACIONAMENTOS EXISTENTES
   enderecos            UsuariosEnderecos[]
   vagasCriadas         EmpresasVagas[]    @relation("UsuarioVagas")
+  processosCandidatados EmpresasVagasProcesso[] @relation("UsuariosProcessos")
   planosContratados    EmpresasPlano[]    @relation("UsuarioPlanos")
   banimentosRecebidos  UsuariosEmBanimentos[] @relation("UsuariosEmBanimentosUsuario")
   banimentosAplicados  UsuariosEmBanimentos[] @relation("UsuariosEmBanimentosAdmin")
@@ -58,11 +59,12 @@ model UsuariosInformation {
 }
 
 model CandidatosAreasInteresse {
-  id           Int                             @id @default(autoincrement())
-  categoria    String                          @db.VarChar(120)
-  subareas     CandidatosSubareasInteresse[]
-  criadoEm     DateTime                        @default(now())
-  atualizadoEm DateTime                        @updatedAt
+  id        Int                             @id @default(autoincrement())
+  categoria String                          @db.VarChar(120)
+  subareas  CandidatosSubareasInteresse[]
+  vagas     EmpresasVagas[]                @relation("EmpresasVagasAreaInteresse")
+  criadoEm  DateTime                       @default(now())
+  atualizadoEm DateTime                     @updatedAt
 
   @@map("candidatos_areas_interesse")
   @@index([categoria])
@@ -72,6 +74,7 @@ model CandidatosSubareasInteresse {
   id        Int                        @id @default(autoincrement())
   areaId    Int
   nome      String                     @db.VarChar(120)
+  vagas     EmpresasVagas[]            @relation("EmpresasVagasSubareaInteresse")
   criadoEm  DateTime                   @default(now())
   atualizadoEm DateTime                @updatedAt
 
@@ -163,6 +166,27 @@ enum StatusDeVagas {
   ENCERRADA
 }
 
+enum StatusProcesso {
+  RECEBIDA
+  EM_ANALISE
+  EM_TRIAGEM
+  ENTREVISTA
+  DESAFIO
+  DOCUMENTACAO
+  CONTRATADO
+  RECUSADO
+  DESISTIU
+  NAO_COMPARECEU
+  ARQUIVADO
+  CANCELADO
+}
+
+enum OrigemVagas {
+  SITE
+  DASHBOARD
+  OUTROS
+}
+
 enum Senioridade {
   ABERTO
   ESTAGIARIO
@@ -245,12 +269,34 @@ model EmpresasVagas {
 
   empresa Usuarios @relation("UsuarioVagas", fields: [usuarioId], references: [id], onDelete: Cascade)
   destaqueInfo EmpresasVagasDestaque?
-  areaInteresse   CandidatosAreasInteresse?    @relation(fields: [areaInteresseId], references: [id], onDelete: SetNull)
-  subareaInteresse CandidatosSubareasInteresse? @relation(fields: [subareaInteresseId], references: [id], onDelete: SetNull)
+  areaInteresse   CandidatosAreasInteresse?    @relation("EmpresasVagasAreaInteresse", fields: [areaInteresseId], references: [id], onDelete: SetNull)
+  subareaInteresse CandidatosSubareasInteresse? @relation("EmpresasVagasSubareaInteresse", fields: [subareaInteresseId], references: [id], onDelete: SetNull)
+  processos        EmpresasVagasProcesso[]
 
   @@index([usuarioId])
   @@index([areaInteresseId])
   @@index([subareaInteresseId])
+}
+
+model EmpresasVagasProcesso {
+  id           String         @id @default(uuid())
+  vagaId       String
+  candidatoId  String
+  status       StatusProcesso @default(RECEBIDA)
+  origem       OrigemVagas    @default(SITE)
+  observacoes  String?        @db.VarChar(1000)
+  agendadoEm   DateTime?
+  criadoEm     DateTime       @default(now())
+  atualizadoEm DateTime       @updatedAt
+
+  vaga      EmpresasVagas @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  candidato Usuarios      @relation("UsuariosProcessos", fields: [candidatoId], references: [id], onDelete: Cascade)
+
+  @@unique([vagaId, candidatoId])
+  @@index([vagaId])
+  @@index([candidatoId])
+  @@index([status])
+  @@index([origem])
 }
 
 model EmpresasVagasDestaque {

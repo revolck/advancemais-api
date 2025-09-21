@@ -627,6 +627,19 @@ model WebsiteImagemLogin {
   atualizadoEm DateTime @updatedAt
 }
 
+model WebsiteScript {
+  id          String                    @id @default(uuid())
+  nome        String?
+  descricao   String?
+  codigo      String                    @db.Text
+  orientacao  WebsiteScriptOrientation
+  status      WebsiteStatus             @default(RASCUNHO)
+  criadoEm    DateTime                  @default(now())
+  atualizadoEm DateTime                 @updatedAt
+
+  @@index([orientacao, status])
+}
+
 model WebsitePlaninhas {
   id           String   @id @default(uuid())
   titulo       String
@@ -872,6 +885,12 @@ enum WebsiteHeaderPageType {
   CURSOS
   POLITICA_PRIVACIDADE
   OUVIDORIA
+}
+
+enum WebsiteScriptOrientation {
+  HEADER
+  BODY
+  FOOTER
 }
 
 // ===============================

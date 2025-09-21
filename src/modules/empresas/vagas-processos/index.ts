@@ -1,0 +1,1 @@
+export { vagasProcessosRoutes } from './routes';

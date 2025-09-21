@@ -9,28 +9,21 @@ datasource db {
 }
 
 model Usuarios {
-  id            String      @id @default(uuid())
-  nomeCompleto  String
-  supabaseId    String      @unique
-  cpf           String?     @unique
-  cnpj          String?     @unique
-  dataNasc      DateTime?
-  telefone      String
-  genero        String?
-  email         String      @unique
-  senha         String
-  matricula     String?
-  avatarUrl     String?
-  descricao     String?     @db.VarChar(500)
-  codUsuario    String      @unique
-  tipoUsuario   TiposDeUsuarios
-  role          Roles
-  status        Status      @default(ATIVO)
-  aceitarTermos Boolean     @default(false)
-  criadoEm      DateTime    @default(now())
-  atualizadoEm  DateTime    @updatedAt
-  ultimoLogin   DateTime?
-  refreshToken  String?
+  id           String      @id @default(uuid())
+  nomeCompleto String
+  supabaseId   String      @unique
+  cpf          String?     @unique
+  cnpj         String?     @unique
+  email        String      @unique
+  senha        String
+  codUsuario   String      @unique
+  tipoUsuario  TiposDeUsuarios
+  role         Roles
+  status       Status      @default(ATIVO)
+  criadoEm     DateTime    @default(now())
+  atualizadoEm DateTime    @updatedAt
+  ultimoLogin  DateTime?
+  refreshToken String?
 
   // RELACIONAMENTOS EXISTENTES
   enderecos            UsuariosEnderecos[]
@@ -41,11 +34,25 @@ model Usuarios {
   redesSociais         UsuariosRedesSociais?
   recuperacaoSenha     UsuariosRecuperacaoSenha?
   emailVerification    UsuariosVerificacaoEmail?
+  informacoes          UsuariosInformation?
 
   @@index([status])
   @@index([role])
   @@index([tipoUsuario])
   @@index([criadoEm])
+}
+
+model UsuariosInformation {
+  usuarioId     String   @id
+  telefone      String
+  genero        String?
+  dataNasc      DateTime?
+  matricula     String?
+  avatarUrl     String?
+  descricao     String?  @db.VarChar(500)
+  aceitarTermos Boolean  @default(false)
+
+  usuario Usuarios @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }
 
 model UsuariosVerificacaoEmail {

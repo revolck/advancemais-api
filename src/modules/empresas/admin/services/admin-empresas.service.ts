@@ -1396,8 +1396,8 @@ export const adminEmpresasService = {
           template,
         );
       }
-    } catch (e) {
-      // ignore email errors
+    } catch (error) {
+      console.error('Erro ao enviar e-mail de banimento', { empresaId, error });
     }
 
     return mapBanimentoResumo(banimento);
@@ -1448,7 +1448,9 @@ export const adminEmpresasService = {
           template,
         );
       }
-    } catch (e) {}
+    } catch (error) {
+      console.error('Erro ao enviar e-mail de revogação de banimento', { empresaId, error });
+    }
   },
 
   listarBanimentos: async (empresaId: string, { page, pageSize }: AdminEmpresasHistoryQuery) => {

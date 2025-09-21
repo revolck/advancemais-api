@@ -6299,10 +6299,11 @@ const options: Options = {
                 },
                 limit: {
                   type: 'integer',
-                  example: 50,
+                  example: 10,
                   minimum: 1,
                   maximum: 100,
-                  description: 'Quantidade de registros retornados por página',
+                  description:
+                    'Quantidade de registros retornados por página. Na visão de dashboard o valor é fixado em 10.',
                 },
                 total: {
                   type: 'integer',

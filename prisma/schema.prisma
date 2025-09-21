@@ -50,6 +50,7 @@ model Usuarios {
   @@index([role])
   @@index([tipoUsuario])
   @@index([criadoEm])
+  @@index([role, status, criadoEm], map: "usuarios_role_status_criadoem_idx")
 }
 
 model UsuariosInformation {

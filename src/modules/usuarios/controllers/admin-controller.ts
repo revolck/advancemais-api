@@ -61,7 +61,58 @@ export class AdminController {
       res.json(result);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
+      const statusCode = (error as any)?.statusCode;
+      if (typeof statusCode === 'number' && statusCode >= 400 && statusCode < 500) {
+        log.warn({ err }, 'Erro de validação ao listar candidatos');
+        const errorCode = (error as any)?.code ?? 'VALIDATION_ERROR';
+        return res.status(statusCode).json({
+          success: false,
+          code: errorCode,
+          message: err.message,
+          issues: {
+            search: [err.message],
+          },
+        });
+      }
+
       log.error({ err }, 'Erro ao listar candidatos');
+      return next(err);
+    }
+  };
+
+  /**
+   * Lista candidatos com limite otimizado para dashboards
+   */
+  public listarCandidatosDashboard = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    const log = this.getLogger(req);
+    try {
+      const result = await this.adminService.listarCandidatos(req.query, {
+        defaultLimit: 10,
+        maxLimit: 10,
+        forceLimit: 10,
+      });
+      res.json(result);
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      const statusCode = (error as any)?.statusCode;
+      if (typeof statusCode === 'number' && statusCode >= 400 && statusCode < 500) {
+        log.warn({ err }, 'Erro de validação ao listar candidatos para dashboard');
+        const errorCode = (error as any)?.code ?? 'VALIDATION_ERROR';
+        return res.status(statusCode).json({
+          success: false,
+          code: errorCode,
+          message: err.message,
+          issues: {
+            search: [err.message],
+          },
+        });
+      }
+
+      log.error({ err }, 'Erro ao listar candidatos para dashboard');
       return next(err);
     }
   };

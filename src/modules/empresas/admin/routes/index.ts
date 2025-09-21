@@ -430,7 +430,7 @@ router.get(
  * /api/v1/empresas/admin/{id}/banimentos:
  *   get:
  *     summary: (Admin) Listar banimentos aplicados
- *     description: "Retorna histórico de banimentos aplicados a uma empresa, incluindo motivo e vigência."
+ *     description: "Retorna o histórico de banimentos aplicados ao usuário da empresa, detalhando vigência, status e responsável."
  *     operationId: adminEmpresasListBanimentos
  *     tags: [Empresas - Admin]
  *     security:
@@ -461,17 +461,32 @@ router.get(
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/AdminEmpresasBanimentosResponse'
+ *               $ref: '#/components/schemas/AdminUsuariosBanimentosResponse'
  *             examples:
  *               default:
  *                 summary: Banimentos da empresa
  *                 value:
  *                   data:
- *                     - id: c0b3ad1e-88af-4b94-9e67-71b7dcb845e0
- *                       motivo: Uso indevido da plataforma
- *                       dias: 30
- *                       inicio: '2024-04-01T00:00:00Z'
- *                       fim: '2024-04-30T23:59:59Z'
+ *                     - id: ban_123456
+ *                       alvo:
+ *                         tipo: EMPRESA
+ *                         id: cmp_112233
+ *                         nome: Empresa XPTO
+ *                         role: EMPRESA
+ *                       banimento:
+ *                         tipo: TEMPORARIO
+ *                         motivo: VIOLACAO_POLITICAS
+ *                         status: ATIVO
+ *                         inicio: '2025-09-20T14:00:00Z'
+ *                         fim: '2025-10-20T14:00:00Z'
+ *                         observacoes: Uso indevido de dados pessoais de candidatos.
+ *                       aplicadoPor:
+ *                         id: adm_002
+ *                         nome: Carlos Supervisor
+ *                         role: ADMIN
+ *                       auditoria:
+ *                         criadoEm: '2025-09-20T14:05:00Z'
+ *                         atualizadoEm: '2025-09-20T14:05:00Z'
  *                   pagination:
  *                     page: 1
  *                     pageSize: 20
@@ -509,7 +524,7 @@ router.get(
  *               $ref: '#/components/schemas/ErrorResponse'
  *   post:
  *     summary: (Admin) Aplicar banimento à empresa
- *     description: "Aplica banimento temporário a uma empresa por quantidade de dias definida pelo administrador."
+ *     description: "Centraliza o banimento do usuário da empresa, permitindo banimentos temporários ou permanentes com registro de auditoria."
  *     operationId: adminEmpresasAplicarBanimento
  *     tags: [Empresas - Admin]
  *     security:
@@ -526,30 +541,47 @@ router.get(
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/AdminEmpresasEmBanimentosCreate'
+ *             $ref: '#/components/schemas/AdminUsuariosEmBanimentosCreate'
  *           examples:
  *             default:
  *               summary: Banimento de 30 dias com motivo
  *               value:
+ *                 tipo: TEMPORARIO
+ *                 motivo: VIOLACAO_POLITICAS
  *                 dias: 30
- *                 motivo: Uso indevido da plataforma
+ *                 observacoes: Uso indevido de dados pessoais de candidatos.
  *     responses:
  *       201:
  *         description: Banimento aplicado com sucesso
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/AdminEmpresasEmBanimentosResponse'
+ *               $ref: '#/components/schemas/AdminUsuariosEmBanimentosResponse'
  *             examples:
  *               created:
  *                 summary: Banimento registrado
  *                 value:
  *                   banimento:
- *                     id: c0b3ad1e-88af-4b94-9e67-71b7dcb845e0
- *                     motivo: Uso indevido da plataforma
- *                     dias: 30
- *                     inicio: '2024-04-01T00:00:00Z'
- *                     fim: '2024-04-30T23:59:59Z'
+ *                     id: ban_123456
+ *                     alvo:
+ *                       tipo: EMPRESA
+ *                       id: cmp_112233
+ *                       nome: Empresa XPTO
+ *                       role: EMPRESA
+ *                     banimento:
+ *                       tipo: TEMPORARIO
+ *                       motivo: VIOLACAO_POLITICAS
+ *                       status: ATIVO
+ *                       inicio: '2025-09-20T14:00:00Z'
+ *                       fim: '2025-10-20T14:00:00Z'
+ *                       observacoes: Uso indevido de dados pessoais de candidatos.
+ *                     aplicadoPor:
+ *                       id: adm_002
+ *                       nome: Carlos Supervisor
+ *                       role: ADMIN
+ *                     auditoria:
+ *                       criadoEm: '2025-09-20T14:05:00Z'
+ *                       atualizadoEm: '2025-09-20T14:05:00Z'
  *       400:
  *         description: Dados inválidos
  *         content:

@@ -161,6 +161,7 @@ const baseVagaSchema = z
       .min(3, 'O título da vaga deve ter pelo menos 3 caracteres')
       .max(255, 'O título da vaga deve ter no máximo 255 caracteres'),
     paraPcd: z.boolean({ invalid_type_error: 'paraPcd deve ser verdadeiro ou falso' }).optional(),
+    vagaEmDestaque: z.boolean({ invalid_type_error: 'vagaEmDestaque deve ser verdadeiro ou falso' }).optional(),
     numeroVagas: z.coerce
       .number({ invalid_type_error: 'O número de vagas deve ser um número' })
       .int('O número de vagas deve ser um inteiro')

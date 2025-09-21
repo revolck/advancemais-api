@@ -169,19 +169,22 @@ router.get('/:id', publicCache, VagasController.get);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       403:
- *         description: Acesso negado (empresa sem plano ativo ou perfil sem permissão)
+ *         description: Acesso negado (empresa sem plano ativo, plano sem suporte a destaque ou perfil sem permissão)
  *         content:
  *           application/json:
  *             schema:
  *               oneOf:
  *                 - $ref: '#/components/schemas/EmpresaSemPlanoAtivoResponse'
+ *                 - $ref: '#/components/schemas/PlanoSemRecursoDestaqueResponse'
  *                 - $ref: '#/components/schemas/ForbiddenResponse'
  *       409:
- *         description: Limite de vagas simultâneas do plano atingido
+ *         description: Limite de vagas simultâneas ou vagas em destaque do plano atingido
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/PlanoClienteLimiteVagasResponse'
+ *               oneOf:
+ *                 - $ref: '#/components/schemas/PlanoClienteLimiteVagasResponse'
+ *                 - $ref: '#/components/schemas/PlanoClienteLimiteVagasDestaqueResponse'
  *       500:
  *         description: Erro interno do servidor
  *         content:
@@ -231,7 +234,8 @@ router.get('/:id', publicCache, VagasController.get);
  *                  "salarioMax": "6500.00",
  *                  "salarioConfidencial": false,
  *                  "maxCandidaturasPorUsuario": 1,
- *                  "inscricoesAte": "2024-12-20T23:59:59.000Z"
+ *                  "inscricoesAte": "2024-12-20T23:59:59.000Z",
+ *                  "vagaEmDestaque": true
  *                }'
 */
 router.post('/', supabaseAuthMiddleware(protectedRoles), VagasController.create);
@@ -288,6 +292,12 @@ router.post('/', supabaseAuthMiddleware(protectedRoles), VagasController.create)
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       409:
+ *         description: Limite de vagas em destaque do plano atingido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PlanoClienteLimiteVagasDestaqueResponse'
  *       500:
  *         description: Erro interno do servidor
  *         content:
@@ -324,7 +334,8 @@ router.post('/', supabaseAuthMiddleware(protectedRoles), VagasController.create)
  *                  "salarioConfidencial": false,
  *                  "maxCandidaturasPorUsuario": 1,
  *                  "status": "PUBLICADO",
- *                  "inseridaEm": "2024-10-10T09:00:00Z"
+ *                  "inseridaEm": "2024-10-10T09:00:00Z",
+ *                  "vagaEmDestaque": false
  *                }'
 */
 router.put('/:id', supabaseAuthMiddleware(updateRoles), VagasController.update);

@@ -14,6 +14,7 @@ export const curriculoCreateSchema = z.object({
   premiosPublicacoes: z.any().optional(),
   acessibilidade: z.any().optional(),
   consentimentos: z.any().optional(),
+  principal: z.boolean().optional(),
 });
 
 export const curriculoUpdateSchema = curriculoCreateSchema.partial();

@@ -55,6 +55,8 @@ export const CurriculosController = {
           .json({ success: false, code: 'VALIDATION_ERROR', issues: error.flatten().fieldErrors });
       if (error?.code === 'NOT_FOUND')
         return res.status(404).json({ success: false, code: error.code, message: error.message });
+      if (error?.code === 'CURRICULO_PRINCIPAL_REQUIRED')
+        return res.status(400).json({ success: false, code: error.code, message: error.message });
       res.status(500).json({ success: false, code: 'UPDATE_ERROR', message: error?.message });
     }
   },

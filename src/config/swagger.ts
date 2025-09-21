@@ -1421,6 +1421,10 @@ const options: Options = {
             titulo: { type: 'string', nullable: true },
             resumo: { type: 'string', nullable: true },
             objetivo: { type: 'string', nullable: true },
+            principal: {
+              type: 'boolean',
+              description: 'Indica se o currículo é o principal do candidato',
+            },
             areasInteresse: { type: 'object', nullable: true },
             preferencias: { type: 'object', nullable: true },
             habilidades: { type: 'object', nullable: true },

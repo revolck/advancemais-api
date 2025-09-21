@@ -1,0 +1,2 @@
+# This file is created by Prisma Migrate to track the provider of your database.
+provider = "postgresql"

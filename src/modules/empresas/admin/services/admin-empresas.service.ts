@@ -44,6 +44,7 @@ import {
 } from '@/modules/usuarios/utils/social-links';
 import type {
   AdminEmpresasBanInput,
+  AdminEmpresasDashboardListQuery,
   AdminEmpresasCreateInput,
   AdminEmpresasHistoryQuery,
   AdminEmpresasListQuery,
@@ -154,6 +155,33 @@ const createUsuarioListSelect = () =>
     },
   }) satisfies Prisma.UsuariosSelect;
 
+const createUsuarioDashboardSelect = () =>
+  ({
+    id: true,
+    codUsuario: true,
+    nomeCompleto: true,
+    email: true,
+    cnpj: true,
+    status: true,
+    criadoEm: true,
+    informacoes: {
+      select: {
+        telefone: true,
+        avatarUrl: true,
+      },
+    },
+    planosContratados: createPlanoAtivoSelect(),
+    _count: {
+      select: {
+        vagasCriadas: {
+          where: {
+            status: StatusDeVagas.PUBLICADO,
+          },
+        },
+      },
+    },
+  }) satisfies Prisma.UsuariosSelect;
+
 const usuarioDetailSelect = {
   id: true,
   codUsuario: true,
@@ -236,6 +264,21 @@ type AdminEmpresaListItem = {
   banida: boolean;
   banimentoAtivo: AdminUsuariosEmBanimentosResumo | null;
   informacoes: ReturnType<typeof mapUsuarioInformacoes>;
+};
+
+type AdminEmpresasDashboardListItem = {
+  id: string;
+  codUsuario: string;
+  nome: string;
+  email: string;
+  telefone: string | null;
+  avatarUrl: string | null;
+  cnpj: string | null;
+  status: Status;
+  criadoEm: Date;
+  vagasPublicadas: number;
+  limiteVagasPlano: number | null;
+  plano: AdminEmpresasPlanoResumo | null;
 };
 
 type AdminUsuariosBanimentoAlvo = {
@@ -824,6 +867,53 @@ export const adminEmpresasService = {
     });
 
     return adminEmpresasService.get(id);
+  },
+
+  listDashboard: async ({ page, pageSize, search }: AdminEmpresasDashboardListQuery) => {
+    const where: Prisma.UsuariosWhereInput = {
+      tipoUsuario: TiposDeUsuarios.PESSOA_JURIDICA,
+      role: Roles.EMPRESA,
+      ...buildSearchFilter(search),
+    };
+
+    const skip = (page - 1) * pageSize;
+    const referenceDate = new Date();
+
+    const [total, empresas] = await prisma.$transaction([
+      prisma.usuarios.count({ where }),
+      prisma.usuarios.findMany({
+        where,
+        orderBy: { criadoEm: 'desc' },
+        skip,
+        take: pageSize,
+        select: createUsuarioDashboardSelect(),
+      }),
+    ]);
+
+    const data: AdminEmpresasDashboardListItem[] = empresas.map((empresa) => {
+      const planoAtual = empresa.planosContratados[0];
+      const plano = mapPlanoResumo(planoAtual, referenceDate);
+
+      return {
+        id: empresa.id,
+        codUsuario: empresa.codUsuario,
+        nome: empresa.nomeCompleto,
+        email: empresa.email,
+        telefone: empresa.informacoes?.telefone ?? null,
+        avatarUrl: empresa.informacoes?.avatarUrl ?? null,
+        cnpj: empresa.cnpj ?? null,
+        status: empresa.status,
+        criadoEm: empresa.criadoEm,
+        vagasPublicadas: empresa._count?.vagasCriadas ?? 0,
+        limiteVagasPlano: plano?.quantidadeVagas ?? null,
+        plano,
+      } satisfies AdminEmpresasDashboardListItem;
+    });
+
+    return {
+      data,
+      pagination: buildPagination(page, pageSize, total),
+    };
   },
 
   list: async ({ page, pageSize, search }: AdminEmpresasListQuery) => {
@@ -1478,6 +1568,9 @@ export const adminEmpresasService = {
   },
 };
 
+export type AdminEmpresasDashboardListResult = Awaited<
+  ReturnType<typeof adminEmpresasService.listDashboard>
+>;
 export type AdminEmpresasListResult = Awaited<ReturnType<typeof adminEmpresasService.list>>;
 export type AdminEmpresaDetailResult = Awaited<ReturnType<typeof adminEmpresasService.get>>;
 export type AdminEmpresasPagamentosResult = Awaited<

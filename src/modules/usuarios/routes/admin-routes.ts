@@ -14,11 +14,94 @@ const router = Router();
 const adminController = new AdminController();
 
 // =============================================
-// MIDDLEWARES DE SEGURANÇA
+// ROTAS COM ESCOPOS ESPECÍFICOS ANTES DO GUARD GLOBAL
 // =============================================
 
 /**
- * Todas as rotas admin requerem pelo menos role MODERADOR
+ * @openapi
+ * /api/v1/usuarios/admin/candidatos/dashboard:
+ *   get:
+ *     summary: Listar candidatos (visão de dashboard)
+ *     description: "Retorna candidatos com role ALUNO_CANDIDATO, limitado a 10 registros por página."
+ *     tags: [Usuários - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *           example: 1
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [ATIVO, INATIVO, BANIDO, PENDENTE, SUSPENSO]
+ *           example: ATIVO
+ *       - in: query
+ *         name: tipoUsuario
+ *         schema:
+ *           type: string
+ *           enum: [PESSOA_FISICA, PESSOA_JURIDICA]
+ *           example: PESSOA_FISICA
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *           example: Maria Silva
+ *         description: "Busca por nome, e-mail, CPF ou código do candidato (mínimo 3 caracteres)."
+ *     responses:
+ *       200:
+ *         description: Lista de candidatos para dashboard
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminCandidateListResponse'
+ *       400:
+ *         description: Requisição inválida (ex. busca com menos de 3 caracteres)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       500:
+ *         description: Erro ao listar candidatos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/usuarios/admin/candidatos/dashboard" \\
+ *            -H "Authorization: Bearer <TOKEN>"
+ */
+router.get(
+  '/candidatos/dashboard',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR', 'RECRUTADOR']),
+  asyncHandler(adminController.listarCandidatosDashboard),
+);
+
+// =============================================
+// MIDDLEWARES DE SEGURANÇA GLOBAIS
+// =============================================
+
+/**
+ * Todas as demais rotas admin requerem pelo menos role MODERADOR
  */
 router.use(supabaseAuthMiddleware(['ADMIN', 'MODERADOR']));
 
@@ -173,6 +256,12 @@ router.get('/usuarios', asyncHandler(adminController.listarUsuarios));
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AdminCandidateListResponse'
+ *       400:
+ *         description: Requisição inválida (ex. busca com menos de 3 caracteres)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
  *       401:
  *         description: Token inválido ou ausente
  *         content:

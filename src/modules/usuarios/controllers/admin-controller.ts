@@ -8,7 +8,12 @@
 import { NextFunction, Request, Response } from 'express';
 import { AdminService } from '../services/admin-service';
 import { logger } from '../../../utils/logger';
-import { formatZodErrors, updateRoleSchema, updateStatusSchema } from '../validators/auth.schema';
+import {
+  adminCreateUserSchema,
+  formatZodErrors,
+  updateRoleSchema,
+  updateStatusSchema,
+} from '../validators/auth.schema';
 
 export class AdminController {
   private adminService: AdminService;
@@ -222,6 +227,49 @@ export class AdminController {
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       log.error({ err }, 'Erro ao atualizar role');
+      return next(err);
+    }
+  };
+
+  public criarUsuario = async (req: Request, res: Response, next: NextFunction) => {
+    const log = this.getLogger(req);
+    const correlationId = req.id;
+
+    try {
+      const validation = adminCreateUserSchema.safeParse(req.body);
+      if (!validation.success) {
+        const errors = formatZodErrors(validation.error);
+        log.warn({ errors }, 'Erro de validação ao criar usuário via admin');
+        return res.status(400).json({
+          success: false,
+          message: 'Dados inválidos para criação de usuário',
+          errors,
+          correlationId,
+        });
+      }
+
+      const result = await this.adminService.criarUsuario(validation.data, {
+        correlationId,
+        adminId: req.user?.id,
+      });
+
+      return res.status(201).json({ ...result, correlationId });
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      const statusCode = (error as any)?.statusCode;
+
+      if (typeof statusCode === 'number' && statusCode >= 400 && statusCode < 500) {
+        log.warn({ err }, 'Falha ao criar usuário via admin');
+        return res.status(statusCode).json({
+          success: false,
+          message: err.message,
+          code: (error as any)?.code ?? 'ADMIN_USER_CREATION_ERROR',
+          ...(error as any)?.details ? { errors: (error as any).details } : {},
+          correlationId,
+        });
+      }
+
+      log.error({ err }, 'Erro inesperado ao criar usuário via admin');
       return next(err);
     }
   };

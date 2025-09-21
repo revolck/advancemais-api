@@ -6640,6 +6640,195 @@ const options: Options = {
             usuario: { $ref: '#/components/schemas/AdminUserDetail' },
           },
         },
+        AdminCreateUserBase: {
+          type: 'object',
+          required: [
+            'nomeCompleto',
+            'telefone',
+            'email',
+            'senha',
+            'confirmarSenha',
+            'tipoUsuario',
+          ],
+          properties: {
+            nomeCompleto: {
+              type: 'string',
+              example: 'Maria Souza',
+              description: 'Nome completo do usuário a ser criado.',
+            },
+            telefone: {
+              type: 'string',
+              example: '+55 11 99999-0000',
+              description: 'Telefone principal do usuário.',
+            },
+            email: {
+              type: 'string',
+              format: 'email',
+              example: 'maria@example.com',
+            },
+            senha: {
+              type: 'string',
+              format: 'password',
+              minLength: 8,
+              example: 'SenhaForte123',
+            },
+            confirmarSenha: {
+              type: 'string',
+              format: 'password',
+              example: 'SenhaForte123',
+            },
+            aceitarTermos: {
+              type: 'boolean',
+              default: true,
+              description: 'Indica se os termos de uso foram aceitos em nome do usuário.',
+            },
+            supabaseId: {
+              type: 'string',
+              nullable: true,
+              example: 'uuid-gerado',
+              description: 'Identificador no Supabase. Se omitido, será gerado automaticamente.',
+            },
+            tipoUsuario: {
+              allOf: [{ $ref: '#/components/schemas/TiposDeUsuarios' }],
+            },
+            role: {
+              allOf: [{ $ref: '#/components/schemas/Roles' }],
+              description:
+                'Role atribuída ao usuário. Caso não seja informada, será definida automaticamente conforme o tipo.',
+            },
+            status: {
+              type: 'string',
+              enum: ['ATIVO', 'INATIVO', 'BANIDO', 'PENDENTE', 'SUSPENSO'],
+              example: 'ATIVO',
+              description: 'Status inicial do usuário. O padrão é ATIVO.',
+            },
+            redesSociais: {
+              allOf: [{ $ref: '#/components/schemas/UsuarioSocialLinks' }],
+              nullable: true,
+            },
+          },
+        },
+        AdminCreatePessoaFisica: {
+          allOf: [
+            { $ref: '#/components/schemas/AdminCreateUserBase' },
+            {
+              type: 'object',
+              required: ['cpf'],
+              properties: {
+                tipoUsuario: {
+                  type: 'string',
+                  enum: ['PESSOA_FISICA'],
+                  example: 'PESSOA_FISICA',
+                },
+                cpf: {
+                  type: 'string',
+                  example: '12345678900',
+                  description: 'Documento CPF sem máscara.',
+                },
+                dataNasc: {
+                  type: 'string',
+                  format: 'date',
+                  nullable: true,
+                  example: '1990-05-20',
+                },
+                genero: {
+                  type: 'string',
+                  nullable: true,
+                  example: 'FEMININO',
+                },
+              },
+            },
+          ],
+        },
+        AdminCreatePessoaJuridica: {
+          allOf: [
+            { $ref: '#/components/schemas/AdminCreateUserBase' },
+            {
+              type: 'object',
+              required: ['cnpj'],
+              properties: {
+                tipoUsuario: {
+                  type: 'string',
+                  enum: ['PESSOA_JURIDICA'],
+                  example: 'PESSOA_JURIDICA',
+                },
+                cnpj: {
+                  type: 'string',
+                  example: '12345678000199',
+                  description: 'Documento CNPJ sem máscara.',
+                },
+              },
+            },
+          ],
+        },
+        AdminCreateUserRequest: {
+          oneOf: [
+            { $ref: '#/components/schemas/AdminCreatePessoaFisica' },
+            { $ref: '#/components/schemas/AdminCreatePessoaJuridica' },
+          ],
+          discriminator: {
+            propertyName: 'tipoUsuario',
+          },
+        },
+        AdminCreateUserResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: true },
+            message: { type: 'string', example: 'Usuário criado com sucesso' },
+            usuario: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', example: 'user-uuid' },
+                email: { type: 'string', example: 'maria@example.com' },
+                nomeCompleto: { type: 'string', example: 'Maria Souza' },
+                tipoUsuario: { allOf: [{ $ref: '#/components/schemas/TiposDeUsuarios' }] },
+                role: { allOf: [{ $ref: '#/components/schemas/Roles' }] },
+                status: {
+                  type: 'string',
+                  enum: ['ATIVO', 'INATIVO', 'BANIDO', 'PENDENTE', 'SUSPENSO'],
+                  example: 'ATIVO',
+                },
+                criadoEm: {
+                  type: 'string',
+                  format: 'date-time',
+                  example: '2024-01-15T12:00:00Z',
+                },
+                codUsuario: { type: 'string', example: 'ABC1234' },
+                emailVerificado: { type: 'boolean', example: true },
+                emailVerificadoEm: {
+                  type: 'string',
+                  format: 'date-time',
+                  example: '2024-01-15T12:00:05Z',
+                },
+                socialLinks: {
+                  allOf: [{ $ref: '#/components/schemas/UsuarioSocialLinks' }],
+                  nullable: true,
+                },
+              },
+            },
+            meta: {
+              type: 'object',
+              properties: {
+                correlationId: {
+                  type: 'string',
+                  nullable: true,
+                  example: 'req-123',
+                },
+                createdBy: {
+                  type: 'string',
+                  nullable: true,
+                  example: 'admin-uuid',
+                  description: 'Identificador do administrador responsável pela criação.',
+                },
+                emailVerificationBypassed: {
+                  type: 'boolean',
+                  example: true,
+                  description: 'Indica que a verificação de email foi dispensada no fluxo administrativo.',
+                },
+              },
+            },
+          },
+        },
         AdminCandidateDetail: {
           allOf: [
             { $ref: '#/components/schemas/AdminCandidateSummary' },

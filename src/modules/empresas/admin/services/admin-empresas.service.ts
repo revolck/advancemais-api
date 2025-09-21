@@ -314,6 +314,17 @@ type AdminEmpresaJobResumo = {
   salarioMax: Prisma.Decimal | null;
   salarioConfidencial: boolean;
   maxCandidaturasPorUsuario: number | null;
+  areaInteresseId: number | null;
+  subareaInteresseId: number | null;
+  areaInteresse: {
+    id: number;
+    categoria: string;
+  } | null;
+  subareaInteresse: {
+    id: number;
+    nome: string;
+    areaId: number;
+  } | null;
   vagaEmDestaque: boolean;
   destaqueInfo: {
     empresasPlanoId: string;
@@ -1078,6 +1089,21 @@ export const adminEmpresasService = {
           salarioMax: true,
           salarioConfidencial: true,
           maxCandidaturasPorUsuario: true,
+          areaInteresseId: true,
+          subareaInteresseId: true,
+          areaInteresse: {
+            select: {
+              id: true,
+              categoria: true,
+            },
+          },
+          subareaInteresse: {
+            select: {
+              id: true,
+              nome: true,
+              areaId: true,
+            },
+          },
           destaque: true,
           destaqueInfo: {
             select: {
@@ -1117,6 +1143,21 @@ export const adminEmpresasService = {
       salarioMax: vaga.salarioMax ?? null,
       salarioConfidencial: vaga.salarioConfidencial,
       maxCandidaturasPorUsuario: vaga.maxCandidaturasPorUsuario ?? null,
+      areaInteresseId: vaga.areaInteresseId ?? null,
+      subareaInteresseId: vaga.subareaInteresseId ?? null,
+      areaInteresse: vaga.areaInteresse
+        ? {
+            id: vaga.areaInteresse.id,
+            categoria: vaga.areaInteresse.categoria,
+          }
+        : null,
+      subareaInteresse: vaga.subareaInteresse
+        ? {
+            id: vaga.subareaInteresse.id,
+            nome: vaga.subareaInteresse.nome,
+            areaId: vaga.subareaInteresse.areaId,
+          }
+        : null,
       vagaEmDestaque: vaga.destaque,
       destaqueInfo: vaga.destaqueInfo
         ? {
@@ -1192,6 +1233,21 @@ export const adminEmpresasService = {
           salarioMax: true,
           salarioConfidencial: true,
           maxCandidaturasPorUsuario: true,
+          areaInteresseId: true,
+          subareaInteresseId: true,
+          areaInteresse: {
+            select: {
+              id: true,
+              categoria: true,
+            },
+          },
+          subareaInteresse: {
+            select: {
+              id: true,
+              nome: true,
+              areaId: true,
+            },
+          },
           destaque: true,
           destaqueInfo: {
             select: {
@@ -1231,6 +1287,21 @@ export const adminEmpresasService = {
       salarioMax: vaga.salarioMax ?? null,
       salarioConfidencial: vaga.salarioConfidencial,
       maxCandidaturasPorUsuario: vaga.maxCandidaturasPorUsuario ?? null,
+      areaInteresseId: vaga.areaInteresseId ?? null,
+      subareaInteresseId: vaga.subareaInteresseId ?? null,
+      areaInteresse: vaga.areaInteresse
+        ? {
+            id: vaga.areaInteresse.id,
+            categoria: vaga.areaInteresse.categoria,
+          }
+        : null,
+      subareaInteresse: vaga.subareaInteresse
+        ? {
+            id: vaga.subareaInteresse.id,
+            nome: vaga.subareaInteresse.nome,
+            areaId: vaga.subareaInteresse.areaId,
+          }
+        : null,
       vagaEmDestaque: vaga.destaque,
       destaqueInfo: vaga.destaqueInfo
         ? {

@@ -57,6 +57,31 @@ model UsuariosInformation {
   usuario Usuarios @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }
 
+model CandidatosAreasInteresse {
+  id           Int                             @id @default(autoincrement())
+  categoria    String                          @db.VarChar(120)
+  subareas     CandidatosSubareasInteresse[]
+  criadoEm     DateTime                        @default(now())
+  atualizadoEm DateTime                        @updatedAt
+
+  @@map("candidatos_areas_interesse")
+  @@index([categoria])
+}
+
+model CandidatosSubareasInteresse {
+  id        Int                        @id @default(autoincrement())
+  areaId    Int
+  nome      String                     @db.VarChar(120)
+  criadoEm  DateTime                   @default(now())
+  atualizadoEm DateTime                @updatedAt
+
+  area CandidatosAreasInteresse @relation(fields: [areaId], references: [id], onDelete: Cascade)
+
+  @@map("candidatos_subareas_interesse")
+  @@unique([areaId, nome])
+  @@index([nome])
+}
+
 model UsuariosVerificacaoEmail {
   usuarioId                  String   @id
   emailVerificado            Boolean  @default(false)
@@ -120,6 +145,14 @@ enum ModalidadesDeVagas {
   HIBRIDO
 }
 
+enum Jornadas {
+  INTEGRAL
+  MEIO_PERIODO
+  FLEXIVEL
+  TURNOS
+  NOTURNO
+}
+
 enum StatusDeVagas {
   RASCUNHO
   EM_ANALISE
@@ -179,7 +212,7 @@ model EmpresasVagas {
   atividades       String         @db.Text
   beneficios       String         @db.Text
   observacoes      String?        @db.Text
-  cargaHoraria     String
+  jornada          Jornadas
   inscricoesAte    DateTime?
   inseridaEm       DateTime       @default(now())
   atualizadoEm     DateTime       @updatedAt

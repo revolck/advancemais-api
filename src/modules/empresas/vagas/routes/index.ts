@@ -206,7 +206,7 @@ router.get('/:id', publicCache, VagasController.get);
  *                  "atividades": "Atendimento ao público, abertura de chamados e acompanhamento de demandas.",
  *                  "beneficios": "Vale transporte, vale alimentação e plano de saúde.",
  *                  "observacoes": "Processo seletivo confidencial.",
- *                  "cargaHoraria": "44 horas semanais (segunda a sexta)",
+ *                  "jornada": "INTEGRAL",
  *                  "inscricoesAte": "2024-12-20T23:59:59.000Z"
  *                }'
 */

@@ -1,0 +1,1 @@
+export { candidatosRoutes } from './routes';

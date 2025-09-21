@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 
 import {
+  Jornadas,
   ModalidadesDeVagas,
   Prisma,
   RegimesDeTrabalhos,
@@ -30,7 +31,7 @@ export type CreateVagaData = {
   atividades: string;
   beneficios: string;
   observacoes?: string;
-  cargaHoraria: string;
+  jornada: Jornadas;
   inscricoesAte?: Date;
   inseridaEm?: Date;
   status?: StatusDeVagas;
@@ -135,7 +136,7 @@ const sanitizeCreateData = (data: CreateVagaData, codigo: string): Prisma.Empres
   atividades: data.atividades.trim(),
   beneficios: data.beneficios.trim(),
   observacoes: nullableText(data.observacoes),
-  cargaHoraria: data.cargaHoraria.trim(),
+  jornada: data.jornada,
   inscricoesAte: data.inscricoesAte ?? null,
   inseridaEm: data.inseridaEm ?? new Date(),
   status: data.status ?? StatusDeVagas.EM_ANALISE,
@@ -174,8 +175,8 @@ const sanitizeUpdateData = (data: UpdateVagaData): Prisma.EmpresasVagasUnchecked
   if (data.observacoes !== undefined) {
     update.observacoes = nullableText(data.observacoes);
   }
-  if (data.cargaHoraria !== undefined) {
-    update.cargaHoraria = data.cargaHoraria.trim();
+  if (data.jornada !== undefined) {
+    update.jornada = data.jornada;
   }
   if (data.inscricoesAte !== undefined) {
     update.inscricoesAte = data.inscricoesAte ?? null;

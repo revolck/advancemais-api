@@ -1,15 +1,14 @@
 import { Request, Response } from 'express';
 import { ZodError } from 'zod';
 
-import { aulasService } from '../services/aulas.service';
-import { createAulaSchema, updateAulaSchema } from '../validators/aulas.schema';
+import { modulosService } from '../services/modulos.service';
+import { createModuloSchema, updateModuloSchema } from '../validators/modulos.schema';
 
 const parseCursoId = (raw: string) => {
   const id = Number(raw);
   if (!Number.isInteger(id) || id <= 0) {
     return null;
   }
-
   return id;
 };
 
@@ -17,19 +16,17 @@ const parseTurmaId = (raw: string) => {
   if (typeof raw !== 'string' || raw.trim().length === 0) {
     return null;
   }
-
   return raw;
 };
 
-const parseAulaId = (raw: string) => {
+const parseModuloId = (raw: string) => {
   if (typeof raw !== 'string' || raw.trim().length === 0) {
     return null;
   }
-
   return raw;
 };
 
-export class AulasController {
+export class ModulosController {
   static list = async (req: Request, res: Response) => {
     const cursoId = parseCursoId(req.params.cursoId);
     const turmaId = parseTurmaId(req.params.turmaId);
@@ -43,8 +40,8 @@ export class AulasController {
     }
 
     try {
-      const aulas = await aulasService.list(cursoId, turmaId);
-      res.json({ data: aulas });
+      const modulos = await modulosService.list(cursoId, turmaId);
+      res.json({ data: modulos });
     } catch (error: any) {
       if (error?.code === 'TURMA_NOT_FOUND') {
         return res.status(404).json({
@@ -56,8 +53,8 @@ export class AulasController {
 
       res.status(500).json({
         success: false,
-        code: 'AULAS_LIST_ERROR',
-        message: 'Erro ao listar aulas da turma',
+        code: 'MODULOS_LIST_ERROR',
+        message: 'Erro ao listar módulos da turma',
         error: error?.message,
       });
     }
@@ -66,32 +63,32 @@ export class AulasController {
   static get = async (req: Request, res: Response) => {
     const cursoId = parseCursoId(req.params.cursoId);
     const turmaId = parseTurmaId(req.params.turmaId);
-    const aulaId = parseAulaId(req.params.aulaId);
+    const moduloId = parseModuloId(req.params.moduloId);
 
-    if (!cursoId || !turmaId || !aulaId) {
+    if (!cursoId || !turmaId || !moduloId) {
       return res.status(400).json({
         success: false,
         code: 'VALIDATION_ERROR',
-        message: 'Identificadores de curso, turma ou aula inválidos',
+        message: 'Identificadores de curso, turma ou módulo inválidos',
       });
     }
 
     try {
-      const aula = await aulasService.get(cursoId, turmaId, aulaId);
-      res.json(aula);
+      const modulo = await modulosService.get(cursoId, turmaId, moduloId);
+      res.json(modulo);
     } catch (error: any) {
-      if (error?.code === 'AULA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
+      if (error?.code === 'MODULO_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
         return res.status(404).json({
           success: false,
-          code: 'AULA_NOT_FOUND',
-          message: 'Aula não encontrada para a turma informada',
+          code: 'MODULO_NOT_FOUND',
+          message: 'Módulo não encontrado para a turma informada',
         });
       }
 
       res.status(500).json({
         success: false,
-        code: 'AULA_GET_ERROR',
-        message: 'Erro ao buscar aula da turma',
+        code: 'MODULO_GET_ERROR',
+        message: 'Erro ao buscar módulo da turma',
         error: error?.message,
       });
     }
@@ -110,15 +107,15 @@ export class AulasController {
     }
 
     try {
-      const data = createAulaSchema.parse(req.body);
-      const aula = await aulasService.create(cursoId, turmaId, data);
-      res.status(201).json(aula);
+      const data = createModuloSchema.parse(req.body);
+      const modulo = await modulosService.create(cursoId, turmaId, data);
+      res.status(201).json(modulo);
     } catch (error: any) {
       if (error instanceof ZodError) {
         return res.status(400).json({
           success: false,
           code: 'VALIDATION_ERROR',
-          message: 'Dados inválidos para criação da aula',
+          message: 'Dados inválidos para criação do módulo',
           issues: error.flatten().fieldErrors,
         });
       }
@@ -131,18 +128,10 @@ export class AulasController {
         });
       }
 
-      if (error?.code === 'MODULO_NOT_FOUND') {
-        return res.status(404).json({
-          success: false,
-          code: 'MODULO_NOT_FOUND',
-          message: 'Módulo não encontrado para a turma informada',
-        });
-      }
-
       res.status(500).json({
         success: false,
-        code: 'AULA_CREATE_ERROR',
-        message: 'Erro ao criar aula para a turma',
+        code: 'MODULO_CREATE_ERROR',
+        message: 'Erro ao criar módulo para a turma',
         error: error?.message,
       });
     }
@@ -151,48 +140,40 @@ export class AulasController {
   static update = async (req: Request, res: Response) => {
     const cursoId = parseCursoId(req.params.cursoId);
     const turmaId = parseTurmaId(req.params.turmaId);
-    const aulaId = parseAulaId(req.params.aulaId);
+    const moduloId = parseModuloId(req.params.moduloId);
 
-    if (!cursoId || !turmaId || !aulaId) {
+    if (!cursoId || !turmaId || !moduloId) {
       return res.status(400).json({
         success: false,
         code: 'VALIDATION_ERROR',
-        message: 'Identificadores de curso, turma ou aula inválidos',
+        message: 'Identificadores de curso, turma ou módulo inválidos',
       });
     }
 
     try {
-      const data = updateAulaSchema.parse(req.body);
+      const data = updateModuloSchema.parse(req.body);
 
       if (Object.keys(data).length === 0) {
         return res.status(400).json({
           success: false,
           code: 'VALIDATION_ERROR',
-          message: 'Informe ao menos um campo para atualização da aula',
+          message: 'Informe ao menos um campo para atualização do módulo',
         });
       }
 
-      const aula = await aulasService.update(cursoId, turmaId, aulaId, data);
-      res.json(aula);
+      const modulo = await modulosService.update(cursoId, turmaId, moduloId, data);
+      res.json(modulo);
     } catch (error: any) {
       if (error instanceof ZodError) {
         return res.status(400).json({
           success: false,
           code: 'VALIDATION_ERROR',
-          message: 'Dados inválidos para atualização da aula',
+          message: 'Dados inválidos para atualização do módulo',
           issues: error.flatten().fieldErrors,
         });
       }
 
-      if (error?.code === 'AULA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
-        return res.status(404).json({
-          success: false,
-          code: 'AULA_NOT_FOUND',
-          message: 'Aula não encontrada para a turma informada',
-        });
-      }
-
-      if (error?.code === 'MODULO_NOT_FOUND') {
+      if (error?.code === 'MODULO_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
         return res.status(404).json({
           success: false,
           code: 'MODULO_NOT_FOUND',
@@ -202,8 +183,8 @@ export class AulasController {
 
       res.status(500).json({
         success: false,
-        code: 'AULA_UPDATE_ERROR',
-        message: 'Erro ao atualizar aula da turma',
+        code: 'MODULO_UPDATE_ERROR',
+        message: 'Erro ao atualizar módulo da turma',
         error: error?.message,
       });
     }
@@ -212,32 +193,32 @@ export class AulasController {
   static delete = async (req: Request, res: Response) => {
     const cursoId = parseCursoId(req.params.cursoId);
     const turmaId = parseTurmaId(req.params.turmaId);
-    const aulaId = parseAulaId(req.params.aulaId);
+    const moduloId = parseModuloId(req.params.moduloId);
 
-    if (!cursoId || !turmaId || !aulaId) {
+    if (!cursoId || !turmaId || !moduloId) {
       return res.status(400).json({
         success: false,
         code: 'VALIDATION_ERROR',
-        message: 'Identificadores de curso, turma ou aula inválidos',
+        message: 'Identificadores de curso, turma ou módulo inválidos',
       });
     }
 
     try {
-      await aulasService.remove(cursoId, turmaId, aulaId);
-      res.json({ success: true });
+      const result = await modulosService.remove(cursoId, turmaId, moduloId);
+      res.json(result);
     } catch (error: any) {
-      if (error?.code === 'AULA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
+      if (error?.code === 'MODULO_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
         return res.status(404).json({
           success: false,
-          code: 'AULA_NOT_FOUND',
-          message: 'Aula não encontrada para a turma informada',
+          code: 'MODULO_NOT_FOUND',
+          message: 'Módulo não encontrado para a turma informada',
         });
       }
 
       res.status(500).json({
         success: false,
-        code: 'AULA_DELETE_ERROR',
-        message: 'Erro ao remover aula da turma',
+        code: 'MODULO_DELETE_ERROR',
+        message: 'Erro ao remover módulo da turma',
         error: error?.message,
       });
     }

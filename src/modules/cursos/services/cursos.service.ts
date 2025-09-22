@@ -1,12 +1,26 @@
-import { CursosStatusPadrao, Prisma, Roles, type Cursos } from '@prisma/client';
+import { CursoStatus, CursosStatusPadrao, Prisma, Roles, type Cursos } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 
+import { traduzirModelosPrisma } from '../utils/avaliacao';
 import { generateUniqueCourseCode } from '../utils/code-generator';
 import { aulaWithMateriaisInclude, mapAula } from './aulas.mapper';
+import { moduloDetailedInclude, mapModulo } from './modulos.mapper';
+import { mapProva, provaDefaultInclude } from './provas.mapper';
 
 const cursosLogger = logger.child({ module: 'CursosService' });
+
+const publicCursoStatuses: CursosStatusPadrao[] = [
+  CursosStatusPadrao.PUBLICADO,
+];
+
+const publicTurmaStatuses: CursoStatus[] = [
+  CursoStatus.PUBLICADO,
+  CursoStatus.INSCRICOES_ABERTAS,
+  CursoStatus.INSCRICOES_ENCERRADAS,
+  CursoStatus.EM_ANDAMENTO,
+];
 
 const instrutorSelect = {
   id: true,
@@ -25,6 +39,16 @@ const turmaSummarySelect = {
   dataFim: true,
   dataInscricaoInicio: true,
   dataInscricaoFim: true,
+} as const;
+
+const regrasAvaliacaoSelect = {
+  mediaMinima: true,
+  politicaRecuperacaoAtiva: true,
+  modelosRecuperacao: true,
+  ordemAplicacaoRecuperacao: true,
+  notaMaximaRecuperacao: true,
+  pesoProvaFinal: true,
+  observacoes: true,
 } as const;
 
 const turmaDetailedInclude = {
@@ -50,6 +74,55 @@ const turmaDetailedInclude = {
       ],
       include: aulaWithMateriaisInclude.include,
     },
+    modulos: {
+      ...moduloDetailedInclude.include,
+      orderBy: [
+        { ordem: 'asc' as const },
+        { criadoEm: 'asc' as const },
+      ],
+    },
+    provas: {
+      ...provaDefaultInclude.include,
+      orderBy: [
+        { ordem: 'asc' as const },
+        { criadoEm: 'asc' as const },
+      ],
+    },
+    regrasAvaliacao: { select: regrasAvaliacaoSelect },
+  },
+} as const;
+
+const turmaPublicInclude = {
+  include: {
+    curso: {
+      select: {
+        id: true,
+        codigo: true,
+        nome: true,
+      },
+    },
+    aulas: {
+      orderBy: [
+        { ordem: 'asc' },
+        { criadoEm: 'asc' },
+      ],
+      include: aulaWithMateriaisInclude.include,
+    },
+    modulos: {
+      ...moduloDetailedInclude.include,
+      orderBy: [
+        { ordem: 'asc' as const },
+        { criadoEm: 'asc' as const },
+      ],
+    },
+    provas: {
+      ...provaDefaultInclude.include,
+      orderBy: [
+        { ordem: 'asc' as const },
+        { criadoEm: 'asc' as const },
+      ],
+    },
+    regrasAvaliacao: { select: regrasAvaliacaoSelect },
   },
 } as const;
 
@@ -83,6 +156,24 @@ const mapTurmaSummary = (turma: Prisma.CursosTurmasGetPayload<{ select: typeof t
   dataInscricaoFim: turma.dataInscricaoFim?.toISOString() ?? null,
 });
 
+const mapRegrasAvaliacao = (
+  regras?: Prisma.CursosTurmasRegrasAvaliacaoGetPayload<{ select: typeof regrasAvaliacaoSelect }> | null,
+) => {
+  if (!regras) {
+    return null;
+  }
+
+  return {
+    mediaMinima: Number(regras.mediaMinima),
+    politicaRecuperacaoAtiva: regras.politicaRecuperacaoAtiva,
+    modelosRecuperacao: traduzirModelosPrisma(regras.modelosRecuperacao),
+    ordemAplicacaoRecuperacao: traduzirModelosPrisma(regras.ordemAplicacaoRecuperacao),
+    notaMaximaRecuperacao: regras.notaMaximaRecuperacao ? Number(regras.notaMaximaRecuperacao) : null,
+    pesoProvaFinal: regras.pesoProvaFinal ? Number(regras.pesoProvaFinal) : null,
+    observacoes: regras.observacoes ?? null,
+  };
+};
+
 const mapTurmaDetailed = (
   turma: Prisma.CursosTurmasGetPayload<typeof turmaDetailedInclude> & { curso?: Cursos | null },
 ) => ({
@@ -109,7 +200,42 @@ const mapTurmaDetailed = (
     email: matricula.aluno.email,
     matricula: matricula.aluno.informacoes?.matricula ?? null,
   })),
-  aulas: turma.aulas?.map(mapAula) ?? [],
+  modulos: turma.modulos?.map(mapModulo) ?? [],
+  aulas: (turma.aulas ?? [])
+    .filter((aula) => aula.moduloId === null)
+    .map(mapAula),
+  provas: (turma.provas ?? [])
+    .filter((prova) => prova.moduloId === null)
+    .map(mapProva),
+  regrasAvaliacao: mapRegrasAvaliacao(turma.regrasAvaliacao ?? null),
+});
+
+const mapTurmaPublic = (turma: Prisma.CursosTurmasGetPayload<typeof turmaPublicInclude>) => ({
+  id: turma.id,
+  codigo: turma.codigo,
+  nome: turma.nome,
+  status: turma.status,
+  vagasTotais: turma.vagasTotais,
+  vagasDisponiveis: turma.vagasDisponiveis,
+  dataInicio: turma.dataInicio?.toISOString() ?? null,
+  dataFim: turma.dataFim?.toISOString() ?? null,
+  dataInscricaoInicio: turma.dataInscricaoInicio?.toISOString() ?? null,
+  dataInscricaoFim: turma.dataInscricaoFim?.toISOString() ?? null,
+  curso: turma.curso
+    ? {
+        id: turma.curso.id,
+        codigo: turma.curso.codigo,
+        nome: turma.curso.nome,
+      }
+    : null,
+  modulos: turma.modulos?.map(mapModulo) ?? [],
+  aulas: (turma.aulas ?? [])
+    .filter((aula) => aula.moduloId === null)
+    .map(mapAula),
+  provas: (turma.provas ?? [])
+    .filter((prova) => prova.moduloId === null)
+    .map(mapProva),
+  regrasAvaliacao: mapRegrasAvaliacao(turma.regrasAvaliacao ?? null),
 });
 
 const mapCourse = (course: RawCourse) => ({
@@ -136,6 +262,29 @@ const mapCourse = (course: RawCourse) => ({
       )
     : undefined,
   turmasCount: course._count?.turmas ?? undefined,
+});
+
+const mapPublicCourse = (
+  course: Prisma.CursosGetPayload<{
+    include: {
+      instrutor: { select: { id: true; nomeCompleto: true } } | null;
+      turmas: typeof turmaPublicInclude;
+    };
+  }>,
+) => ({
+  id: course.id,
+  codigo: course.codigo,
+  nome: course.nome,
+  descricao: course.descricao,
+  cargaHoraria: course.cargaHoraria,
+  statusPadrao: course.statusPadrao,
+  instrutor: course.instrutor
+    ? {
+        id: course.instrutor.id,
+        nome: course.instrutor.nomeCompleto,
+      }
+    : null,
+  turmas: course.turmas.map(mapTurmaPublic),
 });
 
 const ensureInstrutorExists = async (
@@ -226,6 +375,77 @@ export const cursosService = {
     }
 
     return mapCourse(course);
+  },
+
+  async listPublic() {
+    const cursos = await prisma.cursos.findMany({
+      where: {
+        statusPadrao: { in: publicCursoStatuses },
+      },
+      select: {
+        id: true,
+        codigo: true,
+        nome: true,
+        descricao: true,
+        cargaHoraria: true,
+        statusPadrao: true,
+        turmas: {
+          select: turmaSummarySelect,
+          where: { status: { in: publicTurmaStatuses } },
+          orderBy: { criadoEm: 'desc' },
+        },
+      },
+      orderBy: { nome: 'asc' },
+    });
+
+    return cursos.map((curso) => ({
+      id: curso.id,
+      codigo: curso.codigo,
+      nome: curso.nome,
+      descricao: curso.descricao,
+      cargaHoraria: curso.cargaHoraria,
+      statusPadrao: curso.statusPadrao,
+      turmas: curso.turmas.map(mapTurmaSummary),
+    }));
+  },
+
+  async getPublicById(id: number) {
+    const curso = await prisma.cursos.findFirst({
+      where: {
+        id,
+        statusPadrao: { in: publicCursoStatuses },
+      },
+      include: {
+        instrutor: { select: { id: true, nomeCompleto: true } },
+        turmas: {
+          ...turmaPublicInclude,
+          where: { status: { in: publicTurmaStatuses } },
+          orderBy: { criadoEm: 'desc' },
+        },
+      },
+    });
+
+    if (!curso) {
+      return null;
+    }
+
+    return mapPublicCourse(curso);
+  },
+
+  async getPublicTurma(turmaId: string) {
+    const turma = await prisma.cursosTurmas.findFirst({
+      where: {
+        id: turmaId,
+        status: { in: publicTurmaStatuses },
+      },
+      ...turmaPublicInclude,
+    });
+
+    if (!turma) {
+      return null;
+    }
+
+    return mapTurmaPublic(turma);
   },
 
   async create(data: {
@@ -320,4 +540,5 @@ export const cursosService = {
 export const cursosTurmasMapper = {
   summary: mapTurmaSummary,
   detailed: mapTurmaDetailed,
+  public: mapTurmaPublic,
 };

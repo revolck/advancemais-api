@@ -1,4 +1,5 @@
-import { CursosMateriais, Prisma, TiposDeArquivos } from '@prisma/client';
+import { CursosMateriais, CursosMetodos, Prisma, TiposDeArquivos } from '@prisma/client';
+import { randomUUID } from 'crypto';
 
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
@@ -26,16 +27,19 @@ type AulaInput = {
   descricao?: string | null;
   ordem?: number | null;
   materiais?: AulaMaterialInput[];
+  urlVideo?: string | null;
+  sala?: string | null;
+  urlMeet?: string | null;
 };
 
 const ensureTurmaBelongsToCurso = async (
   client: PrismaClientOrTx,
   cursoId: number,
   turmaId: string,
-): Promise<void> => {
+): Promise<{ id: string; metodo: CursosMetodos }> => {
   const turma = await client.cursosTurmas.findFirst({
     where: { id: turmaId, cursoId },
-    select: { id: true },
+    select: { id: true, metodo: true },
   });
 
   if (!turma) {
@@ -43,6 +47,8 @@ const ensureTurmaBelongsToCurso = async (
     (error as any).code = 'TURMA_NOT_FOUND';
     throw error;
   }
+
+  return turma;
 };
 
 const ensureAulaBelongsToTurma = async (
@@ -50,14 +56,14 @@ const ensureAulaBelongsToTurma = async (
   cursoId: number,
   turmaId: string,
   aulaId: string,
-): Promise<void> => {
+): Promise<{ id: string; metodo: CursosMetodos }> => {
   const aula = await client.cursosTurmasAulas.findFirst({
     where: {
       id: aulaId,
       turmaId,
       turma: { cursoId },
     },
-    select: { id: true },
+    select: { id: true, turma: { select: { metodo: true } } },
   });
 
   if (!aula) {
@@ -65,6 +71,8 @@ const ensureAulaBelongsToTurma = async (
     (error as any).code = 'AULA_NOT_FOUND';
     throw error;
   }
+
+  return { id: aula.id, metodo: aula.turma.metodo };
 };
 
 const ensureModuloBelongsToTurma = async (
@@ -110,6 +118,124 @@ const normalizeMaterialInput = (material: AulaMaterialInput) => ({
   ordem: material.ordem ?? 0,
 });
 
+const sanitizeOptionalString = (value: string | null | undefined) => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? null : trimmed;
+};
+
+const generateMeetUrl = () => {
+  const raw = randomUUID().replace(/-/g, '').slice(0, 12);
+  const segments = raw.match(/.{1,4}/g) ?? ['adv', 'meet', 'link'];
+  return `https://meet.google.com/${segments.join('-')}`;
+};
+
+const resolveDeliveryFieldsOnCreate = (
+  metodo: CursosMetodos,
+  data: AulaInput & { nome: string },
+): { urlVideo: string | null; sala: string | null; urlMeet: string | null } => {
+  const videoUrl = sanitizeOptionalString(data.urlVideo ?? undefined) ?? null;
+  const sala = sanitizeOptionalString(data.sala ?? undefined) ?? null;
+  const meetUrl = sanitizeOptionalString(data.urlMeet ?? undefined) ?? null;
+
+  switch (metodo) {
+    case CursosMetodos.ONLINE: {
+      if (!videoUrl) {
+        const error = new Error('URL do vídeo é obrigatória para turmas online');
+        (error as any).code = 'INVALID_DELIVERY_FIELDS';
+        throw error;
+      }
+
+      return { urlVideo: videoUrl, sala: null, urlMeet: null };
+    }
+    case CursosMetodos.PRESENCIAL: {
+      if (!sala) {
+        const error = new Error('Sala é obrigatória para turmas presenciais');
+        (error as any).code = 'INVALID_DELIVERY_FIELDS';
+        throw error;
+      }
+
+      return { urlVideo: null, sala, urlMeet: null };
+    }
+    case CursosMetodos.LIVE: {
+      return { urlVideo: null, sala: null, urlMeet: meetUrl ?? generateMeetUrl() };
+    }
+    case CursosMetodos.SEMIPRESENCIAL:
+    default:
+      return { urlVideo: videoUrl, sala, urlMeet: meetUrl };
+  }
+};
+
+const resolveDeliveryFieldsOnUpdate = (
+  metodo: CursosMetodos,
+  data: AulaInput,
+): { urlVideo?: string | null; sala?: string | null; urlMeet?: string | null } => {
+  const videoUrl = sanitizeOptionalString(data.urlVideo);
+  const sala = sanitizeOptionalString(data.sala);
+  const meetUrl = sanitizeOptionalString(data.urlMeet);
+
+  switch (metodo) {
+    case CursosMetodos.ONLINE: {
+      if (data.urlVideo !== undefined) {
+        if (!videoUrl) {
+          const error = new Error('URL do vídeo é obrigatória para turmas online');
+          (error as any).code = 'INVALID_DELIVERY_FIELDS';
+          throw error;
+        }
+
+        return { urlVideo, sala: null, urlMeet: null };
+      }
+
+      return {};
+    }
+    case CursosMetodos.PRESENCIAL: {
+      if (data.sala !== undefined) {
+        if (!sala) {
+          const error = new Error('Sala é obrigatória para turmas presenciais');
+          (error as any).code = 'INVALID_DELIVERY_FIELDS';
+          throw error;
+        }
+
+        return { sala, urlVideo: null, urlMeet: null };
+      }
+
+      return {};
+    }
+    case CursosMetodos.LIVE: {
+      if (data.urlMeet !== undefined) {
+        return { urlMeet: meetUrl ?? generateMeetUrl(), urlVideo: null, sala: null };
+      }
+
+      return {};
+    }
+    case CursosMetodos.SEMIPRESENCIAL:
+    default: {
+      const update: { urlVideo?: string | null; sala?: string | null; urlMeet?: string | null } = {};
+
+      if (data.urlVideo !== undefined) {
+        update.urlVideo = videoUrl ?? null;
+      }
+
+      if (data.sala !== undefined) {
+        update.sala = sala ?? null;
+      }
+
+      if (data.urlMeet !== undefined) {
+        update.urlMeet = meetUrl ?? null;
+      }
+
+      return update;
+    }
+  }
+};
+
 export const aulasService = {
   async list(cursoId: number, turmaId: string) {
     await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
@@ -134,13 +260,14 @@ export const aulasService = {
 
   async create(cursoId: number, turmaId: string, data: AulaInput & { nome: string }) {
     return prisma.$transaction(async (tx) => {
-      await ensureTurmaBelongsToCurso(tx, cursoId, turmaId);
+      const turma = await ensureTurmaBelongsToCurso(tx, cursoId, turmaId);
 
       if (data.moduloId) {
         await ensureModuloBelongsToTurma(tx, turmaId, data.moduloId);
       }
 
       const ordem = data.ordem ?? (await tx.cursosTurmasAulas.count({ where: { turmaId } })) + 1;
+      const deliveryFields = resolveDeliveryFieldsOnCreate(turma.metodo, data);
 
       const aula = await tx.cursosTurmasAulas.create({
         data: {
@@ -149,6 +276,7 @@ export const aulasService = {
           nome: data.nome,
           descricao: data.descricao ?? null,
           ordem,
+          ...deliveryFields,
         },
       });
 
@@ -169,11 +297,13 @@ export const aulasService = {
 
   async update(cursoId: number, turmaId: string, aulaId: string, data: AulaInput) {
     return prisma.$transaction(async (tx) => {
-      await ensureAulaBelongsToTurma(tx, cursoId, turmaId, aulaId);
+      const aulaInfo = await ensureAulaBelongsToTurma(tx, cursoId, turmaId, aulaId);
 
       if (data.moduloId) {
         await ensureModuloBelongsToTurma(tx, turmaId, data.moduloId);
       }
+
+      const deliveryFields = resolveDeliveryFieldsOnUpdate(aulaInfo.metodo, data);
 
       await tx.cursosTurmasAulas.update({
         where: { id: aulaId },
@@ -182,6 +312,7 @@ export const aulasService = {
           descricao: data.descricao ?? undefined,
           ordem: data.ordem ?? undefined,
           moduloId: data.moduloId ?? (data.moduloId === null ? null : undefined),
+          ...deliveryFields,
         },
       });
 

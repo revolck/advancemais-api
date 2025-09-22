@@ -191,6 +191,9 @@ model CursosTurmasAulas {
   nome        String   @db.VarChar(255)
   descricao   String?  @db.Text
   ordem       Int      @default(0)
+  urlVideo    String?  @db.VarChar(2048)
+  sala        String?  @db.VarChar(100)
+  urlMeet     String?  @db.VarChar(2048)
   criadoEm    DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 

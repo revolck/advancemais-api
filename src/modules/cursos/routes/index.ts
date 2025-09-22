@@ -7,6 +7,9 @@ import { supabaseAuthMiddleware } from '@/modules/usuarios/auth';
 import { CursosController } from '../controllers/cursos.controller';
 import { AulasController } from '../controllers/aulas.controller';
 import { TurmasController } from '../controllers/turmas.controller';
+import { ModulosController } from '../controllers/modulos.controller';
+import { ProvasController } from '../controllers/provas.controller';
+import { AvaliacaoController } from '../controllers/avaliacao.controller';
 
 const router = Router();
 
@@ -108,6 +111,75 @@ router.get('/', publicCache, CursosController.list);
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get('/:cursoId', publicCache, CursosController.get);
+
+/**
+ * @openapi
+ * /api/v1/cursos/publico/cursos:
+ *   get:
+ *     summary: Listar cursos publicados para vitrine pública
+ *     tags: [Cursos - Público]
+ *     responses:
+ *       200:
+ *         description: Lista de cursos disponíveis publicamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/CursoPublico'
+ *       500:
+ *         description: Erro ao listar cursos públicos
+ */
+router.get('/publico/cursos', publicCache, CursosController.publicList);
+
+/**
+ * @openapi
+ * /api/v1/cursos/publico/cursos/{cursoId}:
+ *   get:
+ *     summary: Detalhar curso publicado
+ *     tags: [Cursos - Público]
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *     responses:
+ *       200:
+ *         description: Detalhes do curso com turmas e módulos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoPublicoDetalhado'
+ *       404:
+ *         description: Curso não encontrado ou indisponível
+ */
+router.get('/publico/cursos/:cursoId', publicCache, CursosController.publicGet);
+
+/**
+ * @openapi
+ * /api/v1/cursos/publico/turmas/{turmaId}:
+ *   get:
+ *     summary: Detalhar turma publicada
+ *     tags: [Cursos - Público]
+ *     parameters:
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Detalhes da turma com módulos, aulas e provas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/TurmaPublicaDetalhada'
+ *       404:
+ *         description: Turma não encontrada ou indisponível
+ */
+router.get('/publico/turmas/:turmaId', publicCache, TurmasController.publicGet);
 
 /**
  * @openapi
@@ -612,6 +684,489 @@ router.delete(
   '/:cursoId/turmas/:turmaId/aulas/:aulaId',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
   AulasController.delete,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/modulos:
+ *   get:
+ *     summary: Listar módulos da turma
+ *     tags: ['Cursos - Módulos']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Lista de módulos da turma
+ *       404:
+ *         description: Turma não encontrada
+ */
+router.get(
+  '/:cursoId/turmas/:turmaId/modulos',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  ModulosController.list,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/modulos/{moduloId}:
+ *   get:
+ *     summary: Detalhar módulo da turma
+ *     tags: ['Cursos - Módulos']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: moduloId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Dados do módulo
+ *       404:
+ *         description: Módulo não encontrado
+ */
+router.get(
+  '/:cursoId/turmas/:turmaId/modulos/:moduloId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  ModulosController.get,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/modulos:
+ *   post:
+ *     summary: Criar módulo na turma
+ *     tags: ['Cursos - Módulos']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoTurmaModuloCreateInput'
+ *     responses:
+ *       201:
+ *         description: Módulo criado
+ */
+router.post(
+  '/:cursoId/turmas/:turmaId/modulos',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  ModulosController.create,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/modulos/{moduloId}:
+ *   put:
+ *     summary: Atualizar módulo da turma
+ *     tags: ['Cursos - Módulos']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: moduloId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoTurmaModuloUpdateInput'
+ *     responses:
+ *       200:
+ *         description: Módulo atualizado
+ */
+router.put(
+  '/:cursoId/turmas/:turmaId/modulos/:moduloId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  ModulosController.update,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/modulos/{moduloId}:
+ *   delete:
+ *     summary: Remover módulo da turma
+ *     tags: ['Cursos - Módulos']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: moduloId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Módulo removido
+ */
+router.delete(
+  '/:cursoId/turmas/:turmaId/modulos/:moduloId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  ModulosController.delete,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/provas:
+ *   get:
+ *     summary: Listar provas da turma
+ *     tags: ['Cursos - Provas']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Lista de provas atreladas à turma
+ */
+router.get(
+  '/:cursoId/turmas/:turmaId/provas',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  ProvasController.list,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/provas/{provaId}:
+ *   get:
+ *     summary: Detalhar prova da turma
+ *     tags: ['Cursos - Provas']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: provaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Dados da prova
+ */
+router.get(
+  '/:cursoId/turmas/:turmaId/provas/:provaId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  ProvasController.get,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/provas:
+ *   post:
+ *     summary: Criar prova para a turma
+ *     tags: ['Cursos - Provas']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoTurmaProvaCreateInput'
+ *     responses:
+ *       201:
+ *         description: Prova criada
+ */
+router.post(
+  '/:cursoId/turmas/:turmaId/provas',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  ProvasController.create,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/provas/{provaId}:
+ *   put:
+ *     summary: Atualizar prova da turma
+ *     tags: ['Cursos - Provas']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: provaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoTurmaProvaUpdateInput'
+ *     responses:
+ *       200:
+ *         description: Prova atualizada
+ */
+router.put(
+  '/:cursoId/turmas/:turmaId/provas/:provaId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  ProvasController.update,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/provas/{provaId}:
+ *   delete:
+ *     summary: Remover prova da turma
+ *     tags: ['Cursos - Provas']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: provaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Prova removida
+ */
+router.delete(
+  '/:cursoId/turmas/:turmaId/provas/:provaId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  ProvasController.delete,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/provas/{provaId}/notas:
+ *   put:
+ *     summary: Registrar ou atualizar nota de prova
+ *     tags: ['Cursos - Provas']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: provaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoTurmaProvaNotaInput'
+ *     responses:
+ *       200:
+ *         description: Nota registrada com sucesso
+ */
+router.put(
+  '/:cursoId/turmas/:turmaId/provas/:provaId/notas',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  ProvasController.registrarNota,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/regras-avaliacao:
+ *   get:
+ *     summary: Obter regras de avaliação da turma
+ *     tags: ['Cursos - Avaliação']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ */
+router.get(
+  '/:cursoId/turmas/:turmaId/regras-avaliacao',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  AvaliacaoController.getRules,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/regras-avaliacao:
+ *   put:
+ *     summary: Atualizar regras de avaliação da turma
+ *     tags: ['Cursos - Avaliação']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoTurmaRegrasAvaliacaoInput'
+ */
+router.put(
+  '/:cursoId/turmas/:turmaId/regras-avaliacao',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  AvaliacaoController.updateRules,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/recuperacoes:
+ *   post:
+ *     summary: Registrar tentativa de recuperação
+ *     tags: ['Cursos - Avaliação']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoTurmaRecuperacaoInput'
+ */
+router.post(
+  '/:cursoId/turmas/:turmaId/recuperacoes',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  AvaliacaoController.registrarRecuperacao,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/matriculas/{matriculaId}/notas:
+ *   get:
+ *     summary: Consultar notas consolidadas de uma matrícula (admin)
+ *     tags: ['Cursos - Avaliação']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: matriculaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ */
+router.get(
+  '/matriculas/:matriculaId/notas',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  AvaliacaoController.getGrades,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/me/matriculas/{matriculaId}/notas:
+ *   get:
+ *     summary: Consultar notas consolidadas do aluno autenticado
+ *     tags: ['Cursos - Avaliação']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: matriculaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ */
+router.get(
+  '/me/matriculas/:matriculaId/notas',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  AvaliacaoController.getMyGrades,
 );
 
 export { router as cursosRoutes };

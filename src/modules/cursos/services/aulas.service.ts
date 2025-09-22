@@ -21,6 +21,7 @@ type AulaMaterialInput = {
 };
 
 type AulaInput = {
+  moduloId?: string | null;
   nome?: string;
   descricao?: string | null;
   ordem?: number | null;
@@ -62,6 +63,23 @@ const ensureAulaBelongsToTurma = async (
   if (!aula) {
     const error = new Error('Aula não encontrada para a turma informada');
     (error as any).code = 'AULA_NOT_FOUND';
+    throw error;
+  }
+};
+
+const ensureModuloBelongsToTurma = async (
+  client: PrismaClientOrTx,
+  turmaId: string,
+  moduloId: string,
+): Promise<void> => {
+  const modulo = await client.cursosTurmasModulos.findFirst({
+    where: { id: moduloId, turmaId },
+    select: { id: true },
+  });
+
+  if (!modulo) {
+    const error = new Error('Módulo não encontrado para a turma informada');
+    (error as any).code = 'MODULO_NOT_FOUND';
     throw error;
   }
 };
@@ -118,11 +136,16 @@ export const aulasService = {
     return prisma.$transaction(async (tx) => {
       await ensureTurmaBelongsToCurso(tx, cursoId, turmaId);
 
+      if (data.moduloId) {
+        await ensureModuloBelongsToTurma(tx, turmaId, data.moduloId);
+      }
+
       const ordem = data.ordem ?? (await tx.cursosTurmasAulas.count({ where: { turmaId } })) + 1;
 
       const aula = await tx.cursosTurmasAulas.create({
         data: {
           turmaId,
+          moduloId: data.moduloId ?? null,
           nome: data.nome,
           descricao: data.descricao ?? null,
           ordem,
@@ -148,12 +171,17 @@ export const aulasService = {
     return prisma.$transaction(async (tx) => {
       await ensureAulaBelongsToTurma(tx, cursoId, turmaId, aulaId);
 
+      if (data.moduloId) {
+        await ensureModuloBelongsToTurma(tx, turmaId, data.moduloId);
+      }
+
       await tx.cursosTurmasAulas.update({
         where: { id: aulaId },
         data: {
           nome: data.nome ?? undefined,
           descricao: data.descricao ?? undefined,
           ordem: data.ordem ?? undefined,
+          moduloId: data.moduloId ?? (data.moduloId === null ? null : undefined),
         },
       });
 

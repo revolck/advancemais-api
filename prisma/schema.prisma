@@ -155,24 +155,49 @@ model CursosTurmas {
   curso                Cursos                   @relation(fields: [cursoId], references: [id], onDelete: Cascade)
   matriculas           CursosTurmasMatriculas[]
   aulas                CursosTurmasAulas[]
+  modulos              CursosTurmasModulos[]
+  provas               CursosTurmasProvas[]
+  regrasAvaliacao      CursosTurmasRegrasAvaliacao?
+  recuperacoes         CursosTurmasRecuperacoes[]
 
   @@index([cursoId])
   @@index([status])
 }
 
+model CursosTurmasModulos {
+  id          String   @id @default(uuid())
+  turmaId     String
+  nome        String   @db.VarChar(255)
+  descricao   String?  @db.Text
+  obrigatorio Boolean  @default(true)
+  ordem       Int      @default(0)
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  turma   CursosTurmas       @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  aulas   CursosTurmasAulas[]
+  provas  CursosTurmasProvas[]
+
+  @@index([turmaId])
+  @@index([turmaId, ordem])
+}
+
 model CursosTurmasAulas {
   id          String   @id @default(uuid())
   turmaId     String
+  moduloId    String?
   nome        String   @db.VarChar(255)
   descricao   String?  @db.Text
   ordem       Int      @default(0)
   criadoEm    DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  turma      CursosTurmas                @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  materiais  CursosTurmasAulasMateriais[]
+  turma     CursosTurmas               @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  modulo    CursosTurmasModulos?       @relation(fields: [moduloId], references: [id], onDelete: SetNull)
+  materiais CursosTurmasAulasMateriais[]
 
   @@index([turmaId])
+  @@index([moduloId])
   @@index([turmaId, ordem])
 }
 
@@ -204,9 +229,119 @@ model CursosTurmasMatriculas {
 
   turma CursosTurmas @relation(fields: [turmaId], references: [id], onDelete: Cascade)
   aluno Usuarios     @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+  envios CursosTurmasProvasEnvios[]
+  recuperacoes CursosTurmasRecuperacoes[]
 
   @@unique([turmaId, alunoId])
   @@index([alunoId])
+}
+
+model CursosTurmasProvas {
+  id           String             @id @default(uuid())
+  turmaId      String
+  moduloId     String?
+  titulo       String             @db.VarChar(255)
+  etiqueta     String             @db.VarChar(30)
+  descricao    String?            @db.Text
+  peso         Decimal            @db.Decimal(5, 2)
+  ativo        Boolean            @default(true)
+  localizacao  CursosLocalProva   @default(TURMA)
+  ordem        Int                @default(0)
+  criadoEm     DateTime           @default(now())
+  atualizadoEm DateTime           @updatedAt
+
+  turma      CursosTurmas         @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  modulo     CursosTurmasModulos? @relation(fields: [moduloId], references: [id], onDelete: SetNull)
+  envios     CursosTurmasProvasEnvios[]
+  recuperacoes CursosTurmasRecuperacoes[]
+
+  @@unique([turmaId, etiqueta])
+  @@index([turmaId])
+  @@index([moduloId])
+  @@index([turmaId, ativo])
+}
+
+model CursosTurmasProvasEnvios {
+  id          String   @id @default(uuid())
+  provaId     String
+  matriculaId String
+  nota        Decimal? @db.Decimal(4, 1)
+  pesoTotal   Decimal? @db.Decimal(5, 2)
+  realizadoEm DateTime?
+  observacoes String?  @db.Text
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  prova      CursosTurmasProvas     @relation(fields: [provaId], references: [id], onDelete: Cascade)
+  matricula  CursosTurmasMatriculas @relation(fields: [matriculaId], references: [id], onDelete: Cascade)
+  recuperacoes CursosTurmasRecuperacoes[]
+
+  @@unique([provaId, matriculaId])
+  @@index([matriculaId])
+}
+
+model CursosTurmasRegrasAvaliacao {
+  id                         String                       @id @default(uuid())
+  turmaId                    String                       @unique
+  mediaMinima                Decimal                      @db.Decimal(4, 1)
+  politicaRecuperacaoAtiva   Boolean                      @default(false)
+  modelosRecuperacao         CursosModelosRecuperacao[]   @default([])
+  ordemAplicacaoRecuperacao  CursosModelosRecuperacao[]   @default([])
+  notaMaximaRecuperacao      Decimal?                     @db.Decimal(4, 1)
+  pesoProvaFinal             Decimal?                     @db.Decimal(5, 2)
+  observacoes                String?                      @db.VarChar(500)
+  criadoEm                   DateTime                     @default(now())
+  atualizadoEm               DateTime                     @updatedAt
+
+  turma        CursosTurmas              @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  recuperacoes CursosTurmasRecuperacoes[]
+}
+
+model CursosTurmasRecuperacoes {
+  id              String                 @id @default(uuid())
+  turmaId         String
+  matriculaId     String
+  regraId         String?
+  provaId         String?
+  envioId         String?
+  notaRecuperacao Decimal?               @db.Decimal(4, 1)
+  notaFinal       Decimal?               @db.Decimal(4, 1)
+  mediaCalculada  Decimal?               @db.Decimal(4, 2)
+  modeloAplicado  CursosModelosRecuperacao?
+  statusFinal     CursosSituacaoFinal    @default(EM_ANALISE)
+  detalhes        Json?
+  observacoes     String?                @db.VarChar(500)
+  aplicadoEm      DateTime?              @default(now())
+  criadoEm        DateTime               @default(now())
+  atualizadoEm    DateTime               @updatedAt
+
+  turma     CursosTurmas               @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  matricula CursosTurmasMatriculas     @relation(fields: [matriculaId], references: [id], onDelete: Cascade)
+  regra     CursosTurmasRegrasAvaliacao? @relation(fields: [regraId], references: [id], onDelete: SetNull)
+  prova     CursosTurmasProvas?        @relation(fields: [provaId], references: [id], onDelete: SetNull)
+  envio     CursosTurmasProvasEnvios?  @relation(fields: [envioId], references: [id], onDelete: SetNull)
+
+  @@index([turmaId])
+  @@index([matriculaId])
+  @@index([statusFinal])
+}
+
+enum CursosSituacaoFinal {
+  EM_ANALISE
+  APROVADO
+  REPROVADO
+}
+
+enum CursosModelosRecuperacao {
+  SUBSTITUI_MENOR
+  MEDIA_MINIMA_DIRETA
+  PROVA_FINAL_UNICA
+  NOTA_MAXIMA_LIMITADA
+}
+
+enum CursosLocalProva {
+  TURMA
+  MODULO
 }
 
 enum CursosStatusPadrao {

@@ -45,6 +45,8 @@ model Usuarios {
   recuperacaoSenha     UsuariosRecuperacaoSenha?
   emailVerification    UsuariosVerificacaoEmail?
   informacoes          UsuariosInformation?
+  cursosComoInstrutor  Cursos[]             @relation("CursosInstrutor")
+  turmasMatriculadas   CursosTurmasMatriculas[]
 
   @@index([status])
   @@index([role])
@@ -115,14 +117,65 @@ model CursosSubcategorias {
 }
 
 model Cursos {
-  id              Int               @id @default(autoincrement())
+  id              Int                 @id @default(autoincrement())
+  codigo          String              @unique @db.VarChar(12)
+  nome            String              @db.VarChar(255)
+  descricao       String?             @db.Text
+  cargaHoraria    Int
+  instrutorId     String?
+  statusPadrao    CursosStatusPadrao  @default(RASCUNHO)
   categoriaId     Int?
   subcategoriaId  Int?
-  categoria       CursosCategorias?    @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  criadoEm        DateTime            @default(now())
+  atualizadoEm    DateTime            @updatedAt
+  instrutor       Usuarios?           @relation("CursosInstrutor", fields: [instrutorId], references: [id], onDelete: SetNull)
+  categoria       CursosCategorias?   @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
   subcategoria    CursosSubcategorias? @relation(fields: [subcategoriaId], references: [id], onDelete: SetNull)
+  turmas          CursosTurmas[]
 
   @@index([categoriaId])
   @@index([subcategoriaId])
+  @@index([instrutorId])
+}
+
+model CursosTurmas {
+  id                   String                   @id @default(uuid())
+  codigo               String                   @unique @db.VarChar(12)
+  cursoId              Int
+  nome                 String                   @db.VarChar(255)
+  dataInicio           DateTime?
+  dataFim              DateTime?
+  dataInscricaoInicio  DateTime?
+  dataInscricaoFim     DateTime?
+  vagasTotais          Int
+  vagasDisponiveis     Int
+  status               CursoStatus              @default(RASCUNHO)
+  criadoEm             DateTime                 @default(now())
+  atualizadoEm         DateTime                 @updatedAt
+  curso                Cursos                   @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+  matriculas           CursosTurmasMatriculas[]
+
+  @@index([cursoId])
+  @@index([status])
+}
+
+model CursosTurmasMatriculas {
+  id        String   @id @default(uuid())
+  turmaId   String
+  alunoId   String
+  criadoEm  DateTime @default(now())
+
+  turma CursosTurmas @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  aluno Usuarios     @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+
+  @@unique([turmaId, alunoId])
+  @@index([alunoId])
+}
+
+enum CursosStatusPadrao {
+  PUBLICADO
+  RASCUNHO
+  DESPUBLICADO
 }
 
 model UsuariosVerificacaoEmail {

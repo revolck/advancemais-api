@@ -91,35 +91,35 @@ model CandidatosSubareasInteresse {
   @@index([nome])
 }
 
-model CursoCategoria {
+model CursosCategorias {
   id        Int                @id @default(autoincrement())
   nome      String             @db.VarChar(120)
   descricao String?            @db.VarChar(255)
-  subcats   CursoSubcategoria[]
-  cursos    Curso[]
+  subcats   CursosSubcategorias[]
+  cursos    Cursos[]
 
   @@unique([nome])
   @@index([nome])
 }
 
-model CursoSubcategoria {
+model CursosSubcategorias {
   id           Int             @id @default(autoincrement())
   nome         String          @db.VarChar(120)
   descricao    String?         @db.VarChar(255)
   categoriaId  Int
-  categoria    CursoCategoria  @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
-  cursos       Curso[]
+  categoria    CursosCategorias  @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+  cursos       Cursos[]
 
   @@unique([categoriaId, nome])
   @@index([nome])
 }
 
-model Curso {
+model Cursos {
   id              Int               @id @default(autoincrement())
   categoriaId     Int?
   subcategoriaId  Int?
-  categoria       CursoCategoria?   @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
-  subcategoria    CursoSubcategoria? @relation(fields: [subcategoriaId], references: [id], onDelete: SetNull)
+  categoria       CursosCategorias?    @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  subcategoria    CursosSubcategorias? @relation(fields: [subcategoriaId], references: [id], onDelete: SetNull)
 
   @@index([categoriaId])
   @@index([subcategoriaId])
@@ -1025,7 +1025,7 @@ enum Senioridade {
   LIDER
 }
 
-enum CursoMetodo {
+enum CursosMetodo {
   ONLINE
   PRESENCIAL
   LIVE

@@ -1,0 +1,24 @@
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_type WHERE typname = 'CursosMetodo'
+  ) THEN
+    DROP TYPE "CursosMetodo";
+  END IF;
+END
+$$;
+
+CREATE TYPE "CursosTurnos" AS ENUM ('MANHA', 'TARDE', 'NOITE', 'INTEGRAL');
+
+CREATE TYPE "CursoStatus" AS ENUM (
+  'RASCUNHO',
+  'PUBLICADO',
+  'INSCRICOES_ABERTAS',
+  'INSCRICOES_ENCERRADAS',
+  'EM_ANDAMENTO',
+  'CONCLUIDO',
+  'SUSPENSO',
+  'CANCELADO'
+);
+
+CREATE TYPE "CursosMetodos" AS ENUM ('ONLINE', 'PRESENCIAL', 'LIVE', 'SEMIPRESENCIAL');

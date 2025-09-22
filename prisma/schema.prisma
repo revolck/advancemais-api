@@ -1025,11 +1025,29 @@ enum Senioridade {
   LIDER
 }
 
-enum CursosMetodo {
+enum CursosTurnos {
+  MANHA
+  TARDE
+  NOITE
+  INTEGRAL
+}
+
+enum CursoStatus {
+  RASCUNHO
+  PUBLICADO
+  INSCRICOES_ABERTAS
+  INSCRICOES_ENCERRADAS
+  EM_ANDAMENTO
+  CONCLUIDO
+  SUSPENSO
+  CANCELADO
+}
+
+enum CursosMetodos {
   ONLINE
   PRESENCIAL
   LIVE
-  SEMI_PRESENCIAL
+  SEMIPRESENCIAL
 }
 
 enum EmpresasPlanoStatus {

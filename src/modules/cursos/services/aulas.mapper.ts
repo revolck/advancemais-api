@@ -31,6 +31,7 @@ export const mapMaterial = (material: AulaWithMateriais['materiais'][number]) =>
 export const mapAula = (aula: AulaWithMateriais) => ({
   id: aula.id,
   turmaId: aula.turmaId,
+  moduloId: aula.moduloId ?? null,
   nome: aula.nome,
   descricao: aula.descricao,
   ordem: aula.ordem,

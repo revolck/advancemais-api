@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ZodError } from 'zod';
 
 import { turmasService } from '../services/turmas.service';
+import { cursosService } from '../services/cursos.service';
 import {
   createTurmaSchema,
   turmaEnrollmentSchema,
@@ -85,6 +86,38 @@ export class TurmasController {
         success: false,
         code: 'TURMA_GET_ERROR',
         message: 'Erro ao buscar turma do curso',
+        error: error?.message,
+      });
+    }
+  };
+
+  static publicGet = async (req: Request, res: Response) => {
+    const turmaId = parseTurmaId(req.params.turmaId);
+
+    if (!turmaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificador de turma inválido',
+      });
+    }
+
+    try {
+      const turma = await cursosService.getPublicTurma(turmaId);
+      if (!turma) {
+        return res.status(404).json({
+          success: false,
+          code: 'TURMA_NOT_FOUND',
+          message: 'Turma não encontrada ou indisponível',
+        });
+      }
+
+      res.json(turma);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        code: 'TURMA_PUBLIC_GET_ERROR',
+        message: 'Erro ao buscar turma pública',
         error: error?.message,
       });
     }

@@ -1,4 +1,4 @@
-import { CursoStatus, CursosStatusPadrao, Prisma, Roles, type Cursos } from '@prisma/client';
+import { CursoStatus, CursosStatusPadrao, Prisma, Roles } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
@@ -7,7 +7,7 @@ import { traduzirModelosPrisma } from '../utils/avaliacao';
 import { generateUniqueCourseCode } from '../utils/code-generator';
 import { AulaWithMateriais, aulaWithMateriaisInclude, mapAula } from './aulas.mapper';
 import { ModuloWithRelations, moduloDetailedInclude, mapModulo } from './modulos.mapper';
-import { ProvaWithModulo, mapProva, provaDefaultInclude } from './provas.mapper';
+import { ProvaWithRelations, mapProva, provaDefaultInclude } from './provas.mapper';
 
 const cursosLogger = logger.child({ module: 'CursosService' });
 
@@ -109,13 +109,6 @@ const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()(
 
 const turmaPublicInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
   include: {
-    curso: {
-      select: {
-        id: true,
-        codigo: true,
-        nome: true,
-      },
-    },
     aulas: {
       orderBy: [
         { ordem: 'asc' },
@@ -198,12 +191,10 @@ const mapRegrasAvaliacao = (
   };
 };
 
-const mapTurmaDetailed = (
-  turma: TurmaDetailedPayload & { curso?: Pick<Cursos, 'id' | 'codigo' | 'nome'> | null },
-) => {
+const mapTurmaDetailed = (turma: TurmaDetailedPayload) => {
   const modulos = (turma.modulos ?? []) as unknown as ModuloWithRelations[];
   const aulas = (turma.aulas ?? []) as unknown as AulaWithMateriais[];
-  const provas = (turma.provas ?? []) as unknown as ProvaWithModulo[];
+  const provas = (turma.provas ?? []) as unknown as ProvaWithRelations[];
 
   return {
     id: turma.id,
@@ -218,13 +209,6 @@ const mapTurmaDetailed = (
     dataFim: turma.dataFim?.toISOString() ?? null,
     dataInscricaoInicio: turma.dataInscricaoInicio?.toISOString() ?? null,
     dataInscricaoFim: turma.dataInscricaoFim?.toISOString() ?? null,
-    curso: turma.curso
-      ? {
-          id: turma.curso.id,
-          codigo: turma.curso.codigo,
-          nome: turma.curso.nome,
-        }
-      : undefined,
     alunos: turma.matriculas.map((matricula) => {
       const endereco = matricula.aluno.enderecos?.[0];
 
@@ -256,7 +240,7 @@ const mapTurmaDetailed = (
 const mapTurmaPublic = (turma: TurmaPublicPayload) => {
   const modulos = (turma.modulos ?? []) as unknown as ModuloWithRelations[];
   const aulas = (turma.aulas ?? []) as unknown as AulaWithMateriais[];
-  const provas = (turma.provas ?? []) as unknown as ProvaWithModulo[];
+  const provas = (turma.provas ?? []) as unknown as ProvaWithRelations[];
 
   return {
     id: turma.id,
@@ -271,13 +255,6 @@ const mapTurmaPublic = (turma: TurmaPublicPayload) => {
     dataFim: turma.dataFim?.toISOString() ?? null,
     dataInscricaoInicio: turma.dataInscricaoInicio?.toISOString() ?? null,
     dataInscricaoFim: turma.dataInscricaoFim?.toISOString() ?? null,
-    curso: turma.curso
-      ? {
-          id: turma.curso.id,
-          codigo: turma.curso.codigo,
-          nome: turma.curso.nome,
-        }
-      : null,
     modulos: modulos.map(mapModulo),
     aulas: aulas.filter((aula) => aula.moduloId === null).map(mapAula),
     provas: provas.filter((prova) => prova.moduloId === null).map(mapProva),

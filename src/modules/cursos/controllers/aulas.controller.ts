@@ -131,6 +131,14 @@ export class AulasController {
         });
       }
 
+      if (error?.code === 'INVALID_DELIVERY_FIELDS') {
+        return res.status(400).json({
+          success: false,
+          code: 'INVALID_DELIVERY_FIELDS',
+          message: error.message ?? 'Configurações de entrega inválidas para a aula',
+        });
+      }
+
       if (error?.code === 'MODULO_NOT_FOUND') {
         return res.status(404).json({
           success: false,
@@ -197,6 +205,14 @@ export class AulasController {
           success: false,
           code: 'MODULO_NOT_FOUND',
           message: 'Módulo não encontrado para a turma informada',
+        });
+      }
+
+      if (error?.code === 'INVALID_DELIVERY_FIELDS') {
+        return res.status(400).json({
+          success: false,
+          code: 'INVALID_DELIVERY_FIELDS',
+          message: error.message ?? 'Configurações de entrega inválidas para a aula',
         });
       }
 

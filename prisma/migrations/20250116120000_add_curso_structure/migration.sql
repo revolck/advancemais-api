@@ -1,29 +1,29 @@
-CREATE TYPE "CursoMetodo" AS ENUM ('ONLINE', 'PRESENCIAL', 'LIVE', 'SEMI_PRESENCIAL');
+CREATE TYPE "CursosMetodo" AS ENUM ('ONLINE', 'PRESENCIAL', 'LIVE', 'SEMI_PRESENCIAL');
 
-CREATE TABLE "CursoCategoria" (
+CREATE TABLE "CursosCategorias" (
     "id" SERIAL PRIMARY KEY,
     "nome" VARCHAR(120) NOT NULL,
     "descricao" VARCHAR(255)
 );
 
-CREATE TABLE "CursoSubcategoria" (
+CREATE TABLE "CursosSubcategorias" (
     "id" SERIAL PRIMARY KEY,
     "nome" VARCHAR(120) NOT NULL,
     "descricao" VARCHAR(255),
-    "categoriaId" INTEGER NOT NULL REFERENCES "CursoCategoria"("id") ON DELETE CASCADE ON UPDATE CASCADE
+    "categoriaId" INTEGER NOT NULL REFERENCES "CursosCategorias"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
-CREATE TABLE "Curso" (
+CREATE TABLE "Cursos" (
     "id" SERIAL PRIMARY KEY,
-    "categoriaId" INTEGER REFERENCES "CursoCategoria"("id") ON DELETE SET NULL ON UPDATE CASCADE,
-    "subcategoriaId" INTEGER REFERENCES "CursoSubcategoria"("id") ON DELETE SET NULL ON UPDATE CASCADE
+    "categoriaId" INTEGER REFERENCES "CursosCategorias"("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    "subcategoriaId" INTEGER REFERENCES "CursosSubcategorias"("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
-CREATE UNIQUE INDEX "CursoCategoria_nome_key" ON "CursoCategoria"("nome");
-CREATE INDEX "CursoCategoria_nome_idx" ON "CursoCategoria"("nome");
+CREATE UNIQUE INDEX "CursosCategorias_nome_key" ON "CursosCategorias"("nome");
+CREATE INDEX "CursosCategorias_nome_idx" ON "CursosCategorias"("nome");
 
-CREATE UNIQUE INDEX "CursoSubcategoria_categoriaId_nome_key" ON "CursoSubcategoria"("categoriaId", "nome");
-CREATE INDEX "CursoSubcategoria_nome_idx" ON "CursoSubcategoria"("nome");
+CREATE UNIQUE INDEX "CursosSubcategorias_categoriaId_nome_key" ON "CursosSubcategorias"("categoriaId", "nome");
+CREATE INDEX "CursosSubcategorias_nome_idx" ON "CursosSubcategorias"("nome");
 
-CREATE INDEX "Curso_categoriaId_idx" ON "Curso"("categoriaId");
-CREATE INDEX "Curso_subcategoriaId_idx" ON "Curso"("subcategoriaId");
+CREATE INDEX "Cursos_categoriaId_idx" ON "Cursos"("categoriaId");
+CREATE INDEX "Cursos_subcategoriaId_idx" ON "Cursos"("subcategoriaId");

@@ -109,6 +109,12 @@ export const applyRecoveryModels = (
     : regras.politicaRecuperacao.modelos;
 
   const modelosResultado: ResultadoAplicacaoRecuperacao['modelos'] = {};
+  const registrarModelo = (
+    modelo: CursosModelosDeRecuperacao,
+    resultado: ResultadoModeloRecuperacao,
+  ) => {
+    modelosResultado[modelo] = resultado;
+  };
   const provasOrdenadas = [...provas];
   let mediaAtual = computeInitialAverage(provasOrdenadas);
   let statusAtual = mediaAtual === null ? CursosFinalStatus.EM_ANALISE : CursosFinalStatus.REPROVADO;
@@ -131,27 +137,27 @@ export const applyRecoveryModels = (
       case CursosModelosDeRecuperacao.NOTA_MAXIMA_LIMITADA: {
         if (notaAtualRecuperacao !== null && regras.politicaRecuperacao.notaMaxima !== null && regras.politicaRecuperacao.notaMaxima !== undefined) {
           const limitada = Math.min(notaAtualRecuperacao, regras.politicaRecuperacao.notaMaxima);
-          modelosResultado[modelo] = {
+          registrarModelo(modelo, {
             aplicado: true,
             notaConsiderada: round(limitada, 1),
             detalhes: 'Nota de recuperação limitada pelo teto configurado',
             status: statusAtual,
-          };
+          });
           notaAtualRecuperacao = limitada;
         } else {
-          modelosResultado[modelo] = { aplicado: false };
+          registrarModelo(modelo, { aplicado: false });
         }
         break;
       }
       case CursosModelosDeRecuperacao.SUBSTITUI_MENOR: {
         if (notaAtualRecuperacao === null) {
-          modelosResultado[modelo] = { aplicado: false };
+          registrarModelo(modelo, { aplicado: false });
           break;
         }
 
         const provasComNotas = provasOrdenadas.filter((prova) => prova.nota !== null);
         if (provasComNotas.length === 0) {
-          modelosResultado[modelo] = { aplicado: false };
+          registrarModelo(modelo, { aplicado: false });
           break;
         }
 
@@ -175,49 +181,49 @@ export const applyRecoveryModels = (
             };
             mediaAtual = computeInitialAverage(provasOrdenadas);
             statusAtual = mediaAtual !== null && mediaAtual >= regras.mediaMinima ? CursosFinalStatus.APROVADO : CursosFinalStatus.EM_ANALISE;
-            modelosResultado[modelo] = {
+            registrarModelo(modelo, {
               aplicado: true,
               novaMedia: mediaAtual,
               notaConsiderada: round(notaAtualRecuperacao, 1),
               status: statusAtual,
               detalhes: `Substituição da prova ${provaMenor.etiqueta}`,
-            };
+            });
           }
         } else {
-          modelosResultado[modelo] = {
+          registrarModelo(modelo, {
             aplicado: false,
             detalhes: 'Nota de recuperação não superou a menor nota existente',
-          };
+          });
         }
         break;
       }
       case CursosModelosDeRecuperacao.MEDIA_MINIMA_DIRETA: {
         if (notaAtualRecuperacao === null) {
-          modelosResultado[modelo] = { aplicado: false };
+          registrarModelo(modelo, { aplicado: false });
           break;
         }
 
         if (notaAtualRecuperacao >= regras.mediaMinima) {
           mediaAtual = Math.max(mediaAtual ?? 0, notaAtualRecuperacao);
           statusAtual = CursosFinalStatus.APROVADO;
-          modelosResultado[modelo] = {
+          registrarModelo(modelo, {
             aplicado: true,
             novaMedia: round(mediaAtual, 2),
             notaConsiderada: round(notaAtualRecuperacao, 1),
             status: statusAtual,
             detalhes: 'Nota de recuperação atingiu a média mínima para aprovação direta',
-          };
+          });
         } else {
-          modelosResultado[modelo] = {
+          registrarModelo(modelo, {
             aplicado: false,
             detalhes: 'Nota de recuperação abaixo da média mínima configurada',
-          };
+          });
         }
         break;
       }
       case CursosModelosDeRecuperacao.PROVA_FINAL_UNICA: {
         if (notaAtualRecuperacao === null) {
-          modelosResultado[modelo] = { aplicado: false };
+          registrarModelo(modelo, { aplicado: false });
           break;
         }
 
@@ -231,17 +237,17 @@ export const applyRecoveryModels = (
         }
 
         statusAtual = mediaAtual >= regras.mediaMinima ? CursosFinalStatus.APROVADO : CursosFinalStatus.EM_ANALISE;
-        modelosResultado[modelo] = {
+        registrarModelo(modelo, {
           aplicado: true,
           novaMedia: mediaAtual,
           notaConsiderada: round(notaAtualRecuperacao, 1),
           status: statusAtual,
           detalhes: 'Prova final aplicada como nota predominante',
-        };
+        });
         break;
       }
       default:
-        modelosResultado[modelo] = { aplicado: false };
+        registrarModelo(modelo, { aplicado: false });
     }
   }
 

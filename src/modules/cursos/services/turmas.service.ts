@@ -8,6 +8,8 @@ import {
   generateUniqueTurmaCode,
 } from '../utils/code-generator';
 import { aulaWithMateriaisInclude } from './aulas.mapper';
+import { moduloDetailedInclude } from './modulos.mapper';
+import { provaDefaultInclude } from './provas.mapper';
 import { cursosTurmasMapper } from './cursos.service';
 
 const turmasLogger = logger.child({ module: 'CursosTurmasService' });
@@ -25,7 +27,17 @@ const turmaSummarySelect = {
   dataInscricaoFim: true,
 } as const;
 
-const turmaDetailedInclude = {
+const regrasAvaliacaoSelect = {
+  mediaMinima: true,
+  politicaRecuperacaoAtiva: true,
+  modelosRecuperacao: true,
+  ordemAplicacaoRecuperacao: true,
+  notaMaximaRecuperacao: true,
+  pesoProvaFinal: true,
+  observacoes: true,
+} as const;
+
+const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
   include: {
     curso: {
       select: {
@@ -55,8 +67,23 @@ const turmaDetailedInclude = {
       ],
       include: aulaWithMateriaisInclude.include,
     },
+    modulos: {
+      ...moduloDetailedInclude.include,
+      orderBy: [
+        { ordem: 'asc' },
+        { criadoEm: 'asc' },
+      ],
+    },
+    provas: {
+      ...provaDefaultInclude.include,
+      orderBy: [
+        { ordem: 'asc' },
+        { criadoEm: 'asc' },
+      ],
+    },
+    regrasAvaliacao: { select: regrasAvaliacaoSelect },
   },
-} as const;
+});
 
 const ensureCursoExists = async (cursoId: number) => {
   const curso = await prisma.cursos.findUnique({ where: { id: cursoId }, select: { id: true } });

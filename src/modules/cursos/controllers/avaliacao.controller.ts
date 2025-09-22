@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ZodError } from 'zod';
 
 import { avaliacaoService } from '../services/avaliacao.service';
+import { traduzirModelosPrisma } from '../utils/avaliacao';
 import {
   registrarRecuperacaoSchema,
   updateRegrasAvaliacaoSchema,
@@ -78,11 +79,18 @@ export class AvaliacaoController {
         });
       }
 
+      const modelosRecuperacao = data.modelosRecuperacao
+        ? traduzirModelosPrisma(data.modelosRecuperacao)
+        : undefined;
+      const ordemAplicacaoRecuperacao = data.ordemAplicacaoRecuperacao
+        ? traduzirModelosPrisma(data.ordemAplicacaoRecuperacao)
+        : undefined;
+
       const regras = await avaliacaoService.atualizarRegras(cursoId, turmaId, {
         mediaMinima: data.mediaMinima ?? undefined,
         politicaRecuperacaoAtiva: data.politicaRecuperacaoAtiva ?? undefined,
-        modelosRecuperacao: data.modelosRecuperacao,
-        ordemAplicacaoRecuperacao: data.ordemAplicacaoRecuperacao,
+        modelosRecuperacao,
+        ordemAplicacaoRecuperacao,
         notaMaximaRecuperacao: data.notaMaximaRecuperacao ?? undefined,
         pesoProvaFinal: data.pesoProvaFinal ?? undefined,
         observacoes: data.observacoes ?? undefined,
@@ -129,8 +137,23 @@ export class AvaliacaoController {
     }
 
     try {
-      const data = registrarRecuperacaoSchema.parse(req.body);
-      const recuperacao = await avaliacaoService.registrarRecuperacao(cursoId, turmaId, data);
+      const parsed = registrarRecuperacaoSchema.parse(req.body);
+      const modeloAplicado = parsed.modeloAplicado
+        ? traduzirModelosPrisma([parsed.modeloAplicado])[0]
+        : undefined;
+
+      const recuperacao = await avaliacaoService.registrarRecuperacao(cursoId, turmaId, {
+        matriculaId: parsed.matriculaId,
+        provaId: parsed.provaId ?? null,
+        envioId: parsed.envioId ?? null,
+        notaRecuperacao: parsed.notaRecuperacao ?? null,
+        notaFinal: parsed.notaFinal ?? null,
+        mediaCalculada: parsed.mediaCalculada ?? null,
+        modeloAplicado: modeloAplicado ?? null,
+        detalhes: parsed.detalhes ?? null,
+        observacoes: parsed.observacoes ?? null,
+        aplicadoEm: parsed.aplicadoEm ?? undefined,
+      });
       res.status(201).json(recuperacao);
     } catch (error: any) {
       if (error instanceof ZodError) {

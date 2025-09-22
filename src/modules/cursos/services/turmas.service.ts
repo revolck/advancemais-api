@@ -1,4 +1,4 @@
-import { CursoStatus, Prisma, Roles } from '@prisma/client';
+import { CursoStatus, CursosMetodos, CursosTurnos, Prisma, Roles } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
@@ -18,6 +18,8 @@ const turmaSummarySelect = {
   id: true,
   codigo: true,
   nome: true,
+  turno: true,
+  metodo: true,
   status: true,
   vagasTotais: true,
   vagasDisponiveis: true,
@@ -54,7 +56,19 @@ const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()(
             nomeCompleto: true,
             email: true,
             informacoes: {
-              select: { matricula: true },
+              select: { matricula: true, telefone: true },
+            },
+            enderecos: {
+              select: {
+                logradouro: true,
+                numero: true,
+                bairro: true,
+                cidade: true,
+                estado: true,
+                cep: true,
+              },
+              orderBy: { atualizadoEm: 'desc' },
+              take: 1,
             },
           },
         },
@@ -147,6 +161,8 @@ export const turmasService = {
     cursoId: number,
     data: {
       nome: string;
+      turno?: CursosTurnos;
+      metodo?: CursosMetodos;
       dataInicio?: Date | null;
       dataFim?: Date | null;
       dataInscricaoInicio?: Date | null;
@@ -174,6 +190,8 @@ export const turmasService = {
           cursoId,
           nome: data.nome,
           codigo,
+          turno: data.turno ?? CursosTurnos.INTEGRAL,
+          metodo: data.metodo ?? CursosMetodos.ONLINE,
           dataInicio: data.dataInicio ?? null,
           dataFim: data.dataFim ?? null,
           dataInscricaoInicio: data.dataInscricaoInicio ?? null,
@@ -193,6 +211,8 @@ export const turmasService = {
     turmaId: string,
     data: Partial<{
       nome: string;
+      turno?: CursosTurnos;
+      metodo?: CursosMetodos;
       dataInicio?: Date | null;
       dataFim?: Date | null;
       dataInscricaoInicio?: Date | null;
@@ -245,6 +265,8 @@ export const turmasService = {
         where: { id: turmaId },
         data: {
           nome: data.nome,
+          turno: data.turno,
+          metodo: data.metodo,
           dataInicio: data.dataInicio,
           dataFim: data.dataFim,
           dataInscricaoInicio: data.dataInscricaoInicio,

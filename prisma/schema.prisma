@@ -143,6 +143,8 @@ model CursosTurmas {
   codigo               String                   @unique @db.VarChar(12)
   cursoId              Int
   nome                 String                   @db.VarChar(255)
+  turno                CursosTurnos             @default(INTEGRAL)
+  metodo               CursosMetodos            @default(ONLINE)
   dataInicio           DateTime?
   dataFim              DateTime?
   dataInscricaoInicio  DateTime?

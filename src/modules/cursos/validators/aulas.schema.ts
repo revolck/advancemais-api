@@ -48,6 +48,24 @@ const aulaBaseSchema = z.object({
     .nullish(),
   ordem: nonNegativeInt,
   materiais: z.array(materialSchema).optional(),
+  urlVideo: z
+    .string({ invalid_type_error: 'Informe uma URL válida para o vídeo' })
+    .trim()
+    .url('Informe uma URL válida para o vídeo')
+    .max(2048)
+    .nullish(),
+  sala: z
+    .string({ invalid_type_error: 'Sala deve ser um texto' })
+    .trim()
+    .min(1, 'Sala deve ter ao menos 1 caractere')
+    .max(100, 'Sala deve ter no máximo 100 caracteres')
+    .nullish(),
+  urlMeet: z
+    .string({ invalid_type_error: 'Informe uma URL válida para a transmissão' })
+    .trim()
+    .url('Informe uma URL válida para a transmissão')
+    .max(2048)
+    .nullish(),
 });
 
 export const createAulaSchema = aulaBaseSchema;

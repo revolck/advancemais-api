@@ -592,7 +592,7 @@ router.get('/:cursoId/turmas/:turmaId/aulas/:aulaId', publicCache, AulasControll
  *             schema:
  *               $ref: '#/components/schemas/CursoTurmaAula'
  *       400:
- *         description: Dados inválidos para criação da aula
+ *         description: Dados inválidos ou configuração incompatível com o método da turma
  *       404:
  *         description: Turma não encontrada para o curso informado
  */
@@ -637,7 +637,7 @@ router.post(
  *             schema:
  *               $ref: '#/components/schemas/CursoTurmaAula'
  *       400:
- *         description: Dados inválidos para atualização da aula
+ *         description: Dados inválidos ou configuração incompatível com o método da turma
  *       404:
  *         description: Aula ou turma não encontrada
  */

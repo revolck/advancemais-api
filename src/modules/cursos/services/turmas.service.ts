@@ -41,13 +41,6 @@ const regrasAvaliacaoSelect = {
 
 const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
   include: {
-    curso: {
-      select: {
-        id: true,
-        codigo: true,
-        nome: true,
-      },
-    },
     matriculas: {
       include: {
         aluno: {

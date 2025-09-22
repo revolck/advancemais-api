@@ -379,7 +379,13 @@ const options: Options = {
           type: 'object',
           properties: {
             id: { type: 'string', format: 'uuid', example: 'aul-001' },
-            turmaId: { type: 'string', format: 'uuid', example: 'f8a6c3b5-1234-4d9c-9a1b-abcdef123456' },
+            moduloId: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+              example: 'mod-001',
+              description: 'Identificador do módulo associado à aula, quando aplicável',
+            },
             nome: { type: 'string', example: 'Introdução ao Excel' },
             descricao: {
               type: 'string',
@@ -387,6 +393,26 @@ const options: Options = {
               example: 'Apresentação dos conceitos básicos e visão geral do curso',
             },
             ordem: { type: 'integer', example: 1 },
+            urlVideo: {
+              type: 'string',
+              format: 'uri',
+              nullable: true,
+              example: 'https://cdn.example.com/aulas/introducao.mp4',
+              description: 'URL da aula gravada. Obrigatória para turmas online.',
+            },
+            sala: {
+              type: 'string',
+              nullable: true,
+              example: 'Sala B',
+              description: 'Sala presencial atribuída. Obrigatória para turmas presenciais.',
+            },
+            urlMeet: {
+              type: 'string',
+              format: 'uri',
+              nullable: true,
+              example: 'https://meet.google.com/abcd-efgh-ijk',
+              description: 'Link Meet gerado automaticamente para turmas LIVE.',
+            },
             criadoEm: { type: 'string', format: 'date-time', example: '2024-02-10T14:00:00Z' },
             atualizadoEm: { type: 'string', format: 'date-time', example: '2024-02-10T15:00:00Z' },
             materiais: {
@@ -400,7 +426,6 @@ const options: Options = {
           properties: {
             id: { type: 'string', format: 'uuid', example: 'f8a6c3b5-1234-4d9c-9a1b-abcdef123456' },
             codigo: { type: 'string', example: 'TRAB1234' },
-            cursoId: { type: 'integer', example: 1 },
             nome: { type: 'string', example: 'Turma 01 - Manhã' },
             turno: { $ref: '#/components/schemas/CursosTurnos' },
             metodo: { $ref: '#/components/schemas/CursosMetodos' },
@@ -411,15 +436,6 @@ const options: Options = {
             dataFim: { type: 'string', format: 'date-time', nullable: true },
             dataInscricaoInicio: { type: 'string', format: 'date-time', nullable: true },
             dataInscricaoFim: { type: 'string', format: 'date-time', nullable: true },
-            curso: {
-              type: 'object',
-              nullable: true,
-              properties: {
-                id: { type: 'integer', example: 1 },
-                codigo: { type: 'string', example: 'CRS1234' },
-                nome: { type: 'string', example: 'Excel Avançado' },
-              },
-            },
             alunos: {
               type: 'array',
               items: { $ref: '#/components/schemas/CursoTurmaAluno' },
@@ -572,6 +588,12 @@ const options: Options = {
           type: 'object',
           required: ['nome'],
           properties: {
+            moduloId: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+              description: 'Vincula a aula a um módulo específico da turma',
+            },
             nome: { type: 'string', example: 'Módulo 01 - Conceitos Básicos' },
             descricao: {
               type: 'string',
@@ -579,6 +601,24 @@ const options: Options = {
               example: 'Introdução aos principais conceitos da disciplina',
             },
             ordem: { type: 'integer', nullable: true, example: 1 },
+            urlVideo: {
+              type: 'string',
+              format: 'uri',
+              nullable: true,
+              description: 'Informe a URL do vídeo quando a turma for online',
+            },
+            sala: {
+              type: 'string',
+              nullable: true,
+              maxLength: 100,
+              description: 'Informe a sala física quando a turma for presencial',
+            },
+            urlMeet: {
+              type: 'string',
+              format: 'uri',
+              nullable: true,
+              description: 'Link Meet opcional para turmas LIVE (gerado automaticamente se omitido)',
+            },
             materiais: {
               type: 'array',
               items: { $ref: '#/components/schemas/CursoTurmaAulaMaterialInput' },
@@ -589,6 +629,12 @@ const options: Options = {
         CursoTurmaAulaUpdateInput: {
           type: 'object',
           properties: {
+            moduloId: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+              description: 'Atualiza o vínculo da aula com um módulo específico',
+            },
             nome: { type: 'string', example: 'Módulo 01 - Revisado' },
             descricao: {
               type: 'string',
@@ -596,6 +642,24 @@ const options: Options = {
               example: 'Atualização das instruções e materiais da aula',
             },
             ordem: { type: 'integer', nullable: true, example: 2 },
+            urlVideo: {
+              type: 'string',
+              format: 'uri',
+              nullable: true,
+              description: 'Atualiza o link da aula gravada (obrigatório para turmas online)',
+            },
+            sala: {
+              type: 'string',
+              nullable: true,
+              maxLength: 100,
+              description: 'Atualiza a sala física (obrigatória para turmas presenciais)',
+            },
+            urlMeet: {
+              type: 'string',
+              format: 'uri',
+              nullable: true,
+              description: 'Atualiza ou regenera o link Meet para turmas LIVE',
+            },
             materiais: {
               type: 'array',
               items: { $ref: '#/components/schemas/CursoTurmaAulaMaterialInput' },
@@ -664,14 +728,6 @@ const options: Options = {
             ativo: { type: 'boolean', example: true },
             localizacao: { $ref: '#/components/schemas/CursosLocalProva' },
             ordem: { type: 'integer', example: 1 },
-            modulo: {
-              type: 'object',
-              nullable: true,
-              properties: {
-                id: { type: 'string', format: 'uuid' },
-                nome: { type: 'string', example: 'Módulo 1 - Fundamentos' },
-              },
-            },
           },
         },
         CursoTurmaProvaCreateInput: {
@@ -799,15 +855,6 @@ const options: Options = {
             dataFim: { type: 'string', format: 'date-time', nullable: true },
             dataInscricaoInicio: { type: 'string', format: 'date-time', nullable: true },
             dataInscricaoFim: { type: 'string', format: 'date-time', nullable: true },
-            curso: {
-              type: 'object',
-              nullable: true,
-              properties: {
-                id: { type: 'integer' },
-                codigo: { type: 'string' },
-                nome: { type: 'string' },
-              },
-            },
             modulos: {
               type: 'array',
               items: { $ref: '#/components/schemas/CursoTurmaModulo' },

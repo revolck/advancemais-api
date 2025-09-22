@@ -30,11 +30,13 @@ export const mapMaterial = (material: AulaWithMateriais['materiais'][number]) =>
 
 export const mapAula = (aula: AulaWithMateriais) => ({
   id: aula.id,
-  turmaId: aula.turmaId,
   moduloId: aula.moduloId ?? null,
   nome: aula.nome,
   descricao: aula.descricao ?? null,
   ordem: aula.ordem,
+  urlVideo: aula.urlVideo ?? null,
+  sala: aula.sala ?? null,
+  urlMeet: aula.urlMeet ?? null,
   criadoEm: aula.criadoEm.toISOString(),
   atualizadoEm: aula.atualizadoEm.toISOString(),
   materiais: aula.materiais.map(mapMaterial),

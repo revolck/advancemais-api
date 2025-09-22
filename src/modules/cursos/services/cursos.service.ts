@@ -4,6 +4,7 @@ import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 
 import { generateUniqueCourseCode } from '../utils/code-generator';
+import { aulaWithMateriaisInclude, mapAula } from './aulas.mapper';
 
 const cursosLogger = logger.child({ module: 'CursosService' });
 
@@ -41,6 +42,13 @@ const turmaDetailedInclude = {
           },
         },
       },
+    },
+    aulas: {
+      orderBy: [
+        { ordem: 'asc' },
+        { criadoEm: 'asc' },
+      ],
+      include: aulaWithMateriaisInclude.include,
     },
   },
 } as const;
@@ -101,6 +109,7 @@ const mapTurmaDetailed = (
     email: matricula.aluno.email,
     matricula: matricula.aluno.informacoes?.matricula ?? null,
   })),
+  aulas: turma.aulas?.map(mapAula) ?? [],
 });
 
 const mapCourse = (course: RawCourse) => ({

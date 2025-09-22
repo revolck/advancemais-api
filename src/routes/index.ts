@@ -81,6 +81,7 @@ router.get('/', publicCache, (req, res) => {
       empresas: '/api/v1/empresas',
       candidatos: '/api/v1/candidatos',
       cursos: '/api/v1/cursos',
+      cursosTurmasAulas: '/api/v1/cursos/{cursoId}/turmas/{turmaId}/aulas',
       candidatosAreasInteresse: '/api/v1/candidatos/areas-interesse',
       planosEmpresariais: '/api/v1/empresas/planos-empresariais',
       clientesEmpresas: '/api/v1/empresas/clientes',

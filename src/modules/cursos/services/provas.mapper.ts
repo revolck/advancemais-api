@@ -1,24 +1,11 @@
 import { Prisma } from '@prisma/client';
 
 export const provaDefaultInclude = Prisma.validator<Prisma.CursosTurmasProvasDefaultArgs>()({
-  include: {
-    modulo: {
-      select: {
-        id: true,
-        nome: true,
-      },
-    },
-  },
+  include: {},
 });
 
 export const provaWithEnviosInclude = Prisma.validator<Prisma.CursosTurmasProvasDefaultArgs>()({
   include: {
-    modulo: {
-      select: {
-        id: true,
-        nome: true,
-      },
-    },
     envios: {
       include: {
         matricula: {
@@ -33,7 +20,7 @@ export const provaWithEnviosInclude = Prisma.validator<Prisma.CursosTurmasProvas
   },
 });
 
-export type ProvaWithModulo = Prisma.CursosTurmasProvasGetPayload<typeof provaDefaultInclude>;
+export type ProvaWithRelations = Prisma.CursosTurmasProvasGetPayload<typeof provaDefaultInclude>;
 export type ProvaWithEnvios = Prisma.CursosTurmasProvasGetPayload<typeof provaWithEnviosInclude>;
 
 const normalizeDecimal = (value: Prisma.Decimal | number | null | undefined) => {
@@ -44,7 +31,7 @@ const normalizeDecimal = (value: Prisma.Decimal | number | null | undefined) => 
   return Number(value);
 };
 
-export const mapProva = (prova: ProvaWithModulo | ProvaWithEnvios) => ({
+export const mapProva = (prova: ProvaWithRelations | ProvaWithEnvios) => ({
   id: prova.id,
   turmaId: prova.turmaId,
   moduloId: prova.moduloId ?? null,
@@ -57,12 +44,6 @@ export const mapProva = (prova: ProvaWithModulo | ProvaWithEnvios) => ({
   ordem: prova.ordem,
   criadoEm: prova.criadoEm.toISOString(),
   atualizadoEm: prova.atualizadoEm.toISOString(),
-  modulo: prova.modulo
-    ? {
-        id: prova.modulo.id,
-        nome: prova.modulo.nome,
-      }
-    : null,
   envios: 'envios' in prova && Array.isArray(prova.envios)
     ? prova.envios.map((envio) => ({
         id: envio.id,

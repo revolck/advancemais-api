@@ -144,6 +144,10 @@ const options: Options = {
         description: 'Gestão de turmas, inscrições e matrículas dos cursos',
       },
       {
+        name: 'Cursos - Aulas',
+        description: 'Gestão de aulas e materiais vinculados às turmas',
+      },
+      {
         name: 'MercadoPago - Assinaturas',
         description: 'Assinaturas e cobranças recorrentes (Mercado Pago)',
       },
@@ -196,7 +200,7 @@ const options: Options = {
         name: 'Candidatos',
         tags: ['Candidatos', 'Candidatos - Áreas de Interesse'],
       },
-      { name: 'Cursos', tags: ['Cursos', 'Cursos - Turmas'] },
+      { name: 'Cursos', tags: ['Cursos', 'Cursos - Turmas', 'Cursos - Aulas'] },
       { name: 'Pagamentos', tags: ['MercadoPago - Assinaturas'] },
     ],
     components: {
@@ -272,6 +276,29 @@ const options: Options = {
           example: 'PUBLICADO',
           description: 'Status operacionais das turmas de cursos.',
         },
+        CursosMateriais: {
+          type: 'string',
+          enum: [
+            'APOSTILA',
+            'SLIDE',
+            'VIDEOAULA',
+            'AUDIOAULA',
+            'ARTIGO',
+            'EXERCICIO',
+            'SIMULADO',
+            'LIVRO',
+            'CERTIFICADO',
+            'OUTRO',
+          ],
+          example: 'VIDEOAULA',
+          description: 'Tipos de materiais pedagógicos vinculados às aulas das turmas.',
+        },
+        TiposDeArquivos: {
+          type: 'string',
+          enum: ['pdf', 'docx', 'xlsx', 'pptx', 'imagem', 'video', 'audio', 'zip', 'link', 'outro'],
+          example: 'pdf',
+          description: 'Extensões e formatos de arquivos aceitos para os materiais das aulas.',
+        },
         CursoInstrutor: {
           type: 'object',
           properties: {
@@ -287,6 +314,47 @@ const options: Options = {
             nome: { type: 'string', example: 'Maria Oliveira' },
             email: { type: 'string', format: 'email', example: 'maria.oliveira@example.com' },
             matricula: { type: 'string', nullable: true, example: 'MAT12345' },
+          },
+        },
+        CursoTurmaAulaMaterial: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid', example: 'mat-001' },
+            aulaId: { type: 'string', format: 'uuid', example: 'aul-001' },
+            titulo: { type: 'string', example: 'Slides de apresentação' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Material de apoio utilizado na aula',
+            },
+            tipo: { $ref: '#/components/schemas/CursosMateriais' },
+            tipoArquivo: { $ref: '#/components/schemas/TiposDeArquivos', nullable: true },
+            url: { type: 'string', format: 'uri', nullable: true, example: 'https://cdn.example.com/video.mp4' },
+            duracaoEmSegundos: { type: 'integer', nullable: true, example: 1800 },
+            tamanhoEmBytes: { type: 'integer', nullable: true, example: 5242880 },
+            ordem: { type: 'integer', example: 1 },
+            criadoEm: { type: 'string', format: 'date-time', example: '2024-02-10T14:30:00Z' },
+            atualizadoEm: { type: 'string', format: 'date-time', example: '2024-02-11T09:00:00Z' },
+          },
+        },
+        CursoTurmaAula: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid', example: 'aul-001' },
+            turmaId: { type: 'string', format: 'uuid', example: 'f8a6c3b5-1234-4d9c-9a1b-abcdef123456' },
+            nome: { type: 'string', example: 'Introdução ao Excel' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Apresentação dos conceitos básicos e visão geral do curso',
+            },
+            ordem: { type: 'integer', example: 1 },
+            criadoEm: { type: 'string', format: 'date-time', example: '2024-02-10T14:00:00Z' },
+            atualizadoEm: { type: 'string', format: 'date-time', example: '2024-02-10T15:00:00Z' },
+            materiais: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursoTurmaAulaMaterial' },
+            },
           },
         },
         CursoTurma: {
@@ -315,6 +383,10 @@ const options: Options = {
             alunos: {
               type: 'array',
               items: { $ref: '#/components/schemas/CursoTurmaAluno' },
+            },
+            aulas: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursoTurmaAula' },
             },
           },
         },
@@ -401,6 +473,64 @@ const options: Options = {
             vagasTotais: { type: 'integer', example: 35 },
             vagasDisponiveis: { type: 'integer', nullable: true, example: 20 },
             status: { $ref: '#/components/schemas/CursoStatus' },
+          },
+        },
+        CursoTurmaAulaMaterialInput: {
+          type: 'object',
+          required: ['titulo', 'tipo'],
+          properties: {
+            titulo: { type: 'string', example: 'Slides de apoio' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Conteúdo complementar apresentado em sala',
+            },
+            tipo: { $ref: '#/components/schemas/CursosMateriais' },
+            tipoArquivo: { $ref: '#/components/schemas/TiposDeArquivos', nullable: true },
+            url: {
+              type: 'string',
+              format: 'uri',
+              nullable: true,
+              example: 'https://cdn.example.com/material.pdf',
+            },
+            duracaoEmSegundos: { type: 'integer', nullable: true, example: 900 },
+            tamanhoEmBytes: { type: 'integer', nullable: true, example: 2048000 },
+            ordem: { type: 'integer', nullable: true, example: 1 },
+          },
+        },
+        CursoTurmaAulaCreateInput: {
+          type: 'object',
+          required: ['nome'],
+          properties: {
+            nome: { type: 'string', example: 'Módulo 01 - Conceitos Básicos' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Introdução aos principais conceitos da disciplina',
+            },
+            ordem: { type: 'integer', nullable: true, example: 1 },
+            materiais: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursoTurmaAulaMaterialInput' },
+              nullable: true,
+            },
+          },
+        },
+        CursoTurmaAulaUpdateInput: {
+          type: 'object',
+          properties: {
+            nome: { type: 'string', example: 'Módulo 01 - Revisado' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Atualização das instruções e materiais da aula',
+            },
+            ordem: { type: 'integer', nullable: true, example: 2 },
+            materiais: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursoTurmaAulaMaterialInput' },
+              nullable: true,
+            },
           },
         },
         CursoTurmaEnrollmentInput: {

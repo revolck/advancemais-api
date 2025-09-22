@@ -7,6 +7,7 @@ import {
   generateUniqueEnrollmentCode,
   generateUniqueTurmaCode,
 } from '../utils/code-generator';
+import { aulaWithMateriaisInclude } from './aulas.mapper';
 import { cursosTurmasMapper } from './cursos.service';
 
 const turmasLogger = logger.child({ module: 'CursosTurmasService' });
@@ -46,6 +47,13 @@ const turmaDetailedInclude = {
           },
         },
       },
+    },
+    aulas: {
+      orderBy: [
+        { ordem: 'asc' },
+        { criadoEm: 'asc' },
+      ],
+      include: aulaWithMateriaisInclude.include,
     },
   },
 } as const;

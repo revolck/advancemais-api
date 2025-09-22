@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 
-export const provaDefaultInclude = {
+export const provaDefaultInclude = Prisma.validator<Prisma.CursosTurmasProvasDefaultArgs>()({
   include: {
     modulo: {
       select: {
@@ -9,9 +9,9 @@ export const provaDefaultInclude = {
       },
     },
   },
-} as const;
+});
 
-export const provaWithEnviosInclude = {
+export const provaWithEnviosInclude = Prisma.validator<Prisma.CursosTurmasProvasDefaultArgs>()({
   include: {
     modulo: {
       select: {
@@ -28,12 +28,10 @@ export const provaWithEnviosInclude = {
           },
         },
       },
-      orderBy: [
-        { criadoEm: 'desc' as const },
-      ],
+      orderBy: [{ criadoEm: 'desc' }],
     },
   },
-} as const;
+});
 
 export type ProvaWithModulo = Prisma.CursosTurmasProvasGetPayload<typeof provaDefaultInclude>;
 export type ProvaWithEnvios = Prisma.CursosTurmasProvasGetPayload<typeof provaWithEnviosInclude>;

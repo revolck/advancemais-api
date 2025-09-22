@@ -154,9 +154,46 @@ model CursosTurmas {
   atualizadoEm         DateTime                 @updatedAt
   curso                Cursos                   @relation(fields: [cursoId], references: [id], onDelete: Cascade)
   matriculas           CursosTurmasMatriculas[]
+  aulas                CursosTurmasAulas[]
 
   @@index([cursoId])
   @@index([status])
+}
+
+model CursosTurmasAulas {
+  id          String   @id @default(uuid())
+  turmaId     String
+  nome        String   @db.VarChar(255)
+  descricao   String?  @db.Text
+  ordem       Int      @default(0)
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  turma      CursosTurmas                @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  materiais  CursosTurmasAulasMateriais[]
+
+  @@index([turmaId])
+  @@index([turmaId, ordem])
+}
+
+model CursosTurmasAulasMateriais {
+  id                String            @id @default(uuid())
+  aulaId            String
+  titulo            String            @db.VarChar(255)
+  descricao         String?           @db.VarChar(2000)
+  tipo              CursosMateriais
+  tipoArquivo       TiposDeArquivos?
+  url               String?           @db.VarChar(2048)
+  duracaoEmSegundos Int?
+  tamanhoEmBytes    Int?
+  ordem             Int               @default(0)
+  criadoEm          DateTime          @default(now())
+  atualizadoEm      DateTime          @updatedAt
+
+  aula CursosTurmasAulas @relation(fields: [aulaId], references: [id], onDelete: Cascade)
+
+  @@index([aulaId])
+  @@index([tipo])
 }
 
 model CursosTurmasMatriculas {
@@ -176,6 +213,32 @@ enum CursosStatusPadrao {
   PUBLICADO
   RASCUNHO
   DESPUBLICADO
+}
+
+enum CursosMateriais {
+  APOSTILA
+  SLIDE
+  VIDEOAULA
+  AUDIOAULA
+  ARTIGO
+  EXERCICIO
+  SIMULADO
+  LIVRO
+  CERTIFICADO
+  OUTRO
+}
+
+enum TiposDeArquivos {
+  pdf
+  docx
+  xlsx
+  pptx
+  imagem
+  video
+  audio
+  zip
+  link
+  outro
 }
 
 model UsuariosVerificacaoEmail {

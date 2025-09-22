@@ -5,6 +5,7 @@ import { publicCache } from '@/middlewares/cache-control';
 import { supabaseAuthMiddleware } from '@/modules/usuarios/auth';
 
 import { CursosController } from '../controllers/cursos.controller';
+import { AulasController } from '../controllers/aulas.controller';
 import { TurmasController } from '../controllers/turmas.controller';
 
 const router = Router();
@@ -423,6 +424,194 @@ router.delete(
   '/:cursoId/turmas/:turmaId/enrollments/:alunoId',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
   TurmasController.unenroll,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/aulas:
+ *   get:
+ *     summary: Listar aulas de uma turma
+ *     tags: ['Cursos - Aulas']
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Lista de aulas cadastradas para a turma
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/CursoTurmaAula'
+ *       404:
+ *         description: Turma não encontrada para o curso informado
+ */
+router.get('/:cursoId/turmas/:turmaId/aulas', publicCache, AulasController.list);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/aulas/{aulaId}:
+ *   get:
+ *     summary: Obter detalhes de uma aula específica
+ *     tags: ['Cursos - Aulas']
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: aulaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Dados completos da aula
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoTurmaAula'
+ *       404:
+ *         description: Aula ou turma não encontrada
+ */
+router.get('/:cursoId/turmas/:turmaId/aulas/:aulaId', publicCache, AulasController.get);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/aulas:
+ *   post:
+ *     summary: Criar uma nova aula para a turma
+ *     tags: ['Cursos - Aulas']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoTurmaAulaCreateInput'
+ *     responses:
+ *       201:
+ *         description: Aula criada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoTurmaAula'
+ *       400:
+ *         description: Dados inválidos para criação da aula
+ *       404:
+ *         description: Turma não encontrada para o curso informado
+ */
+router.post(
+  '/:cursoId/turmas/:turmaId/aulas',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  AulasController.create,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/aulas/{aulaId}:
+ *   put:
+ *     summary: Atualizar informações de uma aula
+ *     tags: ['Cursos - Aulas']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: aulaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoTurmaAulaUpdateInput'
+ *     responses:
+ *       200:
+ *         description: Aula atualizada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoTurmaAula'
+ *       400:
+ *         description: Dados inválidos para atualização da aula
+ *       404:
+ *         description: Aula ou turma não encontrada
+ */
+router.put(
+  '/:cursoId/turmas/:turmaId/aulas/:aulaId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  AulasController.update,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/aulas/{aulaId}:
+ *   delete:
+ *     summary: Remover uma aula da turma
+ *     tags: ['Cursos - Aulas']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: aulaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Aula removida com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *       404:
+ *         description: Aula ou turma não encontrada
+ */
+router.delete(
+  '/:cursoId/turmas/:turmaId/aulas/:aulaId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  AulasController.delete,
 );
 
 export { router as cursosRoutes };

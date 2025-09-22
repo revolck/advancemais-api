@@ -1050,6 +1050,21 @@ enum CursosMetodos {
   SEMIPRESENCIAL
 }
 
+enum CursosCertificados {
+  SEM_CERTIFICADO
+  PARTICIPACAO
+  CONCLUSAO
+  APROVEITAMENTO
+  COMPETENCIA
+}
+
+enum CursosCertificadosTipos {
+  DIGITAL
+  IMPRESSO
+  DIGITAL_E_IMPRESSO
+  VERIFICAVEL
+}
+
 enum EmpresasPlanoStatus {
   ATIVO
   SUSPENSO

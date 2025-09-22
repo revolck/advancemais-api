@@ -1,15 +1,14 @@
 import { Request, Response } from 'express';
 import { ZodError } from 'zod';
 
-import { aulasService } from '../services/aulas.service';
-import { createAulaSchema, updateAulaSchema } from '../validators/aulas.schema';
+import { provasService } from '../services/provas.service';
+import { createProvaSchema, registrarNotaSchema, updateProvaSchema } from '../validators/provas.schema';
 
 const parseCursoId = (raw: string) => {
   const id = Number(raw);
   if (!Number.isInteger(id) || id <= 0) {
     return null;
   }
-
   return id;
 };
 
@@ -17,19 +16,17 @@ const parseTurmaId = (raw: string) => {
   if (typeof raw !== 'string' || raw.trim().length === 0) {
     return null;
   }
-
   return raw;
 };
 
-const parseAulaId = (raw: string) => {
+const parseProvaId = (raw: string) => {
   if (typeof raw !== 'string' || raw.trim().length === 0) {
     return null;
   }
-
   return raw;
 };
 
-export class AulasController {
+export class ProvasController {
   static list = async (req: Request, res: Response) => {
     const cursoId = parseCursoId(req.params.cursoId);
     const turmaId = parseTurmaId(req.params.turmaId);
@@ -43,8 +40,8 @@ export class AulasController {
     }
 
     try {
-      const aulas = await aulasService.list(cursoId, turmaId);
-      res.json({ data: aulas });
+      const provas = await provasService.list(cursoId, turmaId);
+      res.json({ data: provas });
     } catch (error: any) {
       if (error?.code === 'TURMA_NOT_FOUND') {
         return res.status(404).json({
@@ -56,8 +53,8 @@ export class AulasController {
 
       res.status(500).json({
         success: false,
-        code: 'AULAS_LIST_ERROR',
-        message: 'Erro ao listar aulas da turma',
+        code: 'PROVAS_LIST_ERROR',
+        message: 'Erro ao listar provas da turma',
         error: error?.message,
       });
     }
@@ -66,32 +63,32 @@ export class AulasController {
   static get = async (req: Request, res: Response) => {
     const cursoId = parseCursoId(req.params.cursoId);
     const turmaId = parseTurmaId(req.params.turmaId);
-    const aulaId = parseAulaId(req.params.aulaId);
+    const provaId = parseProvaId(req.params.provaId);
 
-    if (!cursoId || !turmaId || !aulaId) {
+    if (!cursoId || !turmaId || !provaId) {
       return res.status(400).json({
         success: false,
         code: 'VALIDATION_ERROR',
-        message: 'Identificadores de curso, turma ou aula inválidos',
+        message: 'Identificadores de curso, turma ou prova inválidos',
       });
     }
 
     try {
-      const aula = await aulasService.get(cursoId, turmaId, aulaId);
-      res.json(aula);
+      const prova = await provasService.get(cursoId, turmaId, provaId);
+      res.json(prova);
     } catch (error: any) {
-      if (error?.code === 'AULA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
+      if (error?.code === 'PROVA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
         return res.status(404).json({
           success: false,
-          code: 'AULA_NOT_FOUND',
-          message: 'Aula não encontrada para a turma informada',
+          code: 'PROVA_NOT_FOUND',
+          message: 'Prova não encontrada para a turma informada',
         });
       }
 
       res.status(500).json({
         success: false,
-        code: 'AULA_GET_ERROR',
-        message: 'Erro ao buscar aula da turma',
+        code: 'PROVA_GET_ERROR',
+        message: 'Erro ao buscar prova da turma',
         error: error?.message,
       });
     }
@@ -110,15 +107,15 @@ export class AulasController {
     }
 
     try {
-      const data = createAulaSchema.parse(req.body);
-      const aula = await aulasService.create(cursoId, turmaId, data);
-      res.status(201).json(aula);
+      const data = createProvaSchema.parse(req.body);
+      const prova = await provasService.create(cursoId, turmaId, data);
+      res.status(201).json(prova);
     } catch (error: any) {
       if (error instanceof ZodError) {
         return res.status(400).json({
           success: false,
           code: 'VALIDATION_ERROR',
-          message: 'Dados inválidos para criação da aula',
+          message: 'Dados inválidos para criação da prova',
           issues: error.flatten().fieldErrors,
         });
       }
@@ -141,8 +138,8 @@ export class AulasController {
 
       res.status(500).json({
         success: false,
-        code: 'AULA_CREATE_ERROR',
-        message: 'Erro ao criar aula para a turma',
+        code: 'PROVA_CREATE_ERROR',
+        message: 'Erro ao criar prova para a turma',
         error: error?.message,
       });
     }
@@ -151,44 +148,44 @@ export class AulasController {
   static update = async (req: Request, res: Response) => {
     const cursoId = parseCursoId(req.params.cursoId);
     const turmaId = parseTurmaId(req.params.turmaId);
-    const aulaId = parseAulaId(req.params.aulaId);
+    const provaId = parseProvaId(req.params.provaId);
 
-    if (!cursoId || !turmaId || !aulaId) {
+    if (!cursoId || !turmaId || !provaId) {
       return res.status(400).json({
         success: false,
         code: 'VALIDATION_ERROR',
-        message: 'Identificadores de curso, turma ou aula inválidos',
+        message: 'Identificadores de curso, turma ou prova inválidos',
       });
     }
 
     try {
-      const data = updateAulaSchema.parse(req.body);
+      const data = updateProvaSchema.parse(req.body);
 
       if (Object.keys(data).length === 0) {
         return res.status(400).json({
           success: false,
           code: 'VALIDATION_ERROR',
-          message: 'Informe ao menos um campo para atualização da aula',
+          message: 'Informe ao menos um campo para atualização da prova',
         });
       }
 
-      const aula = await aulasService.update(cursoId, turmaId, aulaId, data);
-      res.json(aula);
+      const prova = await provasService.update(cursoId, turmaId, provaId, data);
+      res.json(prova);
     } catch (error: any) {
       if (error instanceof ZodError) {
         return res.status(400).json({
           success: false,
           code: 'VALIDATION_ERROR',
-          message: 'Dados inválidos para atualização da aula',
+          message: 'Dados inválidos para atualização da prova',
           issues: error.flatten().fieldErrors,
         });
       }
 
-      if (error?.code === 'AULA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
+      if (error?.code === 'PROVA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
         return res.status(404).json({
           success: false,
-          code: 'AULA_NOT_FOUND',
-          message: 'Aula não encontrada para a turma informada',
+          code: 'PROVA_NOT_FOUND',
+          message: 'Prova não encontrada para a turma informada',
         });
       }
 
@@ -202,8 +199,8 @@ export class AulasController {
 
       res.status(500).json({
         success: false,
-        code: 'AULA_UPDATE_ERROR',
-        message: 'Erro ao atualizar aula da turma',
+        code: 'PROVA_UPDATE_ERROR',
+        message: 'Erro ao atualizar prova da turma',
         error: error?.message,
       });
     }
@@ -212,32 +209,87 @@ export class AulasController {
   static delete = async (req: Request, res: Response) => {
     const cursoId = parseCursoId(req.params.cursoId);
     const turmaId = parseTurmaId(req.params.turmaId);
-    const aulaId = parseAulaId(req.params.aulaId);
+    const provaId = parseProvaId(req.params.provaId);
 
-    if (!cursoId || !turmaId || !aulaId) {
+    if (!cursoId || !turmaId || !provaId) {
       return res.status(400).json({
         success: false,
         code: 'VALIDATION_ERROR',
-        message: 'Identificadores de curso, turma ou aula inválidos',
+        message: 'Identificadores de curso, turma ou prova inválidos',
       });
     }
 
     try {
-      await aulasService.remove(cursoId, turmaId, aulaId);
-      res.json({ success: true });
+      const result = await provasService.remove(cursoId, turmaId, provaId);
+      res.json(result);
     } catch (error: any) {
-      if (error?.code === 'AULA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
+      if (error?.code === 'PROVA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
         return res.status(404).json({
           success: false,
-          code: 'AULA_NOT_FOUND',
-          message: 'Aula não encontrada para a turma informada',
+          code: 'PROVA_NOT_FOUND',
+          message: 'Prova não encontrada para a turma informada',
         });
       }
 
       res.status(500).json({
         success: false,
-        code: 'AULA_DELETE_ERROR',
-        message: 'Erro ao remover aula da turma',
+        code: 'PROVA_DELETE_ERROR',
+        message: 'Erro ao remover prova da turma',
+        error: error?.message,
+      });
+    }
+  };
+
+  static registrarNota = async (req: Request, res: Response) => {
+    const cursoId = parseCursoId(req.params.cursoId);
+    const turmaId = parseTurmaId(req.params.turmaId);
+    const provaId = parseProvaId(req.params.provaId);
+
+    if (!cursoId || !turmaId || !provaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificadores de curso, turma ou prova inválidos',
+      });
+    }
+
+    try {
+      const data = registrarNotaSchema.parse(req.body);
+      const prova = await provasService.registrarNota(cursoId, turmaId, provaId, {
+        ...data,
+        realizadoEm: data.realizadoEm ?? undefined,
+      });
+      res.status(200).json(prova);
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Dados inválidos para registro de nota',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'PROVA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'PROVA_NOT_FOUND',
+          message: 'Prova não encontrada para a turma informada',
+        });
+      }
+
+      if (error?.code === 'MATRICULA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'MATRICULA_NOT_FOUND',
+          message: 'Matrícula não encontrada para a turma informada',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'PROVA_REGISTRAR_NOTA_ERROR',
+        message: 'Erro ao registrar nota da prova',
         error: error?.message,
       });
     }

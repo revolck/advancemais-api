@@ -36,6 +36,10 @@ const materialSchema = z.object({
 });
 
 const aulaBaseSchema = z.object({
+  moduloId: z
+    .string({ invalid_type_error: 'Identificador do módulo deve ser um texto' })
+    .uuid('Identificador de módulo inválido')
+    .nullish(),
   nome: z.string().trim().min(3).max(255),
   descricao: z
     .string({ invalid_type_error: 'Descrição deve ser um texto' })

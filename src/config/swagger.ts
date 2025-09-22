@@ -388,6 +388,20 @@ const options: Options = {
               type: 'array',
               items: { $ref: '#/components/schemas/CursoTurmaAula' },
             },
+            modulos: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursoTurmaModulo' },
+              nullable: true,
+            },
+            provas: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursoTurmaProva' },
+              nullable: true,
+            },
+            regrasAvaliacao: {
+              nullable: true,
+              allOf: [{ $ref: '#/components/schemas/CursoTurmaRegrasAvaliacao' }],
+            },
           },
         },
         Curso: {
@@ -531,6 +545,267 @@ const options: Options = {
               items: { $ref: '#/components/schemas/CursoTurmaAulaMaterialInput' },
               nullable: true,
             },
+          },
+        },
+        CursosLocalProva: {
+          type: 'string',
+          enum: ['TURMA', 'MODULO'],
+          example: 'TURMA',
+        },
+        CursosModelosRecuperacao: {
+          type: 'string',
+          enum: ['SUBSTITUI_MENOR', 'MEDIA_MINIMA_DIRETA', 'PROVA_FINAL_UNICA', 'NOTA_MAXIMA_LIMITADA'],
+          example: 'SUBSTITUI_MENOR',
+        },
+        CursoTurmaModulo: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            turmaId: { type: 'string', format: 'uuid' },
+            nome: { type: 'string', example: 'Módulo 1 - Fundamentos' },
+            descricao: { type: 'string', nullable: true, example: 'Conteúdos essenciais do módulo.' },
+            obrigatorio: { type: 'boolean', example: true },
+            ordem: { type: 'integer', example: 1 },
+            aulas: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursoTurmaAula' },
+            },
+            provas: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursoTurmaProva' },
+            },
+          },
+        },
+        CursoTurmaModuloCreateInput: {
+          type: 'object',
+          required: ['nome'],
+          properties: {
+            nome: { type: 'string', example: 'Módulo 1 - Fundamentos' },
+            descricao: { type: 'string', nullable: true, example: 'Conteúdos essenciais do módulo.' },
+            obrigatorio: { type: 'boolean', nullable: true, example: true },
+            ordem: { type: 'integer', nullable: true, example: 1 },
+          },
+        },
+        CursoTurmaModuloUpdateInput: {
+          type: 'object',
+          properties: {
+            nome: { type: 'string', example: 'Módulo 1 - Atualizado' },
+            descricao: { type: 'string', nullable: true },
+            obrigatorio: { type: 'boolean', nullable: true },
+            ordem: { type: 'integer', nullable: true },
+          },
+        },
+        CursoTurmaProva: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            turmaId: { type: 'string', format: 'uuid' },
+            moduloId: { type: 'string', format: 'uuid', nullable: true },
+            titulo: { type: 'string', example: 'Prova Parcial' },
+            etiqueta: { type: 'string', example: 'P1' },
+            descricao: { type: 'string', nullable: true },
+            peso: { type: 'number', format: 'float', example: 1 },
+            ativo: { type: 'boolean', example: true },
+            localizacao: { $ref: '#/components/schemas/CursosLocalProva' },
+            ordem: { type: 'integer', example: 1 },
+            modulo: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                nome: { type: 'string', example: 'Módulo 1 - Fundamentos' },
+              },
+            },
+          },
+        },
+        CursoTurmaProvaCreateInput: {
+          type: 'object',
+          required: ['titulo', 'etiqueta', 'peso'],
+          properties: {
+            titulo: { type: 'string', example: 'Prova Parcial' },
+            etiqueta: { type: 'string', example: 'P1' },
+            descricao: { type: 'string', nullable: true },
+            peso: { type: 'number', example: 1, minimum: 0.01 },
+            moduloId: { type: 'string', format: 'uuid', nullable: true },
+            ativo: { type: 'boolean', nullable: true },
+            ordem: { type: 'integer', nullable: true },
+          },
+        },
+        CursoTurmaProvaUpdateInput: {
+          type: 'object',
+          properties: {
+            titulo: { type: 'string', example: 'Prova Final' },
+            etiqueta: { type: 'string', example: 'PF' },
+            descricao: { type: 'string', nullable: true },
+            peso: { type: 'number', nullable: true },
+            moduloId: { type: 'string', format: 'uuid', nullable: true },
+            ativo: { type: 'boolean', nullable: true },
+            ordem: { type: 'integer', nullable: true },
+          },
+        },
+        CursoTurmaProvaNotaInput: {
+          type: 'object',
+          required: ['matriculaId', 'nota'],
+          properties: {
+            matriculaId: { type: 'string', format: 'uuid' },
+            nota: { type: 'number', example: 7.5, minimum: 0, maximum: 10 },
+            pesoTotal: { type: 'number', nullable: true, example: 1 },
+            realizadoEm: { type: 'string', format: 'date-time', nullable: true },
+            observacoes: { type: 'string', nullable: true },
+          },
+        },
+        CursoTurmaRegrasAvaliacao: {
+          type: 'object',
+          properties: {
+            mediaMinima: { type: 'number', example: 7 },
+            politicaRecuperacaoAtiva: { type: 'boolean', example: true },
+            modelosRecuperacao: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursosModelosRecuperacao' },
+            },
+            ordemAplicacaoRecuperacao: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursosModelosRecuperacao' },
+            },
+            notaMaximaRecuperacao: { type: 'number', nullable: true, example: 7 },
+            pesoProvaFinal: { type: 'number', nullable: true, example: 1 },
+            observacoes: { type: 'string', nullable: true },
+          },
+        },
+        CursoTurmaRegrasAvaliacaoInput: {
+          type: 'object',
+          properties: {
+            mediaMinima: { type: 'number', nullable: true },
+            politicaRecuperacaoAtiva: { type: 'boolean', nullable: true },
+            modelosRecuperacao: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursosModelosRecuperacao' },
+              nullable: true,
+            },
+            ordemAplicacaoRecuperacao: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursosModelosRecuperacao' },
+              nullable: true,
+            },
+            notaMaximaRecuperacao: { type: 'number', nullable: true },
+            pesoProvaFinal: { type: 'number', nullable: true },
+            observacoes: { type: 'string', nullable: true },
+          },
+        },
+        CursoTurmaRecuperacaoInput: {
+          type: 'object',
+          required: ['matriculaId'],
+          properties: {
+            matriculaId: { type: 'string', format: 'uuid' },
+            provaId: { type: 'string', format: 'uuid', nullable: true },
+            envioId: { type: 'string', format: 'uuid', nullable: true },
+            notaRecuperacao: { type: 'number', nullable: true, example: 8 },
+            notaFinal: { type: 'number', nullable: true, example: 8 },
+            mediaCalculada: { type: 'number', nullable: true, example: 7.5 },
+            modeloAplicado: {
+              nullable: true,
+              $ref: '#/components/schemas/CursosModelosRecuperacao',
+            },
+            observacoes: { type: 'string', nullable: true },
+            aplicadoEm: { type: 'string', format: 'date-time', nullable: true },
+            detalhes: {
+              type: 'object',
+              nullable: true,
+              additionalProperties: true,
+            },
+          },
+        },
+        CursoPublico: {
+          type: 'object',
+          properties: {
+            id: { type: 'integer', example: 1 },
+            codigo: { type: 'string', example: 'CRS1234' },
+            nome: { type: 'string', example: 'Excel Básico' },
+            descricao: { type: 'string', nullable: true },
+            cargaHoraria: { type: 'integer', example: 20 },
+            statusPadrao: { $ref: '#/components/schemas/CursosStatusPadrao' },
+            turmas: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursoTurmaPublicResumo' },
+            },
+          },
+        },
+        TurmaPublicaDetalhada: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            codigo: { type: 'string' },
+            nome: { type: 'string' },
+            status: { $ref: '#/components/schemas/CursoStatus' },
+            vagasTotais: { type: 'integer' },
+            vagasDisponiveis: { type: 'integer' },
+            dataInicio: { type: 'string', format: 'date-time', nullable: true },
+            dataFim: { type: 'string', format: 'date-time', nullable: true },
+            dataInscricaoInicio: { type: 'string', format: 'date-time', nullable: true },
+            dataInscricaoFim: { type: 'string', format: 'date-time', nullable: true },
+            curso: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                id: { type: 'integer' },
+                codigo: { type: 'string' },
+                nome: { type: 'string' },
+              },
+            },
+            modulos: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursoTurmaModulo' },
+            },
+            aulas: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursoTurmaAula' },
+            },
+            provas: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursoTurmaProva' },
+            },
+            regrasAvaliacao: {
+              nullable: true,
+              allOf: [{ $ref: '#/components/schemas/CursoTurmaRegrasAvaliacao' }],
+            },
+          },
+        },
+        CursoPublicoDetalhado: {
+          type: 'object',
+          properties: {
+            id: { type: 'integer' },
+            codigo: { type: 'string' },
+            nome: { type: 'string' },
+            descricao: { type: 'string', nullable: true },
+            cargaHoraria: { type: 'integer' },
+            statusPadrao: { $ref: '#/components/schemas/CursosStatusPadrao' },
+            instrutor: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                nome: { type: 'string' },
+              },
+            },
+            turmas: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/TurmaPublicaDetalhada' },
+            },
+          },
+        },
+        CursoTurmaPublicResumo: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            codigo: { type: 'string' },
+            nome: { type: 'string' },
+            status: { $ref: '#/components/schemas/CursoStatus' },
+            vagasTotais: { type: 'integer' },
+            vagasDisponiveis: { type: 'integer' },
+            dataInicio: { type: 'string', format: 'date-time', nullable: true },
+            dataFim: { type: 'string', format: 'date-time', nullable: true },
+            dataInscricaoInicio: { type: 'string', format: 'date-time', nullable: true },
+            dataInscricaoFim: { type: 'string', format: 'date-time', nullable: true },
           },
         },
         CursoTurmaEnrollmentInput: {

@@ -77,6 +77,20 @@ export class CursosController {
     }
   };
 
+  static publicList = async (_req: Request, res: Response) => {
+    try {
+      const cursos = await cursosService.listPublic();
+      res.json({ data: cursos });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        code: 'CURSOS_PUBLIC_LIST_ERROR',
+        message: 'Erro ao listar cursos públicos',
+        error: error?.message,
+      });
+    }
+  };
+
   static get = async (req: Request, res: Response) => {
     const id = parseCourseId(req.params.cursoId ?? req.params.id);
     if (!id) {
@@ -103,6 +117,37 @@ export class CursosController {
         success: false,
         code: 'CURSO_GET_ERROR',
         message: 'Erro ao buscar curso',
+        error: error?.message,
+      });
+    }
+  };
+
+  static publicGet = async (req: Request, res: Response) => {
+    const id = parseCourseId(req.params.cursoId ?? req.params.id);
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificador de curso inválido',
+      });
+    }
+
+    try {
+      const course = await cursosService.getPublicById(id);
+      if (!course) {
+        return res.status(404).json({
+          success: false,
+          code: 'CURSO_NOT_FOUND',
+          message: 'Curso não encontrado ou indisponível',
+        });
+      }
+
+      res.json(course);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        code: 'CURSO_PUBLIC_GET_ERROR',
+        message: 'Erro ao buscar curso público',
         error: error?.message,
       });
     }

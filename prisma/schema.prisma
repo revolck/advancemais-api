@@ -91,6 +91,40 @@ model CandidatosSubareasInteresse {
   @@index([nome])
 }
 
+model CursoCategoria {
+  id        Int                @id @default(autoincrement())
+  nome      String             @db.VarChar(120)
+  descricao String?            @db.VarChar(255)
+  subcats   CursoSubcategoria[]
+  cursos    Curso[]
+
+  @@unique([nome])
+  @@index([nome])
+}
+
+model CursoSubcategoria {
+  id           Int             @id @default(autoincrement())
+  nome         String          @db.VarChar(120)
+  descricao    String?         @db.VarChar(255)
+  categoriaId  Int
+  categoria    CursoCategoria  @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+  cursos       Curso[]
+
+  @@unique([categoriaId, nome])
+  @@index([nome])
+}
+
+model Curso {
+  id              Int               @id @default(autoincrement())
+  categoriaId     Int?
+  subcategoriaId  Int?
+  categoria       CursoCategoria?   @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  subcategoria    CursoSubcategoria? @relation(fields: [subcategoriaId], references: [id], onDelete: SetNull)
+
+  @@index([categoriaId])
+  @@index([subcategoriaId])
+}
+
 model UsuariosVerificacaoEmail {
   usuarioId                  String   @id
   emailVerificado            Boolean  @default(false)
@@ -989,6 +1023,13 @@ enum Senioridade {
   SENIOR
   ESPECIALISTA
   LIDER
+}
+
+enum CursoMetodo {
+  ONLINE
+  PRESENCIAL
+  LIVE
+  SEMI_PRESENCIAL
 }
 
 enum EmpresasPlanoStatus {

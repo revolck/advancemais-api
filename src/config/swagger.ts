@@ -276,6 +276,18 @@ const options: Options = {
           example: 'PUBLICADO',
           description: 'Status operacionais das turmas de cursos.',
         },
+        CursosTurnos: {
+          type: 'string',
+          enum: ['MANHA', 'TARDE', 'NOITE', 'INTEGRAL'],
+          example: 'NOITE',
+          description: 'Turnos disponíveis para oferta das turmas.',
+        },
+        CursosMetodos: {
+          type: 'string',
+          enum: ['ONLINE', 'PRESENCIAL', 'LIVE', 'SEMIPRESENCIAL'],
+          example: 'ONLINE',
+          description: 'Formatos de entrega das turmas.',
+        },
         CursosMateriais: {
           type: 'string',
           enum: [
@@ -305,6 +317,11 @@ const options: Options = {
             id: { type: 'string', format: 'uuid', example: 'P-01' },
             nome: { type: 'string', example: 'João Silva' },
             email: { type: 'string', format: 'email', example: 'joao.silva@example.com' },
+            codUsuario: {
+              type: 'string',
+              example: 'USR-0001',
+              description: 'Código interno do usuário instrutor.',
+            },
           },
         },
         CursoTurmaAluno: {
@@ -314,6 +331,27 @@ const options: Options = {
             nome: { type: 'string', example: 'Maria Oliveira' },
             email: { type: 'string', format: 'email', example: 'maria.oliveira@example.com' },
             matricula: { type: 'string', nullable: true, example: 'MAT12345' },
+            telefone: {
+              type: 'string',
+              nullable: true,
+              example: '+55 11 91234-5678',
+              description: 'Telefone de contato do aluno.',
+            },
+            endereco: {
+              nullable: true,
+              allOf: [{ $ref: '#/components/schemas/CursoTurmaAlunoEndereco' }],
+            },
+          },
+        },
+        CursoTurmaAlunoEndereco: {
+          type: 'object',
+          properties: {
+            logradouro: { type: 'string', nullable: true, example: 'Av. Paulista' },
+            numero: { type: 'string', nullable: true, example: '1000' },
+            bairro: { type: 'string', nullable: true, example: 'Bela Vista' },
+            cidade: { type: 'string', nullable: true, example: 'São Paulo' },
+            estado: { type: 'string', nullable: true, example: 'SP' },
+            cep: { type: 'string', nullable: true, example: '01310-100' },
           },
         },
         CursoTurmaAulaMaterial: {
@@ -364,6 +402,8 @@ const options: Options = {
             codigo: { type: 'string', example: 'TRAB1234' },
             cursoId: { type: 'integer', example: 1 },
             nome: { type: 'string', example: 'Turma 01 - Manhã' },
+            turno: { $ref: '#/components/schemas/CursosTurnos' },
+            metodo: { $ref: '#/components/schemas/CursosMetodos' },
             status: { $ref: '#/components/schemas/CursoStatus' },
             vagasTotais: { type: 'integer', example: 30 },
             vagasDisponiveis: { type: 'integer', example: 12 },
@@ -467,6 +507,14 @@ const options: Options = {
           required: ['nome', 'vagasTotais'],
           properties: {
             nome: { type: 'string', example: 'Turma 01 - Manhã' },
+            turno: {
+              $ref: '#/components/schemas/CursosTurnos',
+              description: 'Opcional. Se não informado, assume INTEGRAL.',
+            },
+            metodo: {
+              $ref: '#/components/schemas/CursosMetodos',
+              description: 'Opcional. Se não informado, assume ONLINE.',
+            },
             dataInicio: { type: 'string', format: 'date-time', nullable: true },
             dataFim: { type: 'string', format: 'date-time', nullable: true },
             dataInscricaoInicio: { type: 'string', format: 'date-time', nullable: true },
@@ -480,6 +528,14 @@ const options: Options = {
           type: 'object',
           properties: {
             nome: { type: 'string', example: 'Turma 02 - Noite' },
+            turno: {
+              $ref: '#/components/schemas/CursosTurnos',
+              description: 'Atualiza o turno da turma.',
+            },
+            metodo: {
+              $ref: '#/components/schemas/CursosMetodos',
+              description: 'Atualiza o formato/metodologia da turma.',
+            },
             dataInicio: { type: 'string', format: 'date-time', nullable: true },
             dataFim: { type: 'string', format: 'date-time', nullable: true },
             dataInscricaoInicio: { type: 'string', format: 'date-time', nullable: true },

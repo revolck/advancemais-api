@@ -1,4 +1,4 @@
-import { CursoStatus } from '@prisma/client';
+import { CursoStatus, CursosMetodos, CursosTurnos } from '@prisma/client';
 import { z } from 'zod';
 
 const positiveInt = z
@@ -21,6 +21,8 @@ const optionalDate = z
 
 const turmaBaseSchema = z.object({
   nome: z.string().trim().min(3).max(255),
+  turno: z.nativeEnum(CursosTurnos).optional(),
+  metodo: z.nativeEnum(CursosMetodos).optional(),
   dataInicio: optionalDate,
   dataFim: optionalDate,
   dataInscricaoInicio: optionalDate,

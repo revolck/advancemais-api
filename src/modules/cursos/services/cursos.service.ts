@@ -5,9 +5,9 @@ import { logger } from '@/utils/logger';
 
 import { traduzirModelosPrisma } from '../utils/avaliacao';
 import { generateUniqueCourseCode } from '../utils/code-generator';
-import { aulaWithMateriaisInclude, mapAula } from './aulas.mapper';
-import { moduloDetailedInclude, mapModulo } from './modulos.mapper';
-import { mapProva, provaDefaultInclude } from './provas.mapper';
+import { AulaWithMateriais, aulaWithMateriaisInclude, mapAula } from './aulas.mapper';
+import { ModuloWithRelations, moduloDetailedInclude, mapModulo } from './modulos.mapper';
+import { ProvaWithModulo, mapProva, provaDefaultInclude } from './provas.mapper';
 
 const cursosLogger = logger.child({ module: 'CursosService' });
 
@@ -51,7 +51,7 @@ const regrasAvaliacaoSelect = {
   observacoes: true,
 } as const;
 
-const turmaDetailedInclude = {
+const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
   include: {
     matriculas: {
       include: {
@@ -77,22 +77,22 @@ const turmaDetailedInclude = {
     modulos: {
       ...moduloDetailedInclude.include,
       orderBy: [
-        { ordem: 'asc' as const },
-        { criadoEm: 'asc' as const },
+        { ordem: 'asc' },
+        { criadoEm: 'asc' },
       ],
     },
     provas: {
       ...provaDefaultInclude.include,
       orderBy: [
-        { ordem: 'asc' as const },
-        { criadoEm: 'asc' as const },
+        { ordem: 'asc' },
+        { criadoEm: 'asc' },
       ],
     },
     regrasAvaliacao: { select: regrasAvaliacaoSelect },
   },
-} as const;
+});
 
-const turmaPublicInclude = {
+const turmaPublicInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
   include: {
     curso: {
       select: {
@@ -111,28 +111,35 @@ const turmaPublicInclude = {
     modulos: {
       ...moduloDetailedInclude.include,
       orderBy: [
-        { ordem: 'asc' as const },
-        { criadoEm: 'asc' as const },
+        { ordem: 'asc' },
+        { criadoEm: 'asc' },
       ],
     },
     provas: {
       ...provaDefaultInclude.include,
       orderBy: [
-        { ordem: 'asc' as const },
-        { criadoEm: 'asc' as const },
+        { ordem: 'asc' },
+        { criadoEm: 'asc' },
       ],
     },
     regrasAvaliacao: { select: regrasAvaliacaoSelect },
   },
-} as const;
+});
 
-type RawCourse = Prisma.CursosGetPayload<{
+type TurmaSummaryPayload = Prisma.CursosTurmasGetPayload<{ select: typeof turmaSummarySelect }>;
+type TurmaDetailedPayload = Prisma.CursosTurmasGetPayload<typeof turmaDetailedInclude>;
+type TurmaPublicPayload = Prisma.CursosTurmasGetPayload<typeof turmaPublicInclude>;
+type RawCourseBase = Prisma.CursosGetPayload<{
   include: {
-    instrutor: { select: typeof instrutorSelect } | null;
-    turmas?: { select: typeof turmaSummarySelect } | typeof turmaDetailedInclude;
-    _count?: { select: { turmas: true } };
+    instrutor: { select: typeof instrutorSelect };
+    turmas: { select: typeof turmaSummarySelect } | typeof turmaDetailedInclude;
+    _count: { select: { turmas: true } };
   };
 }>;
+type RawCourse = Omit<RawCourseBase, 'turmas' | '_count'> & {
+  turmas?: (TurmaSummaryPayload | TurmaDetailedPayload)[];
+  _count?: { turmas: number };
+};
 
 type CourseListParams = {
   page: number;
@@ -175,99 +182,109 @@ const mapRegrasAvaliacao = (
 };
 
 const mapTurmaDetailed = (
-  turma: Prisma.CursosTurmasGetPayload<typeof turmaDetailedInclude> & { curso?: Cursos | null },
-) => ({
-  id: turma.id,
-  codigo: turma.codigo,
-  nome: turma.nome,
-  status: turma.status,
-  vagasTotais: turma.vagasTotais,
-  vagasDisponiveis: turma.vagasDisponiveis,
-  dataInicio: turma.dataInicio?.toISOString() ?? null,
-  dataFim: turma.dataFim?.toISOString() ?? null,
-  dataInscricaoInicio: turma.dataInscricaoInicio?.toISOString() ?? null,
-  dataInscricaoFim: turma.dataInscricaoFim?.toISOString() ?? null,
-  curso: turma.curso
-    ? {
-        id: turma.curso.id,
-        codigo: turma.curso.codigo,
-        nome: turma.curso.nome,
-      }
-    : undefined,
-  alunos: turma.matriculas.map((matricula) => ({
-    id: matricula.aluno.id,
-    nome: matricula.aluno.nomeCompleto,
-    email: matricula.aluno.email,
-    matricula: matricula.aluno.informacoes?.matricula ?? null,
-  })),
-  modulos: turma.modulos?.map(mapModulo) ?? [],
-  aulas: (turma.aulas ?? [])
-    .filter((aula) => aula.moduloId === null)
-    .map(mapAula),
-  provas: (turma.provas ?? [])
-    .filter((prova) => prova.moduloId === null)
-    .map(mapProva),
-  regrasAvaliacao: mapRegrasAvaliacao(turma.regrasAvaliacao ?? null),
-});
+  turma: TurmaDetailedPayload & { curso?: Pick<Cursos, 'id' | 'codigo' | 'nome'> | null },
+) => {
+  const modulos = (turma.modulos ?? []) as unknown as ModuloWithRelations[];
+  const aulas = (turma.aulas ?? []) as unknown as AulaWithMateriais[];
+  const provas = (turma.provas ?? []) as unknown as ProvaWithModulo[];
 
-const mapTurmaPublic = (turma: Prisma.CursosTurmasGetPayload<typeof turmaPublicInclude>) => ({
-  id: turma.id,
-  codigo: turma.codigo,
-  nome: turma.nome,
-  status: turma.status,
-  vagasTotais: turma.vagasTotais,
-  vagasDisponiveis: turma.vagasDisponiveis,
-  dataInicio: turma.dataInicio?.toISOString() ?? null,
-  dataFim: turma.dataFim?.toISOString() ?? null,
-  dataInscricaoInicio: turma.dataInscricaoInicio?.toISOString() ?? null,
-  dataInscricaoFim: turma.dataInscricaoFim?.toISOString() ?? null,
-  curso: turma.curso
-    ? {
-        id: turma.curso.id,
-        codigo: turma.curso.codigo,
-        nome: turma.curso.nome,
-      }
-    : null,
-  modulos: turma.modulos?.map(mapModulo) ?? [],
-  aulas: (turma.aulas ?? [])
-    .filter((aula) => aula.moduloId === null)
-    .map(mapAula),
-  provas: (turma.provas ?? [])
-    .filter((prova) => prova.moduloId === null)
-    .map(mapProva),
-  regrasAvaliacao: mapRegrasAvaliacao(turma.regrasAvaliacao ?? null),
-});
+  return {
+    id: turma.id,
+    codigo: turma.codigo,
+    nome: turma.nome,
+    status: turma.status,
+    vagasTotais: turma.vagasTotais,
+    vagasDisponiveis: turma.vagasDisponiveis,
+    dataInicio: turma.dataInicio?.toISOString() ?? null,
+    dataFim: turma.dataFim?.toISOString() ?? null,
+    dataInscricaoInicio: turma.dataInscricaoInicio?.toISOString() ?? null,
+    dataInscricaoFim: turma.dataInscricaoFim?.toISOString() ?? null,
+    curso: turma.curso
+      ? {
+          id: turma.curso.id,
+          codigo: turma.curso.codigo,
+          nome: turma.curso.nome,
+        }
+      : undefined,
+    alunos: turma.matriculas.map((matricula) => ({
+      id: matricula.aluno.id,
+      nome: matricula.aluno.nomeCompleto,
+      email: matricula.aluno.email,
+      matricula: matricula.aluno.informacoes?.matricula ?? null,
+    })),
+    modulos: modulos.map(mapModulo),
+    aulas: aulas.filter((aula) => aula.moduloId === null).map(mapAula),
+    provas: provas.filter((prova) => prova.moduloId === null).map(mapProva),
+    regrasAvaliacao: mapRegrasAvaliacao(turma.regrasAvaliacao ?? null),
+  };
+};
 
-const mapCourse = (course: RawCourse) => ({
-  id: course.id,
-  codigo: course.codigo,
-  nome: course.nome,
-  descricao: course.descricao,
-  cargaHoraria: course.cargaHoraria,
-  statusPadrao: course.statusPadrao,
-  categoriaId: course.categoriaId,
-  subcategoriaId: course.subcategoriaId,
-  criadoEm: course.criadoEm.toISOString(),
-  atualizadoEm: course.atualizadoEm.toISOString(),
-  instrutor: course.instrutor
-    ? {
-        id: course.instrutor.id,
-        nome: course.instrutor.nomeCompleto,
-        email: course.instrutor.email,
-      }
-    : null,
-  turmas: Array.isArray(course.turmas)
-    ? (course.turmas as any[]).map((turma) =>
-        'matriculas' in turma ? mapTurmaDetailed(turma as any) : mapTurmaSummary(turma as any),
-      )
-    : undefined,
-  turmasCount: course._count?.turmas ?? undefined,
-});
+const mapTurmaPublic = (turma: TurmaPublicPayload) => {
+  const modulos = (turma.modulos ?? []) as unknown as ModuloWithRelations[];
+  const aulas = (turma.aulas ?? []) as unknown as AulaWithMateriais[];
+  const provas = (turma.provas ?? []) as unknown as ProvaWithModulo[];
+
+  return {
+    id: turma.id,
+    codigo: turma.codigo,
+    nome: turma.nome,
+    status: turma.status,
+    vagasTotais: turma.vagasTotais,
+    vagasDisponiveis: turma.vagasDisponiveis,
+    dataInicio: turma.dataInicio?.toISOString() ?? null,
+    dataFim: turma.dataFim?.toISOString() ?? null,
+    dataInscricaoInicio: turma.dataInscricaoInicio?.toISOString() ?? null,
+    dataInscricaoFim: turma.dataInscricaoFim?.toISOString() ?? null,
+    curso: turma.curso
+      ? {
+          id: turma.curso.id,
+          codigo: turma.curso.codigo,
+          nome: turma.curso.nome,
+        }
+      : null,
+    modulos: modulos.map(mapModulo),
+    aulas: aulas.filter((aula) => aula.moduloId === null).map(mapAula),
+    provas: provas.filter((prova) => prova.moduloId === null).map(mapProva),
+    regrasAvaliacao: mapRegrasAvaliacao(turma.regrasAvaliacao ?? null),
+  };
+};
+
+const mapCourse = (course: RawCourse) => {
+  const turmas = Array.isArray(course.turmas)
+    ? (course.turmas as Array<TurmaSummaryPayload | TurmaDetailedPayload>)
+    : undefined;
+
+  return {
+    id: course.id,
+    codigo: course.codigo,
+    nome: course.nome,
+    descricao: course.descricao,
+    cargaHoraria: course.cargaHoraria,
+    statusPadrao: course.statusPadrao,
+    categoriaId: course.categoriaId,
+    subcategoriaId: course.subcategoriaId,
+    criadoEm: course.criadoEm.toISOString(),
+    atualizadoEm: course.atualizadoEm.toISOString(),
+    instrutor: course.instrutor
+      ? {
+          id: course.instrutor.id,
+          nome: course.instrutor.nomeCompleto,
+          email: course.instrutor.email,
+        }
+      : null,
+    turmas: turmas
+      ? turmas.map((turma) =>
+          'matriculas' in turma ? mapTurmaDetailed(turma as any) : mapTurmaSummary(turma as any),
+        )
+      : undefined,
+    turmasCount: course._count?.turmas ?? undefined,
+  };
+};
 
 const mapPublicCourse = (
   course: Prisma.CursosGetPayload<{
     include: {
-      instrutor: { select: { id: true; nomeCompleto: true } } | null;
+      instrutor: { select: { id: true; nomeCompleto: true } };
       turmas: typeof turmaPublicInclude;
     };
   }>,
@@ -284,7 +301,7 @@ const mapPublicCourse = (
         nome: course.instrutor.nomeCompleto,
       }
     : null,
-  turmas: course.turmas.map(mapTurmaPublic),
+  turmas: course.turmas.map((turma) => mapTurmaPublic(turma as TurmaPublicPayload)),
 });
 
 const ensureInstrutorExists = async (

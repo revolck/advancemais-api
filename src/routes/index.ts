@@ -11,6 +11,7 @@ import { usuarioRoutes } from '@/modules/usuarios';
 import { websiteRoutes } from '@/modules/website';
 import { empresasRoutes } from '@/modules/empresas';
 import { candidatosRoutes } from '@/modules/candidatos';
+import { cursosRoutes } from '@/modules/cursos';
 import { setCacheHeaders, DEFAULT_TTL } from '@/utils/cache';
 import { logger } from '@/utils/logger';
 
@@ -79,6 +80,7 @@ router.get('/', publicCache, (req, res) => {
       website: '/api/v1/website',
       empresas: '/api/v1/empresas',
       candidatos: '/api/v1/candidatos',
+      cursos: '/api/v1/cursos',
       candidatosAreasInteresse: '/api/v1/candidatos/areas-interesse',
       planosEmpresariais: '/api/v1/empresas/planos-empresariais',
       clientesEmpresas: '/api/v1/empresas/clientes',
@@ -317,6 +319,21 @@ if (candidatosRoutes) {
   }
 } else {
   routesLogger.error({ feature: 'CandidatosModule' }, '❌ candidatosRoutes não está definido');
+}
+
+/**
+ * Módulo Cursos - COM VALIDAÇÃO
+ * /api/v1/cursos/*
+ */
+if (cursosRoutes) {
+  try {
+    router.use('/api/v1/cursos', cursosRoutes);
+    routesLogger.info({ feature: 'CursosModule' }, '✅ Módulo Cursos registrado com sucesso');
+  } catch (error) {
+    routesLogger.error({ feature: 'CursosModule', err: error }, '❌ ERRO - Módulo Cursos');
+  }
+} else {
+  routesLogger.error({ feature: 'CursosModule' }, '❌ cursosRoutes não está definido');
 }
 
 /**

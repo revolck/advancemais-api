@@ -236,6 +236,7 @@ const server = app.listen(serverConfig.port, async () => {
         usuarios: `http://localhost:${serverConfig.port}/api/v1/usuarios`,
         brevo: `http://localhost:${serverConfig.port}/api/v1/brevo`,
         website: `http://localhost:${serverConfig.port}/api/v1/website`,
+        cursos: `http://localhost:${serverConfig.port}/api/v1/cursos`,
       },
     },
     '📋 Endpoints principais',

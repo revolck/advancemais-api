@@ -19,19 +19,25 @@ const optionalDate = z
   }, z.date({ invalid_type_error: 'Informe uma data válida' }))
   .optional();
 
-export const createTurmaSchema = z
-  .object({
-    nome: z.string().trim().min(3).max(255),
-    dataInicio: optionalDate,
-    dataFim: optionalDate,
-    dataInscricaoInicio: optionalDate,
-    dataInscricaoFim: optionalDate,
-    vagasTotais: positiveInt,
-    vagasDisponiveis: positiveInt.optional(),
-    status: z.nativeEnum(CursoStatus).optional(),
-  })
-  .superRefine((value, ctx) => {
-    if (value.dataInicio && value.dataFim && value.dataInicio > value.dataFim) {
+const turmaBaseSchema = z.object({
+  nome: z.string().trim().min(3).max(255),
+  dataInicio: optionalDate,
+  dataFim: optionalDate,
+  dataInscricaoInicio: optionalDate,
+  dataInscricaoFim: optionalDate,
+  vagasTotais: positiveInt,
+  vagasDisponiveis: positiveInt.optional(),
+  status: z.nativeEnum(CursoStatus).optional(),
+});
+
+const applyDateValidations = <Schema extends z.ZodTypeAny>(schema: Schema) =>
+  schema.superRefine((value, ctx) => {
+    const dataInicio = (value as z.infer<typeof turmaBaseSchema>).dataInicio;
+    const dataFim = (value as z.infer<typeof turmaBaseSchema>).dataFim;
+    const dataInscricaoInicio = (value as z.infer<typeof turmaBaseSchema>).dataInscricaoInicio;
+    const dataInscricaoFim = (value as z.infer<typeof turmaBaseSchema>).dataInscricaoFim;
+
+    if (dataInicio && dataFim && dataInicio > dataFim) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['dataFim'],
@@ -39,11 +45,7 @@ export const createTurmaSchema = z
       });
     }
 
-    if (
-      value.dataInscricaoInicio &&
-      value.dataInscricaoFim &&
-      value.dataInscricaoInicio > value.dataInscricaoFim
-    ) {
+    if (dataInscricaoInicio && dataInscricaoFim && dataInscricaoInicio > dataInscricaoFim) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['dataInscricaoFim'],
@@ -52,7 +54,9 @@ export const createTurmaSchema = z
     }
   });
 
-export const updateTurmaSchema = createTurmaSchema.partial();
+export const createTurmaSchema = applyDateValidations(turmaBaseSchema);
+
+export const updateTurmaSchema = applyDateValidations(turmaBaseSchema.partial());
 
 export const turmaEnrollmentSchema = z.object({
   alunoId: z.string().uuid(),

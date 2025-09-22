@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 
-export const aulaWithMateriaisInclude = {
+export const aulaWithMateriaisInclude = Prisma.validator<Prisma.CursosTurmasAulasDefaultArgs>()({
   include: {
     materiais: {
       orderBy: [
@@ -9,7 +9,7 @@ export const aulaWithMateriaisInclude = {
       ],
     },
   },
-} as const;
+});
 
 export type AulaWithMateriais = Prisma.CursosTurmasAulasGetPayload<typeof aulaWithMateriaisInclude>;
 

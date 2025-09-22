@@ -211,14 +211,25 @@ export const avaliacaoService = {
       const regras = await tx.cursosTurmasRegrasAvaliacao.upsert({
         where: { turmaId },
         update: {
-          mediaMinima: data.mediaMinima !== undefined ? new Prisma.Decimal(data.mediaMinima) : undefined,
+          mediaMinima:
+            data.mediaMinima !== undefined && data.mediaMinima !== null
+              ? new Prisma.Decimal(data.mediaMinima)
+              : undefined,
           politicaRecuperacaoAtiva: data.politicaRecuperacaoAtiva ?? undefined,
           modelosRecuperacao: modelos ?? undefined,
           ordemAplicacaoRecuperacao: ordem ?? undefined,
           notaMaximaRecuperacao:
-            data.notaMaximaRecuperacao !== undefined ? new Prisma.Decimal(data.notaMaximaRecuperacao) : undefined,
+            data.notaMaximaRecuperacao !== undefined
+              ? data.notaMaximaRecuperacao !== null
+                ? new Prisma.Decimal(data.notaMaximaRecuperacao)
+                : null
+              : undefined,
           pesoProvaFinal:
-            data.pesoProvaFinal !== undefined ? new Prisma.Decimal(data.pesoProvaFinal) : undefined,
+            data.pesoProvaFinal !== undefined
+              ? data.pesoProvaFinal !== null
+                ? new Prisma.Decimal(data.pesoProvaFinal)
+                : null
+              : undefined,
           observacoes: data.observacoes ?? undefined,
         },
         create: {
@@ -302,7 +313,12 @@ export const avaliacaoService = {
               : null,
           modeloAplicado: mapModeloToPrisma(data.modeloAplicado) ?? null,
           statusFinal: CursosSituacaoFinal.EM_ANALISE,
-          detalhes: data.detalhes ?? null,
+          detalhes:
+            data.detalhes !== undefined
+              ? data.detalhes
+                ? (data.detalhes as Prisma.JsonObject)
+                : Prisma.JsonNull
+              : Prisma.JsonNull,
           observacoes: data.observacoes ?? null,
           aplicadoEm: data.aplicadoEm ?? new Date(),
           regraId: (

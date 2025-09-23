@@ -13,6 +13,7 @@ import { AvaliacaoController } from '../controllers/avaliacao.controller';
 import { NotasController } from '../controllers/notas.controller';
 import { FrequenciaController } from '../controllers/frequencia.controller';
 import { AgendaController } from '../controllers/agenda.controller';
+import { CertificadosController } from '../controllers/certificados.controller';
 
 const router = Router();
 
@@ -1915,5 +1916,209 @@ router.get(
   supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
   AvaliacaoController.getMyGrades,
 );
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/certificados:
+ *   post:
+ *     summary: Emitir certificado para um aluno matriculado na turma
+ *     tags: ['Cursos - Certificados']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoCertificadoCreateInput'
+ *     responses:
+ *       201:
+ *         description: Certificado emitido com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoCertificado'
+ *       400:
+ *         description: Dados inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Turma ou matrícula não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post(
+  '/:cursoId/turmas/:turmaId/certificados',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  CertificadosController.emitir,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/certificados:
+ *   get:
+ *     summary: Listar certificados emitidos para uma turma
+ *     tags: ['Cursos - Certificados']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: matriculaId
+ *         schema: { type: string, format: uuid }
+ *         description: Filtra certificados de uma matrícula específica
+ *       - in: query
+ *         name: tipo
+ *         schema: { $ref: '#/components/schemas/CursosCertificados' }
+ *       - in: query
+ *         name: formato
+ *         schema: { $ref: '#/components/schemas/CursosCertificadosTipos' }
+ *     responses:
+ *       200:
+ *         description: Lista de certificados emitidos para a turma
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/CursoCertificado'
+ */
+router.get(
+  '/:cursoId/turmas/:turmaId/certificados',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  CertificadosController.listar,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/matriculas/{matriculaId}/certificados:
+ *   get:
+ *     summary: Consultar certificados emitidos de uma matrícula (admin)
+ *     tags: ['Cursos - Certificados']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: matriculaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Certificados emitidos para a matrícula informada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoCertificadoResumoMatricula'
+ */
+router.get(
+  '/matriculas/:matriculaId/certificados',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  CertificadosController.listarPorMatricula,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/me/matriculas/{matriculaId}/certificados:
+ *   get:
+ *     summary: Consultar certificados emitidos do aluno autenticado para uma matrícula
+ *     tags: ['Cursos - Certificados']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: matriculaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Certificados emitidos associados à matrícula do aluno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoCertificadoResumoMatricula'
+ */
+router.get(
+  '/me/matriculas/:matriculaId/certificados',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  CertificadosController.listarMePorMatricula,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/me/certificados:
+ *   get:
+ *     summary: Listar certificados do aluno autenticado
+ *     tags: ['Cursos - Certificados']
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Certificados emitidos para o aluno autenticado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/CursoCertificado'
+ */
+router.get(
+  '/me/certificados',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  CertificadosController.listarMe,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/certificados/codigo/{codigo}:
+ *   get:
+ *     summary: Verificar autenticidade de um certificado via código
+ *     tags: ['Cursos - Certificados']
+ *     parameters:
+ *       - in: path
+ *         name: codigo
+ *         required: true
+ *         schema: { type: string }
+ *         description: Código alfanumérico impresso no certificado
+ *     responses:
+ *       200:
+ *         description: Certificado válido encontrado para o código informado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoCertificado'
+ *       404:
+ *         description: Certificado não encontrado para o código informado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get('/certificados/codigo/:codigo', CertificadosController.verificarPorCodigo);
 
 export { router as cursosRoutes };

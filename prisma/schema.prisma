@@ -1047,12 +1047,14 @@ model WebsiteScript {
   nome        String?
   descricao   String?
   codigo      String                    @db.Text
+  aplicacao   WebsiteScriptAplicacao    @default(WEBSITE)
   orientacao  WebsiteScriptOrientation
   status      WebsiteStatus             @default(RASCUNHO)
   criadoEm    DateTime                  @default(now())
   atualizadoEm DateTime                 @updatedAt
 
   @@index([orientacao, status])
+  @@index([aplicacao, orientacao, status])
 }
 
 model WebsitePlaninhas {
@@ -1306,6 +1308,11 @@ enum WebsiteScriptOrientation {
   HEADER
   BODY
   FOOTER
+}
+
+enum WebsiteScriptAplicacao {
+  WEBSITE
+  DASHBOARD
 }
 
 // ===============================

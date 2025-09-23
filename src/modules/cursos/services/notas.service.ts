@@ -3,7 +3,7 @@ import { CursosNotasTipo, Prisma } from '@prisma/client';
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 
-import { mapNota, notaWithRelations } from './notas.mapper';
+import { mapNota, NotaWithRelations, notaWithRelations } from './notas.mapper';
 
 const notasLogger = logger.child({ module: 'CursosNotasService' });
 
@@ -72,7 +72,7 @@ const ensureNotaBelongsToTurma = async (
 ) => {
   const nota = await client.cursosNotas.findFirst({
     where: { id: notaId, turmaId, turma: { cursoId } },
-    select: { id: true, matriculaId: true, tipo: true, provaId: true },
+    select: { id: true, matriculaId: true, tipo: true, provaId: true, titulo: true },
   });
 
   if (!nota) {
@@ -230,6 +230,33 @@ export const notasService = {
         prova = await ensureProvaBelongsToTurma(tx, cursoId, turmaId, data.provaId);
       }
 
+      const isProvaAfterUpdate =
+        data.tipo === CursosNotasTipo.PROVA ||
+        (data.tipo === undefined && notaAtual.tipo === CursosNotasTipo.PROVA);
+
+      const tituloDerivadoDaProva = isProvaAfterUpdate
+        ? prova?.titulo ?? (notaAtual.tipo === CursosNotasTipo.PROVA ? notaAtual.titulo : undefined)
+        : undefined;
+
+      let tituloParaAtualizar: string | undefined;
+      if (data.titulo !== undefined) {
+        const tituloInformado = data.titulo?.trim() ?? '';
+
+        if (tituloInformado.length > 0) {
+          tituloParaAtualizar = tituloInformado;
+        } else if (tituloDerivadoDaProva) {
+          tituloParaAtualizar = tituloDerivadoDaProva;
+        } else if (notaAtual.titulo) {
+          tituloParaAtualizar = notaAtual.titulo;
+        } else {
+          const error = new Error('Título da nota é obrigatório');
+          (error as any).code = 'VALIDATION_ERROR';
+          throw error;
+        }
+      } else if (tituloDerivadoDaProva) {
+        tituloParaAtualizar = tituloDerivadoDaProva;
+      }
+
       if (data.tipo === CursosNotasTipo.PROVA && !data.provaId && !notaAtual.provaId) {
         const error = new Error('provaId é obrigatório para notas de prova');
         (error as any).code = 'VALIDATION_ERROR';
@@ -245,7 +272,7 @@ export const notasService = {
         throw error;
       }
 
-      const nota = await tx.cursosNotas.update({
+      const nota = (await tx.cursosNotas.update({
         where: { id: notaId },
         data: {
           tipo: data.tipo ?? undefined,
@@ -256,12 +283,7 @@ export const notasService = {
                 : null
               : undefined,
           referenciaExterna: data.referenciaExterna ?? undefined,
-          titulo:
-            data.titulo !== undefined
-              ? data.titulo ?? (notaAtual.tipo === CursosNotasTipo.PROVA && prova ? prova.titulo : null)
-              : prova
-                ? prova.titulo
-                : undefined,
+          titulo: tituloParaAtualizar,
           descricao:
             data.descricao !== undefined
               ? data.descricao
@@ -277,7 +299,7 @@ export const notasService = {
           observacoes: data.observacoes ?? undefined,
         },
         ...notaWithRelations,
-      });
+      })) as NotaWithRelations;
 
       notasLogger.info({ turmaId, notaId }, 'Nota atualizada');
 

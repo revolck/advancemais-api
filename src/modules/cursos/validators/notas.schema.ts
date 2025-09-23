@@ -14,7 +14,15 @@ const notaTipos = [
 
 const notaTipoSchema = z.enum(notaTipos);
 
-const tiposQueExigemTitulo = notaTipos.filter((tipo) => tipo !== 'PROVA');
+type NotaTipo = (typeof notaTipos)[number];
+type NotaTipoQueExigeTitulo = Exclude<NotaTipo, 'PROVA'>;
+
+const tiposQueExigemTitulo = notaTipos.filter(
+  (tipo): tipo is NotaTipoQueExigeTitulo => tipo !== 'PROVA',
+);
+
+const tipoExigeTitulo = (tipo: NotaTipo | undefined): tipo is NotaTipoQueExigeTitulo =>
+  !!tipo && tipo !== 'PROVA' && tiposQueExigemTitulo.includes(tipo as NotaTipoQueExigeTitulo);
 
 const decimalNotaSchema = z
   .number({ invalid_type_error: 'Nota deve ser um número' })
@@ -120,10 +128,10 @@ export const updateNotaSchema = z
     },
   )
   .refine(
-    (data) =>
-      data.tipo && tiposQueExigemTitulo.includes(data.tipo)
-        ? data.titulo === undefined || !!data.titulo?.trim()
-        : true,
+      (data) =>
+        tipoExigeTitulo(data.tipo)
+          ? data.titulo === undefined || !!data.titulo?.trim()
+          : true,
     {
       path: ['titulo'],
       message: 'Forneça um título válido ao alterar o tipo da nota',

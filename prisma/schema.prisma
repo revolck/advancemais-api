@@ -48,6 +48,9 @@ model Usuarios {
   cursosComoInstrutor  Cursos[]             @relation("CursosInstrutor")
   turmasMatriculadas   CursosTurmasMatriculas[]
   certificadosEmitidos CursosCertificadosEmitidos[] @relation("CursosCertificadosEmitidosEmitidoPor")
+  estagiosComoAluno   CursosEstagios[]            @relation("CursosEstagiosAluno")
+  estagiosCriados     CursosEstagios[]            @relation("CursosEstagiosCriadoPor")
+  estagiosAtualizados CursosEstagios[]            @relation("CursosEstagiosAtualizadoPor")
 
   @@index([status])
   @@index([role])
@@ -127,12 +130,14 @@ model Cursos {
   statusPadrao    CursosStatusPadrao  @default(RASCUNHO)
   categoriaId     Int?
   subcategoriaId  Int?
+  estagioObrigatorio Boolean           @default(false)
   criadoEm        DateTime            @default(now())
   atualizadoEm    DateTime            @updatedAt
   instrutor       Usuarios?           @relation("CursosInstrutor", fields: [instrutorId], references: [id], onDelete: SetNull)
   categoria       CursosCategorias?   @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
   subcategoria    CursosSubcategorias? @relation(fields: [subcategoriaId], references: [id], onDelete: SetNull)
   turmas          CursosTurmas[]
+  estagios        CursosEstagios[]
 
   @@index([categoriaId])
   @@index([subcategoriaId])
@@ -165,6 +170,7 @@ model CursosTurmas {
   frequencias          CursosFrequenciaAlunos[]
   regrasAvaliacao      CursosTurmasRegrasAvaliacao?
   recuperacoes         CursosTurmasRecuperacoes[]
+  estagios             CursosEstagios[]
 
   @@index([cursoId])
   @@index([status])
@@ -245,6 +251,7 @@ model CursosTurmasMatriculas {
   notas CursosNotas[]
   frequencias CursosFrequenciaAlunos[]
   certificados CursosCertificadosEmitidos[]
+  estagios CursosEstagios[]
 
   @@unique([turmaId, alunoId])
   @@index([alunoId])
@@ -1481,6 +1488,141 @@ model CursosCertificadosLogs {
   @@index([certificadoId])
   @@index([acao])
   @@index([criadoEm])
+}
+
+model CursosEstagios {
+  id                     String               @id @default(uuid())
+  cursoId                Int
+  turmaId                String
+  matriculaId            String
+  alunoId                String
+  nome                   String               @db.VarChar(255)
+  descricao              String?              @db.Text
+  obrigatorio            Boolean              @default(false)
+  status                 CursosEstagioStatus  @default(PENDENTE)
+  dataInicio             DateTime
+  dataFim                DateTime
+  cargaHoraria           Int?
+  empresaPrincipal       String?              @db.VarChar(255)
+  observacoes            String?              @db.Text
+  criadoPorId            String?
+  atualizadoPorId        String?
+  confirmadoEm           DateTime?
+  concluidoEm            DateTime?
+  reprovadoEm            DateTime?
+  reprovadoMotivo        String?              @db.Text
+  ultimoAvisoEncerramento DateTime?
+  criadoEm               DateTime             @default(now())
+  atualizadoEm           DateTime             @updatedAt
+
+  curso        Cursos                    @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+  turma        CursosTurmas              @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  matricula    CursosTurmasMatriculas    @relation(fields: [matriculaId], references: [id], onDelete: Cascade)
+  aluno        Usuarios                  @relation("CursosEstagiosAluno", fields: [alunoId], references: [id], onDelete: Cascade)
+  criadoPor    Usuarios?                 @relation("CursosEstagiosCriadoPor", fields: [criadoPorId], references: [id], onDelete: SetNull)
+  atualizadoPor Usuarios?                @relation("CursosEstagiosAtualizadoPor", fields: [atualizadoPorId], references: [id], onDelete: SetNull)
+  locais       CursosEstagiosLocais[]
+  confirmacao  CursosEstagiosConfirmacoes?
+  notificacoes CursosEstagiosNotificacoes[]
+
+  @@index([cursoId])
+  @@index([turmaId])
+  @@index([matriculaId])
+  @@index([alunoId])
+  @@index([status])
+  @@index([dataFim])
+}
+
+model CursosEstagiosLocais {
+  id                String                    @id @default(uuid())
+  estagioId         String
+  titulo            String?                   @db.VarChar(120)
+  empresaNome       String                    @db.VarChar(255)
+  empresaDocumento  String?                   @db.VarChar(20)
+  contatoNome       String?                   @db.VarChar(120)
+  contatoEmail      String?                   @db.VarChar(255)
+  contatoTelefone   String?                   @db.VarChar(30)
+  dataInicio        DateTime?
+  dataFim           DateTime?
+  horarioInicio     String?                   @db.VarChar(5)
+  horarioFim        String?                   @db.VarChar(5)
+  diasSemana        CursosEstagioDiaSemana[]
+  cargaHorariaSemanal Int?
+  cep               String?                   @db.VarChar(12)
+  logradouro        String?                   @db.VarChar(255)
+  numero            String?                   @db.VarChar(20)
+  bairro            String?                   @db.VarChar(120)
+  cidade            String?                   @db.VarChar(120)
+  estado            String?                   @db.VarChar(2)
+  complemento       String?                   @db.VarChar(120)
+  pontoReferencia   String?                   @db.VarChar(255)
+  observacoes       String?                   @db.VarChar(500)
+  criadoEm          DateTime                  @default(now())
+  atualizadoEm      DateTime                  @updatedAt
+
+  estagio CursosEstagios @relation(fields: [estagioId], references: [id], onDelete: Cascade)
+
+  @@index([estagioId])
+}
+
+model CursosEstagiosConfirmacoes {
+  id                  String   @id @default(uuid())
+  estagioId           String   @unique
+  token               String   @unique @db.VarChar(64)
+  protocolo           String?  @unique @db.VarChar(40)
+  confirmadoEm        DateTime?
+  ip                  String?  @db.VarChar(45)
+  userAgent           String?  @db.VarChar(500)
+  deviceTipo          String?  @db.VarChar(50)
+  deviceDescricao     String?  @db.VarChar(120)
+  deviceId            String?  @db.VarChar(120)
+  sistemaOperacional  String?  @db.VarChar(120)
+  navegador           String?  @db.VarChar(120)
+  localizacao         String?  @db.VarChar(255)
+  criadoEm            DateTime @default(now())
+  atualizadoEm        DateTime @updatedAt
+
+  estagio CursosEstagios @relation(fields: [estagioId], references: [id], onDelete: Cascade)
+}
+
+model CursosEstagiosNotificacoes {
+  id          String                         @id @default(uuid())
+  estagioId   String
+  tipo        CursosEstagioNotificacaoTipo
+  canal       String?                        @db.VarChar(50)
+  enviadoPara String                         @db.VarChar(255)
+  enviadoEm   DateTime                       @default(now())
+  detalhes    String?                        @db.VarChar(500)
+
+  estagio CursosEstagios @relation(fields: [estagioId], references: [id], onDelete: Cascade)
+
+  @@index([estagioId])
+  @@index([tipo])
+}
+
+enum CursosEstagioStatus {
+  PENDENTE
+  EM_ANDAMENTO
+  CONCLUIDO
+  REPROVADO
+  CANCELADO
+}
+
+enum CursosEstagioDiaSemana {
+  DOMINGO
+  SEGUNDA
+  TERCA
+  QUARTA
+  QUINTA
+  SEXTA
+  SABADO
+}
+
+enum CursosEstagioNotificacaoTipo {
+  ASSINATURA_PENDENTE
+  INICIO_PROXIMO
+  ENCERRAMENTO_PROXIMO
+  CONCLUSAO_SOLICITADA
 }
 
 enum EmpresasPlanoStatus {

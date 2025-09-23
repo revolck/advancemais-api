@@ -14,6 +14,7 @@ import { NotasController } from '../controllers/notas.controller';
 import { FrequenciaController } from '../controllers/frequencia.controller';
 import { AgendaController } from '../controllers/agenda.controller';
 import { CertificadosController } from '../controllers/certificados.controller';
+import { EstagiosController } from '../controllers/estagios.controller';
 
 const router = Router();
 
@@ -1968,6 +1969,105 @@ router.post(
 
 /**
  * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/matriculas/{matriculaId}/estagios:
+ *   post:
+ *     summary: Criar estágio supervisionado para a matrícula
+ *     tags: ['Cursos - Estágios']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: matriculaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoEstagioCreateInput'
+ *     responses:
+ *       201:
+ *         description: Estágio criado com sucesso e notificação enviada ao aluno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoEstagio'
+ *       400:
+ *         description: Dados inválidos para criação
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Curso, turma ou matrícula não localizada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post(
+  '/:cursoId/turmas/:turmaId/matriculas/:matriculaId/estagios',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  EstagiosController.create,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/matriculas/{matriculaId}/estagios:
+ *   get:
+ *     summary: Listar estágios cadastrados para a matrícula
+ *     tags: ['Cursos - Estágios']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: matriculaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Lista de estágios vinculados à matrícula
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/CursoEstagio'
+ *       404:
+ *         description: Curso, turma ou matrícula não localizada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get(
+  '/:cursoId/turmas/:turmaId/matriculas/:matriculaId/estagios',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  EstagiosController.listByMatricula,
+);
+
+/**
+ * @openapi
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/certificados:
  *   get:
  *     summary: Listar certificados emitidos para uma turma
@@ -2041,6 +2141,40 @@ router.get(
 
 /**
  * @openapi
+ * /api/v1/cursos/me/matriculas/{matriculaId}/estagios:
+ *   get:
+ *     summary: Listar estágios do aluno autenticado para a matrícula
+ *     tags: ['Cursos - Estágios']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: matriculaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Estágios vinculados à matrícula do aluno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/CursoEstagio'
+ *       403:
+ *         description: Matrícula não pertence ao aluno autenticado
+ */
+router.get(
+  '/me/matriculas/:matriculaId/estagios',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  EstagiosController.listMe,
+);
+
+/**
+ * @openapi
  * /api/v1/cursos/me/matriculas/{matriculaId}/certificados:
  *   get:
  *     summary: Consultar certificados emitidos do aluno autenticado para uma matrícula
@@ -2092,6 +2226,167 @@ router.get(
   supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
   CertificadosController.listarMe,
 );
+
+/**
+ * @openapi
+ * /api/v1/cursos/estagios/{estagioId}:
+ *   get:
+ *     summary: Consultar detalhes de um estágio
+ *     tags: ['Cursos - Estágios']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: estagioId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Dados completos do estágio
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoEstagio'
+ *       404:
+ *         description: Estágio não encontrado
+ */
+router.get(
+  '/estagios/:estagioId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  EstagiosController.get,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/estagios/{estagioId}:
+ *   put:
+ *     summary: Atualizar dados cadastrais do estágio
+ *     tags: ['Cursos - Estágios']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: estagioId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoEstagioUpdateInput'
+ *     responses:
+ *       200:
+ *         description: Estágio atualizado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoEstagio'
+ *       404:
+ *         description: Estágio não encontrado
+ */
+router.put(
+  '/estagios/:estagioId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  EstagiosController.update,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/estagios/{estagioId}/status:
+ *   patch:
+ *     summary: Atualizar status de andamento do estágio
+ *     tags: ['Cursos - Estágios']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: estagioId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoEstagioStatusInput'
+ *     responses:
+ *       200:
+ *         description: Estágio com status atualizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoEstagio'
+ *       404:
+ *         description: Estágio não encontrado
+ */
+router.patch(
+  '/estagios/:estagioId/status',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  EstagiosController.updateStatus,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/estagios/{estagioId}/reenviar-confirmacao:
+ *   post:
+ *     summary: Reenviar email de confirmação do estágio ao aluno
+ *     tags: ['Cursos - Estágios']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: estagioId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoEstagioReenviarInput'
+ *     responses:
+ *       200:
+ *         description: Estágio retornado após reenvio do email
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoEstagio'
+ */
+router.post(
+  '/estagios/:estagioId/reenviar-confirmacao',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  EstagiosController.reenviarConfirmacao,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/estagios/confirmacoes/{token}:
+ *   post:
+ *     summary: Confirmar ciência do estágio pelo aluno
+ *     tags: ['Cursos - Estágios']
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoEstagioConfirmacaoInput'
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Estágio atualizado após confirmação do aluno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoEstagio'
+ *       404:
+ *         description: Confirmação inválida ou expirada
+ */
+router.post('/estagios/confirmacoes/:token', EstagiosController.confirmar);
 
 /**
  * @openapi

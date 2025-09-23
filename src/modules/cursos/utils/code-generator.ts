@@ -94,3 +94,22 @@ export const generateUniqueEnrollmentCode = async (
     logger,
   );
 };
+
+export const generateUniqueCertificateCode = async (
+  tx: Prisma.TransactionClient,
+  logger?: AppLogger,
+) => {
+  return attemptUniqueCode(
+    10,
+    () => `CERT${randomPrefix(2)}${randomNumber(5)}`,
+    async (candidate) => {
+      const existing = await tx.cursosCertificadosEmitidos.findUnique({
+        where: { codigo: candidate },
+        select: { id: true },
+      });
+      return !existing;
+    },
+    () => `CERT${withFallback(2, 6)}`,
+    logger,
+  );
+};

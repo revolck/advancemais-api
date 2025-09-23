@@ -210,7 +210,14 @@ const options: Options = {
       },
       {
         name: 'Cursos',
-        tags: ['Cursos', 'Cursos - Turmas', 'Cursos - Aulas', 'Cursos - Notas', 'Cursos - Frequências'],
+        tags: [
+          'Cursos',
+          'Cursos - Turmas',
+          'Cursos - Aulas',
+          'Cursos - Notas',
+          'Cursos - Frequências',
+          'Cursos - Certificados',
+        ],
       },
       { name: 'Pagamentos', tags: ['MercadoPago - Assinaturas'] },
     ],
@@ -298,6 +305,24 @@ const options: Options = {
           enum: ['ONLINE', 'PRESENCIAL', 'LIVE', 'SEMIPRESENCIAL'],
           example: 'ONLINE',
           description: 'Formatos de entrega das turmas.',
+        },
+        CursosCertificados: {
+          type: 'string',
+          enum: ['SEM_CERTIFICADO', 'PARTICIPACAO', 'CONCLUSAO', 'APROVEITAMENTO', 'COMPETENCIA'],
+          example: 'CONCLUSAO',
+          description: 'Tipos de certificados acadêmicos disponíveis.',
+        },
+        CursosCertificadosTipos: {
+          type: 'string',
+          enum: ['DIGITAL', 'IMPRESSO', 'DIGITAL_E_IMPRESSO', 'VERIFICAVEL'],
+          example: 'DIGITAL',
+          description: 'Formato de disponibilização do certificado ao aluno.',
+        },
+        CursosCertificadosLogAcao: {
+          type: 'string',
+          enum: ['EMISSAO', 'VISUALIZACAO'],
+          example: 'EMISSAO',
+          description: 'Tipos de eventos registrados no histórico de certificados.',
         },
         CursosMateriais: {
           type: 'string',
@@ -1270,6 +1295,124 @@ const options: Options = {
               type: 'object',
               nullable: true,
               additionalProperties: true,
+            },
+          },
+        },
+        CursoCertificadoLog: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            acao: { $ref: '#/components/schemas/CursosCertificadosLogAcao' },
+            formato: { $ref: '#/components/schemas/CursosCertificadosTipos' },
+            detalhes: { type: 'string', nullable: true },
+            criadoEm: { type: 'string', format: 'date-time' },
+          },
+        },
+        CursoCertificado: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            codigo: { type: 'string', example: 'CERTAB12345' },
+            tipo: { $ref: '#/components/schemas/CursosCertificados' },
+            formato: { $ref: '#/components/schemas/CursosCertificadosTipos' },
+            cargaHoraria: { type: 'integer', example: 40 },
+            assinaturaUrl: { type: 'string', format: 'uri', nullable: true },
+            emitidoEm: { type: 'string', format: 'date-time' },
+            observacoes: { type: 'string', nullable: true },
+            aluno: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                nome: { type: 'string', example: 'João da Silva' },
+                email: { type: 'string', format: 'email', example: 'joao@email.com' },
+                cpf: { type: 'string', nullable: true, example: '123.456.789-00' },
+                cpfMascarado: { type: 'string', nullable: true, example: '***.***.***-00' },
+                matricula: { type: 'string', nullable: true, example: 'MAT12345' },
+              },
+            },
+            curso: {
+              type: 'object',
+              properties: {
+                id: { type: 'integer', example: 1 },
+                nome: { type: 'string', example: 'Excel Avançado' },
+                codigo: { type: 'string', example: 'CRS1234' },
+                cargaHoraria: { type: 'integer', example: 40 },
+              },
+            },
+            turma: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                nome: { type: 'string', example: 'Turma 2025/1' },
+                codigo: { type: 'string', example: 'TRAB1234' },
+              },
+            },
+            emitidoPor: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                nome: { type: 'string', example: 'Maria Oliveira' },
+                email: { type: 'string', format: 'email', example: 'maria@advancemais.com' },
+              },
+            },
+            logs: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursoCertificadoLog' },
+            },
+          },
+        },
+        CursoCertificadoCreateInput: {
+          type: 'object',
+          required: ['matriculaId', 'tipo', 'formato'],
+          properties: {
+            matriculaId: { type: 'string', format: 'uuid' },
+            tipo: { $ref: '#/components/schemas/CursosCertificados' },
+            formato: { $ref: '#/components/schemas/CursosCertificadosTipos' },
+            cargaHoraria: { type: 'integer', minimum: 1, nullable: true, example: 40 },
+            assinaturaUrl: { type: 'string', format: 'uri', nullable: true },
+            observacoes: { type: 'string', nullable: true, maxLength: 500 },
+          },
+        },
+        CursoCertificadoResumoMatricula: {
+          type: 'object',
+          properties: {
+            matricula: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                aluno: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    nome: { type: 'string' },
+                    email: { type: 'string', format: 'email' },
+                    cpf: { type: 'string', nullable: true },
+                    matricula: { type: 'string', nullable: true },
+                  },
+                },
+              },
+            },
+            curso: {
+              type: 'object',
+              properties: {
+                id: { type: 'integer' },
+                nome: { type: 'string' },
+                codigo: { type: 'string' },
+                cargaHoraria: { type: 'integer' },
+              },
+            },
+            turma: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                nome: { type: 'string' },
+                codigo: { type: 'string' },
+              },
+            },
+            certificados: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursoCertificado' },
             },
           },
         },

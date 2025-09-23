@@ -1,4 +1,4 @@
-import { z, type ZodError } from 'zod';
+import { z, type ZodError, type ZodIssue } from 'zod';
 import { Roles, Status, TiposDeUsuarios } from '../enums';
 
 export const loginSchema = z.object({
@@ -92,8 +92,37 @@ export type UpdateStatusInput = z.infer<typeof updateStatusSchema>;
 export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
 export type AdminCreateUserInput = z.infer<typeof adminCreateUserSchema>;
 
-export const formatZodErrors = (error: ZodError) =>
-  error.issues.map((issue) => ({
-    path: issue.path.join('.'),
-    message: issue.message,
-  }));
+type FormattedError = {
+  path: string;
+  message: string;
+};
+
+const collectIssues = (
+  issues: ZodIssue[],
+  parentPath: (string | number)[] = [],
+  results: FormattedError[] = [],
+) => {
+  for (const issue of issues) {
+    const currentPath = [...parentPath, ...issue.path];
+
+    if (issue.code === 'invalid_union' && 'unionErrors' in issue) {
+      for (const unionError of issue.unionErrors) {
+        collectIssues(unionError.issues, currentPath, results);
+      }
+      continue;
+    }
+
+    const path = currentPath.filter((segment) => segment !== undefined && segment !== '').join('.');
+
+    if (!results.some((error) => error.path === path && error.message === issue.message)) {
+      results.push({
+        path,
+        message: issue.message,
+      });
+    }
+  }
+
+  return results;
+};
+
+export const formatZodErrors = (error: ZodError) => collectIssues(error.issues);

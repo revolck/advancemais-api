@@ -47,6 +47,7 @@ model Usuarios {
   informacoes          UsuariosInformation?
   cursosComoInstrutor  Cursos[]             @relation("CursosInstrutor")
   turmasMatriculadas   CursosTurmasMatriculas[]
+  certificadosEmitidos CursosCertificadosEmitidos[] @relation("CursosCertificadosEmitidosEmitidoPor")
 
   @@index([status])
   @@index([role])
@@ -243,6 +244,7 @@ model CursosTurmasMatriculas {
   recuperacoes CursosTurmasRecuperacoes[]
   notas CursosNotas[]
   frequencias CursosFrequenciaAlunos[]
+  certificados CursosCertificadosEmitidos[]
 
   @@unique([turmaId, alunoId])
   @@index([alunoId])
@@ -1434,6 +1436,51 @@ enum CursosCertificadosTipos {
   IMPRESSO
   DIGITAL_E_IMPRESSO
   VERIFICAVEL
+}
+
+enum CursosCertificadosLogAcao {
+  EMISSAO
+  VISUALIZACAO
+}
+
+model CursosCertificadosEmitidos {
+  id             String                    @id @default(uuid())
+  matriculaId    String
+  codigo         String                    @unique @db.VarChar(20)
+  tipo           CursosCertificados
+  formato        CursosCertificadosTipos
+  cargaHoraria   Int
+  assinaturaUrl  String?                   @db.VarChar(2048)
+  alunoNome      String                    @db.VarChar(255)
+  alunoCpf       String?                   @db.VarChar(14)
+  cursoNome      String                    @db.VarChar(255)
+  turmaNome      String                    @db.VarChar(255)
+  emitidoPorId   String?
+  emitidoEm      DateTime                  @default(now())
+  observacoes    String?                   @db.VarChar(500)
+
+  matricula CursosTurmasMatriculas @relation(fields: [matriculaId], references: [id], onDelete: Cascade)
+  emitidoPor Usuarios?             @relation("CursosCertificadosEmitidosEmitidoPor", fields: [emitidoPorId], references: [id], onDelete: SetNull)
+  logs       CursosCertificadosLogs[]
+
+  @@index([matriculaId])
+  @@index([emitidoPorId])
+  @@index([emitidoEm])
+}
+
+model CursosCertificadosLogs {
+  id            String                     @id @default(uuid())
+  certificadoId String
+  acao          CursosCertificadosLogAcao
+  formato       CursosCertificadosTipos
+  detalhes      String?                    @db.VarChar(500)
+  criadoEm      DateTime                   @default(now())
+
+  certificado CursosCertificadosEmitidos @relation(fields: [certificadoId], references: [id], onDelete: Cascade)
+
+  @@index([certificadoId])
+  @@index([acao])
+  @@index([criadoEm])
 }
 
 enum EmpresasPlanoStatus {

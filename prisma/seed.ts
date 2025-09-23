@@ -1,10 +1,21 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import {
+  PrismaClient,
+  Prisma,
+  RegimesDeTrabalhos,
+  ModalidadesDeVagas,
+  Jornadas,
+  Senioridade,
+} from '@prisma/client';
 import type {
   Usuarios,
   UsuariosCurriculos,
   Cursos,
   CursosTurmas,
   CursosTurmasMatriculas,
+  RegimesDeTrabalhos as RegimesDeTrabalhosType,
+  ModalidadesDeVagas as ModalidadesDeVagasType,
+  Jornadas as JornadasType,
+  Senioridade as SenioridadeType,
 } from '@prisma/client';
 
 import { seedCandidateInterestAreas } from './candidato/AreasDeInteresses';
@@ -31,10 +42,10 @@ type VacancySeed = {
   code: string;
   slug: string;
   title: string;
-  regime: Prisma.RegimesDeTrabalhos;
-  modalidade: Prisma.ModalidadesDeVagas;
-  jornada: Prisma.Jornadas;
-  senioridade: Prisma.Senioridade;
+  regime: RegimesDeTrabalhosType;
+  modalidade: ModalidadesDeVagasType;
+  jornada: JornadasType;
+  senioridade: SenioridadeType;
   salarioMin: Prisma.Decimal;
   salarioMax: Prisma.Decimal;
   descricao: string;
@@ -810,10 +821,10 @@ async function seedVagas(
       code: 'SV0001',
       slug: 'seed-desenvolvedor-fullstack-jr',
       title: 'Desenvolvedor(a) Full Stack Jr',
-      regime: Prisma.RegimesDeTrabalhos.CLT,
-      modalidade: Prisma.ModalidadesDeVagas.HIBRIDO,
-      jornada: Prisma.Jornadas.INTEGRAL,
-      senioridade: Prisma.Senioridade.JUNIOR,
+      regime: RegimesDeTrabalhos.CLT,
+      modalidade: ModalidadesDeVagas.HIBRIDO,
+      jornada: Jornadas.INTEGRAL,
+      senioridade: Senioridade.JUNIOR,
       salarioMin: new Prisma.Decimal(3500),
       salarioMax: new Prisma.Decimal(5500),
       descricao:
@@ -823,10 +834,10 @@ async function seedVagas(
       code: 'SV0002',
       slug: 'seed-analista-dados-pleno',
       title: 'Analista de Dados Pleno',
-      regime: Prisma.RegimesDeTrabalhos.CLT,
-      modalidade: Prisma.ModalidadesDeVagas.REMOTO,
-      jornada: Prisma.Jornadas.INTEGRAL,
-      senioridade: Prisma.Senioridade.PLENO,
+      regime: RegimesDeTrabalhos.CLT,
+      modalidade: ModalidadesDeVagas.REMOTO,
+      jornada: Jornadas.INTEGRAL,
+      senioridade: Senioridade.PLENO,
       salarioMin: new Prisma.Decimal(5200),
       salarioMax: new Prisma.Decimal(7200),
       descricao:
@@ -836,10 +847,10 @@ async function seedVagas(
       code: 'SV0003',
       slug: 'seed-especialista-ux',
       title: 'Especialista em UX Research',
-      regime: Prisma.RegimesDeTrabalhos.PJ,
-      modalidade: Prisma.ModalidadesDeVagas.HIBRIDO,
-      jornada: Prisma.Jornadas.MEIO_PERIODO,
-      senioridade: Prisma.Senioridade.SENIOR,
+      regime: RegimesDeTrabalhos.PJ,
+      modalidade: ModalidadesDeVagas.HIBRIDO,
+      jornada: Jornadas.MEIO_PERIODO,
+      senioridade: Senioridade.SENIOR,
       salarioMin: new Prisma.Decimal(7000),
       salarioMax: new Prisma.Decimal(9800),
       descricao:
@@ -849,10 +860,10 @@ async function seedVagas(
       code: 'SV0004',
       slug: 'seed-coordenador-marketing',
       title: 'Coordenador(a) de Marketing Digital',
-      regime: Prisma.RegimesDeTrabalhos.CLT,
-      modalidade: Prisma.ModalidadesDeVagas.PRESENCIAL,
-      jornada: Prisma.Jornadas.INTEGRAL,
-      senioridade: Prisma.Senioridade.PLENO,
+      regime: RegimesDeTrabalhos.CLT,
+      modalidade: ModalidadesDeVagas.PRESENCIAL,
+      jornada: Jornadas.INTEGRAL,
+      senioridade: Senioridade.PLENO,
       salarioMin: new Prisma.Decimal(6000),
       salarioMax: new Prisma.Decimal(8500),
       descricao:
@@ -862,10 +873,10 @@ async function seedVagas(
       code: 'SV0005',
       slug: 'seed-analista-rh-generalista',
       title: 'Analista de RH Generalista',
-      regime: Prisma.RegimesDeTrabalhos.CLT,
-      modalidade: Prisma.ModalidadesDeVagas.HIBRIDO,
-      jornada: Prisma.Jornadas.INTEGRAL,
-      senioridade: Prisma.Senioridade.PLENO,
+      regime: RegimesDeTrabalhos.CLT,
+      modalidade: ModalidadesDeVagas.HIBRIDO,
+      jornada: Jornadas.INTEGRAL,
+      senioridade: Senioridade.PLENO,
       salarioMin: new Prisma.Decimal(3800),
       salarioMax: new Prisma.Decimal(5200),
       descricao:

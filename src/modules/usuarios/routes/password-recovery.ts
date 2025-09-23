@@ -29,87 +29,59 @@ const passwordRecoveryController = new PasswordRecoveryController();
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               identificador:
- *                 type: string
- *                 description: Email, CPF ou CNPJ associado à conta
- *                 example: "user@example.com"
- *               email:
- *                 type: string
- *                 format: email
- *                 description: Alternativa para enviar diretamente o email cadastrado
- *                 example: "user@example.com"
- *               cpf:
- *                 type: string
- *                 description: CPF com ou sem máscara
- *                 example: "12345678909"
- *               cnpj:
- *                 type: string
- *                 description: CNPJ com ou sem máscara
- *                 example: "12345678000199"
- *             oneOf:
- *               - required:
- *                   - identificador
- *               - required:
- *                   - email
- *               - required:
- *                   - cpf
- *               - required:
- *                   - cnpj
+ *             $ref: '#/components/schemas/UserPasswordRecoveryRequest'
  *     responses:
  *       200:
  *         description: Solicitação enviada
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success: { type: boolean, example: true }
- *                 message: {
- *                   type: string,
- *                   example: "E-mail de recuperação enviado"
- *                 }
+ *               $ref: '#/components/schemas/UserPasswordRecoveryResponse'
  *       400:
  *         description: Dados inválidos
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               message: "Informe um email, CPF ou CNPJ válido"
- *               code: "VALIDATION_ERROR"
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Informe um email, CPF ou CNPJ para recuperar a senha"
+ *             examples:
+ *               identificadorAusente:
+ *                 summary: Nenhum identificador enviado
+ *                 value:
+ *                   message: "Informe um email, CPF ou CNPJ para recuperar a senha"
+ *               documentoInvalido:
+ *                 summary: Documento sem formato válido
+ *                 value:
+ *                   message: "Identificador deve ser um email válido, CPF (11 dígitos) ou CNPJ (14 dígitos)"
  *       404:
  *         description: Usuário não encontrado
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               message: "Usuário não encontrado"
- *               code: "NOT_FOUND"
+ *               type: object
+ *               properties:
+ *                 message: { type: string, example: "Usuário não encontrado com este identificador" }
  *       429:
  *         description: Muitas tentativas
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               message: "Muitas tentativas. Tente novamente mais tarde"
- *               code: "RATE_LIMIT_EXCEEDED"
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Muitas tentativas de recuperação. Tente novamente em 15 minutos"
  *       500:
  *         description: Erro interno
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               message: "Erro interno do servidor"
- *               code: "INTERNAL_ERROR"
+ *               type: object
+ *               properties:
+ *                 message: { type: string, example: "Erro interno ao enviar email de recuperação" }
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -151,40 +123,31 @@ router.post('/', passwordRecoveryController.solicitarRecuperacao);
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success: { type: boolean, example: true }
- *                 message: { type: string, example: "Token válido" }
+ *               $ref: '#/components/schemas/UserPasswordRecoveryValidateResponse'
  *       400:
  *         description: Token em formato inválido
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               message: "Token inválido"
- *               code: "VALIDATION_ERROR"
+ *               type: object
+ *               properties:
+ *                 message: { type: string, example: "Token é obrigatório" }
  *       404:
  *         description: Token não encontrado ou expirado
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               message: "Token não encontrado"
- *               code: "NOT_FOUND"
+ *               type: object
+ *               properties:
+ *                 message: { type: string, example: "Token inválido ou expirado" }
  *       500:
  *         description: Erro interno
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               message: "Erro interno do servidor"
- *               code: "INTERNAL_ERROR"
+ *               type: object
+ *               properties:
+ *                 message: { type: string, example: "Erro interno do servidor" }
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -210,65 +173,43 @@ router.get('/validar/:token([a-fA-F0-9]{64})', passwordRecoveryController.valida
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - token
- *               - novaSenha
- *               - confirmarSenha
- *             properties:
- *               token:
- *                 type: string
- *                 example: "<token>"
- *               novaSenha:
- *                 type: string
- *                 format: password
- *                 description: Nova senha que atenderá aos critérios de segurança vigentes
- *                 example: "Senha@1234"
- *               confirmarSenha:
- *                 type: string
- *                 format: password
- *                 description: Confirmação da nova senha (deve ser idêntica a novaSenha)
- *                 example: "Senha@1234"
+ *             $ref: '#/components/schemas/UserPasswordResetRequest'
  *     responses:
  *       200:
  *         description: Senha redefinida
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success: { type: boolean, example: true }
- *                 message: { type: string, example: "Senha alterada com sucesso" }
+ *               $ref: '#/components/schemas/UserPasswordResetResponse'
  *       400:
  *         description: Dados inválidos ou token incorreto
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               message: "Token inválido"
- *               code: "VALIDATION_ERROR"
+ *               type: object
+ *               properties:
+ *                 message: { type: string, example: "Token inválido ou expirado" }
+ *                 detalhes:
+ *                   type: array
+ *                   items: { type: string }
+ *                   example:
+ *                     - "Senha deve conter pelo menos 8 caracteres"
  *       404:
  *         description: Token não encontrado ou expirado
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               message: "Token não encontrado"
- *               code: "NOT_FOUND"
+ *               type: object
+ *               properties:
+ *                 message: { type: string, example: "Token expirado. Solicite uma nova recuperação" }
  *       500:
  *         description: Erro interno
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               message: "Erro interno do servidor"
- *               code: "INTERNAL_ERROR"
+ *               type: object
+ *               properties:
+ *                 message: { type: string, example: "Erro interno do servidor" }
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo

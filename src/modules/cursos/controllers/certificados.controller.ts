@@ -87,6 +87,14 @@ export class CertificadosController {
         });
       }
 
+      if (error?.code === 'ESTAGIO_NAO_CONCLUIDO') {
+        return res.status(409).json({
+          success: false,
+          code: 'ESTAGIO_NAO_CONCLUIDO',
+          message: 'O certificado só pode ser emitido após a conclusão do estágio obrigatório.',
+        });
+      }
+
       res.status(500).json({
         success: false,
         code: 'CERTIFICADO_EMITIR_ERROR',

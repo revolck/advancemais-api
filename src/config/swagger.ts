@@ -1796,7 +1796,13 @@ const options: Options = {
           type: 'object',
           required: ['alunoId'],
           properties: {
-            alunoId: { type: 'string', format: 'uuid', example: 'AL-001' },
+            alunoId: {
+              type: 'string',
+              format: 'uuid',
+              example: 'AL-001',
+              description:
+                'Identificador do aluno que receberá a matrícula. Após o encerramento do período de inscrição, apenas usuários ADMIN ou MODERADOR podem realizar esta operação.',
+            },
           },
         },
         TiposDeEmails: {

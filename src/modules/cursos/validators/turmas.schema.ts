@@ -54,6 +54,14 @@ const applyDateValidations = <Schema extends z.ZodTypeAny>(schema: Schema) =>
         message: 'Data final de inscrição deve ser posterior à data inicial',
       });
     }
+
+    if (dataInicio && dataInscricaoFim && dataInscricaoFim < dataInicio) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dataInscricaoFim'],
+        message: 'Data final de inscrição deve ser posterior à data de início da turma',
+      });
+    }
   });
 
 export const createTurmaSchema = applyDateValidations(turmaBaseSchema);

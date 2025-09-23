@@ -191,7 +191,7 @@ export const turmasService = {
           dataInscricaoFim: data.dataInscricaoFim ?? null,
           vagasTotais: data.vagasTotais,
           vagasDisponiveis,
-          status: data.status ?? CursoStatus.RASCUNHO,
+          status: data.status ?? CursoStatus.PUBLICADO,
         },
       });
 
@@ -274,7 +274,12 @@ export const turmasService = {
     });
   },
 
-  async enroll(cursoId: number, turmaId: string, alunoId: string) {
+  async enroll(
+    cursoId: number,
+    turmaId: string,
+    alunoId: string,
+    actor?: { id?: string | null; role?: Roles | null },
+  ) {
     return prisma.$transaction(async (tx) => {
       const turma = await tx.cursosTurmas.findUnique({
         where: { id: turmaId },
@@ -283,6 +288,7 @@ export const turmasService = {
           cursoId: true,
           vagasDisponiveis: true,
           vagasTotais: true,
+          dataInscricaoFim: true,
         },
       });
 
@@ -290,6 +296,30 @@ export const turmasService = {
         const error = new Error('Turma não encontrada para o curso informado');
         (error as any).code = 'TURMA_NOT_FOUND';
         throw error;
+      }
+
+      const agora = new Date();
+      if (turma.dataInscricaoFim && turma.dataInscricaoFim < agora) {
+        const canOverrideDeadline =
+          actor?.role === Roles.ADMIN || actor?.role === Roles.MODERADOR;
+
+        if (canOverrideDeadline) {
+          turmasLogger.info(
+            {
+              turmaId,
+              cursoId,
+              actorId: actor?.id ?? null,
+              actorRole: actor?.role ?? null,
+            },
+            'Matrícula criada após o encerramento do período por usuário privilegiado',
+          );
+        }
+
+        if (!canOverrideDeadline) {
+          const error = new Error('Período de inscrição encerrado para esta turma');
+          (error as any).code = 'INSCRICOES_ENCERRADAS';
+          throw error;
+        }
       }
 
       if (turma.vagasDisponiveis <= 0) {

@@ -243,10 +243,18 @@ router.get('/', (req, res) => {
  *               $ref: '#/components/schemas/UserRegisterResponse'
  *             example:
  *               success: true
+ *               message: "Pessoa física cadastrada com sucesso"
  *               usuario:
  *                 id: "b9e1d9b0-7c9f-4d1a-8f2a-1234567890ab"
  *                 email: "joao@example.com"
  *                 nomeCompleto: "João da Silva"
+ *                 tipoUsuario: "PESSOA_FISICA"
+ *                 role: "ALUNO_CANDIDATO"
+ *                 status: "ATIVO"
+ *                 criadoEm: "2024-03-01T12:00:00.000Z"
+ *                 codUsuario: "USR-00001"
+ *               correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
+ *               duration: "245ms"
  *       400:
  *         description: Dados inválidos
  *         content:
@@ -255,8 +263,11 @@ router.get('/', (req, res) => {
  *               $ref: '#/components/schemas/ErrorResponse'
  *             example:
  *               success: false
- *               message: "Dados inválidos fornecidos"
- *               code: "VALIDATION_ERROR"
+ *               message: "Dados de entrada inválidos"
+ *               errors:
+ *                 - path: "cpf"
+ *                   message: "CPF é obrigatório"
+ *               correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
  *       409:
  *         description: Usuário já existe
  *         content:
@@ -266,7 +277,7 @@ router.get('/', (req, res) => {
  *             example:
  *               success: false
  *               message: "Usuário já cadastrado"
- *               code: "DUPLICATE_ERROR"
+ *               correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
  *       429:
  *         description: Muitas tentativas
  *         content:
@@ -277,6 +288,7 @@ router.get('/', (req, res) => {
  *               success: false
  *               message: "Muitas tentativas. Tente novamente mais tarde"
  *               code: "RATE_LIMIT_EXCEEDED"
+ *               retryAfter: 600
  *       500:
  *         description: Erro interno
  *         content:
@@ -287,6 +299,7 @@ router.get('/', (req, res) => {
  *               success: false
  *               message: "Erro interno do servidor"
  *               code: "INTERNAL_ERROR"
+ *               correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -362,6 +375,17 @@ router.post(
  *             example:
  *               success: true
  *               message: "Login realizado com sucesso"
+ *               usuario:
+ *                 id: "f9e88a12-0b88-4d43-9b1f-1234567890ab"
+ *                 email: "joao@example.com"
+ *                 nomeCompleto: "João da Silva"
+ *                 role: "ALUNO_CANDIDATO"
+ *                 tipoUsuario: "PESSOA_FISICA"
+ *                 supabaseId: "uuid-supabase"
+ *                 emailVerificado: true
+ *                 ultimoLogin: "2024-03-12T10:15:00.000Z"
+ *                 socialLinks: {}
+ *                 enderecos: []
  *               token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  *               refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  *               tokenType: "Bearer"
@@ -389,8 +413,11 @@ router.post(
  *               $ref: '#/components/schemas/ErrorResponse'
  *             example:
  *               success: false
- *               message: "Documento ou senha inválidos"
- *               code: "VALIDATION_ERROR"
+ *               message: "Dados de login inválidos"
+ *               errors:
+ *                 - path: "documento"
+ *                   message: "Documento é obrigatório"
+ *               correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
  *       401:
  *         description: Credenciais inválidas
  *         content:
@@ -400,7 +427,34 @@ router.post(
  *             example:
  *               success: false
  *               message: "Credenciais inválidas"
- *               code: "UNAUTHORIZED"
+ *               correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
+ *       403:
+ *         description: Conta bloqueada ou email não verificado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               emailNaoVerificado:
+ *                 summary: Email não verificado
+ *                 value:
+ *                   success: false
+ *                   message: "Email não verificado. Verifique sua caixa de entrada ou solicite um novo email de verificação."
+ *                   code: "EMAIL_NOT_VERIFIED"
+ *                   data:
+ *                     email: "joao@example.com"
+ *                     canResendVerification: true
+ *                     accountCreated: "2024-03-10T18:32:00.000Z"
+ *                     accountAgeDays: 2
+ *                   correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
+ *               contaInativa:
+ *                 summary: Conta não está ativa
+ *                 value:
+ *                   success: false
+ *                   message: "Conta suspenso. Entre em contato com o suporte."
+ *                   code: "ACCOUNT_INACTIVE"
+ *                   status: "SUSPENSO"
+ *                   correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
  *       429:
  *         description: Muitas tentativas
  *         content:
@@ -411,6 +465,7 @@ router.post(
  *               success: false
  *               message: "Muitas tentativas. Tente novamente mais tarde"
  *               code: "RATE_LIMIT_EXCEEDED"
+ *               retryAfter: 900
  *       500:
  *         description: Erro interno
  *         content:
@@ -421,6 +476,7 @@ router.post(
  *               success: false
  *               message: "Erro interno do servidor"
  *               code: "INTERNAL_ERROR"
+ *               correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -477,6 +533,16 @@ router.post(
  *             example:
  *               success: true
  *               message: "Token renovado com sucesso"
+ *               usuario:
+ *                 id: "f9e88a12-0b88-4d43-9b1f-1234567890ab"
+ *                 email: "joao@example.com"
+ *                 nomeCompleto: "João da Silva"
+ *                 role: "ALUNO_CANDIDATO"
+ *                 tipoUsuario: "PESSOA_FISICA"
+ *                 emailVerificado: true
+ *                 ultimoLogin: "2024-03-12T10:18:00.000Z"
+ *                 socialLinks: {}
+ *                 enderecos: []
  *               token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  *               refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  *               rememberMe: true
@@ -501,18 +567,51 @@ router.post(
  *               $ref: '#/components/schemas/ErrorResponse'
  *             example:
  *               success: false
- *               message: "Refresh token não informado"
- *               code: "VALIDATION_ERROR"
+ *               message: "Refresh token é obrigatório"
+ *               correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
  *       401:
  *         description: Refresh token inválido ou expirado
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               message: "Token inválido"
- *               code: "UNAUTHORIZED"
+ *             examples:
+ *               invalido:
+ *                 summary: Token não reconhecido
+ *                 value:
+ *                   success: false
+ *                   message: "Refresh token inválido"
+ *                   code: "INVALID_REFRESH_TOKEN"
+ *                   correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
+ *               expirado:
+ *                 summary: Token expirado
+ *                 value:
+ *                   success: false
+ *                   message: "Refresh token expirado"
+ *                   code: "REFRESH_TOKEN_EXPIRED"
+ *                   correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
+ *       403:
+ *         description: Conta bloqueada ou email não verificado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               contaInativa:
+ *                 summary: Conta não está ativa
+ *                 value:
+ *                   success: false
+ *                   message: "Conta suspenso"
+ *                   code: "ACCOUNT_INACTIVE"
+ *                   status: "SUSPENSO"
+ *                   correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
+ *               emailNaoVerificado:
+ *                 summary: Email não verificado
+ *                 value:
+ *                   success: false
+ *                   message: "Email não verificado. Verifique sua caixa de entrada."
+ *                   code: "EMAIL_NOT_VERIFIED"
+ *                   correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
  *       429:
  *         description: Muitas tentativas
  *         content:
@@ -523,6 +622,7 @@ router.post(
  *               success: false
  *               message: "Muitas tentativas. Tente novamente mais tarde"
  *               code: "RATE_LIMIT_EXCEEDED"
+ *               retryAfter: 900
  *       500:
  *         description: Erro interno
  *         content:
@@ -533,6 +633,7 @@ router.post(
  *               success: false
  *               message: "Erro interno do servidor"
  *               code: "INTERNAL_ERROR"
+ *               correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -574,7 +675,7 @@ router.post(
  *               $ref: '#/components/schemas/LogoutResponse'
  *             example:
  *               success: true
- *               message: "Logout realizado"
+ *               message: "Logout realizado com sucesso"
  *               correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
  *               timestamp: "2024-03-12T10:20:01.234Z"
  *         headers:
@@ -590,8 +691,8 @@ router.post(
  *               $ref: '#/components/schemas/ErrorResponse'
  *             example:
  *               success: false
- *               message: "Token inválido ou ausente"
- *               code: "UNAUTHORIZED"
+ *               message: "Usuário não autenticado"
+ *               correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
  *       500:
  *         description: Erro interno
  *         content:
@@ -602,6 +703,7 @@ router.post(
  *               success: false
  *               message: "Erro interno do servidor"
  *               code: "INTERNAL_ERROR"
+ *               correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -640,23 +742,34 @@ router.post(
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/UserProfile'
+ *               $ref: '#/components/schemas/UserProfileResponse'
  *             example:
- *               id: "b9e1d9b0-7c9f-4d1a-8f2a-1234567890ab"
- *               email: "joao@example.com"
- *               nomeCompleto: "João da Silva"
- *               role: "ADMIN"
- *               tipoUsuario: "PESSOA_FISICA"
- *               supabaseId: "uuid-supabase"
- *               emailVerificado: true
- *               emailVerificadoEm: "2024-01-01T12:00:00Z"
- *               emailVerification:
- *                 verified: true
- *                 verifiedAt: "2024-01-01T12:00:00Z"
- *                 tokenExpiration: "2024-01-02T12:00:00Z"
- *                 attempts: 1
- *                 lastAttemptAt: "2024-01-01T12:30:00Z"
- *               ultimoLogin: "2024-01-01T12:00:00Z"
+ *               success: true
+ *               message: "Perfil obtido com sucesso"
+ *               usuario:
+ *                 id: "b9e1d9b0-7c9f-4d1a-8f2a-1234567890ab"
+ *                 email: "joao@example.com"
+ *                 nomeCompleto: "João da Silva"
+ *                 role: "ALUNO_CANDIDATO"
+ *                 tipoUsuario: "PESSOA_FISICA"
+ *                 supabaseId: "uuid-supabase"
+ *                 emailVerificado: true
+ *                 emailVerificadoEm: "2024-01-01T12:00:00Z"
+ *                 ultimoLogin: "2024-03-12T09:40:00.000Z"
+ *                 socialLinks: {}
+ *                 enderecos: []
+ *               stats:
+ *                 accountAge: 365
+ *                 hasCompletedProfile: true
+ *                 hasAddress: false
+ *                 totalOrders: 0
+ *                 totalSubscriptions: 0
+ *                 emailVerificationStatus:
+ *                   verified: true
+ *                   verifiedAt: "2024-01-01T12:00:00Z"
+ *                   tokenExpiration: null
+ *               correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
+ *               timestamp: "2024-03-12T10:30:01.234Z"
  *       401:
  *         description: Não autenticado
  *         content:
@@ -665,8 +778,18 @@ router.post(
  *               $ref: '#/components/schemas/ErrorResponse'
  *             example:
  *               success: false
- *               message: "Token inválido ou ausente"
- *               code: "UNAUTHORIZED"
+ *               message: "Usuário não autenticado"
+ *               correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
+ *       404:
+ *         description: Usuário não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Usuário não encontrado"
+ *               correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
  *       500:
  *         description: Erro interno
  *         content:
@@ -677,6 +800,7 @@ router.post(
  *               success: false
  *               message: "Erro interno do servidor"
  *               code: "INTERNAL_ERROR"
+ *               correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo

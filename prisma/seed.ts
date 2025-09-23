@@ -27,6 +27,19 @@ interface CandidateSeed {
   cpf: string;
 }
 
+type VacancySeed = {
+  code: string;
+  slug: string;
+  title: string;
+  regime: Prisma.RegimesDeTrabalhos;
+  modalidade: Prisma.ModalidadesDeVagas;
+  jornada: Prisma.Jornadas;
+  senioridade: Prisma.Senioridade;
+  salarioMin: Prisma.Decimal;
+  salarioMax: Prisma.Decimal;
+  descricao: string;
+};
+
 interface AulaSeed {
   order: number;
   title: string;
@@ -792,15 +805,15 @@ async function seedVagas(
     throw new Error('Nenhuma área de interesse cadastrada para vincular às vagas.');
   }
 
-  const vacancySeeds = [
+  const vacancySeeds: VacancySeed[] = [
     {
       code: 'SV0001',
       slug: 'seed-desenvolvedor-fullstack-jr',
       title: 'Desenvolvedor(a) Full Stack Jr',
-      regime: 'CLT',
-      modalidade: 'HIBRIDO',
-      jornada: 'INTEGRAL',
-      senioridade: 'JUNIOR',
+      regime: Prisma.RegimesDeTrabalhos.CLT,
+      modalidade: Prisma.ModalidadesDeVagas.HIBRIDO,
+      jornada: Prisma.Jornadas.INTEGRAL,
+      senioridade: Prisma.Senioridade.JUNIOR,
       salarioMin: new Prisma.Decimal(3500),
       salarioMax: new Prisma.Decimal(5500),
       descricao:
@@ -810,10 +823,10 @@ async function seedVagas(
       code: 'SV0002',
       slug: 'seed-analista-dados-pleno',
       title: 'Analista de Dados Pleno',
-      regime: 'CLT',
-      modalidade: 'REMOTO',
-      jornada: 'INTEGRAL',
-      senioridade: 'PLENO',
+      regime: Prisma.RegimesDeTrabalhos.CLT,
+      modalidade: Prisma.ModalidadesDeVagas.REMOTO,
+      jornada: Prisma.Jornadas.INTEGRAL,
+      senioridade: Prisma.Senioridade.PLENO,
       salarioMin: new Prisma.Decimal(5200),
       salarioMax: new Prisma.Decimal(7200),
       descricao:
@@ -823,10 +836,10 @@ async function seedVagas(
       code: 'SV0003',
       slug: 'seed-especialista-ux',
       title: 'Especialista em UX Research',
-      regime: 'PJ',
-      modalidade: 'HIBRIDO',
-      jornada: 'MEIO_PERIODO',
-      senioridade: 'SENIOR',
+      regime: Prisma.RegimesDeTrabalhos.PJ,
+      modalidade: Prisma.ModalidadesDeVagas.HIBRIDO,
+      jornada: Prisma.Jornadas.MEIO_PERIODO,
+      senioridade: Prisma.Senioridade.SENIOR,
       salarioMin: new Prisma.Decimal(7000),
       salarioMax: new Prisma.Decimal(9800),
       descricao:
@@ -836,10 +849,10 @@ async function seedVagas(
       code: 'SV0004',
       slug: 'seed-coordenador-marketing',
       title: 'Coordenador(a) de Marketing Digital',
-      regime: 'CLT',
-      modalidade: 'PRESENCIAL',
-      jornada: 'INTEGRAL',
-      senioridade: 'PLENO',
+      regime: Prisma.RegimesDeTrabalhos.CLT,
+      modalidade: Prisma.ModalidadesDeVagas.PRESENCIAL,
+      jornada: Prisma.Jornadas.INTEGRAL,
+      senioridade: Prisma.Senioridade.PLENO,
       salarioMin: new Prisma.Decimal(6000),
       salarioMax: new Prisma.Decimal(8500),
       descricao:
@@ -849,10 +862,10 @@ async function seedVagas(
       code: 'SV0005',
       slug: 'seed-analista-rh-generalista',
       title: 'Analista de RH Generalista',
-      regime: 'CLT',
-      modalidade: 'HIBRIDO',
-      jornada: 'INTEGRAL',
-      senioridade: 'PLENO',
+      regime: Prisma.RegimesDeTrabalhos.CLT,
+      modalidade: Prisma.ModalidadesDeVagas.HIBRIDO,
+      jornada: Prisma.Jornadas.INTEGRAL,
+      senioridade: Prisma.Senioridade.PLENO,
       salarioMin: new Prisma.Decimal(3800),
       salarioMax: new Prisma.Decimal(5200),
       descricao:

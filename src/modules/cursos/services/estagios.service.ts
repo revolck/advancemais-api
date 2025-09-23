@@ -12,6 +12,7 @@ import { estagioWithRelations, mapEstagio, translateDiasSemana } from './estagio
 import type {
   EstagioConfirmacaoInput,
   EstagioCreateInput,
+  EstagioLocalInput,
   EstagioStatusInput,
   EstagioUpdateInput,
 } from '../validators/estagios.schema';
@@ -374,13 +375,15 @@ export const estagiosService = {
       }
 
       if (usuarioId) {
-        updateData.atualizadoPorId = usuarioId;
+        updateData.atualizadoPor = {
+          connect: { id: usuarioId },
+        };
       }
 
       if (data.locais) {
         updateData.locais = {
           deleteMany: { estagioId },
-          create: data.locais.map((local) => ({
+          create: data.locais.map((local: EstagioLocalInput) => ({
             titulo: local.titulo ?? null,
             empresaNome: local.empresaNome,
             empresaDocumento: local.empresaDocumento ?? null,
@@ -434,7 +437,9 @@ export const estagiosService = {
       };
 
       if (usuarioId) {
-        updateData.atualizadoPorId = usuarioId;
+        updateData.atualizadoPor = {
+          connect: { id: usuarioId },
+        };
       }
 
       if (data.status === CursosEstagioStatus.CONCLUIDO) {

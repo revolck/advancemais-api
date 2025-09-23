@@ -46,61 +46,67 @@ const diasSemanaSchema = z
 
 const dataCoercion = z.coerce.date({ invalid_type_error: 'Informe uma data válida' });
 
-const estagioLocalSchema = z
-  .object({
-    titulo: nullableString(120),
-    empresaNome: z.string().trim().min(2).max(255),
-    empresaDocumento: nullableString(20),
-    contatoNome: nullableString(120),
-    contatoEmail: nullableEmail,
-    contatoTelefone: nullableString(30),
-    dataInicio: dataCoercion.optional(),
-    dataFim: dataCoercion.optional(),
-    horarioInicio: horarioSchema,
-    horarioFim: horarioSchema,
-    diasSemana: diasSemanaSchema,
-    cargaHorariaSemanal: z.coerce.number().int().positive().optional(),
-    cep: cepSchema,
-    logradouro: nullableString(255),
-    numero: nullableString(20),
-    bairro: nullableString(120),
-    cidade: nullableString(120),
-    estado: nullableString(2),
-    complemento: nullableString(120),
-    pontoReferencia: nullableString(255),
-    observacoes: nullableString(500),
-  })
-  .refine(
-    (value) => {
-      if (value.dataInicio && value.dataFim) {
-        return value.dataFim >= value.dataInicio;
-      }
-      return true;
-    },
-    {
+const estagioLocalSchema = z.object({
+  titulo: nullableString(120),
+  empresaNome: z.string().trim().min(2).max(255),
+  empresaDocumento: nullableString(20),
+  contatoNome: nullableString(120),
+  contatoEmail: nullableEmail,
+  contatoTelefone: nullableString(30),
+  dataInicio: dataCoercion.optional(),
+  dataFim: dataCoercion.optional(),
+  horarioInicio: horarioSchema,
+  horarioFim: horarioSchema,
+  diasSemana: diasSemanaSchema,
+  cargaHorariaSemanal: z.coerce.number().int().positive().optional(),
+  cep: cepSchema,
+  logradouro: nullableString(255),
+  numero: nullableString(20),
+  bairro: nullableString(120),
+  cidade: nullableString(120),
+  estado: nullableString(2),
+  complemento: nullableString(120),
+  pontoReferencia: nullableString(255),
+  observacoes: nullableString(500),
+}).superRefine((value, ctx) => {
+  if (value.dataInicio && value.dataFim && value.dataFim < value.dataInicio) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
       message: 'Data final não pode ser anterior à data inicial',
       path: ['dataFim'],
-    },
-  );
+    });
+  }
+});
 
-export const createEstagioSchema = z
-  .object({
-    nome: z.string().trim().min(3).max(255),
-    descricao: nullableString(2000),
-    dataInicio: dataCoercion,
-    dataFim: dataCoercion,
-    cargaHoraria: z.coerce.number().int().positive().optional(),
-    empresaPrincipal: nullableString(255),
-    obrigatorio: z.coerce.boolean().optional(),
-    observacoes: nullableString(2000),
-    locais: z.array(estagioLocalSchema).min(1, 'Informe ao menos um local para o estágio'),
-  })
-  .refine((value) => value.dataFim >= value.dataInicio, {
+const estagioBaseSchema = z.object({
+  nome: z.string().trim().min(3).max(255),
+  descricao: nullableString(2000),
+  dataInicio: dataCoercion,
+  dataFim: dataCoercion,
+  cargaHoraria: z.coerce.number().int().positive().optional(),
+  empresaPrincipal: nullableString(255),
+  obrigatorio: z.coerce.boolean().optional(),
+  observacoes: nullableString(2000),
+  locais: z.array(estagioLocalSchema).min(1, 'Informe ao menos um local para o estágio'),
+});
+
+export const createEstagioSchema = estagioBaseSchema.refine(
+  (value) => value.dataFim >= value.dataInicio,
+  {
     message: 'Data de término deve ser posterior à data de início',
     path: ['dataFim'],
-  });
+  },
+);
 
-export const updateEstagioSchema = createEstagioSchema.partial();
+export const updateEstagioSchema = estagioBaseSchema.partial().superRefine((value, ctx) => {
+  if (value.dataInicio && value.dataFim && value.dataFim < value.dataInicio) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Data de término deve ser posterior à data de início',
+      path: ['dataFim'],
+    });
+  }
+});
 
 export const updateEstagioStatusSchema = z
   .object({

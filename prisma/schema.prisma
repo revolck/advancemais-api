@@ -159,6 +159,7 @@ model CursosTurmas {
   aulas                CursosTurmasAulas[]
   modulos              CursosTurmasModulos[]
   provas               CursosTurmasProvas[]
+  notas                CursosNotas[]
   regrasAvaliacao      CursosTurmasRegrasAvaliacao?
   recuperacoes         CursosTurmasRecuperacoes[]
 
@@ -236,6 +237,7 @@ model CursosTurmasMatriculas {
   aluno Usuarios     @relation(fields: [alunoId], references: [id], onDelete: Cascade)
   envios CursosTurmasProvasEnvios[]
   recuperacoes CursosTurmasRecuperacoes[]
+  notas CursosNotas[]
 
   @@unique([turmaId, alunoId])
   @@index([alunoId])
@@ -259,6 +261,7 @@ model CursosTurmasProvas {
   modulo     CursosTurmasModulos? @relation(fields: [moduloId], references: [id], onDelete: SetNull)
   envios     CursosTurmasProvasEnvios[]
   recuperacoes CursosTurmasRecuperacoes[]
+  notas      CursosNotas[]
 
   @@unique([turmaId, etiqueta])
   @@index([turmaId])
@@ -331,6 +334,33 @@ model CursosTurmasRecuperacoes {
   @@index([statusFinal])
 }
 
+model CursosNotas {
+  id                String          @id @default(uuid())
+  turmaId           String
+  matriculaId       String
+  tipo              CursosNotasTipo
+  provaId           String?
+  referenciaExterna String?         @db.VarChar(120)
+  titulo            String          @db.VarChar(255)
+  descricao         String?         @db.VarChar(1000)
+  nota              Decimal?        @db.Decimal(4, 1)
+  peso              Decimal?        @db.Decimal(5, 2)
+  valorMaximo       Decimal?        @db.Decimal(4, 1)
+  dataReferencia    DateTime?
+  observacoes       String?         @db.VarChar(500)
+  criadoEm          DateTime        @default(now())
+  atualizadoEm      DateTime        @updatedAt
+
+  turma      CursosTurmas           @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  matricula  CursosTurmasMatriculas @relation(fields: [matriculaId], references: [id], onDelete: Cascade)
+  prova      CursosTurmasProvas?    @relation(fields: [provaId], references: [id], onDelete: SetNull)
+
+  @@index([turmaId])
+  @@index([matriculaId])
+  @@index([tipo])
+  @@unique([matriculaId, provaId])
+}
+
 enum CursosSituacaoFinal {
   EM_ANALISE
   APROVADO
@@ -342,6 +372,18 @@ enum CursosModelosRecuperacao {
   MEDIA_MINIMA_DIRETA
   PROVA_FINAL_UNICA
   NOTA_MAXIMA_LIMITADA
+}
+
+enum CursosNotasTipo {
+  PROVA
+  TRABALHO
+  ATIVIDADE
+  PROJETO
+  SEMINARIO
+  PARTICIPACAO
+  SIMULADO
+  BONUS
+  OUTRO
 }
 
 enum CursosLocalProva {

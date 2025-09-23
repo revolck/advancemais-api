@@ -428,6 +428,9 @@ router.put(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/enrollments:
  *   post:
  *     summary: Matricular um aluno em uma turma
+ *     description: >-
+ *       Respeita automaticamente o período de inscrição informado na turma. Após o encerramento,
+ *       apenas usuários com perfis ADMIN ou MODERADOR podem incluir alunos manualmente.
  *     tags: ['Cursos - Turmas']
  *     security:
  *       - bearerAuth: []
@@ -458,7 +461,7 @@ router.put(
  *       404:
  *         description: Curso, turma ou aluno não encontrado
  *       409:
- *         description: Conflitos de matrícula ou falta de vagas
+ *         description: Conflitos de matrícula ou período de inscrição encerrado para perfis sem privilégio
  */
 router.post(
   '/:cursoId/turmas/:turmaId/enrollments',

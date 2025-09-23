@@ -190,7 +190,7 @@ const resolveDeliveryFieldsOnUpdate = (
           throw error;
         }
 
-        return { urlVideo, sala: null, urlMeet: null };
+        return { urlVideo: videoUrl, sala: null, urlMeet: null };
       }
 
       return {};

@@ -1,4 +1,4 @@
-import { Prisma, CursosLocalProva } from '@prisma/client';
+import { Prisma, CursosLocalProva, CursosNotasTipo } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
@@ -78,6 +78,16 @@ const fetchProva = async (client: PrismaClientOrTx, provaId: string) => {
 
 const toDecimal = (value: number | null | undefined) => {
   if (value === null || value === undefined) {
+    return null;
+  }
+  return new Prisma.Decimal(value);
+};
+
+const toDecimalOptional = (value: number | null | undefined) => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === null) {
     return null;
   }
   return new Prisma.Decimal(value);
@@ -232,6 +242,17 @@ export const provasService = {
         throw error;
       }
 
+      const prova = await tx.cursosTurmasProvas.findFirst({
+        where: { id: provaId },
+        select: { id: true, titulo: true, descricao: true, peso: true },
+      });
+
+      if (!prova) {
+        const error = new Error('Prova não encontrada');
+        (error as any).code = 'PROVA_NOT_FOUND';
+        throw error;
+      }
+
       const envio = await tx.cursosTurmasProvasEnvios.upsert({
         where: {
           provaId_matriculaId: {
@@ -252,6 +273,41 @@ export const provasService = {
           pesoTotal: toDecimal(data.pesoTotal ?? null),
           realizadoEm: data.realizadoEm ?? null,
           observacoes: data.observacoes ?? null,
+        },
+      });
+
+      const pesoValor = data.pesoTotal !== undefined ? data.pesoTotal : Number(prova.peso);
+      const dataReferencia = data.realizadoEm ?? envio.realizadoEm ?? new Date();
+      const observacoesValor =
+        data.observacoes !== undefined ? data.observacoes ?? null : undefined;
+
+      await tx.cursosNotas.upsert({
+        where: {
+          matriculaId_provaId: {
+            matriculaId: data.matriculaId,
+            provaId,
+          },
+        },
+        update: {
+          nota: toDecimalOptional(data.nota),
+          peso: toDecimalOptional(pesoValor),
+          dataReferencia,
+          observacoes: observacoesValor,
+          titulo: prova.titulo,
+          descricao: prova.descricao ?? null,
+        },
+        create: {
+          turmaId,
+          matriculaId: data.matriculaId,
+          tipo: CursosNotasTipo.PROVA,
+          provaId,
+          titulo: prova.titulo,
+          descricao: prova.descricao ?? null,
+          nota: toDecimal(data.nota),
+          peso: toDecimal(pesoValor),
+          valorMaximo: null,
+          dataReferencia,
+          observacoes: observacoesValor ?? null,
         },
       });
 

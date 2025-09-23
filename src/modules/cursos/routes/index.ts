@@ -10,6 +10,7 @@ import { TurmasController } from '../controllers/turmas.controller';
 import { ModulosController } from '../controllers/modulos.controller';
 import { ProvasController } from '../controllers/provas.controller';
 import { AvaliacaoController } from '../controllers/avaliacao.controller';
+import { NotasController } from '../controllers/notas.controller';
 
 const router = Router();
 
@@ -1010,6 +1011,197 @@ router.delete(
 
 /**
  * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/notas:
+ *   get:
+ *     summary: Listar notas lançadas da turma
+ *     tags: ['Cursos - Notas']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: matriculaId
+ *         required: false
+ *         schema: { type: string, format: uuid }
+ *         description: Filtra notas lançadas para uma matrícula específica
+ *     responses:
+ *       200:
+ *         description: Lista de notas lançadas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/CursoNota'
+ */
+router.get(
+  '/:cursoId/turmas/:turmaId/notas',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  NotasController.list,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/notas:
+ *   post:
+ *     summary: Registrar nota manualmente para a turma
+ *     tags: ['Cursos - Notas']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoNotaCreateInput'
+ *     responses:
+ *       201:
+ *         description: Nota registrada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoNota'
+ */
+router.post(
+  '/:cursoId/turmas/:turmaId/notas',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  NotasController.create,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/notas/{notaId}:
+ *   get:
+ *     summary: Detalhar nota lançada
+ *     tags: ['Cursos - Notas']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: notaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Dados completos da nota
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoNota'
+ */
+router.get(
+  '/:cursoId/turmas/:turmaId/notas/:notaId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  NotasController.get,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/notas/{notaId}:
+ *   put:
+ *     summary: Atualizar nota lançada
+ *     tags: ['Cursos - Notas']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: notaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoNotaUpdateInput'
+ *     responses:
+ *       200:
+ *         description: Nota atualizada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoNota'
+ */
+router.put(
+  '/:cursoId/turmas/:turmaId/notas/:notaId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  NotasController.update,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/notas/{notaId}:
+ *   delete:
+ *     summary: Remover nota lançada
+ *     tags: ['Cursos - Notas']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: notaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Nota removida com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ */
+router.delete(
+  '/:cursoId/turmas/:turmaId/notas/:notaId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  NotasController.delete,
+);
+
+/**
+ * @openapi
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/provas/{provaId}/notas:
  *   put:
  *     summary: Registrar ou atualizar nota de prova
@@ -1127,6 +1319,60 @@ router.post(
   '/:cursoId/turmas/:turmaId/recuperacoes',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
   AvaliacaoController.registrarRecuperacao,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/matriculas/{matriculaId}/notas-detalhadas:
+ *   get:
+ *     summary: Consultar notas lançadas de uma matrícula (admin)
+ *     tags: ['Cursos - Notas']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: matriculaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Notas lançadas e informações da matrícula
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoNotaResumoMatricula'
+ */
+router.get(
+  '/matriculas/:matriculaId/notas-detalhadas',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  NotasController.listByMatricula,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/me/matriculas/{matriculaId}/notas-detalhadas:
+ *   get:
+ *     summary: Consultar notas lançadas do aluno autenticado
+ *     tags: ['Cursos - Notas']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: matriculaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Notas lançadas associadas à matrícula do aluno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoNotaResumoMatricula'
+ */
+router.get(
+  '/me/matriculas/:matriculaId/notas-detalhadas',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  NotasController.listMy,
 );
 
 /**

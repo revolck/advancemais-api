@@ -159,6 +159,7 @@ model CursosTurmas {
   aulas                CursosTurmasAulas[]
   modulos              CursosTurmasModulos[]
   provas               CursosTurmasProvas[]
+  agenda               CursosTurmasAgenda[]
   notas                CursosNotas[]
   frequencias          CursosFrequenciaAlunos[]
   regrasAvaliacao      CursosTurmasRegrasAvaliacao?
@@ -203,6 +204,7 @@ model CursosTurmasAulas {
   modulo    CursosTurmasModulos?       @relation(fields: [moduloId], references: [id], onDelete: SetNull)
   materiais CursosTurmasAulasMateriais[]
   frequencias CursosFrequenciaAlunos[]
+  agenda     CursosTurmasAgenda[]
 
   @@index([turmaId])
   @@index([moduloId])
@@ -265,11 +267,35 @@ model CursosTurmasProvas {
   envios     CursosTurmasProvasEnvios[]
   recuperacoes CursosTurmasRecuperacoes[]
   notas      CursosNotas[]
+  agenda     CursosTurmasAgenda[]
 
   @@unique([turmaId, etiqueta])
   @@index([turmaId])
   @@index([moduloId])
   @@index([turmaId, ativo])
+}
+
+model CursosTurmasAgenda {
+  id          String           @id @default(uuid())
+  turmaId     String
+  tipo        CursosAgendaTipo
+  titulo      String           @db.VarChar(255)
+  descricao   String?          @db.VarChar(1000)
+  inicio      DateTime
+  fim         DateTime?
+  aulaId      String?
+  provaId     String?
+  criadoEm    DateTime         @default(now())
+  atualizadoEm DateTime        @updatedAt
+
+  turma CursosTurmas         @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  aula  CursosTurmasAulas?   @relation(fields: [aulaId], references: [id], onDelete: SetNull)
+  prova CursosTurmasProvas?  @relation(fields: [provaId], references: [id], onDelete: SetNull)
+
+  @@index([turmaId, inicio])
+  @@index([tipo])
+  @@index([aulaId])
+  @@index([provaId])
 }
 
 model CursosTurmasProvasEnvios {
@@ -422,6 +448,20 @@ enum CursosFrequenciaStatus {
 enum CursosLocalProva {
   TURMA
   MODULO
+}
+
+enum CursosAgendaTipo {
+  AULA
+  PROVA
+  EVENTO
+  ATIVIDADE
+  TRABALHO
+  PROJETO
+  SEMINARIO
+  SIMULADO
+  REUNIAO
+  RECESSO
+  FERIADO
 }
 
 enum CursosStatusPadrao {

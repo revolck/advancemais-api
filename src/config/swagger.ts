@@ -918,6 +918,164 @@ const options: Options = {
           description: 'Situação da presença do aluno em aula ou período',
           example: 'PRESENTE',
         },
+        CursosAgendaTipo: {
+          type: 'string',
+          enum: [
+            'AULA',
+            'PROVA',
+            'EVENTO',
+            'ATIVIDADE',
+            'TRABALHO',
+            'PROJETO',
+            'SEMINARIO',
+            'SIMULADO',
+            'REUNIAO',
+            'RECESSO',
+            'FERIADO',
+          ],
+          description: 'Tipo de evento registrado na agenda da turma',
+          example: 'AULA',
+        },
+        CursoAgendaEvento: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            turmaId: { type: 'string', format: 'uuid' },
+            tipo: { $ref: '#/components/schemas/CursosAgendaTipo' },
+            titulo: { type: 'string', example: 'Aula inaugural' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Aula de abertura com apresentação da metodologia do curso.',
+            },
+            inicio: { type: 'string', format: 'date-time', example: '2025-03-10T18:30:00.000Z' },
+            fim: { type: 'string', format: 'date-time', nullable: true },
+            criadoEm: { type: 'string', format: 'date-time' },
+            atualizadoEm: { type: 'string', format: 'date-time' },
+            turma: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                nome: { type: 'string', example: 'Turma 2025/1 - Noite' },
+                codigo: { type: 'string', example: 'TURMA001' },
+                cursoId: { type: 'integer', example: 1 },
+                curso: {
+                  type: 'object',
+                  nullable: true,
+                  properties: {
+                    id: { type: 'integer', example: 10 },
+                    nome: { type: 'string', example: 'Formação Fullstack' },
+                  },
+                },
+              },
+            },
+            referencia: {
+              nullable: true,
+              anyOf: [
+                {
+                  type: 'object',
+                  properties: {
+                    tipo: { type: 'string', enum: ['AULA'] },
+                    id: { type: 'string', format: 'uuid' },
+                    nome: { type: 'string', example: 'Aula 01 - Fundamentos' },
+                    moduloId: { type: 'string', format: 'uuid', nullable: true },
+                    ordem: { type: 'integer', example: 1 },
+                  },
+                  required: ['tipo', 'id', 'nome', 'ordem'],
+                },
+                {
+                  type: 'object',
+                  properties: {
+                    tipo: { type: 'string', enum: ['PROVA'] },
+                    id: { type: 'string', format: 'uuid' },
+                    titulo: { type: 'string', example: 'Prova 1 - Frontend' },
+                    etiqueta: { type: 'string', example: 'P1' },
+                    moduloId: { type: 'string', format: 'uuid', nullable: true },
+                  },
+                  required: ['tipo', 'id', 'titulo', 'etiqueta'],
+                },
+              ],
+            },
+          },
+        },
+        CursoAgendaEventoAluno: {
+          allOf: [
+            { $ref: '#/components/schemas/CursoAgendaEvento' },
+            {
+              type: 'object',
+              properties: {
+                matriculaId: {
+                  type: 'string',
+                  format: 'uuid',
+                  nullable: true,
+                  description: 'Identificador da matrícula do aluno na turma relacionada ao evento',
+                },
+              },
+            },
+          ],
+        },
+        CursoAgendaCreateInput: {
+          type: 'object',
+          required: ['tipo', 'titulo', 'inicio'],
+          properties: {
+            tipo: { $ref: '#/components/schemas/CursosAgendaTipo' },
+            titulo: {
+              type: 'string',
+              example: 'Prova final',
+              minLength: 3,
+              maxLength: 255,
+            },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Prova presencial realizada na sede da escola.',
+            },
+            inicio: { type: 'string', format: 'date-time', example: '2025-07-20T13:00:00.000Z' },
+            fim: { type: 'string', format: 'date-time', nullable: true },
+            aulaId: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+              description: 'Obrigatório quando tipo for AULA',
+            },
+            provaId: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+              description: 'Obrigatório quando tipo for PROVA',
+            },
+          },
+        },
+        CursoAgendaUpdateInput: {
+          type: 'object',
+          properties: {
+            tipo: { $ref: '#/components/schemas/CursosAgendaTipo' },
+            titulo: {
+              type: 'string',
+              example: 'Aula prática de projeto',
+              minLength: 3,
+              maxLength: 255,
+            },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Workshop com mentoria individual.',
+            },
+            inicio: { type: 'string', format: 'date-time' },
+            fim: { type: 'string', format: 'date-time', nullable: true },
+            aulaId: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+            },
+            provaId: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+            },
+          },
+        },
         CursoFrequencia: {
           type: 'object',
           properties: {

@@ -1,5 +1,9 @@
 import { Request, Response } from 'express';
-import { WebsiteScriptOrientation, WebsiteStatus } from '@prisma/client';
+import {
+  WebsiteScriptAplicacao,
+  WebsiteScriptOrientation,
+  WebsiteStatus,
+} from '@prisma/client';
 
 import { websiteScriptsService } from '@/modules/website/services/scripts.service';
 import { respondWithCache } from '@/modules/website/utils/cache-response';
@@ -8,6 +12,9 @@ const ORIENTATIONS = new Set(
   Object.values(WebsiteScriptOrientation).map((value) => value.toString()),
 );
 const STATUSES = new Set(Object.values(WebsiteStatus).map((value) => value.toString()));
+const APPLICATIONS = new Set(
+  Object.values(WebsiteScriptAplicacao).map((value) => value.toString()),
+);
 
 function normalizeStatus(value: unknown): WebsiteStatus | undefined {
   if (value === undefined || value === null || value === '') {
@@ -36,15 +43,31 @@ function normalizeOrientation(value: unknown): WebsiteScriptOrientation {
   return normalized as WebsiteScriptOrientation;
 }
 
+function normalizeApplication(value: unknown): WebsiteScriptAplicacao {
+  if (typeof value !== 'string') {
+    throw new Error('Aplicação inválida. Informe WEBSITE ou DASHBOARD.');
+  }
+  const normalized = value.trim().toUpperCase();
+  if (!APPLICATIONS.has(normalized)) {
+    throw new Error('Aplicação inválida. Valores aceitos: WEBSITE ou DASHBOARD.');
+  }
+  return normalized as WebsiteScriptAplicacao;
+}
+
 export class WebsiteScriptsController {
   static list = async (req: Request, res: Response) => {
     try {
-      const { orientacao, status } = req.query;
+      const { aplicacao, orientacao, status } = req.query;
 
       const filters: {
+        aplicacao?: WebsiteScriptAplicacao;
         orientacao?: WebsiteScriptOrientation;
         status?: WebsiteStatus;
       } = {};
+
+      if (aplicacao !== undefined) {
+        filters.aplicacao = normalizeApplication(String(aplicacao));
+      }
 
       if (orientacao !== undefined) {
         filters.orientacao = normalizeOrientation(String(orientacao));
@@ -85,8 +108,13 @@ export class WebsiteScriptsController {
 
   static create = async (req: Request, res: Response) => {
     try {
-      const { nome, descricao, codigo, orientacao, status } = req.body;
+      const { nome, descricao, codigo, aplicacao, orientacao, status } = req.body;
 
+      if (aplicacao === undefined || aplicacao === null || aplicacao === '') {
+        return res
+          .status(400)
+          .json({ message: 'O campo "aplicacao" é obrigatório e deve ser WEBSITE ou DASHBOARD.' });
+      }
       if (orientacao === undefined || orientacao === null || orientacao === '') {
         return res
           .status(400)
@@ -97,6 +125,7 @@ export class WebsiteScriptsController {
         return res.status(400).json({ message: 'O campo "codigo" é obrigatório.' });
       }
 
+      const normalizedApplication = normalizeApplication(aplicacao);
       const normalizedOrientation = normalizeOrientation(orientacao);
       const normalizedStatus = normalizeStatus(status);
 
@@ -104,6 +133,7 @@ export class WebsiteScriptsController {
         nome,
         descricao,
         codigo,
+        aplicacao: normalizedApplication,
         orientacao: normalizedOrientation,
         status: normalizedStatus,
       });
@@ -123,11 +153,12 @@ export class WebsiteScriptsController {
   static update = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { nome, descricao, codigo, orientacao, status } = req.body;
+      const { nome, descricao, codigo, aplicacao, orientacao, status } = req.body;
       const data: {
         nome?: string;
         descricao?: string;
         codigo?: string;
+        aplicacao?: WebsiteScriptAplicacao;
         orientacao?: WebsiteScriptOrientation;
         status?: WebsiteStatus;
       } = {};
@@ -139,6 +170,9 @@ export class WebsiteScriptsController {
           return res.status(400).json({ message: 'O campo "codigo" deve ser um texto não vazio.' });
         }
         data.codigo = codigo;
+      }
+      if (aplicacao !== undefined) {
+        data.aplicacao = normalizeApplication(aplicacao);
       }
       if (orientacao !== undefined) {
         data.orientacao = normalizeOrientation(orientacao);

@@ -3142,6 +3142,12 @@ const options: Options = {
           example: 'HEADER',
           description: 'Define em qual parte do documento o script será injetado.',
         },
+        WebsiteScriptAplicacao: {
+          type: 'string',
+          enum: ['WEBSITE', 'DASHBOARD'],
+          example: 'WEBSITE',
+          description: 'Determina onde o script será utilizado (site público ou dashboard).',
+        },
         WebsiteScript: {
           type: 'object',
           properties: {
@@ -3160,6 +3166,9 @@ const options: Options = {
               type: 'string',
               description: 'Código completo do script/pixel a ser injetado.',
               example: '<script>/* código do pixel */</script>',
+            },
+            aplicacao: {
+              $ref: '#/components/schemas/WebsiteScriptAplicacao',
             },
             orientacao: {
               $ref: '#/components/schemas/WebsiteScriptOrientation',
@@ -3181,7 +3190,7 @@ const options: Options = {
         },
         WebsiteScriptCreateInput: {
           type: 'object',
-          required: ['codigo', 'orientacao'],
+          required: ['codigo', 'aplicacao', 'orientacao'],
           properties: {
             nome: {
               type: 'string',
@@ -3197,6 +3206,9 @@ const options: Options = {
               type: 'string',
               description: 'Conteúdo do script/pixel. Aceita HTML e JavaScript.',
               example: '<script>/* código do pixel */</script>',
+            },
+            aplicacao: {
+              $ref: '#/components/schemas/WebsiteScriptAplicacao',
             },
             orientacao: {
               $ref: '#/components/schemas/WebsiteScriptOrientation',
@@ -3226,6 +3238,9 @@ const options: Options = {
               type: 'string',
               description: 'Conteúdo atualizado do script/pixel.',
               example: '<script>/* novo código */</script>',
+            },
+            aplicacao: {
+              $ref: '#/components/schemas/WebsiteScriptAplicacao',
             },
             orientacao: {
               $ref: '#/components/schemas/WebsiteScriptOrientation',

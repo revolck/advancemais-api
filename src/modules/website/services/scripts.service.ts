@@ -1,4 +1,9 @@
-import { Prisma, WebsiteScriptOrientation, WebsiteStatus } from '@prisma/client';
+import {
+  Prisma,
+  WebsiteScriptAplicacao,
+  WebsiteScriptOrientation,
+  WebsiteStatus,
+} from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
@@ -7,18 +12,20 @@ import { getCache, invalidateCacheByPrefix, setCache } from '@/utils/cache';
 const CACHE_PREFIX = 'website:scripts:list';
 
 type ListFilters = {
+  aplicacao?: WebsiteScriptAplicacao;
   orientacao?: WebsiteScriptOrientation;
   status?: WebsiteStatus;
 };
 
-const buildCacheKey = ({ orientacao, status }: ListFilters = {}) =>
-  `${CACHE_PREFIX}:${orientacao ?? 'all'}:${status ?? 'all'}`;
+const buildCacheKey = ({ aplicacao, orientacao, status }: ListFilters = {}) =>
+  `${CACHE_PREFIX}:${aplicacao ?? 'all'}:${orientacao ?? 'all'}:${status ?? 'all'}`;
 
 const selectFields = {
   id: true,
   nome: true,
   descricao: true,
   codigo: true,
+  aplicacao: true,
   orientacao: true,
   status: true,
   criadoEm: true,
@@ -32,6 +39,9 @@ export const websiteScriptsService = {
     if (cached) return cached;
 
     const where: Record<string, any> = {};
+    if (filters.aplicacao) {
+      where.aplicacao = filters.aplicacao;
+    }
     if (filters.orientacao) {
       where.orientacao = filters.orientacao;
     }
@@ -62,6 +72,7 @@ export const websiteScriptsService = {
     nome?: string;
     descricao?: string;
     codigo: string;
+    aplicacao: WebsiteScriptAplicacao;
     orientacao: WebsiteScriptOrientation;
     status?: WebsiteStatus;
   }) => {
@@ -70,6 +81,7 @@ export const websiteScriptsService = {
         nome: data.nome,
         descricao: data.descricao,
         codigo: data.codigo,
+        aplicacao: data.aplicacao,
         orientacao: data.orientacao,
         status: data.status ?? 'RASCUNHO',
       },
@@ -85,6 +97,7 @@ export const websiteScriptsService = {
       nome?: string;
       descricao?: string;
       codigo?: string;
+      aplicacao?: WebsiteScriptAplicacao;
       orientacao?: WebsiteScriptOrientation;
       status?: WebsiteStatus;
     },

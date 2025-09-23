@@ -21,6 +21,7 @@ import { logger } from '@/utils/logger';
 import { startAssinaturasReconJob } from '@/modules/mercadopago/assinaturas/cron/reconcile';
 import { startBoletoWatcherJob } from '@/modules/mercadopago/assinaturas/cron/boleto-watcher';
 import { startBanimentosWatcherJob } from '@/modules/usuarios/banimentos/cron/ban-watcher';
+import { startEstagiosWatcherJob } from '@/modules/cursos/cron/estagios-watcher';
 
 /**
  * Aplicação principal - Advance+ API
@@ -155,6 +156,7 @@ try {
     startAssinaturasReconJob();
     startBoletoWatcherJob();
     startBanimentosWatcherJob();
+    startEstagiosWatcherJob();
   } catch (e) {
     routerLogger.warn({ err: e }, '⚠️ Falha ao iniciar cron de assinaturas');
   }

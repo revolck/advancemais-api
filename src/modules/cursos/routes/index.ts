@@ -12,6 +12,7 @@ import { ProvasController } from '../controllers/provas.controller';
 import { AvaliacaoController } from '../controllers/avaliacao.controller';
 import { NotasController } from '../controllers/notas.controller';
 import { FrequenciaController } from '../controllers/frequencia.controller';
+import { AgendaController } from '../controllers/agenda.controller';
 
 const router = Router();
 
@@ -1410,6 +1411,241 @@ router.delete(
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
   NotasController.delete,
 );
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/agenda:
+ *   get:
+ *     summary: Listar eventos de agenda da turma
+ *     tags: ['Cursos - Agenda']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: tipo
+ *         schema: { $ref: '#/components/schemas/CursosAgendaTipo' }
+ *       - in: query
+ *         name: dataInicio
+ *         schema: { type: string, format: date-time }
+ *         description: Filtra eventos com início igual ou posterior à data informada
+ *       - in: query
+ *         name: dataFim
+ *         schema: { type: string, format: date-time }
+ *         description: Limita eventos com início até a data informada
+ *       - in: query
+ *         name: apenasFuturos
+ *         schema: { type: boolean }
+ *         description: Retorna apenas eventos com início futuro em relação à consulta
+ *     responses:
+ *       200:
+ *         description: Lista de eventos da turma
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/CursoAgendaEvento'
+ */
+router.get(
+  '/:cursoId/turmas/:turmaId/agenda',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  AgendaController.list,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/agenda/{agendaId}:
+ *   get:
+ *     summary: Obter evento específico da agenda da turma
+ *     tags: ['Cursos - Agenda']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: agendaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Evento de agenda
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoAgendaEvento'
+ */
+router.get(
+  '/:cursoId/turmas/:turmaId/agenda/:agendaId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  AgendaController.get,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/agenda:
+ *   post:
+ *     summary: Criar evento na agenda da turma
+ *     tags: ['Cursos - Agenda']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoAgendaCreateInput'
+ *     responses:
+ *       201:
+ *         description: Evento criado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoAgendaEvento'
+ */
+router.post(
+  '/:cursoId/turmas/:turmaId/agenda',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  AgendaController.create,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/agenda/{agendaId}:
+ *   put:
+ *     summary: Atualizar evento da agenda da turma
+ *     tags: ['Cursos - Agenda']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: agendaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoAgendaUpdateInput'
+ *     responses:
+ *       200:
+ *         description: Evento atualizado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoAgendaEvento'
+ */
+router.put(
+  '/:cursoId/turmas/:turmaId/agenda/:agendaId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  AgendaController.update,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/agenda/{agendaId}:
+ *   delete:
+ *     summary: Remover evento da agenda da turma
+ *     tags: ['Cursos - Agenda']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: agendaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       204:
+ *         description: Evento removido com sucesso
+ */
+router.delete(
+  '/:cursoId/turmas/:turmaId/agenda/:agendaId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  AgendaController.delete,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/me/agenda:
+ *   get:
+ *     summary: Consultar eventos das turmas em que o aluno está matriculado
+ *     tags: ['Cursos - Agenda']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: tipo
+ *         schema: { $ref: '#/components/schemas/CursosAgendaTipo' }
+ *       - in: query
+ *         name: dataInicio
+ *         schema: { type: string, format: date-time }
+ *       - in: query
+ *         name: dataFim
+ *         schema: { type: string, format: date-time }
+ *       - in: query
+ *         name: apenasFuturos
+ *         schema: { type: boolean }
+ *       - in: query
+ *         name: turmaId
+ *         schema: { type: string, format: uuid }
+ *         description: Filtra eventos para uma turma específica do aluno
+ *     responses:
+ *       200:
+ *         description: Eventos das turmas do aluno autenticado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/CursoAgendaEventoAluno'
+ */
+router.get('/me/agenda', supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]), AgendaController.listMy);
 
 /**
  * @openapi

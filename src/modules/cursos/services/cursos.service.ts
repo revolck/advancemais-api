@@ -273,6 +273,7 @@ const mapCourse = (course: RawCourse) => {
     nome: course.nome,
     descricao: course.descricao ?? null,
     cargaHoraria: course.cargaHoraria,
+    estagioObrigatorio: course.estagioObrigatorio,
     statusPadrao: course.statusPadrao,
     categoriaId: course.categoriaId ?? null,
     subcategoriaId: course.subcategoriaId ?? null,
@@ -308,6 +309,7 @@ const mapPublicCourse = (
   nome: course.nome,
   descricao: course.descricao ?? null,
   cargaHoraria: course.cargaHoraria,
+  estagioObrigatorio: course.estagioObrigatorio,
   statusPadrao: course.statusPadrao,
   instrutor: course.instrutor
     ? {
@@ -420,6 +422,7 @@ export const cursosService = {
         nome: true,
         descricao: true,
         cargaHoraria: true,
+        estagioObrigatorio: true,
         statusPadrao: true,
         turmas: {
           select: turmaSummarySelect,
@@ -436,6 +439,7 @@ export const cursosService = {
       nome: curso.nome,
       descricao: curso.descricao,
       cargaHoraria: curso.cargaHoraria,
+      estagioObrigatorio: curso.estagioObrigatorio,
       statusPadrao: curso.statusPadrao,
       turmas: curso.turmas.map(mapTurmaSummary),
     }));
@@ -488,6 +492,7 @@ export const cursosService = {
     categoriaId?: number | null;
     subcategoriaId?: number | null;
     statusPadrao?: CursosStatusPadrao;
+    estagioObrigatorio?: boolean;
   }) {
     return prisma.$transaction(async (tx) => {
       await ensureInstrutorExists(tx, data.instrutorId);
@@ -503,6 +508,7 @@ export const cursosService = {
           categoriaId: data.categoriaId ?? null,
           subcategoriaId: data.subcategoriaId ?? null,
           statusPadrao: data.statusPadrao ?? CursosStatusPadrao.RASCUNHO,
+          estagioObrigatorio: data.estagioObrigatorio ?? false,
           codigo,
         },
         include: {
@@ -525,6 +531,7 @@ export const cursosService = {
       categoriaId?: number | null;
       subcategoriaId?: number | null;
       statusPadrao?: CursosStatusPadrao;
+      estagioObrigatorio?: boolean;
     }>,
   ) {
     return prisma.$transaction(async (tx) => {
@@ -542,6 +549,7 @@ export const cursosService = {
           categoriaId: data.categoriaId,
           subcategoriaId: data.subcategoriaId,
           statusPadrao: data.statusPadrao,
+          estagioObrigatorio: data.estagioObrigatorio,
         },
         include: {
           instrutor: { select: instrutorSelect },

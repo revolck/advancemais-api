@@ -30,6 +30,7 @@ export const createCourseSchema = z.object({
   categoriaId: positiveInt.optional(),
   subcategoriaId: positiveInt.optional(),
   statusPadrao: z.nativeEnum(CursosStatusPadrao).optional(),
+  estagioObrigatorio: z.coerce.boolean().optional(),
 });
 
 export const updateCourseSchema = createCourseSchema.partial();

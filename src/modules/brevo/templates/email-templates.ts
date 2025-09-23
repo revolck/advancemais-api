@@ -37,6 +37,41 @@ export interface PlanEmailDataBase {
   supportUrl?: string;
 }
 
+export interface EstagioConvocacaoLocalEmailData {
+  empresaNome: string;
+  endereco?: string | null;
+  horarios?: string | null;
+  diasSemana?: string[];
+  pontoReferencia?: string | null;
+  observacoes?: string | null;
+}
+
+export interface EstagioConvocacaoEmailData {
+  nomeCompleto: string;
+  cursoNome: string;
+  turmaNome: string;
+  estagioNome: string;
+  dataInicio: string;
+  dataFim: string;
+  confirmacaoUrl: string;
+  obrigatorio: boolean;
+  empresaPrincipal?: string | null;
+  cargaHoraria?: number | null;
+  observacoes?: string | null;
+  locais: EstagioConvocacaoLocalEmailData[];
+}
+
+export interface EstagioEncerramentoEmailData {
+  adminNome: string;
+  alunoNome: string;
+  cursoNome: string;
+  turmaNome: string;
+  estagioNome: string;
+  dataFim: string;
+  diasRestantes: number;
+  observacoes?: string | null;
+}
+
 /**
  * Templates de email com design limpo e profissional
  * Foco na legibilidade e experiência do usuário
@@ -545,6 +580,165 @@ Seu plano foi atualizado para ${data.planName}.
 Agora você conta com ${vagasText} por mês para publicar e gerenciar no site.
 
 © ${currentYear} Advance+ - Todos os direitos reservados`;
+    return { subject, html, text };
+  }
+
+  // ========= Cursos - Estágios =========
+
+  public static generateEstagioConvocacaoEmail(data: EstagioConvocacaoEmailData): EmailTemplate {
+    const firstName = data.nomeCompleto.split(' ')[0];
+    const currentYear = this.getCurrentYear();
+    const obrigatorioText = data.obrigatorio ? 'Sim' : 'Não';
+    const cargaHorariaText = typeof data.cargaHoraria === 'number' ? `${data.cargaHoraria} horas` : 'A combinar';
+
+    const locaisHtml = data.locais.length
+      ? data.locais
+          .map((local) => {
+            const dias = local.diasSemana && local.diasSemana.length > 0 ? local.diasSemana.join(', ') : null;
+            return `
+        <div class="info-box">
+          <p class="info-text"><strong>${local.empresaNome}</strong></p>
+          ${local.endereco ? `<p class="info-text">${local.endereco}</p>` : ''}
+          ${local.horarios ? `<p class="info-text">Horário: ${local.horarios}</p>` : ''}
+          ${dias ? `<p class="info-text">Dias: ${dias}</p>` : ''}
+          ${local.pontoReferencia ? `<p class="info-text">Referência: ${local.pontoReferencia}</p>` : ''}
+          ${local.observacoes ? `<p class="info-text">Observações: ${local.observacoes}</p>` : ''}
+        </div>`;
+          })
+          .join('\n')
+      : `
+      <div class="info-box">
+        <p class="info-text">Os detalhes do local serão alinhados com você em breve.</p>
+      </div>`;
+
+    const subject = `Confirmação de estágio • ${data.estagioNome}`;
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirmação de estágio</title>
+  ${this.getBaseStyles()}
+</head>
+<body>
+  <div class="email-wrapper">
+    <div class="email-container">
+      <div class="header">
+        <div class="logo">
+          <img src="https://advancemais.com/images/logos/logo_branco.png" alt="Advance+" />
+        </div>
+      </div>
+      <div class="content">
+        <div class="greeting">Olá, ${firstName}!</div>
+        <div class="message">
+          Seu estágio <strong>${data.estagioNome}</strong> referente ao curso <strong>${data.cursoNome}</strong> (turma ${data.turmaNome}) foi cadastrado.
+          Para iniciarmos o processo, confirme que está ciente das informações abaixo.
+        </div>
+        <div class="info-box">
+          <p class="info-text"><strong>Período:</strong> ${data.dataInicio} até ${data.dataFim}</p>
+          <p class="info-text"><strong>Carga horária prevista:</strong> ${cargaHorariaText}</p>
+          <p class="info-text"><strong>Estágio obrigatório?</strong> ${obrigatorioText}</p>
+          ${data.empresaPrincipal ? `<p class="info-text"><strong>Empresa responsável:</strong> ${data.empresaPrincipal}</p>` : ''}
+        </div>
+        ${locaisHtml}
+        ${data.observacoes ? `<div class="warning-box"><div class="warning-title">Observações importantes</div><p class="warning-text">${data.observacoes}</p></div>` : ''}
+        <a href="${data.confirmacaoUrl}" class="cta-button">Confirmar ciência do estágio</a>
+        <div class="fallback-section">
+          <div class="fallback-title">Não consegue clicar?</div>
+          <div class="fallback-link">${data.confirmacaoUrl}</div>
+        </div>
+      </div>
+      <div class="footer">
+        <div class="footer-text">Advance+ © ${currentYear} todos os direitos reservados.</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    const locaisText = data.locais.length
+      ? data.locais
+          .map((local, index) => {
+            const linhas: string[] = [`${index + 1}. ${local.empresaNome}`];
+            if (local.endereco) linhas.push(`Endereço: ${local.endereco}`);
+            if (local.horarios) linhas.push(`Horários: ${local.horarios}`);
+            if (local.diasSemana && local.diasSemana.length > 0)
+              linhas.push(`Dias: ${local.diasSemana.join(', ')}`);
+            if (local.pontoReferencia) linhas.push(`Referência: ${local.pontoReferencia}`);
+            if (local.observacoes) linhas.push(`Observações: ${local.observacoes}`);
+            return linhas.join('\n');
+          })
+          .join('\n\n')
+      : 'Os detalhes de local serão compartilhados em breve.';
+
+    const text = `Olá, ${firstName}!
+
+Seu estágio ${data.estagioNome} referente ao curso ${data.cursoNome} (turma ${data.turmaNome}) foi cadastrado.
+Período: ${data.dataInicio} até ${data.dataFim}
+Carga horária prevista: ${cargaHorariaText}
+Estágio obrigatório? ${obrigatorioText}
+${data.empresaPrincipal ? `Empresa responsável: ${data.empresaPrincipal}
+` : ''}
+
+Locais do estágio:
+${locaisText}
+
+${data.observacoes ? `Observações: ${data.observacoes}
+
+` : ''}Confirme sua ciência acessando: ${data.confirmacaoUrl}
+
+© ${currentYear} Advance+ - Todos os direitos reservados`;
+
+    return { subject, html, text };
+  }
+
+  public static generateEstagioEncerramentoEmail(data: EstagioEncerramentoEmailData): EmailTemplate {
+    const currentYear = this.getCurrentYear();
+    const subject = `Estágio ${data.estagioNome} se encerra em ${data.diasRestantes} dia(s)`;
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aviso de encerramento de estágio</title>
+  ${this.getBaseStyles()}
+</head>
+<body>
+  <div class="email-wrapper">
+    <div class="email-container">
+      <div class="header">
+        <div class="logo">
+          <img src="https://advancemais.com/images/logos/logo_branco.png" alt="Advance+" />
+        </div>
+      </div>
+      <div class="content">
+        <div class="greeting">Olá, ${data.adminNome}!</div>
+        <div class="message">
+          O estágio <strong>${data.estagioNome}</strong> do aluno <strong>${data.alunoNome}</strong> (curso ${data.cursoNome} • turma ${data.turmaNome})
+          está previsto para encerrar em <strong>${data.diasRestantes} dia(s)</strong>, no dia ${data.dataFim}.
+        </div>
+        <div class="info-box">
+          <p class="info-text">Recomendamos validar as entregas e atualizar o status do estágio na plataforma.</p>
+        </div>
+        ${data.observacoes ? `<div class="warning-box"><div class="warning-title">Observações registradas</div><p class="warning-text">${data.observacoes}</p></div>` : ''}
+      </div>
+      <div class="footer">
+        <div class="footer-text">Advance+ © ${currentYear} todos os direitos reservados.</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    const text = `Olá, ${data.adminNome}!
+
+O estágio ${data.estagioNome} do aluno ${data.alunoNome} (curso ${data.cursoNome} • turma ${data.turmaNome}) está previsto para encerrar em ${data.diasRestantes} dia(s), no dia ${data.dataFim}.
+Revise as entregas e atualize o status na plataforma.
+${data.observacoes ? `Observações: ${data.observacoes}
+` : ''}
+
+© ${currentYear} Advance+ - Todos os direitos reservados`;
+
     return { subject, html, text };
   }
 

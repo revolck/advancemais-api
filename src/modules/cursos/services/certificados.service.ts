@@ -2,6 +2,7 @@ import {
   CursosCertificados,
   CursosCertificadosLogAcao,
   CursosCertificadosTipos,
+  CursosEstagioStatus,
   Prisma,
 } from '@prisma/client';
 
@@ -92,6 +93,7 @@ export const certificadosService = {
                   id: true,
                   nome: true,
                   codigo: true,
+                  estagioObrigatorio: true,
                   cargaHoraria: true,
                 },
               },
@@ -104,6 +106,22 @@ export const certificadosService = {
         const error = new Error('Matrícula não encontrada');
         (error as any).code = 'MATRICULA_NOT_FOUND';
         throw error;
+      }
+
+      if (matricula.turma.curso.estagioObrigatorio) {
+        const estagioConcluido = await tx.cursosEstagios.findFirst({
+          where: {
+            matriculaId: data.matriculaId,
+            status: CursosEstagioStatus.CONCLUIDO,
+          },
+          select: { id: true },
+        });
+
+        if (!estagioConcluido) {
+          const error = new Error('Estágio obrigatório ainda não concluído');
+          (error as any).code = 'ESTAGIO_NAO_CONCLUIDO';
+          throw error;
+        }
       }
 
       const cargaHoraria = data.cargaHoraria ?? matricula.turma.curso.cargaHoraria ?? 0;

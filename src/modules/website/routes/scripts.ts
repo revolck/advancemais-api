@@ -14,6 +14,11 @@ const router = Router();
  *     tags: [Website - Scripts]
  *     parameters:
  *       - in: query
+ *         name: aplicacao
+ *         description: Filtro pelo contexto de uso do script
+ *         schema:
+ *           $ref: '#/components/schemas/WebsiteScriptAplicacao'
+ *       - in: query
  *         name: orientacao
  *         description: Filtro pela área onde o script será injetado
  *         schema:
@@ -50,7 +55,7 @@ const router = Router();
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X GET "http://localhost:3000/api/v1/website/scripts?orientacao=HEADER"
+ *           curl -X GET "http://localhost:3000/api/v1/website/scripts?aplicacao=WEBSITE&orientacao=HEADER"
  */
 router.get('/', publicCache, WebsiteScriptsController.list);
 
@@ -133,7 +138,7 @@ router.get('/:id', publicCache, WebsiteScriptsController.get);
  *           curl -X POST "http://localhost:3000/api/v1/website/scripts" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -H "Content-Type: application/json" \\
- *            -d '{"nome":"Facebook Pixel","codigo":"<script>...</script>","orientacao":"HEADER","status":"PUBLICADO"}'
+ *            -d '{"nome":"Facebook Pixel","codigo":"<script>...</script>","aplicacao":"WEBSITE","orientacao":"HEADER","status":"PUBLICADO"}'
  */
 router.post(
   '/',
@@ -193,7 +198,7 @@ router.post(
  *           curl -X PUT "http://localhost:3000/api/v1/website/scripts/{id}" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -H "Content-Type: application/json" \\
- *            -d '{"status":false}'
+ *            -d '{"status":false,"aplicacao":"DASHBOARD"}'
  */
 router.put(
   '/:id',

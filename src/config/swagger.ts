@@ -148,6 +148,10 @@ const options: Options = {
         description: 'Gestão de aulas e materiais vinculados às turmas',
       },
       {
+        name: 'Cursos - Notas',
+        description: 'Lançamento e acompanhamento das notas dos alunos em provas e trabalhos',
+      },
+      {
         name: 'MercadoPago - Assinaturas',
         description: 'Assinaturas e cobranças recorrentes (Mercado Pago)',
       },
@@ -200,7 +204,7 @@ const options: Options = {
         name: 'Candidatos',
         tags: ['Candidatos', 'Candidatos - Áreas de Interesse'],
       },
-      { name: 'Cursos', tags: ['Cursos', 'Cursos - Turmas', 'Cursos - Aulas'] },
+      { name: 'Cursos', tags: ['Cursos', 'Cursos - Turmas', 'Cursos - Aulas', 'Cursos - Notas'] },
       { name: 'Pagamentos', tags: ['MercadoPago - Assinaturas'] },
     ],
     components: {
@@ -764,6 +768,141 @@ const options: Options = {
             pesoTotal: { type: 'number', nullable: true, example: 1 },
             realizadoEm: { type: 'string', format: 'date-time', nullable: true },
             observacoes: { type: 'string', nullable: true },
+          },
+        },
+        CursosNotaTipo: {
+          type: 'string',
+          enum: ['PROVA', 'TRABALHO', 'ATIVIDADE', 'PROJETO', 'SEMINARIO', 'PARTICIPACAO', 'SIMULADO', 'BONUS', 'OUTRO'],
+          description:
+            'Tipo de lançamento da nota. Valores extras cobrem entregas diversas como atividades, projetos, seminários, participação, simulados, bônus e outros registros.',
+          example: 'PROVA',
+        },
+        CursoNota: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            turmaId: { type: 'string', format: 'uuid' },
+            matriculaId: { type: 'string', format: 'uuid' },
+            tipo: { $ref: '#/components/schemas/CursosNotaTipo' },
+            provaId: { type: 'string', format: 'uuid', nullable: true },
+            referenciaExterna: { type: 'string', nullable: true, example: 'TRAB-2025-01' },
+            titulo: { type: 'string', example: 'Prova Parcial' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Avaliação dos conteúdos do módulo 1.',
+            },
+            nota: { type: 'number', format: 'float', nullable: true, example: 8.5 },
+            peso: { type: 'number', format: 'float', nullable: true, example: 1 },
+            valorMaximo: { type: 'number', format: 'float', nullable: true, example: 10 },
+            dataReferencia: { type: 'string', format: 'date-time', nullable: true },
+            observacoes: { type: 'string', nullable: true },
+            criadoEm: { type: 'string', format: 'date-time' },
+            atualizadoEm: { type: 'string', format: 'date-time' },
+            prova: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                titulo: { type: 'string', example: 'Prova Parcial' },
+                etiqueta: { type: 'string', example: 'P1' },
+              },
+            },
+            matricula: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                alunoId: { type: 'string', format: 'uuid' },
+                aluno: {
+                  type: 'object',
+                  nullable: true,
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    nome: { type: 'string', example: 'João da Silva' },
+                    email: { type: 'string', format: 'email' },
+                  },
+                },
+              },
+            },
+          },
+        },
+        CursoNotaCreateInput: {
+          type: 'object',
+          required: ['matriculaId', 'tipo'],
+          properties: {
+            matriculaId: { type: 'string', format: 'uuid' },
+            tipo: { $ref: '#/components/schemas/CursosNotaTipo' },
+            provaId: { type: 'string', format: 'uuid', nullable: true },
+            referenciaExterna: { type: 'string', nullable: true, maxLength: 120 },
+            titulo: { type: 'string', nullable: true, example: 'Entrega Trabalho 1' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Resumo crítico sobre temas abordados na aula.',
+            },
+            nota: { type: 'number', nullable: true, example: 8 },
+            peso: { type: 'number', nullable: true, example: 1 },
+            valorMaximo: { type: 'number', nullable: true, example: 10 },
+            dataReferencia: { type: 'string', format: 'date-time', nullable: true },
+            observacoes: {
+              type: 'string',
+              nullable: true,
+              example: 'Aluno entregou com atraso de 1 dia.',
+            },
+          },
+        },
+        CursoNotaUpdateInput: {
+          type: 'object',
+          properties: {
+            tipo: { $ref: '#/components/schemas/CursosNotaTipo' },
+            provaId: { type: 'string', format: 'uuid', nullable: true },
+            referenciaExterna: { type: 'string', nullable: true, maxLength: 120 },
+            titulo: { type: 'string', nullable: true },
+            descricao: { type: 'string', nullable: true },
+            nota: { type: 'number', nullable: true },
+            peso: { type: 'number', nullable: true },
+            valorMaximo: { type: 'number', nullable: true },
+            dataReferencia: { type: 'string', format: 'date-time', nullable: true },
+            observacoes: { type: 'string', nullable: true },
+          },
+        },
+        CursoNotaResumoMatricula: {
+          type: 'object',
+          properties: {
+            matricula: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                aluno: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    nome: { type: 'string', example: 'Maria Souza' },
+                    email: { type: 'string', format: 'email' },
+                  },
+                },
+              },
+            },
+            curso: {
+              type: 'object',
+              properties: {
+                id: { type: 'integer', example: 1 },
+                nome: { type: 'string', example: 'Formação Fullstack' },
+              },
+            },
+            turma: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                nome: { type: 'string', example: 'Turma 2025/1' },
+                codigo: { type: 'string', example: 'TURMA001' },
+              },
+            },
+            notas: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursoNota' },
+            },
           },
         },
         CursoTurmaRegrasAvaliacao: {

@@ -2085,11 +2085,10 @@ const options: Options = {
             },
           },
         },
-        UserRegisterRequest: {
+        UserRegisterPessoaFisicaRequest: {
           type: 'object',
           required: [
             'nomeCompleto',
-            'documento',
             'telefone',
             'email',
             'senha',
@@ -2097,14 +2096,10 @@ const options: Options = {
             'aceitarTermos',
             'supabaseId',
             'tipoUsuario',
+            'cpf',
           ],
           properties: {
             nomeCompleto: { type: 'string', example: 'João da Silva' },
-            documento: {
-              type: 'string',
-              description: 'CPF ou CNPJ',
-              example: '12345678900',
-            },
             telefone: {
               type: 'string',
               example: '+55 11 99999-9999',
@@ -2114,11 +2109,16 @@ const options: Options = {
               format: 'email',
               example: 'joao@example.com',
             },
-            senha: { type: 'string', format: 'password', example: 'senha123' },
+            senha: {
+              type: 'string',
+              format: 'password',
+              example: 'Senha@1234',
+              minLength: 8,
+            },
             confirmarSenha: {
               type: 'string',
               format: 'password',
-              example: 'senha123',
+              example: 'Senha@1234',
             },
             aceitarTermos: { type: 'boolean', example: true },
             supabaseId: {
@@ -2127,15 +2127,109 @@ const options: Options = {
               example: 'uuid-supabase',
             },
             tipoUsuario: {
-              allOf: [{ $ref: '#/components/schemas/TiposDeUsuarios' }],
-              description: 'Tipo do usuário representado pelo enum TiposDeUsuarios.',
+              type: 'string',
+              enum: ['PESSOA_FISICA'],
+              example: 'PESSOA_FISICA',
+            },
+            cpf: {
+              type: 'string',
+              description: 'CPF somente com números',
+              example: '12345678900',
+              minLength: 11,
+              maxLength: 11,
+            },
+            dataNasc: {
+              type: 'string',
+              format: 'date',
+              nullable: true,
+              example: '1995-05-10',
+            },
+            genero: {
+              type: 'string',
+              nullable: true,
+              example: 'FEMININO',
+            },
+            role: {
+              allOf: [{ $ref: '#/components/schemas/Roles' }],
+              nullable: true,
             },
           },
+        },
+        UserRegisterPessoaJuridicaRequest: {
+          type: 'object',
+          required: [
+            'nomeCompleto',
+            'telefone',
+            'email',
+            'senha',
+            'confirmarSenha',
+            'aceitarTermos',
+            'supabaseId',
+            'tipoUsuario',
+            'cnpj',
+          ],
+          properties: {
+            nomeCompleto: { type: 'string', example: 'Empresa Exemplo LTDA' },
+            telefone: {
+              type: 'string',
+              example: '+55 11 98888-7777',
+            },
+            email: {
+              type: 'string',
+              format: 'email',
+              example: 'contato@empresaexemplo.com',
+            },
+            senha: {
+              type: 'string',
+              format: 'password',
+              example: 'Senha@1234',
+              minLength: 8,
+            },
+            confirmarSenha: {
+              type: 'string',
+              format: 'password',
+              example: 'Senha@1234',
+            },
+            aceitarTermos: { type: 'boolean', example: true },
+            supabaseId: {
+              type: 'string',
+              description: 'Identificador do usuário no Supabase',
+              example: 'uuid-supabase',
+            },
+            tipoUsuario: {
+              type: 'string',
+              enum: ['PESSOA_JURIDICA'],
+              example: 'PESSOA_JURIDICA',
+            },
+            cnpj: {
+              type: 'string',
+              description: 'CNPJ somente com números',
+              example: '12345678000199',
+              minLength: 14,
+              maxLength: 14,
+            },
+            role: {
+              allOf: [{ $ref: '#/components/schemas/Roles' }],
+              nullable: true,
+            },
+          },
+        },
+        UserRegisterRequest: {
+          oneOf: [
+            { $ref: '#/components/schemas/UserRegisterPessoaFisicaRequest' },
+            { $ref: '#/components/schemas/UserRegisterPessoaJuridicaRequest' },
+          ],
+          description:
+            'Estrutura de cadastro público de usuários. Informe os campos obrigatórios conforme o tipo selecionado (pessoa física ou jurídica).',
         },
         UserRegisterResponse: {
           type: 'object',
           properties: {
             success: { type: 'boolean', example: true },
+            message: {
+              type: 'string',
+              example: 'Pessoa física cadastrada com sucesso',
+            },
             usuario: {
               type: 'object',
               properties: {
@@ -2152,7 +2246,38 @@ const options: Options = {
                   type: 'string',
                   example: 'João da Silva',
                 },
+                tipoUsuario: {
+                  allOf: [{ $ref: '#/components/schemas/TiposDeUsuarios' }],
+                  example: 'PESSOA_FISICA',
+                },
+                role: {
+                  allOf: [{ $ref: '#/components/schemas/Roles' }],
+                  example: 'ALUNO_CANDIDATO',
+                },
+                status: {
+                  type: 'string',
+                  example: 'ATIVO',
+                },
+                criadoEm: {
+                  type: 'string',
+                  format: 'date-time',
+                  example: '2024-03-01T12:00:00Z',
+                },
+                codUsuario: {
+                  type: 'string',
+                  example: 'USR-00001',
+                },
               },
+            },
+            correlationId: {
+              type: 'string',
+              format: 'uuid',
+              example: 'd4e8c2a7-ff52-4f42-b6de-1234567890ab',
+            },
+            duration: {
+              type: 'string',
+              example: '245ms',
+              description: 'Tempo total de processamento da requisição.',
             },
           },
         },
@@ -2253,6 +2378,7 @@ const options: Options = {
             ultimoLogin: {
               type: 'string',
               format: 'date-time',
+              nullable: true,
               example: '2024-01-01T12:00:00Z',
             },
           },
@@ -2311,11 +2437,168 @@ const options: Options = {
             },
           },
         },
+        UserProfileStats: {
+          type: 'object',
+          properties: {
+            accountAge: {
+              type: 'integer',
+              description: 'Quantidade de dias desde a criação da conta.',
+              example: 45,
+            },
+            hasCompletedProfile: {
+              type: 'boolean',
+              description: 'Indica se o usuário já preencheu os principais campos do perfil.',
+              example: true,
+            },
+            hasAddress: {
+              type: 'boolean',
+              description: 'Define se ao menos um endereço foi cadastrado.',
+              example: true,
+            },
+            totalOrders: {
+              type: 'integer',
+              description: 'Total de pedidos vinculados ao usuário (quando aplicável).',
+              example: 0,
+            },
+            totalSubscriptions: {
+              type: 'integer',
+              description: 'Quantidade de assinaturas ativas vinculadas ao usuário.',
+              example: 0,
+            },
+            emailVerificationStatus: {
+              type: 'object',
+              properties: {
+                verified: { type: 'boolean', example: true },
+                verifiedAt: {
+                  type: 'string',
+                  format: 'date-time',
+                  nullable: true,
+                  example: '2024-01-01T12:00:00Z',
+                },
+                tokenExpiration: {
+                  type: 'string',
+                  format: 'date-time',
+                  nullable: true,
+                  example: '2024-01-02T12:00:00Z',
+                },
+              },
+            },
+          },
+        },
+        UserProfileResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: true },
+            message: { type: 'string', example: 'Perfil obtido com sucesso' },
+            usuario: { $ref: '#/components/schemas/UserProfile' },
+            stats: { $ref: '#/components/schemas/UserProfileStats' },
+            correlationId: {
+              type: 'string',
+              format: 'uuid',
+              example: 'd4e8c2a7-ff52-4f42-b6de-1234567890ab',
+            },
+            timestamp: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-03-12T10:25:01.234Z',
+            },
+          },
+        },
+        UserPasswordRecoveryRequest: {
+          type: 'object',
+          description:
+            'Envie apenas um identificador válido (email, CPF ou CNPJ) para iniciar o fluxo de recuperação de senha.',
+          properties: {
+            identificador: {
+              type: 'string',
+              description: 'Email, CPF ou CNPJ associado à conta.',
+              example: 'user@example.com',
+            },
+            email: {
+              type: 'string',
+              format: 'email',
+              description: 'Email cadastrado para a conta.',
+              example: 'user@example.com',
+            },
+            cpf: {
+              type: 'string',
+              description: 'CPF somente com números.',
+              minLength: 11,
+              maxLength: 11,
+              example: '12345678909',
+            },
+            cnpj: {
+              type: 'string',
+              description: 'CNPJ somente com números.',
+              minLength: 14,
+              maxLength: 14,
+              example: '12345678000199',
+            },
+          },
+          oneOf: [
+            { required: ['identificador'] },
+            { required: ['email'] },
+            { required: ['cpf'] },
+            { required: ['cnpj'] },
+          ],
+        },
+        UserPasswordRecoveryResponse: {
+          type: 'object',
+          properties: {
+            message: {
+              type: 'string',
+              example:
+                'Se o identificador estiver correto, você receberá um email com instruções para recuperação',
+            },
+          },
+        },
+        UserPasswordRecoveryValidateResponse: {
+          type: 'object',
+          properties: {
+            message: { type: 'string', example: 'Token válido' },
+            usuario: {
+              type: 'object',
+              properties: {
+                email: { type: 'string', format: 'email', example: 'user@example.com' },
+                nomeCompleto: { type: 'string', example: 'Usuário Advance' },
+              },
+            },
+          },
+        },
+        UserPasswordResetRequest: {
+          type: 'object',
+          required: ['token', 'novaSenha', 'confirmarSenha'],
+          properties: {
+            token: {
+              type: 'string',
+              description: 'Token hexadecimal recebido no email de recuperação.',
+              example: '4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f',
+            },
+            novaSenha: {
+              type: 'string',
+              format: 'password',
+              description: 'Nova senha que atende aos critérios vigentes (mínimo de 8 caracteres).',
+              example: 'NovaSenha@2024',
+            },
+            confirmarSenha: {
+              type: 'string',
+              format: 'password',
+              description: 'Confirmação da nova senha (deve ser igual a novaSenha).',
+              example: 'NovaSenha@2024',
+            },
+          },
+        },
+        UserPasswordResetResponse: {
+          type: 'object',
+          properties: {
+            message: { type: 'string', example: 'Senha redefinida com sucesso' },
+          },
+        },
         LogoutResponse: {
           type: 'object',
           properties: {
             success: { type: 'boolean', example: true },
-            message: { type: 'string', example: 'Logout realizado' },
+            message: { type: 'string', example: 'Logout realizado com sucesso' },
             correlationId: {
               type: 'string',
               format: 'uuid',

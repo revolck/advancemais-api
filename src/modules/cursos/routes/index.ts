@@ -11,6 +11,7 @@ import { ModulosController } from '../controllers/modulos.controller';
 import { ProvasController } from '../controllers/provas.controller';
 import { AvaliacaoController } from '../controllers/avaliacao.controller';
 import { NotasController } from '../controllers/notas.controller';
+import { FrequenciaController } from '../controllers/frequencia.controller';
 
 const router = Router();
 
@@ -1011,6 +1012,216 @@ router.delete(
 
 /**
  * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/frequencias:
+ *   get:
+ *     summary: Listar registros de frequência da turma
+ *     tags: ['Cursos - Frequências']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: matriculaId
+ *         required: false
+ *         schema: { type: string, format: uuid }
+ *         description: Filtra registros de frequência de uma matrícula específica
+ *       - in: query
+ *         name: aulaId
+ *         required: false
+ *         schema: { type: string, format: uuid }
+ *         description: Filtra registros vinculados a uma aula específica
+ *       - in: query
+ *         name: status
+ *         required: false
+ *         schema: { $ref: '#/components/schemas/CursosFrequenciaStatus' }
+ *       - in: query
+ *         name: dataInicio
+ *         required: false
+ *         schema: { type: string, format: date-time }
+ *         description: Data inicial do período (inclusive)
+ *       - in: query
+ *         name: dataFim
+ *         required: false
+ *         schema: { type: string, format: date-time }
+ *         description: Data final do período (inclusive)
+ *     responses:
+ *       200:
+ *         description: Lista de registros de frequência
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/CursoFrequencia'
+ */
+router.get(
+  '/:cursoId/turmas/:turmaId/frequencias',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  FrequenciaController.list,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/frequencias:
+ *   post:
+ *     summary: Registrar frequência para a turma
+ *     tags: ['Cursos - Frequências']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoFrequenciaCreateInput'
+ *     responses:
+ *       201:
+ *         description: Frequência registrada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoFrequencia'
+ */
+router.post(
+  '/:cursoId/turmas/:turmaId/frequencias',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  FrequenciaController.create,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/frequencias/{frequenciaId}:
+ *   get:
+ *     summary: Detalhar registro de frequência
+ *     tags: ['Cursos - Frequências']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: frequenciaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Dados completos do registro de frequência
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoFrequencia'
+ */
+router.get(
+  '/:cursoId/turmas/:turmaId/frequencias/:frequenciaId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  FrequenciaController.get,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/frequencias/{frequenciaId}:
+ *   put:
+ *     summary: Atualizar registro de frequência
+ *     tags: ['Cursos - Frequências']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: frequenciaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoFrequenciaUpdateInput'
+ *     responses:
+ *       200:
+ *         description: Frequência atualizada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoFrequencia'
+ */
+router.put(
+  '/:cursoId/turmas/:turmaId/frequencias/:frequenciaId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  FrequenciaController.update,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/frequencias/{frequenciaId}:
+ *   delete:
+ *     summary: Remover registro de frequência
+ *     tags: ['Cursos - Frequências']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: frequenciaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Frequência removida com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ */
+router.delete(
+  '/:cursoId/turmas/:turmaId/frequencias/:frequenciaId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  FrequenciaController.delete,
+);
+
+/**
+ * @openapi
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/notas:
  *   get:
  *     summary: Listar notas lançadas da turma
@@ -1198,6 +1409,60 @@ router.delete(
   '/:cursoId/turmas/:turmaId/notas/:notaId',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
   NotasController.delete,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/matriculas/{matriculaId}/frequencias-detalhadas:
+ *   get:
+ *     summary: Consultar registros de frequência de uma matrícula (admin)
+ *     tags: ['Cursos - Frequências']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: matriculaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Frequência lançada e informações da matrícula
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoFrequenciaResumoMatricula'
+ */
+router.get(
+  '/matriculas/:matriculaId/frequencias-detalhadas',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  FrequenciaController.listByMatricula,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/me/matriculas/{matriculaId}/frequencias-detalhadas:
+ *   get:
+ *     summary: Consultar registros de frequência do aluno autenticado
+ *     tags: ['Cursos - Frequências']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: matriculaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Frequência lançada associada à matrícula do aluno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoFrequenciaResumoMatricula'
+ */
+router.get(
+  '/me/matriculas/:matriculaId/frequencias-detalhadas',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  FrequenciaController.listMy,
 );
 
 /**

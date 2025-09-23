@@ -107,6 +107,14 @@ const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()(
   },
 });
 
+const buildPublicTurmaWhere = (referenceDate: Date): Prisma.CursosTurmasWhereInput => ({
+  status: { in: publicTurmaStatuses },
+  OR: [
+    { dataInscricaoFim: { equals: null } },
+    { dataInscricaoFim: { gte: referenceDate } },
+  ],
+});
+
 const turmaPublicInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
   include: {
     aulas: {
@@ -412,9 +420,12 @@ export const cursosService = {
   },
 
   async listPublic() {
+    const referenceDate = new Date();
+
     const cursos = await prisma.cursos.findMany({
       where: {
         statusPadrao: { in: publicCursoStatuses },
+        turmas: { some: buildPublicTurmaWhere(referenceDate) },
       },
       select: {
         id: true,
@@ -426,7 +437,7 @@ export const cursosService = {
         statusPadrao: true,
         turmas: {
           select: turmaSummarySelect,
-          where: { status: { in: publicTurmaStatuses } },
+          where: buildPublicTurmaWhere(referenceDate),
           orderBy: { criadoEm: 'desc' },
         },
       },
@@ -446,16 +457,19 @@ export const cursosService = {
   },
 
   async getPublicById(id: number) {
+    const referenceDate = new Date();
+
     const curso = await prisma.cursos.findFirst({
       where: {
         id,
         statusPadrao: { in: publicCursoStatuses },
+        turmas: { some: buildPublicTurmaWhere(referenceDate) },
       },
       include: {
         instrutor: { select: { id: true, nomeCompleto: true, codUsuario: true } },
         turmas: {
           ...turmaPublicInclude,
-          where: { status: { in: publicTurmaStatuses } },
+          where: buildPublicTurmaWhere(referenceDate),
           orderBy: { criadoEm: 'desc' },
         },
       },
@@ -469,10 +483,12 @@ export const cursosService = {
   },
 
   async getPublicTurma(turmaId: string) {
+    const referenceDate = new Date();
+
     const turma = await prisma.cursosTurmas.findFirst({
       where: {
         id: turmaId,
-        status: { in: publicTurmaStatuses },
+        ...buildPublicTurmaWhere(referenceDate),
       },
       ...turmaPublicInclude,
     });

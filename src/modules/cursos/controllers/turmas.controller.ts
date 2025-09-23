@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { Roles } from '@prisma/client';
 import { ZodError } from 'zod';
 
 import { turmasService } from '../services/turmas.service';
@@ -253,7 +254,11 @@ export class TurmasController {
 
     try {
       const data = turmaEnrollmentSchema.parse(req.body);
-      const turma = await turmasService.enroll(cursoId, turmaId, data.alunoId);
+      const actorRole = (req.user?.role as Roles | undefined) ?? null;
+      const turma = await turmasService.enroll(cursoId, turmaId, data.alunoId, {
+        id: req.user?.id ?? null,
+        role: actorRole,
+      });
       res.status(201).json(turma);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -278,6 +283,14 @@ export class TurmasController {
           success: false,
           code: 'SEM_VAGAS',
           message: 'Não há vagas disponíveis nesta turma',
+        });
+      }
+
+      if (error?.code === 'INSCRICOES_ENCERRADAS') {
+        return res.status(409).json({
+          success: false,
+          code: 'INSCRICOES_ENCERRADAS',
+          message: 'Período de inscrição encerrado para esta turma',
         });
       }
 

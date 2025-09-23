@@ -214,6 +214,7 @@ router.get('/validar/:token([a-fA-F0-9]{64})', passwordRecoveryController.valida
  *             required:
  *               - token
  *               - novaSenha
+ *               - confirmarSenha
  *             properties:
  *               token:
  *                 type: string
@@ -221,7 +222,13 @@ router.get('/validar/:token([a-fA-F0-9]{64})', passwordRecoveryController.valida
  *               novaSenha:
  *                 type: string
  *                 format: password
- *                 example: "senha123"
+ *                 description: Nova senha que atenderá aos critérios de segurança vigentes
+ *                 example: "Senha@1234"
+ *               confirmarSenha:
+ *                 type: string
+ *                 format: password
+ *                 description: Confirmação da nova senha (deve ser idêntica a novaSenha)
+ *                 example: "Senha@1234"
  *     responses:
  *       200:
  *         description: Senha redefinida
@@ -268,7 +275,7 @@ router.get('/validar/:token([a-fA-F0-9]{64})', passwordRecoveryController.valida
  *         source: |
  *           curl -X POST "http://localhost:3000/api/v1/usuarios/recuperar-senha/redefinir" \\
  *            -H "Content-Type: application/json" \\
- *            -d '{"token":"<token>","novaSenha":"senha123"}'
+ *            -d '{"token":"<token>","novaSenha":"Senha@1234","confirmarSenha":"Senha@1234"}'
  */
 router.post('/redefinir', passwordRecoveryController.redefinirSenha);
 

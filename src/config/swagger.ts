@@ -152,6 +152,10 @@ const options: Options = {
         description: 'Lançamento e acompanhamento das notas dos alunos em provas e trabalhos',
       },
       {
+        name: 'Cursos - Frequências',
+        description: 'Registro e acompanhamento da presença dos alunos nas turmas e aulas',
+      },
+      {
         name: 'MercadoPago - Assinaturas',
         description: 'Assinaturas e cobranças recorrentes (Mercado Pago)',
       },
@@ -204,7 +208,10 @@ const options: Options = {
         name: 'Candidatos',
         tags: ['Candidatos', 'Candidatos - Áreas de Interesse'],
       },
-      { name: 'Cursos', tags: ['Cursos', 'Cursos - Turmas', 'Cursos - Aulas', 'Cursos - Notas'] },
+      {
+        name: 'Cursos',
+        tags: ['Cursos', 'Cursos - Turmas', 'Cursos - Aulas', 'Cursos - Notas', 'Cursos - Frequências'],
+      },
       { name: 'Pagamentos', tags: ['MercadoPago - Assinaturas'] },
     ],
     components: {
@@ -902,6 +909,148 @@ const options: Options = {
             notas: {
               type: 'array',
               items: { $ref: '#/components/schemas/CursoNota' },
+            },
+          },
+        },
+        CursosFrequenciaStatus: {
+          type: 'string',
+          enum: ['PRESENTE', 'AUSENTE', 'JUSTIFICADO', 'ATRASADO'],
+          description: 'Situação da presença do aluno em aula ou período',
+          example: 'PRESENTE',
+        },
+        CursoFrequencia: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            turmaId: { type: 'string', format: 'uuid' },
+            matriculaId: { type: 'string', format: 'uuid' },
+            aulaId: { type: 'string', format: 'uuid', nullable: true },
+            dataReferencia: { type: 'string', format: 'date-time' },
+            status: { $ref: '#/components/schemas/CursosFrequenciaStatus' },
+            justificativa: {
+              type: 'string',
+              nullable: true,
+              example: 'Aluno apresentou atestado médico.',
+            },
+            observacoes: {
+              type: 'string',
+              nullable: true,
+              example: 'Aluno chegou com 10 minutos de atraso.',
+            },
+            criadoEm: { type: 'string', format: 'date-time' },
+            atualizadoEm: { type: 'string', format: 'date-time' },
+            aula: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                nome: { type: 'string', example: 'Aula 05 - Fundamentos de SQL' },
+                ordem: { type: 'integer', example: 5 },
+                moduloId: { type: 'string', format: 'uuid', nullable: true },
+                modulo: {
+                  type: 'object',
+                  nullable: true,
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    nome: { type: 'string', example: 'Banco de Dados' },
+                  },
+                },
+              },
+            },
+            matricula: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                alunoId: { type: 'string', format: 'uuid' },
+                aluno: {
+                  type: 'object',
+                  nullable: true,
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    nome: { type: 'string', example: 'João da Silva' },
+                    email: { type: 'string', format: 'email' },
+                  },
+                },
+              },
+            },
+          },
+        },
+        CursoFrequenciaCreateInput: {
+          type: 'object',
+          required: ['matriculaId', 'status'],
+          properties: {
+            matriculaId: { type: 'string', format: 'uuid' },
+            aulaId: { type: 'string', format: 'uuid', nullable: true },
+            dataReferencia: { type: 'string', format: 'date-time', nullable: true },
+            status: { $ref: '#/components/schemas/CursosFrequenciaStatus' },
+            justificativa: {
+              type: 'string',
+              nullable: true,
+              maxLength: 500,
+              example: 'Falta justificada com atestado.',
+            },
+            observacoes: {
+              type: 'string',
+              nullable: true,
+              maxLength: 500,
+              example: 'Aluno participou remotamente.',
+            },
+          },
+        },
+        CursoFrequenciaUpdateInput: {
+          type: 'object',
+          properties: {
+            aulaId: { type: 'string', format: 'uuid', nullable: true },
+            dataReferencia: { type: 'string', format: 'date-time', nullable: true },
+            status: { $ref: '#/components/schemas/CursosFrequenciaStatus' },
+            justificativa: {
+              type: 'string',
+              nullable: true,
+              maxLength: 500,
+            },
+            observacoes: {
+              type: 'string',
+              nullable: true,
+              maxLength: 500,
+            },
+          },
+        },
+        CursoFrequenciaResumoMatricula: {
+          type: 'object',
+          properties: {
+            matricula: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                aluno: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    nome: { type: 'string', example: 'Maria Souza' },
+                    email: { type: 'string', format: 'email' },
+                  },
+                },
+              },
+            },
+            curso: {
+              type: 'object',
+              properties: {
+                id: { type: 'integer', example: 1 },
+                nome: { type: 'string', example: 'Formação Fullstack' },
+              },
+            },
+            turma: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                nome: { type: 'string', example: 'Turma 2025/1' },
+                codigo: { type: 'string', example: 'TURMA001' },
+              },
+            },
+            frequencias: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursoFrequencia' },
             },
           },
         },

@@ -160,6 +160,7 @@ model CursosTurmas {
   modulos              CursosTurmasModulos[]
   provas               CursosTurmasProvas[]
   notas                CursosNotas[]
+  frequencias          CursosFrequenciaAlunos[]
   regrasAvaliacao      CursosTurmasRegrasAvaliacao?
   recuperacoes         CursosTurmasRecuperacoes[]
 
@@ -201,6 +202,7 @@ model CursosTurmasAulas {
   turma     CursosTurmas               @relation(fields: [turmaId], references: [id], onDelete: Cascade)
   modulo    CursosTurmasModulos?       @relation(fields: [moduloId], references: [id], onDelete: SetNull)
   materiais CursosTurmasAulasMateriais[]
+  frequencias CursosFrequenciaAlunos[]
 
   @@index([turmaId])
   @@index([moduloId])
@@ -238,6 +240,7 @@ model CursosTurmasMatriculas {
   envios CursosTurmasProvasEnvios[]
   recuperacoes CursosTurmasRecuperacoes[]
   notas CursosNotas[]
+  frequencias CursosFrequenciaAlunos[]
 
   @@unique([turmaId, alunoId])
   @@index([alunoId])
@@ -361,6 +364,29 @@ model CursosNotas {
   @@unique([matriculaId, provaId])
 }
 
+model CursosFrequenciaAlunos {
+  id             String                  @id @default(uuid())
+  turmaId        String
+  matriculaId    String
+  aulaId         String?
+  dataReferencia DateTime                @default(now())
+  status         CursosFrequenciaStatus  @default(PRESENTE)
+  justificativa  String?                 @db.VarChar(500)
+  observacoes    String?                 @db.VarChar(500)
+  criadoEm       DateTime                @default(now())
+  atualizadoEm   DateTime                @updatedAt
+
+  turma      CursosTurmas           @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  matricula  CursosTurmasMatriculas @relation(fields: [matriculaId], references: [id], onDelete: Cascade)
+  aula       CursosTurmasAulas?     @relation(fields: [aulaId], references: [id], onDelete: SetNull)
+
+  @@index([turmaId])
+  @@index([matriculaId])
+  @@index([aulaId])
+  @@index([dataReferencia])
+  @@unique([turmaId, matriculaId, aulaId, dataReferencia], map: "cursos_frequencia_unico")
+}
+
 enum CursosSituacaoFinal {
   EM_ANALISE
   APROVADO
@@ -384,6 +410,13 @@ enum CursosNotasTipo {
   SIMULADO
   BONUS
   OUTRO
+}
+
+enum CursosFrequenciaStatus {
+  PRESENTE
+  AUSENTE
+  JUSTIFICADO
+  ATRASADO
 }
 
 enum CursosLocalProva {

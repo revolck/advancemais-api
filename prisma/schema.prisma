@@ -52,6 +52,7 @@ model Usuarios {
   estagiosComoAluno   CursosEstagios[]            @relation("CursosEstagiosAluno")
   estagiosCriados     CursosEstagios[]            @relation("CursosEstagiosCriadoPor")
   estagiosAtualizados CursosEstagios[]            @relation("CursosEstagiosAtualizadoPor")
+  cuponsCriados       CuponsDesconto[]
 
   @@index([status])
   @@index([role])
@@ -139,6 +140,7 @@ model Cursos {
   subcategoria    CursosSubcategorias? @relation(fields: [subcategoriaId], references: [id], onDelete: SetNull)
   turmas          CursosTurmas[]
   estagios        CursosEstagios[]
+  cuponsDesconto  CuponsDescontoCursos[]
 
   @@index([categoriaId])
   @@index([subcategoriaId])
@@ -800,6 +802,63 @@ model PlanosEmpresariais {
 
   // Integração Mercado Pago - plano recorrente reutilizável
   mpPreapprovalPlanId String? @unique
+
+  cupons CuponsDescontoPlanos[]
+}
+
+model CuponsDesconto {
+  id                         String               @id @default(uuid())
+  codigo                     String               @unique
+  descricao                  String?              @db.VarChar(300)
+  tipoDesconto               CuponsTipoDesconto
+  valorPorcentagem           Decimal?             @db.Decimal(5, 2)
+  valorFixo                  Decimal?             @db.Decimal(12, 2)
+  aplicarEm                  CuponsAplicarEm
+  aplicarEmTodosItens        Boolean              @default(false)
+  limiteUsoTotalTipo         CuponsLimiteUso      @default(ILIMITADO)
+  limiteUsoTotalQuantidade   Int?
+  limitePorUsuarioTipo       CuponsLimiteUsuario  @default(ILIMITADO)
+  limitePorUsuarioQuantidade Int?
+  periodoTipo                CuponsPeriodo        @default(ILIMITADO)
+  periodoInicio              DateTime?
+  periodoFim                 DateTime?
+  usosTotais                 Int                  @default(0)
+  ativo                      Boolean              @default(true)
+  criadoPorId                String
+  criadoEm                   DateTime             @default(now())
+  atualizadoEm               DateTime             @updatedAt
+
+  criadoPor Usuarios               @relation(fields: [criadoPorId], references: [id])
+  cursos    CuponsDescontoCursos[]
+  planos    CuponsDescontoPlanos[]
+
+  @@index([codigo])
+  @@index([ativo])
+  @@index([aplicarEm, ativo])
+}
+
+model CuponsDescontoCursos {
+  id       Int            @id @default(autoincrement())
+  cupomId  String
+  cursoId  Int
+
+  cupom CuponsDesconto @relation(fields: [cupomId], references: [id], onDelete: Cascade)
+  curso Cursos          @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+
+  @@unique([cupomId, cursoId])
+  @@index([cursoId])
+}
+
+model CuponsDescontoPlanos {
+  id      Int    @id @default(autoincrement())
+  cupomId String
+  planoId String
+
+  cupom CuponsDesconto    @relation(fields: [cupomId], references: [id], onDelete: Cascade)
+  plano PlanosEmpresariais @relation(fields: [planoId], references: [id], onDelete: Cascade)
+
+  @@unique([cupomId, planoId])
+  @@index([planoId])
 }
 
 model UsuariosEnderecos {
@@ -1316,6 +1375,33 @@ enum WebsiteHeaderPageType {
   CURSOS
   POLITICA_PRIVACIDADE
   OUVIDORIA
+}
+
+enum CuponsTipoDesconto {
+  PORCENTAGEM
+  VALOR_FIXO
+}
+
+enum CuponsAplicarEm {
+  TODA_PLATAFORMA
+  APENAS_ASSINATURA
+  APENAS_CURSOS
+}
+
+enum CuponsLimiteUso {
+  ILIMITADO
+  LIMITADO
+}
+
+enum CuponsLimiteUsuario {
+  ILIMITADO
+  LIMITADO
+  PRIMEIRA_COMPRA
+}
+
+enum CuponsPeriodo {
+  ILIMITADO
+  PERIODO
 }
 
 enum WebsiteScriptOrientation {

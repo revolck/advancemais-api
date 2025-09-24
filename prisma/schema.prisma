@@ -37,6 +37,7 @@ model Usuarios {
   curriculos            UsuariosCurriculos[]
   candidaturasFeitas    EmpresasCandidatos[]   @relation("CandidatoUsuario")
   candidaturasRecebidas EmpresasCandidatos[]   @relation("EmpresaUsuario")
+  candidatoLogs         UsuariosCandidatosLogs[]
   planosContratados    EmpresasPlano[]    @relation("UsuarioPlanos")
   bloqueiosRecebidos  UsuariosEmBloqueios[] @relation("UsuariosEmBloqueiosUsuario")
   bloqueiosAplicados  UsuariosEmBloqueios[] @relation("UsuariosEmBloqueiosAdmin")
@@ -665,7 +666,7 @@ model EmpresasCandidatos {
   id               String         @id @default(uuid())
   vagaId           String
   candidatoId      String
-  curriculoId      String
+  curriculoId      String?
   empresaUsuarioId String
   status           StatusProcesso @default(RECEBIDA)
   origem           OrigemVagas    @default(SITE)
@@ -673,13 +674,26 @@ model EmpresasCandidatos {
   atualizadaEm     DateTime       @updatedAt
   consentimentos   Json?
 
-  vaga       EmpresasVagas      @relation(fields: [vagaId], references: [id], onDelete: Cascade)
-  candidato  Usuarios           @relation("CandidatoUsuario", fields: [candidatoId], references: [id], onDelete: Cascade)
-  curriculo  UsuariosCurriculos @relation(fields: [curriculoId], references: [id], onDelete: Cascade)
-  empresa    Usuarios           @relation("EmpresaUsuario", fields: [empresaUsuarioId], references: [id])
+  vaga       EmpresasVagas       @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  candidato  Usuarios            @relation("CandidatoUsuario", fields: [candidatoId], references: [id], onDelete: Cascade)
+  curriculo  UsuariosCurriculos? @relation(fields: [curriculoId], references: [id], onDelete: SetNull)
+  empresa    Usuarios            @relation("EmpresaUsuario", fields: [empresaUsuarioId], references: [id])
 
   @@unique([vagaId, candidatoId, curriculoId])
   @@index([vagaId, candidatoId])
+}
+
+model UsuariosCandidatosLogs {
+  id         String            @id @default(uuid())
+  usuarioId  String
+  tipo       CandidatoLogTipo
+  descricao  String?           @db.VarChar(500)
+  metadata   Json?
+  criadoEm   DateTime          @default(now())
+
+  usuario Usuarios @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, criadoEm])
 }
 
 model EmpresasPlano {
@@ -1400,6 +1414,17 @@ enum OrigemVagas {
   SITE
   DASHBOARD
   OUTROS
+}
+
+enum CandidatoLogTipo {
+  CURRICULO_CRIADO
+  CURRICULO_ATUALIZADO
+  CURRICULO_REMOVIDO
+  CANDIDATO_ATIVADO
+  CANDIDATO_DESATIVADO
+  CANDIDATURA_CRIADA
+  CANDIDATURA_CANCELADA_CURRICULO
+  CANDIDATURA_CANCELADA_BLOQUEIO
 }
 
 enum Senioridade {

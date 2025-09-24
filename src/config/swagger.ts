@@ -3295,7 +3295,7 @@ const options: Options = {
             id: { type: 'string', format: 'uuid' },
             vagaId: { type: 'string', format: 'uuid' },
             candidatoId: { type: 'string', format: 'uuid' },
-            curriculoId: { type: 'string', format: 'uuid' },
+            curriculoId: { type: 'string', format: 'uuid', nullable: true },
             empresaUsuarioId: { type: 'string', format: 'uuid' },
             status: { $ref: '#/components/schemas/StatusProcesso' },
             origem: { $ref: '#/components/schemas/OrigemVagas' },
@@ -8917,6 +8917,62 @@ const options: Options = {
           properties: {
             message: { type: 'string', example: 'Candidato encontrado' },
             candidato: { $ref: '#/components/schemas/AdminCandidateDetail' },
+          },
+        },
+        AdminCandidateLog: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid', example: 'log-uuid' },
+            usuarioId: { type: 'string', format: 'uuid', example: 'candidate-uuid' },
+            tipo: {
+              type: 'string',
+              enum: [
+                'CURRICULO_CRIADO',
+                'CURRICULO_ATUALIZADO',
+                'CURRICULO_REMOVIDO',
+                'CANDIDATO_ATIVADO',
+                'CANDIDATO_DESATIVADO',
+                'CANDIDATURA_CRIADA',
+                'CANDIDATURA_CANCELADA_CURRICULO',
+                'CANDIDATURA_CANCELADA_BLOQUEIO',
+              ],
+              example: 'CANDIDATURA_CANCELADA_CURRICULO',
+            },
+            descricao: { type: 'string', nullable: true, example: 'Candidatura cancelada após exclusão do currículo.' },
+            metadata: {
+              type: 'object',
+              nullable: true,
+              example: {
+                candidaturaId: 'cand-uuid',
+                vagaId: 'vaga-uuid',
+                curriculoId: 'curriculo-uuid',
+                motivo: 'CURRICULO_REMOVIDO',
+              },
+            },
+            criadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-05-01T12:00:00Z',
+            },
+          },
+        },
+        AdminCandidateLogListResponse: {
+          type: 'object',
+          properties: {
+            message: { type: 'string', example: 'Logs do candidato' },
+            logs: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/AdminCandidateLog' },
+            },
+            pagination: {
+              type: 'object',
+              properties: {
+                page: { type: 'integer', example: 1 },
+                limit: { type: 'integer', example: 20 },
+                total: { type: 'integer', example: 5 },
+                pages: { type: 'integer', example: 1 },
+              },
+            },
           },
         },
         AdminStatusUpdateRequest: {

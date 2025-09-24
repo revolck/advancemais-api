@@ -1,6 +1,8 @@
-import { Roles } from '@prisma/client';
+import { CandidatoLogTipo, Roles } from '@prisma/client';
 import { prisma } from '@/config/prisma';
 import type { CurriculoCreateInput, CurriculoUpdateInput } from './validators';
+import { candidatoLogsService } from '@/modules/candidatos/logs/service';
+import { candidaturasService } from '@/modules/candidatos/candidaturas/services';
 
 const MAX_CURRICULOS = 5;
 
@@ -49,6 +51,32 @@ export const curriculosService = {
           principal: shouldBePrincipal,
         },
       });
+
+      await candidatoLogsService.create(
+        {
+          usuarioId,
+          tipo: CandidatoLogTipo.CURRICULO_CRIADO,
+          metadata: {
+            curriculoId: created.id,
+            principal: created.principal,
+          },
+        },
+        tx,
+      );
+
+      if (total === 0) {
+        await candidatoLogsService.create(
+          {
+            usuarioId,
+            tipo: CandidatoLogTipo.CANDIDATO_ATIVADO,
+            metadata: {
+              motivo: 'PRIMEIRO_CURRICULO',
+              curriculoId: created.id,
+            },
+          },
+          tx,
+        );
+      }
 
       if (!shouldBePrincipal) {
         const principalExists = await tx.usuariosCurriculos.count({
@@ -100,6 +128,18 @@ export const curriculosService = {
         },
       });
 
+      await candidatoLogsService.create(
+        {
+          usuarioId,
+          tipo: CandidatoLogTipo.CURRICULO_ATUALIZADO,
+          metadata: {
+            curriculoId: updated.id,
+            principal: updated.principal,
+          },
+        },
+        tx,
+      );
+
       const principalExists = await tx.usuariosCurriculos.count({
         where: { usuarioId, principal: true },
       });
@@ -119,6 +159,13 @@ export const curriculosService = {
     const exists = await prisma.usuariosCurriculos.findFirst({ where: { id, usuarioId } });
     if (!exists) throw Object.assign(new Error('Currículo não encontrado'), { code: 'NOT_FOUND' });
     await prisma.$transaction(async (tx) => {
+      await candidaturasService.cancelForCandidato({
+        usuarioId,
+        curriculoId: id,
+        motivo: 'CURRICULO_REMOVIDO',
+        tx,
+      });
+
       await tx.usuariosCurriculos.delete({ where: { id } });
 
       if (exists.principal) {
@@ -136,6 +183,33 @@ export const curriculosService = {
             data: { principal: true, ultimaAtualizacao: new Date() },
           });
         }
+      }
+
+      await candidatoLogsService.create(
+        {
+          usuarioId,
+          tipo: CandidatoLogTipo.CURRICULO_REMOVIDO,
+          metadata: {
+            curriculoId: id,
+            principal: exists.principal,
+          },
+        },
+        tx,
+      );
+
+      const remaining = await tx.usuariosCurriculos.count({ where: { usuarioId } });
+
+      if (remaining === 0) {
+        await candidatoLogsService.create(
+          {
+            usuarioId,
+            tipo: CandidatoLogTipo.CANDIDATO_DESATIVADO,
+            metadata: {
+              motivo: 'SEM_CURRICULOS_ATIVOS',
+            },
+          },
+          tx,
+        );
       }
     });
   },

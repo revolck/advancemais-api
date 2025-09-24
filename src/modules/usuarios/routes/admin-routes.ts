@@ -22,7 +22,7 @@ const adminController = new AdminController();
  * /api/v1/usuarios/admin/candidatos/dashboard:
  *   get:
  *     summary: Listar candidatos (visão de dashboard)
- *     description: "Retorna candidatos com role ALUNO_CANDIDATO, limitado a 10 registros por página."
+ *     description: "Retorna candidatos com role ALUNO_CANDIDATO e pelo menos um currículo ativo, limitado a 10 registros por página."
  *     tags: [Usuários - Admin]
  *     security:
  *       - bearerAuth: []
@@ -284,6 +284,7 @@ router.post('/usuarios', asyncHandler(adminController.criarUsuario));
  * /api/v1/usuarios/admin/candidatos:
  *   get:
  *     summary: Listar candidatos
+ *     description: "Retorna candidatos com role ALUNO_CANDIDATO que possuem ao menos um currículo ativo cadastrado."
  *     tags: [Usuários - Admin]
  *     security:
  *       - bearerAuth: []
@@ -464,6 +465,69 @@ router.get('/usuarios/:userId', asyncHandler(adminController.buscarUsuario));
  *            -H "Authorization: Bearer <TOKEN>"
  */
 router.get('/candidatos/:userId', asyncHandler(adminController.buscarCandidato));
+/**
+ * @openapi
+ * /api/v1/usuarios/admin/candidatos/{userId}/logs:
+ *   get:
+ *     summary: Listar logs do candidato
+ *     description: "Retorna o histórico de eventos relacionados ao candidato, incluindo criação, atualização e cancelamento de candidaturas."
+ *     tags: [Usuários - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *       - in: query
+ *         name: tipo
+ *         schema:
+ *           type: string
+ *           enum:
+ *             - CURRICULO_CRIADO
+ *             - CURRICULO_ATUALIZADO
+ *             - CURRICULO_REMOVIDO
+ *             - CANDIDATO_ATIVADO
+ *             - CANDIDATO_DESATIVADO
+ *             - CANDIDATURA_CRIADA
+ *             - CANDIDATURA_CANCELADA_CURRICULO
+ *             - CANDIDATURA_CANCELADA_BLOQUEIO
+ *     responses:
+ *       200:
+ *         description: Lista de logs do candidato
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminCandidateLogListResponse'
+ *       404:
+ *         description: Candidato não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro ao listar logs do candidato
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get('/candidatos/:userId/logs', asyncHandler(adminController.listarCandidatoLogs));
 
 // =============================================
 // ROTAS DE MODIFICAÇÃO (APENAS ADMIN)

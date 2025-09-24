@@ -8,7 +8,7 @@ export const provaWithEnviosInclude = Prisma.validator<Prisma.CursosTurmasProvas
   include: {
     envios: {
       include: {
-        matricula: {
+        inscricao: {
           select: {
             id: true,
             alunoId: true,
@@ -48,8 +48,8 @@ export const mapProva = (prova: ProvaWithRelations | ProvaWithEnvios) => ({
     ? prova.envios.map((envio) => ({
         id: envio.id,
         provaId: envio.provaId,
-        matriculaId: envio.matriculaId,
-        alunoId: envio.matricula.alunoId,
+        inscricaoId: envio.inscricaoId,
+        alunoId: envio.inscricao.alunoId,
         nota: normalizeDecimal(envio.nota),
         pesoTotal: normalizeDecimal(envio.pesoTotal),
         realizadoEm: envio.realizadoEm?.toISOString() ?? null,

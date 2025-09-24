@@ -425,9 +425,9 @@ router.put(
 
 /**
  * @openapi
- * /api/v1/cursos/{cursoId}/turmas/{turmaId}/enrollments:
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/inscricoes:
  *   post:
- *     summary: Matricular um aluno em uma turma
+ *     summary: Inscrever um aluno em uma turma
  *     description: >-
  *       Respeita automaticamente o período de inscrição informado na turma. Após o encerramento,
  *       apenas usuários com perfis ADMIN ou MODERADOR podem incluir alunos manualmente.
@@ -448,32 +448,32 @@ router.put(
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/CursoTurmaEnrollmentInput'
+ *             $ref: '#/components/schemas/CursoTurmaInscricaoInput'
  *     responses:
  *       201:
- *         description: Matrícula registrada com sucesso
+ *         description: Inscrição registrada com sucesso
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/CursoTurma'
  *       400:
- *         description: Dados inválidos para matrícula
+ *         description: Dados inválidos para inscrição
  *       404:
  *         description: Curso, turma ou aluno não encontrado
  *       409:
- *         description: Conflitos de matrícula ou período de inscrição encerrado para perfis sem privilégio
+ *         description: Conflitos de inscrição ou período de inscrição encerrado para perfis sem privilégio
  */
 router.post(
-  '/:cursoId/turmas/:turmaId/enrollments',
+  '/:cursoId/turmas/:turmaId/inscricoes',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
   TurmasController.enroll,
 );
 
 /**
  * @openapi
- * /api/v1/cursos/{cursoId}/turmas/{turmaId}/enrollments/{alunoId}:
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/inscricoes/{alunoId}:
  *   delete:
- *     summary: Remover matrícula de um aluno na turma
+ *     summary: Remover inscrição de um aluno na turma
  *     tags: ['Cursos - Turmas']
  *     security:
  *       - bearerAuth: []
@@ -492,7 +492,7 @@ router.post(
  *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
- *         description: Matrícula removida com sucesso
+ *         description: Inscrição removida com sucesso
  *         content:
  *           application/json:
  *             schema:
@@ -501,7 +501,7 @@ router.post(
  *         description: Turma ou aluno não encontrado
  */
 router.delete(
-  '/:cursoId/turmas/:turmaId/enrollments/:alunoId',
+  '/:cursoId/turmas/:turmaId/inscricoes/:alunoId',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
   TurmasController.unenroll,
 );
@@ -1034,10 +1034,10 @@ router.delete(
  *         required: true
  *         schema: { type: string, format: uuid }
  *       - in: query
- *         name: matriculaId
+ *         name: inscricaoId
  *         required: false
  *         schema: { type: string, format: uuid }
- *         description: Filtra registros de frequência de uma matrícula específica
+ *         description: Filtra registros de frequência de uma inscrição específica
  *       - in: query
  *         name: aulaId
  *         required: false
@@ -1244,10 +1244,10 @@ router.delete(
  *         required: true
  *         schema: { type: string, format: uuid }
  *       - in: query
- *         name: matriculaId
+ *         name: inscricaoId
  *         required: false
  *         schema: { type: string, format: uuid }
- *         description: Filtra notas lançadas para uma matrícula específica
+ *         description: Filtra notas lançadas para uma inscrição específica
  *     responses:
  *       200:
  *         description: Lista de notas lançadas
@@ -1616,7 +1616,7 @@ router.delete(
  * @openapi
  * /api/v1/cursos/me/agenda:
  *   get:
- *     summary: Consultar eventos das turmas em que o aluno está matriculado
+ *     summary: Consultar eventos das turmas em que o aluno está inscrito
  *     tags: ['Cursos - Agenda']
  *     security:
  *       - bearerAuth: []
@@ -1654,34 +1654,34 @@ router.get('/me/agenda', supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]), Agenda
 
 /**
  * @openapi
- * /api/v1/cursos/matriculas/{matriculaId}/frequencias-detalhadas:
+ * /api/v1/cursos/inscricoes/{inscricaoId}/frequencias-detalhadas:
  *   get:
- *     summary: Consultar registros de frequência de uma matrícula (admin)
+ *     summary: Consultar registros de frequência de uma inscrição (admin)
  *     tags: ['Cursos - Frequências']
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: matriculaId
+ *         name: inscricaoId
  *         required: true
  *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
- *         description: Frequência lançada e informações da matrícula
+ *         description: Frequência lançada e informações da inscrição
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/CursoFrequenciaResumoMatricula'
+ *               $ref: '#/components/schemas/CursoFrequenciaResumoInscricao'
  */
 router.get(
-  '/matriculas/:matriculaId/frequencias-detalhadas',
+  '/inscricoes/:inscricaoId/frequencias-detalhadas',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
-  FrequenciaController.listByMatricula,
+  FrequenciaController.listByInscricao,
 );
 
 /**
  * @openapi
- * /api/v1/cursos/me/matriculas/{matriculaId}/frequencias-detalhadas:
+ * /api/v1/cursos/me/inscricoes/{inscricaoId}/frequencias-detalhadas:
  *   get:
  *     summary: Consultar registros de frequência do aluno autenticado
  *     tags: ['Cursos - Frequências']
@@ -1689,19 +1689,19 @@ router.get(
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: matriculaId
+ *         name: inscricaoId
  *         required: true
  *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
- *         description: Frequência lançada associada à matrícula do aluno
+ *         description: Frequência lançada associada à inscrição do aluno
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/CursoFrequenciaResumoMatricula'
+ *               $ref: '#/components/schemas/CursoFrequenciaResumoInscricao'
  */
 router.get(
-  '/me/matriculas/:matriculaId/frequencias-detalhadas',
+  '/me/inscricoes/:inscricaoId/frequencias-detalhadas',
   supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
   FrequenciaController.listMy,
 );
@@ -1829,34 +1829,34 @@ router.post(
 
 /**
  * @openapi
- * /api/v1/cursos/matriculas/{matriculaId}/notas-detalhadas:
+ * /api/v1/cursos/inscricoes/{inscricaoId}/notas-detalhadas:
  *   get:
- *     summary: Consultar notas lançadas de uma matrícula (admin)
+ *     summary: Consultar notas lançadas de uma inscrição (admin)
  *     tags: ['Cursos - Notas']
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: matriculaId
+ *         name: inscricaoId
  *         required: true
  *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
- *         description: Notas lançadas e informações da matrícula
+ *         description: Notas lançadas e informações da inscrição
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/CursoNotaResumoMatricula'
+ *               $ref: '#/components/schemas/CursoNotaResumoInscricao'
  */
 router.get(
-  '/matriculas/:matriculaId/notas-detalhadas',
+  '/inscricoes/:inscricaoId/notas-detalhadas',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
-  NotasController.listByMatricula,
+  NotasController.listByInscricao,
 );
 
 /**
  * @openapi
- * /api/v1/cursos/me/matriculas/{matriculaId}/notas-detalhadas:
+ * /api/v1/cursos/me/inscricoes/{inscricaoId}/notas-detalhadas:
  *   get:
  *     summary: Consultar notas lançadas do aluno autenticado
  *     tags: ['Cursos - Notas']
@@ -1864,46 +1864,46 @@ router.get(
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: matriculaId
+ *         name: inscricaoId
  *         required: true
  *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
- *         description: Notas lançadas associadas à matrícula do aluno
+ *         description: Notas lançadas associadas à inscrição do aluno
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/CursoNotaResumoMatricula'
+ *               $ref: '#/components/schemas/CursoNotaResumoInscricao'
  */
 router.get(
-  '/me/matriculas/:matriculaId/notas-detalhadas',
+  '/me/inscricoes/:inscricaoId/notas-detalhadas',
   supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
   NotasController.listMy,
 );
 
 /**
  * @openapi
- * /api/v1/cursos/matriculas/{matriculaId}/notas:
+ * /api/v1/cursos/inscricoes/{inscricaoId}/notas:
  *   get:
- *     summary: Consultar notas consolidadas de uma matrícula (admin)
+ *     summary: Consultar notas consolidadas de uma inscrição (admin)
  *     tags: ['Cursos - Avaliação']
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: matriculaId
+ *         name: inscricaoId
  *         required: true
  *         schema: { type: string, format: uuid }
  */
 router.get(
-  '/matriculas/:matriculaId/notas',
+  '/inscricoes/:inscricaoId/notas',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
   AvaliacaoController.getGrades,
 );
 
 /**
  * @openapi
- * /api/v1/cursos/me/matriculas/{matriculaId}/notas:
+ * /api/v1/cursos/me/inscricoes/{inscricaoId}/notas:
  *   get:
  *     summary: Consultar notas consolidadas do aluno autenticado
  *     tags: ['Cursos - Avaliação']
@@ -1911,12 +1911,12 @@ router.get(
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: matriculaId
+ *         name: inscricaoId
  *         required: true
  *         schema: { type: string, format: uuid }
  */
 router.get(
-  '/me/matriculas/:matriculaId/notas',
+  '/me/inscricoes/:inscricaoId/notas',
   supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
   AvaliacaoController.getMyGrades,
 );
@@ -1925,7 +1925,7 @@ router.get(
  * @openapi
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/certificados:
  *   post:
- *     summary: Emitir certificado para um aluno matriculado na turma
+ *     summary: Emitir certificado para um aluno inscrito na turma
  *     tags: ['Cursos - Certificados']
  *     security:
  *       - bearerAuth: []
@@ -1958,7 +1958,7 @@ router.get(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
- *         description: Turma ou matrícula não encontrada
+ *         description: Turma ou inscrição não encontrada
  *         content:
  *           application/json:
  *             schema:
@@ -1972,9 +1972,9 @@ router.post(
 
 /**
  * @openapi
- * /api/v1/cursos/{cursoId}/turmas/{turmaId}/matriculas/{matriculaId}/estagios:
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/inscricoes/{inscricaoId}/estagios:
  *   post:
- *     summary: Criar estágio supervisionado para a matrícula
+ *     summary: Criar estágio supervisionado para a inscrição
  *     tags: ['Cursos - Estágios']
  *     security:
  *       - bearerAuth: []
@@ -1988,7 +1988,7 @@ router.post(
  *         required: true
  *         schema: { type: string, format: uuid }
  *       - in: path
- *         name: matriculaId
+ *         name: inscricaoId
  *         required: true
  *         schema: { type: string, format: uuid }
  *     requestBody:
@@ -2011,23 +2011,23 @@ router.post(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
- *         description: Curso, turma ou matrícula não localizada
+ *         description: Curso, turma ou inscrição não localizada
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post(
-  '/:cursoId/turmas/:turmaId/matriculas/:matriculaId/estagios',
+  '/:cursoId/turmas/:turmaId/inscricoes/:inscricaoId/estagios',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
   EstagiosController.create,
 );
 
 /**
  * @openapi
- * /api/v1/cursos/{cursoId}/turmas/{turmaId}/matriculas/{matriculaId}/estagios:
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/inscricoes/{inscricaoId}/estagios:
  *   get:
- *     summary: Listar estágios cadastrados para a matrícula
+ *     summary: Listar estágios cadastrados para a inscrição
  *     tags: ['Cursos - Estágios']
  *     security:
  *       - bearerAuth: []
@@ -2041,12 +2041,12 @@ router.post(
  *         required: true
  *         schema: { type: string, format: uuid }
  *       - in: path
- *         name: matriculaId
+ *         name: inscricaoId
  *         required: true
  *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
- *         description: Lista de estágios vinculados à matrícula
+ *         description: Lista de estágios vinculados à inscrição
  *         content:
  *           application/json:
  *             schema:
@@ -2057,16 +2057,16 @@ router.post(
  *                   items:
  *                     $ref: '#/components/schemas/CursoEstagio'
  *       404:
- *         description: Curso, turma ou matrícula não localizada
+ *         description: Curso, turma ou inscrição não localizada
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get(
-  '/:cursoId/turmas/:turmaId/matriculas/:matriculaId/estagios',
+  '/:cursoId/turmas/:turmaId/inscricoes/:inscricaoId/estagios',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
-  EstagiosController.listByMatricula,
+  EstagiosController.listByInscricao,
 );
 
 /**
@@ -2087,9 +2087,9 @@ router.get(
  *         required: true
  *         schema: { type: string, format: uuid }
  *       - in: query
- *         name: matriculaId
+ *         name: inscricaoId
  *         schema: { type: string, format: uuid }
- *         description: Filtra certificados de uma matrícula específica
+ *         description: Filtra certificados de uma inscrição específica
  *       - in: query
  *         name: tipo
  *         schema: { $ref: '#/components/schemas/CursosCertificados' }
@@ -2117,47 +2117,47 @@ router.get(
 
 /**
  * @openapi
- * /api/v1/cursos/matriculas/{matriculaId}/certificados:
+ * /api/v1/cursos/inscricoes/{inscricaoId}/certificados:
  *   get:
- *     summary: Consultar certificados emitidos de uma matrícula (admin)
+ *     summary: Consultar certificados emitidos de uma inscrição (admin)
  *     tags: ['Cursos - Certificados']
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: matriculaId
+ *         name: inscricaoId
  *         required: true
  *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
- *         description: Certificados emitidos para a matrícula informada
+ *         description: Certificados emitidos para a inscrição informada
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/CursoCertificadoResumoMatricula'
+ *               $ref: '#/components/schemas/CursoCertificadoResumoInscricao'
  */
 router.get(
-  '/matriculas/:matriculaId/certificados',
+  '/inscricoes/:inscricaoId/certificados',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
-  CertificadosController.listarPorMatricula,
+  CertificadosController.listarPorInscricao,
 );
 
 /**
  * @openapi
- * /api/v1/cursos/me/matriculas/{matriculaId}/estagios:
+ * /api/v1/cursos/me/inscricoes/{inscricaoId}/estagios:
  *   get:
- *     summary: Listar estágios do aluno autenticado para a matrícula
+ *     summary: Listar estágios do aluno autenticado para a inscrição
  *     tags: ['Cursos - Estágios']
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: matriculaId
+ *         name: inscricaoId
  *         required: true
  *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
- *         description: Estágios vinculados à matrícula do aluno
+ *         description: Estágios vinculados à inscrição do aluno
  *         content:
  *           application/json:
  *             schema:
@@ -2168,39 +2168,39 @@ router.get(
  *                   items:
  *                     $ref: '#/components/schemas/CursoEstagio'
  *       403:
- *         description: Matrícula não pertence ao aluno autenticado
+ *         description: Inscrição não pertence ao aluno autenticado
  */
 router.get(
-  '/me/matriculas/:matriculaId/estagios',
+  '/me/inscricoes/:inscricaoId/estagios',
   supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
   EstagiosController.listMe,
 );
 
 /**
  * @openapi
- * /api/v1/cursos/me/matriculas/{matriculaId}/certificados:
+ * /api/v1/cursos/me/inscricoes/{inscricaoId}/certificados:
  *   get:
- *     summary: Consultar certificados emitidos do aluno autenticado para uma matrícula
+ *     summary: Consultar certificados emitidos do aluno autenticado para uma inscrição
  *     tags: ['Cursos - Certificados']
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: matriculaId
+ *         name: inscricaoId
  *         required: true
  *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
- *         description: Certificados emitidos associados à matrícula do aluno
+ *         description: Certificados emitidos associados à inscrição do aluno
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/CursoCertificadoResumoMatricula'
+ *               $ref: '#/components/schemas/CursoCertificadoResumoInscricao'
  */
 router.get(
-  '/me/matriculas/:matriculaId/certificados',
+  '/me/inscricoes/:inscricaoId/certificados',
   supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
-  CertificadosController.listarMePorMatricula,
+  CertificadosController.listarMePorInscricao,
 );
 
 /**

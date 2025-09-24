@@ -3,10 +3,7 @@ import { CursoStatus, CursosMetodos, CursosTurnos, Prisma, Roles } from '@prisma
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 
-import {
-  generateUniqueEnrollmentCode,
-  generateUniqueTurmaCode,
-} from '../utils/code-generator';
+import { generateUniqueInscricaoCode, generateUniqueTurmaCode } from '../utils/code-generator';
 import { aulaWithMateriaisInclude } from './aulas.mapper';
 import { moduloDetailedInclude } from './modulos.mapper';
 import { provaDefaultInclude } from './provas.mapper';
@@ -41,7 +38,7 @@ const regrasAvaliacaoSelect = {
 
 const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
   include: {
-    matriculas: {
+    inscricoes: {
       include: {
         aluno: {
           select: {
@@ -49,7 +46,7 @@ const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()(
             nomeCompleto: true,
             email: true,
             informacoes: {
-              select: { matricula: true, telefone: true },
+              select: { inscricao: true, telefone: true },
             },
             enderecos: {
               select: {
@@ -223,7 +220,7 @@ export const turmasService = {
           cursoId: true,
           vagasTotais: true,
           vagasDisponiveis: true,
-          matriculas: { select: { id: true } },
+          inscricoes: { select: { id: true } },
         },
       });
 
@@ -233,16 +230,16 @@ export const turmasService = {
         throw error;
       }
 
-      const matriculasAtivas = turma.matriculas.length;
+      const inscricoesAtivas = turma.inscricoes.length;
       const vagasTotais = data.vagasTotais ?? turma.vagasTotais;
 
-      if (vagasTotais < matriculasAtivas) {
-        const error = new Error('Vagas totais não podem ser menores que matrículas ativas');
+      if (vagasTotais < inscricoesAtivas) {
+        const error = new Error('Vagas totais não podem ser menores que inscrições ativas');
         (error as any).code = 'INVALID_VAGAS_TOTAIS';
         throw error;
       }
 
-      const minimoDisponiveis = vagasTotais - matriculasAtivas;
+      const minimoDisponiveis = vagasTotais - inscricoesAtivas;
       let vagasDisponiveis =
         data.vagasDisponiveis !== undefined
           ? Math.min(data.vagasDisponiveis, vagasTotais)
@@ -311,7 +308,7 @@ export const turmasService = {
               actorId: actor?.id ?? null,
               actorRole: actor?.role ?? null,
             },
-            'Matrícula criada após o encerramento do período por usuário privilegiado',
+            'Inscrição criada após o encerramento do período por usuário privilegiado',
           );
         }
 
@@ -333,7 +330,7 @@ export const turmasService = {
         select: {
           id: true,
           role: true,
-          informacoes: { select: { matricula: true } },
+          informacoes: { select: { inscricao: true } },
         },
       });
 
@@ -349,38 +346,38 @@ export const turmasService = {
         throw error;
       }
 
-      const matriculaExistente = await tx.cursosTurmasMatriculas.findUnique({
+      const inscricaoExistente = await tx.cursosTurmasInscricoes.findUnique({
         where: { turmaId_alunoId: { turmaId, alunoId } },
         select: { id: true },
       });
 
-      if (matriculaExistente) {
-        const error = new Error('Aluno já está matriculado nesta turma');
-        (error as any).code = 'ALUNO_JA_MATRICULADO';
+      if (inscricaoExistente) {
+        const error = new Error('Aluno já está inscrito nesta turma');
+        (error as any).code = 'ALUNO_JA_INSCRITO';
         throw error;
       }
 
       const informacoes = await tx.usuariosInformation.findUnique({
         where: { usuarioId: alunoId },
-        select: { matricula: true },
+        select: { inscricao: true },
       });
 
       if (!informacoes) {
-        const error = new Error('Informações do usuário não encontradas para geração de matrícula');
+        const error = new Error('Informações do usuário não encontradas para geração de inscrição');
         (error as any).code = 'ALUNO_INFORMATION_NOT_FOUND';
         throw error;
       }
 
-      let matriculaCodigo = informacoes.matricula;
-      if (!matriculaCodigo) {
-        matriculaCodigo = await generateUniqueEnrollmentCode(tx, turmasLogger);
+      let inscricaoCodigo = informacoes.inscricao;
+      if (!inscricaoCodigo) {
+        inscricaoCodigo = await generateUniqueInscricaoCode(tx, turmasLogger);
         await tx.usuariosInformation.update({
           where: { usuarioId: alunoId },
-          data: { matricula: matriculaCodigo },
+          data: { inscricao: inscricaoCodigo },
         });
       }
 
-      await tx.cursosTurmasMatriculas.create({
+      await tx.cursosTurmasInscricoes.create({
         data: {
           turmaId,
           alunoId,
@@ -411,18 +408,18 @@ export const turmasService = {
         throw error;
       }
 
-      const matricula = await tx.cursosTurmasMatriculas.findUnique({
+      const inscricao = await tx.cursosTurmasInscricoes.findUnique({
         where: { turmaId_alunoId: { turmaId, alunoId } },
         select: { id: true },
       });
 
-      if (!matricula) {
-        const error = new Error('Aluno não está matriculado nesta turma');
-        (error as any).code = 'ALUNO_NAO_MATRICULADO';
+      if (!inscricao) {
+        const error = new Error('Aluno não está inscrito nesta turma');
+        (error as any).code = 'ALUNO_NAO_INSCRITO';
         throw error;
       }
 
-      await tx.cursosTurmasMatriculas.delete({
+      await tx.cursosTurmasInscricoes.delete({
         where: { turmaId_alunoId: { turmaId, alunoId } },
       });
 

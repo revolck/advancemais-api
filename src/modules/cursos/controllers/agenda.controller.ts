@@ -431,11 +431,11 @@ export class AgendaController {
 
       res.json({ data: eventos });
     } catch (error: any) {
-      if (error?.code === 'MATRICULA_NOT_FOUND') {
+      if (error?.code === 'INSCRICAO_NOT_FOUND') {
         return res.status(404).json({
           success: false,
-          code: 'MATRICULA_NOT_FOUND',
-          message: 'Você não está matriculado na turma informada',
+          code: 'INSCRICAO_NOT_FOUND',
+          message: 'Você não está inscrito na turma informada',
         });
       }
 

@@ -45,7 +45,7 @@ export const createProvaSchema = provaBaseSchema;
 export const updateProvaSchema = provaBaseSchema.partial({ peso: true });
 
 export const registrarNotaSchema = z.object({
-  matriculaId: z.string().uuid('Identificador da matrícula inválido'),
+  inscricaoId: z.string().uuid('Identificador da inscrição inválido'),
   nota: z
     .number({ invalid_type_error: 'Nota deve ser um número' })
     .min(0, 'Nota mínima é 0')

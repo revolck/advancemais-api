@@ -11,7 +11,7 @@ import type {
   UsuariosCurriculos,
   Cursos,
   CursosTurmas,
-  CursosTurmasMatriculas,
+  CursosTurmasInscricoes,
   RegimesDeTrabalhos as RegimesDeTrabalhosType,
   ModalidadesDeVagas as ModalidadesDeVagasType,
   Jornadas as JornadasType,
@@ -489,8 +489,8 @@ const CURRICULUM_IDS = [
   '00000000-0000-4000-8000-000000000205',
 ];
 
-interface SeededMatricula {
-  matricula: CursosTurmasMatriculas;
+interface SeededInscricao {
+  inscricao: CursosTurmasInscricoes;
   turma: CursosTurmas;
   curso: Cursos;
   aluno: Usuarios;
@@ -636,7 +636,7 @@ async function seedCursos(
   await prismaClient.cursosTurmasAulas.deleteMany({
     where: { turma: { codigo: { in: allTurmaCodes } }, nome: { startsWith: 'Seed Aula' } },
   });
-  await prismaClient.cursosTurmasMatriculas.deleteMany({
+  await prismaClient.cursosTurmasInscricoes.deleteMany({
     where: { turma: { codigo: { in: allTurmaCodes } }, alunoId: { in: candidates.map((candidate) => candidate.id) } },
   });
 
@@ -734,13 +734,13 @@ async function seedCursos(
   }
 
   const selectedTurmas = Array.from(turmasById.values()).slice(0, Math.min(5, turmasById.size));
-  const seededMatriculas: SeededMatricula[] = [];
+  const seededInscricoes: SeededInscricao[] = [];
 
   for (let index = 0; index < selectedTurmas.length && index < candidates.length; index += 1) {
     const turma = selectedTurmas[index];
     const aluno = candidates[index];
 
-    const matricula = await prismaClient.cursosTurmasMatriculas.create({
+    const inscricao = await prismaClient.cursosTurmasInscricoes.create({
       data: {
         turmaId: turma.id,
         alunoId: aluno.id,
@@ -749,18 +749,18 @@ async function seedCursos(
 
     const curso = coursesById.get(turma.cursoId);
     if (curso) {
-      seededMatriculas.push({ matricula, turma, curso, aluno });
+      seededInscricoes.push({ inscricao, turma, curso, aluno });
     }
   }
 
-  const matriculasPorTurma = new Map<string, number>();
-  for (const { turma } of seededMatriculas) {
-    const count = matriculasPorTurma.get(turma.id) ?? 0;
-    matriculasPorTurma.set(turma.id, count + 1);
+  const inscricoesPorTurma = new Map<string, number>();
+  for (const { turma } of seededInscricoes) {
+    const count = inscricoesPorTurma.get(turma.id) ?? 0;
+    inscricoesPorTurma.set(turma.id, count + 1);
   }
 
   await Promise.all(
-    Array.from(matriculasPorTurma.entries()).map(([turmaId, count]) => {
+    Array.from(inscricoesPorTurma.entries()).map(([turmaId, count]) => {
       const turma = turmasById.get(turmaId);
       const vagasTotais = turma?.vagasTotais ?? 0;
       const vagasDisponiveis = Math.max(0, vagasTotais - count);
@@ -772,18 +772,18 @@ async function seedCursos(
     })
   );
 
-  const certificateCodes = seededMatriculas.map((_, index) => `SCERT-00${index + 1}`);
+  const certificateCodes = seededInscricoes.map((_, index) => `SCERT-00${index + 1}`);
   if (certificateCodes.length > 0) {
     await prismaClient.cursosCertificadosEmitidos.deleteMany({
       where: { codigo: { in: certificateCodes } },
     });
   }
 
-  for (const [index, item] of seededMatriculas.entries()) {
+  for (const [index, item] of seededInscricoes.entries()) {
     await prismaClient.cursosCertificadosEmitidos.create({
       data: {
         codigo: certificateCodes[index],
-        matriculaId: item.matricula.id,
+        inscricaoId: item.inscricao.id,
         tipo: 'CONCLUSAO',
         formato: 'DIGITAL',
         cargaHoraria: item.curso.cargaHoraria,

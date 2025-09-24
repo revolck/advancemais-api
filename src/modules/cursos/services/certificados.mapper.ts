@@ -9,7 +9,7 @@ const certificadoWithRelations = Prisma.validator<Prisma.CursosCertificadosEmiti
         email: true,
       },
     },
-    matricula: {
+    inscricao: {
       select: {
         id: true,
         aluno: {
@@ -20,7 +20,7 @@ const certificadoWithRelations = Prisma.validator<Prisma.CursosCertificadosEmiti
             cpf: true,
             informacoes: {
               select: {
-                matricula: true,
+                inscricao: true,
               },
             },
           },
@@ -89,23 +89,23 @@ export const mapCertificado = (
     emitidoEm: certificado.emitidoEm,
     observacoes: certificado.observacoes,
     aluno: {
-      id: certificado.matricula.aluno.id,
-      nome: certificado.matricula.aluno.nomeCompleto,
-      email: certificado.matricula.aluno.email,
+      id: certificado.inscricao.aluno.id,
+      nome: certificado.inscricao.aluno.nomeCompleto,
+      email: certificado.inscricao.aluno.email,
       cpf: maskCpf ? null : formattedCpf,
       cpfMascarado: maskedCpf,
-      matricula: certificado.matricula.aluno.informacoes?.matricula ?? null,
+      inscricao: certificado.inscricao.aluno.informacoes?.inscricao ?? null,
     },
     curso: {
-      id: certificado.matricula.turma.curso.id,
-      nome: certificado.matricula.turma.curso.nome,
-      codigo: certificado.matricula.turma.curso.codigo,
+      id: certificado.inscricao.turma.curso.id,
+      nome: certificado.inscricao.turma.curso.nome,
+      codigo: certificado.inscricao.turma.curso.codigo,
       cargaHoraria: certificado.cargaHoraria,
     },
     turma: {
-      id: certificado.matricula.turma.id,
-      nome: certificado.matricula.turma.nome,
-      codigo: certificado.matricula.turma.codigo,
+      id: certificado.inscricao.turma.id,
+      nome: certificado.inscricao.turma.nome,
+      codigo: certificado.inscricao.turma.codigo,
     },
     emitidoPor: certificado.emitidoPor
       ? {

@@ -29,9 +29,9 @@ export class EstagiosController {
   static async create(req: Request, res: Response) {
     const cursoId = parseCursoId(req.params.cursoId);
     const turmaId = parseUuid(req.params.turmaId);
-    const matriculaId = parseUuid(req.params.matriculaId);
+    const inscricaoId = parseUuid(req.params.inscricaoId);
 
-    if (!cursoId || !turmaId || !matriculaId) {
+    if (!cursoId || !turmaId || !inscricaoId) {
       return res.status(400).json({
         success: false,
         code: 'VALIDATION_ERROR',
@@ -43,7 +43,7 @@ export class EstagiosController {
       const payload = createEstagioSchema.parse(req.body);
       const usuarioId = req.user?.id;
 
-      const estagio = await estagiosService.create(cursoId, turmaId, matriculaId, payload, usuarioId);
+      const estagio = await estagiosService.create(cursoId, turmaId, inscricaoId, payload, usuarioId);
 
       return res.status(201).json(estagio);
     } catch (error: any) {
@@ -56,29 +56,29 @@ export class EstagiosController {
         });
       }
 
-      if (error?.code === 'TURMA_NOT_FOUND' || error?.code === 'MATRICULA_NOT_FOUND') {
+      if (error?.code === 'TURMA_NOT_FOUND' || error?.code === 'INSCRICAO_NOT_FOUND') {
         return res.status(404).json({
           success: false,
           code: error.code,
-          message: 'Turma ou matrícula não encontrada para o curso informado',
+          message: 'Turma ou inscrição não encontrada para o curso informado',
         });
       }
 
       return res.status(500).json({
         success: false,
         code: 'ESTAGIO_CREATE_ERROR',
-        message: 'Erro ao criar estágio para a matrícula informada',
+        message: 'Erro ao criar estágio para a inscrição informada',
         error: error?.message,
       });
     }
   }
 
-  static async listByMatricula(req: Request, res: Response) {
+  static async listByInscricao(req: Request, res: Response) {
     const cursoId = parseCursoId(req.params.cursoId);
     const turmaId = parseUuid(req.params.turmaId);
-    const matriculaId = parseUuid(req.params.matriculaId);
+    const inscricaoId = parseUuid(req.params.inscricaoId);
 
-    if (!cursoId || !turmaId || !matriculaId) {
+    if (!cursoId || !turmaId || !inscricaoId) {
       return res.status(400).json({
         success: false,
         code: 'VALIDATION_ERROR',
@@ -87,21 +87,21 @@ export class EstagiosController {
     }
 
     try {
-      const estagios = await estagiosService.listByMatricula(cursoId, turmaId, matriculaId);
+      const estagios = await estagiosService.listByInscricao(cursoId, turmaId, inscricaoId);
       return res.json({ data: estagios });
     } catch (error: any) {
-      if (error?.code === 'TURMA_NOT_FOUND' || error?.code === 'MATRICULA_NOT_FOUND') {
+      if (error?.code === 'TURMA_NOT_FOUND' || error?.code === 'INSCRICAO_NOT_FOUND') {
         return res.status(404).json({
           success: false,
           code: error.code,
-          message: 'Turma ou matrícula não encontrada',
+          message: 'Turma ou inscrição não encontrada',
         });
       }
 
       return res.status(500).json({
         success: false,
         code: 'ESTAGIO_LIST_ERROR',
-        message: 'Erro ao listar estágios da matrícula',
+        message: 'Erro ao listar estágios da inscrição',
         error: error?.message,
       });
     }
@@ -109,7 +109,7 @@ export class EstagiosController {
 
   static async listMe(req: Request, res: Response) {
     const usuarioId = req.user?.id;
-    const matriculaId = parseUuid(req.params.matriculaId);
+    const inscricaoId = parseUuid(req.params.inscricaoId);
 
     if (!usuarioId) {
       return res.status(401).json({
@@ -119,23 +119,23 @@ export class EstagiosController {
       });
     }
 
-    if (!matriculaId) {
+    if (!inscricaoId) {
       return res.status(400).json({
         success: false,
         code: 'VALIDATION_ERROR',
-        message: 'Identificador da matrícula inválido',
+        message: 'Identificador da inscrição inválido',
       });
     }
 
     try {
-      const estagios = await estagiosService.listForAluno(matriculaId, usuarioId);
+      const estagios = await estagiosService.listForAluno(inscricaoId, usuarioId);
       return res.json({ data: estagios });
     } catch (error: any) {
       if (error?.code === 'FORBIDDEN') {
         return res.status(403).json({
           success: false,
           code: 'FORBIDDEN',
-          message: 'Matrícula não encontrada para o usuário autenticado',
+          message: 'Inscrição não encontrada para o usuário autenticado',
         });
       }
 

@@ -58,7 +58,7 @@ const dashboardRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.RECRUTADOR];
  *                       plano:
  *                         id: 38f73d2d-40fa-47a6-9657-6a4f7f1bb610
  *                         nome: Plano Avançado
- *                         modo: parceiro
+ *                         modo: PARCEIRO
  *                         status: ATIVO
  *                         inicio: '2024-01-10T12:00:00Z'
  *                         fim: null
@@ -136,8 +136,9 @@ router.get(
  *                 descricao: Consultoria especializada em recrutamento e seleção.
  *                 aceitarTermos: true
  *                 plano:
- *                   planoEmpresarialId: b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e
- *                   tipo: 30_dias
+ *                   planosEmpresariaisId: b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e
+ *                   modo: teste
+ *                   diasTeste: 30
  *     responses:
  *       201:
  *         description: Empresa criada com sucesso
@@ -159,7 +160,18 @@ router.get(
  *                     criadoEm: '2024-01-05T12:00:00Z'
  *                     plano:
  *                       id: 38f73d2d-40fa-47a6-9657-6a4f7f1bb610
- *                       tipo: assinatura_mensal
+ *                       nome: Plano Avançado
+ *                       modo: PARCEIRO
+ *                       status: ATIVO
+ *                       inicio: '2024-01-10T12:00:00Z'
+ *                       fim: null
+ *                       modeloPagamento: ASSINATURA
+ *                       metodoPagamento: PIX
+ *                       statusPagamento: APROVADO
+ *                       valor: '249.90'
+ *                       quantidadeVagas: 10
+ *                       duracaoEmDias: null
+ *                       diasRestantes: 30
  *       400:
  *         description: Dados inválidos
  *         content:
@@ -241,9 +253,45 @@ router.get(
  *                       nome: Advance Tech Consultoria
  *                       email: contato@advance.com.br
  *                       telefone: '+55 11 99999-0000'
+ *                       avatarUrl: https://cdn.advance.com.br/logo.png
+ *                       cnpj: '12345678000190'
+ *                       cidade: São Paulo
+ *                       estado: SP
+ *                       enderecos:
+ *                         - id: end-uuid
+ *                           logradouro: Av. Paulista
+ *                           numero: '1578'
+ *                           bairro: Bela Vista
+ *                           cidade: São Paulo
+ *                           estado: SP
+ *                           cep: '01310-200'
+ *                       criadoEm: '2024-01-05T12:00:00Z'
+ *                       informacoes:
+ *                         telefone: '+55 11 99999-0000'
+ *                         descricao: Consultoria especializada em tecnologia e recrutamento.
+ *                         avatarUrl: https://cdn.advance.com.br/logo.png
+ *                         aceitarTermos: true
  *                       ativa: true
  *                       parceira: true
+ *                       diasTesteDisponibilizados: 30
+ *                       plano:
+ *                         id: 38f73d2d-40fa-47a6-9657-6a4f7f1bb610
+ *                         nome: Plano Avançado
+ *                         modo: PARCEIRO
+ *                         status: ATIVO
+ *                         inicio: '2024-01-10T12:00:00Z'
+ *                         fim: null
+ *                         modeloPagamento: ASSINATURA
+ *                         metodoPagamento: PIX
+ *                         statusPagamento: APROVADO
+ *                         valor: '249.90'
+ *                         quantidadeVagas: 10
+ *                         duracaoEmDias: null
+ *                         diasRestantes: 18
  *                       vagasPublicadas: 8
+ *                       limiteVagasPlano: 10
+ *                       banida: false
+ *                       banimentoAtivo: null
  *                   pagination:
  *                     page: 1
  *                     pageSize: 20
@@ -308,8 +356,9 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  *                 descricao: Consultoria especializada em tecnologia e inovação.
  *                 status: ATIVO
  *                 plano:
- *                   planoEmpresarialId: b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e
- *                   tipo: 60_dias
+ *                   planosEmpresariaisId: b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e
+ *                   modo: parceiro
+ *                   resetPeriodo: false
  *     responses:
  *       200:
  *         description: Empresa atualizada com sucesso
@@ -328,7 +377,18 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  *                     status: ATIVO
  *                     plano:
  *                       id: 38f73d2d-40fa-47a6-9657-6a4f7f1bb610
- *                       tipo: 60_dias
+ *                       nome: Plano Avançado
+ *                       modo: PARCEIRO
+ *                       status: ATIVO
+ *                       inicio: '2024-01-10T12:00:00Z'
+ *                       fim: null
+ *                       modeloPagamento: ASSINATURA
+ *                       metodoPagamento: PIX
+ *                       statusPagamento: APROVADO
+ *                       valor: '249.90'
+ *                       quantidadeVagas: 10
+ *                       duracaoEmDias: null
+ *                       diasRestantes: 12
  *       400:
  *         description: Dados inválidos
  *         content:
@@ -395,9 +455,58 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  *                     codUsuario: EMP-123456
  *                     nome: Advance Tech Consultoria
  *                     email: contato@advance.com.br
+ *                     telefone: '+55 11 99999-0000'
+ *                     avatarUrl: https://cdn.advance.com.br/logo.png
+ *                     cnpj: '12345678000190'
+ *                     descricao: Consultoria especializada em recrutamento e seleção para empresas de tecnologia.
+ *                     socialLinks:
+ *                       linkedin: https://linkedin.com/company/advancemais
+ *                       instagram: https://instagram.com/advancemais
+ *                     cidade: São Paulo
+ *                     estado: SP
+ *                     enderecos:
+ *                       - id: end-uuid
+ *                         logradouro: Av. Paulista
+ *                         numero: '1578'
+ *                         bairro: Bela Vista
+ *                         cidade: São Paulo
+ *                         estado: SP
+ *                         cep: '01310-200'
+ *                     criadoEm: '2024-01-05T12:00:00Z'
+ *                     status: ATIVO
+ *                     ultimoLogin: '2024-03-15T18:45:00Z'
+ *                     ativa: true
+ *                     parceira: true
+ *                     diasTesteDisponibilizados: 30
+ *                     plano:
+ *                       id: 38f73d2d-40fa-47a6-9657-6a4f7f1bb610
+ *                       nome: Plano Avançado
+ *                       modo: PARCEIRO
+ *                       status: ATIVO
+ *                       inicio: '2024-01-10T12:00:00Z'
+ *                       fim: null
+ *                       modeloPagamento: ASSINATURA
+ *                       metodoPagamento: PIX
+ *                       statusPagamento: APROVADO
+ *                       valor: '249.90'
+ *                       quantidadeVagas: 10
+ *                       duracaoEmDias: null
+ *                       diasRestantes: 12
  *                     vagas:
  *                       publicadas: 8
  *                       limitePlano: 10
+ *                     pagamento:
+ *                       modelo: ASSINATURA
+ *                       metodo: PIX
+ *                       status: APROVADO
+ *                       ultimoPagamentoEm: '2024-02-15T14:20:00Z'
+ *                     banida: false
+ *                     banimentoAtivo: null
+ *                     informacoes:
+ *                       telefone: '+55 11 99999-0000'
+ *                       descricao: Consultoria especializada em tecnologia e recrutamento.
+ *                       avatarUrl: https://cdn.advance.com.br/logo.png
+ *                       aceitarTermos: true
  *       400:
  *         description: Parâmetros inválidos
  *         content:
@@ -722,7 +831,8 @@ router.post('/:id/banimentos', supabaseAuthMiddleware(adminRoles), AdminEmpresas
  * /api/v1/empresas/admin/{id}/banimentos/revogar:
  *   post:
  *     summary: (Admin) Revogar banimento ativo
- *     description: "Revoga o banimento ativo da empresa, restaura o status do usuário e notifica por email."
+ *     description: "Revoga o banimento ativo da empresa, restaura o status do usuário e registra auditoria da ação."
+ *     operationId: adminEmpresasRevogarBanimento
  *     tags: [Empresas - Admin]
  *     security:
  *       - bearerAuth: []
@@ -738,10 +848,54 @@ router.post('/:id/banimentos', supabaseAuthMiddleware(adminRoles), AdminEmpresas
  *           schema:
  *             type: object
  *             properties:
- *               observacoes: { type: string }
+ *               observacoes:
+ *                 type: string
+ *                 description: Comentários opcionais registrados na auditoria da revogação.
+ *           examples:
+ *             default:
+ *               summary: Revogação com comentário
+ *               value:
+ *                 observacoes: Contato telefônico validou conformidade das operações.
  *     responses:
  *       204:
  *         description: Revogado com sucesso
+ *       400:
+ *         description: Parâmetros inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       404:
+ *         description: Empresa ou banimento ativo não encontrados
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               banimentoInexistente:
+ *                 summary: Nenhum banimento ativo encontrado
+ *                 value:
+ *                   success: false
+ *                   code: BANIMENTO_NOT_FOUND
+ *                   message: Nenhum banimento ativo encontrado
+ *       500:
+ *         description: Erro interno ao revogar banimento
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post(
   '/:id/banimentos/revogar',

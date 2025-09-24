@@ -1,21 +1,21 @@
 import bcrypt from 'bcrypt';
 
 import {
-  AcoesDeLogDeBanimento,
+  AcoesDeLogDeBloqueio,
   METODO_PAGAMENTO,
   MODELO_PAGAMENTO,
   STATUS_PAGAMENTO,
   ModalidadesDeVagas,
-  MotivosDeBanimentos,
+  MotivosDeBloqueios,
   Prisma,
   Jornadas,
   Roles,
   RegimesDeTrabalhos,
   Senioridade,
   Status,
-  StatusDeBanimentos,
+  StatusDeBloqueios,
   StatusDeVagas,
-  TiposDeBanimentos,
+  TiposDeBloqueios,
   TiposDeUsuarios,
 } from '@prisma/client';
 
@@ -43,7 +43,7 @@ import {
   usuarioRedesSociaisSelect,
 } from '@/modules/usuarios/utils/social-links';
 import type {
-  AdminEmpresasBanInput,
+  AdminEmpresasBloqueioInput,
   AdminEmpresasDashboardListQuery,
   AdminEmpresasCreateInput,
   AdminEmpresasHistoryQuery,
@@ -83,7 +83,7 @@ const createPlanoAtivoSelect = () =>
     },
   }) satisfies Prisma.Usuarios$planosContratadosArgs;
 
-const banimentoSelect = {
+const bloqueioSelect = {
   id: true,
   tipo: true,
   motivo: true,
@@ -108,7 +108,7 @@ const banimentoSelect = {
       tipoUsuario: true,
     },
   },
-} satisfies Prisma.UsuariosEmBanimentosSelect;
+} satisfies Prisma.UsuariosEmBloqueiosSelect;
 
 const createUsuarioListSelect = () =>
   ({
@@ -123,14 +123,14 @@ const createUsuarioListSelect = () =>
       select: usuarioInformacoesSelect,
     },
     planosContratados: createPlanoAtivoSelect(),
-    banimentosRecebidos: {
+    bloqueiosRecebidos: {
       where: {
-        status: StatusDeBanimentos.ATIVO,
+        status: StatusDeBloqueios.ATIVO,
         OR: [{ fim: null }, { fim: { gt: new Date() } }],
       },
       orderBy: [{ fim: 'desc' }, { criadoEm: 'desc' }],
       take: 1,
-      select: banimentoSelect,
+      select: bloqueioSelect,
     },
     enderecos: {
       orderBy: { criadoEm: 'asc' },
@@ -223,8 +223,8 @@ const usuarioDetailSelect = {
 type UsuarioListSelect = ReturnType<typeof createUsuarioListSelect>;
 type UsuarioListResult = Prisma.UsuariosGetPayload<{ select: UsuarioListSelect }>;
 type PlanoResumoData = UsuarioListResult['planosContratados'][number];
-type BanimentoResumoData = Prisma.UsuariosEmBanimentosGetPayload<{
-  select: typeof banimentoSelect;
+type BloqueioResumoData = Prisma.UsuariosEmBloqueiosGetPayload<{
+  select: typeof bloqueioSelect;
 }>;
 
 type AdminEmpresasPlanoResumo = {
@@ -261,8 +261,8 @@ type AdminEmpresaListItem = {
   plano: AdminEmpresasPlanoResumo | null;
   vagasPublicadas: number;
   limiteVagasPlano: number | null;
-  banida: boolean;
-  banimentoAtivo: AdminUsuariosEmBanimentosResumo | null;
+  bloqueada: boolean;
+  bloqueioAtivo: AdminUsuariosEmBloqueiosResumo | null;
   informacoes: ReturnType<typeof mapUsuarioInformacoes>;
 };
 
@@ -281,39 +281,39 @@ type AdminEmpresasDashboardListItem = {
   plano: AdminEmpresasPlanoResumo | null;
 };
 
-type AdminUsuariosBanimentoAlvo = {
+type AdminUsuariosBloqueioAlvo = {
   id: string;
   tipo: 'EMPRESA' | 'USUARIO' | 'ESTUDANTE';
   nome: string;
   role: Roles;
 };
 
-type AdminUsuariosBanimentoAplicadoPor = {
+type AdminUsuariosBloqueioAplicadoPor = {
   id: string;
   nome: string;
   role: Roles;
 };
 
-type AdminUsuariosBanimentoDados = {
-  tipo: TiposDeBanimentos;
-  motivo: MotivosDeBanimentos;
-  status: StatusDeBanimentos;
+type AdminUsuariosBloqueioDados = {
+  tipo: TiposDeBloqueios;
+  motivo: MotivosDeBloqueios;
+  status: StatusDeBloqueios;
   inicio: Date;
   fim: Date | null;
   observacoes: string | null;
 };
 
-type AdminUsuariosBanimentoAuditoria = {
+type AdminUsuariosBloqueioAuditoria = {
   criadoEm: Date;
   atualizadoEm: Date;
 };
 
-type AdminUsuariosEmBanimentosResumo = {
+type AdminUsuariosEmBloqueiosResumo = {
   id: string;
-  alvo: AdminUsuariosBanimentoAlvo;
-  banimento: AdminUsuariosBanimentoDados;
-  aplicadoPor: AdminUsuariosBanimentoAplicadoPor | null;
-  auditoria: AdminUsuariosBanimentoAuditoria;
+  alvo: AdminUsuariosBloqueioAlvo;
+  bloqueio: AdminUsuariosBloqueioDados;
+  aplicadoPor: AdminUsuariosBloqueioAplicadoPor | null;
+  auditoria: AdminUsuariosBloqueioAuditoria;
 };
 
 type AdminEmpresaPaymentLog = {
@@ -400,14 +400,14 @@ type AdminEmpresaDetail = {
     publicadas: number;
     limitePlano: number | null;
   };
-  banida: boolean;
+  bloqueada: boolean;
   pagamento: {
     modelo: MODELO_PAGAMENTO | null;
     metodo: METODO_PAGAMENTO | null;
     status: STATUS_PAGAMENTO | null;
     ultimoPagamentoEm: Date | null;
   };
-  banimentoAtivo: AdminUsuariosEmBanimentosResumo | null;
+  bloqueioAtivo: AdminUsuariosEmBloqueiosResumo | null;
   informacoes: ReturnType<typeof mapUsuarioInformacoes>;
 };
 
@@ -666,48 +666,48 @@ const mapPlanoResumo = (
   };
 };
 
-const mapBanimentoResumo = (
-  banimento: BanimentoResumoData | null,
-): AdminUsuariosEmBanimentosResumo | null => {
-  if (!banimento || !banimento.usuario) {
+const mapBloqueioResumo = (
+  bloqueio: BloqueioResumoData | null,
+): AdminUsuariosEmBloqueiosResumo | null => {
+  if (!bloqueio || !bloqueio.usuario) {
     return null;
   }
 
-  const alvoTipo: AdminUsuariosBanimentoAlvo['tipo'] =
-    banimento.usuario.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
+  const alvoTipo: AdminUsuariosBloqueioAlvo['tipo'] =
+    bloqueio.usuario.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
       ? 'EMPRESA'
-      : banimento.usuario.tipoUsuario === TiposDeUsuarios.PESSOA_FISICA
+      : bloqueio.usuario.tipoUsuario === TiposDeUsuarios.PESSOA_FISICA
         ? 'USUARIO'
         : 'ESTUDANTE';
 
-  const aplicadoPor = banimento.aplicadoPor
+  const aplicadoPor = bloqueio.aplicadoPor
     ? {
-        id: banimento.aplicadoPor.id,
-        nome: banimento.aplicadoPor.nomeCompleto,
-        role: banimento.aplicadoPor.role,
+        id: bloqueio.aplicadoPor.id,
+        nome: bloqueio.aplicadoPor.nomeCompleto,
+        role: bloqueio.aplicadoPor.role,
       }
     : null;
 
   return {
-    id: banimento.id,
+    id: bloqueio.id,
     alvo: {
-      id: banimento.usuario.id,
-      nome: banimento.usuario.nomeCompleto,
-      role: banimento.usuario.role,
+      id: bloqueio.usuario.id,
+      nome: bloqueio.usuario.nomeCompleto,
+      role: bloqueio.usuario.role,
       tipo: alvoTipo,
     },
-    banimento: {
-      tipo: banimento.tipo,
-      motivo: banimento.motivo,
-      status: banimento.status,
-      inicio: banimento.inicio,
-      fim: banimento.fim ?? null,
-      observacoes: banimento.observacoes ?? null,
+    bloqueio: {
+      tipo: bloqueio.tipo,
+      motivo: bloqueio.motivo,
+      status: bloqueio.status,
+      inicio: bloqueio.inicio,
+      fim: bloqueio.fim ?? null,
+      observacoes: bloqueio.observacoes ?? null,
     },
     aplicadoPor,
     auditoria: {
-      criadoEm: banimento.criadoEm,
-      atualizadoEm: banimento.atualizadoEm,
+      criadoEm: bloqueio.criadoEm,
+      atualizadoEm: bloqueio.atualizadoEm,
     },
   };
 };
@@ -945,7 +945,7 @@ export const adminEmpresasService = {
         planoAtual && planoAtual.inicio && planoAtual.fim
           ? calculateDurationInDays(planoAtual.inicio, planoAtual.fim)
           : null;
-      const banimento = mapBanimentoResumo(empresa.banimentosRecebidos?.[0] ?? null);
+      const bloqueio = mapBloqueioResumo(empresa.bloqueiosRecebidos?.[0] ?? null);
 
       return {
         id: empresa.id,
@@ -965,8 +965,8 @@ export const adminEmpresasService = {
         plano,
         vagasPublicadas: empresa._count?.vagasCriadas ?? 0,
         limiteVagasPlano: plano?.quantidadeVagas ?? null,
-        banida: Boolean(banimento),
-        banimentoAtivo: banimento,
+        bloqueada: Boolean(bloqueio),
+        bloqueioAtivo: bloqueio,
         informacoes: empresa.informacoes,
       };
     });
@@ -997,16 +997,16 @@ export const adminEmpresasService = {
         : null;
     const ultimoPagamentoEm =
       planoAtual?.atualizadoEm ?? planoAtual?.inicio ?? planoAtual?.criadoEm ?? null;
-    const banimentoAtivoRegistro = await prisma.usuariosEmBanimentos.findFirst({
+    const bloqueioAtivoRegistro = await prisma.usuariosEmBloqueios.findFirst({
       where: {
         usuarioId: id,
-        status: StatusDeBanimentos.ATIVO,
+        status: StatusDeBloqueios.ATIVO,
         OR: [{ fim: null }, { fim: { gt: new Date() } }],
       },
       orderBy: [{ fim: 'desc' }, { criadoEm: 'desc' }],
-      select: banimentoSelect,
+      select: bloqueioSelect,
     });
-    const banimentoAtivo = mapBanimentoResumo(banimentoAtivoRegistro);
+    const bloqueioAtivo = mapBloqueioResumo(bloqueioAtivoRegistro);
 
     return {
       id: empresa.id,
@@ -1032,14 +1032,14 @@ export const adminEmpresasService = {
         publicadas: empresa._count?.vagasCriadas ?? 0,
         limitePlano: plano?.quantidadeVagas ?? null,
       },
-      banida: Boolean(banimentoAtivo),
+      bloqueada: Boolean(bloqueioAtivo),
       pagamento: {
         modelo: planoAtual?.modeloPagamento ?? null,
         metodo: planoAtual?.metodoPagamento ?? null,
         status: planoAtual?.statusPagamento ?? null,
         ultimoPagamentoEm,
       },
-      banimentoAtivo,
+      bloqueioAtivo,
       informacoes: empresa.informacoes,
     };
   },
@@ -1413,17 +1413,17 @@ export const adminEmpresasService = {
     } satisfies AdminEmpresaJobResumo;
   },
 
-  aplicarBanimento: async (empresaId: string, adminId: string, input: AdminEmpresasBanInput) => {
+  aplicarBloqueio: async (empresaId: string, adminId: string, input: AdminEmpresasBloqueioInput) => {
     const observacoes = sanitizeOptionalValue(input.observacoes ?? undefined);
     const inicio = new Date();
     let fim: Date | null = null;
 
-    if (input.tipo !== TiposDeBanimentos.PERMANENTE && input.dias && input.dias > 0) {
+    if (input.tipo !== TiposDeBloqueios.PERMANENTE && input.dias && input.dias > 0) {
       fim = new Date(inicio.getTime());
       fim.setDate(fim.getDate() + input.dias);
     }
 
-    const banimento = await prisma.$transaction(async (tx) => {
+    const bloqueio = await prisma.$transaction(async (tx) => {
       const empresa = await ensureEmpresaExiste(tx, empresaId);
 
       const admin = await tx.usuarios.findUnique({
@@ -1432,43 +1432,43 @@ export const adminEmpresasService = {
       });
 
       if (!admin || !['ADMIN', 'MODERADOR'].includes(admin.role)) {
-        throw Object.assign(new Error('Usuário não autorizado a aplicar banimento'), {
+        throw Object.assign(new Error('Usuário não autorizado a aplicar bloqueio'), {
           code: 'ADMIN_REQUIRED',
         });
       }
 
       await tx.usuarios.update({
         where: { id: empresaId },
-        data: { status: Status.BANIDO },
+        data: { status: Status.BLOQUEADO },
       });
 
-      const novoBanimento = await tx.usuariosEmBanimentos.create({
+      const novoBloqueio = await tx.usuariosEmBloqueios.create({
         data: {
           usuarioId: empresa.id,
           aplicadoPorId: adminId,
           tipo: input.tipo,
           motivo: input.motivo,
-          status: StatusDeBanimentos.ATIVO,
+          status: StatusDeBloqueios.ATIVO,
           inicio,
           fim,
           ...(observacoes !== undefined ? { observacoes } : {}),
           logs: {
             create: {
-              acao: AcoesDeLogDeBanimento.CRIACAO,
+              acao: AcoesDeLogDeBloqueio.CRIACAO,
               criadoPorId: adminId,
               ...(observacoes !== undefined
                 ? { descricao: observacoes }
-                : { descricao: 'Banimento registrado pelo painel administrativo.' }),
+                : { descricao: 'Bloqueio registrado pelo painel administrativo.' }),
             },
           },
         },
-        select: banimentoSelect,
+        select: bloqueioSelect,
       });
 
-      return novoBanimento;
+      return novoBloqueio;
     });
 
-    // Envia email de banimento
+    // Envia email de bloqueio
     try {
       const user = await prisma.usuarios.findUnique({
         where: { id: empresaId },
@@ -1476,7 +1476,7 @@ export const adminEmpresasService = {
       });
       if (user?.email) {
         const emailService = new EmailService();
-        const template = EmailTemplates.generateUserBannedEmail({
+        const template = EmailTemplates.generateUserBlockedEmail({
           nomeCompleto: user.nomeCompleto,
           motivo: input.motivo,
           fim,
@@ -1487,34 +1487,34 @@ export const adminEmpresasService = {
         );
       }
     } catch (error) {
-      console.error('Erro ao enviar e-mail de banimento', { empresaId, error });
+      console.error('Erro ao enviar e-mail de bloqueio', { empresaId, error });
     }
 
-    return mapBanimentoResumo(banimento);
+    return mapBloqueioResumo(bloqueio);
   },
 
-  revogarBanimento: async (empresaId: string, adminId: string, observacoes?: string | null) => {
+  revogarBloqueio: async (empresaId: string, adminId: string, observacoes?: string | null) => {
     await ensureEmpresaExiste(prisma, empresaId);
-    const banimentoAtivo = await prisma.usuariosEmBanimentos.findFirst({
-      where: { usuarioId: empresaId, status: StatusDeBanimentos.ATIVO },
+    const bloqueioAtivo = await prisma.usuariosEmBloqueios.findFirst({
+      where: { usuarioId: empresaId, status: StatusDeBloqueios.ATIVO },
       orderBy: { criadoEm: 'desc' },
     });
-    if (!banimentoAtivo) {
-      throw Object.assign(new Error('Nenhum banimento ativo encontrado'), {
-        code: 'BANIMENTO_NOT_FOUND',
+    if (!bloqueioAtivo) {
+      throw Object.assign(new Error('Nenhum bloqueio ativo encontrado'), {
+        code: 'BLOQUEIO_NOT_FOUND',
       });
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.usuariosEmBanimentos.update({
-        where: { id: banimentoAtivo.id },
+      await tx.usuariosEmBloqueios.update({
+        where: { id: bloqueioAtivo.id },
         data: {
-          status: StatusDeBanimentos.REVOGADO,
+          status: StatusDeBloqueios.REVOGADO,
           logs: {
             create: {
-              acao: AcoesDeLogDeBanimento.REVOGACAO,
+              acao: AcoesDeLogDeBloqueio.REVOGACAO,
               criadoPorId: adminId,
-              descricao: observacoes ?? 'Banimento revogado pelo painel administrativo.',
+              descricao: observacoes ?? 'Bloqueio revogado pelo painel administrativo.',
             },
           },
         },
@@ -1530,7 +1530,7 @@ export const adminEmpresasService = {
       });
       if (user?.email) {
         const emailService = new EmailService();
-        const template = EmailTemplates.generateUserUnbannedEmail({
+        const template = EmailTemplates.generateUserUnblockedEmail({
           nomeCompleto: user.nomeCompleto,
         });
         await emailService.sendAssinaturaNotificacao(
@@ -1539,30 +1539,30 @@ export const adminEmpresasService = {
         );
       }
     } catch (error) {
-      console.error('Erro ao enviar e-mail de revogação de banimento', { empresaId, error });
+      console.error('Erro ao enviar e-mail de revogação de bloqueio', { empresaId, error });
     }
   },
 
-  listarBanimentos: async (empresaId: string, { page, pageSize }: AdminEmpresasHistoryQuery) => {
+  listarBloqueios: async (empresaId: string, { page, pageSize }: AdminEmpresasHistoryQuery) => {
     await ensureEmpresaExiste(prisma, empresaId);
 
     const skip = (page - 1) * pageSize;
 
-    const [total, banimentos] = await prisma.$transaction([
-      prisma.usuariosEmBanimentos.count({ where: { usuarioId: empresaId } }),
-      prisma.usuariosEmBanimentos.findMany({
+    const [total, bloqueios] = await prisma.$transaction([
+      prisma.usuariosEmBloqueios.count({ where: { usuarioId: empresaId } }),
+      prisma.usuariosEmBloqueios.findMany({
         where: { usuarioId: empresaId },
         orderBy: { criadoEm: 'desc' },
         skip,
         take: pageSize,
-        select: banimentoSelect,
+        select: bloqueioSelect,
       }),
     ]);
 
     return {
-      data: banimentos
-        .map(mapBanimentoResumo)
-        .filter((item): item is AdminUsuariosEmBanimentosResumo => Boolean(item)),
+      data: bloqueios
+        .map(mapBloqueioResumo)
+        .filter((item): item is AdminUsuariosEmBloqueiosResumo => Boolean(item)),
       pagination: buildPagination(page, pageSize, total),
     };
   },
@@ -1580,6 +1580,6 @@ export type AdminEmpresasVagasResult = Awaited<ReturnType<typeof adminEmpresasSe
 export type AdminEmpresaAprovacaoVagaResult = Awaited<
   ReturnType<typeof adminEmpresasService.approveVaga>
 >;
-export type AdminEmpresasBanimentosResult = Awaited<
-  ReturnType<typeof adminEmpresasService.listarBanimentos>
+export type AdminEmpresasBloqueiosResult = Awaited<
+  ReturnType<typeof adminEmpresasService.listarBloqueios>
 >;

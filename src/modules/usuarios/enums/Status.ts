@@ -5,7 +5,7 @@
 export enum Status {
   ATIVO = 'ATIVO',
   INATIVO = 'INATIVO',
-  BANIDO = 'BANIDO',
+  BLOQUEADO = 'BLOQUEADO',
   PENDENTE = 'PENDENTE',
   SUSPENSO = 'SUSPENSO',
 }

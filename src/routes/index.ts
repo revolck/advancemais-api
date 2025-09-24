@@ -3,7 +3,7 @@ import { Router, type Request } from 'express';
 import redis from '@/config/redis';
 import { publicCache } from '@/middlewares/cache-control';
 import { docsRoutes } from '@/modules/docs';
-import { getBanimentosWatcherMetrics } from '@/modules/usuarios/banimentos/cron/ban-watcher';
+import { getBloqueiosWatcherMetrics } from '@/modules/usuarios/bloqueios/cron/bloqueio-watcher';
 import { brevoRoutes } from '@/modules/brevo/routes';
 import { mercadopagoRoutes } from '@/modules/mercadopago';
 import { EmailVerificationController } from '@/modules/brevo/controllers/email-verification-controller';
@@ -201,7 +201,7 @@ router.get('/health', publicCache, async (req, res) => {
       redis: redisStatus,
     },
     metrics: {
-      bans: getBanimentosWatcherMetrics(),
+      bloqueios: getBloqueiosWatcherMetrics(),
     },
   };
 

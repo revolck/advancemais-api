@@ -141,7 +141,7 @@ const options: Options = {
       },
       {
         name: 'Cursos - Turmas',
-        description: 'Gestão de turmas, inscrições e matrículas dos cursos',
+        description: 'Gestão de turmas e inscrições dos cursos',
       },
       {
         name: 'Cursos - Aulas',
@@ -157,7 +157,7 @@ const options: Options = {
       },
       {
         name: 'Cursos - Estágios',
-        description: 'Gestão dos estágios supervisionados vinculados às matrículas dos cursos',
+        description: 'Gestão dos estágios supervisionados vinculados às inscrições dos cursos',
       },
       {
         name: 'MercadoPago - Assinaturas',
@@ -389,7 +389,7 @@ const options: Options = {
             id: { type: 'string', format: 'uuid', example: 'AL-001' },
             nome: { type: 'string', example: 'Maria Oliveira' },
             email: { type: 'string', format: 'email', example: 'maria.oliveira@example.com' },
-            matricula: { type: 'string', nullable: true, example: 'MAT12345' },
+            inscricao: { type: 'string', nullable: true, example: 'INS12345' },
             telefone: {
               type: 'string',
               nullable: true,
@@ -416,7 +416,7 @@ const options: Options = {
         CursoTurmaAulaMaterial: {
           type: 'object',
           properties: {
-            id: { type: 'string', format: 'uuid', example: 'mat-001' },
+            id: { type: 'string', format: 'uuid', example: 'ins-001' },
             aulaId: { type: 'string', format: 'uuid', example: 'aul-001' },
             titulo: { type: 'string', example: 'Slides de apresentação' },
             descricao: {
@@ -563,7 +563,7 @@ const options: Options = {
             estagioObrigatorio: {
               type: 'boolean',
               nullable: true,
-              description: 'Define se novas matrículas do curso exigirão estágio obrigatório.',
+              description: 'Define se novas inscrições do curso exigirão estágio obrigatório.',
             },
             instrutorId: { type: 'string', format: 'uuid', example: 'P-01' },
             categoriaId: { type: 'integer', nullable: true, example: 2 },
@@ -711,7 +711,7 @@ const options: Options = {
             id: { type: 'string', format: 'uuid', example: 'est-123' },
             cursoId: { type: 'integer', example: 10 },
             turmaId: { type: 'string', format: 'uuid', example: 'tur-123' },
-            matriculaId: { type: 'string', format: 'uuid', example: 'mat-789' },
+            inscricaoId: { type: 'string', format: 'uuid', example: 'ins-789' },
             nome: { type: 'string', example: 'Estágio Supervisionado em RH' },
             descricao: { type: 'string', nullable: true, example: 'Atividades práticas em ambiente corporativo.' },
             obrigatorio: { type: 'boolean', example: true },
@@ -1075,9 +1075,9 @@ const options: Options = {
         },
         CursoTurmaProvaNotaInput: {
           type: 'object',
-          required: ['matriculaId', 'nota'],
+          required: ['inscricaoId', 'nota'],
           properties: {
-            matriculaId: { type: 'string', format: 'uuid' },
+            inscricaoId: { type: 'string', format: 'uuid' },
             nota: { type: 'number', example: 7.5, minimum: 0, maximum: 10 },
             pesoTotal: { type: 'number', nullable: true, example: 1 },
             realizadoEm: { type: 'string', format: 'date-time', nullable: true },
@@ -1096,7 +1096,7 @@ const options: Options = {
           properties: {
             id: { type: 'string', format: 'uuid' },
             turmaId: { type: 'string', format: 'uuid' },
-            matriculaId: { type: 'string', format: 'uuid' },
+            inscricaoId: { type: 'string', format: 'uuid' },
             tipo: { $ref: '#/components/schemas/CursosNotaTipo' },
             provaId: { type: 'string', format: 'uuid', nullable: true },
             referenciaExterna: { type: 'string', nullable: true, example: 'TRAB-2025-01' },
@@ -1122,7 +1122,7 @@ const options: Options = {
                 etiqueta: { type: 'string', example: 'P1' },
               },
             },
-            matricula: {
+            inscricao: {
               type: 'object',
               nullable: true,
               properties: {
@@ -1143,9 +1143,9 @@ const options: Options = {
         },
         CursoNotaCreateInput: {
           type: 'object',
-          required: ['matriculaId', 'tipo'],
+          required: ['inscricaoId', 'tipo'],
           properties: {
-            matriculaId: { type: 'string', format: 'uuid' },
+            inscricaoId: { type: 'string', format: 'uuid' },
             tipo: { $ref: '#/components/schemas/CursosNotaTipo' },
             provaId: { type: 'string', format: 'uuid', nullable: true },
             referenciaExterna: { type: 'string', nullable: true, maxLength: 120 },
@@ -1181,10 +1181,10 @@ const options: Options = {
             observacoes: { type: 'string', nullable: true },
           },
         },
-        CursoNotaResumoMatricula: {
+        CursoNotaResumoInscricao: {
           type: 'object',
           properties: {
-            matricula: {
+            inscricao: {
               type: 'object',
               properties: {
                 id: { type: 'string', format: 'uuid' },
@@ -1312,11 +1312,11 @@ const options: Options = {
             {
               type: 'object',
               properties: {
-                matriculaId: {
+                inscricaoId: {
                   type: 'string',
                   format: 'uuid',
                   nullable: true,
-                  description: 'Identificador da matrícula do aluno na turma relacionada ao evento',
+                  description: 'Identificador da inscrição do aluno na turma relacionada ao evento',
                 },
               },
             },
@@ -1388,7 +1388,7 @@ const options: Options = {
           properties: {
             id: { type: 'string', format: 'uuid' },
             turmaId: { type: 'string', format: 'uuid' },
-            matriculaId: { type: 'string', format: 'uuid' },
+            inscricaoId: { type: 'string', format: 'uuid' },
             aulaId: { type: 'string', format: 'uuid', nullable: true },
             dataReferencia: { type: 'string', format: 'date-time' },
             status: { $ref: '#/components/schemas/CursosFrequenciaStatus' },
@@ -1422,7 +1422,7 @@ const options: Options = {
                 },
               },
             },
-            matricula: {
+            inscricao: {
               type: 'object',
               nullable: true,
               properties: {
@@ -1443,9 +1443,9 @@ const options: Options = {
         },
         CursoFrequenciaCreateInput: {
           type: 'object',
-          required: ['matriculaId', 'status'],
+          required: ['inscricaoId', 'status'],
           properties: {
-            matriculaId: { type: 'string', format: 'uuid' },
+            inscricaoId: { type: 'string', format: 'uuid' },
             aulaId: { type: 'string', format: 'uuid', nullable: true },
             dataReferencia: { type: 'string', format: 'date-time', nullable: true },
             status: { $ref: '#/components/schemas/CursosFrequenciaStatus' },
@@ -1481,10 +1481,10 @@ const options: Options = {
             },
           },
         },
-        CursoFrequenciaResumoMatricula: {
+        CursoFrequenciaResumoInscricao: {
           type: 'object',
           properties: {
-            matricula: {
+            inscricao: {
               type: 'object',
               properties: {
                 id: { type: 'string', format: 'uuid' },
@@ -1559,9 +1559,9 @@ const options: Options = {
         },
         CursoTurmaRecuperacaoInput: {
           type: 'object',
-          required: ['matriculaId'],
+          required: ['inscricaoId'],
           properties: {
-            matriculaId: { type: 'string', format: 'uuid' },
+            inscricaoId: { type: 'string', format: 'uuid' },
             provaId: { type: 'string', format: 'uuid', nullable: true },
             envioId: { type: 'string', format: 'uuid', nullable: true },
             notaRecuperacao: { type: 'number', nullable: true, example: 8 },
@@ -1609,7 +1609,7 @@ const options: Options = {
                 email: { type: 'string', format: 'email', example: 'joao@email.com' },
                 cpf: { type: 'string', nullable: true, example: '123.456.789-00' },
                 cpfMascarado: { type: 'string', nullable: true, example: '***.***.***-00' },
-                matricula: { type: 'string', nullable: true, example: 'MAT12345' },
+                inscricao: { type: 'string', nullable: true, example: 'INS12345' },
               },
             },
             curso: {
@@ -1646,9 +1646,9 @@ const options: Options = {
         },
         CursoCertificadoCreateInput: {
           type: 'object',
-          required: ['matriculaId', 'tipo', 'formato'],
+          required: ['inscricaoId', 'tipo', 'formato'],
           properties: {
-            matriculaId: { type: 'string', format: 'uuid' },
+            inscricaoId: { type: 'string', format: 'uuid' },
             tipo: { $ref: '#/components/schemas/CursosCertificados' },
             formato: { $ref: '#/components/schemas/CursosCertificadosTipos' },
             cargaHoraria: { type: 'integer', minimum: 1, nullable: true, example: 40 },
@@ -1656,10 +1656,10 @@ const options: Options = {
             observacoes: { type: 'string', nullable: true, maxLength: 500 },
           },
         },
-        CursoCertificadoResumoMatricula: {
+        CursoCertificadoResumoInscricao: {
           type: 'object',
           properties: {
-            matricula: {
+            inscricao: {
               type: 'object',
               properties: {
                 id: { type: 'string', format: 'uuid' },
@@ -1670,7 +1670,7 @@ const options: Options = {
                     nome: { type: 'string' },
                     email: { type: 'string', format: 'email' },
                     cpf: { type: 'string', nullable: true },
-                    matricula: { type: 'string', nullable: true },
+                    inscricao: { type: 'string', nullable: true },
                   },
                 },
               },
@@ -1792,7 +1792,7 @@ const options: Options = {
             dataInscricaoFim: { type: 'string', format: 'date-time', nullable: true },
           },
         },
-        CursoTurmaEnrollmentInput: {
+        CursoTurmaInscricaoInput: {
           type: 'object',
           required: ['alunoId'],
           properties: {
@@ -1801,7 +1801,7 @@ const options: Options = {
               format: 'uuid',
               example: 'AL-001',
               description:
-                'Identificador do aluno que receberá a matrícula. Após o encerramento do período de inscrição, apenas usuários ADMIN ou MODERADOR podem realizar esta operação.',
+                'Identificador do aluno que receberá a inscrição. Após o encerramento do período de inscrição, apenas usuários ADMIN ou MODERADOR podem realizar esta operação.',
             },
           },
         },
@@ -2306,7 +2306,7 @@ const options: Options = {
               nullable: true,
               example: '1990-01-01',
             },
-            matricula: { type: 'string', nullable: true, example: 'MAT123' },
+            inscricao: { type: 'string', nullable: true, example: 'INS123' },
             role: {
               allOf: [{ $ref: '#/components/schemas/Roles' }],
               description: 'Role do usuário',
@@ -5944,7 +5944,7 @@ const options: Options = {
               nullable: true,
               example: '1990-01-01',
             },
-            matricula: { type: 'string', nullable: true, example: 'MAT123' },
+            inscricao: { type: 'string', nullable: true, example: 'INS123' },
             avatarUrl: {
               type: 'string',
               nullable: true,
@@ -6084,7 +6084,7 @@ const options: Options = {
               nullable: true,
               example: '1995-07-15',
             },
-            matricula: { type: 'string', nullable: true, example: 'MAT-2024-001' },
+            inscricao: { type: 'string', nullable: true, example: 'INS-2024-001' },
             avatarUrl: {
               type: 'string',
               nullable: true,
@@ -8472,7 +8472,7 @@ const options: Options = {
                   example: '1990-01-01',
                 },
                 genero: { type: 'string', example: 'MASCULINO' },
-                matricula: { type: 'string', example: 'MAT123' },
+                inscricao: { type: 'string', example: 'INS123' },
                 supabaseId: { type: 'string', example: 'uuid-supabase' },
                 cidade: { type: 'string', nullable: true, example: 'Maceió' },
                 estado: { type: 'string', nullable: true, example: 'AL' },
@@ -8731,7 +8731,7 @@ const options: Options = {
                   example: '1990-01-01',
                 },
                 genero: { type: 'string', nullable: true, example: 'MASCULINO' },
-                matricula: { type: 'string', nullable: true, example: 'MAT123' },
+                inscricao: { type: 'string', nullable: true, example: 'INS123' },
                 supabaseId: { type: 'string', example: 'uuid-supabase' },
                 avatarUrl: {
                   type: 'string',

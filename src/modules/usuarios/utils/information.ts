@@ -4,7 +4,7 @@ export const usuarioInformacoesSelect = {
   telefone: true,
   genero: true,
   dataNasc: true,
-  matricula: true,
+  inscricao: true,
   avatarUrl: true,
   descricao: true,
   aceitarTermos: true,
@@ -22,7 +22,7 @@ export interface UsuarioInformacoesDto {
   telefone: string | null;
   genero: string | null;
   dataNasc: Date | null;
-  matricula: string | null;
+  inscricao: string | null;
   avatarUrl: string | null;
   descricao: string | null;
   aceitarTermos: boolean;
@@ -42,7 +42,7 @@ export const mapUsuarioInformacoes = (
   telefone: informacoes?.telefone ?? null,
   genero: informacoes?.genero ?? null,
   dataNasc: resolveDate(informacoes?.dataNasc ?? null),
-  matricula: informacoes?.matricula ?? null,
+  inscricao: informacoes?.inscricao ?? null,
   avatarUrl: informacoes?.avatarUrl ?? null,
   descricao: informacoes?.descricao ?? null,
   aceitarTermos: informacoes?.aceitarTermos ?? false,
@@ -57,7 +57,7 @@ export const mergeUsuarioInformacoes = <
   telefone: string | null;
   genero: string | null;
   dataNasc: Date | null;
-  matricula: string | null;
+  inscricao: string | null;
   avatarUrl: string | null;
   descricao: string | null;
   aceitarTermos: boolean;

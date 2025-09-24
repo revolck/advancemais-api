@@ -105,9 +105,9 @@ const normalizeCursoTurma = async (client: PrismaClientOrTx, cursoId: number, tu
   return turma;
 };
 
-const ensureMatricula = async (client: PrismaClientOrTx, turmaId: string, matriculaId: string) => {
-  const matricula = await client.cursosTurmasMatriculas.findFirst({
-    where: { id: matriculaId, turmaId },
+const ensureInscricao = async (client: PrismaClientOrTx, turmaId: string, inscricaoId: string) => {
+  const inscricao = await client.cursosTurmasInscricoes.findFirst({
+    where: { id: inscricaoId, turmaId },
     include: {
       aluno: {
         select: {
@@ -119,13 +119,13 @@ const ensureMatricula = async (client: PrismaClientOrTx, turmaId: string, matric
     },
   });
 
-  if (!matricula) {
-    const error = new Error('Matrícula não encontrada para a turma informada');
-    (error as any).code = 'MATRICULA_NOT_FOUND';
+  if (!inscricao) {
+    const error = new Error('Inscrição não encontrada para a turma informada');
+    (error as any).code = 'INSCRICAO_NOT_FOUND';
     throw error;
   }
 
-  return matricula;
+  return inscricao;
 };
 
 const prepararLocaisEmail = (
@@ -167,13 +167,13 @@ export const estagiosService = {
   async create(
     cursoId: number,
     turmaId: string,
-    matriculaId: string,
+    inscricaoId: string,
     data: EstagioCreateInput,
     usuarioId?: string,
   ) {
     const resultado = await prisma.$transaction<CreateEstagioTxResult>(async (tx) => {
       const turma = await normalizeCursoTurma(tx, cursoId, turmaId);
-      const matricula = await ensureMatricula(tx, turmaId, matriculaId);
+      const inscricao = await ensureInscricao(tx, turmaId, inscricaoId);
 
       const token = generateToken();
 
@@ -181,8 +181,8 @@ export const estagiosService = {
         data: {
           cursoId,
           turmaId,
-          matriculaId,
-          alunoId: matricula.aluno.id,
+          inscricaoId,
+          alunoId: inscricao.aluno.id,
           nome: data.nome,
           descricao: data.descricao ?? null,
           obrigatorio: data.obrigatorio ?? turma.curso.estagioObrigatorio,
@@ -227,12 +227,12 @@ export const estagiosService = {
         ...estagioWithRelations,
       });
 
-      estagiosLogger.info({ estagioId: estagio.id, matriculaId }, 'Estágio criado com sucesso');
+      estagiosLogger.info({ estagioId: estagio.id, inscricaoId }, 'Estágio criado com sucesso');
 
       return {
         estagio,
         token,
-        aluno: matricula.aluno,
+        aluno: inscricao.aluno,
         curso: turma.curso,
         turma: { id: turma.id, nome: turma.nome, codigo: turma.codigo },
       };
@@ -272,12 +272,12 @@ export const estagiosService = {
     return mapEstagio(resultado.estagio);
   },
 
-  async listByMatricula(cursoId: number, turmaId: string, matriculaId: string) {
+  async listByInscricao(cursoId: number, turmaId: string, inscricaoId: string) {
     await normalizeCursoTurma(prisma, cursoId, turmaId);
-    await ensureMatricula(prisma, turmaId, matriculaId);
+    await ensureInscricao(prisma, turmaId, inscricaoId);
 
     const estagios = await prisma.cursosEstagios.findMany({
-      where: { cursoId, turmaId, matriculaId },
+      where: { cursoId, turmaId, inscricaoId },
       orderBy: { criadoEm: 'desc' },
       ...estagioWithRelations,
     });
@@ -285,20 +285,20 @@ export const estagiosService = {
     return estagios.map((estagio) => mapEstagio(estagio));
   },
 
-  async listForAluno(matriculaId: string, alunoId: string) {
-    const matricula = await prisma.cursosTurmasMatriculas.findUnique({
-      where: { id: matriculaId },
+  async listForAluno(inscricaoId: string, alunoId: string) {
+    const inscricao = await prisma.cursosTurmasInscricoes.findUnique({
+      where: { id: inscricaoId },
       select: { alunoId: true },
     });
 
-    if (!matricula || matricula.alunoId !== alunoId) {
-      const error = new Error('Matrícula não encontrada ou não pertence ao aluno');
+    if (!inscricao || inscricao.alunoId !== alunoId) {
+      const error = new Error('Inscrição não encontrada ou não pertence ao aluno');
       (error as any).code = 'FORBIDDEN';
       throw error;
     }
 
     const estagios = await prisma.cursosEstagios.findMany({
-      where: { matriculaId },
+      where: { inscricaoId },
       orderBy: { criadoEm: 'desc' },
       ...estagioWithRelations,
     });

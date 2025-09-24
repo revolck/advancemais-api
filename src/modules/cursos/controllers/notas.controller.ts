@@ -27,7 +27,7 @@ const parseNotaId = (raw: string) => {
   return raw;
 };
 
-const parseMatriculaId = (raw: unknown) => {
+const parseInscricaoId = (raw: unknown) => {
   if (typeof raw !== 'string' || raw.trim().length === 0) {
     return null;
   }
@@ -47,11 +47,11 @@ export class NotasController {
       });
     }
 
-    const matriculaId = parseMatriculaId(req.query.matriculaId);
+    const inscricaoId = parseInscricaoId(req.query.inscricaoId);
 
     try {
       const notas = await notasService.list(cursoId, turmaId, {
-        matriculaId: matriculaId ?? undefined,
+        inscricaoId: inscricaoId ?? undefined,
       });
       res.json({ data: notas });
     } catch (error: any) {
@@ -143,11 +143,11 @@ export class NotasController {
         });
       }
 
-      if (error?.code === 'MATRICULA_NOT_FOUND') {
+      if (error?.code === 'INSCRICAO_NOT_FOUND') {
         return res.status(404).json({
           success: false,
-          code: 'MATRICULA_NOT_FOUND',
-          message: 'Matrícula não encontrada para a turma informada',
+          code: 'INSCRICAO_NOT_FOUND',
+          message: 'Inscrição não encontrada para a turma informada',
         });
       }
 
@@ -282,46 +282,46 @@ export class NotasController {
     }
   };
 
-  static listByMatricula = async (req: Request, res: Response) => {
-    const matriculaId = parseMatriculaId(req.params.matriculaId);
+  static listByInscricao = async (req: Request, res: Response) => {
+    const inscricaoId = parseInscricaoId(req.params.inscricaoId);
 
-    if (!matriculaId) {
+    if (!inscricaoId) {
       return res.status(400).json({
         success: false,
         code: 'VALIDATION_ERROR',
-        message: 'Identificador da matrícula inválido',
+        message: 'Identificador da inscrição inválido',
       });
     }
 
     try {
-      const resultado = await notasService.listByMatricula(matriculaId, undefined, { permitirAdmin: true });
+      const resultado = await notasService.listByInscricao(inscricaoId, undefined, { permitirAdmin: true });
       res.json(resultado);
     } catch (error: any) {
-      if (error?.code === 'MATRICULA_NOT_FOUND') {
+      if (error?.code === 'INSCRICAO_NOT_FOUND') {
         return res.status(404).json({
           success: false,
-          code: 'MATRICULA_NOT_FOUND',
-          message: 'Matrícula não encontrada',
+          code: 'INSCRICAO_NOT_FOUND',
+          message: 'Inscrição não encontrada',
         });
       }
 
       res.status(500).json({
         success: false,
-        code: 'NOTAS_MATRICULA_ERROR',
-        message: 'Erro ao consultar notas da matrícula',
+        code: 'NOTAS_INSCRICAO_ERROR',
+        message: 'Erro ao consultar notas da inscrição',
         error: error?.message,
       });
     }
   };
 
   static listMy = async (req: Request, res: Response) => {
-    const matriculaId = parseMatriculaId(req.params.matriculaId);
+    const inscricaoId = parseInscricaoId(req.params.inscricaoId);
 
-    if (!matriculaId) {
+    if (!inscricaoId) {
       return res.status(400).json({
         success: false,
         code: 'VALIDATION_ERROR',
-        message: 'Identificador da matrícula inválido',
+        message: 'Identificador da inscrição inválido',
       });
     }
 
@@ -336,14 +336,14 @@ export class NotasController {
     }
 
     try {
-      const resultado = await notasService.listByMatricula(matriculaId, usuarioId);
+      const resultado = await notasService.listByInscricao(inscricaoId, usuarioId);
       res.json(resultado);
     } catch (error: any) {
-      if (error?.code === 'MATRICULA_NOT_FOUND') {
+      if (error?.code === 'INSCRICAO_NOT_FOUND') {
         return res.status(404).json({
           success: false,
-          code: 'MATRICULA_NOT_FOUND',
-          message: 'Matrícula não encontrada',
+          code: 'INSCRICAO_NOT_FOUND',
+          message: 'Inscrição não encontrada',
         });
       }
 
@@ -351,14 +351,14 @@ export class NotasController {
         return res.status(403).json({
           success: false,
           code: 'FORBIDDEN',
-          message: 'Você não tem permissão para visualizar as notas desta matrícula',
+          message: 'Você não tem permissão para visualizar as notas desta inscrição',
         });
       }
 
       res.status(500).json({
         success: false,
-        code: 'NOTAS_ME_MATRICULA_ERROR',
-        message: 'Erro ao consultar notas da matrícula do aluno',
+        code: 'NOTAS_ME_INSCRICAO_ERROR',
+        message: 'Erro ao consultar notas da inscrição do aluno',
         error: error?.message,
       });
     }

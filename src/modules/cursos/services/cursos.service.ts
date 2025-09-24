@@ -56,7 +56,7 @@ const regrasAvaliacaoSelect = {
 
 const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
   include: {
-    matriculas: {
+    inscricoes: {
       include: {
         aluno: {
           select: {
@@ -64,7 +64,7 @@ const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()(
             nomeCompleto: true,
             email: true,
             informacoes: {
-              select: { matricula: true, telefone: true },
+              select: { inscricao: true, telefone: true },
             },
             enderecos: {
               select: {
@@ -217,15 +217,15 @@ const mapTurmaDetailed = (turma: TurmaDetailedPayload) => {
     dataFim: turma.dataFim?.toISOString() ?? null,
     dataInscricaoInicio: turma.dataInscricaoInicio?.toISOString() ?? null,
     dataInscricaoFim: turma.dataInscricaoFim?.toISOString() ?? null,
-    alunos: turma.matriculas.map((matricula) => {
-      const endereco = matricula.aluno.enderecos?.[0];
+    alunos: turma.inscricoes.map((inscricao) => {
+      const endereco = inscricao.aluno.enderecos?.[0];
 
       return {
-        id: matricula.aluno.id,
-        nome: matricula.aluno.nomeCompleto,
-        email: matricula.aluno.email,
-        matricula: matricula.aluno.informacoes?.matricula ?? null,
-        telefone: matricula.aluno.informacoes?.telefone ?? null,
+        id: inscricao.aluno.id,
+        nome: inscricao.aluno.nomeCompleto,
+        email: inscricao.aluno.email,
+        inscricao: inscricao.aluno.informacoes?.inscricao ?? null,
+        telefone: inscricao.aluno.informacoes?.telefone ?? null,
         endereco: endereco
           ? {
               logradouro: endereco.logradouro ?? null,
@@ -297,7 +297,7 @@ const mapCourse = (course: RawCourse) => {
       : null,
     turmas: turmas
       ? turmas.map((turma) =>
-          'matriculas' in turma ? mapTurmaDetailed(turma as any) : mapTurmaSummary(turma as any),
+          'inscricoes' in turma ? mapTurmaDetailed(turma as any) : mapTurmaSummary(turma as any),
         )
       : undefined,
     turmasCount: course._count?.turmas ?? undefined,

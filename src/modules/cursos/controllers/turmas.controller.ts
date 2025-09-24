@@ -4,11 +4,7 @@ import { ZodError } from 'zod';
 
 import { turmasService } from '../services/turmas.service';
 import { cursosService } from '../services/cursos.service';
-import {
-  createTurmaSchema,
-  turmaEnrollmentSchema,
-  updateTurmaSchema,
-} from '../validators/turmas.schema';
+import { createTurmaSchema, turmaInscricaoSchema, updateTurmaSchema } from '../validators/turmas.schema';
 
 const parseCursoId = (raw: string) => {
   const id = Number(raw);
@@ -227,7 +223,7 @@ export class TurmasController {
         return res.status(400).json({
           success: false,
           code: 'INVALID_VAGAS_TOTAIS',
-          message: 'Vagas totais não podem ser menores que matrículas ativas',
+          message: 'Vagas totais não podem ser menores que inscrições ativas',
         });
       }
 
@@ -253,7 +249,7 @@ export class TurmasController {
     }
 
     try {
-      const data = turmaEnrollmentSchema.parse(req.body);
+      const data = turmaInscricaoSchema.parse(req.body);
       const actorRole = (req.user?.role as Roles | undefined) ?? null;
       const turma = await turmasService.enroll(cursoId, turmaId, data.alunoId, {
         id: req.user?.id ?? null,
@@ -265,7 +261,7 @@ export class TurmasController {
         return res.status(400).json({
           success: false,
           code: 'VALIDATION_ERROR',
-          message: 'Dados inválidos para matrícula na turma',
+          message: 'Dados inválidos para inscrição na turma',
           issues: error.flatten().fieldErrors,
         });
       }
@@ -310,11 +306,11 @@ export class TurmasController {
         });
       }
 
-      if (error?.code === 'ALUNO_JA_MATRICULADO') {
+      if (error?.code === 'ALUNO_JA_INSCRITO') {
         return res.status(409).json({
           success: false,
-          code: 'ALUNO_JA_MATRICULADO',
-          message: 'Aluno já está matriculado nesta turma',
+          code: 'ALUNO_JA_INSCRITO',
+          message: 'Aluno já está inscrito nesta turma',
         });
       }
 
@@ -322,14 +318,14 @@ export class TurmasController {
         return res.status(400).json({
           success: false,
           code: 'ALUNO_INFORMATION_NOT_FOUND',
-          message: 'Informações do aluno não encontradas para geração da matrícula',
+          message: 'Informações do aluno não encontradas para geração da inscrição',
         });
       }
 
       res.status(500).json({
         success: false,
         code: 'TURMA_ENROLL_ERROR',
-        message: 'Erro ao matricular aluno na turma',
+        message: 'Erro ao inscrever aluno na turma',
         error: error?.message,
       });
     }
@@ -360,18 +356,18 @@ export class TurmasController {
         });
       }
 
-      if (error?.code === 'ALUNO_NAO_MATRICULADO') {
+      if (error?.code === 'ALUNO_NAO_INSCRITO') {
         return res.status(404).json({
           success: false,
-          code: 'ALUNO_NAO_MATRICULADO',
-          message: 'Aluno não está matriculado nesta turma',
+          code: 'ALUNO_NAO_INSCRITO',
+          message: 'Aluno não está inscrito nesta turma',
         });
       }
 
       res.status(500).json({
         success: false,
         code: 'TURMA_UNENROLL_ERROR',
-        message: 'Erro ao remover matrícula do aluno na turma',
+        message: 'Erro ao remover inscrição do aluno na turma',
         error: error?.message,
       });
     }

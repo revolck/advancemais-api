@@ -22,19 +22,19 @@ const ensureTurmaBelongsToCurso = async (client: PrismaClientOrTx, cursoId: numb
   }
 };
 
-const ensureMatriculaBelongsToTurma = async (
+const ensureInscricaoBelongsToTurma = async (
   client: PrismaClientOrTx,
   turmaId: string,
-  matriculaId: string,
+  inscricaoId: string,
 ) => {
-  const matricula = await client.cursosTurmasMatriculas.findFirst({
-    where: { id: matriculaId, turmaId },
+  const inscricao = await client.cursosTurmasInscricoes.findFirst({
+    where: { id: inscricaoId, turmaId },
     select: { id: true },
   });
 
-  if (!matricula) {
-    const error = new Error('Matrícula não encontrada para a turma informada');
-    (error as any).code = 'MATRICULA_NOT_FOUND';
+  if (!inscricao) {
+    const error = new Error('Inscrição não encontrada para a turma informada');
+    (error as any).code = 'INSCRICAO_NOT_FOUND';
     throw error;
   }
 };
@@ -72,7 +72,7 @@ const ensureNotaBelongsToTurma = async (
 ) => {
   const nota = await client.cursosNotas.findFirst({
     where: { id: notaId, turmaId, turma: { cursoId } },
-    select: { id: true, matriculaId: true, tipo: true, provaId: true, titulo: true },
+    select: { id: true, inscricaoId: true, tipo: true, provaId: true, titulo: true },
   });
 
   if (!nota) {
@@ -106,7 +106,7 @@ export const notasService = {
     cursoId: number,
     turmaId: string,
     filters: {
-      matriculaId?: string;
+      inscricaoId?: string;
     } = {},
   ) {
     await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
@@ -115,7 +115,7 @@ export const notasService = {
       where: {
         turmaId,
         turma: { cursoId },
-        matriculaId: filters.matriculaId ?? undefined,
+        inscricaoId: filters.inscricaoId ?? undefined,
       },
       orderBy: [
         { dataReferencia: 'desc' },
@@ -148,7 +148,7 @@ export const notasService = {
     cursoId: number,
     turmaId: string,
     data: {
-      matriculaId: string;
+      inscricaoId: string;
       tipo: CursosNotasTipo;
       provaId?: string | null;
       referenciaExterna?: string | null;
@@ -163,7 +163,7 @@ export const notasService = {
   ) {
     return prisma.$transaction(async (tx) => {
       await ensureTurmaBelongsToCurso(tx, cursoId, turmaId);
-      await ensureMatriculaBelongsToTurma(tx, turmaId, data.matriculaId);
+      await ensureInscricaoBelongsToTurma(tx, turmaId, data.inscricaoId);
 
       const prova =
         data.tipo === CursosNotasTipo.PROVA && data.provaId
@@ -181,7 +181,7 @@ export const notasService = {
       const nota = await tx.cursosNotas.create({
         data: {
           turmaId,
-          matriculaId: data.matriculaId,
+          inscricaoId: data.inscricaoId,
           tipo: data.tipo,
           provaId: prova?.id ?? null,
           referenciaExterna: data.referenciaExterna ?? null,
@@ -199,7 +199,7 @@ export const notasService = {
         ...notaWithRelations,
       });
 
-      notasLogger.info({ turmaId, notaId: nota.id }, 'Nota criada para matrícula');
+      notasLogger.info({ turmaId, notaId: nota.id }, 'Nota criada para inscrição');
 
       return mapNota(nota);
     });
@@ -319,13 +319,13 @@ export const notasService = {
     });
   },
 
-  async listByMatricula(
-    matriculaId: string,
+  async listByInscricao(
+    inscricaoId: string,
     requesterId?: string,
     { permitirAdmin = false }: { permitirAdmin?: boolean } = {},
   ) {
-    const matricula = await prisma.cursosTurmasMatriculas.findUnique({
-      where: { id: matriculaId },
+    const inscricao = await prisma.cursosTurmasInscricoes.findUnique({
+      where: { id: inscricaoId },
       include: {
         aluno: { select: { id: true, nomeCompleto: true, email: true } },
         turma: {
@@ -339,20 +339,20 @@ export const notasService = {
       },
     });
 
-    if (!matricula) {
-      const error = new Error('Matrícula não encontrada');
-      (error as any).code = 'MATRICULA_NOT_FOUND';
+    if (!inscricao) {
+      const error = new Error('Inscrição não encontrada');
+      (error as any).code = 'INSCRICAO_NOT_FOUND';
       throw error;
     }
 
-    if (requesterId && matricula.alunoId !== requesterId && !permitirAdmin) {
+    if (requesterId && inscricao.alunoId !== requesterId && !permitirAdmin) {
       const error = new Error('Acesso negado');
       (error as any).code = 'FORBIDDEN';
       throw error;
     }
 
     const notas = await prisma.cursosNotas.findMany({
-      where: { matriculaId },
+      where: { inscricaoId },
       orderBy: [
         { dataReferencia: 'desc' },
         { criadoEm: 'desc' },
@@ -361,22 +361,22 @@ export const notasService = {
     });
 
     return {
-      matricula: {
-        id: matricula.id,
+      inscricao: {
+        id: inscricao.id,
         aluno: {
-          id: matricula.aluno.id,
-          nome: matricula.aluno.nomeCompleto,
-          email: matricula.aluno.email,
+          id: inscricao.aluno.id,
+          nome: inscricao.aluno.nomeCompleto,
+          email: inscricao.aluno.email,
         },
       },
       curso: {
-        id: matricula.turma.curso.id,
-        nome: matricula.turma.curso.nome,
+        id: inscricao.turma.curso.id,
+        nome: inscricao.turma.curso.nome,
       },
       turma: {
-        id: matricula.turma.id,
-        nome: matricula.turma.nome,
-        codigo: matricula.turma.codigo,
+        id: inscricao.turma.id,
+        nome: inscricao.turma.nome,
+        codigo: inscricao.turma.codigo,
       },
       notas: notas.map(mapNota),
     };

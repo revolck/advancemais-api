@@ -78,7 +78,7 @@ const referenciaExternaSchema = z
 
 export const createNotaSchema = z
   .object({
-    matriculaId: z.string().uuid('Identificador da matrícula inválido'),
+    inscricaoId: z.string().uuid('Identificador da inscrição inválido'),
     tipo: notaTipoSchema,
     provaId: z.string().uuid('Identificador da prova inválido').nullish(),
     referenciaExterna: referenciaExternaSchema,

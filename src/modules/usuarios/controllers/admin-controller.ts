@@ -174,6 +174,19 @@ export class AdminController {
     }
   };
 
+  public listarCandidatoLogs = async (req: Request, res: Response, next: NextFunction) => {
+    const log = this.getLogger(req);
+    try {
+      const { userId } = req.params;
+      const result = await this.adminService.listarCandidatoLogs(userId, req.query);
+      res.json(result);
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      log.error({ err }, 'Erro ao listar logs do candidato');
+      return next(err);
+    }
+  };
+
   /**
    * Atualiza status do usuário
    */

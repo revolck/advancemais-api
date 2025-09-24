@@ -207,6 +207,7 @@ router.get(
  * /api/v1/candidatos/candidaturas/recebidas:
  *   get:
  *     summary: Listar candidaturas recebidas pela empresa
+ *     description: "Retorna as candidaturas visíveis para a empresa. Por padrão, candidaturas com status CANCELADO são omitidas."
  *     tags: [Candidatos - Candidaturas]
  *     security:
  *       - bearerAuth: []

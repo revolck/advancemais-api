@@ -55,6 +55,7 @@ router.post('/', supabaseAuthMiddleware(candidateOnly), CurriculosController.cre
  * /api/v1/candidatos/curriculos:
  *   post:
  *     summary: Criar currículo (até 5 por candidato)
+ *     description: "Registra um novo currículo. Ao cadastrar o primeiro currículo, o perfil do aluno passa a ser considerado candidato ativo."
  *     tags: [Candidatos - Currículos]
  *     security:
  *       - bearerAuth: []
@@ -80,6 +81,7 @@ router.put('/:id', supabaseAuthMiddleware(candidateOnly), CurriculosController.u
  * /api/v1/candidatos/curriculos/{id}:
  *   put:
  *     summary: Atualizar currículo
+ *     description: "Atualiza os dados do currículo selecionado e registra logs de auditoria com as alterações."
  *     tags: [Candidatos - Currículos]
  *     security:
  *       - bearerAuth: []
@@ -110,6 +112,7 @@ router.delete('/:id', supabaseAuthMiddleware(candidateOnly), CurriculosControlle
  * /api/v1/candidatos/curriculos/{id}:
  *   delete:
  *     summary: Excluir currículo
+ *     description: "Remove o currículo informado. As candidaturas vinculadas a ele são canceladas automaticamente e, caso seja o último currículo ativo, o candidato deixa de participar dos processos seletivos."
  *     tags: [Candidatos - Currículos]
  *     security:
  *       - bearerAuth: []

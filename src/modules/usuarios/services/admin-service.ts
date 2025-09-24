@@ -5,7 +5,7 @@
  * @author Sistema Advance+
  * @version 3.0.0
  */
-import { Prisma, Roles, Status, TiposDeUsuarios } from '@prisma/client';
+import { Prisma, Roles, Status, TiposDeUsuarios, CandidatoLogTipo } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
@@ -17,6 +17,8 @@ import { invalidateCacheByPrefix } from '@/utils/cache';
 import { attachEnderecoResumo } from '../utils/address';
 import { mergeUsuarioInformacoes, usuarioInformacoesSelect } from '../utils/information';
 import { mapSocialLinks, usuarioRedesSociaisSelect } from '../utils/social-links';
+import { candidaturasService } from '@/modules/candidatos/candidaturas/services';
+import { candidatoLogsService } from '@/modules/candidatos/logs/service';
 import {
   buildUserDataForDatabase,
   checkForDuplicates,
@@ -164,6 +166,7 @@ export class AdminService {
 
     const where: Prisma.UsuariosWhereInput = {
       role: Roles.ALUNO_CANDIDATO,
+      curriculos: { some: {} },
     };
 
     const statusFilter = this.getStatusFilter(status);
@@ -315,6 +318,7 @@ export class AdminService {
       where: {
         id: userId,
         role: Roles.ALUNO_CANDIDATO,
+        curriculos: { some: {} },
       },
       select: {
         id: true,
@@ -366,6 +370,56 @@ export class AdminService {
     };
   }
 
+  async listarCandidatoLogs(userId: string, query: unknown) {
+    if (!userId || userId.trim() === '') {
+      throw new Error('ID do candidato é obrigatório');
+    }
+
+    const candidatoExiste = await prisma.usuarios.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+
+    if (!candidatoExiste) {
+      throw new Error('Candidato não encontrado');
+    }
+
+    const schema = z.object({
+      page: z.coerce.number().int().min(1).default(1),
+      limit: z.coerce.number().int().min(1).max(100).default(20),
+      tipo: z.nativeEnum(CandidatoLogTipo).optional(),
+    });
+
+    const { page, limit, tipo } = schema.parse(query);
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.UsuariosCandidatosLogsWhereInput = {
+      usuarioId: userId,
+      ...(tipo ? { tipo } : {}),
+    };
+
+    const [logs, total] = await prisma.$transaction([
+      prisma.usuariosCandidatosLogs.findMany({
+        where,
+        orderBy: { criadoEm: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.usuariosCandidatosLogs.count({ where }),
+    ]);
+
+    return {
+      message: 'Logs do candidato',
+      logs,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    };
+  }
+
   /**
    * Atualiza status do usuário - TIPAGEM CORRETA
    */
@@ -403,6 +457,49 @@ export class AdminService {
     });
 
     await invalidateUserCache(usuario);
+
+    if (
+      usuario.role === Roles.ALUNO_CANDIDATO &&
+      statusEnum === Status.BLOQUEADO &&
+      usuarioAntes.status !== Status.BLOQUEADO
+    ) {
+      await candidaturasService.cancelForCandidato({
+        usuarioId: usuario.id,
+        motivo: 'BLOQUEIO',
+      });
+
+      await candidatoLogsService.create({
+        usuarioId: usuario.id,
+        tipo: CandidatoLogTipo.CANDIDATO_DESATIVADO,
+        metadata: {
+          motivo: 'BLOQUEIO_ADMINISTRATIVO',
+          statusAnterior: usuarioAntes.status,
+          statusAtual: statusEnum,
+        },
+      });
+    }
+
+    if (
+      usuario.role === Roles.ALUNO_CANDIDATO &&
+      usuarioAntes.status === Status.BLOQUEADO &&
+      statusEnum !== Status.BLOQUEADO
+    ) {
+      const curriculosAtivos = await prisma.usuariosCurriculos.count({
+        where: { usuarioId: usuario.id },
+      });
+
+      if (curriculosAtivos > 0) {
+        await candidatoLogsService.create({
+          usuarioId: usuario.id,
+          tipo: CandidatoLogTipo.CANDIDATO_ATIVADO,
+          metadata: {
+            motivo: 'STATUS_RESTAURADO',
+            statusAnterior: usuarioAntes.status,
+            statusAtual: statusEnum,
+          },
+        });
+      }
+    }
 
     // Cancelamento de assinatura removido após retirada do provedor de pagamentos
 

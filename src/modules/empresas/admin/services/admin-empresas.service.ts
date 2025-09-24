@@ -2,6 +2,9 @@ import bcrypt from 'bcrypt';
 
 import {
   AcoesDeLogDeBloqueio,
+  EmpresasPlanoModo,
+  EmpresasPlanoOrigin,
+  EmpresasPlanoStatus,
   METODO_PAGAMENTO,
   MODELO_PAGAMENTO,
   STATUS_PAGAMENTO,
@@ -15,6 +18,7 @@ import {
   Status,
   StatusDeBloqueios,
   StatusDeVagas,
+  StatusProcesso,
   TiposDeBloqueios,
   TiposDeUsuarios,
 } from '@prisma/client';
@@ -22,7 +26,6 @@ import {
 import { prisma } from '@/config/prisma';
 import { clientesService } from '@/modules/empresas/clientes/services/clientes.service';
 import { LimiteVagasPlanoAtingidoError } from '@/modules/empresas/vagas/services/errors';
-import { EmpresasPlanoModo, EmpresasPlanoStatus } from '@prisma/client';
 import { calcularFim } from '@/modules/empresas/shared/planos';
 import { EmailService } from '@/modules/brevo/services/email-service';
 import { EmailTemplates } from '@/modules/brevo/templates/email-templates';
@@ -82,6 +85,30 @@ const createPlanoAtivoSelect = () =>
       },
     },
   }) satisfies Prisma.Usuarios$planosContratadosArgs;
+
+const planoHistoricoSelect = {
+  id: true,
+  modo: true,
+  status: true,
+  origin: true,
+  inicio: true,
+  fim: true,
+  criadoEm: true,
+  atualizadoEm: true,
+  modeloPagamento: true,
+  metodoPagamento: true,
+  statusPagamento: true,
+  proximaCobranca: true,
+  graceUntil: true,
+  plano: {
+    select: {
+      id: true,
+      nome: true,
+      valor: true,
+      quantidadeVagas: true,
+    },
+  },
+} satisfies Prisma.EmpresasPlanoSelect;
 
 const bloqueioSelect = {
   id: true,
@@ -220,12 +247,66 @@ const usuarioDetailSelect = {
   },
 } satisfies Prisma.UsuariosSelect;
 
+const vagaSelect = {
+  id: true,
+  codigo: true,
+  slug: true,
+  titulo: true,
+  status: true,
+  inseridaEm: true,
+  atualizadoEm: true,
+  inscricoesAte: true,
+  modoAnonimo: true,
+  modalidade: true,
+  regimeDeTrabalho: true,
+  paraPcd: true,
+  senioridade: true,
+  numeroVagas: true,
+  descricao: true,
+  jornada: true,
+  requisitos: true,
+  atividades: true,
+  beneficios: true,
+  observacoes: true,
+  localizacao: true,
+  salarioMin: true,
+  salarioMax: true,
+  salarioConfidencial: true,
+  maxCandidaturasPorUsuario: true,
+  areaInteresseId: true,
+  subareaInteresseId: true,
+  areaInteresse: {
+    select: {
+      id: true,
+      categoria: true,
+    },
+  },
+  subareaInteresse: {
+    select: {
+      id: true,
+      nome: true,
+      areaId: true,
+    },
+  },
+  destaque: true,
+  destaqueInfo: {
+    select: {
+      empresasPlanoId: true,
+      ativo: true,
+      ativadoEm: true,
+      desativadoEm: true,
+    },
+  },
+} satisfies Prisma.EmpresasVagasSelect;
+
 type UsuarioListSelect = ReturnType<typeof createUsuarioListSelect>;
 type UsuarioListResult = Prisma.UsuariosGetPayload<{ select: UsuarioListSelect }>;
 type PlanoResumoData = UsuarioListResult['planosContratados'][number];
+type PlanoHistoricoRecord = Prisma.EmpresasPlanoGetPayload<{ select: typeof planoHistoricoSelect }>;
 type BloqueioResumoData = Prisma.UsuariosEmBloqueiosGetPayload<{
   select: typeof bloqueioSelect;
 }>;
+type VagaRecord = Prisma.EmpresasVagasGetPayload<{ select: typeof vagaSelect }>;
 
 type AdminEmpresasPlanoResumo = {
   id: string;
@@ -241,6 +322,14 @@ type AdminEmpresasPlanoResumo = {
   quantidadeVagas: number | null;
   duracaoEmDias: number | null;
   diasRestantes: number | null;
+};
+
+type AdminEmpresaPlanoHistoricoItem = AdminEmpresasPlanoResumo & {
+  origin: EmpresasPlanoOrigin;
+  criadoEm: Date;
+  atualizadoEm: Date;
+  proximaCobranca: Date | null;
+  graceUntil: Date | null;
 };
 
 type AdminEmpresaListItem = {
@@ -409,6 +498,31 @@ type AdminEmpresaDetail = {
   };
   bloqueioAtivo: AdminUsuariosEmBloqueiosResumo | null;
   informacoes: ReturnType<typeof mapUsuarioInformacoes>;
+};
+
+type AdminEmpresaOverview = {
+  empresa: AdminEmpresaDetail;
+  planos: {
+    ativos: AdminEmpresaPlanoHistoricoItem[];
+    historico: AdminEmpresaPlanoHistoricoItem[];
+  };
+  pagamentos: {
+    total: number;
+    recentes: AdminEmpresaPaymentLog[];
+  };
+  vagas: {
+    total: number;
+    porStatus: Record<StatusDeVagas, number>;
+    recentes: AdminEmpresaJobResumo[];
+  };
+  candidaturas: {
+    total: number;
+    porStatus: Record<StatusProcesso, number>;
+  };
+  bloqueios: {
+    ativos: AdminUsuariosEmBloqueiosResumo[];
+    historico: AdminUsuariosEmBloqueiosResumo[];
+  };
 };
 
 const sanitizeOptionalValue = (value?: string | null) => {
@@ -666,6 +780,37 @@ const mapPlanoResumo = (
   };
 };
 
+const mapPlanoHistorico = (
+  plano: PlanoHistoricoRecord,
+  referenceDate: Date = new Date(),
+): AdminEmpresaPlanoHistoricoItem => {
+  const resumo =
+    mapPlanoResumo(plano as unknown as PlanoResumoData, referenceDate) ?? {
+      id: plano.id,
+      nome: plano.plano?.nome ?? null,
+      modo: plano.modo ?? null,
+      status: plano.status ?? null,
+      inicio: plano.inicio ?? null,
+      fim: plano.fim ?? null,
+      modeloPagamento: plano.modeloPagamento ?? null,
+      metodoPagamento: plano.metodoPagamento ?? null,
+      statusPagamento: plano.statusPagamento ?? null,
+      valor: plano.plano?.valor ?? null,
+      quantidadeVagas: plano.plano?.quantidadeVagas ?? null,
+      duracaoEmDias: calculateDurationInDays(plano.inicio ?? null, plano.fim ?? null),
+      diasRestantes: calculateDaysRemaining(plano.fim ?? null, referenceDate),
+    };
+
+  return {
+    ...resumo,
+    origin: plano.origin,
+    criadoEm: plano.criadoEm,
+    atualizadoEm: plano.atualizadoEm,
+    proximaCobranca: plano.proximaCobranca ?? null,
+    graceUntil: plano.graceUntil ?? null,
+  };
+};
+
 const mapBloqueioResumo = (
   bloqueio: BloqueioResumoData | null,
 ): AdminUsuariosEmBloqueiosResumo | null => {
@@ -712,12 +857,184 @@ const mapBloqueioResumo = (
   };
 };
 
+const mapVagaResumo = (vaga: VagaRecord): AdminEmpresaJobResumo => ({
+  id: vaga.id,
+  codigo: vaga.codigo,
+  slug: vaga.slug,
+  titulo: vaga.titulo,
+  status: vaga.status,
+  inseridaEm: vaga.inseridaEm,
+  atualizadoEm: vaga.atualizadoEm,
+  inscricoesAte: vaga.inscricoesAte ?? null,
+  modoAnonimo: vaga.modoAnonimo,
+  modalidade: vaga.modalidade,
+  regimeDeTrabalho: vaga.regimeDeTrabalho,
+  paraPcd: vaga.paraPcd,
+  senioridade: vaga.senioridade,
+  numeroVagas: vaga.numeroVagas,
+  descricao: vaga.descricao ?? null,
+  jornada: vaga.jornada,
+  requisitos: vaga.requisitos,
+  atividades: vaga.atividades,
+  beneficios: vaga.beneficios,
+  observacoes: vaga.observacoes ?? null,
+  localizacao: vaga.localizacao ?? null,
+  salarioMin: vaga.salarioMin ?? null,
+  salarioMax: vaga.salarioMax ?? null,
+  salarioConfidencial: vaga.salarioConfidencial,
+  maxCandidaturasPorUsuario: vaga.maxCandidaturasPorUsuario ?? null,
+  areaInteresseId: vaga.areaInteresseId ?? null,
+  subareaInteresseId: vaga.subareaInteresseId ?? null,
+  areaInteresse: vaga.areaInteresse
+    ? {
+        id: vaga.areaInteresse.id,
+        categoria: vaga.areaInteresse.categoria,
+      }
+    : null,
+  subareaInteresse: vaga.subareaInteresse
+    ? {
+        id: vaga.subareaInteresse.id,
+        nome: vaga.subareaInteresse.nome,
+        areaId: vaga.subareaInteresse.areaId,
+      }
+    : null,
+  vagaEmDestaque: vaga.destaque,
+  destaqueInfo: vaga.destaqueInfo
+    ? {
+        empresasPlanoId: vaga.destaqueInfo.empresasPlanoId,
+        ativo: vaga.destaqueInfo.ativo,
+        ativadoEm: vaga.destaqueInfo.ativadoEm,
+        desativadoEm: vaga.destaqueInfo.desativadoEm ?? null,
+      }
+    : null,
+});
+
+const buildStatusCountMap = <T extends string>(
+  statuses: readonly T[],
+  items: { status: T; _count: { _all: number } }[],
+): Record<T, number> => {
+  const map = {} as Record<T, number>;
+
+  statuses.forEach((status) => {
+    map[status] = 0;
+  });
+
+  items.forEach((item) => {
+    map[item.status] = item._count._all;
+  });
+
+  return map;
+};
+
 const buildPagination = (page: number, pageSize: number, total: number) => ({
   page,
   pageSize,
   total,
   totalPages: total === 0 ? 0 : Math.ceil(total / pageSize),
 });
+
+const listPagamentos = async (id: string, { page, pageSize }: AdminEmpresasHistoryQuery) => {
+  await ensureEmpresaExiste(prisma, id);
+
+  const skip = (page - 1) * pageSize;
+
+  const planosIds = await prisma.empresasPlano.findMany({
+    where: { usuarioId: id },
+    select: { id: true },
+  });
+  const planoIds = planosIds.map((plano) => plano.id);
+
+  const orFilters: Prisma.LogsPagamentosDeAssinaturasWhereInput['OR'] = [{ usuarioId: id }];
+  if (planoIds.length > 0) {
+    orFilters.push({ empresasPlanoId: { in: planoIds } });
+  }
+
+  const where: Prisma.LogsPagamentosDeAssinaturasWhereInput = { OR: orFilters };
+
+  const [total, logs] = await prisma.$transaction([
+    prisma.logsPagamentosDeAssinaturas.count({ where }),
+    prisma.logsPagamentosDeAssinaturas.findMany({
+      where,
+      orderBy: { criadoEm: 'desc' },
+      skip,
+      take: pageSize,
+      select: {
+        id: true,
+        tipo: true,
+        status: true,
+        mensagem: true,
+        externalRef: true,
+        mpResourceId: true,
+        criadoEm: true,
+        empresasPlanoId: true,
+      },
+    }),
+  ]);
+
+  const referencedPlanoIds = Array.from(
+    new Set(
+      logs.map((log) => log.empresasPlanoId).filter((value): value is string => Boolean(value)),
+    ),
+  );
+
+  const planosResumo = referencedPlanoIds.length
+    ? await prisma.empresasPlano.findMany({
+        where: { id: { in: referencedPlanoIds } },
+        select: {
+          id: true,
+          plano: { select: { nome: true } },
+        },
+      })
+    : [];
+
+  const planoMap = new Map(planosResumo.map((item) => [item.id, item.plano?.nome ?? null]));
+
+  const data: AdminEmpresaPaymentLog[] = logs.map((log) => ({
+    id: log.id,
+    tipo: log.tipo,
+    status: log.status ?? null,
+    mensagem: log.mensagem ?? null,
+    externalRef: log.externalRef ?? null,
+    mpResourceId: log.mpResourceId ?? null,
+    criadoEm: log.criadoEm,
+    plano: log.empresasPlanoId
+      ? { id: log.empresasPlanoId, nome: planoMap.get(log.empresasPlanoId) ?? null }
+      : null,
+  }));
+
+  return {
+    data,
+    pagination: buildPagination(page, pageSize, total),
+  };
+};
+
+const listVagas = async (id: string, { page, pageSize, status }: AdminEmpresasVagasQuery) => {
+  await ensureEmpresaExiste(prisma, id);
+
+  const skip = (page - 1) * pageSize;
+  const where: Prisma.EmpresasVagasWhereInput = {
+    usuarioId: id,
+    ...(status && status.length > 0 ? { status: { in: status } } : {}),
+  };
+
+  const [total, vagas] = await prisma.$transaction([
+    prisma.empresasVagas.count({ where }),
+    prisma.empresasVagas.findMany({
+      where,
+      orderBy: { inseridaEm: 'desc' },
+      skip,
+      take: pageSize,
+      select: vagaSelect,
+    }),
+  ]);
+
+  const data = vagas.map(mapVagaResumo);
+
+  return {
+    data,
+    pagination: buildPagination(page, pageSize, total),
+  };
+};
 
 export const adminEmpresasService = {
   create: async (input: AdminEmpresasCreateInput) => {
@@ -1044,211 +1361,113 @@ export const adminEmpresasService = {
     };
   },
 
-  listPagamentos: async (id: string, { page, pageSize }: AdminEmpresasHistoryQuery) => {
-    await ensureEmpresaExiste(prisma, id);
+  getFullOverview: async (id: string): Promise<AdminEmpresaOverview | null> => {
+    const empresa = await adminEmpresasService.get(id);
 
-    const skip = (page - 1) * pageSize;
-
-    const planosIds = await prisma.empresasPlano.findMany({
-      where: { usuarioId: id },
-      select: { id: true },
-    });
-    const planoIds = planosIds.map((plano) => plano.id);
-
-    const orFilters: Prisma.LogsPagamentosDeAssinaturasWhereInput['OR'] = [{ usuarioId: id }];
-    if (planoIds.length > 0) {
-      orFilters.push({ empresasPlanoId: { in: planoIds } });
+    if (!empresa) {
+      return null;
     }
 
-    const where: Prisma.LogsPagamentosDeAssinaturasWhereInput = { OR: orFilters };
+    const referenceDate = new Date();
 
-    const [total, logs] = await prisma.$transaction([
-      prisma.logsPagamentosDeAssinaturas.count({ where }),
-      prisma.logsPagamentosDeAssinaturas.findMany({
-        where,
-        orderBy: { criadoEm: 'desc' },
-        skip,
-        take: pageSize,
-        select: {
-          id: true,
-          tipo: true,
-          status: true,
-          mensagem: true,
-          externalRef: true,
-          mpResourceId: true,
-          criadoEm: true,
-          empresasPlanoId: true,
-        },
-      }),
-    ]);
+    const [planosHistoricoRecords, bloqueiosRecords, vagasStatusCounts, candidaturasStatusCounts] =
+      await prisma.$transaction([
+        prisma.empresasPlano.findMany({
+          where: { usuarioId: id },
+          orderBy: [{ inicio: 'desc' }, { criadoEm: 'desc' }],
+          select: planoHistoricoSelect,
+        }),
+        prisma.usuariosEmBloqueios.findMany({
+          where: { usuarioId: id },
+          orderBy: [{ criadoEm: 'desc' }],
+          select: bloqueioSelect,
+        }),
+        prisma.empresasVagas.groupBy({
+          by: ['status'],
+          where: { usuarioId: id },
+          _count: { _all: true },
+        }),
+        prisma.empresasCandidatos.groupBy({
+          by: ['status'],
+          where: { empresaUsuarioId: id },
+          _count: { _all: true },
+        }),
+      ]);
 
-    const referencedPlanoIds = Array.from(
-      new Set(
-        logs.map((log) => log.empresasPlanoId).filter((value): value is string => Boolean(value)),
-      ),
+    const planosHistorico = planosHistoricoRecords.map((plano) =>
+      mapPlanoHistorico(plano, referenceDate),
+    );
+    const planosAtivos = planosHistorico.filter(
+      (plano) =>
+        plano.status === EmpresasPlanoStatus.ATIVO &&
+        (!plano.fim || plano.fim.getTime() > referenceDate.getTime()),
     );
 
-    const planosResumo = referencedPlanoIds.length
-      ? await prisma.empresasPlano.findMany({
-          where: { id: { in: referencedPlanoIds } },
-          select: {
-            id: true,
-            plano: { select: { nome: true } },
-          },
-        })
-      : [];
+    const bloqueiosHistorico = bloqueiosRecords
+      .map((registro) => mapBloqueioResumo(registro))
+      .filter((bloqueio): bloqueio is AdminUsuariosEmBloqueiosResumo => Boolean(bloqueio));
 
-    const planoMap = new Map(planosResumo.map((item) => [item.id, item.plano?.nome ?? null]));
+    const bloqueiosAtivos = bloqueiosHistorico.filter((bloqueio) => {
+      if (bloqueio.bloqueio.status !== StatusDeBloqueios.ATIVO) {
+        return false;
+      }
 
-    const data: AdminEmpresaPaymentLog[] = logs.map((log) => ({
-      id: log.id,
-      tipo: log.tipo,
-      status: log.status ?? null,
-      mensagem: log.mensagem ?? null,
-      externalRef: log.externalRef ?? null,
-      mpResourceId: log.mpResourceId ?? null,
-      criadoEm: log.criadoEm,
-      plano: log.empresasPlanoId
-        ? { id: log.empresasPlanoId, nome: planoMap.get(log.empresasPlanoId) ?? null }
-        : null,
-    }));
+      const fim = bloqueio.bloqueio.fim;
+      return !fim || fim.getTime() > referenceDate.getTime();
+    });
 
-    return {
-      data,
-      pagination: buildPagination(page, pageSize, total),
-    };
-  },
+    const vagasPorStatus = buildStatusCountMap(
+      Object.values(StatusDeVagas) as StatusDeVagas[],
+      vagasStatusCounts,
+    );
+    const totalVagas = Object.values(vagasPorStatus).reduce((acc, value) => acc + value, 0);
 
-  listVagas: async (id: string, { page, pageSize, status }: AdminEmpresasVagasQuery) => {
-    await ensureEmpresaExiste(prisma, id);
+    const candidaturasPorStatus = buildStatusCountMap(
+      Object.values(StatusProcesso) as StatusProcesso[],
+      candidaturasStatusCounts,
+    );
+    const totalCandidaturas = Object.values(candidaturasPorStatus).reduce(
+      (acc, value) => acc + value,
+      0,
+    );
 
-    const skip = (page - 1) * pageSize;
-    const where: Prisma.EmpresasVagasWhereInput = {
-      usuarioId: id,
-      ...(status && status.length > 0 ? { status: { in: status } } : {}),
-    };
-
-    const [total, vagas] = await prisma.$transaction([
-      prisma.empresasVagas.count({ where }),
-      prisma.empresasVagas.findMany({
-        where,
-        orderBy: { inseridaEm: 'desc' },
-        skip,
-        take: pageSize,
-        select: {
-          id: true,
-          codigo: true,
-          slug: true,
-          titulo: true,
-          status: true,
-          inseridaEm: true,
-          atualizadoEm: true,
-          inscricoesAte: true,
-          modoAnonimo: true,
-          modalidade: true,
-          regimeDeTrabalho: true,
-          paraPcd: true,
-          senioridade: true,
-          numeroVagas: true,
-          descricao: true,
-          jornada: true,
-          requisitos: true,
-          atividades: true,
-          beneficios: true,
-          observacoes: true,
-          localizacao: true,
-          salarioMin: true,
-          salarioMax: true,
-          salarioConfidencial: true,
-          maxCandidaturasPorUsuario: true,
-          areaInteresseId: true,
-          subareaInteresseId: true,
-          areaInteresse: {
-            select: {
-              id: true,
-              categoria: true,
-            },
-          },
-          subareaInteresse: {
-            select: {
-              id: true,
-              nome: true,
-              areaId: true,
-            },
-          },
-          destaque: true,
-          destaqueInfo: {
-            select: {
-              empresasPlanoId: true,
-              ativo: true,
-              ativadoEm: true,
-              desativadoEm: true,
-            },
-          },
-        },
-      }),
+    const [pagamentosResumo, vagasResumo] = await Promise.all([
+      listPagamentos(id, { page: 1, pageSize: 20 }),
+      listVagas(id, { page: 1, pageSize: 10 }),
     ]);
 
-    const data: AdminEmpresaJobResumo[] = vagas.map((vaga) => ({
-      id: vaga.id,
-      codigo: vaga.codigo,
-      slug: vaga.slug,
-      titulo: vaga.titulo,
-      status: vaga.status,
-      inseridaEm: vaga.inseridaEm,
-      atualizadoEm: vaga.atualizadoEm,
-      inscricoesAte: vaga.inscricoesAte ?? null,
-      modoAnonimo: vaga.modoAnonimo,
-      modalidade: vaga.modalidade,
-      regimeDeTrabalho: vaga.regimeDeTrabalho,
-      paraPcd: vaga.paraPcd,
-      senioridade: vaga.senioridade,
-      numeroVagas: vaga.numeroVagas,
-      descricao: vaga.descricao ?? null,
-      jornada: vaga.jornada,
-      requisitos: vaga.requisitos,
-      atividades: vaga.atividades,
-      beneficios: vaga.beneficios,
-      observacoes: vaga.observacoes ?? null,
-      localizacao: vaga.localizacao ?? null,
-      salarioMin: vaga.salarioMin ?? null,
-      salarioMax: vaga.salarioMax ?? null,
-      salarioConfidencial: vaga.salarioConfidencial,
-      maxCandidaturasPorUsuario: vaga.maxCandidaturasPorUsuario ?? null,
-      areaInteresseId: vaga.areaInteresseId ?? null,
-      subareaInteresseId: vaga.subareaInteresseId ?? null,
-      areaInteresse: vaga.areaInteresse
-        ? {
-            id: vaga.areaInteresse.id,
-            categoria: vaga.areaInteresse.categoria,
-          }
-        : null,
-      subareaInteresse: vaga.subareaInteresse
-        ? {
-            id: vaga.subareaInteresse.id,
-            nome: vaga.subareaInteresse.nome,
-            areaId: vaga.subareaInteresse.areaId,
-          }
-        : null,
-      vagaEmDestaque: vaga.destaque,
-      destaqueInfo: vaga.destaqueInfo
-        ? {
-            empresasPlanoId: vaga.destaqueInfo.empresasPlanoId,
-            ativo: vaga.destaqueInfo.ativo,
-            ativadoEm: vaga.destaqueInfo.ativadoEm,
-            desativadoEm: vaga.destaqueInfo.desativadoEm ?? null,
-          }
-        : null,
-    }));
-
     return {
-      data,
-      pagination: buildPagination(page, pageSize, total),
-    };
+      empresa,
+      planos: {
+        ativos: planosAtivos,
+        historico: planosHistorico,
+      },
+      pagamentos: {
+        total: pagamentosResumo.pagination.total,
+        recentes: pagamentosResumo.data,
+      },
+      vagas: {
+        total: totalVagas,
+        porStatus: vagasPorStatus,
+        recentes: vagasResumo.data,
+      },
+      candidaturas: {
+        total: totalCandidaturas,
+        porStatus: candidaturasPorStatus,
+      },
+      bloqueios: {
+        ativos: bloqueiosAtivos,
+        historico: bloqueiosHistorico,
+      },
+    } satisfies AdminEmpresaOverview;
   },
 
+  listPagamentos: (id: string, query: AdminEmpresasHistoryQuery) => listPagamentos(id, query),
+
+  listVagas: (id: string, query: AdminEmpresasVagasQuery) => listVagas(id, query),
+
   listVagasEmAnalise: async (id: string, query: AdminEmpresasHistoryQuery) =>
-    adminEmpresasService.listVagas(id, {
+    listVagas(id, {
       ...query,
       status: [StatusDeVagas.EM_ANALISE],
     }),
@@ -1291,57 +1510,7 @@ export const adminEmpresasService = {
           status: StatusDeVagas.PUBLICADO,
           inseridaEm: publishedAt,
         },
-        select: {
-          id: true,
-          codigo: true,
-          slug: true,
-          titulo: true,
-          status: true,
-          inseridaEm: true,
-          atualizadoEm: true,
-          inscricoesAte: true,
-          modoAnonimo: true,
-          modalidade: true,
-          regimeDeTrabalho: true,
-          paraPcd: true,
-          senioridade: true,
-          numeroVagas: true,
-          descricao: true,
-          jornada: true,
-          requisitos: true,
-          atividades: true,
-          beneficios: true,
-          observacoes: true,
-          localizacao: true,
-          salarioMin: true,
-          salarioMax: true,
-          salarioConfidencial: true,
-          maxCandidaturasPorUsuario: true,
-          areaInteresseId: true,
-          subareaInteresseId: true,
-          areaInteresse: {
-            select: {
-              id: true,
-              categoria: true,
-            },
-          },
-          subareaInteresse: {
-            select: {
-              id: true,
-              nome: true,
-              areaId: true,
-            },
-          },
-          destaque: true,
-          destaqueInfo: {
-            select: {
-              empresasPlanoId: true,
-              ativo: true,
-              ativadoEm: true,
-              desativadoEm: true,
-            },
-          },
-        },
+        select: vagaSelect,
       });
 
       // Se atingiu o limite após esta aprovação, retorna demais EM_ANALISE para RASCUNHO
@@ -1360,57 +1529,7 @@ export const adminEmpresasService = {
       return updated;
     });
 
-    return {
-      id: vaga.id,
-      codigo: vaga.codigo,
-      slug: vaga.slug,
-      titulo: vaga.titulo,
-      status: vaga.status,
-      inseridaEm: vaga.inseridaEm,
-      atualizadoEm: vaga.atualizadoEm,
-      inscricoesAte: vaga.inscricoesAte ?? null,
-      modoAnonimo: vaga.modoAnonimo,
-      modalidade: vaga.modalidade,
-      regimeDeTrabalho: vaga.regimeDeTrabalho,
-      paraPcd: vaga.paraPcd,
-      senioridade: vaga.senioridade,
-      numeroVagas: vaga.numeroVagas,
-      descricao: vaga.descricao ?? null,
-      jornada: vaga.jornada,
-      requisitos: vaga.requisitos,
-      atividades: vaga.atividades,
-      beneficios: vaga.beneficios,
-      observacoes: vaga.observacoes ?? null,
-      localizacao: vaga.localizacao ?? null,
-      salarioMin: vaga.salarioMin ?? null,
-      salarioMax: vaga.salarioMax ?? null,
-      salarioConfidencial: vaga.salarioConfidencial,
-      maxCandidaturasPorUsuario: vaga.maxCandidaturasPorUsuario ?? null,
-      areaInteresseId: vaga.areaInteresseId ?? null,
-      subareaInteresseId: vaga.subareaInteresseId ?? null,
-      areaInteresse: vaga.areaInteresse
-        ? {
-            id: vaga.areaInteresse.id,
-            categoria: vaga.areaInteresse.categoria,
-          }
-        : null,
-      subareaInteresse: vaga.subareaInteresse
-        ? {
-            id: vaga.subareaInteresse.id,
-            nome: vaga.subareaInteresse.nome,
-            areaId: vaga.subareaInteresse.areaId,
-          }
-        : null,
-      vagaEmDestaque: vaga.destaque,
-      destaqueInfo: vaga.destaqueInfo
-        ? {
-            empresasPlanoId: vaga.destaqueInfo.empresasPlanoId,
-            ativo: vaga.destaqueInfo.ativo,
-            ativadoEm: vaga.destaqueInfo.ativadoEm,
-            desativadoEm: vaga.destaqueInfo.desativadoEm ?? null,
-          }
-        : null,
-    } satisfies AdminEmpresaJobResumo;
+    return mapVagaResumo(vaga);
   },
 
   aplicarBloqueio: async (empresaId: string, adminId: string, input: AdminEmpresasBloqueioInput) => {

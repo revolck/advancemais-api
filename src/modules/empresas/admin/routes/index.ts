@@ -543,6 +543,232 @@ router.get('/:id', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.g
 
 /**
  * @openapi
+ * /api/v1/empresas/admin/{id}/overview:
+ *   get:
+ *     summary: (Admin) Visão completa da empresa
+ *     description: "Retorna uma visão consolidada da empresa (Pessoa Jurídica) incluindo plano atual e histórico, vagas, candidaturas, pagamentos e bloqueios ativos. Apenas perfis ADMIN e MODERADOR podem acessar."
+ *     operationId: adminEmpresasOverview
+ *     tags: [Empresas - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Identificador da empresa (usuário Pessoa Jurídica)
+ *     responses:
+ *       200:
+ *         description: Visão geral carregada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminEmpresaOverviewResponse'
+ *             examples:
+ *               default:
+ *                 summary: Dados consolidados da empresa
+ *                 value:
+ *                   empresa:
+ *                     id: f66fbad9-4d3c-41f7-90df-2f4f0f32af10
+ *                     codUsuario: EMP-123456
+ *                     nome: Advance Tech Consultoria
+ *                     email: contato@advance.com.br
+ *                     telefone: '+55 11 99999-0000'
+ *                     avatarUrl: https://cdn.advance.com.br/logo.png
+ *                     cnpj: '12345678000190'
+ *                     descricao: Consultoria especializada em tecnologia e recrutamento.
+ *                     socialLinks:
+ *                       linkedin: https://linkedin.com/company/advancemais
+ *                     cidade: São Paulo
+ *                     estado: SP
+ *                     criadoEm: '2023-11-01T08:30:00Z'
+ *                     status: ATIVO
+ *                     ultimoLogin: '2024-03-15T18:45:00Z'
+ *                     ativa: true
+ *                     parceira: true
+ *                     diasTesteDisponibilizados: 30
+ *                     plano:
+ *                       id: 38f73d2d-40fa-47a6-9657-6a4f7f1bb610
+ *                       nome: Plano Avançado
+ *                       modo: PARCEIRO
+ *                       status: ATIVO
+ *                       inicio: '2024-01-10T12:00:00Z'
+ *                       fim: null
+ *                       modeloPagamento: ASSINATURA
+ *                       metodoPagamento: PIX
+ *                       statusPagamento: APROVADO
+ *                       valor: '249.90'
+ *                       quantidadeVagas: 10
+ *                       duracaoEmDias: null
+ *                       diasRestantes: 12
+ *                     vagas:
+ *                       publicadas: 8
+ *                       limitePlano: 10
+ *                     bloqueada: false
+ *                     pagamento:
+ *                       modelo: ASSINATURA
+ *                       metodo: PIX
+ *                       status: APROVADO
+ *                       ultimoPagamentoEm: '2024-02-15T14:20:00Z'
+ *                     bloqueioAtivo: null
+ *                     informacoes:
+ *                       telefone: '+55 11 99999-0000'
+ *                       descricao: Consultoria especializada em tecnologia e recrutamento.
+ *                       avatarUrl: https://cdn.advance.com.br/logo.png
+ *                       aceitarTermos: true
+ *                   planos:
+ *                     ativos:
+ *                       - id: 38f73d2d-40fa-47a6-9657-6a4f7f1bb610
+ *                         nome: Plano Avançado
+ *                         modo: PARCEIRO
+ *                         status: ATIVO
+ *                         inicio: '2024-01-10T12:00:00Z'
+ *                         fim: null
+ *                         modeloPagamento: ASSINATURA
+ *                         metodoPagamento: PIX
+ *                         statusPagamento: APROVADO
+ *                         valor: '249.90'
+ *                         quantidadeVagas: 10
+ *                         duracaoEmDias: null
+ *                         diasRestantes: 12
+ *                         origin: ADMIN
+ *                         criadoEm: '2024-01-05T12:00:00Z'
+ *                         atualizadoEm: '2024-03-01T12:00:00Z'
+ *                         proximaCobranca: '2024-04-10T12:00:00Z'
+ *                         graceUntil: null
+ *                     historico:
+ *                       - id: 28f73d2d-40fa-47a6-9657-6a4f7f1bb600
+ *                         nome: Plano Essencial
+ *                         modo: CLIENTE
+ *                         status: EXPIRADO
+ *                         inicio: '2023-08-10T12:00:00Z'
+ *                         fim: '2023-11-10T12:00:00Z'
+ *                         modeloPagamento: ASSINATURA
+ *                         metodoPagamento: CARTAO
+ *                         statusPagamento: EXPIRADO
+ *                         valor: '149.90'
+ *                         quantidadeVagas: 5
+ *                         duracaoEmDias: 92
+ *                         diasRestantes: 0
+ *                         origin: CHECKOUT
+ *                         criadoEm: '2023-08-05T12:00:00Z'
+ *                         atualizadoEm: '2023-11-10T12:00:00Z'
+ *                         proximaCobranca: null
+ *                         graceUntil: null
+ *                   pagamentos:
+ *                     total: 12
+ *                     recentes:
+ *                       - id: 729480a9-8e05-4b42-b826-f8db7e5a4d2c
+ *                         tipo: ASSINATURA
+ *                         status: APROVADO
+ *                         mensagem: Pagamento confirmado pelo provedor
+ *                         externalRef: MP-123456789
+ *                         mpResourceId: res_ABC123
+ *                         criadoEm: '2024-02-10T12:00:00Z'
+ *                         plano:
+ *                           id: 38f73d2d-40fa-47a6-9657-6a4f7f1bb610
+ *                           nome: Plano Avançado
+ *                   vagas:
+ *                     total: 18
+ *                     porStatus:
+ *                       PUBLICADO: 8
+ *                       EM_ANALISE: 2
+ *                       RASCUNHO: 3
+ *                       EXPIRADO: 1
+ *                       DESPUBLICADA: 0
+ *                       PAUSADA: 2
+ *                       ENCERRADA: 2
+ *                     recentes:
+ *                       - id: 7a5b9c1d-2f80-44a6-82da-6b8c1f00ec91
+ *                         codigo: B24N56
+ *                         titulo: Analista de Dados Pleno
+ *                         status: PUBLICADO
+ *                         inseridaEm: '2024-05-10T09:00:00Z'
+ *                         atualizadoEm: '2024-05-12T11:30:00Z'
+ *                         modalidade: HIBRIDO
+ *                         regimeDeTrabalho: CLT
+ *                         numeroVagas: 2
+ *                         jornada: PRESENCIAL
+ *                         vagaEmDestaque: true
+ *                   candidaturas:
+ *                     total: 134
+ *                     porStatus:
+ *                       RECEBIDA: 80
+ *                       EM_ANALISE: 20
+ *                       ENTREVISTA: 10
+ *                       DESAFIO: 6
+ *                       DOCUMENTACAO: 5
+ *                       CONTRATADO: 4
+ *                       RECUSADO: 7
+ *                       DESISTIU: 1
+ *                       NAO_COMPARECEU: 1
+ *                       EM_TRIAGEM: 0
+ *                       ARQUIVADO: 0
+ *                       CANCELADO: 0
+ *                   bloqueios:
+ *                     ativos: []
+ *                     historico:
+ *                       - id: bloq_123456
+ *                         alvo:
+ *                           tipo: EMPRESA
+ *                           id: f66fbad9-4d3c-41f7-90df-2f4f0f32af10
+ *                           nome: Advance Tech Consultoria
+ *                           role: EMPRESA
+ *                         bloqueio:
+ *                           tipo: TEMPORARIO
+ *                           motivo: VIOLACAO_POLITICAS
+ *                           status: REVOGADO
+ *                           inicio: '2023-09-20T14:00:00Z'
+ *                           fim: '2023-09-30T14:00:00Z'
+ *                           observacoes: 'Uso indevido de dados pessoais de candidatos.'
+ *                         aplicadoPor:
+ *                           id: adm_002
+ *                           nome: Carlos Supervisor
+ *                           role: ADMIN
+ *                         auditoria:
+ *                           criadoEm: '2023-09-20T14:05:00Z'
+ *                           atualizadoEm: '2023-09-25T10:15:00Z'
+ *       400:
+ *         description: Parâmetros inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       404:
+ *         description: Empresa não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get(
+  '/:id/overview',
+  supabaseAuthMiddleware(adminRoles),
+  AdminEmpresasController.getOverview,
+);
+
+/**
+ * @openapi
  * /api/v1/empresas/admin/{id}/pagamentos:
  *   get:
  *     summary: (Admin) Histórico de pagamentos da empresa

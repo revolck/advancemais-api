@@ -12,6 +12,7 @@ import { websiteRoutes } from '@/modules/website';
 import { empresasRoutes } from '@/modules/empresas';
 import { candidatosRoutes } from '@/modules/candidatos';
 import { cursosRoutes } from '@/modules/cursos';
+import { cuponsRoutes } from '@/modules/cupons';
 import { setCacheHeaders, DEFAULT_TTL } from '@/utils/cache';
 import { logger } from '@/utils/logger';
 
@@ -83,6 +84,7 @@ router.get('/', publicCache, (req, res) => {
       cursos: '/api/v1/cursos',
       cursosTurmasAulas: '/api/v1/cursos/{cursoId}/turmas/{turmaId}/aulas',
       candidatosAreasInteresse: '/api/v1/candidatos/areas-interesse',
+      cuponsDesconto: '/api/v1/cupons',
       planosEmpresariais: '/api/v1/empresas/planos-empresariais',
       clientesEmpresas: '/api/v1/empresas/clientes',
       vagasEmpresariais: '/api/v1/empresas/vagas',
@@ -126,6 +128,7 @@ router.get('/', publicCache, (req, res) => {
         <li>📧 Brevo: <code>${data.endpoints.brevo}</code></li>
         <li>🌐 Website: <code>${data.endpoints.website}</code></li>
         <li>🏢 Empresas: <code>${data.endpoints.empresas}</code></li>
+        <li>🏷️ Cupons: <code>${data.endpoints.cuponsDesconto}</code></li>
         <li>📦 Planos empresariais: <code>${data.endpoints.planosEmpresariais}</code></li>
         <li>🧾 Clientes (planos): <code>${data.endpoints.clientesEmpresas}</code></li>
         <li>💼 Vagas empresariais: <code>${data.endpoints.vagasEmpresariais}</code></li>
@@ -197,6 +200,7 @@ router.get('/health', publicCache, async (req, res) => {
       website: '✅ active',
       empresas: '✅ active',
       candidatos: '✅ active',
+      cupons: '✅ active',
       mercadopago: '✅ active',
       redis: redisStatus,
     },
@@ -335,6 +339,21 @@ if (cursosRoutes) {
   }
 } else {
   routesLogger.error({ feature: 'CursosModule' }, '❌ cursosRoutes não está definido');
+}
+
+/**
+ * Módulo Cupons de Desconto - COM VALIDAÇÃO
+ * /api/v1/cupons/*
+ */
+if (cuponsRoutes) {
+  try {
+    router.use('/api/v1/cupons', cuponsRoutes);
+    routesLogger.info({ feature: 'CuponsModule' }, '✅ Módulo Cupons registrado com sucesso');
+  } catch (error) {
+    routesLogger.error({ feature: 'CuponsModule', err: error }, '❌ ERRO - Módulo Cupons');
+  }
+} else {
+  routesLogger.error({ feature: 'CuponsModule' }, '❌ cuponsRoutes não está definido');
 }
 
 /**

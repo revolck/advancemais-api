@@ -791,8 +791,8 @@ Seu plano foi alterado para ${data.planName}. Todas as vagas foram movidas para 
     return { subject, html, text };
   }
 
-  // ========= Banimentos =========
-  public static generateUserBannedEmail(data: {
+  // ========= Bloqueios =========
+  public static generateUserBlockedEmail(data: {
     nomeCompleto: string;
     motivo: string;
     fim?: Date | null;
@@ -802,13 +802,13 @@ Seu plano foi alterado para ${data.planName}. Todas as vagas foram movidas para 
     const untilText = data.fim
       ? `até ${new Date(data.fim).toLocaleString('pt-BR')}`
       : 'por tempo indeterminado';
-    const subject = `Sua conta foi banida`;
+    const subject = `Sua conta foi bloqueada`;
     const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Banimento - Advance+</title>
+  <title>Bloqueio - Advance+</title>
   ${this.getBaseStyles()}
 </head>
 <body>
@@ -822,7 +822,7 @@ Seu plano foi alterado para ${data.planName}. Todas as vagas foram movidas para 
       <div class="content">
         <div class="greeting">Olá, ${firstName}.</div>
         <div class="message">
-          Informamos que sua conta foi <strong>banida</strong> ${untilText}.
+          Informamos que sua conta foi <strong>bloqueada</strong> ${untilText}.
         </div>
         <div class="info-box">
           <p class="info-text"><strong>Motivo:</strong> ${data.motivo}</p>
@@ -838,7 +838,7 @@ Seu plano foi alterado para ${data.planName}. Todas as vagas foram movidas para 
 </html>`;
     const text = `Olá, ${firstName}.
 
-Informamos que sua conta foi banida ${untilText}.
+Informamos que sua conta foi bloqueada ${untilText}.
 Motivo: ${data.motivo}.
 
 Se acreditar que foi um engano, responda este email com mais detalhes.
@@ -847,7 +847,7 @@ Se acreditar que foi um engano, responda este email com mais detalhes.
     return { subject, html, text };
   }
 
-  public static generateUserUnbannedEmail(data: { nomeCompleto: string }): EmailTemplate {
+  public static generateUserUnblockedEmail(data: { nomeCompleto: string }): EmailTemplate {
     const firstName = data.nomeCompleto.split(' ')[0];
     const currentYear = this.getCurrentYear();
     const subject = `Bem-vindo(a) de volta!`;
@@ -856,7 +856,7 @@ Se acreditar que foi um engano, responda este email com mais detalhes.
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Banimento Revogado - Advance+</title>
+  <title>Bloqueio Revogado - Advance+</title>
   ${this.getBaseStyles()}
 </head>
 <body>
@@ -870,7 +870,7 @@ Se acreditar que foi um engano, responda este email com mais detalhes.
       <div class="content">
         <div class="greeting">Olá, ${firstName}!</div>
         <div class="message">
-          Seu banimento foi <strong>revogado</strong>. Seu acesso foi restaurado.
+          Seu bloqueio foi <strong>revogado</strong>. Seu acesso foi restaurado.
         </div>
       </div>
       <div class="footer">
@@ -882,7 +882,7 @@ Se acreditar que foi um engano, responda este email com mais detalhes.
 </html>`;
     const text = `Olá, ${firstName}!
 
-Seu banimento foi revogado. Seu acesso foi restaurado.
+Seu bloqueio foi revogado. Seu acesso foi restaurado.
 
 © ${currentYear} Advance+ - Todos os direitos reservados`;
     return { subject, html, text };

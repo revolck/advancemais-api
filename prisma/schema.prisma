@@ -38,9 +38,9 @@ model Usuarios {
   candidaturasFeitas    EmpresasCandidatos[]   @relation("CandidatoUsuario")
   candidaturasRecebidas EmpresasCandidatos[]   @relation("EmpresaUsuario")
   planosContratados    EmpresasPlano[]    @relation("UsuarioPlanos")
-  banimentosRecebidos  UsuariosEmBanimentos[] @relation("UsuariosEmBanimentosUsuario")
-  banimentosAplicados  UsuariosEmBanimentos[] @relation("UsuariosEmBanimentosAdmin")
-  banimentosLogsCriados UsuariosEmBanimentosLogs[] @relation("UsuariosEmBanimentosLogsAdmin")
+  bloqueiosRecebidos  UsuariosEmBloqueios[] @relation("UsuariosEmBloqueiosUsuario")
+  bloqueiosAplicados  UsuariosEmBloqueios[] @relation("UsuariosEmBloqueiosAdmin")
+  bloqueiosLogsCriados UsuariosEmBloqueiosLogs[] @relation("UsuariosEmBloqueiosLogsAdmin")
   redesSociais         UsuariosRedesSociais?
   recuperacaoSenha     UsuariosRecuperacaoSenha?
   emailVerification    UsuariosVerificacaoEmail?
@@ -731,40 +731,40 @@ model LogsPagamentosDeAssinaturas {
   @@index([criadoEm])
 }
 
-model UsuariosEmBanimentos {
+model UsuariosEmBloqueios {
   id            String              @id @default(uuid())
   usuarioId     String
   aplicadoPorId String
-  tipo          TiposDeBanimentos
-  motivo        MotivosDeBanimentos
-  status        StatusDeBanimentos @default(ATIVO)
+  tipo          TiposDeBloqueios
+  motivo        MotivosDeBloqueios
+  status        StatusDeBloqueios @default(ATIVO)
   inicio        DateTime           @default(now())
   fim           DateTime?
   observacoes   String?            @db.VarChar(500)
   criadoEm      DateTime           @default(now())
   atualizadoEm  DateTime           @updatedAt
 
-  usuario     Usuarios                   @relation("UsuariosEmBanimentosUsuario", fields: [usuarioId], references: [id], onDelete: Cascade)
-  aplicadoPor Usuarios                   @relation("UsuariosEmBanimentosAdmin", fields: [aplicadoPorId], references: [id])
-  logs        UsuariosEmBanimentosLogs[]
+  usuario     Usuarios                   @relation("UsuariosEmBloqueiosUsuario", fields: [usuarioId], references: [id], onDelete: Cascade)
+  aplicadoPor Usuarios                   @relation("UsuariosEmBloqueiosAdmin", fields: [aplicadoPorId], references: [id])
+  logs        UsuariosEmBloqueiosLogs[]
 
   @@index([usuarioId])
   @@index([status])
   @@index([fim])
 }
 
-model UsuariosEmBanimentosLogs {
+model UsuariosEmBloqueiosLogs {
   id           String                 @id @default(uuid())
-  banimentoId  String
-  acao         AcoesDeLogDeBanimento
+  bloqueioId  String
+  acao         AcoesDeLogDeBloqueio
   descricao    String?                @db.VarChar(500)
   criadoPorId  String
   criadoEm     DateTime               @default(now())
 
-  banimento UsuariosEmBanimentos @relation(fields: [banimentoId], references: [id], onDelete: Cascade)
-  criadoPor Usuarios             @relation("UsuariosEmBanimentosLogsAdmin", fields: [criadoPorId], references: [id])
+  bloqueio UsuariosEmBloqueios @relation(fields: [bloqueioId], references: [id], onDelete: Cascade)
+  criadoPor Usuarios             @relation("UsuariosEmBloqueiosLogsAdmin", fields: [criadoPorId], references: [id])
 
-  @@index([banimentoId])
+  @@index([bloqueioId])
   @@index([criadoPorId])
   @@index([criadoEm])
 }
@@ -1251,7 +1251,7 @@ enum Roles {
 enum Status {
   ATIVO
   INATIVO
-  BANIDO
+  BLOQUEADO
   PENDENTE
   SUSPENSO
 }
@@ -1650,20 +1650,20 @@ enum EmpresasPlanoOrigin {
   IMPORT
 }
 
-enum TiposDeBanimentos {
+enum TiposDeBloqueios {
   TEMPORARIO
   PERMANENTE
   RESTRICAO_DE_RECURSO
 }
 
-enum StatusDeBanimentos {
+enum StatusDeBloqueios {
   ATIVO
   EM_REVISAO
   REVOGADO
   EXPIRADO
 }
 
-enum MotivosDeBanimentos {
+enum MotivosDeBloqueios {
   SPAM
   VIOLACAO_POLITICAS
   FRAUDE
@@ -1671,7 +1671,7 @@ enum MotivosDeBanimentos {
   OUTROS
 }
 
-enum AcoesDeLogDeBanimento {
+enum AcoesDeLogDeBloqueio {
   CRIACAO
   ATUALIZACAO
   REVOGACAO

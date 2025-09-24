@@ -23,7 +23,7 @@ CREATE TYPE "public"."TiposDeUsuarios" AS ENUM ('PESSOA_FISICA', 'PESSOA_JURIDIC
 CREATE TYPE "public"."Roles" AS ENUM ('ADMIN', 'MODERADOR', 'FINANCEIRO', 'PROFESSOR', 'EMPRESA', 'PEDAGOGICO', 'RECRUTADOR', 'PSICOLOGO', 'ALUNO_CANDIDATO');
 
 -- CreateEnum
-CREATE TYPE "public"."Status" AS ENUM ('ATIVO', 'INATIVO', 'BANIDO', 'PENDENTE', 'SUSPENSO');
+CREATE TYPE "public"."Status" AS ENUM ('ATIVO', 'INATIVO', 'BLOQUEADO', 'PENDENTE', 'SUSPENSO');
 
 -- CreateEnum
 CREATE TYPE "public"."TiposDeEmails" AS ENUM ('BOAS_VINDAS', 'RECUPERACAO_SENHA', 'VERIFICACAO_EMAIL', 'NOTIFICACAO_SISTEMA');
@@ -104,16 +104,16 @@ CREATE TYPE "public"."EmpresasPlanoModo" AS ENUM ('TESTE', 'PARCEIRO');
 CREATE TYPE "public"."EmpresasPlanoOrigin" AS ENUM ('CHECKOUT', 'ADMIN', 'IMPORT');
 
 -- CreateEnum
-CREATE TYPE "public"."TiposDeBanimentos" AS ENUM ('TEMPORARIO', 'PERMANENTE', 'RESTRICAO_DE_RECURSO');
+CREATE TYPE "public"."TiposDeBloqueios" AS ENUM ('TEMPORARIO', 'PERMANENTE', 'RESTRICAO_DE_RECURSO');
 
 -- CreateEnum
-CREATE TYPE "public"."StatusDeBanimentos" AS ENUM ('ATIVO', 'EM_REVISAO', 'REVOGADO', 'EXPIRADO');
+CREATE TYPE "public"."StatusDeBloqueios" AS ENUM ('ATIVO', 'EM_REVISAO', 'REVOGADO', 'EXPIRADO');
 
 -- CreateEnum
-CREATE TYPE "public"."MotivosDeBanimentos" AS ENUM ('SPAM', 'VIOLACAO_POLITICAS', 'FRAUDE', 'ABUSO_DE_RECURSOS', 'OUTROS');
+CREATE TYPE "public"."MotivosDeBloqueios" AS ENUM ('SPAM', 'VIOLACAO_POLITICAS', 'FRAUDE', 'ABUSO_DE_RECURSOS', 'OUTROS');
 
 -- CreateEnum
-CREATE TYPE "public"."AcoesDeLogDeBanimento" AS ENUM ('CRIACAO', 'ATUALIZACAO', 'REVOGACAO', 'REAVALIACAO');
+CREATE TYPE "public"."AcoesDeLogDeBloqueio" AS ENUM ('CRIACAO', 'ATUALIZACAO', 'REVOGACAO', 'REAVALIACAO');
 
 -- CreateTable
 CREATE TABLE "public"."Usuarios" (
@@ -544,32 +544,32 @@ CREATE TABLE "public"."LogsPagamentosDeAssinaturas" (
 );
 
 -- CreateTable
-CREATE TABLE "public"."UsuariosEmBanimentos" (
+CREATE TABLE "public"."UsuariosEmBloqueios" (
     "id" TEXT NOT NULL,
     "usuarioId" TEXT NOT NULL,
     "aplicadoPorId" TEXT NOT NULL,
-    "tipo" "public"."TiposDeBanimentos" NOT NULL,
-    "motivo" "public"."MotivosDeBanimentos" NOT NULL,
-    "status" "public"."StatusDeBanimentos" NOT NULL DEFAULT 'ATIVO',
+    "tipo" "public"."TiposDeBloqueios" NOT NULL,
+    "motivo" "public"."MotivosDeBloqueios" NOT NULL,
+    "status" "public"."StatusDeBloqueios" NOT NULL DEFAULT 'ATIVO',
     "inicio" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "fim" TIMESTAMP(3),
     "observacoes" VARCHAR(500),
     "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "atualizadoEm" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "UsuariosEmBanimentos_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "UsuariosEmBloqueios_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "public"."UsuariosEmBanimentosLogs" (
+CREATE TABLE "public"."UsuariosEmBloqueiosLogs" (
     "id" TEXT NOT NULL,
-    "banimentoId" TEXT NOT NULL,
-    "acao" "public"."AcoesDeLogDeBanimento" NOT NULL,
+    "bloqueioId" TEXT NOT NULL,
+    "acao" "public"."AcoesDeLogDeBloqueio" NOT NULL,
     "descricao" VARCHAR(500),
     "criadoPorId" TEXT NOT NULL,
     "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "UsuariosEmBanimentosLogs_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "UsuariosEmBloqueiosLogs_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -1290,22 +1290,22 @@ CREATE INDEX "LogsPagamentosDeAssinaturas_tipo_idx" ON "public"."LogsPagamentosD
 CREATE INDEX "LogsPagamentosDeAssinaturas_criadoEm_idx" ON "public"."LogsPagamentosDeAssinaturas"("criadoEm");
 
 -- CreateIndex
-CREATE INDEX "UsuariosEmBanimentos_usuarioId_idx" ON "public"."UsuariosEmBanimentos"("usuarioId");
+CREATE INDEX "UsuariosEmBloqueios_usuarioId_idx" ON "public"."UsuariosEmBloqueios"("usuarioId");
 
 -- CreateIndex
-CREATE INDEX "UsuariosEmBanimentos_status_idx" ON "public"."UsuariosEmBanimentos"("status");
+CREATE INDEX "UsuariosEmBloqueios_status_idx" ON "public"."UsuariosEmBloqueios"("status");
 
 -- CreateIndex
-CREATE INDEX "UsuariosEmBanimentos_fim_idx" ON "public"."UsuariosEmBanimentos"("fim");
+CREATE INDEX "UsuariosEmBloqueios_fim_idx" ON "public"."UsuariosEmBloqueios"("fim");
 
 -- CreateIndex
-CREATE INDEX "UsuariosEmBanimentosLogs_banimentoId_idx" ON "public"."UsuariosEmBanimentosLogs"("banimentoId");
+CREATE INDEX "UsuariosEmBloqueiosLogs_bloqueioId_idx" ON "public"."UsuariosEmBloqueiosLogs"("bloqueioId");
 
 -- CreateIndex
-CREATE INDEX "UsuariosEmBanimentosLogs_criadoPorId_idx" ON "public"."UsuariosEmBanimentosLogs"("criadoPorId");
+CREATE INDEX "UsuariosEmBloqueiosLogs_criadoPorId_idx" ON "public"."UsuariosEmBloqueiosLogs"("criadoPorId");
 
 -- CreateIndex
-CREATE INDEX "UsuariosEmBanimentosLogs_criadoEm_idx" ON "public"."UsuariosEmBanimentosLogs"("criadoEm");
+CREATE INDEX "UsuariosEmBloqueiosLogs_criadoEm_idx" ON "public"."UsuariosEmBloqueiosLogs"("criadoEm");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "PlanosEmpresariais_mpPreapprovalPlanId_key" ON "public"."PlanosEmpresariais"("mpPreapprovalPlanId");
@@ -1521,16 +1521,16 @@ ALTER TABLE "public"."EmpresasPlano" ADD CONSTRAINT "EmpresasPlano_usuarioId_fke
 ALTER TABLE "public"."EmpresasPlano" ADD CONSTRAINT "EmpresasPlano_planosEmpresariaisId_fkey" FOREIGN KEY ("planosEmpresariaisId") REFERENCES "public"."PlanosEmpresariais"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."UsuariosEmBanimentos" ADD CONSTRAINT "UsuariosEmBanimentos_usuarioId_fkey" FOREIGN KEY ("usuarioId") REFERENCES "public"."Usuarios"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."UsuariosEmBloqueios" ADD CONSTRAINT "UsuariosEmBloqueios_usuarioId_fkey" FOREIGN KEY ("usuarioId") REFERENCES "public"."Usuarios"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."UsuariosEmBanimentos" ADD CONSTRAINT "UsuariosEmBanimentos_aplicadoPorId_fkey" FOREIGN KEY ("aplicadoPorId") REFERENCES "public"."Usuarios"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."UsuariosEmBloqueios" ADD CONSTRAINT "UsuariosEmBloqueios_aplicadoPorId_fkey" FOREIGN KEY ("aplicadoPorId") REFERENCES "public"."Usuarios"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."UsuariosEmBanimentosLogs" ADD CONSTRAINT "UsuariosEmBanimentosLogs_banimentoId_fkey" FOREIGN KEY ("banimentoId") REFERENCES "public"."UsuariosEmBanimentos"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."UsuariosEmBloqueiosLogs" ADD CONSTRAINT "UsuariosEmBloqueiosLogs_bloqueioId_fkey" FOREIGN KEY ("bloqueioId") REFERENCES "public"."UsuariosEmBloqueios"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."UsuariosEmBanimentosLogs" ADD CONSTRAINT "UsuariosEmBanimentosLogs_criadoPorId_fkey" FOREIGN KEY ("criadoPorId") REFERENCES "public"."Usuarios"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."UsuariosEmBloqueiosLogs" ADD CONSTRAINT "UsuariosEmBloqueiosLogs_criadoPorId_fkey" FOREIGN KEY ("criadoPorId") REFERENCES "public"."Usuarios"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."UsuariosEnderecos" ADD CONSTRAINT "UsuariosEnderecos_usuarioId_fkey" FOREIGN KEY ("usuarioId") REFERENCES "public"."Usuarios"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

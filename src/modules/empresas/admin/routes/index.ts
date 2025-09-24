@@ -290,8 +290,8 @@ router.get(
  *                         diasRestantes: 18
  *                       vagasPublicadas: 8
  *                       limiteVagasPlano: 10
- *                       banida: false
- *                       banimentoAtivo: null
+ *                       bloqueada: false
+ *                       bloqueioAtivo: null
  *                   pagination:
  *                     page: 1
  *                     pageSize: 20
@@ -500,8 +500,8 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  *                       metodo: PIX
  *                       status: APROVADO
  *                       ultimoPagamentoEm: '2024-02-15T14:20:00Z'
- *                     banida: false
- *                     banimentoAtivo: null
+ *                     bloqueada: false
+ *                     bloqueioAtivo: null
  *                     informacoes:
  *                       telefone: '+55 11 99999-0000'
  *                       descricao: Consultoria especializada em tecnologia e recrutamento.
@@ -634,11 +634,11 @@ router.get(
 
 /**
  * @openapi
- * /api/v1/empresas/admin/{id}/banimentos:
+ * /api/v1/empresas/admin/{id}/bloqueios:
  *   get:
- *     summary: (Admin) Listar banimentos aplicados
- *     description: "Retorna o histórico de banimentos aplicados ao usuário da empresa, detalhando vigência, status e responsável."
- *     operationId: adminEmpresasListBanimentos
+ *     summary: (Admin) Listar bloqueios aplicados
+ *     description: "Retorna o histórico de bloqueios aplicados ao usuário da empresa, detalhando vigência, status e responsável."
+ *     operationId: adminEmpresasListBloqueios
  *     tags: [Empresas - Admin]
  *     security:
  *       - bearerAuth: []
@@ -664,23 +664,23 @@ router.get(
  *           default: 20
  *     responses:
  *       200:
- *         description: Histórico de banimentos retornado com sucesso
+ *         description: Histórico de bloqueios retornado com sucesso
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/AdminUsuariosBanimentosResponse'
+ *               $ref: '#/components/schemas/AdminUsuariosBloqueiosResponse'
  *             examples:
  *               default:
- *                 summary: Banimentos da empresa
+ *                 summary: Bloqueios da empresa
  *                 value:
  *                   data:
- *                     - id: ban_123456
+ *                     - id: bloq_123456
  *                       alvo:
  *                         tipo: EMPRESA
  *                         id: cmp_112233
  *                         nome: Empresa XPTO
  *                         role: EMPRESA
- *                       banimento:
+ *                       bloqueio:
  *                         tipo: TEMPORARIO
  *                         motivo: VIOLACAO_POLITICAS
  *                         status: ATIVO
@@ -730,9 +730,9 @@ router.get(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *   post:
- *     summary: (Admin) Aplicar banimento à empresa
- *     description: "Centraliza o banimento do usuário da empresa, permitindo banimentos temporários ou permanentes com registro de auditoria."
- *     operationId: adminEmpresasAplicarBanimento
+ *     summary: (Admin) Aplicar bloqueio à empresa
+ *     description: "Centraliza o bloqueio do usuário da empresa, permitindo bloqueios temporários ou permanentes com registro de auditoria."
+ *     operationId: adminEmpresasAplicarBloqueio
  *     tags: [Empresas - Admin]
  *     security:
  *       - bearerAuth: []
@@ -748,10 +748,10 @@ router.get(
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/AdminUsuariosEmBanimentosCreate'
+ *             $ref: '#/components/schemas/AdminUsuariosEmBloqueiosCreate'
  *           examples:
  *             default:
- *               summary: Banimento de 30 dias com motivo
+ *               summary: Bloqueio de 30 dias com motivo
  *               value:
  *                 tipo: TEMPORARIO
  *                 motivo: VIOLACAO_POLITICAS
@@ -759,23 +759,23 @@ router.get(
  *                 observacoes: Uso indevido de dados pessoais de candidatos.
  *     responses:
  *       201:
- *         description: Banimento aplicado com sucesso
+ *         description: Bloqueio aplicado com sucesso
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/AdminUsuariosEmBanimentosResponse'
+ *               $ref: '#/components/schemas/AdminUsuariosEmBloqueiosResponse'
  *             examples:
  *               created:
- *                 summary: Banimento registrado
+ *                 summary: Bloqueio registrado
  *                 value:
- *                   banimento:
- *                     id: ban_123456
+ *                   bloqueio:
+ *                     id: bloq_123456
  *                     alvo:
  *                       tipo: EMPRESA
  *                       id: cmp_112233
  *                       nome: Empresa XPTO
  *                       role: EMPRESA
- *                     banimento:
+ *                     bloqueio:
  *                       tipo: TEMPORARIO
  *                       motivo: VIOLACAO_POLITICAS
  *                       status: ATIVO
@@ -821,18 +821,18 @@ router.get(
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get(
-  '/:id/banimentos',
+  '/:id/bloqueios',
   supabaseAuthMiddleware(adminRoles),
-  AdminEmpresasController.listBanimentos,
+  AdminEmpresasController.listBloqueios,
 );
-router.post('/:id/banimentos', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.ban);
+router.post('/:id/bloqueios', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.block);
 /**
  * @openapi
- * /api/v1/empresas/admin/{id}/banimentos/revogar:
+ * /api/v1/empresas/admin/{id}/bloqueios/revogar:
  *   post:
- *     summary: (Admin) Revogar banimento ativo
- *     description: "Revoga o banimento ativo da empresa, restaura o status do usuário e registra auditoria da ação."
- *     operationId: adminEmpresasRevogarBanimento
+ *     summary: (Admin) Revogar bloqueio ativo
+ *     description: "Revoga o bloqueio ativo da empresa, restaura o status do usuário e registra auditoria da ação."
+ *     operationId: adminEmpresasRevogarBloqueio
  *     tags: [Empresas - Admin]
  *     security:
  *       - bearerAuth: []
@@ -878,29 +878,29 @@ router.post('/:id/banimentos', supabaseAuthMiddleware(adminRoles), AdminEmpresas
  *             schema:
  *               $ref: '#/components/schemas/ForbiddenResponse'
  *       404:
- *         description: Empresa ou banimento ativo não encontrados
+ *         description: Empresa ou bloqueio ativo não encontrados
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *             examples:
- *               banimentoInexistente:
- *                 summary: Nenhum banimento ativo encontrado
+ *               bloqueioInexistente:
+ *                 summary: Nenhum bloqueio ativo encontrado
  *                 value:
  *                   success: false
- *                   code: BANIMENTO_NOT_FOUND
- *                   message: Nenhum banimento ativo encontrado
+ *                   code: BLOQUEIO_NOT_FOUND
+ *                   message: Nenhum bloqueio ativo encontrado
  *       500:
- *         description: Erro interno ao revogar banimento
+ *         description: Erro interno ao revogar bloqueio
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post(
-  '/:id/banimentos/revogar',
+  '/:id/bloqueios/revogar',
   supabaseAuthMiddleware(adminRoles),
-  AdminEmpresasController.unban,
+  AdminEmpresasController.unblock,
 );
 
 /**

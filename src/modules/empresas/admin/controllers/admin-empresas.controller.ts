@@ -3,7 +3,7 @@ import { ZodError } from 'zod';
 
 import { adminEmpresasService } from '@/modules/empresas/admin/services/admin-empresas.service';
 import {
-  adminEmpresasBanSchema,
+  adminEmpresasBloqueioSchema,
   adminEmpresasCreateSchema,
   adminEmpresasDashboardListQuerySchema,
   adminEmpresasHistoryQuerySchema,
@@ -64,13 +64,13 @@ export class AdminEmpresasController {
     }
   };
 
-  static unban = async (req: Request, res: Response) => {
+  static unblock = async (req: Request, res: Response) => {
     try {
       const params = adminEmpresasIdParamSchema.parse(req.params);
       const adminId = req.user?.id;
       if (!adminId) return res.status(401).json({ success: false, code: 'UNAUTHORIZED' });
       const { observacoes } = (req.body || {}) as { observacoes?: string };
-      await adminEmpresasService.revogarBanimento(params.id, adminId, observacoes);
+      await adminEmpresasService.revogarBloqueio(params.id, adminId, observacoes);
       res.status(204).send();
     } catch (error: any) {
       if (error?.code === 'EMPRESA_NOT_FOUND') {
@@ -78,21 +78,21 @@ export class AdminEmpresasController {
           .status(404)
           .json({ success: false, code: 'EMPRESA_NOT_FOUND', message: 'Empresa não encontrada' });
       }
-      if (error?.code === 'BANIMENTO_NOT_FOUND') {
+      if (error?.code === 'BLOQUEIO_NOT_FOUND') {
         return res
           .status(404)
           .json({
             success: false,
-            code: 'BANIMENTO_NOT_FOUND',
-            message: 'Nenhum banimento ativo encontrado',
+            code: 'BLOQUEIO_NOT_FOUND',
+            message: 'Nenhum bloqueio ativo encontrado',
           });
       }
       res
         .status(500)
         .json({
           success: false,
-          code: 'ADMIN_EMPRESAS_UNBAN_ERROR',
-          message: 'Erro ao revogar banimento',
+          code: 'ADMIN_EMPRESAS_UNBLOCK_ERROR',
+          message: 'Erro ao revogar bloqueio',
           error: error?.message,
         });
     }
@@ -385,10 +385,10 @@ export class AdminEmpresasController {
     }
   };
 
-  static ban = async (req: Request, res: Response) => {
+  static block = async (req: Request, res: Response) => {
     try {
       const params = adminEmpresasIdParamSchema.parse(req.params);
-      const payload = adminEmpresasBanSchema.parse(req.body);
+      const payload = adminEmpresasBloqueioSchema.parse(req.body);
 
       const adminId = req.user?.id;
       if (!adminId) {
@@ -399,23 +399,23 @@ export class AdminEmpresasController {
         });
       }
 
-      const banimento = await adminEmpresasService.aplicarBanimento(params.id, adminId, payload);
+      const bloqueio = await adminEmpresasService.aplicarBloqueio(params.id, adminId, payload);
 
-      if (!banimento) {
+      if (!bloqueio) {
         return res.status(500).json({
           success: false,
-          code: 'BANIMENTO_NOT_CREATED',
-          message: 'Não foi possível registrar o banimento',
+          code: 'BLOQUEIO_NOT_CREATED',
+          message: 'Não foi possível registrar o bloqueio',
         });
       }
 
-      res.status(201).json({ banimento });
+      res.status(201).json({ bloqueio });
     } catch (error: any) {
       if (error instanceof ZodError) {
         return res.status(400).json({
           success: false,
           code: 'VALIDATION_ERROR',
-          message: 'Dados inválidos para banimento',
+          message: 'Dados inválidos para bloqueio',
           issues: error.flatten().fieldErrors,
         });
       }
@@ -432,24 +432,24 @@ export class AdminEmpresasController {
         return res.status(403).json({
           success: false,
           code: 'FORBIDDEN',
-          message: 'Somente administradores ou moderadores podem aplicar banimentos',
+          message: 'Somente administradores ou moderadores podem aplicar bloqueios',
         });
       }
 
       res.status(500).json({
         success: false,
-        code: 'ADMIN_EMPRESAS_BAN_ERROR',
-        message: 'Erro ao aplicar banimento',
+        code: 'ADMIN_EMPRESAS_BLOCK_ERROR',
+        message: 'Erro ao aplicar bloqueio',
         error: error?.message,
       });
     }
   };
 
-  static listBanimentos = async (req: Request, res: Response) => {
+  static listBloqueios = async (req: Request, res: Response) => {
     try {
       const params = adminEmpresasIdParamSchema.parse(req.params);
       const query = adminEmpresasHistoryQuerySchema.parse(req.query);
-      const result = await adminEmpresasService.listarBanimentos(params.id, query);
+      const result = await adminEmpresasService.listarBloqueios(params.id, query);
       res.json(result);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -471,8 +471,8 @@ export class AdminEmpresasController {
 
       res.status(500).json({
         success: false,
-        code: 'ADMIN_EMPRESAS_BANIMENTOS_ERROR',
-        message: 'Erro ao listar banimentos da empresa',
+        code: 'ADMIN_EMPRESAS_BLOQUEIOS_ERROR',
+        message: 'Erro ao listar bloqueios da empresa',
         error: error?.message,
       });
     }

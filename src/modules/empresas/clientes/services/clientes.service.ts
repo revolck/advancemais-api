@@ -107,7 +107,9 @@ const transformarPlano = (plano: EmpresasPlanoWithRelations) => {
 };
 
 const buildWhere = (filters: ListClientePlanoQuery): Prisma.EmpresasPlanoWhereInput => {
-  const where: Prisma.EmpresasPlanoWhereInput = {};
+  const where: Prisma.EmpresasPlanoWhereInput = {
+    modo: filters.modo ?? EmpresasPlanoModo.CLIENTE,
+  };
 
   if (filters.usuarioId) {
     where.usuarioId = filters.usuarioId;
@@ -161,7 +163,7 @@ export const clientesService = {
   assign: async (data: CreateClientePlanoInput) => {
     await ensureUsuarioEmpresa(data.usuarioId);
     const inicio = data.iniciarEm ?? new Date();
-    const modo = data.modo as EmpresasPlanoModo;
+    const modo = data.modo;
     const fim = calcularFim(modo, inicio, sanitizeUndefined<number>(data.diasTeste) ?? undefined);
     const status = EmpresasPlanoStatus.ATIVO;
 
@@ -211,9 +213,9 @@ export const clientesService = {
 
     let modo = planoAtual.modo;
     if (data.modo !== undefined) {
-      modo = data.modo as EmpresasPlanoModo;
+      modo = data.modo;
       updates.modo = modo;
-      // Ajusta status automaticamente para testes/parceiro
+      // Ajusta status automaticamente para modos de cortesia
       if (modo === EmpresasPlanoModo.TESTE || modo === EmpresasPlanoModo.PARCEIRO) {
         updates.status = EmpresasPlanoStatus.ATIVO;
       }

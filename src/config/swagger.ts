@@ -160,6 +160,10 @@ const options: Options = {
         description: 'Gestão dos estágios supervisionados vinculados às inscrições dos cursos',
       },
       {
+        name: 'Comercial - Cupons de Desconto',
+        description: 'Administração de cupons promocionais aplicados a assinaturas e cursos',
+      },
+      {
         name: 'MercadoPago - Assinaturas',
         description: 'Assinaturas e cobranças recorrentes (Mercado Pago)',
       },
@@ -225,6 +229,7 @@ const options: Options = {
         ],
       },
       { name: 'Pagamentos', tags: ['MercadoPago - Assinaturas'] },
+      { name: 'Comercial', tags: ['Comercial - Cupons de Desconto'] },
     ],
     components: {
       schemas: {
@@ -254,6 +259,300 @@ const options: Options = {
           enum: ['CARTAO_CREDITO', 'CARTAO_DEBITO', 'PIX', 'BOLETO', 'TRANSFERENCIA', 'DINHEIRO'],
           example: 'PIX',
           description: 'Meios de pagamento aceitos',
+        },
+        CuponsTipoDesconto: {
+          type: 'string',
+          enum: ['PORCENTAGEM', 'VALOR_FIXO'],
+          example: 'PORCENTAGEM',
+          description: 'Define como o valor do desconto será aplicado (percentual ou valor fixo)',
+        },
+        CuponsAplicarEm: {
+          type: 'string',
+          enum: ['TODA_PLATAFORMA', 'APENAS_ASSINATURA', 'APENAS_CURSOS'],
+          example: 'APENAS_ASSINATURA',
+          description: 'Escopo de aplicação do cupom dentro da plataforma',
+        },
+        CuponsLimiteUso: {
+          type: 'string',
+          enum: ['ILIMITADO', 'LIMITADO'],
+          example: 'LIMITADO',
+          description: 'Define se o cupom tem limite total de utilizações',
+        },
+        CuponsLimiteUsuario: {
+          type: 'string',
+          enum: ['ILIMITADO', 'LIMITADO', 'PRIMEIRA_COMPRA'],
+          example: 'PRIMEIRA_COMPRA',
+          description: 'Regra de limite de uso por usuário',
+        },
+        CuponsPeriodo: {
+          type: 'string',
+          enum: ['ILIMITADO', 'PERIODO'],
+          example: 'PERIODO',
+          description: 'Determina se o cupom possui período de validade configurado',
+        },
+        CupomDescontoCursoAplicado: {
+          type: 'object',
+          properties: {
+            cursoId: {
+              type: 'integer',
+              example: 12,
+              description: 'Identificador interno do curso',
+            },
+            codigo: {
+              type: 'string',
+              nullable: true,
+              example: 'CURS-001',
+            },
+            nome: {
+              type: 'string',
+              nullable: true,
+              example: 'Curso de Liderança Estratégica',
+            },
+          },
+        },
+        CupomDescontoPlanoAplicado: {
+          type: 'object',
+          properties: {
+            planoId: {
+              type: 'string',
+              format: 'uuid',
+              example: '11111111-1111-1111-1111-111111111111',
+            },
+            nome: {
+              type: 'string',
+              nullable: true,
+              example: 'Plano Premium Empresarial',
+            },
+          },
+        },
+        CupomDesconto: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid', example: '6b6f2f7a-3c6d-4a9a-9d21-1a2b3c4d5e6f' },
+            codigo: { type: 'string', example: 'ADVANCE50' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Campanha especial de lançamento',
+            },
+            tipoDesconto: { $ref: '#/components/schemas/CuponsTipoDesconto' },
+            valorPercentual: {
+              type: 'number',
+              nullable: true,
+              example: 25,
+              description: 'Percentual aplicado quando tipoDesconto for PORCENTAGEM',
+            },
+            valorFixo: {
+              type: 'number',
+              nullable: true,
+              example: 150.5,
+              description: 'Valor em reais aplicado quando tipoDesconto for VALOR_FIXO',
+            },
+            aplicarEm: { $ref: '#/components/schemas/CuponsAplicarEm' },
+            aplicarEmTodosItens: { type: 'boolean', example: false },
+            limiteUsoTotalTipo: { $ref: '#/components/schemas/CuponsLimiteUso' },
+            limiteUsoTotalQuantidade: {
+              type: 'integer',
+              nullable: true,
+              example: 100,
+            },
+            limitePorUsuarioTipo: { $ref: '#/components/schemas/CuponsLimiteUsuario' },
+            limitePorUsuarioQuantidade: {
+              type: 'integer',
+              nullable: true,
+              example: 1,
+            },
+            periodoTipo: { $ref: '#/components/schemas/CuponsPeriodo' },
+            periodoInicio: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              example: '2025-01-01T00:00:00.000Z',
+            },
+            periodoFim: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              example: '2025-03-01T23:59:59.000Z',
+            },
+            usosTotais: { type: 'integer', example: 12 },
+            ativo: { type: 'boolean', example: true },
+            criadoEm: { type: 'string', format: 'date-time' },
+            atualizadoEm: { type: 'string', format: 'date-time' },
+            criadoPor: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                id: { type: 'string', format: 'uuid', example: 'f1d2d2f9-1234-5678-90ab-abcdef123456' },
+                nomeCompleto: { type: 'string', example: 'Maria Almeida' },
+                email: { type: 'string', format: 'email', example: 'maria.almeida@example.com' },
+                role: { $ref: '#/components/schemas/Roles' },
+              },
+            },
+            cursosAplicados: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CupomDescontoCursoAplicado' },
+            },
+            planosAplicados: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CupomDescontoPlanoAplicado' },
+            },
+          },
+        },
+        CupomDescontoCreateInput: {
+          type: 'object',
+          required: [
+            'codigo',
+            'tipoDesconto',
+            'aplicarEm',
+            'limiteUsoTotalTipo',
+            'limitePorUsuarioTipo',
+            'periodoTipo',
+          ],
+          properties: {
+            codigo: {
+              type: 'string',
+              example: 'ADVANCE10',
+              description: 'Código que o cliente deverá informar no checkout',
+            },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Cupom comemorativo de aniversário',
+            },
+            tipoDesconto: { $ref: '#/components/schemas/CuponsTipoDesconto' },
+            valorPercentual: {
+              type: 'number',
+              nullable: true,
+              example: 10,
+              description: 'Obrigatório quando tipoDesconto for PORCENTAGEM',
+            },
+            valorFixo: {
+              type: 'number',
+              nullable: true,
+              example: 50,
+              description: 'Obrigatório quando tipoDesconto for VALOR_FIXO',
+            },
+            aplicarEm: { $ref: '#/components/schemas/CuponsAplicarEm' },
+            aplicarEmTodosItens: {
+              type: 'boolean',
+              nullable: true,
+              example: false,
+              description: 'Quando verdadeiro aplica o cupom a todos os itens da categoria escolhida',
+            },
+            cursosIds: {
+              type: 'array',
+              nullable: true,
+              items: { type: 'integer', example: 5 },
+              description: 'Obrigatório quando aplicarEm for APENAS_CURSOS e aplicarEmTodosItens for falso',
+            },
+            planosIds: {
+              type: 'array',
+              nullable: true,
+              items: { type: 'string', format: 'uuid' },
+              description: 'Obrigatório quando aplicarEm for APENAS_ASSINATURA e aplicarEmTodosItens for falso',
+            },
+            limiteUsoTotalTipo: { $ref: '#/components/schemas/CuponsLimiteUso' },
+            limiteUsoTotalQuantidade: {
+              type: 'integer',
+              nullable: true,
+              example: 500,
+            },
+            limitePorUsuarioTipo: { $ref: '#/components/schemas/CuponsLimiteUsuario' },
+            limitePorUsuarioQuantidade: {
+              type: 'integer',
+              nullable: true,
+              example: 1,
+            },
+            periodoTipo: { $ref: '#/components/schemas/CuponsPeriodo' },
+            periodoInicio: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+            },
+            periodoFim: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+            },
+            ativo: {
+              type: 'boolean',
+              nullable: true,
+              example: true,
+            },
+          },
+        },
+        CupomDescontoUpdateInput: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            codigo: { type: 'string', example: 'ADVANCE15' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Atualização do cupom promocional',
+            },
+            tipoDesconto: { $ref: '#/components/schemas/CuponsTipoDesconto' },
+            valorPercentual: {
+              type: 'number',
+              nullable: true,
+            },
+            valorFixo: {
+              type: 'number',
+              nullable: true,
+            },
+            aplicarEm: { $ref: '#/components/schemas/CuponsAplicarEm' },
+            aplicarEmTodosItens: {
+              type: 'boolean',
+              nullable: true,
+            },
+            cursosIds: {
+              type: 'array',
+              nullable: true,
+              items: { type: 'integer' },
+            },
+            planosIds: {
+              type: 'array',
+              nullable: true,
+              items: { type: 'string', format: 'uuid' },
+            },
+            limiteUsoTotalTipo: { $ref: '#/components/schemas/CuponsLimiteUso' },
+            limiteUsoTotalQuantidade: {
+              type: 'integer',
+              nullable: true,
+            },
+            limitePorUsuarioTipo: { $ref: '#/components/schemas/CuponsLimiteUsuario' },
+            limitePorUsuarioQuantidade: {
+              type: 'integer',
+              nullable: true,
+            },
+            periodoTipo: { $ref: '#/components/schemas/CuponsPeriodo' },
+            periodoInicio: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+            },
+            periodoFim: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+            },
+            ativo: {
+              type: 'boolean',
+              nullable: true,
+            },
+          },
+        },
+        CupomDescontoDuplicateResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: false },
+            code: { type: 'string', example: 'CUPOM_DUPLICATE_CODE' },
+            message: {
+              type: 'string',
+              example: 'Já existe um cupom cadastrado com este código',
+            },
+          },
         },
         TiposDeUsuarios: {
           type: 'string',

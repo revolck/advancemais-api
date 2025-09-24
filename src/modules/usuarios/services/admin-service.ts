@@ -450,6 +450,7 @@ export class AdminService {
         id: true,
         email: true,
         nomeCompleto: true,
+        role: true,
         status: true,
         atualizadoEm: true,
         supabaseId: true,

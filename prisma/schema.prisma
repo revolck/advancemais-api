@@ -686,7 +686,7 @@ model EmpresasPlano {
   id                   String               @id @default(uuid())
   usuarioId            String
   planosEmpresariaisId String
-  modo                 EmpresasPlanoModo?
+  modo                 EmpresasPlanoModo    @default(CLIENTE)
   status               EmpresasPlanoStatus  @default(SUSPENSO)
   origin               EmpresasPlanoOrigin  @default(CHECKOUT)
   inicio               DateTime?
@@ -1640,6 +1640,7 @@ enum EmpresasPlanoStatus {
 }
 
 enum EmpresasPlanoModo {
+  CLIENTE
   TESTE
   PARCEIRO
 }

@@ -11,8 +11,8 @@ const adminRoles = [Roles.ADMIN, Roles.MODERADOR];
  * @openapi
  * /api/v1/empresas/clientes:
  *   get:
- *     summary: Listar clientes (empresas) vinculados a planos
- *     description: "Retorna o histórico de vinculações de planos para clientes (empresas). Permite filtrar por empresa e status atual. Endpoint restrito a administradores e moderadores (roles: ADMIN, MODERADOR)."
+ *     summary: Listar clientes (empresas) vinculados a planos pagos
+ *     description: "Retorna o histórico de vinculações de planos de assinatura para clientes (empresas). Por padrão retorna apenas assinaturas de clientes pagantes (modo CLIENTE), mas é possível filtrar por outros modos quando necessário. Endpoint restrito a administradores e moderadores (roles: ADMIN, MODERADOR)."
  *     tags: [Empresas - Clientes]
  *     security:
  *       - bearerAuth: []
@@ -29,9 +29,15 @@ const adminRoles = [Roles.ADMIN, Roles.MODERADOR];
  *           type: string
  *           enum: [ATIVO, SUSPENSO, EXPIRADO, CANCELADO]
  *         description: "Quando informado, filtra pelo status do vínculo do plano"
+ *       - in: query
+ *         name: modo
+ *         schema:
+ *           type: string
+ *           enum: [CLIENTE, TESTE, PARCEIRO]
+ *         description: "Permite consultar vínculos em outros modos (teste ou parceiro). O padrão é CLIENTE."
  *     responses:
  *       200:
- *         description: Lista de planos parceiros vinculados
+ *         description: Lista de planos de assinatura vinculados ao cliente
  *         content:
  *           application/json:
  *             schema:
@@ -83,7 +89,7 @@ router.get('/', supabaseAuthMiddleware(adminRoles), ClientesController.list);
  *           format: uuid
  *     responses:
  *       200:
- *         description: Plano parceiro encontrado
+ *         description: Plano de assinatura encontrado
  *         content:
  *           application/json:
  *             schema:
@@ -101,7 +107,7 @@ router.get('/', supabaseAuthMiddleware(adminRoles), ClientesController.list);
  *             schema:
  *               $ref: '#/components/schemas/ForbiddenResponse'
  *       404:
- *         description: Plano parceiro não encontrado
+ *         description: Plano de assinatura não encontrado
  *         content:
  *           application/json:
  *             schema:
@@ -132,7 +138,7 @@ router.get('/:id', supabaseAuthMiddleware(adminRoles), ClientesController.get);
  *             $ref: '#/components/schemas/EmpresaClientePlanoCreateInput'
  *     responses:
  *       201:
- *         description: Plano parceiro vinculado com sucesso
+ *         description: Plano de assinatura vinculado com sucesso
  *         content:
  *           application/json:
  *             schema:
@@ -177,7 +183,7 @@ router.get('/:id', supabaseAuthMiddleware(adminRoles), ClientesController.get);
  *            -d '{
  *                  "usuarioId": "f1d7a9c2-4e0b-4f6d-90ad-8c6b84a0f1a1",
  *                  "planosEmpresariaisId": "31b3b0e1-4d9d-4a3c-9a77-51b872d59bf0",
- *                  "modo": "teste",
+ *                  "modo": "CLIENTE",
  *                  "diasTeste": 7
  *                }'
  */
@@ -207,7 +213,7 @@ router.post('/', supabaseAuthMiddleware(adminRoles), ClientesController.assign);
  *             $ref: '#/components/schemas/EmpresaClientePlanoUpdateInput'
  *     responses:
  *       200:
- *         description: Plano parceiro atualizado
+ *         description: Plano de assinatura atualizado
  *         content:
  *           application/json:
  *             schema:
@@ -231,7 +237,7 @@ router.post('/', supabaseAuthMiddleware(adminRoles), ClientesController.assign);
  *             schema:
  *               $ref: '#/components/schemas/ForbiddenResponse'
  *       404:
- *         description: Plano parceiro ou referência não encontrada
+ *         description: Plano de assinatura ou referência não encontrada
  *         content:
  *           application/json:
  *             schema:
@@ -250,7 +256,7 @@ router.post('/', supabaseAuthMiddleware(adminRoles), ClientesController.assign);
  *            -H "Authorization: Bearer <TOKEN>" \
  *            -H "Content-Type: application/json" \
  *            -d '{
- *                  "modo": "parceiro"
+ *                  "modo": "PARCEIRO"
  *                }'
  */
 router.put('/:id', supabaseAuthMiddleware(adminRoles), ClientesController.update);
@@ -287,7 +293,7 @@ router.put('/:id', supabaseAuthMiddleware(adminRoles), ClientesController.update
  *             schema:
  *               $ref: '#/components/schemas/ForbiddenResponse'
  *       404:
- *         description: Plano parceiro não encontrado
+ *         description: Plano de assinatura não encontrado
  *         content:
  *           application/json:
  *             schema:

@@ -68,6 +68,6 @@ export const createTurmaSchema = applyDateValidations(turmaBaseSchema);
 
 export const updateTurmaSchema = applyDateValidations(turmaBaseSchema.partial());
 
-export const turmaEnrollmentSchema = z.object({
+export const turmaInscricaoSchema = z.object({
   alunoId: z.string().uuid(),
 });

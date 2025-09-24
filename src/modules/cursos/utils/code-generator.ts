@@ -76,21 +76,21 @@ export const generateUniqueTurmaCode = async (
   );
 };
 
-export const generateUniqueEnrollmentCode = async (
+export const generateUniqueInscricaoCode = async (
   tx: Prisma.TransactionClient,
   logger?: AppLogger,
 ) => {
   return attemptUniqueCode(
     10,
-    () => `MAT${randomNumber(5)}`,
+    () => `INS${randomNumber(5)}`,
     async (candidate) => {
       const existing = await tx.usuariosInformation.findFirst({
-        where: { matricula: candidate },
+        where: { inscricao: candidate },
         select: { usuarioId: true },
       });
       return !existing;
     },
-    () => `MAT${withFallback(2, 5)}`,
+    () => `INS${withFallback(2, 5)}`,
     logger,
   );
 };

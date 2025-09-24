@@ -4,7 +4,7 @@ CREATE TYPE "public"."CursosCertificadosLogAcao" AS ENUM ('EMISSAO', 'VISUALIZAC
 -- CreateTable
 CREATE TABLE "public"."CursosCertificadosEmitidos" (
     "id" TEXT NOT NULL,
-    "matriculaId" TEXT NOT NULL,
+    "inscricaoId" TEXT NOT NULL,
     "codigo" VARCHAR(20) NOT NULL,
     "tipo" "public"."CursosCertificados" NOT NULL,
     "formato" "public"."CursosCertificadosTipos" NOT NULL,
@@ -36,7 +36,7 @@ CREATE TABLE "public"."CursosCertificadosLogs" (
 CREATE UNIQUE INDEX "CursosCertificadosEmitidos_codigo_key" ON "public"."CursosCertificadosEmitidos"("codigo");
 
 -- CreateIndex
-CREATE INDEX "CursosCertificadosEmitidos_matriculaId_idx" ON "public"."CursosCertificadosEmitidos"("matriculaId");
+CREATE INDEX "CursosCertificadosEmitidos_inscricaoId_idx" ON "public"."CursosCertificadosEmitidos"("inscricaoId");
 
 -- CreateIndex
 CREATE INDEX "CursosCertificadosEmitidos_emitidoPorId_idx" ON "public"."CursosCertificadosEmitidos"("emitidoPorId");
@@ -54,7 +54,7 @@ CREATE INDEX "CursosCertificadosLogs_acao_idx" ON "public"."CursosCertificadosLo
 CREATE INDEX "CursosCertificadosLogs_criadoEm_idx" ON "public"."CursosCertificadosLogs"("criadoEm");
 
 -- AddForeignKey
-ALTER TABLE "public"."CursosCertificadosEmitidos" ADD CONSTRAINT "CursosCertificadosEmitidos_matriculaId_fkey" FOREIGN KEY ("matriculaId") REFERENCES "public"."CursosTurmasMatriculas"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."CursosCertificadosEmitidos" ADD CONSTRAINT "CursosCertificadosEmitidos_inscricaoId_fkey" FOREIGN KEY ("inscricaoId") REFERENCES "public"."CursosTurmasInscricoes"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."CursosCertificadosEmitidos" ADD CONSTRAINT "CursosCertificadosEmitidos_emitidoPorId_fkey" FOREIGN KEY ("emitidoPorId") REFERENCES "public"."Usuarios"("id") ON DELETE SET NULL ON UPDATE CASCADE;

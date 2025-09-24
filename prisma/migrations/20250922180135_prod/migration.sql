@@ -142,7 +142,7 @@ CREATE TABLE "public"."UsuariosInformation" (
     "telefone" TEXT NOT NULL,
     "genero" TEXT,
     "dataNasc" TIMESTAMP(3),
-    "matricula" TEXT,
+    "inscricao" TEXT,
     "avatarUrl" TEXT,
     "descricao" VARCHAR(500),
     "aceitarTermos" BOOLEAN NOT NULL DEFAULT false,
@@ -273,13 +273,13 @@ CREATE TABLE "public"."CursosTurmasAulasMateriais" (
 );
 
 -- CreateTable
-CREATE TABLE "public"."CursosTurmasMatriculas" (
+CREATE TABLE "public"."CursosTurmasInscricoes" (
     "id" TEXT NOT NULL,
     "turmaId" TEXT NOT NULL,
     "alunoId" TEXT NOT NULL,
     "criadoEm" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "CursosTurmasMatriculas_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "CursosTurmasInscricoes_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -304,7 +304,7 @@ CREATE TABLE "public"."CursosTurmasProvas" (
 CREATE TABLE "public"."CursosTurmasProvasEnvios" (
     "id" TEXT NOT NULL,
     "provaId" TEXT NOT NULL,
-    "matriculaId" TEXT NOT NULL,
+    "inscricaoId" TEXT NOT NULL,
     "nota" DECIMAL(4,1),
     "pesoTotal" DECIMAL(5,2),
     "realizadoEm" TIMESTAMP(3),
@@ -336,7 +336,7 @@ CREATE TABLE "public"."CursosTurmasRegrasAvaliacao" (
 CREATE TABLE "public"."CursosTurmasRecuperacoes" (
     "id" TEXT NOT NULL,
     "turmaId" TEXT NOT NULL,
-    "matriculaId" TEXT NOT NULL,
+    "inscricaoId" TEXT NOT NULL,
     "regraId" TEXT,
     "provaId" TEXT,
     "envioId" TEXT,
@@ -1158,10 +1158,10 @@ CREATE INDEX "CursosTurmasAulasMateriais_aulaId_idx" ON "public"."CursosTurmasAu
 CREATE INDEX "CursosTurmasAulasMateriais_tipo_idx" ON "public"."CursosTurmasAulasMateriais"("tipo");
 
 -- CreateIndex
-CREATE INDEX "CursosTurmasMatriculas_alunoId_idx" ON "public"."CursosTurmasMatriculas"("alunoId");
+CREATE INDEX "CursosTurmasInscricoes_alunoId_idx" ON "public"."CursosTurmasInscricoes"("alunoId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "CursosTurmasMatriculas_turmaId_alunoId_key" ON "public"."CursosTurmasMatriculas"("turmaId", "alunoId");
+CREATE UNIQUE INDEX "CursosTurmasInscricoes_turmaId_alunoId_key" ON "public"."CursosTurmasInscricoes"("turmaId", "alunoId");
 
 -- CreateIndex
 CREATE INDEX "CursosTurmasProvas_turmaId_idx" ON "public"."CursosTurmasProvas"("turmaId");
@@ -1176,10 +1176,10 @@ CREATE INDEX "CursosTurmasProvas_turmaId_ativo_idx" ON "public"."CursosTurmasPro
 CREATE UNIQUE INDEX "CursosTurmasProvas_turmaId_etiqueta_key" ON "public"."CursosTurmasProvas"("turmaId", "etiqueta");
 
 -- CreateIndex
-CREATE INDEX "CursosTurmasProvasEnvios_matriculaId_idx" ON "public"."CursosTurmasProvasEnvios"("matriculaId");
+CREATE INDEX "CursosTurmasProvasEnvios_inscricaoId_idx" ON "public"."CursosTurmasProvasEnvios"("inscricaoId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "CursosTurmasProvasEnvios_provaId_matriculaId_key" ON "public"."CursosTurmasProvasEnvios"("provaId", "matriculaId");
+CREATE UNIQUE INDEX "CursosTurmasProvasEnvios_provaId_inscricaoId_key" ON "public"."CursosTurmasProvasEnvios"("provaId", "inscricaoId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "CursosTurmasRegrasAvaliacao_turmaId_key" ON "public"."CursosTurmasRegrasAvaliacao"("turmaId");
@@ -1188,7 +1188,7 @@ CREATE UNIQUE INDEX "CursosTurmasRegrasAvaliacao_turmaId_key" ON "public"."Curso
 CREATE INDEX "CursosTurmasRecuperacoes_turmaId_idx" ON "public"."CursosTurmasRecuperacoes"("turmaId");
 
 -- CreateIndex
-CREATE INDEX "CursosTurmasRecuperacoes_matriculaId_idx" ON "public"."CursosTurmasRecuperacoes"("matriculaId");
+CREATE INDEX "CursosTurmasRecuperacoes_inscricaoId_idx" ON "public"."CursosTurmasRecuperacoes"("inscricaoId");
 
 -- CreateIndex
 CREATE INDEX "CursosTurmasRecuperacoes_statusFinal_idx" ON "public"."CursosTurmasRecuperacoes"("statusFinal");
@@ -1434,10 +1434,10 @@ ALTER TABLE "public"."CursosTurmasAulas" ADD CONSTRAINT "CursosTurmasAulas_modul
 ALTER TABLE "public"."CursosTurmasAulasMateriais" ADD CONSTRAINT "CursosTurmasAulasMateriais_aulaId_fkey" FOREIGN KEY ("aulaId") REFERENCES "public"."CursosTurmasAulas"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."CursosTurmasMatriculas" ADD CONSTRAINT "CursosTurmasMatriculas_turmaId_fkey" FOREIGN KEY ("turmaId") REFERENCES "public"."CursosTurmas"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."CursosTurmasInscricoes" ADD CONSTRAINT "CursosTurmasInscricoes_turmaId_fkey" FOREIGN KEY ("turmaId") REFERENCES "public"."CursosTurmas"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."CursosTurmasMatriculas" ADD CONSTRAINT "CursosTurmasMatriculas_alunoId_fkey" FOREIGN KEY ("alunoId") REFERENCES "public"."Usuarios"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."CursosTurmasInscricoes" ADD CONSTRAINT "CursosTurmasInscricoes_alunoId_fkey" FOREIGN KEY ("alunoId") REFERENCES "public"."Usuarios"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."CursosTurmasProvas" ADD CONSTRAINT "CursosTurmasProvas_turmaId_fkey" FOREIGN KEY ("turmaId") REFERENCES "public"."CursosTurmas"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -1449,7 +1449,7 @@ ALTER TABLE "public"."CursosTurmasProvas" ADD CONSTRAINT "CursosTurmasProvas_mod
 ALTER TABLE "public"."CursosTurmasProvasEnvios" ADD CONSTRAINT "CursosTurmasProvasEnvios_provaId_fkey" FOREIGN KEY ("provaId") REFERENCES "public"."CursosTurmasProvas"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."CursosTurmasProvasEnvios" ADD CONSTRAINT "CursosTurmasProvasEnvios_matriculaId_fkey" FOREIGN KEY ("matriculaId") REFERENCES "public"."CursosTurmasMatriculas"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."CursosTurmasProvasEnvios" ADD CONSTRAINT "CursosTurmasProvasEnvios_inscricaoId_fkey" FOREIGN KEY ("inscricaoId") REFERENCES "public"."CursosTurmasInscricoes"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."CursosTurmasRegrasAvaliacao" ADD CONSTRAINT "CursosTurmasRegrasAvaliacao_turmaId_fkey" FOREIGN KEY ("turmaId") REFERENCES "public"."CursosTurmas"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -1458,7 +1458,7 @@ ALTER TABLE "public"."CursosTurmasRegrasAvaliacao" ADD CONSTRAINT "CursosTurmasR
 ALTER TABLE "public"."CursosTurmasRecuperacoes" ADD CONSTRAINT "CursosTurmasRecuperacoes_turmaId_fkey" FOREIGN KEY ("turmaId") REFERENCES "public"."CursosTurmas"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."CursosTurmasRecuperacoes" ADD CONSTRAINT "CursosTurmasRecuperacoes_matriculaId_fkey" FOREIGN KEY ("matriculaId") REFERENCES "public"."CursosTurmasMatriculas"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."CursosTurmasRecuperacoes" ADD CONSTRAINT "CursosTurmasRecuperacoes_inscricaoId_fkey" FOREIGN KEY ("inscricaoId") REFERENCES "public"."CursosTurmasInscricoes"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."CursosTurmasRecuperacoes" ADD CONSTRAINT "CursosTurmasRecuperacoes_regraId_fkey" FOREIGN KEY ("regraId") REFERENCES "public"."CursosTurmasRegrasAvaliacao"("id") ON DELETE SET NULL ON UPDATE CASCADE;

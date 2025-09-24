@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 
 export const frequenciaWithRelations = Prisma.validator<Prisma.CursosFrequenciaAlunosDefaultArgs>()({
   include: {
-    matricula: {
+    inscricao: {
       select: {
         id: true,
         alunoId: true,
@@ -37,7 +37,7 @@ export type FrequenciaWithRelations = Prisma.CursosFrequenciaAlunosGetPayload<ty
 export const mapFrequencia = (frequencia: FrequenciaWithRelations) => ({
   id: frequencia.id,
   turmaId: frequencia.turmaId,
-  matriculaId: frequencia.matriculaId,
+  inscricaoId: frequencia.inscricaoId,
   aulaId: frequencia.aulaId,
   dataReferencia: frequencia.dataReferencia.toISOString(),
   status: frequencia.status,
@@ -59,15 +59,15 @@ export const mapFrequencia = (frequencia: FrequenciaWithRelations) => ({
           : null,
       }
     : null,
-  matricula: frequencia.matricula
+  inscricao: frequencia.inscricao
     ? {
-        id: frequencia.matricula.id,
-        alunoId: frequencia.matricula.alunoId,
-        aluno: frequencia.matricula.aluno
+        id: frequencia.inscricao.id,
+        alunoId: frequencia.inscricao.alunoId,
+        aluno: frequencia.inscricao.aluno
           ? {
-              id: frequencia.matricula.aluno.id,
-              nome: frequencia.matricula.aluno.nomeCompleto,
-              email: frequencia.matricula.aluno.email,
+              id: frequencia.inscricao.aluno.id,
+              nome: frequencia.inscricao.aluno.nomeCompleto,
+              email: frequencia.inscricao.aluno.email,
             }
           : null,
       }

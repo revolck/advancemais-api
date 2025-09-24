@@ -39,7 +39,7 @@ export class CursosController {
       endpoints: {
         cursos: '/',
         turmas: '/:cursoId/turmas',
-        matriculas: '/:cursoId/turmas/:turmaId/enrollments',
+        inscricoes: '/:cursoId/turmas/:turmaId/inscricoes',
       },
       status: 'operational',
     });

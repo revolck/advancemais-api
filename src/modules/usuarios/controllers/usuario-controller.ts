@@ -69,7 +69,7 @@ interface UsuarioPerfil {
   telefone: string | null;
   dataNasc: Date | null;
   genero: string | null;
-  matricula: string | null;
+  inscricao: string | null;
   role: string;
   status: string;
   tipoUsuario: string;
@@ -110,7 +110,7 @@ const reviveUsuario = (usuario: UsuarioPerfil): UsuarioPerfil => {
     dataNasc,
     telefone: informacoes.telefone,
     genero: informacoes.genero,
-    matricula: informacoes.matricula,
+    inscricao: informacoes.inscricao,
     avatarUrl: informacoes.avatarUrl,
     descricao: informacoes.descricao,
     aceitarTermos: informacoes.aceitarTermos,
@@ -401,7 +401,7 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
       telefone: usuario.telefone,
       genero: usuario.genero,
       dataNasc: usuario.dataNasc,
-      matricula: usuario.matricula,
+      inscricao: usuario.inscricao,
       role: usuario.role,
       tipoUsuario: usuario.tipoUsuario,
       supabaseId: usuario.supabaseId,
@@ -765,7 +765,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       telefone: usuario.telefone,
       genero: usuario.genero,
       dataNasc: usuario.dataNasc,
-      matricula: usuario.matricula,
+      inscricao: usuario.inscricao,
       role: usuario.role,
       tipoUsuario: usuario.tipoUsuario,
       supabaseId: usuario.supabaseId,

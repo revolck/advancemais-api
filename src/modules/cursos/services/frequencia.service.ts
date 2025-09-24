@@ -30,19 +30,19 @@ const ensureTurmaBelongsToCurso = async (
   }
 };
 
-const ensureMatriculaBelongsToTurma = async (
+const ensureInscricaoBelongsToTurma = async (
   client: PrismaClientOrTx,
   turmaId: string,
-  matriculaId: string,
+  inscricaoId: string,
 ) => {
-  const matricula = await client.cursosTurmasMatriculas.findFirst({
-    where: { id: matriculaId, turmaId },
+  const inscricao = await client.cursosTurmasInscricoes.findFirst({
+    where: { id: inscricaoId, turmaId },
     select: { id: true },
   });
 
-  if (!matricula) {
-    const error = new Error('Matrícula não encontrada para a turma informada');
-    (error as any).code = 'MATRICULA_NOT_FOUND';
+  if (!inscricao) {
+    const error = new Error('Inscrição não encontrada para a turma informada');
+    (error as any).code = 'INSCRICAO_NOT_FOUND';
     throw error;
   }
 };
@@ -75,7 +75,7 @@ const ensureFrequenciaBelongsToTurma = async (
     select: {
       id: true,
       turmaId: true,
-      matriculaId: true,
+      inscricaoId: true,
       status: true,
       aulaId: true,
       justificativa: true,
@@ -121,7 +121,7 @@ export const frequenciaService = {
     cursoId: number,
     turmaId: string,
     filters: {
-      matriculaId?: string;
+      inscricaoId?: string;
       aulaId?: string;
       status?: CursosFrequenciaStatus;
       dataInicio?: Date;
@@ -130,8 +130,8 @@ export const frequenciaService = {
   ) {
     await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
 
-    if (filters.matriculaId) {
-      await ensureMatriculaBelongsToTurma(prisma, turmaId, filters.matriculaId);
+    if (filters.inscricaoId) {
+      await ensureInscricaoBelongsToTurma(prisma, turmaId, filters.inscricaoId);
     }
 
     if (filters.aulaId) {
@@ -141,7 +141,7 @@ export const frequenciaService = {
     const where: Prisma.CursosFrequenciaAlunosWhereInput = {
       turmaId,
       turma: { cursoId },
-      matriculaId: filters.matriculaId ?? undefined,
+      inscricaoId: filters.inscricaoId ?? undefined,
       aulaId: filters.aulaId ?? undefined,
       status: filters.status ?? undefined,
     };
@@ -186,7 +186,7 @@ export const frequenciaService = {
     cursoId: number,
     turmaId: string,
     data: {
-      matriculaId: string;
+      inscricaoId: string;
       aulaId?: string | null;
       dataReferencia?: Date;
       status: CursosFrequenciaStatus;
@@ -196,7 +196,7 @@ export const frequenciaService = {
   ) {
     return prisma.$transaction(async (tx) => {
       await ensureTurmaBelongsToCurso(tx, cursoId, turmaId);
-      await ensureMatriculaBelongsToTurma(tx, turmaId, data.matriculaId);
+      await ensureInscricaoBelongsToTurma(tx, turmaId, data.inscricaoId);
 
       if (data.aulaId) {
         await ensureAulaBelongsToTurma(tx, turmaId, data.aulaId);
@@ -208,7 +208,7 @@ export const frequenciaService = {
         const frequencia = (await tx.cursosFrequenciaAlunos.create({
           data: {
             turmaId,
-            matriculaId: data.matriculaId,
+            inscricaoId: data.inscricaoId,
             aulaId: data.aulaId ?? null,
             dataReferencia: data.dataReferencia ?? new Date(),
             status: data.status,
@@ -220,7 +220,7 @@ export const frequenciaService = {
 
         frequenciasLogger.info(
           { turmaId, frequenciaId: frequencia.id },
-          'Frequência registrada para matrícula',
+          'Frequência registrada para inscrição',
         );
 
         return mapFrequencia(frequencia);
@@ -297,13 +297,13 @@ export const frequenciaService = {
     });
   },
 
-  async listByMatricula(
-    matriculaId: string,
+  async listByInscricao(
+    inscricaoId: string,
     requesterId?: string,
     { permitirAdmin = false }: { permitirAdmin?: boolean } = {},
   ) {
-    const matricula = await prisma.cursosTurmasMatriculas.findUnique({
-      where: { id: matriculaId },
+    const inscricao = await prisma.cursosTurmasInscricoes.findUnique({
+      where: { id: inscricaoId },
       include: {
         aluno: { select: { id: true, nomeCompleto: true, email: true } },
         turma: {
@@ -317,20 +317,20 @@ export const frequenciaService = {
       },
     });
 
-    if (!matricula) {
-      const error = new Error('Matrícula não encontrada');
-      (error as any).code = 'MATRICULA_NOT_FOUND';
+    if (!inscricao) {
+      const error = new Error('Inscrição não encontrada');
+      (error as any).code = 'INSCRICAO_NOT_FOUND';
       throw error;
     }
 
-    if (requesterId && matricula.alunoId !== requesterId && !permitirAdmin) {
+    if (requesterId && inscricao.alunoId !== requesterId && !permitirAdmin) {
       const error = new Error('Acesso negado');
       (error as any).code = 'FORBIDDEN';
       throw error;
     }
 
     const frequencias = await prisma.cursosFrequenciaAlunos.findMany({
-      where: { matriculaId },
+      where: { inscricaoId },
       orderBy: [
         { dataReferencia: 'desc' },
         { criadoEm: 'desc' },
@@ -339,22 +339,22 @@ export const frequenciaService = {
     });
 
     return {
-      matricula: {
-        id: matricula.id,
+      inscricao: {
+        id: inscricao.id,
         aluno: {
-          id: matricula.aluno.id,
-          nome: matricula.aluno.nomeCompleto,
-          email: matricula.aluno.email,
+          id: inscricao.aluno.id,
+          nome: inscricao.aluno.nomeCompleto,
+          email: inscricao.aluno.email,
         },
       },
       curso: {
-        id: matricula.turma.curso.id,
-        nome: matricula.turma.curso.nome,
+        id: inscricao.turma.curso.id,
+        nome: inscricao.turma.curso.nome,
       },
       turma: {
-        id: matricula.turma.id,
-        nome: matricula.turma.nome,
-        codigo: matricula.turma.codigo,
+        id: inscricao.turma.id,
+        nome: inscricao.turma.nome,
+        codigo: inscricao.turma.codigo,
       },
       frequencias: frequencias.map(mapFrequencia),
     };

@@ -46,7 +46,7 @@ model Usuarios {
   emailVerification    UsuariosVerificacaoEmail?
   informacoes          UsuariosInformation?
   cursosComoInstrutor  Cursos[]             @relation("CursosInstrutor")
-  turmasMatriculadas   CursosTurmasMatriculas[]
+  turmasInscritas   CursosTurmasInscricoes[]
   certificadosEmitidos CursosCertificadosEmitidos[] @relation("CursosCertificadosEmitidosEmitidoPor")
   estagiosComoAluno   CursosEstagios[]            @relation("CursosEstagiosAluno")
   estagiosCriados     CursosEstagios[]            @relation("CursosEstagiosCriadoPor")
@@ -65,7 +65,7 @@ model UsuariosInformation {
   telefone      String
   genero        String?
   dataNasc      DateTime?
-  matricula     String?
+  inscricao     String?
   avatarUrl     String?
   descricao     String?  @db.VarChar(500)
   aceitarTermos Boolean  @default(false)
@@ -161,7 +161,7 @@ model CursosTurmas {
   criadoEm             DateTime                 @default(now())
   atualizadoEm         DateTime                 @updatedAt
   curso                Cursos                   @relation(fields: [cursoId], references: [id], onDelete: Cascade)
-  matriculas           CursosTurmasMatriculas[]
+  inscricoes           CursosTurmasInscricoes[]
   aulas                CursosTurmasAulas[]
   modulos              CursosTurmasModulos[]
   provas               CursosTurmasProvas[]
@@ -238,7 +238,7 @@ model CursosTurmasAulasMateriais {
   @@index([tipo])
 }
 
-model CursosTurmasMatriculas {
+model CursosTurmasInscricoes {
   id        String   @id @default(uuid())
   turmaId   String
   alunoId   String
@@ -310,7 +310,7 @@ model CursosTurmasAgenda {
 model CursosTurmasProvasEnvios {
   id          String   @id @default(uuid())
   provaId     String
-  matriculaId String
+  inscricaoId String
   nota        Decimal? @db.Decimal(4, 1)
   pesoTotal   Decimal? @db.Decimal(5, 2)
   realizadoEm DateTime?
@@ -319,11 +319,11 @@ model CursosTurmasProvasEnvios {
   atualizadoEm DateTime @updatedAt
 
   prova      CursosTurmasProvas     @relation(fields: [provaId], references: [id], onDelete: Cascade)
-  matricula  CursosTurmasMatriculas @relation(fields: [matriculaId], references: [id], onDelete: Cascade)
+  inscricao  CursosTurmasInscricoes @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
   recuperacoes CursosTurmasRecuperacoes[]
 
-  @@unique([provaId, matriculaId])
-  @@index([matriculaId])
+  @@unique([provaId, inscricaoId])
+  @@index([inscricaoId])
 }
 
 model CursosTurmasRegrasAvaliacao {
@@ -346,7 +346,7 @@ model CursosTurmasRegrasAvaliacao {
 model CursosTurmasRecuperacoes {
   id              String                 @id @default(uuid())
   turmaId         String
-  matriculaId     String
+  inscricaoId     String
   regraId         String?
   provaId         String?
   envioId         String?
@@ -362,20 +362,20 @@ model CursosTurmasRecuperacoes {
   atualizadoEm    DateTime               @updatedAt
 
   turma     CursosTurmas               @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  matricula CursosTurmasMatriculas     @relation(fields: [matriculaId], references: [id], onDelete: Cascade)
+  inscricao CursosTurmasInscricoes     @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
   regra     CursosTurmasRegrasAvaliacao? @relation(fields: [regraId], references: [id], onDelete: SetNull)
   prova     CursosTurmasProvas?        @relation(fields: [provaId], references: [id], onDelete: SetNull)
   envio     CursosTurmasProvasEnvios?  @relation(fields: [envioId], references: [id], onDelete: SetNull)
 
   @@index([turmaId])
-  @@index([matriculaId])
+  @@index([inscricaoId])
   @@index([statusFinal])
 }
 
 model CursosNotas {
   id                String          @id @default(uuid())
   turmaId           String
-  matriculaId       String
+  inscricaoId       String
   tipo              CursosNotasTipo
   provaId           String?
   referenciaExterna String?         @db.VarChar(120)
@@ -390,19 +390,19 @@ model CursosNotas {
   atualizadoEm      DateTime        @updatedAt
 
   turma      CursosTurmas           @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  matricula  CursosTurmasMatriculas @relation(fields: [matriculaId], references: [id], onDelete: Cascade)
+  inscricao  CursosTurmasInscricoes @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
   prova      CursosTurmasProvas?    @relation(fields: [provaId], references: [id], onDelete: SetNull)
 
   @@index([turmaId])
-  @@index([matriculaId])
+  @@index([inscricaoId])
   @@index([tipo])
-  @@unique([matriculaId, provaId])
+  @@unique([inscricaoId, provaId])
 }
 
 model CursosFrequenciaAlunos {
   id             String                  @id @default(uuid())
   turmaId        String
-  matriculaId    String
+  inscricaoId    String
   aulaId         String?
   dataReferencia DateTime                @default(now())
   status         CursosFrequenciaStatus  @default(PRESENTE)
@@ -412,14 +412,14 @@ model CursosFrequenciaAlunos {
   atualizadoEm   DateTime                @updatedAt
 
   turma      CursosTurmas           @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  matricula  CursosTurmasMatriculas @relation(fields: [matriculaId], references: [id], onDelete: Cascade)
+  inscricao  CursosTurmasInscricoes @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
   aula       CursosTurmasAulas?     @relation(fields: [aulaId], references: [id], onDelete: SetNull)
 
   @@index([turmaId])
-  @@index([matriculaId])
+  @@index([inscricaoId])
   @@index([aulaId])
   @@index([dataReferencia])
-  @@unique([turmaId, matriculaId, aulaId, dataReferencia], map: "cursos_frequencia_unico")
+  @@unique([turmaId, inscricaoId, aulaId, dataReferencia], map: "cursos_frequencia_unico")
 }
 
 enum CursosSituacaoFinal {
@@ -1459,7 +1459,7 @@ enum CursosCertificadosLogAcao {
 
 model CursosCertificadosEmitidos {
   id             String                    @id @default(uuid())
-  matriculaId    String
+  inscricaoId    String
   codigo         String                    @unique @db.VarChar(20)
   tipo           CursosCertificados
   formato        CursosCertificadosTipos
@@ -1473,11 +1473,11 @@ model CursosCertificadosEmitidos {
   emitidoEm      DateTime                  @default(now())
   observacoes    String?                   @db.VarChar(500)
 
-  matricula CursosTurmasMatriculas @relation(fields: [matriculaId], references: [id], onDelete: Cascade)
+  inscricao CursosTurmasInscricoes @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
   emitidoPor Usuarios?             @relation("CursosCertificadosEmitidosEmitidoPor", fields: [emitidoPorId], references: [id], onDelete: SetNull)
   logs       CursosCertificadosLogs[]
 
-  @@index([matriculaId])
+  @@index([inscricaoId])
   @@index([emitidoPorId])
   @@index([emitidoEm])
 }
@@ -1501,7 +1501,7 @@ model CursosEstagios {
   id                     String               @id @default(uuid())
   cursoId                Int
   turmaId                String
-  matriculaId            String
+  inscricaoId            String
   alunoId                String
   nome                   String               @db.VarChar(255)
   descricao              String?              @db.Text
@@ -1524,7 +1524,7 @@ model CursosEstagios {
 
   curso        Cursos                    @relation(fields: [cursoId], references: [id], onDelete: Cascade)
   turma        CursosTurmas              @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  matricula    CursosTurmasMatriculas    @relation(fields: [matriculaId], references: [id], onDelete: Cascade)
+  inscricao    CursosTurmasInscricoes    @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
   aluno        Usuarios                  @relation("CursosEstagiosAluno", fields: [alunoId], references: [id], onDelete: Cascade)
   criadoPor    Usuarios?                 @relation("CursosEstagiosCriadoPor", fields: [criadoPorId], references: [id], onDelete: SetNull)
   atualizadoPor Usuarios?                @relation("CursosEstagiosAtualizadoPor", fields: [atualizadoPorId], references: [id], onDelete: SetNull)
@@ -1534,7 +1534,7 @@ model CursosEstagios {
 
   @@index([cursoId])
   @@index([turmaId])
-  @@index([matriculaId])
+  @@index([inscricaoId])
   @@index([alunoId])
   @@index([status])
   @@index([dataFim])

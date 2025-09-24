@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 
 export const notaWithRelations = Prisma.validator<Prisma.CursosNotasDefaultArgs>()({
   include: {
-    matricula: {
+    inscricao: {
       select: {
         id: true,
         alunoId: true,
@@ -38,7 +38,7 @@ const normalizeDecimal = (value: Prisma.Decimal | number | null | undefined) => 
 export const mapNota = (nota: NotaWithRelations) => ({
   id: nota.id,
   turmaId: nota.turmaId,
-  matriculaId: nota.matriculaId,
+  inscricaoId: nota.inscricaoId,
   tipo: nota.tipo,
   referenciaExterna: nota.referenciaExterna ?? null,
   titulo: nota.titulo,
@@ -57,15 +57,15 @@ export const mapNota = (nota: NotaWithRelations) => ({
         etiqueta: nota.prova.etiqueta,
       }
     : null,
-  matricula: nota.matricula
+  inscricao: nota.inscricao
     ? {
-        id: nota.matricula.id,
-        alunoId: nota.matricula.alunoId,
-        aluno: nota.matricula.aluno
+        id: nota.inscricao.id,
+        alunoId: nota.inscricao.alunoId,
+        aluno: nota.inscricao.aluno
           ? {
-              id: nota.matricula.aluno.id,
-              nome: nota.matricula.aluno.nomeCompleto,
-              email: nota.matricula.aluno.email,
+              id: nota.inscricao.aluno.id,
+              nome: nota.inscricao.aluno.nomeCompleto,
+              email: nota.inscricao.aluno.email,
             }
           : null,
       }

@@ -278,11 +278,11 @@ export class ProvasController {
         });
       }
 
-      if (error?.code === 'MATRICULA_NOT_FOUND') {
+      if (error?.code === 'INSCRICAO_NOT_FOUND') {
         return res.status(404).json({
           success: false,
-          code: 'MATRICULA_NOT_FOUND',
-          message: 'Matrícula não encontrada para a turma informada',
+          code: 'INSCRICAO_NOT_FOUND',
+          message: 'Inscrição não encontrada para a turma informada',
         });
       }
 

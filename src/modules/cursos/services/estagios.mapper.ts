@@ -17,7 +17,7 @@ export const estagioWithRelations = Prisma.validator<Prisma.CursosEstagiosDefaul
         codigo: true,
       },
     },
-    matricula: {
+    inscricao: {
       select: {
         id: true,
       },
@@ -114,7 +114,7 @@ export const mapEstagio = (
   id: estagio.id,
   cursoId: estagio.cursoId,
   turmaId: estagio.turmaId,
-  matriculaId: estagio.matriculaId,
+  inscricaoId: estagio.inscricaoId,
   aluno: {
     id: estagio.aluno.id,
     nome: estagio.aluno.nomeCompleto,

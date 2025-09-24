@@ -125,7 +125,7 @@ const options: Options = {
       {
         name: 'Empresas - Admin',
         description:
-          'Gestão administrativa completa das empresas: cadastro, planos, pagamentos, vagas, banimentos e monitoramento operacional',
+          'Gestão administrativa completa das empresas: cadastro, planos, pagamentos, vagas, bloqueios e monitoramento operacional',
       },
       {
         name: 'Candidatos',
@@ -6216,7 +6216,7 @@ const options: Options = {
             'parceira',
             'vagasPublicadas',
             'limiteVagasPlano',
-            'banida',
+            'bloqueada',
           ],
           properties: {
             id: { type: 'string', format: 'uuid', example: 'empresa-uuid' },
@@ -6280,13 +6280,13 @@ const options: Options = {
               example: 10,
               description: 'Limite de vagas simultâneas definido pelo plano atual',
             },
-            banida: {
+            bloqueada: {
               type: 'boolean',
               example: false,
-              description: 'Indica se a empresa possui um banimento ativo no momento da consulta',
+              description: 'Indica se a empresa possui um bloqueio ativo no momento da consulta',
             },
-            banimentoAtivo: {
-              allOf: [{ $ref: '#/components/schemas/AdminUsuariosEmBanimentosResumo' }],
+            bloqueioAtivo: {
+              allOf: [{ $ref: '#/components/schemas/AdminUsuariosEmBloqueiosResumo' }],
               nullable: true,
             },
           },
@@ -6331,8 +6331,8 @@ const options: Options = {
             },
             vagasPublicadas: 8,
             limiteVagasPlano: 10,
-            banida: false,
-            banimentoAtivo: null,
+            bloqueada: false,
+            bloqueioAtivo: null,
           },
         },
         AdminEmpresasPlanoInput: {
@@ -6458,7 +6458,7 @@ const options: Options = {
             status: {
               type: 'string',
               nullable: true,
-              enum: ['ATIVO', 'INATIVO', 'BANIDO', 'PENDENTE', 'SUSPENSO'],
+              enum: ['ATIVO', 'INATIVO', 'BLOQUEADO', 'PENDENTE', 'SUSPENSO'],
               example: 'ATIVO',
               description: 'Status inicial da conta da empresa. Padrão: ATIVO',
             },
@@ -6541,7 +6541,7 @@ const options: Options = {
             status: {
               type: 'string',
               nullable: true,
-              enum: ['ATIVO', 'INATIVO', 'BANIDO', 'PENDENTE', 'SUSPENSO'],
+              enum: ['ATIVO', 'INATIVO', 'BLOQUEADO', 'PENDENTE', 'SUSPENSO'],
               example: 'ATIVO',
             },
             plano: {
@@ -6606,7 +6606,7 @@ const options: Options = {
             },
             status: {
               type: 'string',
-              enum: ['ATIVO', 'INATIVO', 'BANIDO', 'PENDENTE', 'SUSPENSO'],
+              enum: ['ATIVO', 'INATIVO', 'BLOQUEADO', 'PENDENTE', 'SUSPENSO'],
               example: 'ATIVO',
               description: 'Status atual do cadastro da empresa.',
             },
@@ -6746,8 +6746,8 @@ const options: Options = {
                 },
                 vagasPublicadas: 8,
                 limiteVagasPlano: 10,
-                banida: false,
-                banimentoAtivo: null,
+                bloqueada: false,
+                bloqueioAtivo: null,
               },
             ],
             pagination: {
@@ -6773,7 +6773,7 @@ const options: Options = {
             'ativa',
             'parceira',
             'vagas',
-            'banida',
+            'bloqueada',
             'pagamento',
           ],
           properties: {
@@ -6817,7 +6817,7 @@ const options: Options = {
             criadoEm: { type: 'string', format: 'date-time', example: '2023-11-01T08:30:00Z' },
             status: {
               type: 'string',
-              enum: ['ATIVO', 'INATIVO', 'BANIDO', 'PENDENTE', 'SUSPENSO'],
+              enum: ['ATIVO', 'INATIVO', 'BLOQUEADO', 'PENDENTE', 'SUSPENSO'],
               example: 'ATIVO',
             },
             ultimoLogin: {
@@ -6833,8 +6833,8 @@ const options: Options = {
               allOf: [{ $ref: '#/components/schemas/AdminEmpresasPlanoResumo' }],
               nullable: true,
             },
-            banimentoAtivo: {
-              allOf: [{ $ref: '#/components/schemas/AdminUsuariosEmBanimentosResumo' }],
+            bloqueioAtivo: {
+              allOf: [{ $ref: '#/components/schemas/AdminUsuariosEmBloqueiosResumo' }],
               nullable: true,
             },
             vagas: {
@@ -6844,10 +6844,10 @@ const options: Options = {
                 limitePlano: { type: 'integer', nullable: true, example: 3 },
               },
             },
-            banida: {
+            bloqueada: {
               type: 'boolean',
               example: false,
-              description: 'Indica se a empresa possui um banimento ativo',
+              description: 'Indica se a empresa possui um bloqueio ativo',
             },
             pagamento: {
               type: 'object',
@@ -6910,12 +6910,12 @@ const options: Options = {
               duracaoEmDias: null,
               diasRestantes: 18,
             },
-            banimentoAtivo: null,
+            bloqueioAtivo: null,
             vagas: {
               publicadas: 8,
               limitePlano: 10,
             },
-            banida: false,
+            bloqueada: false,
             pagamento: {
               modelo: 'ASSINATURA',
               metodo: 'PIX',
@@ -6974,12 +6974,12 @@ const options: Options = {
                 duracaoEmDias: null,
                 diasRestantes: 18,
               },
-              banimentoAtivo: null,
+              bloqueioAtivo: null,
               vagas: {
                 publicadas: 8,
                 limitePlano: 10,
               },
-              banida: false,
+              bloqueada: false,
               pagamento: {
                 modelo: 'ASSINATURA',
                 metodo: 'PIX',
@@ -6995,26 +6995,26 @@ const options: Options = {
             },
           },
         },
-        AdminUsuariosBanimentoAlvo: {
+        AdminUsuariosBloqueioAlvo: {
           type: 'object',
-          description: 'Identificação do alvo banido',
+          description: 'Identificação do alvo bloqueado',
           required: ['tipo', 'id', 'nome', 'role'],
           properties: {
             tipo: {
               type: 'string',
               enum: ['EMPRESA', 'USUARIO', 'ESTUDANTE'],
               example: 'EMPRESA',
-              description: 'Tipo de perfil afetado pelo banimento.',
+              description: 'Tipo de perfil afetado pelo bloqueio.',
             },
             id: {
               type: 'string',
               example: 'cmp_112233',
-              description: 'Identificador do usuário banido no sistema.',
+              description: 'Identificador do usuário bloqueado no sistema.',
             },
             nome: {
               type: 'string',
               example: 'Empresa XPTO',
-              description: 'Nome exibido para o alvo do banimento.',
+              description: 'Nome exibido para o alvo do bloqueio.',
             },
             role: {
               type: 'string',
@@ -7023,9 +7023,9 @@ const options: Options = {
             },
           },
         },
-        AdminUsuariosBanimentoResponsavel: {
+        AdminUsuariosBloqueioResponsavel: {
           type: 'object',
-          description: 'Responsável pela aplicação do banimento',
+          description: 'Responsável pela aplicação do bloqueio',
           required: ['id', 'nome', 'role'],
           properties: {
             id: { type: 'string', example: 'adm_002' },
@@ -7033,9 +7033,9 @@ const options: Options = {
             role: { type: 'string', example: 'ADMIN' },
           },
         },
-        AdminUsuariosBanimentoDados: {
+        AdminUsuariosBloqueioDados: {
           type: 'object',
-          description: 'Detalhes do banimento',
+          description: 'Detalhes do bloqueio',
           required: ['tipo', 'motivo', 'status', 'inicio'],
           properties: {
             tipo: {
@@ -7071,9 +7071,9 @@ const options: Options = {
             },
           },
         },
-        AdminUsuariosBanimentoAuditoria: {
+        AdminUsuariosBloqueioAuditoria: {
           type: 'object',
-          description: 'Metadados de criação e atualização do banimento',
+          description: 'Metadados de criação e atualização do bloqueio',
           required: ['criadoEm', 'atualizadoEm'],
           properties: {
             criadoEm: {
@@ -7088,31 +7088,31 @@ const options: Options = {
             },
           },
         },
-        AdminUsuariosEmBanimentosResumo: {
+        AdminUsuariosEmBloqueiosResumo: {
           type: 'object',
-          description: 'Resumo completo do banimento aplicado ao usuário',
-          required: ['id', 'alvo', 'banimento', 'auditoria'],
+          description: 'Resumo completo do bloqueio aplicado ao usuário',
+          required: ['id', 'alvo', 'bloqueio', 'auditoria'],
           properties: {
-            id: { type: 'string', format: 'uuid', example: 'ban_123456' },
-            alvo: { allOf: [{ $ref: '#/components/schemas/AdminUsuariosBanimentoAlvo' }] },
-            banimento: { allOf: [{ $ref: '#/components/schemas/AdminUsuariosBanimentoDados' }] },
+            id: { type: 'string', format: 'uuid', example: 'bloq_123456' },
+            alvo: { allOf: [{ $ref: '#/components/schemas/AdminUsuariosBloqueioAlvo' }] },
+            bloqueio: { allOf: [{ $ref: '#/components/schemas/AdminUsuariosBloqueioDados' }] },
             aplicadoPor: {
-              allOf: [{ $ref: '#/components/schemas/AdminUsuariosBanimentoResponsavel' }],
+              allOf: [{ $ref: '#/components/schemas/AdminUsuariosBloqueioResponsavel' }],
               nullable: true,
             },
             auditoria: {
-              allOf: [{ $ref: '#/components/schemas/AdminUsuariosBanimentoAuditoria' }],
+              allOf: [{ $ref: '#/components/schemas/AdminUsuariosBloqueioAuditoria' }],
             },
           },
           example: {
-            id: 'ban_123456',
+            id: 'bloq_123456',
             alvo: {
               tipo: 'EMPRESA',
               id: 'cmp_112233',
               nome: 'Empresa XPTO',
               role: 'EMPRESA',
             },
-            banimento: {
+            bloqueio: {
               tipo: 'TEMPORARIO',
               motivo: 'VIOLACAO_POLITICAS',
               status: 'ATIVO',
@@ -7221,27 +7221,27 @@ const options: Options = {
             },
           },
         },
-        AdminUsuariosBanimentosResponse: {
+        AdminUsuariosBloqueiosResponse: {
           type: 'object',
           required: ['data', 'pagination'],
           properties: {
             data: {
               type: 'array',
-              items: { $ref: '#/components/schemas/AdminUsuariosEmBanimentosResumo' },
+              items: { $ref: '#/components/schemas/AdminUsuariosEmBloqueiosResumo' },
             },
             pagination: { allOf: [{ $ref: '#/components/schemas/PaginationMeta' }] },
           },
           example: {
             data: [
               {
-                id: 'ban_123456',
+                id: 'bloq_123456',
                 alvo: {
                   tipo: 'EMPRESA',
                   id: 'cmp_112233',
                   nome: 'Empresa XPTO',
                   role: 'EMPRESA',
                 },
-                banimento: {
+                bloqueio: {
                   tipo: 'TEMPORARIO',
                   motivo: 'VIOLACAO_POLITICAS',
                   status: 'ATIVO',
@@ -7268,7 +7268,7 @@ const options: Options = {
             },
           },
         },
-        AdminUsuariosEmBanimentosCreate: {
+        AdminUsuariosEmBloqueiosCreate: {
           type: 'object',
           required: ['tipo', 'motivo'],
           properties: {
@@ -7276,13 +7276,13 @@ const options: Options = {
               type: 'string',
               enum: ['TEMPORARIO', 'PERMANENTE', 'RESTRICAO_DE_RECURSO'],
               example: 'TEMPORARIO',
-              description: 'Tipo do banimento aplicado.',
+              description: 'Tipo do bloqueio aplicado.',
             },
             motivo: {
               type: 'string',
               enum: ['SPAM', 'VIOLACAO_POLITICAS', 'FRAUDE', 'ABUSO_DE_RECURSOS', 'OUTROS'],
               example: 'VIOLACAO_POLITICAS',
-              description: 'Motivo categorizado do banimento.',
+              description: 'Motivo categorizado do bloqueio.',
             },
             dias: {
               type: 'integer',
@@ -7290,7 +7290,7 @@ const options: Options = {
               maximum: 3650,
               nullable: true,
               example: 30,
-              description: 'Vigência em dias (obrigatório para banimentos temporários).',
+              description: 'Vigência em dias (obrigatório para bloqueios temporários).',
             },
             observacoes: {
               type: 'string',
@@ -7301,22 +7301,22 @@ const options: Options = {
             },
           },
         },
-        AdminUsuariosEmBanimentosResponse: {
+        AdminUsuariosEmBloqueiosResponse: {
           type: 'object',
-          required: ['banimento'],
+          required: ['bloqueio'],
           properties: {
-            banimento: { $ref: '#/components/schemas/AdminUsuariosEmBanimentosResumo' },
+            bloqueio: { $ref: '#/components/schemas/AdminUsuariosEmBloqueiosResumo' },
           },
           example: {
-            banimento: {
-              id: 'ban_123456',
+            bloqueio: {
+              id: 'bloq_123456',
               alvo: {
                 tipo: 'EMPRESA',
                 id: 'cmp_112233',
                 nome: 'Empresa XPTO',
                 role: 'EMPRESA',
               },
-              banimento: {
+              bloqueio: {
                 tipo: 'TEMPORARIO',
                 motivo: 'VIOLACAO_POLITICAS',
                 status: 'ATIVO',
@@ -8375,7 +8375,7 @@ const options: Options = {
             },
             status: {
               type: 'string',
-              enum: ['ATIVO', 'INATIVO', 'BANIDO', 'PENDENTE', 'SUSPENSO'],
+              enum: ['ATIVO', 'INATIVO', 'BLOQUEADO', 'PENDENTE', 'SUSPENSO'],
               example: 'ATIVO',
             },
             tipoUsuario: {
@@ -8585,7 +8585,7 @@ const options: Options = {
             },
             status: {
               type: 'string',
-              enum: ['ATIVO', 'INATIVO', 'BANIDO', 'PENDENTE', 'SUSPENSO'],
+              enum: ['ATIVO', 'INATIVO', 'BLOQUEADO', 'PENDENTE', 'SUSPENSO'],
               example: 'ATIVO',
               description: 'Status inicial do usuário. O padrão é ATIVO.',
             },
@@ -8672,7 +8672,7 @@ const options: Options = {
                 role: { allOf: [{ $ref: '#/components/schemas/Roles' }] },
                 status: {
                   type: 'string',
-                  enum: ['ATIVO', 'INATIVO', 'BANIDO', 'PENDENTE', 'SUSPENSO'],
+                  enum: ['ATIVO', 'INATIVO', 'BLOQUEADO', 'PENDENTE', 'SUSPENSO'],
                   example: 'ATIVO',
                 },
                 criadoEm: {

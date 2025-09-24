@@ -38,7 +38,7 @@ const adminController = new AdminController();
  *         name: status
  *         schema:
  *           type: string
- *           enum: [ATIVO, INATIVO, BANIDO, PENDENTE, SUSPENSO]
+ *           enum: [ATIVO, INATIVO, BLOQUEADO, PENDENTE, SUSPENSO]
  *           example: ATIVO
  *       - in: query
  *         name: tipoUsuario
@@ -307,7 +307,7 @@ router.post('/usuarios', asyncHandler(adminController.criarUsuario));
  *         name: status
  *         schema:
  *           type: string
- *           enum: [ATIVO, INATIVO, BANIDO, PENDENTE, SUSPENSO]
+ *           enum: [ATIVO, INATIVO, BLOQUEADO, PENDENTE, SUSPENSO]
  *           example: ATIVO
  *       - in: query
  *         name: tipoUsuario

@@ -43,7 +43,7 @@ export class ClientesController {
         return res.status(404).json({
           success: false,
           code: 'PLANO_PARCEIRO_NOT_FOUND',
-          message: 'Plano parceiro da empresa não encontrado',
+          message: 'Plano de assinatura da empresa não encontrado',
         });
       }
 
@@ -52,7 +52,7 @@ export class ClientesController {
       res.status(500).json({
         success: false,
         code: 'PLANOS_PARCEIRO_GET_ERROR',
-        message: 'Erro ao consultar o plano parceiro da empresa',
+        message: 'Erro ao consultar o plano de assinatura da empresa',
         error: error?.message,
       });
     }
@@ -68,7 +68,7 @@ export class ClientesController {
         return res.status(400).json({
           success: false,
           code: 'VALIDATION_ERROR',
-          message: 'Dados inválidos para vincular o plano parceiro',
+          message: 'Dados inválidos para vincular o plano de assinatura',
           issues: error.flatten().fieldErrors,
         });
       }
@@ -84,7 +84,7 @@ export class ClientesController {
       res.status(500).json({
         success: false,
         code: 'PLANOS_PARCEIRO_ASSIGN_ERROR',
-        message: 'Erro ao vincular o plano parceiro à empresa',
+        message: 'Erro ao vincular o plano de assinatura à empresa',
         error: error?.message,
       });
     }
@@ -99,7 +99,7 @@ export class ClientesController {
         return res.status(400).json({
           success: false,
           code: 'VALIDATION_ERROR',
-          message: 'Informe ao menos um campo para atualização do plano parceiro',
+          message: 'Informe ao menos um campo para atualização do plano de assinatura',
         });
       }
 
@@ -110,7 +110,7 @@ export class ClientesController {
         return res.status(400).json({
           success: false,
           code: 'VALIDATION_ERROR',
-          message: 'Dados inválidos para atualizar o plano parceiro',
+          message: 'Dados inválidos para atualizar o plano de assinatura',
           issues: error.flatten().fieldErrors,
         });
       }
@@ -119,7 +119,7 @@ export class ClientesController {
         return res.status(404).json({
           success: false,
           code: 'PLANO_PARCEIRO_NOT_FOUND',
-          message: 'Plano parceiro da empresa não encontrado',
+          message: 'Plano de assinatura da empresa não encontrado',
         });
       }
 
@@ -134,7 +134,7 @@ export class ClientesController {
       res.status(500).json({
         success: false,
         code: 'PLANOS_PARCEIRO_UPDATE_ERROR',
-        message: 'Erro ao atualizar o plano parceiro da empresa',
+        message: 'Erro ao atualizar o plano de assinatura da empresa',
         error: error?.message,
       });
     }
@@ -149,14 +149,14 @@ export class ClientesController {
         return res.status(404).json({
           success: false,
           code: 'PLANO_PARCEIRO_NOT_FOUND',
-          message: 'Plano parceiro da empresa não encontrado',
+          message: 'Plano de assinatura da empresa não encontrado',
         });
       }
 
       res.status(500).json({
         success: false,
         code: 'PLANOS_PARCEIRO_DELETE_ERROR',
-        message: 'Erro ao encerrar o plano parceiro da empresa',
+        message: 'Erro ao encerrar o plano de assinatura da empresa',
         error: error?.message,
       });
     }

@@ -19,6 +19,9 @@ export const calcularFim = (
   if (modo === EmpresasPlanoModo.PARCEIRO) {
     return null; // sem validade
   }
+  if (modo === EmpresasPlanoModo.CLIENTE) {
+    return null; // assinatura ativa controlada pelo gateway de pagamento
+  }
   // Assinatura recorrente: controlada pelo gateway; opcionalmente 30 dias
   return null;
 };

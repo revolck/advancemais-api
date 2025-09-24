@@ -362,7 +362,7 @@ export const agendaService = {
       turmaId?: string;
     } = {},
   ) {
-    const matriculas = await prisma.cursosTurmasMatriculas.findMany({
+    const inscricoes = await prisma.cursosTurmasInscricoes.findMany({
       where: { alunoId },
       select: {
         id: true,
@@ -370,16 +370,16 @@ export const agendaService = {
       },
     });
 
-    if (matriculas.length === 0) {
+    if (inscricoes.length === 0) {
       return [];
     }
 
-    let turmaIds = matriculas.map((matricula) => matricula.turmaId);
+    let turmaIds = inscricoes.map((inscricao) => inscricao.turmaId);
 
     if (filters.turmaId) {
       if (!turmaIds.includes(filters.turmaId)) {
-        const error = new Error('Aluno não está matriculado na turma informada');
-        (error as any).code = 'MATRICULA_NOT_FOUND';
+        const error = new Error('Aluno não está inscrito na turma informada');
+        (error as any).code = 'INSCRICAO_NOT_FOUND';
         throw error;
       }
       turmaIds = [filters.turmaId];
@@ -404,11 +404,11 @@ export const agendaService = {
       ...agendaWithRelations,
     });
 
-    const matriculaPorTurma = new Map(matriculas.map((matricula) => [matricula.turmaId, matricula.id]));
+    const inscricaoPorTurma = new Map(inscricoes.map((inscricao) => [inscricao.turmaId, inscricao.id]));
 
     return eventos.map((evento) => ({
       ...mapAgendaItem(evento),
-      matriculaId: matriculaPorTurma.get(evento.turmaId) ?? null,
+      inscricaoId: inscricaoPorTurma.get(evento.turmaId) ?? null,
     }));
   },
 };

@@ -16,7 +16,7 @@ const dateSchema = z
   .optional();
 
 const aulaIdSchema = z.string().uuid('Identificador da aula inválido').nullish();
-const matriculaIdSchema = z.string().uuid('Identificador da matrícula inválido');
+const inscricaoIdSchema = z.string().uuid('Identificador da inscrição inválido');
 
 const justificativaSchema = z
   .string({ invalid_type_error: 'Justificativa deve ser um texto' })
@@ -33,7 +33,7 @@ const observacoesSchema = z
 
 export const createFrequenciaSchema = z
   .object({
-    matriculaId: matriculaIdSchema,
+    inscricaoId: inscricaoIdSchema,
     aulaId: aulaIdSchema,
     dataReferencia: dateSchema,
     status: statusSchema,

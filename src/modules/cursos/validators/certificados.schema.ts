@@ -15,7 +15,7 @@ const optionalUrlSchema = z
   .or(z.null().transform(() => undefined));
 
 export const emitirCertificadoSchema = z.object({
-  matriculaId: z.string().uuid('Identificador da matrícula inválido'),
+  inscricaoId: z.string().uuid('Identificador da inscrição inválido'),
   tipo: z.nativeEnum(CursosCertificados, {
     invalid_type_error: 'Tipo de certificado inválido',
   }),
@@ -37,7 +37,7 @@ export const emitirCertificadoSchema = z.object({
 });
 
 export const listarCertificadosQuerySchema = z.object({
-  matriculaId: z.string().uuid('Identificador da matrícula inválido').optional(),
+  inscricaoId: z.string().uuid('Identificador da inscrição inválido').optional(),
   tipo: z.nativeEnum(CursosCertificados).optional(),
   formato: z.nativeEnum(CursosCertificadosTipos).optional(),
 });

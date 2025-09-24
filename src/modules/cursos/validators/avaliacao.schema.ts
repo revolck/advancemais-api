@@ -28,7 +28,7 @@ export const updateRegrasAvaliacaoSchema = z.object({
 const uuidSchema = z.string().uuid('Identificador inválido');
 
 export const registrarRecuperacaoSchema = z.object({
-  matriculaId: uuidSchema,
+  inscricaoId: uuidSchema,
   provaId: uuidSchema.nullish(),
   envioId: uuidSchema.nullish(),
   notaRecuperacao: decimalNotaSchema.nullish(),

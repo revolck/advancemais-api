@@ -17,7 +17,7 @@ const certificadosLogger = logger.child({ module: 'CursosCertificadosService' })
 type PrismaClientOrTx = Prisma.TransactionClient | typeof prisma;
 
 type EmitirCertificadoData = {
-  matriculaId: string;
+  inscricaoId: string;
   tipo: CursosCertificados;
   formato: CursosCertificadosTipos;
   cargaHoraria?: number | null;
@@ -26,7 +26,7 @@ type EmitirCertificadoData = {
 };
 
 type ListCertificadosFilters = {
-  matriculaId?: string;
+  inscricaoId?: string;
   tipo?: CursosCertificados;
   formato?: CursosCertificadosTipos;
 };
@@ -44,19 +44,19 @@ const ensureTurmaBelongsToCurso = async (client: PrismaClientOrTx, cursoId: numb
   }
 };
 
-const ensureMatriculaBelongsToTurma = async (
+const ensureInscricaoBelongsToTurma = async (
   client: PrismaClientOrTx,
   turmaId: string,
-  matriculaId: string,
+  inscricaoId: string,
 ) => {
-  const matricula = await client.cursosTurmasMatriculas.findFirst({
-    where: { id: matriculaId, turmaId },
+  const inscricao = await client.cursosTurmasInscricoes.findFirst({
+    where: { id: inscricaoId, turmaId },
     select: { id: true },
   });
 
-  if (!matricula) {
-    const error = new Error('Matrícula não encontrada para a turma informada');
-    (error as any).code = 'MATRICULA_NOT_FOUND';
+  if (!inscricao) {
+    const error = new Error('Inscrição não encontrada para a turma informada');
+    (error as any).code = 'INSCRICAO_NOT_FOUND';
     throw error;
   }
 };
@@ -70,10 +70,10 @@ export const certificadosService = {
   ) {
     return prisma.$transaction(async (tx) => {
       await ensureTurmaBelongsToCurso(tx, cursoId, turmaId);
-      await ensureMatriculaBelongsToTurma(tx, turmaId, data.matriculaId);
+      await ensureInscricaoBelongsToTurma(tx, turmaId, data.inscricaoId);
 
-      const matricula = await tx.cursosTurmasMatriculas.findFirst({
-        where: { id: data.matriculaId },
+      const inscricao = await tx.cursosTurmasInscricoes.findFirst({
+        where: { id: data.inscricaoId },
         include: {
           aluno: {
             select: {
@@ -102,16 +102,16 @@ export const certificadosService = {
         },
       });
 
-      if (!matricula) {
-        const error = new Error('Matrícula não encontrada');
-        (error as any).code = 'MATRICULA_NOT_FOUND';
+      if (!inscricao) {
+        const error = new Error('Inscrição não encontrada');
+        (error as any).code = 'INSCRICAO_NOT_FOUND';
         throw error;
       }
 
-      if (matricula.turma.curso.estagioObrigatorio) {
+      if (inscricao.turma.curso.estagioObrigatorio) {
         const estagioConcluido = await tx.cursosEstagios.findFirst({
           where: {
-            matriculaId: data.matriculaId,
+            inscricaoId: data.inscricaoId,
             status: CursosEstagioStatus.CONCLUIDO,
           },
           select: { id: true },
@@ -124,7 +124,7 @@ export const certificadosService = {
         }
       }
 
-      const cargaHoraria = data.cargaHoraria ?? matricula.turma.curso.cargaHoraria ?? 0;
+      const cargaHoraria = data.cargaHoraria ?? inscricao.turma.curso.cargaHoraria ?? 0;
       if (!Number.isFinite(cargaHoraria) || cargaHoraria <= 0) {
         const error = new Error('Carga horária inválida para o certificado');
         (error as any).code = 'INVALID_CARGA_HORARIA';
@@ -135,16 +135,16 @@ export const certificadosService = {
 
       const certificado = await tx.cursosCertificadosEmitidos.create({
         data: {
-          matriculaId: data.matriculaId,
+          inscricaoId: data.inscricaoId,
           codigo,
           tipo: data.tipo,
           formato: data.formato,
           cargaHoraria,
           assinaturaUrl: data.assinaturaUrl ?? null,
-          alunoNome: matricula.aluno.nomeCompleto,
-          alunoCpf: matricula.aluno.cpf,
-          cursoNome: matricula.turma.curso.nome,
-          turmaNome: matricula.turma.nome,
+          alunoNome: inscricao.aluno.nomeCompleto,
+          alunoCpf: inscricao.aluno.cpf,
+          cursoNome: inscricao.turma.curso.nome,
+          turmaNome: inscricao.turma.nome,
           emitidoPorId: emitidoPorId ?? null,
           observacoes: data.observacoes ?? null,
           logs: {
@@ -159,7 +159,7 @@ export const certificadosService = {
       });
 
       certificadosLogger.info(
-        { certificadoId: certificado.id, matriculaId: data.matriculaId, turmaId },
+        { certificadoId: certificado.id, inscricaoId: data.inscricaoId, turmaId },
         'Certificado emitido com sucesso',
       );
 
@@ -172,11 +172,11 @@ export const certificadosService = {
 
     const certificados = await prisma.cursosCertificadosEmitidos.findMany({
       where: {
-        matricula: {
+        inscricao: {
           turmaId,
           turma: { cursoId },
         },
-        ...(filtros.matriculaId ? { matriculaId: filtros.matriculaId } : {}),
+        ...(filtros.inscricaoId ? { inscricaoId: filtros.inscricaoId } : {}),
         ...(filtros.tipo ? { tipo: filtros.tipo } : {}),
         ...(filtros.formato ? { formato: filtros.formato } : {}),
       },
@@ -187,13 +187,13 @@ export const certificadosService = {
     return certificados.map((item) => mapCertificado(item));
   },
 
-  async listarPorMatricula(
-    matriculaId: string,
+  async listarPorInscricao(
+    inscricaoId: string,
     requesterId?: string,
     { permitirAdmin = false }: { permitirAdmin?: boolean } = {},
   ) {
-    const matricula = await prisma.cursosTurmasMatriculas.findUnique({
-      where: { id: matriculaId },
+    const inscricao = await prisma.cursosTurmasInscricoes.findUnique({
+      where: { id: inscricaoId },
       include: {
         aluno: {
           select: {
@@ -202,7 +202,7 @@ export const certificadosService = {
             email: true,
             cpf: true,
             informacoes: {
-              select: { matricula: true },
+              select: { inscricao: true },
             },
           },
         },
@@ -224,45 +224,45 @@ export const certificadosService = {
       },
     });
 
-    if (!matricula) {
-      const error = new Error('Matrícula não encontrada');
-      (error as any).code = 'MATRICULA_NOT_FOUND';
+    if (!inscricao) {
+      const error = new Error('Inscrição não encontrada');
+      (error as any).code = 'INSCRICAO_NOT_FOUND';
       throw error;
     }
 
-    if (requesterId && matricula.alunoId !== requesterId && !permitirAdmin) {
+    if (requesterId && inscricao.alunoId !== requesterId && !permitirAdmin) {
       const error = new Error('Acesso negado');
       (error as any).code = 'FORBIDDEN';
       throw error;
     }
 
     const certificados = await prisma.cursosCertificadosEmitidos.findMany({
-      where: { matriculaId },
+      where: { inscricaoId },
       orderBy: { emitidoEm: 'desc' },
       ...certificadoWithRelations,
     });
 
     return {
-      matricula: {
-        id: matricula.id,
+      inscricao: {
+        id: inscricao.id,
         aluno: {
-          id: matricula.aluno.id,
-          nome: matricula.aluno.nomeCompleto,
-          email: matricula.aluno.email,
-          cpf: matricula.aluno.cpf,
-          matricula: matricula.aluno.informacoes?.matricula ?? null,
+          id: inscricao.aluno.id,
+          nome: inscricao.aluno.nomeCompleto,
+          email: inscricao.aluno.email,
+          cpf: inscricao.aluno.cpf,
+          inscricao: inscricao.aluno.informacoes?.inscricao ?? null,
         },
       },
       curso: {
-        id: matricula.turma.curso.id,
-        nome: matricula.turma.curso.nome,
-        codigo: matricula.turma.curso.codigo,
-        cargaHoraria: matricula.turma.curso.cargaHoraria,
+        id: inscricao.turma.curso.id,
+        nome: inscricao.turma.curso.nome,
+        codigo: inscricao.turma.curso.codigo,
+        cargaHoraria: inscricao.turma.curso.cargaHoraria,
       },
       turma: {
-        id: matricula.turma.id,
-        nome: matricula.turma.nome,
-        codigo: matricula.turma.codigo,
+        id: inscricao.turma.id,
+        nome: inscricao.turma.nome,
+        codigo: inscricao.turma.codigo,
       },
       certificados: certificados.map((item) => mapCertificado(item)),
     } as const;
@@ -270,7 +270,7 @@ export const certificadosService = {
 
   async listarDoAluno(usuarioId: string) {
     const certificados = await prisma.cursosCertificadosEmitidos.findMany({
-      where: { matricula: { alunoId: usuarioId } },
+      where: { inscricao: { alunoId: usuarioId } },
       orderBy: { emitidoEm: 'desc' },
       ...certificadoWithRelations,
     });

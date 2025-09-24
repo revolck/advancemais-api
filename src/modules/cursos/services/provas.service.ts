@@ -221,7 +221,7 @@ export const provasService = {
     turmaId: string,
     provaId: string,
     data: {
-      matriculaId: string;
+      inscricaoId: string;
       nota: number;
       pesoTotal?: number | null;
       realizadoEm?: Date | null;
@@ -231,14 +231,14 @@ export const provasService = {
     return prisma.$transaction(async (tx) => {
       await ensureProvaBelongsToTurma(tx, cursoId, turmaId, provaId);
 
-      const matricula = await tx.cursosTurmasMatriculas.findFirst({
-        where: { id: data.matriculaId, turmaId },
+      const inscricao = await tx.cursosTurmasInscricoes.findFirst({
+        where: { id: data.inscricaoId, turmaId },
         select: { id: true },
       });
 
-      if (!matricula) {
-        const error = new Error('Matrícula não encontrada para a turma informada');
-        (error as any).code = 'MATRICULA_NOT_FOUND';
+      if (!inscricao) {
+        const error = new Error('Inscrição não encontrada para a turma informada');
+        (error as any).code = 'INSCRICAO_NOT_FOUND';
         throw error;
       }
 
@@ -255,9 +255,9 @@ export const provasService = {
 
       const envio = await tx.cursosTurmasProvasEnvios.upsert({
         where: {
-          provaId_matriculaId: {
+          provaId_inscricaoId: {
             provaId,
-            matriculaId: data.matriculaId,
+            inscricaoId: data.inscricaoId,
           },
         },
         update: {
@@ -268,7 +268,7 @@ export const provasService = {
         },
         create: {
           provaId,
-          matriculaId: data.matriculaId,
+          inscricaoId: data.inscricaoId,
           nota: toDecimal(data.nota),
           pesoTotal: toDecimal(data.pesoTotal ?? null),
           realizadoEm: data.realizadoEm ?? null,
@@ -283,8 +283,8 @@ export const provasService = {
 
       await tx.cursosNotas.upsert({
         where: {
-          matriculaId_provaId: {
-            matriculaId: data.matriculaId,
+          inscricaoId_provaId: {
+            inscricaoId: data.inscricaoId,
             provaId,
           },
         },
@@ -298,7 +298,7 @@ export const provasService = {
         },
         create: {
           turmaId,
-          matriculaId: data.matriculaId,
+          inscricaoId: data.inscricaoId,
           tipo: CursosNotasTipo.PROVA,
           provaId,
           titulo: prova.titulo,

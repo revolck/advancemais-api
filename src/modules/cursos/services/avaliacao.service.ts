@@ -121,28 +121,28 @@ const ensureTurmaBelongsToCurso = async (
   }
 };
 
-const ensureMatriculaBelongsToTurma = async (
+const ensureInscricaoBelongsToTurma = async (
   client: PrismaClientOrTx,
   turmaId: string,
-  matriculaId: string,
+  inscricaoId: string,
 ): Promise<void> => {
-  const matricula = await client.cursosTurmasMatriculas.findFirst({
-    where: { id: matriculaId, turmaId },
+  const inscricao = await client.cursosTurmasInscricoes.findFirst({
+    where: { id: inscricaoId, turmaId },
     select: { id: true },
   });
 
-  if (!matricula) {
-    const error = new Error('Matrícula não encontrada para a turma informada');
-    (error as any).code = 'MATRICULA_NOT_FOUND';
+  if (!inscricao) {
+    const error = new Error('Inscrição não encontrada para a turma informada');
+    (error as any).code = 'INSCRICAO_NOT_FOUND';
     throw error;
   }
 };
 
 const mapProvaToReferencia = (
   prova: Prisma.CursosTurmasProvasGetPayload<{ include: { envios: true } }>,
-  matriculaId: string,
+  inscricaoId: string,
 ): CursosReferenciasDeProvas => {
-  const envio = prova.envios.find((item) => item.matriculaId === matriculaId) ?? null;
+  const envio = prova.envios.find((item) => item.inscricaoId === inscricaoId) ?? null;
   return {
     id: prova.id,
     etiqueta: prova.etiqueta,
@@ -261,7 +261,7 @@ export const avaliacaoService = {
     cursoId: number,
     turmaId: string,
     data: {
-      matriculaId: string;
+      inscricaoId: string;
       provaId?: string | null;
       envioId?: string | null;
       notaRecuperacao?: number | null;
@@ -275,7 +275,7 @@ export const avaliacaoService = {
   ) {
     return prisma.$transaction(async (tx) => {
       await ensureTurmaBelongsToCurso(tx, cursoId, turmaId);
-      await ensureMatriculaBelongsToTurma(tx, turmaId, data.matriculaId);
+      await ensureInscricaoBelongsToTurma(tx, turmaId, data.inscricaoId);
 
       if (data.provaId) {
         await ensureProvaBelongsToTurma(tx, cursoId, turmaId, data.provaId);
@@ -284,10 +284,10 @@ export const avaliacaoService = {
       if (data.envioId) {
         const envio = await tx.cursosTurmasProvasEnvios.findFirst({
           where: { id: data.envioId, prova: { turmaId } },
-          select: { matriculaId: true },
+          select: { inscricaoId: true },
         });
-        if (!envio || envio.matriculaId !== data.matriculaId) {
-          const error = new Error('Envio de prova não encontrado para a matrícula informada');
+        if (!envio || envio.inscricaoId !== data.inscricaoId) {
+          const error = new Error('Envio de prova não encontrado para a inscrição informada');
           (error as any).code = 'ENVIO_NOT_FOUND';
           throw error;
         }
@@ -296,7 +296,7 @@ export const avaliacaoService = {
       const recuperacao = await tx.cursosTurmasRecuperacoes.create({
         data: {
           turmaId,
-          matriculaId: data.matriculaId,
+          inscricaoId: data.inscricaoId,
           provaId: data.provaId ?? null,
           envioId: data.envioId ?? null,
           notaRecuperacao:
@@ -336,13 +336,13 @@ export const avaliacaoService = {
     });
   },
 
-  async calcularNotasMatricula(
-    matriculaId: string,
+  async calcularNotasInscricao(
+    inscricaoId: string,
     requesterId?: string,
     { permitirAdmin = false }: { permitirAdmin?: boolean } = {},
   ) {
-    const matricula = await prisma.cursosTurmasMatriculas.findUnique({
-      where: { id: matriculaId },
+    const inscricao = await prisma.cursosTurmasInscricoes.findUnique({
+      where: { id: inscricaoId },
       include: {
         aluno: { select: { id: true, nomeCompleto: true, email: true } },
         turma: {
@@ -355,7 +355,7 @@ export const avaliacaoService = {
               ],
               include: {
                 envios: {
-                  where: { matriculaId },
+                  where: { inscricaoId },
                   orderBy: { atualizadoEm: 'desc' },
                 },
               },
@@ -373,26 +373,26 @@ export const avaliacaoService = {
       },
     });
 
-    if (!matricula) {
-      const error = new Error('Matrícula não encontrada');
-      (error as any).code = 'MATRICULA_NOT_FOUND';
+    if (!inscricao) {
+      const error = new Error('Inscrição não encontrada');
+      (error as any).code = 'INSCRICAO_NOT_FOUND';
       throw error;
     }
 
-    if (requesterId && requesterId !== matricula.alunoId && !permitirAdmin) {
+    if (requesterId && requesterId !== inscricao.alunoId && !permitirAdmin) {
       const error = new Error('Acesso negado');
       (error as any).code = 'FORBIDDEN';
       throw error;
     }
 
-    const regras = mapRegrasFromDb(matricula.turma.regrasAvaliacao as any);
-    const provasAtivas = matricula.turma.provas.filter((prova) => prova.ativo !== false);
+    const regras = mapRegrasFromDb(inscricao.turma.regrasAvaliacao as any);
+    const provasAtivas = inscricao.turma.provas.filter((prova) => prova.ativo !== false);
     const referencias: CursosReferenciasDeProvas[] = provasAtivas.map((prova) =>
-      mapProvaToReferencia(prova as any, matriculaId),
+      mapProvaToReferencia(prova as any, inscricaoId),
     );
 
     const mediaInicial = computeInitialAverage(referencias);
-    const ultimaRecuperacao = matricula.recuperacoes[0] ?? null;
+    const ultimaRecuperacao = inscricao.recuperacoes[0] ?? null;
     const notaRecuperacao = ultimaRecuperacao
       ? ultimaRecuperacao.notaFinal
         ? round(ultimaRecuperacao.notaFinal, 1)
@@ -412,22 +412,22 @@ export const avaliacaoService = {
     });
 
     return {
-      matricula: {
-        id: matricula.id,
+      inscricao: {
+        id: inscricao.id,
         aluno: {
-          id: matricula.aluno.id,
-          nome: matricula.aluno.nomeCompleto,
-          email: matricula.aluno.email,
+          id: inscricao.aluno.id,
+          nome: inscricao.aluno.nomeCompleto,
+          email: inscricao.aluno.email,
         },
       },
       curso: {
-        id: matricula.turma.curso.id,
-        nome: matricula.turma.curso.nome,
+        id: inscricao.turma.curso.id,
+        nome: inscricao.turma.curso.nome,
       },
       turma: {
-        id: matricula.turmaId,
-        nome: matricula.turma.nome,
-        codigo: matricula.turma.codigo,
+        id: inscricao.turmaId,
+        nome: inscricao.turma.nome,
+        codigo: inscricao.turma.codigo,
       },
       regras,
       provas: {

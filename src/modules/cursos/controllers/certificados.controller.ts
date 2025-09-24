@@ -25,7 +25,7 @@ const parseTurmaId = (raw: unknown) => {
   return raw;
 };
 
-const parseMatriculaId = (raw: unknown) => {
+const parseInscricaoId = (raw: unknown) => {
   if (typeof raw !== 'string' || raw.trim().length === 0) {
     return null;
   }
@@ -71,11 +71,11 @@ export class CertificadosController {
         });
       }
 
-      if (error?.code === 'TURMA_NOT_FOUND' || error?.code === 'MATRICULA_NOT_FOUND') {
+      if (error?.code === 'TURMA_NOT_FOUND' || error?.code === 'INSCRICAO_NOT_FOUND') {
         return res.status(404).json({
           success: false,
           code: error.code,
-          message: 'Turma ou matrícula não encontrada para emissão do certificado',
+          message: 'Turma ou inscrição não encontrada para emissão do certificado',
         });
       }
 
@@ -117,7 +117,7 @@ export class CertificadosController {
     }
 
     const parsedQuery = listarCertificadosQuerySchema.safeParse({
-      matriculaId: ensureSingleValue(req.query.matriculaId),
+      inscricaoId: ensureSingleValue(req.query.inscricaoId),
       tipo: ensureSingleValue(req.query.tipo),
       formato: ensureSingleValue(req.query.formato),
     });
@@ -152,48 +152,48 @@ export class CertificadosController {
     }
   };
 
-  static listarPorMatricula = async (req: Request, res: Response) => {
-    const matriculaId = parseMatriculaId(req.params.matriculaId);
+  static listarPorInscricao = async (req: Request, res: Response) => {
+    const inscricaoId = parseInscricaoId(req.params.inscricaoId);
 
-    if (!matriculaId) {
+    if (!inscricaoId) {
       return res.status(400).json({
         success: false,
         code: 'VALIDATION_ERROR',
-        message: 'Identificador da matrícula inválido',
+        message: 'Identificador da inscrição inválido',
       });
     }
 
     try {
-      const resultado = await certificadosService.listarPorMatricula(matriculaId, undefined, {
+      const resultado = await certificadosService.listarPorInscricao(inscricaoId, undefined, {
         permitirAdmin: true,
       });
       res.json(resultado);
     } catch (error: any) {
-      if (error?.code === 'MATRICULA_NOT_FOUND') {
+      if (error?.code === 'INSCRICAO_NOT_FOUND') {
         return res.status(404).json({
           success: false,
-          code: 'MATRICULA_NOT_FOUND',
-          message: 'Matrícula não encontrada',
+          code: 'INSCRICAO_NOT_FOUND',
+          message: 'Inscrição não encontrada',
         });
       }
 
       res.status(500).json({
         success: false,
-        code: 'CERTIFICADO_MATRICULA_ERROR',
-        message: 'Erro ao consultar certificados da matrícula',
+        code: 'CERTIFICADO_INSCRICAO_ERROR',
+        message: 'Erro ao consultar certificados da inscrição',
         error: error?.message,
       });
     }
   };
 
-  static listarMePorMatricula = async (req: Request, res: Response) => {
-    const matriculaId = parseMatriculaId(req.params.matriculaId);
+  static listarMePorInscricao = async (req: Request, res: Response) => {
+    const inscricaoId = parseInscricaoId(req.params.inscricaoId);
 
-    if (!matriculaId) {
+    if (!inscricaoId) {
       return res.status(400).json({
         success: false,
         code: 'VALIDATION_ERROR',
-        message: 'Identificador da matrícula inválido',
+        message: 'Identificador da inscrição inválido',
       });
     }
 
@@ -208,14 +208,14 @@ export class CertificadosController {
     }
 
     try {
-      const resultado = await certificadosService.listarPorMatricula(matriculaId, usuarioId);
+      const resultado = await certificadosService.listarPorInscricao(inscricaoId, usuarioId);
       res.json(resultado);
     } catch (error: any) {
-      if (error?.code === 'MATRICULA_NOT_FOUND') {
+      if (error?.code === 'INSCRICAO_NOT_FOUND') {
         return res.status(404).json({
           success: false,
-          code: 'MATRICULA_NOT_FOUND',
-          message: 'Matrícula não encontrada',
+          code: 'INSCRICAO_NOT_FOUND',
+          message: 'Inscrição não encontrada',
         });
       }
 
@@ -223,14 +223,14 @@ export class CertificadosController {
         return res.status(403).json({
           success: false,
           code: 'FORBIDDEN',
-          message: 'Você não possui acesso aos certificados desta matrícula',
+          message: 'Você não possui acesso aos certificados desta inscrição',
         });
       }
 
       res.status(500).json({
         success: false,
-        code: 'CERTIFICADO_MATRICULA_ERROR',
-        message: 'Erro ao consultar certificados da matrícula',
+        code: 'CERTIFICADO_INSCRICAO_ERROR',
+        message: 'Erro ao consultar certificados da inscrição',
         error: error?.message,
       });
     }

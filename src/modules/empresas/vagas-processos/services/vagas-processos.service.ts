@@ -89,6 +89,9 @@ const ensureCandidatoElegivel = async (candidatoId: string) => {
     select: {
       id: true,
       role: true,
+      _count: {
+        select: { curriculos: true },
+      },
     },
   });
 
@@ -97,6 +100,10 @@ const ensureCandidatoElegivel = async (candidatoId: string) => {
   }
 
   if (candidato.role !== 'ALUNO_CANDIDATO') {
+    throw new VagaProcessoCandidatoInvalidoError();
+  }
+
+  if (!candidato._count || candidato._count.curriculos === 0) {
     throw new VagaProcessoCandidatoInvalidoError();
   }
 };

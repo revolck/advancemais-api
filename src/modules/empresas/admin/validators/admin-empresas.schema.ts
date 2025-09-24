@@ -1,4 +1,10 @@
-import { MotivosDeBloqueios, Status, StatusDeVagas, TiposDeBloqueios } from '@prisma/client';
+import {
+  EmpresasPlanoModo,
+  MotivosDeBloqueios,
+  Status,
+  StatusDeVagas,
+  TiposDeBloqueios,
+} from '@prisma/client';
 import { z } from 'zod';
 
 import { clientePlanoModoSchema } from '@/modules/empresas/clientes/validators/clientes.schema';
@@ -38,7 +44,7 @@ const adminEmpresasPlanoBase = z.object({
 });
 
 export const adminEmpresasPlanoSchema = adminEmpresasPlanoBase.refine(
-  (val) => (val.modo !== 'teste' ? true : typeof val.diasTeste === 'number'),
+  (val) => (val.modo !== EmpresasPlanoModo.TESTE ? true : typeof val.diasTeste === 'number'),
   { message: 'Informe diasTeste para o modo teste', path: ['diasTeste'] },
 );
 
@@ -46,7 +52,7 @@ export type AdminEmpresasPlanoInput = z.infer<typeof adminEmpresasPlanoSchema>;
 
 export const adminEmpresasPlanoUpdateSchema = adminEmpresasPlanoBase
   .extend({ resetPeriodo: z.boolean().optional() })
-  .refine((val) => (val.modo !== 'teste' ? true : typeof val.diasTeste === 'number'), {
+  .refine((val) => (val.modo !== EmpresasPlanoModo.TESTE ? true : typeof val.diasTeste === 'number'), {
     message: 'Informe diasTeste para o modo teste',
     path: ['diasTeste'],
   });

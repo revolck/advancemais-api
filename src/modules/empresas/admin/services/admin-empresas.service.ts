@@ -524,7 +524,7 @@ const assignPlanoToEmpresa = async (
   usuarioId: string,
   plano: AdminEmpresasPlanoInput,
 ) => {
-  const modo = (plano.modo as unknown as EmpresasPlanoModo) || undefined;
+  const modo = plano.modo ?? EmpresasPlanoModo.CLIENTE;
   const inicio = plano.iniciarEm ?? new Date();
   const fim = calcularFim(modo, inicio, plano.diasTeste ?? undefined);
   const status = EmpresasPlanoStatus.ATIVO;
@@ -538,7 +538,7 @@ const assignPlanoToEmpresa = async (
     data: {
       usuarioId,
       planosEmpresariaisId: plano.planosEmpresariaisId,
-      ...(modo ? { modo } : {}),
+      modo,
       status,
       origin: 'ADMIN',
       inicio,
@@ -564,7 +564,7 @@ const atualizarPlanoSemReset = async (
 
   const data: Prisma.EmpresasPlanoUpdateInput = {
     plano: { connect: { id: plano.planosEmpresariaisId } },
-    ...(plano.modo ? { modo: plano.modo as unknown as EmpresasPlanoModo } : {}),
+    modo: plano.modo ?? EmpresasPlanoModo.CLIENTE,
   };
 
   await tx.empresasPlano.update({

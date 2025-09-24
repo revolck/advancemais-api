@@ -5583,8 +5583,10 @@ const options: Options = {
         },
         ClientePlanoModo: {
           type: 'string',
-          enum: ['teste', 'parceiro'],
-          example: 'teste',
+          enum: ['CLIENTE', 'TESTE', 'PARCEIRO'],
+          example: 'CLIENTE',
+          description:
+            'Identifica se a assinatura é de um cliente pagante (CLIENTE) ou uma concessão de teste/parceria.',
         },
         ClientePlanoEmpresa: {
           type: 'object',
@@ -5637,7 +5639,10 @@ const options: Options = {
             id: { type: 'string', example: 'parceria-uuid' },
             usuarioId: { type: 'string', example: 'usuario-uuid' },
             planosEmpresariaisId: { type: 'string', example: 'plano-uuid' },
-            modo: { allOf: [{ $ref: '#/components/schemas/ClientePlanoModo' }], nullable: true },
+            modo: {
+              allOf: [{ $ref: '#/components/schemas/ClientePlanoModo' }],
+              description: 'Modo da assinatura vinculada à empresa.',
+            },
             origin: { type: 'string', enum: ['CHECKOUT', 'ADMIN', 'IMPORT'], example: 'CHECKOUT' },
             //
             //
@@ -5713,7 +5718,7 @@ const options: Options = {
             code: { type: 'string', example: 'EMPRESA_SEM_PLANO_ATIVO' },
             message: {
               type: 'string',
-              example: 'A empresa não possui um plano parceiro ativo no momento.',
+              example: 'A empresa não possui um plano de assinatura ativo no momento.',
             },
           },
         },
@@ -6347,7 +6352,7 @@ const options: Options = {
             },
             modo: {
               allOf: [{ $ref: '#/components/schemas/ClientePlanoModo' }],
-              description: 'Origem do vínculo do plano (assinatura, teste, parceiro)',
+              description: 'Origem do vínculo do plano (CLIENTE, TESTE ou PARCEIRO)',
             },
             diasTeste: {
               type: 'integer',
@@ -6365,7 +6370,7 @@ const options: Options = {
           },
           example: {
             planosEmpresariaisId: 'b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e',
-            modo: 'teste',
+            modo: 'TESTE',
             diasTeste: 30,
             iniciarEm: '2024-03-01T12:00:00Z',
           },
@@ -6387,7 +6392,7 @@ const options: Options = {
           ],
           example: {
             planosEmpresariaisId: 'b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e',
-            modo: 'parceiro',
+            modo: 'PARCEIRO',
             resetPeriodo: true,
           },
         },
@@ -6486,7 +6491,7 @@ const options: Options = {
             aceitarTermos: true,
             plano: {
               planosEmpresariaisId: 'b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e',
-              modo: 'teste',
+              modo: 'TESTE',
               diasTeste: 30,
             },
           },
@@ -6560,7 +6565,7 @@ const options: Options = {
             status: 'ATIVO',
             plano: {
               planosEmpresariaisId: 'b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e',
-              modo: 'parceiro',
+              modo: 'PARCEIRO',
               resetPeriodo: false,
             },
           },

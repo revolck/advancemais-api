@@ -7000,6 +7000,137 @@ const options: Options = {
             },
           },
         },
+        AdminEmpresaPlanoHistoricoItem: {
+          allOf: [
+            { $ref: '#/components/schemas/AdminEmpresasPlanoResumo' },
+            {
+              type: 'object',
+              required: ['origin', 'criadoEm', 'atualizadoEm'],
+              properties: {
+                origin: {
+                  type: 'string',
+                  enum: ['CHECKOUT', 'ADMIN', 'IMPORT'],
+                  example: 'ADMIN',
+                },
+                criadoEm: { type: 'string', format: 'date-time', example: '2024-01-05T12:00:00Z' },
+                atualizadoEm: { type: 'string', format: 'date-time', example: '2024-03-01T12:00:00Z' },
+                proximaCobranca: {
+                  type: 'string',
+                  format: 'date-time',
+                  nullable: true,
+                  example: '2024-04-10T12:00:00Z',
+                },
+                graceUntil: {
+                  type: 'string',
+                  format: 'date-time',
+                  nullable: true,
+                  example: null,
+                },
+              },
+            },
+          ],
+        },
+        AdminEmpresaPlanosOverview: {
+          type: 'object',
+          required: ['ativos', 'historico'],
+          properties: {
+            ativos: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/AdminEmpresaPlanoHistoricoItem' },
+            },
+            historico: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/AdminEmpresaPlanoHistoricoItem' },
+            },
+          },
+        },
+        AdminEmpresaStatusVagasResumo: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            RASCUNHO: { type: 'integer', minimum: 0, example: 3 },
+            EM_ANALISE: { type: 'integer', minimum: 0, example: 2 },
+            PUBLICADO: { type: 'integer', minimum: 0, example: 8 },
+            EXPIRADO: { type: 'integer', minimum: 0, example: 1 },
+            DESPUBLICADA: { type: 'integer', minimum: 0, example: 0 },
+            PAUSADA: { type: 'integer', minimum: 0, example: 2 },
+            ENCERRADA: { type: 'integer', minimum: 0, example: 2 },
+          },
+        },
+        AdminEmpresaStatusProcessoResumo: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            RECEBIDA: { type: 'integer', minimum: 0, example: 80 },
+            EM_ANALISE: { type: 'integer', minimum: 0, example: 20 },
+            EM_TRIAGEM: { type: 'integer', minimum: 0, example: 5 },
+            ENTREVISTA: { type: 'integer', minimum: 0, example: 10 },
+            DESAFIO: { type: 'integer', minimum: 0, example: 6 },
+            DOCUMENTACAO: { type: 'integer', minimum: 0, example: 5 },
+            CONTRATADO: { type: 'integer', minimum: 0, example: 4 },
+            RECUSADO: { type: 'integer', minimum: 0, example: 7 },
+            DESISTIU: { type: 'integer', minimum: 0, example: 1 },
+            NAO_COMPARECEU: { type: 'integer', minimum: 0, example: 1 },
+            ARQUIVADO: { type: 'integer', minimum: 0, example: 0 },
+            CANCELADO: { type: 'integer', minimum: 0, example: 0 },
+          },
+        },
+        AdminEmpresaVagasOverview: {
+          type: 'object',
+          required: ['total', 'porStatus', 'recentes'],
+          properties: {
+            total: { type: 'integer', minimum: 0, example: 18 },
+            porStatus: { $ref: '#/components/schemas/AdminEmpresaStatusVagasResumo' },
+            recentes: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/AdminEmpresaVagaResumo' },
+            },
+          },
+        },
+        AdminEmpresaCandidaturasOverview: {
+          type: 'object',
+          required: ['total', 'porStatus'],
+          properties: {
+            total: { type: 'integer', minimum: 0, example: 134 },
+            porStatus: { $ref: '#/components/schemas/AdminEmpresaStatusProcessoResumo' },
+          },
+        },
+        AdminEmpresaBloqueiosOverview: {
+          type: 'object',
+          required: ['ativos', 'historico'],
+          properties: {
+            ativos: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/AdminUsuariosEmBloqueiosResumo' },
+            },
+            historico: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/AdminUsuariosEmBloqueiosResumo' },
+            },
+          },
+        },
+        AdminEmpresaOverviewResponse: {
+          type: 'object',
+          required: ['empresa', 'planos', 'pagamentos', 'vagas', 'candidaturas', 'bloqueios'],
+          properties: {
+            empresa: { $ref: '#/components/schemas/AdminEmpresaDetail' },
+            planos: { $ref: '#/components/schemas/AdminEmpresaPlanosOverview' },
+            pagamentos: {
+              type: 'object',
+              required: ['total', 'recentes'],
+              properties: {
+                total: { type: 'integer', minimum: 0, example: 12 },
+                recentes: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/AdminEmpresaPagamentoLog' },
+                },
+              },
+            },
+            vagas: { $ref: '#/components/schemas/AdminEmpresaVagasOverview' },
+            candidaturas: { $ref: '#/components/schemas/AdminEmpresaCandidaturasOverview' },
+            bloqueios: { $ref: '#/components/schemas/AdminEmpresaBloqueiosOverview' },
+          },
+        },
         AdminUsuariosBloqueioAlvo: {
           type: 'object',
           description: 'Identificação do alvo bloqueado',

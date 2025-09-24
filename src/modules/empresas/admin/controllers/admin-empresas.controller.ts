@@ -237,6 +237,39 @@ export class AdminEmpresasController {
     }
   };
 
+  static getOverview = async (req: Request, res: Response) => {
+    try {
+      const params = adminEmpresasIdParamSchema.parse(req.params);
+      const overview = await adminEmpresasService.getFullOverview(params.id);
+
+      if (!overview) {
+        return res.status(404).json({
+          success: false,
+          code: 'EMPRESA_NOT_FOUND',
+          message: 'Empresa não encontrada',
+        });
+      }
+
+      res.json(overview);
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'ADMIN_EMPRESAS_OVERVIEW_ERROR',
+        message: 'Erro ao carregar visão completa da empresa',
+        error: error?.message,
+      });
+    }
+  };
+
   static listPagamentos = async (req: Request, res: Response) => {
     try {
       const params = adminEmpresasIdParamSchema.parse(req.params);

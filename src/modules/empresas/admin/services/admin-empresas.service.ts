@@ -1370,7 +1370,12 @@ export const adminEmpresasService = {
 
     const referenceDate = new Date();
 
-    const [planosHistoricoRecords, bloqueiosRecords, vagasStatusCounts, candidaturasStatusCounts] =
+    const [
+      planosHistoricoRecords,
+      bloqueiosRecords,
+      vagasStatusCountsRaw,
+      candidaturasStatusCountsRaw,
+    ] =
       await prisma.$transaction([
         prisma.empresasPlano.findMany({
           where: { usuarioId: id },
@@ -1385,14 +1390,36 @@ export const adminEmpresasService = {
         prisma.empresasVagas.groupBy({
           by: ['status'],
           where: { usuarioId: id },
+          orderBy: { status: 'asc' },
           _count: { _all: true },
         }),
         prisma.empresasCandidatos.groupBy({
           by: ['status'],
           where: { empresaUsuarioId: id },
+          orderBy: { status: 'asc' },
           _count: { _all: true },
         }),
       ]);
+
+    const vagasStatusCounts = vagasStatusCountsRaw.map((item) => ({
+      status: item.status,
+      _count: {
+        _all:
+          typeof item._count === 'object' && item._count !== null
+            ? (item._count as { _all?: number })._all ?? 0
+            : 0,
+      },
+    }));
+
+    const candidaturasStatusCounts = candidaturasStatusCountsRaw.map((item) => ({
+      status: item.status,
+      _count: {
+        _all:
+          typeof item._count === 'object' && item._count !== null
+            ? (item._count as { _all?: number })._all ?? 0
+            : 0,
+      },
+    }));
 
     const planosHistorico = planosHistoricoRecords.map((plano) =>
       mapPlanoHistorico(plano, referenceDate),

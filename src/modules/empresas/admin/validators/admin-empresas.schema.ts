@@ -1,4 +1,4 @@
-import { MotivosDeBanimentos, Status, StatusDeVagas, TiposDeBanimentos } from '@prisma/client';
+import { MotivosDeBloqueios, Status, StatusDeVagas, TiposDeBloqueios } from '@prisma/client';
 import { z } from 'zod';
 
 import { clientePlanoModoSchema } from '@/modules/empresas/clientes/validators/clientes.schema';
@@ -235,18 +235,18 @@ export const adminEmpresasVagasQuerySchema = paginationQueryBaseSchema
 
 export type AdminEmpresasVagasQuery = z.infer<typeof adminEmpresasVagasQuerySchema>;
 
-export const adminEmpresasBanSchema = z
+export const adminEmpresasBloqueioSchema = z
   .object({
-    tipo: z.nativeEnum(TiposDeBanimentos, { required_error: 'Tipo de banimento é obrigatório' }),
-    motivo: z.nativeEnum(MotivosDeBanimentos, {
-      required_error: 'Motivo do banimento é obrigatório',
+    tipo: z.nativeEnum(TiposDeBloqueios, { required_error: 'Tipo de bloqueio é obrigatório' }),
+    motivo: z.nativeEnum(MotivosDeBloqueios, {
+      required_error: 'Motivo do bloqueio é obrigatório',
     }),
     dias: z.coerce
       .number()
       .int()
-      .min(1, 'Informe pelo menos 1 dia de banimento')
-      .max(3650, 'Banimento temporário deve ter no máximo 10 anos')
-      .describe('Quantidade de dias para banimento temporário')
+      .min(1, 'Informe pelo menos 1 dia de bloqueio')
+      .max(3650, 'Bloqueio temporário deve ter no máximo 10 anos')
+      .describe('Quantidade de dias para bloqueio temporário')
       .optional(),
     observacoes: z
       .string()
@@ -257,15 +257,15 @@ export const adminEmpresasBanSchema = z
   })
   .refine(
     (values) =>
-      values.tipo !== TiposDeBanimentos.TEMPORARIO ||
+      values.tipo !== TiposDeBloqueios.TEMPORARIO ||
       (values.dias !== undefined && Number.isFinite(values.dias) && values.dias > 0),
     {
-      message: 'Informe a quantidade de dias para banimentos temporários',
+      message: 'Informe a quantidade de dias para bloqueios temporários',
       path: ['dias'],
     },
   );
 
-export type AdminEmpresasBanInput = z.infer<typeof adminEmpresasBanSchema>;
+export type AdminEmpresasBloqueioInput = z.infer<typeof adminEmpresasBloqueioSchema>;
 
 export const adminEmpresasVagaParamSchema = adminEmpresasIdParamSchema.extend({
   vagaId: z.string().uuid(),

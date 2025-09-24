@@ -20,7 +20,7 @@ import { errorMiddleware } from './middlewares/error';
 import { logger } from '@/utils/logger';
 import { startAssinaturasReconJob } from '@/modules/mercadopago/assinaturas/cron/reconcile';
 import { startBoletoWatcherJob } from '@/modules/mercadopago/assinaturas/cron/boleto-watcher';
-import { startBanimentosWatcherJob } from '@/modules/usuarios/banimentos/cron/ban-watcher';
+import { startBloqueiosWatcherJob } from '@/modules/usuarios/bloqueios/cron/bloqueio-watcher';
 import { startEstagiosWatcherJob } from '@/modules/cursos/cron/estagios-watcher';
 
 /**
@@ -155,7 +155,7 @@ try {
   try {
     startAssinaturasReconJob();
     startBoletoWatcherJob();
-    startBanimentosWatcherJob();
+    startBloqueiosWatcherJob();
     startEstagiosWatcherJob();
   } catch (e) {
     routerLogger.warn({ err: e }, '⚠️ Falha ao iniciar cron de assinaturas');

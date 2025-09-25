@@ -4,6 +4,7 @@ import {
   CuponsLimiteUsuario,
   CuponsPeriodo,
   CuponsTipoDesconto,
+  WebsiteStatus,
 } from '@prisma/client';
 import { RefinementCtx, z } from 'zod';
 
@@ -160,7 +161,7 @@ const baseCupomSchema = z
     periodoTipo: z.nativeEnum(CuponsPeriodo),
     periodoInicio: optionalDateSchema,
     periodoFim: optionalDateSchema,
-    ativo: z.boolean().optional(),
+    status: z.nativeEnum(WebsiteStatus).optional(),
   })
   .strict();
 
@@ -316,7 +317,7 @@ export const updateCupomDescontoSchema = z
     periodoTipo: z.nativeEnum(CuponsPeriodo).optional(),
     periodoInicio: optionalDateSchema,
     periodoFim: optionalDateSchema,
-    ativo: z.boolean().optional(),
+    status: z.nativeEnum(WebsiteStatus).optional(),
   })
   .strict();
 

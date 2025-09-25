@@ -109,7 +109,10 @@ const mapLocal = (local: EstagioWithRelations['locais'][number]) => ({
 
 export const mapEstagio = (
   estagio: EstagioWithRelations,
-  { includeToken = false, includeNotificacoes = true }: { includeToken?: boolean; includeNotificacoes?: boolean } = {},
+  {
+    includeToken = false,
+    includeNotificacoes = true,
+  }: { includeToken?: boolean; includeNotificacoes?: boolean } = {},
 ) => ({
   id: estagio.id,
   cursoId: estagio.cursoId,
@@ -196,4 +199,5 @@ export const mapEstagio = (
       : [],
 });
 
-export const translateDiasSemana = (dias: CursosEstagioDiaSemana[]) => dias.map((dia) => translateWeekday(dia));
+export const translateDiasSemana = (dias: CursosEstagioDiaSemana[]) =>
+  dias.map((dia) => translateWeekday(dia));

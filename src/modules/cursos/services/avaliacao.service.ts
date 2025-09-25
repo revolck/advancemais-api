@@ -1,8 +1,4 @@
-import {
-  CursosSituacaoFinal,
-  CursosModelosRecuperacao,
-  Prisma,
-} from '@prisma/client';
+import { CursosSituacaoFinal, CursosModelosRecuperacao, Prisma } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
@@ -154,7 +150,7 @@ const mapProvaToReferencia = (
 const buildRecuperacaoResponse = (
   recuperacao: Prisma.CursosTurmasRecuperacoesGetPayload<{
     include: {
-      prova: { select: { id: true, etiqueta: true } };
+      prova: { select: { id: true; etiqueta: true } };
     };
   }> | null,
   resultadoRecuperacao: ResultadoAplicacaoRecuperacao | null,
@@ -165,11 +161,21 @@ const buildRecuperacaoResponse = (
 
   return {
     id: recuperacao.id,
-    notaRegistrada: recuperacao.notaFinal ? round(recuperacao.notaFinal, 1) : recuperacao.notaRecuperacao ? round(recuperacao.notaRecuperacao, 1) : null,
-    notaRecuperacao: resultadoRecuperacao?.notaRecuperacao ?? (recuperacao.notaRecuperacao ? round(recuperacao.notaRecuperacao, 1) : null),
+    notaRegistrada: recuperacao.notaFinal
+      ? round(recuperacao.notaFinal, 1)
+      : recuperacao.notaRecuperacao
+        ? round(recuperacao.notaRecuperacao, 1)
+        : null,
+    notaRecuperacao:
+      resultadoRecuperacao?.notaRecuperacao ??
+      (recuperacao.notaRecuperacao ? round(recuperacao.notaRecuperacao, 1) : null),
     status: mapStatusFinal(recuperacao.statusFinal),
-    prova: recuperacao.prova ? { id: recuperacao.prova.id, etiqueta: recuperacao.prova.etiqueta } : null,
-    modeloAplicado: recuperacao.modeloAplicado ? traduzirModelosPrisma([recuperacao.modeloAplicado])[0] : null,
+    prova: recuperacao.prova
+      ? { id: recuperacao.prova.id, etiqueta: recuperacao.prova.etiqueta }
+      : null,
+    modeloAplicado: recuperacao.modeloAplicado
+      ? traduzirModelosPrisma([recuperacao.modeloAplicado])[0]
+      : null,
     detalhes: (recuperacao.detalhes as Record<string, unknown> | null) ?? undefined,
     observacoes: recuperacao.observacoes ?? undefined,
     aplicadoEm: recuperacao.aplicadoEm?.toISOString() ?? null,
@@ -205,8 +211,12 @@ export const avaliacaoService = {
     return prisma.$transaction(async (tx) => {
       await ensureTurmaBelongsToCurso(tx, cursoId, turmaId);
 
-      const modelos = data.modelosRecuperacao?.map(mapModeloToPrisma).filter(Boolean) as CursosModelosRecuperacao[] | undefined;
-      const ordem = data.ordemAplicacaoRecuperacao?.map(mapModeloToPrisma).filter(Boolean) as CursosModelosRecuperacao[] | undefined;
+      const modelos = data.modelosRecuperacao?.map(mapModeloToPrisma).filter(Boolean) as
+        | CursosModelosRecuperacao[]
+        | undefined;
+      const ordem = data.ordemAplicacaoRecuperacao?.map(mapModeloToPrisma).filter(Boolean) as
+        | CursosModelosRecuperacao[]
+        | undefined;
 
       const regras = await tx.cursosTurmasRegrasAvaliacao.upsert({
         where: { turmaId },
@@ -321,9 +331,13 @@ export const avaliacaoService = {
               : Prisma.JsonNull,
           observacoes: data.observacoes ?? null,
           aplicadoEm: data.aplicadoEm ?? new Date(),
-          regraId: (
-            await tx.cursosTurmasRegrasAvaliacao.findUnique({ where: { turmaId }, select: { id: true } })
-          )?.id ?? null,
+          regraId:
+            (
+              await tx.cursosTurmasRegrasAvaliacao.findUnique({
+                where: { turmaId },
+                select: { id: true },
+              })
+            )?.id ?? null,
         },
         include: {
           prova: { select: { id: true, etiqueta: true } },
@@ -349,10 +363,7 @@ export const avaliacaoService = {
           include: {
             curso: { select: { id: true, nome: true } },
             provas: {
-              orderBy: [
-                { ordem: 'asc' },
-                { criadoEm: 'asc' },
-              ],
+              orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
               include: {
                 envios: {
                   where: { inscricaoId },

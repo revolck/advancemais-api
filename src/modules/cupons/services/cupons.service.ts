@@ -201,13 +201,14 @@ export const cuponsService = {
           limiteUsoTotalTipo: parsed.limiteUsoTotalTipo,
           limiteUsoTotalQuantidade:
             parsed.limiteUsoTotalTipo === CuponsLimiteUso.LIMITADO
-              ? parsed.limiteUsoTotalQuantidade ?? null
+              ? (parsed.limiteUsoTotalQuantidade ?? null)
               : null,
           limitePorUsuarioTipo: parsed.limitePorUsuarioTipo,
-          limitePorUsuarioQuantidade: ensurePrimeiraCompraQuantidade(
-            parsed.limitePorUsuarioTipo,
-            parsed.limitePorUsuarioQuantidade,
-          ) ?? null,
+          limitePorUsuarioQuantidade:
+            ensurePrimeiraCompraQuantidade(
+              parsed.limitePorUsuarioTipo,
+              parsed.limitePorUsuarioQuantidade,
+            ) ?? null,
           periodoTipo: parsed.periodoTipo,
           periodoInicio: periodoValores.inicio,
           periodoFim: periodoValores.fim,
@@ -260,30 +261,29 @@ export const cuponsService = {
       data.aplicarEmTodosItens !== undefined
         ? data.aplicarEmTodosItens
         : data.aplicarEm !== undefined
-        ? undefined
-        : existente.aplicarEmTodosItens;
+          ? undefined
+          : existente.aplicarEmTodosItens;
     const aplicarEmTodosFinal = resolveAplicarTodos(aplicarEmFinal, aplicarTodosSource);
     const limiteUsoTotalTipoFinal = data.limiteUsoTotalTipo ?? existente.limiteUsoTotalTipo;
     const limitePorUsuarioTipoFinal = data.limitePorUsuarioTipo ?? existente.limitePorUsuarioTipo;
     const periodoTipoFinal = data.periodoTipo ?? existente.periodoTipo;
 
-    const cursosIdsFinais =
-      data.cursosIds ?? existente.cursos.map((curso) => curso.cursoId);
+    const cursosIdsFinais = data.cursosIds ?? existente.cursos.map((curso) => curso.cursoId);
     const planosIdsFinais = data.planosIds ?? existente.planos.map((plano) => plano.planoId);
 
     const valorPercentualFinal =
       tipoDescontoFinal === CuponsTipoDesconto.PORCENTAGEM
-        ? data.valorPercentual ??
-          (existente.valorPorcentagem ? Number(existente.valorPorcentagem) : undefined)
+        ? (data.valorPercentual ??
+          (existente.valorPorcentagem ? Number(existente.valorPorcentagem) : undefined))
         : undefined;
     const valorFixoFinal =
       tipoDescontoFinal === CuponsTipoDesconto.VALOR_FIXO
-        ? data.valorFixo ?? (existente.valorFixo ? Number(existente.valorFixo) : undefined)
+        ? (data.valorFixo ?? (existente.valorFixo ? Number(existente.valorFixo) : undefined))
         : undefined;
 
     const limiteUsoTotalQuantidadeFinal =
       limiteUsoTotalTipoFinal === CuponsLimiteUso.LIMITADO
-        ? data.limiteUsoTotalQuantidade ?? existente.limiteUsoTotalQuantidade ?? undefined
+        ? (data.limiteUsoTotalQuantidade ?? existente.limiteUsoTotalQuantidade ?? undefined)
         : undefined;
 
     const limitePorUsuarioQuantidadeFinal = ensurePrimeiraCompraQuantidade(
@@ -293,17 +293,16 @@ export const cuponsService = {
 
     const periodoInicioFinal =
       periodoTipoFinal === CuponsPeriodo.PERIODO
-        ? data.periodoInicio ?? existente.periodoInicio ?? undefined
+        ? (data.periodoInicio ?? existente.periodoInicio ?? undefined)
         : undefined;
     const periodoFimFinal =
       periodoTipoFinal === CuponsPeriodo.PERIODO
-        ? data.periodoFim ?? existente.periodoFim ?? undefined
+        ? (data.periodoFim ?? existente.periodoFim ?? undefined)
         : undefined;
 
     createCupomDescontoSchema.parse({
       codigo: data.codigo ?? existente.codigo,
-      descricao:
-        data.descricao === undefined ? existente.descricao ?? undefined : data.descricao,
+      descricao: data.descricao === undefined ? (existente.descricao ?? undefined) : data.descricao,
       tipoDesconto: tipoDescontoFinal,
       valorPercentual: valorPercentualFinal,
       valorFixo: valorFixoFinal,
@@ -338,8 +337,7 @@ export const cuponsService = {
         where: { id },
         data: {
           codigo: data.codigo ? sanitizeCodigo(data.codigo) : undefined,
-          descricao:
-            data.descricao === undefined ? undefined : (data.descricao ?? null),
+          descricao: data.descricao === undefined ? undefined : (data.descricao ?? null),
           tipoDesconto: { set: tipoDescontoFinal },
           valorPorcentagem:
             tipoDescontoFinal === CuponsTipoDesconto.PORCENTAGEM
@@ -354,13 +352,13 @@ export const cuponsService = {
           limiteUsoTotalTipo: { set: limiteUsoTotalTipoFinal },
           limiteUsoTotalQuantidade:
             limiteUsoTotalTipoFinal === CuponsLimiteUso.LIMITADO
-              ? limiteUsoTotalQuantidadeFinal ?? null
+              ? (limiteUsoTotalQuantidadeFinal ?? null)
               : null,
           limitePorUsuarioTipo: { set: limitePorUsuarioTipoFinal },
           limitePorUsuarioQuantidade:
             limitePorUsuarioTipoFinal === CuponsLimiteUsuario.PRIMEIRA_COMPRA
               ? 1
-              : limitePorUsuarioQuantidadeFinal ?? null,
+              : (limitePorUsuarioQuantidadeFinal ?? null),
           periodoTipo: { set: periodoTipoFinal },
           periodoInicio: periodoValores.inicio,
           periodoFim: periodoValores.fim,

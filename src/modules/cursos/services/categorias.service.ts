@@ -3,10 +3,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 
-import {
-  generateUniqueCategoryCode,
-  generateUniqueSubcategoryCode,
-} from '../utils/code-generator';
+import { generateUniqueCategoryCode, generateUniqueSubcategoryCode } from '../utils/code-generator';
 
 const categoriasLogger = logger.child({ module: 'CursosCategoriasService' });
 
@@ -144,10 +141,7 @@ export const categoriasService = {
     }
   },
 
-  async createSubcategoria(
-    categoriaId: number,
-    data: { nome: string; descricao?: string | null },
-  ) {
+  async createSubcategoria(categoriaId: number, data: { nome: string; descricao?: string | null }) {
     return prisma.$transaction(async (tx) => {
       const categoria = await tx.cursosCategorias.findUnique({
         where: { id: categoriaId },

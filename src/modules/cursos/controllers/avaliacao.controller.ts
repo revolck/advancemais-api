@@ -218,7 +218,9 @@ export class AvaliacaoController {
     }
 
     try {
-      const boletim = await avaliacaoService.calcularNotasInscricao(inscricaoId, undefined, { permitirAdmin: true });
+      const boletim = await avaliacaoService.calcularNotasInscricao(inscricaoId, undefined, {
+        permitirAdmin: true,
+      });
       res.json(boletim);
     } catch (error: any) {
       if (error?.code === 'INSCRICAO_NOT_FOUND') {

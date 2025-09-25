@@ -294,7 +294,9 @@ export class NotasController {
     }
 
     try {
-      const resultado = await notasService.listByInscricao(inscricaoId, undefined, { permitirAdmin: true });
+      const resultado = await notasService.listByInscricao(inscricaoId, undefined, {
+        permitirAdmin: true,
+      });
       res.json(resultado);
     } catch (error: any) {
       if (error?.code === 'INSCRICAO_NOT_FOUND') {

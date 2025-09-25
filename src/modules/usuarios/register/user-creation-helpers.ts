@@ -1,4 +1,8 @@
-import { Prisma, type Roles as PrismaRoles, type TiposDeUsuarios as PrismaTiposDeUsuarios } from '@prisma/client';
+import {
+  Prisma,
+  type Roles as PrismaRoles,
+  type TiposDeUsuarios as PrismaTiposDeUsuarios,
+} from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import type { AppLogger } from '@/utils/logger';
@@ -30,7 +34,11 @@ import {
 const createScopedLogger = (logger?: AppLogger, scope?: string) =>
   logger ? logger.child({ scope }) : undefined;
 
-const logInfo = (logger: AppLogger | undefined, message: string, params?: Record<string, unknown>) => {
+const logInfo = (
+  logger: AppLogger | undefined,
+  message: string,
+  params?: Record<string, unknown>,
+) => {
   if (!logger) return;
   if (params) {
     logger.info({ ...params }, message);
@@ -39,7 +47,11 @@ const logInfo = (logger: AppLogger | undefined, message: string, params?: Record
   }
 };
 
-const logWarn = (logger: AppLogger | undefined, message: string, params?: Record<string, unknown>) => {
+const logWarn = (
+  logger: AppLogger | undefined,
+  message: string,
+  params?: Record<string, unknown>,
+) => {
   if (!logger) return;
   if (params) {
     logger.warn({ ...params }, message);
@@ -48,7 +60,11 @@ const logWarn = (logger: AppLogger | undefined, message: string, params?: Record
   }
 };
 
-const logError = (logger: AppLogger | undefined, message: string, params?: Record<string, unknown>) => {
+const logError = (
+  logger: AppLogger | undefined,
+  message: string,
+  params?: Record<string, unknown>,
+) => {
   if (!logger) return;
   if (params) {
     logger.error({ ...params }, message);
@@ -88,7 +104,10 @@ const generateCodePrefix = (): string => {
   return prefix;
 };
 
-const generateUniqueUserCode = async (tx: Prisma.TransactionClient, logger?: AppLogger): Promise<string> => {
+const generateUniqueUserCode = async (
+  tx: Prisma.TransactionClient,
+  logger?: AppLogger,
+): Promise<string> => {
   const scopedLogger = createScopedLogger(logger, 'generateUniqueUserCode');
   for (let attempt = 0; attempt < 10; attempt++) {
     const random = Math.floor(1000 + Math.random() * 9000);
@@ -140,7 +159,10 @@ export const processUserTypeSpecificData = async (
       let generoValidado: string | undefined;
       if (dadosPF.genero) {
         if (!validarGenero(dadosPF.genero)) {
-          return { success: false, error: 'Gênero deve ser: MASCULINO, FEMININO, OUTRO ou NAO_INFORMAR' };
+          return {
+            success: false,
+            error: 'Gênero deve ser: MASCULINO, FEMININO, OUTRO ou NAO_INFORMAR',
+          };
         }
         generoValidado = dadosPF.genero.toUpperCase();
       }
@@ -191,7 +213,11 @@ export const checkForDuplicates = async (
   try {
     logInfo(scopedLogger, 'Iniciando verificação de duplicatas');
 
-    type WhereCondition = { email: string } | { supabaseId: string } | { cpf: string } | { cnpj: string };
+    type WhereCondition =
+      | { email: string }
+      | { supabaseId: string }
+      | { cpf: string }
+      | { cnpj: string };
 
     const orConditions: WhereCondition[] = [{ email: data.email }];
     if (data.supabaseId) {

@@ -4,7 +4,11 @@ import { ZodError } from 'zod';
 
 import { turmasService } from '../services/turmas.service';
 import { cursosService } from '../services/cursos.service';
-import { createTurmaSchema, turmaInscricaoSchema, updateTurmaSchema } from '../validators/turmas.schema';
+import {
+  createTurmaSchema,
+  turmaInscricaoSchema,
+  updateTurmaSchema,
+} from '../validators/turmas.schema';
 
 const parseCursoId = (raw: string) => {
   const id = Number(raw);

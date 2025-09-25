@@ -44,18 +44,19 @@ export const mapProva = (prova: ProvaWithRelations | ProvaWithEnvios) => ({
   ordem: prova.ordem,
   criadoEm: prova.criadoEm.toISOString(),
   atualizadoEm: prova.atualizadoEm.toISOString(),
-  envios: 'envios' in prova && Array.isArray(prova.envios)
-    ? prova.envios.map((envio) => ({
-        id: envio.id,
-        provaId: envio.provaId,
-        inscricaoId: envio.inscricaoId,
-        alunoId: envio.inscricao.alunoId,
-        nota: normalizeDecimal(envio.nota),
-        pesoTotal: normalizeDecimal(envio.pesoTotal),
-        realizadoEm: envio.realizadoEm?.toISOString() ?? null,
-        observacoes: envio.observacoes ?? null,
-        criadoEm: envio.criadoEm.toISOString(),
-        atualizadoEm: envio.atualizadoEm.toISOString(),
-      }))
-    : undefined,
+  envios:
+    'envios' in prova && Array.isArray(prova.envios)
+      ? prova.envios.map((envio) => ({
+          id: envio.id,
+          provaId: envio.provaId,
+          inscricaoId: envio.inscricaoId,
+          alunoId: envio.inscricao.alunoId,
+          nota: normalizeDecimal(envio.nota),
+          pesoTotal: normalizeDecimal(envio.pesoTotal),
+          realizadoEm: envio.realizadoEm?.toISOString() ?? null,
+          observacoes: envio.observacoes ?? null,
+          criadoEm: envio.criadoEm.toISOString(),
+          atualizadoEm: envio.atualizadoEm.toISOString(),
+        }))
+      : undefined,
 });

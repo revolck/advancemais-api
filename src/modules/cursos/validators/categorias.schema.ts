@@ -1,11 +1,7 @@
 import { z } from 'zod';
 
 const nomeSchema = z.string().trim().min(3).max(120);
-const descricaoSchema = z
-  .string()
-  .trim()
-  .max(255)
-  .nullish();
+const descricaoSchema = z.string().trim().max(255).nullish();
 
 export const createCategoriaSchema = z.object({
   nome: nomeSchema,

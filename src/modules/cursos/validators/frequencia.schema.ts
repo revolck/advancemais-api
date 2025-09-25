@@ -3,16 +3,19 @@ import { z } from 'zod';
 const statusSchema = z.enum(['PRESENTE', 'AUSENTE', 'JUSTIFICADO', 'ATRASADO']);
 
 const dateSchema = z
-  .preprocess((value) => {
-    if (value === undefined || value === null || value === '') {
-      return undefined;
-    }
-    if (value instanceof Date) {
-      return value;
-    }
-    const parsed = new Date(String(value));
-    return Number.isNaN(parsed.getTime()) ? value : parsed;
-  }, z.date({ invalid_type_error: 'Data inválida' }))
+  .preprocess(
+    (value) => {
+      if (value === undefined || value === null || value === '') {
+        return undefined;
+      }
+      if (value instanceof Date) {
+        return value;
+      }
+      const parsed = new Date(String(value));
+      return Number.isNaN(parsed.getTime()) ? value : parsed;
+    },
+    z.date({ invalid_type_error: 'Data inválida' }),
+  )
   .optional();
 
 const aulaIdSchema = z.string().uuid('Identificador da aula inválido').nullish();

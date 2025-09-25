@@ -42,7 +42,10 @@ export const startEstagiosWatcherJob = () => {
           );
         }
       } catch (error) {
-        watcherLogger.error({ err: error }, 'Falha ao processar avisos de encerramento de estágios');
+        watcherLogger.error(
+          { err: error },
+          'Falha ao processar avisos de encerramento de estágios',
+        );
       }
     },
     { scheduled: false },

@@ -47,6 +47,8 @@ export const candidatoLogsService = {
 
     const client = getClient(tx);
 
-    return Promise.all(entries.map((entry) => client.usuariosCandidatosLogs.create({ data: mapEntryToData(entry) })));
+    return Promise.all(
+      entries.map((entry) => client.usuariosCandidatosLogs.create({ data: mapEntryToData(entry) })),
+    );
   },
 };

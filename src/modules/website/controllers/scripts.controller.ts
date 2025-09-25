@@ -1,9 +1,5 @@
 import { Request, Response } from 'express';
-import {
-  WebsiteScriptAplicacao,
-  WebsiteScriptOrientation,
-  WebsiteStatus,
-} from '@prisma/client';
+import { WebsiteScriptAplicacao, WebsiteScriptOrientation, WebsiteStatus } from '@prisma/client';
 
 import { websiteScriptsService } from '@/modules/website/services/scripts.service';
 import { respondWithCache } from '@/modules/website/utils/cache-response';
@@ -116,9 +112,7 @@ export class WebsiteScriptsController {
           .json({ message: 'O campo "aplicacao" é obrigatório e deve ser WEBSITE ou DASHBOARD.' });
       }
       if (orientacao === undefined || orientacao === null || orientacao === '') {
-        return res
-          .status(400)
-          .json({ message: 'O campo "orientacao" é obrigatório.' });
+        return res.status(400).json({ message: 'O campo "orientacao" é obrigatório.' });
       }
 
       if (typeof codigo !== 'string' || !codigo.trim()) {

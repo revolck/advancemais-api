@@ -1,22 +1,25 @@
 import { CursoStatus, CursosMetodos, CursosTurnos } from '@prisma/client';
 import { z } from 'zod';
 
-const positiveInt = z
-  .coerce.number({ invalid_type_error: 'Informe um número válido' })
+const positiveInt = z.coerce
+  .number({ invalid_type_error: 'Informe um número válido' })
   .int('Valor deve ser um número inteiro')
   .positive('Valor deve ser maior que zero');
 
 const optionalDate = z
-  .preprocess((value) => {
-    if (value === undefined || value === null || value === '') {
-      return undefined;
-    }
-    if (value instanceof Date) {
-      return value;
-    }
-    const parsed = new Date(String(value));
-    return Number.isNaN(parsed.getTime()) ? value : parsed;
-  }, z.date({ invalid_type_error: 'Informe uma data válida' }))
+  .preprocess(
+    (value) => {
+      if (value === undefined || value === null || value === '') {
+        return undefined;
+      }
+      if (value instanceof Date) {
+        return value;
+      }
+      const parsed = new Date(String(value));
+      return Number.isNaN(parsed.getTime()) ? value : parsed;
+    },
+    z.date({ invalid_type_error: 'Informe uma data válida' }),
+  )
   .optional();
 
 const turmaBaseSchema = z.object({

@@ -2,18 +2,27 @@ import { CursosMateriais, TiposDeArquivos } from '@prisma/client';
 import { z } from 'zod';
 
 const nonNegativeInt = z
-  .preprocess((value) => {
-    if (value === undefined || value === '') {
-      return undefined;
-    }
+  .preprocess(
+    (value) => {
+      if (value === undefined || value === '') {
+        return undefined;
+      }
 
-    if (value === null) {
-      return null;
-    }
+      if (value === null) {
+        return null;
+      }
 
-    const parsed = Number(value);
-    return Number.isNaN(parsed) ? value : parsed;
-  }, z.union([z.number({ invalid_type_error: 'Informe um número válido' }).int('Valor deve ser inteiro').min(0), z.null()]))
+      const parsed = Number(value);
+      return Number.isNaN(parsed) ? value : parsed;
+    },
+    z.union([
+      z
+        .number({ invalid_type_error: 'Informe um número válido' })
+        .int('Valor deve ser inteiro')
+        .min(0),
+      z.null(),
+    ]),
+  )
   .optional();
 
 const materialSchema = z.object({

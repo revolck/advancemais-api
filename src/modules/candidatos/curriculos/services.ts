@@ -10,10 +10,7 @@ export const curriculosService = {
   listOwn: async (usuarioId: string) => {
     return prisma.usuariosCurriculos.findMany({
       where: { usuarioId },
-      orderBy: [
-        { principal: 'desc' },
-        { atualizadoEm: 'desc' },
-      ],
+      orderBy: [{ principal: 'desc' }, { atualizadoEm: 'desc' }],
     });
   },
 
@@ -171,10 +168,7 @@ export const curriculosService = {
       if (exists.principal) {
         const nextPrincipal = await tx.usuariosCurriculos.findFirst({
           where: { usuarioId },
-          orderBy: [
-            { principal: 'desc' },
-            { atualizadoEm: 'desc' },
-          ],
+          orderBy: [{ principal: 'desc' }, { atualizadoEm: 'desc' }],
         });
 
         if (nextPrincipal) {

@@ -38,9 +38,7 @@ const parseAgendaTipo = (raw: unknown): CursosAgendaTipo | undefined | null => {
 
   const normalized = raw.toUpperCase();
   const allowed = Object.values(CursosAgendaTipo);
-  return allowed.includes(normalized as CursosAgendaTipo)
-    ? (normalized as CursosAgendaTipo)
-    : null;
+  return allowed.includes(normalized as CursosAgendaTipo) ? (normalized as CursosAgendaTipo) : null;
 };
 
 const parseDateQuery = (raw: unknown) => {

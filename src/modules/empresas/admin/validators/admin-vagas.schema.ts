@@ -18,7 +18,9 @@ const statusArraySchema = z
   .refine(
     (value) =>
       value === undefined ||
-      value.every((status) => Object.prototype.hasOwnProperty.call(StatusDeVagas, status as StatusDeVagas)),
+      value.every((status) =>
+        Object.prototype.hasOwnProperty.call(StatusDeVagas, status as StatusDeVagas),
+      ),
     {
       message:
         'Informe status válidos (RASCUNHO, EM_ANALISE, PUBLICADO, DESPUBLICADA, PAUSADA, ENCERRADA ou EXPIRADO)',

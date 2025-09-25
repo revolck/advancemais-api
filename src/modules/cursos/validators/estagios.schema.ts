@@ -46,37 +46,39 @@ const diasSemanaSchema = z
 
 const dataCoercion = z.coerce.date({ invalid_type_error: 'Informe uma data válida' });
 
-const estagioLocalSchema = z.object({
-  titulo: nullableString(120),
-  empresaNome: z.string().trim().min(2).max(255),
-  empresaDocumento: nullableString(20),
-  contatoNome: nullableString(120),
-  contatoEmail: nullableEmail,
-  contatoTelefone: nullableString(30),
-  dataInicio: dataCoercion.optional(),
-  dataFim: dataCoercion.optional(),
-  horarioInicio: horarioSchema,
-  horarioFim: horarioSchema,
-  diasSemana: diasSemanaSchema,
-  cargaHorariaSemanal: z.coerce.number().int().positive().optional(),
-  cep: cepSchema,
-  logradouro: nullableString(255),
-  numero: nullableString(20),
-  bairro: nullableString(120),
-  cidade: nullableString(120),
-  estado: nullableString(2),
-  complemento: nullableString(120),
-  pontoReferencia: nullableString(255),
-  observacoes: nullableString(500),
-}).superRefine((value, ctx) => {
-  if (value.dataInicio && value.dataFim && value.dataFim < value.dataInicio) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Data final não pode ser anterior à data inicial',
-      path: ['dataFim'],
-    });
-  }
-});
+const estagioLocalSchema = z
+  .object({
+    titulo: nullableString(120),
+    empresaNome: z.string().trim().min(2).max(255),
+    empresaDocumento: nullableString(20),
+    contatoNome: nullableString(120),
+    contatoEmail: nullableEmail,
+    contatoTelefone: nullableString(30),
+    dataInicio: dataCoercion.optional(),
+    dataFim: dataCoercion.optional(),
+    horarioInicio: horarioSchema,
+    horarioFim: horarioSchema,
+    diasSemana: diasSemanaSchema,
+    cargaHorariaSemanal: z.coerce.number().int().positive().optional(),
+    cep: cepSchema,
+    logradouro: nullableString(255),
+    numero: nullableString(20),
+    bairro: nullableString(120),
+    cidade: nullableString(120),
+    estado: nullableString(2),
+    complemento: nullableString(120),
+    pontoReferencia: nullableString(255),
+    observacoes: nullableString(500),
+  })
+  .superRefine((value, ctx) => {
+    if (value.dataInicio && value.dataFim && value.dataFim < value.dataInicio) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Data final não pode ser anterior à data inicial',
+        path: ['dataFim'],
+      });
+    }
+  });
 
 const estagioBaseSchema = z.object({
   nome: z.string().trim().min(3).max(255),

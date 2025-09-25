@@ -1,8 +1,8 @@
 import { CursosStatusPadrao } from '@prisma/client';
 import { z } from 'zod';
 
-const positiveInt = z
-  .coerce.number({ invalid_type_error: 'Informe um número válido' })
+const positiveInt = z.coerce
+  .number({ invalid_type_error: 'Informe um número válido' })
   .int('Valor deve ser um número inteiro')
   .positive('Valor deve ser maior que zero');
 

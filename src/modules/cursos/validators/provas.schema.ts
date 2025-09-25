@@ -11,16 +11,19 @@ const pesoSchema = z
   .max(1000, 'Peso deve ser menor ou igual a 1000');
 
 const dataSchema = z
-  .preprocess((value) => {
-    if (value === undefined || value === null || value === '') {
-      return undefined;
-    }
-    if (value instanceof Date) {
-      return value;
-    }
-    const parsed = new Date(String(value));
-    return Number.isNaN(parsed.getTime()) ? value : parsed;
-  }, z.date({ invalid_type_error: 'Data inválida' }))
+  .preprocess(
+    (value) => {
+      if (value === undefined || value === null || value === '') {
+        return undefined;
+      }
+      if (value instanceof Date) {
+        return value;
+      }
+      const parsed = new Date(String(value));
+      return Number.isNaN(parsed.getTime()) ? value : parsed;
+    },
+    z.date({ invalid_type_error: 'Data inválida' }),
+  )
   .optional();
 
 const provaBaseSchema = z.object({

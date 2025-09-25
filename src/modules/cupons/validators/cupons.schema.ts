@@ -12,10 +12,7 @@ const codigoSchema = z
   .trim()
   .min(3, 'O código do cupom deve ter ao menos 3 caracteres')
   .max(40, 'O código do cupom deve ter no máximo 40 caracteres')
-  .regex(
-    /^[A-Z0-9_-]+$/i,
-    'Use apenas letras, números, hífen ou underline para o código do cupom',
-  );
+  .regex(/^[A-Z0-9_-]+$/i, 'Use apenas letras, números, hífen ou underline para o código do cupom');
 
 const descricaoSchema = z
   .string()
@@ -24,102 +21,119 @@ const descricaoSchema = z
   .max(300, 'A descrição do cupom deve ter no máximo 300 caracteres')
   .optional();
 
-const percentualSchema = z.preprocess((value) => {
-  if (value === undefined || value === null || value === '') {
-    return undefined;
-  }
-
-  if (typeof value === 'number') {
-    return value;
-  }
-
-  if (typeof value === 'string') {
-    const normalized = value.replace(/%/g, '').trim().replace(',', '.');
-    if (!normalized) {
+const percentualSchema = z.preprocess(
+  (value) => {
+    if (value === undefined || value === null || value === '') {
       return undefined;
     }
 
-    const parsed = Number(normalized);
-    return Number.isFinite(parsed) ? parsed : value;
-  }
+    if (typeof value === 'number') {
+      return value;
+    }
 
-  return value;
-}, z
-  .number({ invalid_type_error: 'Informe uma porcentagem válida' })
-  .gt(0, 'A porcentagem de desconto deve ser maior que zero')
-  .max(100, 'A porcentagem máxima permitida é 100%')
-  .optional());
+    if (typeof value === 'string') {
+      const normalized = value.replace(/%/g, '').trim().replace(',', '.');
+      if (!normalized) {
+        return undefined;
+      }
 
-const monetarySchema = z.preprocess((value) => {
-  if (value === undefined || value === null || value === '') {
-    return undefined;
-  }
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : value;
+    }
 
-  if (typeof value === 'number') {
     return value;
-  }
+  },
+  z
+    .number({ invalid_type_error: 'Informe uma porcentagem válida' })
+    .gt(0, 'A porcentagem de desconto deve ser maior que zero')
+    .max(100, 'A porcentagem máxima permitida é 100%')
+    .optional(),
+);
 
-  if (typeof value === 'string') {
-    const sanitized = value
-      .replace(/R\$/gi, '')
-      .replace(/\s+/g, '')
-      .replace(/\./g, '')
-      .replace(',', '.');
-
-    if (!sanitized) {
+const monetarySchema = z.preprocess(
+  (value) => {
+    if (value === undefined || value === null || value === '') {
       return undefined;
     }
 
-    const parsed = Number(sanitized);
-    return Number.isFinite(parsed) ? parsed : value;
-  }
+    if (typeof value === 'number') {
+      return value;
+    }
 
-  return value;
-}, z
-  .number({ invalid_type_error: 'Informe um valor de desconto válido' })
-  .gt(0, 'O valor de desconto deve ser maior que zero')
-  .optional());
+    if (typeof value === 'string') {
+      const sanitized = value
+        .replace(/R\$/gi, '')
+        .replace(/\s+/g, '')
+        .replace(/\./g, '')
+        .replace(',', '.');
 
-const positiveIntSchema = z.preprocess((value) => {
-  if (value === undefined || value === null || value === '') {
-    return undefined;
-  }
+      if (!sanitized) {
+        return undefined;
+      }
 
-  if (typeof value === 'number') {
+      const parsed = Number(sanitized);
+      return Number.isFinite(parsed) ? parsed : value;
+    }
+
     return value;
-  }
+  },
+  z
+    .number({ invalid_type_error: 'Informe um valor de desconto válido' })
+    .gt(0, 'O valor de desconto deve ser maior que zero')
+    .optional(),
+);
 
-  if (typeof value === 'string') {
-    const parsed = Number(value.trim());
-    return Number.isFinite(parsed) ? parsed : value;
-  }
+const positiveIntSchema = z.preprocess(
+  (value) => {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
 
-  return value;
-}, z
-  .number({ invalid_type_error: 'Informe um número inteiro válido' })
-  .int('Informe um número inteiro válido')
-  .gt(0, 'O valor deve ser maior que zero')
-  .optional());
+    if (typeof value === 'number') {
+      return value;
+    }
 
-const optionalDateSchema = z.preprocess((value) => {
-  if (value === undefined || value === null || value === '') {
-    return undefined;
-  }
+    if (typeof value === 'string') {
+      const parsed = Number(value.trim());
+      return Number.isFinite(parsed) ? parsed : value;
+    }
 
-  if (value instanceof Date) {
     return value;
-  }
+  },
+  z
+    .number({ invalid_type_error: 'Informe um número inteiro válido' })
+    .int('Informe um número inteiro válido')
+    .gt(0, 'O valor deve ser maior que zero')
+    .optional(),
+);
 
-  const parsed = new Date(value as any);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
+const optionalDateSchema = z.preprocess(
+  (value) => {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
 
-  return parsed;
-}, z.date({ invalid_type_error: 'Informe uma data válida' }).optional());
+    if (value instanceof Date) {
+      return value;
+    }
+
+    const parsed = new Date(value as any);
+    if (Number.isNaN(parsed.getTime())) {
+      return value;
+    }
+
+    return parsed;
+  },
+  z.date({ invalid_type_error: 'Informe uma data válida' }).optional(),
+);
 
 const cursosIdsSchema = z
-  .array(z.number().int('IDs de cursos devem ser inteiros').positive('IDs de cursos devem ser positivos'))
+  .array(
+    z
+      .number()
+      .int('IDs de cursos devem ser inteiros')
+      .positive('IDs de cursos devem ser positivos'),
+  )
   .nonempty('Selecione ao menos um curso para aplicar o desconto')
   .optional();
 

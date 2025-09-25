@@ -40,16 +40,19 @@ const valorMaximoSchema = z
   .max(10, 'Valor máximo deve ser menor ou igual a 10');
 
 const dataSchema = z
-  .preprocess((value) => {
-    if (value === undefined || value === null || value === '') {
-      return undefined;
-    }
-    if (value instanceof Date) {
-      return value;
-    }
-    const parsed = new Date(String(value));
-    return Number.isNaN(parsed.getTime()) ? value : parsed;
-  }, z.date({ invalid_type_error: 'Data inválida' }))
+  .preprocess(
+    (value) => {
+      if (value === undefined || value === null || value === '') {
+        return undefined;
+      }
+      if (value instanceof Date) {
+        return value;
+      }
+      const parsed = new Date(String(value));
+      return Number.isNaN(parsed.getTime()) ? value : parsed;
+    },
+    z.date({ invalid_type_error: 'Data inválida' }),
+  )
   .optional();
 
 const tituloSchema = z
@@ -117,21 +120,15 @@ export const updateNotaSchema = z
   })
   .refine(
     (data) =>
-      data.titulo !== undefined
-        ? data.tipo === 'PROVA'
-          ? true
-          : !!data.titulo?.trim()
-        : true,
+      data.titulo !== undefined ? (data.tipo === 'PROVA' ? true : !!data.titulo?.trim()) : true,
     {
       path: ['titulo'],
       message: 'Título não pode ser vazio para notas que não são de prova',
     },
   )
   .refine(
-      (data) =>
-        tipoExigeTitulo(data.tipo)
-          ? data.titulo === undefined || !!data.titulo?.trim()
-          : true,
+    (data) =>
+      tipoExigeTitulo(data.tipo) ? data.titulo === undefined || !!data.titulo?.trim() : true,
     {
       path: ['titulo'],
       message: 'Forneça um título válido ao alterar o tipo da nota',

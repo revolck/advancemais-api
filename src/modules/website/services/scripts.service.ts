@@ -35,7 +35,8 @@ const selectFields = {
 export const websiteScriptsService = {
   list: async (filters: ListFilters = {}) => {
     const cacheKey = buildCacheKey(filters);
-    const cached = await getCache<Awaited<ReturnType<typeof prisma.websiteScript.findMany>>>(cacheKey);
+    const cached =
+      await getCache<Awaited<ReturnType<typeof prisma.websiteScript.findMany>>>(cacheKey);
     if (cached) return cached;
 
     const where: Record<string, any> = {};
@@ -51,10 +52,7 @@ export const websiteScriptsService = {
 
     const result = await prisma.websiteScript.findMany({
       where,
-      orderBy: [
-        { orientacao: 'asc' },
-        { criadoEm: 'desc' },
-      ],
+      orderBy: [{ orientacao: 'asc' }, { criadoEm: 'desc' }],
       select: selectFields,
     });
 

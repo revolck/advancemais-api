@@ -7,11 +7,7 @@ const optionalUrlSchema = z
   .url('assinaturaUrl deve ser uma URL válida')
   .max(2048, 'assinaturaUrl deve conter no máximo 2048 caracteres')
   .optional()
-  .or(
-    z
-      .literal('')
-      .transform(() => undefined),
-  )
+  .or(z.literal('').transform(() => undefined))
   .or(z.null().transform(() => undefined));
 
 export const emitirCertificadoSchema = z.object({

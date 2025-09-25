@@ -85,7 +85,10 @@ export const estagiosEmailService = {
       locais,
     });
 
-    emailLogger.info({ destinatario, estagio: data.estagioNome }, 'Enviando email de convocação de estágio');
+    emailLogger.info(
+      { destinatario, estagio: data.estagioNome },
+      'Enviando email de convocação de estágio',
+    );
 
     const result = await brevoClient.sendEmail({
       to: destinatario,
@@ -96,7 +99,10 @@ export const estagiosEmailService = {
     });
 
     if (!result.success) {
-      emailLogger.warn({ destinatario, estagio: data.estagioNome }, 'Falha ao enviar email de estágio');
+      emailLogger.warn(
+        { destinatario, estagio: data.estagioNome },
+        'Falha ao enviar email de estágio',
+      );
     }
 
     return { result, confirmacaoUrl };
@@ -114,7 +120,10 @@ export const estagiosEmailService = {
       observacoes: data.observacoes ?? null,
     });
 
-    emailLogger.info({ destinatario: data.adminEmail, estagio: data.estagioNome }, 'Enviando aviso de encerramento de estágio');
+    emailLogger.info(
+      { destinatario: data.adminEmail, estagio: data.estagioNome },
+      'Enviando aviso de encerramento de estágio',
+    );
 
     return brevoClient.sendEmail({
       to: data.adminEmail,

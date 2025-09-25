@@ -69,7 +69,7 @@ export class CategoriasController {
   static list = async (_req: Request, res: Response) => {
     try {
       const data = await categoriasService.list();
-      res.json({ data });
+      res.json(data);
     } catch (error: any) {
       res.status(500).json({
         success: false,

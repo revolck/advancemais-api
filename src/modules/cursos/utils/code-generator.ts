@@ -60,6 +60,44 @@ export const generateUniqueCourseCode = async (
   );
 };
 
+export const generateUniqueCategoryCode = async (
+  tx: Prisma.TransactionClient,
+  logger?: AppLogger,
+) => {
+  return attemptUniqueCode(
+    10,
+    () => `${randomPrefix()}${randomNumber()}`,
+    async (candidate) => {
+      const existing = await tx.cursosCategorias.findUnique({
+        where: { codCategoria: candidate },
+        select: { id: true },
+      });
+      return !existing;
+    },
+    () => withFallback(3, 6),
+    logger,
+  );
+};
+
+export const generateUniqueSubcategoryCode = async (
+  tx: Prisma.TransactionClient,
+  logger?: AppLogger,
+) => {
+  return attemptUniqueCode(
+    10,
+    () => `${randomPrefix()}${randomNumber()}`,
+    async (candidate) => {
+      const existing = await tx.cursosSubcategorias.findUnique({
+        where: { codSubcategoria: candidate },
+        select: { id: true },
+      });
+      return !existing;
+    },
+    () => withFallback(3, 6),
+    logger,
+  );
+};
+
 export const generateUniqueTurmaCode = async (
   tx: Prisma.TransactionClient,
   logger?: AppLogger,

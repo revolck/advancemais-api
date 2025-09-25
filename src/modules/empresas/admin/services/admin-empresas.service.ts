@@ -54,6 +54,7 @@ import type {
   AdminEmpresasHistoryQuery,
   AdminEmpresasListQuery,
   AdminEmpresasPlanoInput,
+  AdminEmpresasPlanoUpdateInput,
   AdminEmpresasUpdateInput,
   AdminEmpresasVagasQuery,
 } from '@/modules/empresas/admin/validators/admin-empresas.schema';
@@ -1275,6 +1276,24 @@ export const adminEmpresasService = {
           await atualizarPlanoSemReset(tx, id, planoInput);
         }
       }
+    });
+
+    return adminEmpresasService.get(id);
+  },
+
+  updatePlano: async (id: string, plano: AdminEmpresasPlanoUpdateInput) => {
+    await prisma.$transaction(async (tx) => {
+      await ensureEmpresaExiste(tx, id);
+
+      const { resetPeriodo, ...planoPayload } = plano;
+      const planoInput = planoPayload as AdminEmpresasPlanoInput;
+
+      if (resetPeriodo || planoPayload.iniciarEm !== undefined) {
+        await assignPlanoToEmpresa(tx, id, planoInput);
+        return;
+      }
+
+      await atualizarPlanoSemReset(tx, id, planoInput);
     });
 
     return adminEmpresasService.get(id);

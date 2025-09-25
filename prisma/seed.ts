@@ -5,6 +5,11 @@ import {
   ModalidadesDeVagas,
   Jornadas,
   Senioridade,
+  EmpresasPlanoStatus,
+  EmpresasPlanoModo,
+  EmpresasPlanoOrigin,
+  StatusDeVagas,
+  StatusProcesso,
 } from '@prisma/client';
 import type {
   Usuarios,
@@ -16,6 +21,8 @@ import type {
   ModalidadesDeVagas as ModalidadesDeVagasType,
   Jornadas as JornadasType,
   Senioridade as SenioridadeType,
+  PlanosEmpresariais,
+  EmpresasPlano,
 } from '@prisma/client';
 
 import { seedCandidateInterestAreas } from './candidato/AreasDeInteresses';
@@ -79,6 +86,12 @@ interface CourseSeed {
   turmas: TurmaSeed[];
 }
 
+const PLAN_COMPANY_CODE = 'SEEDCOMPPLAN';
+const PLAN_COMPANY_EMAIL = 'contato+empresa-plano@advancemais.com';
+const PLAN_COMPANY_SUPABASE_ID = 'seed-empresa-plano-1';
+const PLAN_COMPANY_CNPJ = '11000000000106';
+const SEED_PLAN_ID = '00000000-0000-4000-8000-000000000301';
+
 const COMPANY_SEEDS: CompanySeed[] = [
   {
     name: 'Seed Ventures Tecnologia',
@@ -114,6 +127,13 @@ const COMPANY_SEEDS: CompanySeed[] = [
     supabaseId: 'seed-empresa-5',
     codUsuario: 'SEEDCOMP5',
     cnpj: '11000000000105',
+  },
+  {
+    name: 'Aurora Talent Partners',
+    email: PLAN_COMPANY_EMAIL,
+    supabaseId: PLAN_COMPANY_SUPABASE_ID,
+    codUsuario: PLAN_COMPANY_CODE,
+    cnpj: PLAN_COMPANY_CNPJ,
   },
 ];
 
@@ -481,6 +501,19 @@ const COURSE_SEEDS: CourseSeed[] = [
   },
 ];
 
+const PLANOS_EMPRESARIAIS_SEED = {
+  id: SEED_PLAN_ID,
+  icon: 'https://static.advancemais.com/plans/seed-premium.svg',
+  nome: 'Seed Plano Premium',
+  descricao:
+    'Plano demonstrativo com vagas ilimitadas, destaques e suporte prioritário para equipes de recrutamento.',
+  valor: '199.90',
+  desconto: 0,
+  quantidadeVagas: 20,
+  vagaEmDestaque: true,
+  quantidadeVagasDestaque: 3,
+};
+
 const CURRICULUM_IDS = [
   '00000000-0000-4000-8000-000000000201',
   '00000000-0000-4000-8000-000000000202',
@@ -506,6 +539,11 @@ function withTime(base: Date, hour: number): Date {
   const result = new Date(base);
   result.setHours(hour, 0, 0, 0);
   return result;
+}
+
+function buildPlanDate(month: number, day: number): Date {
+  const currentYear = new Date().getUTCFullYear();
+  return new Date(Date.UTC(currentYear, month, day, 12, 0, 0));
 }
 
 async function seedUsuarios(prismaClient: PrismaClient): Promise<{
@@ -798,11 +836,84 @@ async function seedCursos(
   }
 }
 
+async function seedPlanoAssinatura(
+  prismaClient: PrismaClient,
+  companies: Usuarios[],
+): Promise<{
+  plan: PlanosEmpresariais;
+  assinatura: EmpresasPlano | null;
+  company: Usuarios | undefined;
+}> {
+  const plan = await prismaClient.planosEmpresariais.upsert({
+    where: { id: PLANOS_EMPRESARIAIS_SEED.id },
+    update: {
+      icon: PLANOS_EMPRESARIAIS_SEED.icon,
+      nome: PLANOS_EMPRESARIAIS_SEED.nome,
+      descricao: PLANOS_EMPRESARIAIS_SEED.descricao,
+      valor: PLANOS_EMPRESARIAIS_SEED.valor,
+      desconto: PLANOS_EMPRESARIAIS_SEED.desconto,
+      quantidadeVagas: PLANOS_EMPRESARIAIS_SEED.quantidadeVagas,
+      vagaEmDestaque: PLANOS_EMPRESARIAIS_SEED.vagaEmDestaque,
+      quantidadeVagasDestaque: PLANOS_EMPRESARIAIS_SEED.quantidadeVagasDestaque,
+    },
+    create: {
+      id: PLANOS_EMPRESARIAIS_SEED.id,
+      icon: PLANOS_EMPRESARIAIS_SEED.icon,
+      nome: PLANOS_EMPRESARIAIS_SEED.nome,
+      descricao: PLANOS_EMPRESARIAIS_SEED.descricao,
+      valor: PLANOS_EMPRESARIAIS_SEED.valor,
+      desconto: PLANOS_EMPRESARIAIS_SEED.desconto,
+      quantidadeVagas: PLANOS_EMPRESARIAIS_SEED.quantidadeVagas,
+      vagaEmDestaque: PLANOS_EMPRESARIAIS_SEED.vagaEmDestaque,
+      quantidadeVagasDestaque: PLANOS_EMPRESARIAIS_SEED.quantidadeVagasDestaque,
+    },
+  });
+
+  const company = companies.find((item) => item.codUsuario === PLAN_COMPANY_CODE);
+
+  if (!company) {
+    return { plan, assinatura: null, company };
+  }
+
+  const inicio = buildPlanDate(8, 24);
+  const fim = buildPlanDate(9, 25);
+
+  const existingAssinatura = await prismaClient.empresasPlano.findFirst({
+    where: { usuarioId: company.id, planosEmpresariaisId: plan.id },
+  });
+
+  const assinaturaData = {
+    usuarioId: company.id,
+    planosEmpresariaisId: plan.id,
+    modo: EmpresasPlanoModo.CLIENTE,
+    status: EmpresasPlanoStatus.ATIVO,
+    origin: EmpresasPlanoOrigin.ADMIN,
+    inicio,
+    fim,
+  };
+
+  let assinatura: EmpresasPlano | null = null;
+
+  if (existingAssinatura) {
+    assinatura = await prismaClient.empresasPlano.update({
+      where: { id: existingAssinatura.id },
+      data: assinaturaData,
+    });
+  } else {
+    assinatura = await prismaClient.empresasPlano.create({
+      data: assinaturaData,
+    });
+  }
+
+  return { plan, assinatura, company };
+}
+
 async function seedVagas(
   prismaClient: PrismaClient,
   companies: Usuarios[],
   candidates: Usuarios[],
   candidateCurriculos: Map<string, UsuariosCurriculos>,
+  planCompany?: Usuarios,
 ): Promise<void> {
   if (companies.length === 0) {
     return;
@@ -988,6 +1099,209 @@ async function seedVagas(
       });
     })
   );
+
+  if (planCompany) {
+    const planVacancySeeds = [
+      {
+        code: 'SVPLAN1',
+        slug: 'seedplan-analista-suporte-rascunho',
+        title: 'Analista de Suporte Técnico',
+        regime: RegimesDeTrabalhos.CLT,
+        modalidade: ModalidadesDeVagas.HIBRIDO,
+        jornada: Jornadas.INTEGRAL,
+        senioridade: Senioridade.JUNIOR,
+        salarioMin: new Prisma.Decimal(3200),
+        salarioMax: new Prisma.Decimal(4200),
+        descricao:
+          'Atendimento a squads internos, registro de incidentes e criação de base de conhecimento para a equipe.',
+        status: StatusDeVagas.RASCUNHO,
+        inscricoesAte: addDays(new Date(), 20),
+        destaque: false,
+      },
+      {
+        code: 'SVPLAN2',
+        slug: 'seedplan-desenvolvedor-backend-publicada',
+        title: 'Desenvolvedor(a) Back-end Node.js',
+        regime: RegimesDeTrabalhos.CLT,
+        modalidade: ModalidadesDeVagas.REMOTO,
+        jornada: Jornadas.INTEGRAL,
+        senioridade: Senioridade.PLENO,
+        salarioMin: new Prisma.Decimal(6800),
+        salarioMax: new Prisma.Decimal(9300),
+        descricao:
+          'Construção de APIs escaláveis, integração com serviços de pagamentos e monitoramento de aplicações.',
+        status: StatusDeVagas.PUBLICADO,
+        inscricoesAte: addDays(new Date(), 25),
+        destaque: true,
+      },
+      {
+        code: 'SVPLAN3',
+        slug: 'seedplan-analista-marketing-expirada',
+        title: 'Analista de Marketing de Produto',
+        regime: RegimesDeTrabalhos.CLT,
+        modalidade: ModalidadesDeVagas.PRESENCIAL,
+        jornada: Jornadas.MEIO_PERIODO,
+        senioridade: Senioridade.JUNIOR,
+        salarioMin: new Prisma.Decimal(3600),
+        salarioMax: new Prisma.Decimal(4800),
+        descricao:
+          'Planejamento de campanhas de lançamento, gestão de OKRs e acompanhamento de métricas de engajamento.',
+        status: StatusDeVagas.EXPIRADO,
+        inscricoesAte: addDays(new Date(), -5),
+        destaque: false,
+      },
+      {
+        code: 'SVPLAN4',
+        slug: 'seedplan-product-owner-em-andamento',
+        title: 'Product Owner',
+        regime: RegimesDeTrabalhos.CLT,
+        modalidade: ModalidadesDeVagas.HIBRIDO,
+        jornada: Jornadas.FLEXIVEL,
+        senioridade: Senioridade.SENIOR,
+        salarioMin: new Prisma.Decimal(9000),
+        salarioMax: new Prisma.Decimal(11800),
+        descricao:
+          'Definição de roadmap, facilitação de rituais ágeis e acompanhamento de métricas de produto em squads digitais.',
+        status: StatusDeVagas.EM_ANALISE,
+        inscricoesAte: addDays(new Date(), 7),
+        destaque: false,
+      },
+    ];
+
+    const planVacancyCodes = planVacancySeeds.map((vacancy) => vacancy.code);
+
+    await prismaClient.empresasCandidatos.deleteMany({
+      where: { vaga: { codigo: { in: planVacancyCodes } } },
+    });
+    await prismaClient.empresasVagasProcesso.deleteMany({
+      where: { vaga: { codigo: { in: planVacancyCodes } } },
+    });
+
+    const planVagas = await Promise.all(
+      planVacancySeeds.map((vacancy, index) => {
+        const subarea = interestArea.subareas[index % interestArea.subareas.length];
+
+        return prismaClient.empresasVagas.upsert({
+          where: { codigo: vacancy.code },
+          update: {
+            slug: vacancy.slug,
+            usuarioId: planCompany.id,
+            areaInteresseId: interestArea.id,
+            subareaInteresseId: subarea.id,
+            regimeDeTrabalho: vacancy.regime,
+            modalidade: vacancy.modalidade,
+            titulo: vacancy.title,
+            numeroVagas: 2,
+            descricao: vacancy.descricao,
+            requisitos: [
+              'Comunicação clara com stakeholders',
+              'Capacidade analítica para tomada de decisão',
+            ],
+            atividades: [
+              'Conduzir cerimônias ágeis',
+              'Mensurar indicadores de sucesso e engajamento',
+            ],
+            beneficios: ['Plano de saúde', 'Bônus anual', 'Auxílio educação'],
+            observacoes: 'Vaga criada para demonstrar diferentes estágios de publicação.',
+            jornada: vacancy.jornada,
+            senioridade: vacancy.senioridade,
+            inscricoesAte: vacancy.inscricoesAte,
+            status: vacancy.status,
+            localizacao: {
+              cidade: 'Belo Horizonte',
+              estado: 'MG',
+              formato: vacancy.modalidade,
+            },
+            salarioMin: vacancy.salarioMin,
+            salarioMax: vacancy.salarioMax,
+            salarioConfidencial: false,
+            destaque: vacancy.destaque,
+          },
+          create: {
+            codigo: vacancy.code,
+            slug: vacancy.slug,
+            usuarioId: planCompany.id,
+            areaInteresseId: interestArea.id,
+            subareaInteresseId: subarea.id,
+            regimeDeTrabalho: vacancy.regime,
+            modalidade: vacancy.modalidade,
+            titulo: vacancy.title,
+            numeroVagas: 2,
+            descricao: vacancy.descricao,
+            requisitos: [
+              'Comunicação clara com stakeholders',
+              'Capacidade analítica para tomada de decisão',
+            ],
+            atividades: [
+              'Conduzir cerimônias ágeis',
+              'Mensurar indicadores de sucesso e engajamento',
+            ],
+            beneficios: ['Plano de saúde', 'Bônus anual', 'Auxílio educação'],
+            observacoes: 'Vaga criada para demonstrar diferentes estágios de publicação.',
+            jornada: vacancy.jornada,
+            senioridade: vacancy.senioridade,
+            inscricoesAte: vacancy.inscricoesAte,
+            status: vacancy.status,
+            localizacao: {
+              cidade: 'Belo Horizonte',
+              estado: 'MG',
+              formato: vacancy.modalidade,
+            },
+            salarioMin: vacancy.salarioMin,
+            salarioMax: vacancy.salarioMax,
+            salarioConfidencial: false,
+            maxCandidaturasPorUsuario: 3,
+            destaque: vacancy.destaque,
+            modoAnonimo: false,
+            paraPcd: true,
+          },
+        });
+      })
+    );
+
+    const publishedPlanVacancy = planVagas.find(
+      (vaga) => vaga.status === StatusDeVagas.PUBLICADO,
+    );
+
+    if (publishedPlanVacancy) {
+      const inscritos = candidates.slice(0, 2);
+
+      await Promise.all(
+        inscritos.map((candidate, index) => {
+          const curriculo = candidateCurriculos.get(candidate.id);
+          if (!curriculo) {
+            return Promise.resolve();
+          }
+
+          const candidaturaStatus =
+            index === 0 ? StatusProcesso.EM_ANALISE : StatusProcesso.RECEBIDA;
+
+          return prismaClient.empresasCandidatos.upsert({
+            where: {
+              vagaId_candidatoId_curriculoId: {
+                vagaId: publishedPlanVacancy.id,
+                candidatoId: candidate.id,
+                curriculoId: curriculo.id,
+              },
+            },
+            update: {
+              status: candidaturaStatus,
+              empresaUsuarioId: planCompany.id,
+            },
+            create: {
+              vagaId: publishedPlanVacancy.id,
+              candidatoId: candidate.id,
+              curriculoId: curriculo.id,
+              empresaUsuarioId: planCompany.id,
+              status: candidaturaStatus,
+              origem: 'SITE',
+              consentimentos: { newsletter: true },
+            },
+          });
+        }),
+      );
+    }
+  }
 }
 
 async function main(): Promise<void> {
@@ -995,7 +1309,8 @@ async function main(): Promise<void> {
   const { companies, candidates } = await seedUsuarios(prisma);
   const candidateCurriculos = await seedCurriculos(prisma, candidates);
   await seedCursos(prisma, candidates, companies);
-  await seedVagas(prisma, companies, candidates, candidateCurriculos);
+  const { company: planCompany } = await seedPlanoAssinatura(prisma, companies);
+  await seedVagas(prisma, companies, candidates, candidateCurriculos, planCompany);
 }
 
 main()

@@ -101,6 +101,7 @@ model CandidatosSubareasInteresse {
 
 model CursosCategorias {
   id        Int                @id @default(autoincrement())
+  codCategoria String          @unique @db.VarChar(12)
   nome      String             @db.VarChar(120)
   descricao String?            @db.VarChar(255)
   subcats   CursosSubcategorias[]
@@ -112,6 +113,7 @@ model CursosCategorias {
 
 model CursosSubcategorias {
   id           Int             @id @default(autoincrement())
+  codSubcategoria String       @unique @db.VarChar(12)
   nome         String          @db.VarChar(120)
   descricao    String?         @db.VarChar(255)
   categoriaId  Int

@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import bcrypt from 'bcrypt';
 
 import {
@@ -546,6 +547,59 @@ const sanitizeSupabaseId = (supabaseId: string) => supabaseId.trim();
 const sanitizeSenha = async (senha: string) => bcrypt.hash(senha, 12);
 const normalizeDocumento = (value: string) => value.replace(/\D/g, '');
 
+const PASSWORD_UPPERCASE = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+const PASSWORD_LOWERCASE = 'abcdefghijkmnopqrstuvwxyz';
+const PASSWORD_DIGITS = '0123456789';
+const PASSWORD_SPECIAL = '!@#$%&*?';
+const PASSWORD_ALPHABET =
+  PASSWORD_UPPERCASE + PASSWORD_LOWERCASE + PASSWORD_DIGITS + PASSWORD_SPECIAL;
+const DEFAULT_ADMIN_PASSWORD_LENGTH = 12;
+
+const getSecureRandomInt = (max: number) => {
+  if (max <= 0) {
+    throw new Error('max must be greater than 0');
+  }
+
+  const limit = 256 - (256 % max);
+  let randomNumber = 0;
+
+  do {
+    randomNumber = randomBytes(1)[0];
+  } while (randomNumber >= limit);
+
+  return randomNumber % max;
+};
+
+const getRandomChar = (alphabet: string) => alphabet[getSecureRandomInt(alphabet.length)];
+
+const shuffleArray = <T>(items: T[]) => {
+  const array = [...items];
+
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = getSecureRandomInt(i + 1);
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+
+  return array;
+};
+
+const generateSecurePassword = (length = DEFAULT_ADMIN_PASSWORD_LENGTH) => {
+  const targetLength = Math.max(length, 8);
+  const requiredChars = [
+    getRandomChar(PASSWORD_UPPERCASE),
+    getRandomChar(PASSWORD_LOWERCASE),
+    getRandomChar(PASSWORD_DIGITS),
+    getRandomChar(PASSWORD_SPECIAL),
+  ];
+  const remainingLength = targetLength - requiredChars.length;
+
+  for (let i = 0; i < remainingLength; i++) {
+    requiredChars.push(getRandomChar(PASSWORD_ALPHABET));
+  }
+
+  return shuffleArray(requiredChars).join('');
+};
+
 // removed: observação e cálculo por TiposDePlanos (modelo migrado para modo/status)
 
 const upsertEnderecoPrincipal = async (
@@ -1039,7 +1093,7 @@ const listVagas = async (id: string, { page, pageSize, status }: AdminEmpresasVa
 
 export const adminEmpresasService = {
   create: async (input: AdminEmpresasCreateInput) => {
-    const senhaOriginal = input.senha;
+    const senhaOriginal = input.senha ?? generateSecurePassword();
     const senhaHash = await sanitizeSenha(senhaOriginal);
     const aceitarTermos = input.aceitarTermos ?? true;
     const status = input.status ?? Status.ATIVO;

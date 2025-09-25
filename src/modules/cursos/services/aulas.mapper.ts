@@ -3,10 +3,7 @@ import { Prisma } from '@prisma/client';
 export const aulaWithMateriaisInclude = Prisma.validator<Prisma.CursosTurmasAulasDefaultArgs>()({
   include: {
     materiais: {
-      orderBy: [
-        { ordem: 'asc' },
-        { criadoEm: 'asc' },
-      ],
+      orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
     },
   },
 });

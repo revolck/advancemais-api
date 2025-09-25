@@ -79,22 +79,18 @@ export class AdminEmpresasController {
           .json({ success: false, code: 'EMPRESA_NOT_FOUND', message: 'Empresa não encontrada' });
       }
       if (error?.code === 'BLOQUEIO_NOT_FOUND') {
-        return res
-          .status(404)
-          .json({
-            success: false,
-            code: 'BLOQUEIO_NOT_FOUND',
-            message: 'Nenhum bloqueio ativo encontrado',
-          });
-      }
-      res
-        .status(500)
-        .json({
+        return res.status(404).json({
           success: false,
-          code: 'ADMIN_EMPRESAS_UNBLOCK_ERROR',
-          message: 'Erro ao revogar bloqueio',
-          error: error?.message,
+          code: 'BLOQUEIO_NOT_FOUND',
+          message: 'Nenhum bloqueio ativo encontrado',
         });
+      }
+      res.status(500).json({
+        success: false,
+        code: 'ADMIN_EMPRESAS_UNBLOCK_ERROR',
+        message: 'Erro ao revogar bloqueio',
+        error: error?.message,
+      });
     }
   };
 

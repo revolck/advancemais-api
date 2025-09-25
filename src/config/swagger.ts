@@ -388,7 +388,11 @@ const options: Options = {
               type: 'object',
               nullable: true,
               properties: {
-                id: { type: 'string', format: 'uuid', example: 'f1d2d2f9-1234-5678-90ab-abcdef123456' },
+                id: {
+                  type: 'string',
+                  format: 'uuid',
+                  example: 'f1d2d2f9-1234-5678-90ab-abcdef123456',
+                },
                 nomeCompleto: { type: 'string', example: 'Maria Almeida' },
                 email: { type: 'string', format: 'email', example: 'maria.almeida@example.com' },
                 role: { $ref: '#/components/schemas/Roles' },
@@ -443,19 +447,22 @@ const options: Options = {
               type: 'boolean',
               nullable: true,
               example: false,
-              description: 'Quando verdadeiro aplica o cupom a todos os itens da categoria escolhida',
+              description:
+                'Quando verdadeiro aplica o cupom a todos os itens da categoria escolhida',
             },
             cursosIds: {
               type: 'array',
               nullable: true,
               items: { type: 'integer', example: 5 },
-              description: 'Obrigatório quando aplicarEm for APENAS_CURSOS e aplicarEmTodosItens for falso',
+              description:
+                'Obrigatório quando aplicarEm for APENAS_CURSOS e aplicarEmTodosItens for falso',
             },
             planosIds: {
               type: 'array',
               nullable: true,
               items: { type: 'string', format: 'uuid' },
-              description: 'Obrigatório quando aplicarEm for APENAS_ASSINATURA e aplicarEmTodosItens for falso',
+              description:
+                'Obrigatório quando aplicarEm for APENAS_ASSINATURA e aplicarEmTodosItens for falso',
             },
             limiteUsoTotalTipo: { $ref: '#/components/schemas/CuponsLimiteUso' },
             limiteUsoTotalQuantidade: {
@@ -647,7 +654,12 @@ const options: Options = {
         },
         CursosEstagioNotificacaoTipo: {
           type: 'string',
-          enum: ['ASSINATURA_PENDENTE', 'INICIO_PROXIMO', 'ENCERRAMENTO_PROXIMO', 'CONCLUSAO_SOLICITADA'],
+          enum: [
+            'ASSINATURA_PENDENTE',
+            'INICIO_PROXIMO',
+            'ENCERRAMENTO_PROXIMO',
+            'CONCLUSAO_SOLICITADA',
+          ],
           example: 'ASSINATURA_PENDENTE',
           description: 'Tipos de comunicações automáticas enviadas ao longo do ciclo do estágio.',
         },
@@ -730,7 +742,12 @@ const options: Options = {
             },
             tipo: { $ref: '#/components/schemas/CursosMateriais' },
             tipoArquivo: { $ref: '#/components/schemas/TiposDeArquivos', nullable: true },
-            url: { type: 'string', format: 'uri', nullable: true, example: 'https://cdn.example.com/video.mp4' },
+            url: {
+              type: 'string',
+              format: 'uri',
+              nullable: true,
+              example: 'https://cdn.example.com/video.mp4',
+            },
             duracaoEmSegundos: { type: 'integer', nullable: true, example: 1800 },
             tamanhoEmBytes: { type: 'integer', nullable: true, example: 5242880 },
             ordem: { type: 'integer', example: 1 },
@@ -843,7 +860,11 @@ const options: Options = {
               type: 'object',
               properties: {
                 criadoEm: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00Z' },
-                atualizadoEm: { type: 'string', format: 'date-time', example: '2024-01-10T12:00:00Z' },
+                atualizadoEm: {
+                  type: 'string',
+                  format: 'date-time',
+                  example: '2024-01-10T12:00:00Z',
+                },
               },
             },
           ],
@@ -868,7 +889,11 @@ const options: Options = {
               type: 'object',
               properties: {
                 criadoEm: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00Z' },
-                atualizadoEm: { type: 'string', format: 'date-time', example: '2024-01-10T12:00:00Z' },
+                atualizadoEm: {
+                  type: 'string',
+                  format: 'date-time',
+                  example: '2024-01-10T12:00:00Z',
+                },
                 subcategorias: {
                   type: 'array',
                   items: { $ref: '#/components/schemas/CursoSubcategoria' },
@@ -932,7 +957,11 @@ const options: Options = {
             id: { type: 'integer', example: 1 },
             codigo: { type: 'string', example: 'CRS1234' },
             nome: { type: 'string', example: 'Excel Avançado' },
-            descricao: { type: 'string', nullable: true, example: 'Curso completo de Excel para negócios.' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Curso completo de Excel para negócios.',
+            },
             cargaHoraria: { type: 'integer', example: 40 },
             estagioObrigatorio: {
               type: 'boolean',
@@ -1077,8 +1106,16 @@ const options: Options = {
             cidade: { type: 'string', nullable: true, example: 'São Paulo' },
             estado: { type: 'string', nullable: true, example: 'SP' },
             complemento: { type: 'string', nullable: true, example: 'Conjunto 12' },
-            pontoReferencia: { type: 'string', nullable: true, example: 'Próximo ao metrô Trianon' },
-            observacoes: { type: 'string', nullable: true, example: 'Apresentar documento com foto na recepção.' },
+            pontoReferencia: {
+              type: 'string',
+              nullable: true,
+              example: 'Próximo ao metrô Trianon',
+            },
+            observacoes: {
+              type: 'string',
+              nullable: true,
+              example: 'Apresentar documento com foto na recepção.',
+            },
             criadoEm: { type: 'string', format: 'date-time' },
             atualizadoEm: { type: 'string', format: 'date-time' },
           },
@@ -1098,9 +1135,17 @@ const options: Options = {
               type: 'object',
               properties: {
                 ip: { type: 'string', nullable: true, example: '200.200.10.1' },
-                userAgent: { type: 'string', nullable: true, example: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+                userAgent: {
+                  type: 'string',
+                  nullable: true,
+                  example: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+                },
                 deviceTipo: { type: 'string', nullable: true, example: 'DESKTOP' },
-                deviceDescricao: { type: 'string', nullable: true, example: 'Windows 11 • Chrome 121' },
+                deviceDescricao: {
+                  type: 'string',
+                  nullable: true,
+                  example: 'Windows 11 • Chrome 121',
+                },
                 deviceId: { type: 'string', nullable: true, example: '358240051111110' },
                 sistemaOperacional: { type: 'string', nullable: true, example: 'Windows 11' },
                 navegador: { type: 'string', nullable: true, example: 'Chrome' },
@@ -1117,7 +1162,11 @@ const options: Options = {
             canal: { type: 'string', nullable: true, example: 'EMAIL' },
             enviadoPara: { type: 'string', example: 'coordenacao@advancemais.com' },
             enviadoEm: { type: 'string', format: 'date-time' },
-            detalhes: { type: 'string', nullable: true, example: 'Aviso enviado automaticamente pelo watcher.' },
+            detalhes: {
+              type: 'string',
+              nullable: true,
+              example: 'Aviso enviado automaticamente pelo watcher.',
+            },
           },
         },
         CursoEstagio: {
@@ -1128,10 +1177,18 @@ const options: Options = {
             turmaId: { type: 'string', format: 'uuid', example: 'tur-123' },
             inscricaoId: { type: 'string', format: 'uuid', example: 'ins-789' },
             nome: { type: 'string', example: 'Estágio Supervisionado em RH' },
-            descricao: { type: 'string', nullable: true, example: 'Atividades práticas em ambiente corporativo.' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Atividades práticas em ambiente corporativo.',
+            },
             obrigatorio: { type: 'boolean', example: true },
             status: { $ref: '#/components/schemas/CursosEstagioStatus' },
-            dataInicio: { type: 'string', format: 'date-time', example: '2025-02-01T12:00:00.000Z' },
+            dataInicio: {
+              type: 'string',
+              format: 'date-time',
+              example: '2025-02-01T12:00:00.000Z',
+            },
             dataFim: { type: 'string', format: 'date-time', example: '2025-04-30T23:59:59.000Z' },
             cargaHoraria: { type: 'integer', nullable: true, example: 160 },
             empresaPrincipal: { type: 'string', nullable: true, example: 'Advance Tecnologia' },
@@ -1350,7 +1407,8 @@ const options: Options = {
               type: 'string',
               format: 'uri',
               nullable: true,
-              description: 'Link Meet opcional para turmas LIVE (gerado automaticamente se omitido)',
+              description:
+                'Link Meet opcional para turmas LIVE (gerado automaticamente se omitido)',
             },
             materiais: {
               type: 'array',
@@ -1407,7 +1465,12 @@ const options: Options = {
         },
         CursosModelosRecuperacao: {
           type: 'string',
-          enum: ['SUBSTITUI_MENOR', 'MEDIA_MINIMA_DIRETA', 'PROVA_FINAL_UNICA', 'NOTA_MAXIMA_LIMITADA'],
+          enum: [
+            'SUBSTITUI_MENOR',
+            'MEDIA_MINIMA_DIRETA',
+            'PROVA_FINAL_UNICA',
+            'NOTA_MAXIMA_LIMITADA',
+          ],
           example: 'SUBSTITUI_MENOR',
         },
         CursoTurmaModulo: {
@@ -1416,7 +1479,11 @@ const options: Options = {
             id: { type: 'string', format: 'uuid' },
             turmaId: { type: 'string', format: 'uuid' },
             nome: { type: 'string', example: 'Módulo 1 - Fundamentos' },
-            descricao: { type: 'string', nullable: true, example: 'Conteúdos essenciais do módulo.' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Conteúdos essenciais do módulo.',
+            },
             obrigatorio: { type: 'boolean', example: true },
             ordem: { type: 'integer', example: 1 },
             aulas: {
@@ -1434,7 +1501,11 @@ const options: Options = {
           required: ['nome'],
           properties: {
             nome: { type: 'string', example: 'Módulo 1 - Fundamentos' },
-            descricao: { type: 'string', nullable: true, example: 'Conteúdos essenciais do módulo.' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Conteúdos essenciais do módulo.',
+            },
             obrigatorio: { type: 'boolean', nullable: true, example: true },
             ordem: { type: 'integer', nullable: true, example: 1 },
           },
@@ -1501,7 +1572,17 @@ const options: Options = {
         },
         CursosNotaTipo: {
           type: 'string',
-          enum: ['PROVA', 'TRABALHO', 'ATIVIDADE', 'PROJETO', 'SEMINARIO', 'PARTICIPACAO', 'SIMULADO', 'BONUS', 'OUTRO'],
+          enum: [
+            'PROVA',
+            'TRABALHO',
+            'ATIVIDADE',
+            'PROJETO',
+            'SEMINARIO',
+            'PARTICIPACAO',
+            'SIMULADO',
+            'BONUS',
+            'OUTRO',
+          ],
           description:
             'Tipo de lançamento da nota. Valores extras cobrem entregas diversas como atividades, projetos, seminários, participação, simulados, bônus e outros registros.',
           example: 'PROVA',
@@ -2183,7 +2264,8 @@ const options: Options = {
             estagioObrigatorio: {
               type: 'boolean',
               example: false,
-              description: 'Indica se o certificado depende da conclusão de estágio supervisionado.',
+              description:
+                'Indica se o certificado depende da conclusão de estágio supervisionado.',
             },
             statusPadrao: { $ref: '#/components/schemas/CursosStatusPadrao' },
             categoria: {
@@ -3741,7 +3823,8 @@ const options: Options = {
         },
         CandidatoAreaInteresse: {
           type: 'object',
-          description: 'Representa um registro da tabela CandidatosAreasInteresse utilizando a nomenclatura padrão do schema Prisma.',
+          description:
+            'Representa um registro da tabela CandidatosAreasInteresse utilizando a nomenclatura padrão do schema Prisma.',
           properties: {
             id: { type: 'integer', example: 1 },
             categoria: {
@@ -3769,7 +3852,8 @@ const options: Options = {
         },
         CandidatoAreaInteresseCreateInput: {
           type: 'object',
-          description: 'Payload para criação de registros em CandidatosAreasInteresse e suas subáreas relacionadas.',
+          description:
+            'Payload para criação de registros em CandidatosAreasInteresse e suas subáreas relacionadas.',
           required: ['categoria', 'subareas'],
           properties: {
             categoria: {
@@ -3790,7 +3874,8 @@ const options: Options = {
         },
         CandidatoAreaInteresseUpdateInput: {
           type: 'object',
-          description: 'Payload para atualização de registros em CandidatosAreasInteresse mantendo a convenção padrão de nomes.',
+          description:
+            'Payload para atualização de registros em CandidatosAreasInteresse mantendo a convenção padrão de nomes.',
           properties: {
             categoria: {
               type: 'string',
@@ -7004,15 +7089,7 @@ const options: Options = {
         AdminEmpresasDashboardListItem: {
           type: 'object',
           description: 'Resumo otimizado de empresas para exibição em dashboards administrativos.',
-          required: [
-            'id',
-            'codUsuario',
-            'nome',
-            'email',
-            'status',
-            'criadoEm',
-            'vagasPublicadas',
-          ],
+          required: ['id', 'codUsuario', 'nome', 'email', 'status', 'criadoEm', 'vagasPublicadas'],
           properties: {
             id: { type: 'string', format: 'uuid', example: 'empresa-uuid' },
             codUsuario: { type: 'string', example: 'EMP-123456' },
@@ -7444,7 +7521,11 @@ const options: Options = {
                   example: 'ADMIN',
                 },
                 criadoEm: { type: 'string', format: 'date-time', example: '2024-01-05T12:00:00Z' },
-                atualizadoEm: { type: 'string', format: 'date-time', example: '2024-03-01T12:00:00Z' },
+                atualizadoEm: {
+                  type: 'string',
+                  format: 'date-time',
+                  example: '2024-03-01T12:00:00Z',
+                },
                 proximaCobranca: {
                   type: 'string',
                   format: 'date-time',
@@ -8298,7 +8379,8 @@ const options: Options = {
         },
         AdminVagaUsuarioResumo: {
           type: 'object',
-          description: 'Informações completas do usuário (empresa ou candidato) associadas à vaga em contexto administrativo',
+          description:
+            'Informações completas do usuário (empresa ou candidato) associadas à vaga em contexto administrativo',
           required: [
             'id',
             'codUsuario',
@@ -8446,15 +8528,7 @@ const options: Options = {
         },
         AdminVagaProcesso: {
           type: 'object',
-          required: [
-            'id',
-            'vagaId',
-            'candidatoId',
-            'status',
-            'origem',
-            'criadoEm',
-            'atualizadoEm',
-          ],
+          required: ['id', 'vagaId', 'candidatoId', 'status', 'origem', 'criadoEm', 'atualizadoEm'],
           properties: {
             id: { type: 'string', format: 'uuid', example: 'processo-uuid' },
             vagaId: { type: 'string', format: 'uuid', example: 'vaga-uuid' },
@@ -9882,14 +9956,7 @@ const options: Options = {
         },
         AdminCreateUserBase: {
           type: 'object',
-          required: [
-            'nomeCompleto',
-            'telefone',
-            'email',
-            'senha',
-            'confirmarSenha',
-            'tipoUsuario',
-          ],
+          required: ['nomeCompleto', 'telefone', 'email', 'senha', 'confirmarSenha', 'tipoUsuario'],
           properties: {
             nomeCompleto: {
               type: 'string',
@@ -10063,7 +10130,8 @@ const options: Options = {
                 emailVerificationBypassed: {
                   type: 'boolean',
                   example: true,
-                  description: 'Indica que a verificação de email foi dispensada no fluxo administrativo.',
+                  description:
+                    'Indica que a verificação de email foi dispensada no fluxo administrativo.',
                 },
               },
             },
@@ -10155,7 +10223,11 @@ const options: Options = {
               ],
               example: 'CANDIDATURA_CANCELADA_CURRICULO',
             },
-            descricao: { type: 'string', nullable: true, example: 'Candidatura cancelada após exclusão do currículo.' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Candidatura cancelada após exclusão do currículo.',
+            },
             metadata: {
               type: 'object',
               nullable: true,

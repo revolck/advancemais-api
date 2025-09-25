@@ -52,7 +52,10 @@ export const generateUniqueCourseCode = async (
     10,
     () => `${randomPrefix()}${randomNumber()}`,
     async (candidate) => {
-      const existing = await tx.cursos.findUnique({ where: { codigo: candidate }, select: { id: true } });
+      const existing = await tx.cursos.findUnique({
+        where: { codigo: candidate },
+        select: { id: true },
+      });
       return !existing;
     },
     () => withFallback(3, 6),
@@ -98,15 +101,15 @@ export const generateUniqueSubcategoryCode = async (
   );
 };
 
-export const generateUniqueTurmaCode = async (
-  tx: Prisma.TransactionClient,
-  logger?: AppLogger,
-) => {
+export const generateUniqueTurmaCode = async (tx: Prisma.TransactionClient, logger?: AppLogger) => {
   return attemptUniqueCode(
     10,
     () => `TR${randomPrefix(2)}${randomNumber()}`,
     async (candidate) => {
-      const existing = await tx.cursosTurmas.findUnique({ where: { codigo: candidate }, select: { id: true } });
+      const existing = await tx.cursosTurmas.findUnique({
+        where: { codigo: candidate },
+        select: { id: true },
+      });
       return !existing;
     },
     () => `TR${withFallback(2, 6)}`,

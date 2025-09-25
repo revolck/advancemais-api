@@ -839,22 +839,21 @@ const mapPlanoHistorico = (
   plano: PlanoHistoricoRecord,
   referenceDate: Date = new Date(),
 ): AdminEmpresaPlanoHistoricoItem => {
-  const resumo =
-    mapPlanoResumo(plano as unknown as PlanoResumoData, referenceDate) ?? {
-      id: plano.id,
-      nome: plano.plano?.nome ?? null,
-      modo: plano.modo ?? null,
-      status: plano.status ?? null,
-      inicio: plano.inicio ?? null,
-      fim: plano.fim ?? null,
-      modeloPagamento: plano.modeloPagamento ?? null,
-      metodoPagamento: plano.metodoPagamento ?? null,
-      statusPagamento: plano.statusPagamento ?? null,
-      valor: plano.plano?.valor ?? null,
-      quantidadeVagas: plano.plano?.quantidadeVagas ?? null,
-      duracaoEmDias: calculateDurationInDays(plano.inicio ?? null, plano.fim ?? null),
-      diasRestantes: calculateDaysRemaining(plano.fim ?? null, referenceDate),
-    };
+  const resumo = mapPlanoResumo(plano as unknown as PlanoResumoData, referenceDate) ?? {
+    id: plano.id,
+    nome: plano.plano?.nome ?? null,
+    modo: plano.modo ?? null,
+    status: plano.status ?? null,
+    inicio: plano.inicio ?? null,
+    fim: plano.fim ?? null,
+    modeloPagamento: plano.modeloPagamento ?? null,
+    metodoPagamento: plano.metodoPagamento ?? null,
+    statusPagamento: plano.statusPagamento ?? null,
+    valor: plano.plano?.valor ?? null,
+    quantidadeVagas: plano.plano?.quantidadeVagas ?? null,
+    duracaoEmDias: calculateDurationInDays(plano.inicio ?? null, plano.fim ?? null),
+    diasRestantes: calculateDaysRemaining(plano.fim ?? null, referenceDate),
+  };
 
   return {
     ...resumo,
@@ -1163,9 +1162,8 @@ export const adminEmpresasService = {
     if (empresa) {
       const baseFrontendUrl = serverConfig.frontendUrl.replace(/\/$/, '');
       const rawAuthUrl = process.env.AUTH_FRONTEND_URL?.trim();
-      const authBaseUrl = (rawAuthUrl && rawAuthUrl.length > 0
-        ? rawAuthUrl
-        : `${baseFrontendUrl}/auth`
+      const authBaseUrl = (
+        rawAuthUrl && rawAuthUrl.length > 0 ? rawAuthUrl : `${baseFrontendUrl}/auth`
       ).replace(/\/$/, '');
       const loginUrl = `${authBaseUrl}/login`;
 
@@ -1471,38 +1469,37 @@ export const adminEmpresasService = {
       bloqueiosRecords,
       vagasStatusCountsRaw,
       candidaturasStatusCountsRaw,
-    ] =
-      await prisma.$transaction([
-        prisma.empresasPlano.findMany({
-          where: { usuarioId: id },
-          orderBy: [{ inicio: 'desc' }, { criadoEm: 'desc' }],
-          select: planoHistoricoSelect,
-        }),
-        prisma.usuariosEmBloqueios.findMany({
-          where: { usuarioId: id },
-          orderBy: [{ criadoEm: 'desc' }],
-          select: bloqueioSelect,
-        }),
-        prisma.empresasVagas.groupBy({
-          by: ['status'],
-          where: { usuarioId: id },
-          orderBy: { status: 'asc' },
-          _count: { _all: true },
-        }),
-        prisma.empresasCandidatos.groupBy({
-          by: ['status'],
-          where: { empresaUsuarioId: id },
-          orderBy: { status: 'asc' },
-          _count: { _all: true },
-        }),
-      ]);
+    ] = await prisma.$transaction([
+      prisma.empresasPlano.findMany({
+        where: { usuarioId: id },
+        orderBy: [{ inicio: 'desc' }, { criadoEm: 'desc' }],
+        select: planoHistoricoSelect,
+      }),
+      prisma.usuariosEmBloqueios.findMany({
+        where: { usuarioId: id },
+        orderBy: [{ criadoEm: 'desc' }],
+        select: bloqueioSelect,
+      }),
+      prisma.empresasVagas.groupBy({
+        by: ['status'],
+        where: { usuarioId: id },
+        orderBy: { status: 'asc' },
+        _count: { _all: true },
+      }),
+      prisma.empresasCandidatos.groupBy({
+        by: ['status'],
+        where: { empresaUsuarioId: id },
+        orderBy: { status: 'asc' },
+        _count: { _all: true },
+      }),
+    ]);
 
     const vagasStatusCounts = vagasStatusCountsRaw.map((item) => ({
       status: item.status,
       _count: {
         _all:
           typeof item._count === 'object' && item._count !== null
-            ? (item._count as { _all?: number })._all ?? 0
+            ? ((item._count as { _all?: number })._all ?? 0)
             : 0,
       },
     }));
@@ -1512,7 +1509,7 @@ export const adminEmpresasService = {
       _count: {
         _all:
           typeof item._count === 'object' && item._count !== null
-            ? (item._count as { _all?: number })._all ?? 0
+            ? ((item._count as { _all?: number })._all ?? 0)
             : 0,
       },
     }));
@@ -1655,7 +1652,11 @@ export const adminEmpresasService = {
     return mapVagaResumo(vaga);
   },
 
-  aplicarBloqueio: async (empresaId: string, adminId: string, input: AdminEmpresasBloqueioInput) => {
+  aplicarBloqueio: async (
+    empresaId: string,
+    adminId: string,
+    input: AdminEmpresasBloqueioInput,
+  ) => {
     const observacoes = sanitizeOptionalValue(input.observacoes ?? undefined);
     const inicio = new Date();
     let fim: Date | null = null;

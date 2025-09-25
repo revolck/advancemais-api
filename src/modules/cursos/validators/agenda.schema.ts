@@ -101,8 +101,12 @@ export const updateAgendaSchema = z
     tipo: z.nativeEnum(CursosAgendaTipo).optional(),
     titulo: tituloSchema.optional(),
     descricao: descricaoSchema.optional(),
-    inicio: z.coerce.date({ invalid_type_error: 'Informe uma data/hora válida para início' }).optional(),
-    fim: z.coerce.date({ invalid_type_error: 'Informe uma data/hora válida para término' }).optional(),
+    inicio: z.coerce
+      .date({ invalid_type_error: 'Informe uma data/hora válida para início' })
+      .optional(),
+    fim: z.coerce
+      .date({ invalid_type_error: 'Informe uma data/hora válida para término' })
+      .optional(),
     aulaId: aulaIdSchema.optional(),
     provaId: provaIdSchema.optional(),
   })

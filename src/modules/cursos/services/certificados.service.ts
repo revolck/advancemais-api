@@ -31,7 +31,11 @@ type ListCertificadosFilters = {
   formato?: CursosCertificadosTipos;
 };
 
-const ensureTurmaBelongsToCurso = async (client: PrismaClientOrTx, cursoId: number, turmaId: string) => {
+const ensureTurmaBelongsToCurso = async (
+  client: PrismaClientOrTx,
+  cursoId: number,
+  turmaId: string,
+) => {
   const turma = await client.cursosTurmas.findFirst({
     where: { id: turmaId, cursoId },
     select: { id: true },

@@ -11,9 +11,7 @@ import { ProvaWithRelations, mapProva, provaDefaultInclude } from './provas.mapp
 
 const cursosLogger = logger.child({ module: 'CursosService' });
 
-const publicCursoStatuses: CursosStatusPadrao[] = [
-  CursosStatusPadrao.PUBLICADO,
-];
+const publicCursoStatuses: CursosStatusPadrao[] = [CursosStatusPadrao.PUBLICADO];
 
 const publicTurmaStatuses: CursoStatus[] = [
   CursoStatus.PUBLICADO,
@@ -97,25 +95,16 @@ const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()(
       },
     },
     aulas: {
-      orderBy: [
-        { ordem: 'asc' },
-        { criadoEm: 'asc' },
-      ],
+      orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
       include: aulaWithMateriaisInclude.include,
     },
     modulos: {
       ...moduloDetailedInclude.include,
-      orderBy: [
-        { ordem: 'asc' },
-        { criadoEm: 'asc' },
-      ],
+      orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
     },
     provas: {
       ...provaDefaultInclude.include,
-      orderBy: [
-        { ordem: 'asc' },
-        { criadoEm: 'asc' },
-      ],
+      orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
     },
     regrasAvaliacao: { select: regrasAvaliacaoSelect },
   },
@@ -123,34 +112,22 @@ const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()(
 
 const buildPublicTurmaWhere = (referenceDate: Date): Prisma.CursosTurmasWhereInput => ({
   status: { in: publicTurmaStatuses },
-  OR: [
-    { dataInscricaoFim: { equals: null } },
-    { dataInscricaoFim: { gte: referenceDate } },
-  ],
+  OR: [{ dataInscricaoFim: { equals: null } }, { dataInscricaoFim: { gte: referenceDate } }],
 });
 
 const turmaPublicInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
   include: {
     aulas: {
-      orderBy: [
-        { ordem: 'asc' },
-        { criadoEm: 'asc' },
-      ],
+      orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
       include: aulaWithMateriaisInclude.include,
     },
     modulos: {
       ...moduloDetailedInclude.include,
-      orderBy: [
-        { ordem: 'asc' },
-        { criadoEm: 'asc' },
-      ],
+      orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
     },
     provas: {
       ...provaDefaultInclude.include,
-      orderBy: [
-        { ordem: 'asc' },
-        { criadoEm: 'asc' },
-      ],
+      orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
     },
     regrasAvaliacao: { select: regrasAvaliacaoSelect },
   },
@@ -182,7 +159,9 @@ type CourseListParams = {
   includeTurmas?: boolean;
 };
 
-const mapTurmaSummary = (turma: Prisma.CursosTurmasGetPayload<{ select: typeof turmaSummarySelect }>) => ({
+const mapTurmaSummary = (
+  turma: Prisma.CursosTurmasGetPayload<{ select: typeof turmaSummarySelect }>,
+) => ({
   id: turma.id,
   codigo: turma.codigo,
   nome: turma.nome,
@@ -198,7 +177,9 @@ const mapTurmaSummary = (turma: Prisma.CursosTurmasGetPayload<{ select: typeof t
 });
 
 const mapRegrasAvaliacao = (
-  regras?: Prisma.CursosTurmasRegrasAvaliacaoGetPayload<{ select: typeof regrasAvaliacaoSelect }> | null,
+  regras?: Prisma.CursosTurmasRegrasAvaliacaoGetPayload<{
+    select: typeof regrasAvaliacaoSelect;
+  }> | null,
 ) => {
   if (!regras) {
     return null;
@@ -209,7 +190,9 @@ const mapRegrasAvaliacao = (
     politicaRecuperacaoAtiva: regras.politicaRecuperacaoAtiva,
     modelosRecuperacao: traduzirModelosPrisma(regras.modelosRecuperacao),
     ordemAplicacaoRecuperacao: traduzirModelosPrisma(regras.ordemAplicacaoRecuperacao),
-    notaMaximaRecuperacao: regras.notaMaximaRecuperacao ? Number(regras.notaMaximaRecuperacao) : null,
+    notaMaximaRecuperacao: regras.notaMaximaRecuperacao
+      ? Number(regras.notaMaximaRecuperacao)
+      : null,
     pesoProvaFinal: regras.pesoProvaFinal ? Number(regras.pesoProvaFinal) : null,
     observacoes: regras.observacoes ?? null,
   };

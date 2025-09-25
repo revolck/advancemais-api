@@ -43,7 +43,13 @@ export class EstagiosController {
       const payload = createEstagioSchema.parse(req.body);
       const usuarioId = req.user?.id;
 
-      const estagio = await estagiosService.create(cursoId, turmaId, inscricaoId, payload, usuarioId);
+      const estagio = await estagiosService.create(
+        cursoId,
+        turmaId,
+        inscricaoId,
+        payload,
+        usuarioId,
+      );
 
       return res.status(201).json(estagio);
     } catch (error: any) {

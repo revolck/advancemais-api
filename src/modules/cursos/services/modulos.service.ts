@@ -65,10 +65,7 @@ export const modulosService = {
 
     const modulos = await prisma.cursosTurmasModulos.findMany({
       where: { turmaId },
-      orderBy: [
-        { ordem: 'asc' },
-        { criadoEm: 'asc' },
-      ],
+      orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
       ...moduloDetailedInclude,
     });
 

@@ -99,10 +99,7 @@ export const provasService = {
 
     const provas = await prisma.cursosTurmasProvas.findMany({
       where: { turmaId },
-      orderBy: [
-        { ordem: 'asc' },
-        { criadoEm: 'asc' },
-      ],
+      orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
       ...provaWithEnviosInclude,
     });
 
@@ -279,7 +276,7 @@ export const provasService = {
       const pesoValor = data.pesoTotal !== undefined ? data.pesoTotal : Number(prova.peso);
       const dataReferencia = data.realizadoEm ?? envio.realizadoEm ?? new Date();
       const observacoesValor =
-        data.observacoes !== undefined ? data.observacoes ?? null : undefined;
+        data.observacoes !== undefined ? (data.observacoes ?? null) : undefined;
 
       await tx.cursosNotas.upsert({
         where: {
@@ -311,7 +308,10 @@ export const provasService = {
         },
       });
 
-      provasLogger.info({ turmaId, provaId, envioId: envio.id }, 'Nota de prova registrada/atualizada');
+      provasLogger.info(
+        { turmaId, provaId, envioId: envio.id },
+        'Nota de prova registrada/atualizada',
+      );
 
       return fetchProva(tx, provaId);
     });

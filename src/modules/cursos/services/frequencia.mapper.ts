@@ -1,38 +1,42 @@
 import { Prisma } from '@prisma/client';
 
-export const frequenciaWithRelations = Prisma.validator<Prisma.CursosFrequenciaAlunosDefaultArgs>()({
-  include: {
-    inscricao: {
-      select: {
-        id: true,
-        alunoId: true,
-        aluno: {
-          select: {
-            id: true,
-            nomeCompleto: true,
-            email: true,
+export const frequenciaWithRelations = Prisma.validator<Prisma.CursosFrequenciaAlunosDefaultArgs>()(
+  {
+    include: {
+      inscricao: {
+        select: {
+          id: true,
+          alunoId: true,
+          aluno: {
+            select: {
+              id: true,
+              nomeCompleto: true,
+              email: true,
+            },
           },
         },
       },
-    },
-    aula: {
-      select: {
-        id: true,
-        nome: true,
-        ordem: true,
-        moduloId: true,
-        modulo: {
-          select: {
-            id: true,
-            nome: true,
+      aula: {
+        select: {
+          id: true,
+          nome: true,
+          ordem: true,
+          moduloId: true,
+          modulo: {
+            select: {
+              id: true,
+              nome: true,
+            },
           },
         },
       },
     },
   },
-});
+);
 
-export type FrequenciaWithRelations = Prisma.CursosFrequenciaAlunosGetPayload<typeof frequenciaWithRelations>;
+export type FrequenciaWithRelations = Prisma.CursosFrequenciaAlunosGetPayload<
+  typeof frequenciaWithRelations
+>;
 
 export const mapFrequencia = (frequencia: FrequenciaWithRelations) => ({
   id: frequencia.id,

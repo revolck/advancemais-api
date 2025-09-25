@@ -195,7 +195,8 @@ const COURSE_SEEDS: CourseSeed[] = [
           {
             order: 1,
             title: 'Seed Aula 1: Boas-vindas e ferramentas',
-            description: 'Apresentação do ambiente virtual, ferramentas colaborativas e dinâmica do curso.',
+            description:
+              'Apresentação do ambiente virtual, ferramentas colaborativas e dinâmica do curso.',
             dayOffset: 0,
             hour: 19,
             durationHours: 2,
@@ -211,7 +212,8 @@ const COURSE_SEEDS: CourseSeed[] = [
           {
             order: 3,
             title: 'Seed Aula 3: Trabalhando em squads',
-            description: 'Dinâmicas ágeis, papéis em times multidisciplinares e comunicação eficiente.',
+            description:
+              'Dinâmicas ágeis, papéis em times multidisciplinares e comunicação eficiente.',
             dayOffset: 5,
             hour: 19,
             durationHours: 2,
@@ -266,7 +268,8 @@ const COURSE_SEEDS: CourseSeed[] = [
           {
             order: 1,
             title: 'Seed Aula 1: Pesquisa com usuários',
-            description: 'Planejamento de entrevistas, definição de personas e análise de insights.',
+            description:
+              'Planejamento de entrevistas, definição de personas e análise de insights.',
             dayOffset: 0,
             hour: 19,
             durationHours: 3,
@@ -572,8 +575,8 @@ async function seedUsuarios(prismaClient: PrismaClient): Promise<{
           status: 'ATIVO',
           ultimoLogin: addDays(new Date(), -index - 1),
         },
-      })
-    )
+      }),
+    ),
   );
 
   const candidates = await Promise.all(
@@ -598,8 +601,8 @@ async function seedUsuarios(prismaClient: PrismaClient): Promise<{
           status: 'ATIVO',
           ultimoLogin: addDays(new Date(), -index - 1),
         },
-      })
-    )
+      }),
+    ),
   );
 
   return { companies, candidates };
@@ -615,8 +618,8 @@ async function seedCurriculos(
     candidates.map((candidate) =>
       prismaClient.usuariosCurriculos.deleteMany({
         where: { usuarioId: candidate.id, titulo: { startsWith: 'Seed -' } },
-      })
-    )
+      }),
+    ),
   );
 
   await Promise.all(
@@ -654,8 +657,8 @@ async function seedCurriculos(
         })
         .then((curriculo) => {
           curriculos.set(candidate.id, curriculo);
-        })
-    )
+        }),
+    ),
   );
 
   return curriculos;
@@ -675,7 +678,10 @@ async function seedCursos(
     where: { turma: { codigo: { in: allTurmaCodes } }, nome: { startsWith: 'Seed Aula' } },
   });
   await prismaClient.cursosTurmasInscricoes.deleteMany({
-    where: { turma: { codigo: { in: allTurmaCodes } }, alunoId: { in: candidates.map((candidate) => candidate.id) } },
+    where: {
+      turma: { codigo: { in: allTurmaCodes } },
+      alunoId: { in: candidates.map((candidate) => candidate.id) },
+    },
   });
 
   const coursesById = new Map<number, Cursos>();
@@ -807,7 +813,7 @@ async function seedCursos(
         where: { id: turmaId },
         data: { vagasDisponiveis },
       });
-    })
+    }),
   );
 
   const certificateCodes = seededInscricoes.map((_, index) => `SCERT-00${index + 1}`);
@@ -1073,7 +1079,7 @@ async function seedVagas(
           paraPcd: true,
         },
       });
-    })
+    }),
   );
 
   const candidaturas = candidates.slice(0, Math.min(5, vagas.length));
@@ -1097,7 +1103,7 @@ async function seedVagas(
           consentimentos: { newsletter: true },
         },
       });
-    })
+    }),
   );
 
   if (planCompany) {
@@ -1256,12 +1262,10 @@ async function seedVagas(
             paraPcd: true,
           },
         });
-      })
+      }),
     );
 
-    const publishedPlanVacancy = planVagas.find(
-      (vaga) => vaga.status === StatusDeVagas.PUBLICADO,
-    );
+    const publishedPlanVacancy = planVagas.find((vaga) => vaga.status === StatusDeVagas.PUBLICADO);
 
     if (publishedPlanVacancy) {
       const inscritos = candidates.slice(0, 2);

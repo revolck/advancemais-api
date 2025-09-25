@@ -4,11 +4,7 @@ import { invalidateCacheByPrefix } from '../../../utils/cache';
 import { invalidateUserCache } from '../utils/cache';
 import { TiposDeUsuarios, Roles } from '../enums';
 import { logger } from '../../../utils/logger';
-import {
-  formatZodErrors,
-  registerSchema,
-  type RegisterInput,
-} from '../validators/auth.schema';
+import { formatZodErrors, registerSchema, type RegisterInput } from '../validators/auth.schema';
 import { mapSocialLinks } from '../utils/social-links';
 import {
   buildUserDataForDatabase,
@@ -235,4 +231,3 @@ export const criarUsuario = async (req: Request, res: Response, next: NextFuncti
     return next(err);
   }
 };
-

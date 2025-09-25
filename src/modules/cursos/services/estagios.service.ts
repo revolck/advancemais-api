@@ -1,8 +1,4 @@
-import {
-  CursosEstagioNotificacaoTipo,
-  CursosEstagioStatus,
-  Prisma,
-} from '@prisma/client';
+import { CursosEstagioNotificacaoTipo, CursosEstagioStatus, Prisma } from '@prisma/client';
 import { randomBytes, randomUUID } from 'crypto';
 
 import { prisma } from '@/config/prisma';
@@ -45,7 +41,14 @@ const generateToken = () => randomBytes(32).toString('hex');
 
 const generateProtocolo = () => `EST-${randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase()}`;
 
-const formatEndereco = (local: { logradouro?: string | null; numero?: string | null; bairro?: string | null; cidade?: string | null; estado?: string | null; cep?: string | null }) => {
+const formatEndereco = (local: {
+  logradouro?: string | null;
+  numero?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  cep?: string | null;
+}) => {
   const partes: string[] = [];
   if (local.logradouro) {
     partes.push(local.logradouro.trim());
@@ -473,7 +476,10 @@ export const estagiosService = {
     });
   },
 
-  async confirmar(token: string, payload: EstagioConfirmacaoInput & { ip?: string; userAgent?: string }) {
+  async confirmar(
+    token: string,
+    payload: EstagioConfirmacaoInput & { ip?: string; userAgent?: string },
+  ) {
     return prisma.$transaction(async (tx) => {
       const confirmacao = await tx.cursosEstagiosConfirmacoes.findUnique({
         where: { token },
@@ -529,7 +535,11 @@ export const estagiosService = {
     });
   },
 
-  async reenviarConfirmacao(estagioId: string, usuarioId?: string, destinatarioAlternativo?: string) {
+  async reenviarConfirmacao(
+    estagioId: string,
+    usuarioId?: string,
+    destinatarioAlternativo?: string,
+  ) {
     const estagio = await prisma.cursosEstagios.findUnique({
       where: { id: estagioId },
       ...estagioWithRelations,
@@ -619,7 +629,10 @@ export const estagiosService = {
     }));
   },
 
-  async registrarAvisoEncerramento(estagioId: string, destinatario: { email: string; nome?: string | null }) {
+  async registrarAvisoEncerramento(
+    estagioId: string,
+    destinatario: { email: string; nome?: string | null },
+  ) {
     const estagio = await prisma.cursosEstagios.findUnique({
       where: { id: estagioId },
       include: {

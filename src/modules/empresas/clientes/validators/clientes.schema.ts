@@ -25,10 +25,13 @@ export const createClientePlanoSchema = z
     iniciarEm: z.coerce.date({ invalid_type_error: 'Informe uma data válida' }).optional(),
     diasTeste: diasTesteSchema,
   })
-  .refine((val) => (val.modo !== EmpresasPlanoModo.TESTE ? true : typeof val.diasTeste === 'number'), {
-    message: 'Informe diasTeste para o modo teste',
-    path: ['diasTeste'],
-  });
+  .refine(
+    (val) => (val.modo !== EmpresasPlanoModo.TESTE ? true : typeof val.diasTeste === 'number'),
+    {
+      message: 'Informe diasTeste para o modo teste',
+      path: ['diasTeste'],
+    },
+  );
 
 export const updateClientePlanoSchema = z.object({
   planosEmpresariaisId: uuidSchema.optional(),

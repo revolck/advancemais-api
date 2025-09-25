@@ -32,7 +32,12 @@ export class AdminService {
 
   constructor() {}
 
-  private createServiceError(message: string, statusCode: number, code?: string, details?: unknown) {
+  private createServiceError(
+    message: string,
+    statusCode: number,
+    code?: string,
+    details?: unknown,
+  ) {
     const error = new Error(message);
     (error as any).statusCode = statusCode;
     if (code) {
@@ -147,21 +152,14 @@ export class AdminService {
 
     const querySchema = z.object({
       page: z.coerce.number().int().min(1).default(1),
-      limit: z.coerce
-        .number()
-        .int()
-        .min(1)
-        .max(maxLimit)
-        .default(Math.min(defaultLimit, maxLimit)),
+      limit: z.coerce.number().int().min(1).max(maxLimit).default(Math.min(defaultLimit, maxLimit)),
       status: z.string().optional(),
       tipoUsuario: z.string().optional(),
       search: z.string().optional(),
     });
 
     const { page, limit, status, tipoUsuario, search } = querySchema.parse(query);
-    const pageSize = forceLimit
-      ? Math.max(1, Math.min(forceLimit, maxLimit))
-      : limit;
+    const pageSize = forceLimit ? Math.max(1, Math.min(forceLimit, maxLimit)) : limit;
     const skip = (page - 1) * pageSize;
 
     const where: Prisma.UsuariosWhereInput = {

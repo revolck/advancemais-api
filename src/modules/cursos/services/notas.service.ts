@@ -9,7 +9,11 @@ const notasLogger = logger.child({ module: 'CursosNotasService' });
 
 type PrismaClientOrTx = Prisma.TransactionClient | typeof prisma;
 
-const ensureTurmaBelongsToCurso = async (client: PrismaClientOrTx, cursoId: number, turmaId: string) => {
+const ensureTurmaBelongsToCurso = async (
+  client: PrismaClientOrTx,
+  cursoId: number,
+  turmaId: string,
+) => {
   const turma = await client.cursosTurmas.findFirst({
     where: { id: turmaId, cursoId },
     select: { id: true },
@@ -117,10 +121,7 @@ export const notasService = {
         turma: { cursoId },
         inscricaoId: filters.inscricaoId ?? undefined,
       },
-      orderBy: [
-        { dataReferencia: 'desc' },
-        { criadoEm: 'desc' },
-      ],
+      orderBy: [{ dataReferencia: 'desc' }, { criadoEm: 'desc' }],
       ...notaWithRelations,
     });
 
@@ -170,7 +171,8 @@ export const notasService = {
           ? await ensureProvaBelongsToTurma(tx, cursoId, turmaId, data.provaId)
           : null;
 
-      const titulo = data.tipo === CursosNotasTipo.PROVA && prova ? prova.titulo : data.titulo ?? null;
+      const titulo =
+        data.tipo === CursosNotasTipo.PROVA && prova ? prova.titulo : (data.titulo ?? null);
 
       if (!titulo) {
         const error = new Error('Título da nota é obrigatório');
@@ -188,8 +190,8 @@ export const notasService = {
           titulo,
           descricao:
             data.tipo === CursosNotasTipo.PROVA && prova
-              ? prova.descricao ?? null
-              : data.descricao ?? null,
+              ? (prova.descricao ?? null)
+              : (data.descricao ?? null),
           nota: toDecimal(data.nota ?? null),
           peso: toDecimal(data.peso ?? (prova ? Number(prova.peso) : null)),
           valorMaximo: toDecimal(data.valorMaximo ?? null),
@@ -235,7 +237,8 @@ export const notasService = {
         (data.tipo === undefined && notaAtual.tipo === CursosNotasTipo.PROVA);
 
       const tituloDerivadoDaProva = isProvaAfterUpdate
-        ? prova?.titulo ?? (notaAtual.tipo === CursosNotasTipo.PROVA ? notaAtual.titulo : undefined)
+        ? (prova?.titulo ??
+          (notaAtual.tipo === CursosNotasTipo.PROVA ? notaAtual.titulo : undefined))
         : undefined;
 
       let tituloParaAtualizar: string | undefined;
@@ -276,19 +279,14 @@ export const notasService = {
         where: { id: notaId },
         data: {
           tipo: data.tipo ?? undefined,
-          provaId:
-            data.provaId !== undefined
-              ? data.provaId
-                ? data.provaId
-                : null
-              : undefined,
+          provaId: data.provaId !== undefined ? (data.provaId ? data.provaId : null) : undefined,
           referenciaExterna: data.referenciaExterna ?? undefined,
           titulo: tituloParaAtualizar,
           descricao:
             data.descricao !== undefined
               ? data.descricao
               : prova
-                ? prova.descricao ?? null
+                ? (prova.descricao ?? null)
                 : undefined,
           nota: toDecimalOptional(data.nota),
           peso: toDecimalOptional(
@@ -353,10 +351,7 @@ export const notasService = {
 
     const notas = await prisma.cursosNotas.findMany({
       where: { inscricaoId },
-      orderBy: [
-        { dataReferencia: 'desc' },
-        { criadoEm: 'desc' },
-      ],
+      orderBy: [{ dataReferencia: 'desc' }, { criadoEm: 'desc' }],
       ...notaWithRelations,
     });
 

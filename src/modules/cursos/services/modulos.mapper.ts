@@ -3,27 +3,22 @@ import { Prisma } from '@prisma/client';
 import { AulaWithMateriais, aulaWithMateriaisInclude, mapAula } from './aulas.mapper';
 import { ProvaWithRelations, mapProva, provaDefaultInclude } from './provas.mapper';
 
-export const moduloDetailedInclude =
-  Prisma.validator<Prisma.CursosTurmasModulosDefaultArgs>()({
-    include: {
-      aulas: {
-        ...aulaWithMateriaisInclude.include,
-        orderBy: [
-          { ordem: 'asc' },
-          { criadoEm: 'asc' },
-        ],
-      },
-      provas: {
-        ...provaDefaultInclude.include,
-        orderBy: [
-          { ordem: 'asc' },
-          { criadoEm: 'asc' },
-        ],
-      },
+export const moduloDetailedInclude = Prisma.validator<Prisma.CursosTurmasModulosDefaultArgs>()({
+  include: {
+    aulas: {
+      ...aulaWithMateriaisInclude.include,
+      orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
     },
-  });
+    provas: {
+      ...provaDefaultInclude.include,
+      orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
+    },
+  },
+});
 
-export type ModuloWithRelations = Prisma.CursosTurmasModulosGetPayload<typeof moduloDetailedInclude>;
+export type ModuloWithRelations = Prisma.CursosTurmasModulosGetPayload<
+  typeof moduloDetailedInclude
+>;
 
 export const mapModulo = (modulo: ModuloWithRelations) => {
   const aulas = (modulo.aulas ?? []) as unknown as AulaWithMateriais[];

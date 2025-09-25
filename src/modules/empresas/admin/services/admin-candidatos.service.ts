@@ -127,10 +127,7 @@ const candidaturaSelect = {
 const candidatoSelect = {
   ...usuarioAdminSelect,
   curriculos: {
-    orderBy: [
-      { principal: 'desc' },
-      { atualizadoEm: 'desc' },
-    ],
+    orderBy: [{ principal: 'desc' }, { atualizadoEm: 'desc' }],
     select: curriculoSelect,
   },
   candidaturasFeitas: {
@@ -307,10 +304,7 @@ const mapCandidatoDetalhe = (candidato: CandidatoRecord) => {
 
 type AdminCandidatoDetalhe = ReturnType<typeof mapCandidatoDetalhe>;
 
-const buildWhere = ({
-  status,
-  search,
-}: AdminCandidatosListQuery): Prisma.UsuariosWhereInput => {
+const buildWhere = ({ status, search }: AdminCandidatosListQuery): Prisma.UsuariosWhereInput => {
   const where: Prisma.UsuariosWhereInput = {
     role: Roles.ALUNO_CANDIDATO,
     curriculos: { some: {} },

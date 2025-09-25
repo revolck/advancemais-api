@@ -153,13 +153,11 @@ const ensureReferenceConsistency = async (
   }
 };
 
-const applyDateFilters = (
-  filters: {
-    dataInicio?: Date;
-    dataFim?: Date;
-    apenasFuturos?: boolean;
-  },
-) => {
+const applyDateFilters = (filters: {
+  dataInicio?: Date;
+  dataFim?: Date;
+  apenasFuturos?: boolean;
+}) => {
   let gte = filters.dataInicio;
   if (filters.apenasFuturos) {
     const now = new Date();
@@ -204,10 +202,7 @@ export const agendaService = {
 
     const eventos = await prisma.cursosTurmasAgenda.findMany({
       where,
-      orderBy: [
-        { inicio: 'asc' },
-        { criadoEm: 'asc' },
-      ],
+      orderBy: [{ inicio: 'asc' }, { criadoEm: 'asc' }],
       ...agendaWithRelations,
     });
 
@@ -255,7 +250,13 @@ export const agendaService = {
       }
 
       validateDateRange(data.inicio, data.fim ?? null);
-      await ensureReferenceConsistency(tx, turmaId, data.tipo, data.aulaId ?? null, data.provaId ?? null);
+      await ensureReferenceConsistency(
+        tx,
+        turmaId,
+        data.tipo,
+        data.aulaId ?? null,
+        data.provaId ?? null,
+      );
 
       const evento = await tx.cursosTurmasAgenda.create({
         data: {
@@ -397,14 +398,13 @@ export const agendaService = {
 
     const eventos = await prisma.cursosTurmasAgenda.findMany({
       where,
-      orderBy: [
-        { inicio: 'asc' },
-        { criadoEm: 'asc' },
-      ],
+      orderBy: [{ inicio: 'asc' }, { criadoEm: 'asc' }],
       ...agendaWithRelations,
     });
 
-    const inscricaoPorTurma = new Map(inscricoes.map((inscricao) => [inscricao.turmaId, inscricao.id]));
+    const inscricaoPorTurma = new Map(
+      inscricoes.map((inscricao) => [inscricao.turmaId, inscricao.id]),
+    );
 
     return eventos.map((evento) => ({
       ...mapAgendaItem(evento),

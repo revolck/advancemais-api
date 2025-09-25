@@ -689,12 +689,14 @@ Agora você conta com ${vagasText} por mês para publicar e gerenciar no site.
     const firstName = data.nomeCompleto.split(' ')[0];
     const currentYear = this.getCurrentYear();
     const obrigatorioText = data.obrigatorio ? 'Sim' : 'Não';
-    const cargaHorariaText = typeof data.cargaHoraria === 'number' ? `${data.cargaHoraria} horas` : 'A combinar';
+    const cargaHorariaText =
+      typeof data.cargaHoraria === 'number' ? `${data.cargaHoraria} horas` : 'A combinar';
 
     const locaisHtml = data.locais.length
       ? data.locais
           .map((local) => {
-            const dias = local.diasSemana && local.diasSemana.length > 0 ? local.diasSemana.join(', ') : null;
+            const dias =
+              local.diasSemana && local.diasSemana.length > 0 ? local.diasSemana.join(', ') : null;
             return `
         <div class="info-box">
           <p class="info-text"><strong>${local.empresaNome}</strong></p>
@@ -777,22 +779,32 @@ Seu estágio ${data.estagioNome} referente ao curso ${data.cursoNome} (turma ${d
 Período: ${data.dataInicio} até ${data.dataFim}
 Carga horária prevista: ${cargaHorariaText}
 Estágio obrigatório? ${obrigatorioText}
-${data.empresaPrincipal ? `Empresa responsável: ${data.empresaPrincipal}
-` : ''}
+${
+  data.empresaPrincipal
+    ? `Empresa responsável: ${data.empresaPrincipal}
+`
+    : ''
+}
 
 Locais do estágio:
 ${locaisText}
 
-${data.observacoes ? `Observações: ${data.observacoes}
+${
+  data.observacoes
+    ? `Observações: ${data.observacoes}
 
-` : ''}Confirme sua ciência acessando: ${data.confirmacaoUrl}
+`
+    : ''
+}Confirme sua ciência acessando: ${data.confirmacaoUrl}
 
 © ${currentYear} Advance+ - Todos os direitos reservados`;
 
     return { subject, html, text };
   }
 
-  public static generateEstagioEncerramentoEmail(data: EstagioEncerramentoEmailData): EmailTemplate {
+  public static generateEstagioEncerramentoEmail(
+    data: EstagioEncerramentoEmailData,
+  ): EmailTemplate {
     const currentYear = this.getCurrentYear();
     const subject = `Estágio ${data.estagioNome} se encerra em ${data.diasRestantes} dia(s)`;
     const html = `<!DOCTYPE html>
@@ -834,8 +846,12 @@ ${data.observacoes ? `Observações: ${data.observacoes}
 
 O estágio ${data.estagioNome} do aluno ${data.alunoNome} (curso ${data.cursoNome} • turma ${data.turmaNome}) está previsto para encerrar em ${data.diasRestantes} dia(s), no dia ${data.dataFim}.
 Revise as entregas e atualize o status na plataforma.
-${data.observacoes ? `Observações: ${data.observacoes}
-` : ''}
+${
+  data.observacoes
+    ? `Observações: ${data.observacoes}
+`
+    : ''
+}
 
 © ${currentYear} Advance+ - Todos os direitos reservados`;
 

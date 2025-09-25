@@ -65,25 +65,16 @@ const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()(
       },
     },
     aulas: {
-      orderBy: [
-        { ordem: 'asc' },
-        { criadoEm: 'asc' },
-      ],
+      orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
       include: aulaWithMateriaisInclude.include,
     },
     modulos: {
       ...moduloDetailedInclude.include,
-      orderBy: [
-        { ordem: 'asc' },
-        { criadoEm: 'asc' },
-      ],
+      orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
     },
     provas: {
       ...provaDefaultInclude.include,
-      orderBy: [
-        { ordem: 'asc' },
-        { criadoEm: 'asc' },
-      ],
+      orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
     },
     regrasAvaliacao: { select: regrasAvaliacaoSelect },
   },
@@ -171,7 +162,9 @@ export const turmasService = {
       }
 
       const vagasDisponiveis =
-        data.vagasDisponiveis !== undefined ? Math.min(data.vagasDisponiveis, data.vagasTotais) : data.vagasTotais;
+        data.vagasDisponiveis !== undefined
+          ? Math.min(data.vagasDisponiveis, data.vagasTotais)
+          : data.vagasTotais;
 
       const codigo = await generateUniqueTurmaCode(tx, turmasLogger);
 
@@ -297,8 +290,7 @@ export const turmasService = {
 
       const agora = new Date();
       if (turma.dataInscricaoFim && turma.dataInscricaoFim < agora) {
-        const canOverrideDeadline =
-          actor?.role === Roles.ADMIN || actor?.role === Roles.MODERADOR;
+        const canOverrideDeadline = actor?.role === Roles.ADMIN || actor?.role === Roles.MODERADOR;
 
         if (canOverrideDeadline) {
           turmasLogger.info(

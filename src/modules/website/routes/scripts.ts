@@ -140,11 +140,7 @@ router.get('/:id', publicCache, WebsiteScriptsController.get);
  *            -H "Content-Type: application/json" \\
  *            -d '{"nome":"Facebook Pixel","codigo":"<script>...</script>","aplicacao":"WEBSITE","orientacao":"HEADER","status":"PUBLICADO"}'
  */
-router.post(
-  '/',
-  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
-  WebsiteScriptsController.create,
-);
+router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), WebsiteScriptsController.create);
 
 /**
  * @openapi
@@ -200,11 +196,7 @@ router.post(
  *            -H "Content-Type: application/json" \\
  *            -d '{"status":false,"aplicacao":"DASHBOARD"}'
  */
-router.put(
-  '/:id',
-  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
-  WebsiteScriptsController.update,
-);
+router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), WebsiteScriptsController.update);
 
 /**
  * @openapi

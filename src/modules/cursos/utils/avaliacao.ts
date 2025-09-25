@@ -117,14 +117,18 @@ export const applyRecoveryModels = (
   };
   const provasOrdenadas = [...provas];
   let mediaAtual = computeInitialAverage(provasOrdenadas);
-  let statusAtual = mediaAtual === null ? CursosFinalStatus.EM_ANALISE : CursosFinalStatus.REPROVADO;
+  let statusAtual =
+    mediaAtual === null ? CursosFinalStatus.EM_ANALISE : CursosFinalStatus.REPROVADO;
   let notaAtualRecuperacao = notaRecuperacao;
 
   if (!regras.politicaRecuperacao.habilitada || notaRecuperacao === null) {
     return {
       provas: provasOrdenadas,
       media: mediaAtual,
-      status: mediaAtual !== null && mediaAtual >= regras.mediaMinima ? CursosFinalStatus.APROVADO : statusAtual,
+      status:
+        mediaAtual !== null && mediaAtual >= regras.mediaMinima
+          ? CursosFinalStatus.APROVADO
+          : statusAtual,
       notaRecuperacao,
       modelos: modelosResultado,
     };
@@ -135,7 +139,11 @@ export const applyRecoveryModels = (
   for (const modelo of modelosAplicacao) {
     switch (modelo) {
       case CursosModelosDeRecuperacao.NOTA_MAXIMA_LIMITADA: {
-        if (notaAtualRecuperacao !== null && regras.politicaRecuperacao.notaMaxima !== null && regras.politicaRecuperacao.notaMaxima !== undefined) {
+        if (
+          notaAtualRecuperacao !== null &&
+          regras.politicaRecuperacao.notaMaxima !== null &&
+          regras.politicaRecuperacao.notaMaxima !== undefined
+        ) {
           const limitada = Math.min(notaAtualRecuperacao, regras.politicaRecuperacao.notaMaxima);
           registrarModelo(modelo, {
             aplicado: true,
@@ -180,7 +188,10 @@ export const applyRecoveryModels = (
               nota: round(notaAtualRecuperacao, 1),
             };
             mediaAtual = computeInitialAverage(provasOrdenadas);
-            statusAtual = mediaAtual !== null && mediaAtual >= regras.mediaMinima ? CursosFinalStatus.APROVADO : CursosFinalStatus.EM_ANALISE;
+            statusAtual =
+              mediaAtual !== null && mediaAtual >= regras.mediaMinima
+                ? CursosFinalStatus.APROVADO
+                : CursosFinalStatus.EM_ANALISE;
             registrarModelo(modelo, {
               aplicado: true,
               novaMedia: mediaAtual,
@@ -227,16 +238,25 @@ export const applyRecoveryModels = (
           break;
         }
 
-        if (regras.politicaRecuperacao.pesoProvaFinal && regras.politicaRecuperacao.pesoProvaFinal > 0 && somaPesos > 0) {
+        if (
+          regras.politicaRecuperacao.pesoProvaFinal &&
+          regras.politicaRecuperacao.pesoProvaFinal > 0 &&
+          somaPesos > 0
+        ) {
           const pesoFinal = regras.politicaRecuperacao.pesoProvaFinal;
           const mediaAnterior = mediaAtual ?? computeInitialAverage(provasOrdenadas) ?? 0;
-          const mediaCombinada = (mediaAnterior * somaPesos + notaAtualRecuperacao * pesoFinal) / (somaPesos + pesoFinal);
+          const mediaCombinada =
+            (mediaAnterior * somaPesos + notaAtualRecuperacao * pesoFinal) /
+            (somaPesos + pesoFinal);
           mediaAtual = round(mediaCombinada, 2);
         } else {
           mediaAtual = round(notaAtualRecuperacao, 2);
         }
 
-        statusAtual = mediaAtual >= regras.mediaMinima ? CursosFinalStatus.APROVADO : CursosFinalStatus.EM_ANALISE;
+        statusAtual =
+          mediaAtual >= regras.mediaMinima
+            ? CursosFinalStatus.APROVADO
+            : CursosFinalStatus.EM_ANALISE;
         registrarModelo(modelo, {
           aplicado: true,
           novaMedia: mediaAtual,
@@ -269,18 +289,20 @@ export const computeFinalResult = ({
   regras: CursosRegrasDeProvas;
   recuperacao?: ResultadoAplicacaoRecuperacao | null;
 }) => {
-  const statusInicial = mediaInicial === null
-    ? CursosFinalStatus.EM_ANALISE
-    : mediaInicial >= regras.mediaMinima
-      ? CursosFinalStatus.APROVADO
-      : CursosFinalStatus.REPROVADO;
+  const statusInicial =
+    mediaInicial === null
+      ? CursosFinalStatus.EM_ANALISE
+      : mediaInicial >= regras.mediaMinima
+        ? CursosFinalStatus.APROVADO
+        : CursosFinalStatus.REPROVADO;
 
   const mediaFinal = recuperacao?.media ?? mediaInicial;
-  const statusFinal = mediaFinal === null
-    ? CursosFinalStatus.EM_ANALISE
-    : mediaFinal >= regras.mediaMinima
-      ? CursosFinalStatus.APROVADO
-      : CursosFinalStatus.REPROVADO;
+  const statusFinal =
+    mediaFinal === null
+      ? CursosFinalStatus.EM_ANALISE
+      : mediaFinal >= regras.mediaMinima
+        ? CursosFinalStatus.APROVADO
+        : CursosFinalStatus.REPROVADO;
 
   return {
     mediaInicial: mediaInicial !== null ? round(mediaInicial, 2) : null,

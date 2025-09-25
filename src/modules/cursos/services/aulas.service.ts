@@ -92,7 +92,10 @@ const ensureModuloBelongsToTurma = async (
   }
 };
 
-const fetchAula = async (client: PrismaClientOrTx, aulaId: string): Promise<ReturnType<typeof mapAula>> => {
+const fetchAula = async (
+  client: PrismaClientOrTx,
+  aulaId: string,
+): Promise<ReturnType<typeof mapAula>> => {
   const aula = await client.cursosTurmasAulas.findUnique({
     where: { id: aulaId },
     ...aulaWithMateriaisInclude,
@@ -217,7 +220,8 @@ const resolveDeliveryFieldsOnUpdate = (
     }
     case CursosMetodos.SEMIPRESENCIAL:
     default: {
-      const update: { urlVideo?: string | null; sala?: string | null; urlMeet?: string | null } = {};
+      const update: { urlVideo?: string | null; sala?: string | null; urlMeet?: string | null } =
+        {};
 
       if (data.urlVideo !== undefined) {
         update.urlVideo = videoUrl ?? null;
@@ -242,10 +246,7 @@ export const aulasService = {
 
     const aulas = await prisma.cursosTurmasAulas.findMany({
       where: { turmaId },
-      orderBy: [
-        { ordem: 'asc' },
-        { criadoEm: 'asc' },
-      ],
+      orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
       ...aulaWithMateriaisInclude,
     });
 

@@ -2,7 +2,11 @@ import { Request, Response } from 'express';
 import { ZodError } from 'zod';
 
 import { provasService } from '../services/provas.service';
-import { createProvaSchema, registrarNotaSchema, updateProvaSchema } from '../validators/provas.schema';
+import {
+  createProvaSchema,
+  registrarNotaSchema,
+  updateProvaSchema,
+} from '../validators/provas.schema';
 
 const parseCursoId = (raw: string) => {
   const id = Number(raw);

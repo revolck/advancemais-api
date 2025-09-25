@@ -37,7 +37,10 @@ export async function processExpiredBlocks() {
             },
           },
         });
-        await tx.usuarios.update({ where: { id: bloqueio.usuarioId }, data: { status: Status.ATIVO } });
+        await tx.usuarios.update({
+          where: { id: bloqueio.usuarioId },
+          data: { status: Status.ATIVO },
+        });
       });
 
       // Notificação por e-mail

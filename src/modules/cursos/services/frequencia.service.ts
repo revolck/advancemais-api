@@ -155,10 +155,7 @@ export const frequenciaService = {
 
     const frequencias = await prisma.cursosFrequenciaAlunos.findMany({
       where,
-      orderBy: [
-        { dataReferencia: 'desc' },
-        { criadoEm: 'desc' },
-      ],
+      orderBy: [{ dataReferencia: 'desc' }, { criadoEm: 'desc' }],
       ...frequenciaWithRelations,
     });
 
@@ -249,7 +246,12 @@ export const frequenciaService = {
     },
   ) {
     return prisma.$transaction(async (tx) => {
-      const frequenciaAtual = await ensureFrequenciaBelongsToTurma(tx, cursoId, turmaId, frequenciaId);
+      const frequenciaAtual = await ensureFrequenciaBelongsToTurma(
+        tx,
+        cursoId,
+        turmaId,
+        frequenciaId,
+      );
 
       if (data.aulaId !== undefined && data.aulaId !== null) {
         await ensureAulaBelongsToTurma(tx, turmaId, data.aulaId);
@@ -265,12 +267,7 @@ export const frequenciaService = {
       const frequencia = (await tx.cursosFrequenciaAlunos.update({
         where: { id: frequenciaId },
         data: {
-          aulaId:
-            data.aulaId !== undefined
-              ? data.aulaId
-                ? data.aulaId
-                : null
-              : undefined,
+          aulaId: data.aulaId !== undefined ? (data.aulaId ? data.aulaId : null) : undefined,
           dataReferencia: data.dataReferencia ?? undefined,
           status: data.status ?? undefined,
           justificativa: normalizeNullable(data.justificativa),
@@ -331,10 +328,7 @@ export const frequenciaService = {
 
     const frequencias = await prisma.cursosFrequenciaAlunos.findMany({
       where: { inscricaoId },
-      orderBy: [
-        { dataReferencia: 'desc' },
-        { criadoEm: 'desc' },
-      ],
+      orderBy: [{ dataReferencia: 'desc' }, { criadoEm: 'desc' }],
       ...frequenciaWithRelations,
     });
 

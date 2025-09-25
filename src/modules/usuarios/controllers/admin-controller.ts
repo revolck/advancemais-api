@@ -88,11 +88,7 @@ export class AdminController {
   /**
    * Lista candidatos com limite otimizado para dashboards
    */
-  public listarCandidatosDashboard = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ) => {
+  public listarCandidatosDashboard = async (req: Request, res: Response, next: NextFunction) => {
     const log = this.getLogger(req);
     try {
       const result = await this.adminService.listarCandidatos(req.query, {
@@ -277,7 +273,7 @@ export class AdminController {
           success: false,
           message: err.message,
           code: (error as any)?.code ?? 'ADMIN_USER_CREATION_ERROR',
-          ...(error as any)?.details ? { errors: (error as any).details } : {},
+          ...((error as any)?.details ? { errors: (error as any).details } : {}),
           correlationId,
         });
       }

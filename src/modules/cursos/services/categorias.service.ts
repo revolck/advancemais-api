@@ -170,7 +170,7 @@ export const categoriasService = {
         'Subcategoria criada com sucesso',
       );
 
-      return fetchSubcategoria(created.id);
+      return mapSubcategoria(created);
     });
   },
 

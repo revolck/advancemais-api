@@ -17,15 +17,24 @@ const nullableString = z
   .min(1, 'Informe um valor válido')
   .max(255, 'Valor muito longo');
 
-const optionalSanitizedString = <Schema extends z.ZodTypeAny>(schema: Schema) =>
-  z.preprocess((value) => {
-    if (typeof value !== 'string') {
-      return value;
-    }
+const securePasswordSchema = z
+  .string()
+  .min(8, 'Senha deve ter pelo menos 8 caracteres')
+  .max(255, 'Senha muito longa');
 
-    const trimmed = value.trim();
-    return trimmed.length === 0 ? undefined : trimmed;
-  }, schema.optional());
+const optionalSecurePassword = z.preprocess((value) => {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+
+  if (trimmed.length < 8) {
+    return undefined;
+  }
+
+  return trimmed;
+}, securePasswordSchema.optional());
 
 const nullableUrl = z.string().trim().url('Informe uma URL válida').max(500, 'URL muito longa');
 
@@ -62,10 +71,13 @@ export type AdminEmpresasPlanoInput = z.infer<typeof adminEmpresasPlanoSchema>;
 
 export const adminEmpresasPlanoUpdateSchema = adminEmpresasPlanoBase
   .extend({ resetPeriodo: z.boolean().optional() })
-  .refine((val) => (val.modo !== EmpresasPlanoModo.TESTE ? true : typeof val.diasTeste === 'number'), {
-    message: 'Informe diasTeste para o modo teste',
-    path: ['diasTeste'],
-  });
+  .refine(
+    (val) => (val.modo !== EmpresasPlanoModo.TESTE ? true : typeof val.diasTeste === 'number'),
+    {
+      message: 'Informe diasTeste para o modo teste',
+      path: ['diasTeste'],
+    },
+  );
 
 export type AdminEmpresasPlanoUpdateInput = z.infer<typeof adminEmpresasPlanoUpdateSchema>;
 
@@ -85,9 +97,7 @@ export const adminEmpresasCreateSchema = z.object({
     .trim()
     .min(10, 'Informe um telefone válido')
     .max(20, 'Telefone muito longo'),
-  senha: optionalSanitizedString(
-    z.string().min(8, 'Senha deve ter pelo menos 8 caracteres').max(255, 'Senha muito longa'),
-  ),
+  senha: optionalSecurePassword,
   supabaseId: z
     .string({ required_error: 'Supabase ID é obrigatório' })
     .trim()
@@ -187,9 +197,7 @@ export const adminEmpresasDashboardListQuerySchema = z
     search: values.search,
   }));
 
-export type AdminEmpresasDashboardListQuery = z.infer<
-  typeof adminEmpresasDashboardListQuerySchema
->;
+export type AdminEmpresasDashboardListQuery = z.infer<typeof adminEmpresasDashboardListQuerySchema>;
 
 export const adminEmpresasIdParamSchema = z.object({
   id: z.string().uuid(),

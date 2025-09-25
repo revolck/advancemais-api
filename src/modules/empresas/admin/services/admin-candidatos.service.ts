@@ -133,7 +133,7 @@ const candidatoSelect = {
     ],
     select: curriculoSelect,
   },
-  candidaturas: {
+  candidaturasFeitas: {
     orderBy: { aplicadaEm: 'desc' },
     select: candidaturaSelect,
   },
@@ -288,7 +288,7 @@ const mapCandidatoDetalhe = (candidato: CandidatoRecord) => {
   }
 
   const curriculos = candidato.curriculos.map(mapCurriculo);
-  const candidaturas = candidato.candidaturas.map(mapCandidatura);
+  const candidaturas = candidato.candidaturasFeitas.map(mapCandidatura);
 
   return {
     ...base,

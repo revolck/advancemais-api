@@ -140,6 +140,10 @@ const options: Options = {
         description: 'Gerenciamento de cursos, cargas horárias e instrutores',
       },
       {
+        name: 'Cursos - Categorias',
+        description: 'Gestão de categorias e subcategorias de cursos',
+      },
+      {
         name: 'Cursos - Turmas',
         description: 'Gestão de turmas e inscrições dos cursos',
       },
@@ -220,6 +224,7 @@ const options: Options = {
         name: 'Cursos',
         tags: [
           'Cursos',
+          'Cursos - Categorias',
           'Cursos - Turmas',
           'Cursos - Aulas',
           'Cursos - Notas',
@@ -818,6 +823,109 @@ const options: Options = {
             },
           },
         },
+        CursoSubcategoriaResumo: {
+          type: 'object',
+          properties: {
+            id: { type: 'integer', example: 5 },
+            codSubcategoria: { type: 'string', example: 'SCB1234' },
+            nome: { type: 'string', example: 'Desenvolvimento Web' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Subcategoria focada em programação para web.',
+            },
+          },
+        },
+        CursoSubcategoria: {
+          allOf: [
+            { $ref: '#/components/schemas/CursoSubcategoriaResumo' },
+            {
+              type: 'object',
+              properties: {
+                criadoEm: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00Z' },
+                atualizadoEm: { type: 'string', format: 'date-time', example: '2024-01-10T12:00:00Z' },
+              },
+            },
+          ],
+        },
+        CursoCategoriaResumo: {
+          type: 'object',
+          properties: {
+            id: { type: 'integer', example: 2 },
+            codCategoria: { type: 'string', example: 'CAT4321' },
+            nome: { type: 'string', example: 'Tecnologia da Informação' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Cursos voltados à área de TI.',
+            },
+          },
+        },
+        CursoCategoria: {
+          allOf: [
+            { $ref: '#/components/schemas/CursoCategoriaResumo' },
+            {
+              type: 'object',
+              properties: {
+                criadoEm: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00Z' },
+                atualizadoEm: { type: 'string', format: 'date-time', example: '2024-01-10T12:00:00Z' },
+                subcategorias: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/CursoSubcategoria' },
+                },
+              },
+            },
+          ],
+        },
+        CursoCategoriaDetalhe: {
+          allOf: [{ $ref: '#/components/schemas/CursoCategoria' }],
+        },
+        CursoCategoriaCreateInput: {
+          type: 'object',
+          required: ['nome'],
+          properties: {
+            nome: { type: 'string', example: 'Tecnologia da Informação' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Cursos voltados à área de TI.',
+            },
+          },
+        },
+        CursoCategoriaUpdateInput: {
+          type: 'object',
+          properties: {
+            nome: { type: 'string', example: 'Tecnologia da Informação' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Cursos voltados à área de TI.',
+            },
+          },
+        },
+        CursoSubcategoriaCreateInput: {
+          type: 'object',
+          required: ['nome'],
+          properties: {
+            nome: { type: 'string', example: 'Desenvolvimento Web' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Subcategoria focada em programação para web.',
+            },
+          },
+        },
+        CursoSubcategoriaUpdateInput: {
+          type: 'object',
+          properties: {
+            nome: { type: 'string', example: 'Desenvolvimento Web' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Subcategoria focada em programação para web.',
+            },
+          },
+        },
         Curso: {
           type: 'object',
           properties: {
@@ -834,6 +942,14 @@ const options: Options = {
             statusPadrao: { $ref: '#/components/schemas/CursosStatusPadrao' },
             categoriaId: { type: 'integer', nullable: true, example: 2 },
             subcategoriaId: { type: 'integer', nullable: true, example: 5 },
+            categoria: {
+              nullable: true,
+              allOf: [{ $ref: '#/components/schemas/CursoCategoriaResumo' }],
+            },
+            subcategoria: {
+              nullable: true,
+              allOf: [{ $ref: '#/components/schemas/CursoSubcategoriaResumo' }],
+            },
             criadoEm: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00Z' },
             atualizadoEm: { type: 'string', format: 'date-time', example: '2024-01-15T12:00:00Z' },
             instrutor: {
@@ -2011,6 +2127,14 @@ const options: Options = {
               description: 'Identifica se o curso exige estágio para emissão do certificado.',
             },
             statusPadrao: { $ref: '#/components/schemas/CursosStatusPadrao' },
+            categoria: {
+              nullable: true,
+              allOf: [{ $ref: '#/components/schemas/CursoCategoriaResumo' }],
+            },
+            subcategoria: {
+              nullable: true,
+              allOf: [{ $ref: '#/components/schemas/CursoSubcategoriaResumo' }],
+            },
             turmas: {
               type: 'array',
               items: { $ref: '#/components/schemas/CursoTurmaPublicResumo' },
@@ -2062,6 +2186,14 @@ const options: Options = {
               description: 'Indica se o certificado depende da conclusão de estágio supervisionado.',
             },
             statusPadrao: { $ref: '#/components/schemas/CursosStatusPadrao' },
+            categoria: {
+              nullable: true,
+              allOf: [{ $ref: '#/components/schemas/CursoCategoriaResumo' }],
+            },
+            subcategoria: {
+              nullable: true,
+              allOf: [{ $ref: '#/components/schemas/CursoSubcategoriaResumo' }],
+            },
             instrutor: {
               type: 'object',
               nullable: true,

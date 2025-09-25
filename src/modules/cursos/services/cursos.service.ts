@@ -29,6 +29,20 @@ const instrutorSelect = {
   codUsuario: true,
 } as const;
 
+const categoriaSelect = {
+  id: true,
+  codCategoria: true,
+  nome: true,
+  descricao: true,
+} as const;
+
+const subcategoriaSelect = {
+  id: true,
+  codSubcategoria: true,
+  nome: true,
+  descricao: true,
+} as const;
+
 const turmaSummarySelect = {
   id: true,
   codigo: true,
@@ -148,6 +162,8 @@ type TurmaPublicPayload = Prisma.CursosTurmasGetPayload<typeof turmaPublicInclud
 type RawCourseBase = Prisma.CursosGetPayload<{
   include: {
     instrutor: { select: typeof instrutorSelect };
+    categoria: { select: typeof categoriaSelect };
+    subcategoria: { select: typeof subcategoriaSelect };
     turmas: { select: typeof turmaSummarySelect } | typeof turmaDetailedInclude;
     _count: { select: { turmas: true } };
   };
@@ -285,6 +301,22 @@ const mapCourse = (course: RawCourse) => {
     statusPadrao: course.statusPadrao,
     categoriaId: course.categoriaId ?? null,
     subcategoriaId: course.subcategoriaId ?? null,
+    categoria: course.categoria
+      ? {
+          id: course.categoria.id,
+          codCategoria: course.categoria.codCategoria,
+          nome: course.categoria.nome,
+          descricao: course.categoria.descricao ?? null,
+        }
+      : null,
+    subcategoria: course.subcategoria
+      ? {
+          id: course.subcategoria.id,
+          codSubcategoria: course.subcategoria.codSubcategoria,
+          nome: course.subcategoria.nome,
+          descricao: course.subcategoria.descricao ?? null,
+        }
+      : null,
     criadoEm: course.criadoEm.toISOString(),
     atualizadoEm: course.atualizadoEm.toISOString(),
     instrutor: course.instrutor
@@ -308,6 +340,8 @@ const mapPublicCourse = (
   course: Prisma.CursosGetPayload<{
     include: {
       instrutor: { select: { id: true; nomeCompleto: true; codUsuario: true } };
+      categoria: { select: typeof categoriaSelect };
+      subcategoria: { select: typeof subcategoriaSelect };
       turmas: typeof turmaPublicInclude;
     };
   }>,
@@ -319,6 +353,22 @@ const mapPublicCourse = (
   cargaHoraria: course.cargaHoraria,
   estagioObrigatorio: course.estagioObrigatorio,
   statusPadrao: course.statusPadrao,
+  categoria: course.categoria
+    ? {
+        id: course.categoria.id,
+        codCategoria: course.categoria.codCategoria,
+        nome: course.categoria.nome,
+        descricao: course.categoria.descricao ?? null,
+      }
+    : null,
+  subcategoria: course.subcategoria
+    ? {
+        id: course.subcategoria.id,
+        codSubcategoria: course.subcategoria.codSubcategoria,
+        nome: course.subcategoria.nome,
+        descricao: course.subcategoria.descricao ?? null,
+      }
+    : null,
   instrutor: course.instrutor
     ? {
         id: course.instrutor.id,
@@ -377,6 +427,8 @@ export const cursosService = {
         where,
         include: {
           instrutor: { select: instrutorSelect },
+          categoria: { select: categoriaSelect },
+          subcategoria: { select: subcategoriaSelect },
           turmas: includeTurmas ? { select: turmaSummarySelect } : undefined,
           _count: { select: { turmas: true } },
         },
@@ -404,6 +456,8 @@ export const cursosService = {
       where: { id },
       include: {
         instrutor: { select: instrutorSelect },
+        categoria: { select: categoriaSelect },
+        subcategoria: { select: subcategoriaSelect },
         turmas: {
           ...turmaDetailedInclude,
           orderBy: { criadoEm: 'desc' },
@@ -435,6 +489,8 @@ export const cursosService = {
         cargaHoraria: true,
         estagioObrigatorio: true,
         statusPadrao: true,
+        categoria: { select: categoriaSelect },
+        subcategoria: { select: subcategoriaSelect },
         turmas: {
           select: turmaSummarySelect,
           where: buildPublicTurmaWhere(referenceDate),
@@ -452,6 +508,22 @@ export const cursosService = {
       cargaHoraria: curso.cargaHoraria,
       estagioObrigatorio: curso.estagioObrigatorio,
       statusPadrao: curso.statusPadrao,
+      categoria: curso.categoria
+        ? {
+            id: curso.categoria.id,
+            codCategoria: curso.categoria.codCategoria,
+            nome: curso.categoria.nome,
+            descricao: curso.categoria.descricao ?? null,
+          }
+        : null,
+      subcategoria: curso.subcategoria
+        ? {
+            id: curso.subcategoria.id,
+            codSubcategoria: curso.subcategoria.codSubcategoria,
+            nome: curso.subcategoria.nome,
+            descricao: curso.subcategoria.descricao ?? null,
+          }
+        : null,
       turmas: curso.turmas.map(mapTurmaSummary),
     }));
   },
@@ -467,6 +539,8 @@ export const cursosService = {
       },
       include: {
         instrutor: { select: { id: true, nomeCompleto: true, codUsuario: true } },
+        categoria: { select: categoriaSelect },
+        subcategoria: { select: subcategoriaSelect },
         turmas: {
           ...turmaPublicInclude,
           where: buildPublicTurmaWhere(referenceDate),
@@ -529,6 +603,8 @@ export const cursosService = {
         },
         include: {
           instrutor: { select: instrutorSelect },
+          categoria: { select: categoriaSelect },
+          subcategoria: { select: subcategoriaSelect },
           _count: { select: { turmas: true } },
         },
       });
@@ -569,6 +645,8 @@ export const cursosService = {
         },
         include: {
           instrutor: { select: instrutorSelect },
+          categoria: { select: categoriaSelect },
+          subcategoria: { select: subcategoriaSelect },
           _count: { select: { turmas: true } },
         },
       });
@@ -585,6 +663,8 @@ export const cursosService = {
       },
       include: {
         instrutor: { select: instrutorSelect },
+        categoria: { select: categoriaSelect },
+        subcategoria: { select: subcategoriaSelect },
         _count: { select: { turmas: true } },
       },
     });

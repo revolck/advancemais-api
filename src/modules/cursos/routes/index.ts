@@ -5,6 +5,7 @@ import { publicCache } from '@/middlewares/cache-control';
 import { supabaseAuthMiddleware } from '@/modules/usuarios/auth';
 
 import { CursosController } from '../controllers/cursos.controller';
+import { CategoriasController } from '../controllers/categorias.controller';
 import { AulasController } from '../controllers/aulas.controller';
 import { TurmasController } from '../controllers/turmas.controller';
 import { ModulosController } from '../controllers/modulos.controller';
@@ -40,6 +41,285 @@ const router = Router();
  *                   additionalProperties: { type: string }
  */
 router.get('/meta', publicCache, CursosController.meta);
+
+/**
+ * @openapi
+ * /api/v1/cursos/categorias:
+ *   get:
+ *     summary: Listar categorias de cursos
+ *     tags: ['Cursos - Categorias']
+ *     responses:
+ *       200:
+ *         description: Lista de categorias com subcategorias associadas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/CursoCategoria'
+ *       500:
+ *         description: Erro ao listar categorias
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get('/categorias', publicCache, CategoriasController.list);
+
+/**
+ * @openapi
+ * /api/v1/cursos/categorias/{categoriaId}:
+ *   get:
+ *     summary: Obter detalhes de uma categoria específica
+ *     tags: ['Cursos - Categorias']
+ *     parameters:
+ *       - in: path
+ *         name: categoriaId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *     responses:
+ *       200:
+ *         description: Categoria encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoCategoriaDetalhe'
+ *       400:
+ *         description: Identificador inválido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Categoria não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get('/categorias/:categoriaId', publicCache, CategoriasController.get);
+
+/**
+ * @openapi
+ * /api/v1/cursos/categorias:
+ *   post:
+ *     summary: Criar uma nova categoria de curso
+ *     tags: ['Cursos - Categorias']
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoCategoriaCreateInput'
+ *     responses:
+ *       201:
+ *         description: Categoria criada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoCategoriaDetalhe'
+ *       400:
+ *         description: Dados inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Não autenticado
+ *       403:
+ *         description: Permissões insuficientes
+ *       409:
+ *         description: Categoria duplicada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post(
+  '/categorias',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  CategoriasController.create,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/categorias/{categoriaId}:
+ *   put:
+ *     summary: Atualizar uma categoria de curso
+ *     tags: ['Cursos - Categorias']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: categoriaId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoCategoriaUpdateInput'
+ *     responses:
+ *       200:
+ *         description: Categoria atualizada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoCategoriaDetalhe'
+ *       400:
+ *         description: Dados inválidos
+ *       404:
+ *         description: Categoria não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.put(
+  '/categorias/:categoriaId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  CategoriasController.update,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/categorias/{categoriaId}:
+ *   delete:
+ *     summary: Remover uma categoria de curso
+ *     tags: ['Cursos - Categorias']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: categoriaId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *     responses:
+ *       204:
+ *         description: Categoria removida com sucesso
+ *       404:
+ *         description: Categoria não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: Categoria em uso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.delete(
+  '/categorias/:categoriaId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  CategoriasController.remove,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/categorias/{categoriaId}/subcategorias:
+ *   post:
+ *     summary: Criar uma subcategoria vinculada a uma categoria
+ *     tags: ['Cursos - Categorias']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: categoriaId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoSubcategoriaCreateInput'
+ *     responses:
+ *       201:
+ *         description: Subcategoria criada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoSubcategoria'
+ *       400:
+ *         description: Dados inválidos
+ *       404:
+ *         description: Categoria não encontrada
+ */
+router.post(
+  '/categorias/:categoriaId/subcategorias',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  CategoriasController.createSubcategoria,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/subcategorias/{subcategoriaId}:
+ *   put:
+ *     summary: Atualizar uma subcategoria existente
+ *     tags: ['Cursos - Categorias']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: subcategoriaId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CursoSubcategoriaUpdateInput'
+ *     responses:
+ *       200:
+ *         description: Subcategoria atualizada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CursoSubcategoria'
+ *       400:
+ *         description: Dados inválidos
+ *       404:
+ *         description: Subcategoria não encontrada
+ */
+router.put(
+  '/subcategorias/:subcategoriaId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  CategoriasController.updateSubcategoria,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/subcategorias/{subcategoriaId}:
+ *   delete:
+ *     summary: Remover uma subcategoria de curso
+ *     tags: ['Cursos - Categorias']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: subcategoriaId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *     responses:
+ *       204:
+ *         description: Subcategoria removida com sucesso
+ *       404:
+ *         description: Subcategoria não encontrada
+ */
+router.delete(
+  '/subcategorias/:subcategoriaId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  CategoriasController.removeSubcategoria,
+);
 
 /**
  * @openapi

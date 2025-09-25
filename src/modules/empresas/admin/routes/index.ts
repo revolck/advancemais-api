@@ -1330,6 +1330,104 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
 
 /**
  * @openapi
+ * /api/v1/empresas/admin/{id}/plano:
+ *   put:
+ *     summary: (Admin/Moderador) Atualizar plano da empresa
+ *     description: "Atualiza ou atribui um novo plano empresarial para a empresa informada. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     operationId: adminEmpresasUpdatePlano
+ *     tags: [Empresas - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Identificador da empresa
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AdminEmpresasPlanoUpdateInput'
+ *           examples:
+ *             manterPeriodo:
+ *               summary: Atualização mantendo período vigente
+ *               value:
+ *                 planosEmpresariaisId: b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e
+ *                 modo: parceiro
+ *             resetarPeriodo:
+ *               summary: Reiniciar vigência do plano
+ *               value:
+ *                 planosEmpresariaisId: 0f3b9e4c-1b2a-4d7f-9123-5a6b7c8d9e10
+ *                 modo: cliente
+ *                 resetPeriodo: true
+ *     responses:
+ *       200:
+ *         description: Plano atualizado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminEmpresaDetailResponse'
+ *             examples:
+ *               atualizado:
+ *                 summary: Plano redefinido com novo período
+ *                 value:
+ *                   empresa:
+ *                     id: f66fbad9-4d3c-41f7-90df-2f4f0f32af10
+ *                     nome: Advance Tech Consultoria LTDA
+ *                     status: ATIVO
+ *                     plano:
+ *                       id: 38f73d2d-40fa-47a6-9657-6a4f7f1bb610
+ *                       nome: Plano Avançado
+ *                       modo: PARCEIRO
+ *                       status: ATIVO
+ *                       inicio: '2024-05-01T12:00:00Z'
+ *                       fim: '2024-08-01T12:00:00Z'
+ *                       modeloPagamento: ASSINATURA
+ *                       metodoPagamento: PIX
+ *                       statusPagamento: APROVADO
+ *                       valor: '249.90'
+ *                       quantidadeVagas: 10
+ *                       duracaoEmDias: 92
+ *                       diasRestantes: 65
+ *       400:
+ *         description: Dados inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       404:
+ *         description: Empresa ou plano empresarial não encontrados
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.updatePlano);
+
+/**
+ * @openapi
  * /api/v1/empresas/admin/{id}:
  *   put:
  *     summary: (Admin) Atualizar empresa

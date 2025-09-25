@@ -5,6 +5,7 @@ import {
   CuponsLimiteUsuario,
   CuponsPeriodo,
   CuponsTipoDesconto,
+  WebsiteStatus,
 } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
@@ -82,7 +83,7 @@ const transformCupom = (cupom: CupomWithRelations) => ({
   periodoInicio: cupom.periodoInicio,
   periodoFim: cupom.periodoFim,
   usosTotais: cupom.usosTotais,
-  ativo: cupom.ativo,
+  status: cupom.status,
   criadoEm: cupom.criadoEm,
   atualizadoEm: cupom.atualizadoEm,
   criadoPor: cupom.criadoPor,
@@ -212,7 +213,7 @@ export const cuponsService = {
           periodoTipo: parsed.periodoTipo,
           periodoInicio: periodoValores.inicio,
           periodoFim: periodoValores.fim,
-          ativo: parsed.ativo ?? true,
+          status: parsed.status ?? WebsiteStatus.PUBLICADO,
           criadoPorId,
         },
       });
@@ -323,7 +324,7 @@ export const cuponsService = {
       periodoTipo: periodoTipoFinal,
       periodoInicio: periodoInicioFinal,
       periodoFim: periodoFimFinal,
-      ativo: data.ativo ?? existente.ativo,
+      status: data.status ?? existente.status,
     });
 
     const periodoValores = ensurePeriodoValores(
@@ -362,7 +363,7 @@ export const cuponsService = {
           periodoTipo: { set: periodoTipoFinal },
           periodoInicio: periodoValores.inicio,
           periodoFim: periodoValores.fim,
-          ativo: data.ativo ?? undefined,
+          status: data.status ? { set: data.status } : undefined,
         },
       });
 

@@ -381,7 +381,10 @@ const options: Options = {
               example: '2025-03-01T23:59:59.000Z',
             },
             usosTotais: { type: 'integer', example: 12 },
-            ativo: { type: 'boolean', example: true },
+            status: {
+              $ref: '#/components/schemas/WebsiteStatus',
+              description: 'Estado de publicação do cupom',
+            },
             criadoEm: { type: 'string', format: 'date-time' },
             atualizadoEm: { type: 'string', format: 'date-time' },
             criadoPor: {
@@ -487,10 +490,9 @@ const options: Options = {
               format: 'date-time',
               nullable: true,
             },
-            ativo: {
-              type: 'boolean',
-              nullable: true,
-              example: true,
+            status: {
+              allOf: [{ $ref: '#/components/schemas/WebsiteStatus' }],
+              description: 'Quando não informado, o cupom é criado como PUBLICADO',
             },
           },
         },
@@ -549,9 +551,9 @@ const options: Options = {
               format: 'date-time',
               nullable: true,
             },
-            ativo: {
-              type: 'boolean',
-              nullable: true,
+            status: {
+              allOf: [{ $ref: '#/components/schemas/WebsiteStatus' }],
+              description: 'Atualiza o estado do cupom para PUBLICADO ou RASCUNHO',
             },
           },
         },

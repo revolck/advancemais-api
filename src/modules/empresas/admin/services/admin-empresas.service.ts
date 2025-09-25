@@ -23,6 +23,7 @@ import {
   TiposDeUsuarios,
 } from '@prisma/client';
 
+import { serverConfig } from '@/config/env';
 import { prisma } from '@/config/prisma';
 import { clientesService } from '@/modules/empresas/clientes/services/clientes.service';
 import { LimiteVagasPlanoAtingidoError } from '@/modules/empresas/vagas/services/errors';
@@ -1038,7 +1039,8 @@ const listVagas = async (id: string, { page, pageSize, status }: AdminEmpresasVa
 
 export const adminEmpresasService = {
   create: async (input: AdminEmpresasCreateInput) => {
-    const senhaHash = await sanitizeSenha(input.senha);
+    const senhaOriginal = input.senha;
+    const senhaHash = await sanitizeSenha(senhaOriginal);
     const aceitarTermos = input.aceitarTermos ?? true;
     const status = input.status ?? Status.ATIVO;
     const cidade = sanitizeOptionalValue(input.cidade);
@@ -1064,6 +1066,16 @@ export const adminEmpresasService = {
           status,
           codUsuario,
           cnpj: normalizeDocumento(input.cnpj),
+          emailVerification: {
+            create: {
+              emailVerificado: true,
+              emailVerificadoEm: new Date(),
+              emailVerificationToken: null,
+              emailVerificationTokenExp: null,
+              emailVerificationAttempts: 0,
+              ultimaTentativaVerificacao: new Date(),
+            },
+          },
           informacoes: {
             create: {
               telefone: sanitizeTelefone(input.telefone),
@@ -1092,7 +1104,37 @@ export const adminEmpresasService = {
       return usuario.id;
     });
 
-    return adminEmpresasService.get(empresaId);
+    const empresa = await adminEmpresasService.get(empresaId);
+
+    if (empresa) {
+      const baseFrontendUrl = serverConfig.frontendUrl.replace(/\/$/, '');
+      const rawAuthUrl = process.env.AUTH_FRONTEND_URL?.trim();
+      const authBaseUrl = (rawAuthUrl && rawAuthUrl.length > 0
+        ? rawAuthUrl
+        : `${baseFrontendUrl}/auth`
+      ).replace(/\/$/, '');
+      const loginUrl = `${authBaseUrl}/login`;
+
+      try {
+        const emailService = new EmailService();
+        const template = EmailTemplates.generateAdminEmpresaCredentialsEmail({
+          nomeCompleto: empresa.nome,
+          email: empresa.email,
+          senha: senhaOriginal,
+          loginUrl,
+          cnpj: empresa.cnpj ?? null,
+        });
+
+        await emailService.sendAssinaturaNotificacao(
+          { id: empresa.id, email: empresa.email, nomeCompleto: empresa.nome },
+          template,
+        );
+      } catch (error) {
+        console.error('Erro ao enviar credenciais de acesso da empresa', { empresaId, error });
+      }
+    }
+
+    return empresa;
   },
 
   update: async (id: string, data: AdminEmpresasUpdateInput) => {

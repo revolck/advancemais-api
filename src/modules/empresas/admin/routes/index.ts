@@ -4,10 +4,223 @@ import { supabaseAuthMiddleware } from '@/modules/usuarios/auth';
 import { Roles } from '@/modules/usuarios/enums/Roles';
 import { AdminEmpresasController } from '@/modules/empresas/admin/controllers/admin-empresas.controller';
 import { AdminVagasController } from '@/modules/empresas/admin/controllers/admin-vagas.controller';
+import { AdminCandidatosController } from '@/modules/empresas/admin/controllers/admin-candidatos.controller';
 
 const router = Router();
 const adminRoles = [Roles.ADMIN, Roles.MODERADOR];
 const dashboardRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.RECRUTADOR];
+
+/**
+ * @openapi
+ * /api/v1/empresas/admin/candidato:
+ *   get:
+ *     summary: (Admin/Moderador) Listar candidatos com árvore completa
+ *     description: "Retorna uma visão administrativa completa dos candidatos cadastrados, incluindo currículos, candidaturas, vagas relacionadas e empresas responsáveis. Somente usuários com perfis ADMIN ou MODERADOR possuem acesso."
+ *     operationId: adminCandidatosList
+ *     tags: [Empresas - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Página atual da paginação
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Quantidade de registros por página
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           description: Filtra candidatos por status (ATIVO, INATIVO, BLOQUEADO, PENDENTE ou SUSPENSO)
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Termo para busca por nome, e-mail, CPF ou código do candidato
+ *     responses:
+ *       200:
+ *         description: Candidatos listados com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminCandidatosListResponse'
+ *             examples:
+ *               default:
+ *                 summary: Exemplo de listagem de candidatos
+ *                 value:
+ *                   data:
+ *                     - id: 8b1f9c2a-2c41-4f3a-9b7d-15a1a4d9ce20
+ *                       codUsuario: CAND-332211
+ *                       nomeCompleto: João da Silva
+ *                       email: joao.silva@example.com
+ *                       cpf: '12345678901'
+ *                       role: ALUNO_CANDIDATO
+ *                       tipoUsuario: PESSOA_FISICA
+ *                       status: ATIVO
+ *                       criadoEm: '2023-11-02T12:00:00Z'
+ *                       ultimoLogin: '2024-05-18T09:30:00Z'
+ *                       telefone: '+55 11 98888-7777'
+ *                       avatarUrl: https://cdn.advance.com.br/avatars/joao.png
+ *                       descricao: Analista de dados com 5 anos de experiência.
+ *                       aceitarTermos: true
+ *                       cidade: São Paulo
+ *                       estado: SP
+ *                       enderecos:
+ *                         - id: cand-end-1
+ *                           logradouro: Rua das Flores
+ *                           numero: '200'
+ *                           bairro: Centro
+ *                           cidade: São Paulo
+ *                           estado: SP
+ *                           cep: '01010000'
+ *                       socialLinks:
+ *                         linkedin: https://linkedin.com/in/joaodasilva
+ *                       informacoes:
+ *                         telefone: '+55 11 98888-7777'
+ *                         genero: MASCULINO
+ *                         dataNasc: '1995-08-12T00:00:00Z'
+ *                         inscricao: null
+ *                         avatarUrl: https://cdn.advance.com.br/avatars/joao.png
+ *                         descricao: Analista de dados com 5 anos de experiência.
+ *                         aceitarTermos: true
+ *                       curriculosResumo:
+ *                         total: 2
+ *                         principais: 1
+ *                       curriculos:
+ *                         - id: 6d1f9b8a-3c21-4fb2-8a8f-f6e2c21a7f10
+ *                           titulo: Currículo principal
+ *                           principal: true
+ *                           ultimaAtualizacao: '2024-04-30T15:00:00Z'
+ *                         - id: 2dd6b488-1a1b-4f3a-92db-4ac4122c9fa1
+ *                           titulo: Perfil para estágios
+ *                           principal: false
+ *                           ultimaAtualizacao: '2024-01-12T10:45:00Z'
+ *                       candidaturasResumo:
+ *                         total: 1
+ *                         porStatus:
+ *                           RECEBIDA: 1
+ *                       candidaturas:
+ *                         - id: 9f5c2be1-8b1f-4a24-8a55-df0f3ccf13c0
+ *                           status: RECEBIDA
+ *                           origem: SITE
+ *                           aplicadaEm: '2024-05-11T10:00:00Z'
+ *                           vaga:
+ *                             id: 7a5b9c1d-2f80-44a6-82da-6b8c1f00ec91
+ *                             titulo: Analista de Dados Pleno
+ *                             empresa:
+ *                               id: 5cefd77b-7a20-47b2-95fe-3eb5bf2c7c11
+ *                               nomeCompleto: Advance Tech Consultoria
+ *                       processosResumo:
+ *                         total: 1
+ *                         porStatus:
+ *                           ENTREVISTA: 1
+ *                       processos:
+ *                         - id: 8fd4c1e2-5f11-4a5c-9ab2-bc401ea77e10
+ *                           status: ENTREVISTA
+ *                           vagaId: 7a5b9c1d-2f80-44a6-82da-6b8c1f00ec91
+ *                       logs:
+ *                         - id: 41a6f5b1-3ab2-4c4e-9ee9-54a9cb1dc110
+ *                           tipo: LOGIN
+ *                           descricao: Acesso ao painel do candidato.
+ *                           criadoEm: '2024-05-18T09:30:00Z'
+ *                   pagination:
+ *                     page: 1
+ *                     pageSize: 20
+ *                     total: 1
+ *                     totalPages: 1
+ *       400:
+ *         description: Parâmetros inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       500:
+ *         description: Erro interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get('/candidato', supabaseAuthMiddleware(adminRoles), AdminCandidatosController.list);
+
+/**
+ * @openapi
+ * /api/v1/empresas/admin/candidato/{id}:
+ *   get:
+ *     summary: (Admin/Moderador) Detalhar candidato com relacionamentos
+ *     description: "Retorna todos os dados do candidato informado, incluindo currículos, candidaturas, vagas vinculadas, empresas responsáveis e histórico de logs."
+ *     operationId: adminCandidatosGet
+ *     tags: [Empresas - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Identificador do candidato
+ *     responses:
+ *       200:
+ *         description: Candidato retornado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminCandidatoDetalhe'
+ *       400:
+ *         description: Parâmetros inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       404:
+ *         description: Candidato não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get('/candidato/:id', supabaseAuthMiddleware(adminRoles), AdminCandidatosController.get);
 
 /**
  * @openapi

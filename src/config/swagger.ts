@@ -6099,6 +6099,21 @@ const options: Options = {
           ],
           example: 'EM_ANALISE',
         },
+        CandidatoLogTipo: {
+          type: 'string',
+          description: 'Eventos registrados automaticamente no histórico administrativo dos candidatos.',
+          enum: [
+            'CURRICULO_CRIADO',
+            'CURRICULO_ATUALIZADO',
+            'CURRICULO_REMOVIDO',
+            'CANDIDATO_ATIVADO',
+            'CANDIDATO_DESATIVADO',
+            'CANDIDATURA_CRIADA',
+            'CANDIDATURA_CANCELADA_CURRICULO',
+            'CANDIDATURA_CANCELADA_BLOQUEIO',
+          ],
+          example: 'CURRICULO_ATUALIZADO',
+        },
         OrigemVagas: {
           type: 'string',
           description: 'Origem do cadastro do processo seletivo associado à vaga.',
@@ -8643,6 +8658,168 @@ const options: Options = {
               total: 1,
               totalPages: 1,
             },
+          },
+        },
+        AdminCandidatoLog: {
+          type: 'object',
+          required: ['id', 'usuarioId', 'tipo', 'criadoEm'],
+          properties: {
+            id: { type: 'string', format: 'uuid', example: 'log-uuid' },
+            usuarioId: { type: 'string', format: 'uuid', example: 'user-uuid' },
+            tipo: { allOf: [{ $ref: '#/components/schemas/CandidatoLogTipo' }] },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Candidato atualizou o currículo principal.',
+            },
+            metadata: { type: 'object', nullable: true },
+            criadoEm: { type: 'string', format: 'date-time', example: '2024-05-18T09:30:00Z' },
+          },
+        },
+        AdminCandidatoCandidatura: {
+          type: 'object',
+          required: [
+            'id',
+            'vagaId',
+            'candidatoId',
+            'empresaUsuarioId',
+            'status',
+            'origem',
+            'aplicadaEm',
+            'atualizadaEm',
+          ],
+          properties: {
+            id: { type: 'string', format: 'uuid', example: 'candidatura-uuid' },
+            vagaId: { type: 'string', format: 'uuid', example: 'vaga-uuid' },
+            candidatoId: { type: 'string', format: 'uuid', example: 'usuario-uuid' },
+            curriculoId: { type: 'string', format: 'uuid', nullable: true },
+            empresaUsuarioId: { type: 'string', format: 'uuid', example: 'empresa-uuid' },
+            status: { allOf: [{ $ref: '#/components/schemas/StatusProcesso' }] },
+            origem: { allOf: [{ $ref: '#/components/schemas/OrigemVagas' }] },
+            aplicadaEm: { type: 'string', format: 'date-time', example: '2024-05-11T10:00:00Z' },
+            atualizadaEm: { type: 'string', format: 'date-time', example: '2024-05-11T10:00:00Z' },
+            consentimentos: { type: 'object', nullable: true },
+            curriculo: {
+              allOf: [{ $ref: '#/components/schemas/UsuarioCurriculo' }],
+              nullable: true,
+            },
+            vaga: {
+              allOf: [{ $ref: '#/components/schemas/AdminEmpresaVagaResumo' }],
+              nullable: true,
+            },
+            empresa: {
+              allOf: [{ $ref: '#/components/schemas/AdminVagaUsuarioResumo' }],
+              nullable: true,
+            },
+          },
+        },
+        AdminCandidatoProcesso: {
+          type: 'object',
+          required: [
+            'id',
+            'vagaId',
+            'candidatoId',
+            'status',
+            'origem',
+            'criadoEm',
+            'atualizadoEm',
+          ],
+          properties: {
+            id: { type: 'string', format: 'uuid', example: 'processo-uuid' },
+            vagaId: { type: 'string', format: 'uuid', example: 'vaga-uuid' },
+            candidatoId: { type: 'string', format: 'uuid', example: 'usuario-uuid' },
+            status: { allOf: [{ $ref: '#/components/schemas/StatusProcesso' }] },
+            origem: { allOf: [{ $ref: '#/components/schemas/OrigemVagas' }] },
+            observacoes: {
+              type: 'string',
+              nullable: true,
+              example: 'Entrevista técnica agendada.',
+            },
+            agendadoEm: { type: 'string', format: 'date-time', nullable: true },
+            criadoEm: { type: 'string', format: 'date-time', example: '2024-05-15T10:00:00Z' },
+            atualizadoEm: { type: 'string', format: 'date-time', example: '2024-05-16T16:30:00Z' },
+            vaga: {
+              allOf: [{ $ref: '#/components/schemas/AdminEmpresaVagaResumo' }],
+              nullable: true,
+            },
+          },
+        },
+        AdminCandidatoDetalhe: {
+          allOf: [
+            { $ref: '#/components/schemas/AdminVagaUsuarioResumo' },
+            {
+              type: 'object',
+              required: [
+                'curriculos',
+                'curriculosResumo',
+                'candidaturas',
+                'candidaturasResumo',
+                'processos',
+                'processosResumo',
+                'logs',
+              ],
+              properties: {
+                curriculos: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/UsuarioCurriculo' },
+                },
+                curriculosResumo: {
+                  type: 'object',
+                  required: ['total', 'principais'],
+                  properties: {
+                    total: { type: 'integer', example: 2 },
+                    principais: { type: 'integer', example: 1 },
+                  },
+                },
+                candidaturas: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/AdminCandidatoCandidatura' },
+                },
+                candidaturasResumo: {
+                  type: 'object',
+                  required: ['total', 'porStatus'],
+                  properties: {
+                    total: { type: 'integer', example: 3 },
+                    porStatus: {
+                      type: 'object',
+                      additionalProperties: { type: 'integer' },
+                      example: { RECEBIDA: 2, ENTREVISTA: 1 },
+                    },
+                  },
+                },
+                processos: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/AdminCandidatoProcesso' },
+                },
+                processosResumo: {
+                  type: 'object',
+                  required: ['total', 'porStatus'],
+                  properties: {
+                    total: { type: 'integer', example: 1 },
+                    porStatus: {
+                      type: 'object',
+                      additionalProperties: { type: 'integer' },
+                      example: { ENTREVISTA: 1 },
+                    },
+                  },
+                },
+                logs: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/AdminCandidatoLog' },
+                },
+              },
+            },
+          ],
+        },
+        AdminCandidatosListResponse: {
+          type: 'object',
+          required: ['data', 'pagination'],
+          properties: {
+            data: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/AdminCandidatoDetalhe' },
+            },
+            pagination: { allOf: [{ $ref: '#/components/schemas/PaginationMeta' }] },
           },
         },
         EmpresaResumo: {

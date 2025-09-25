@@ -104,6 +104,8 @@ model CursosCategorias {
   codCategoria String          @unique @db.VarChar(12)
   nome      String             @db.VarChar(120)
   descricao String?            @db.VarChar(255)
+  criadoEm  DateTime           @default(now())
+  atualizadoEm DateTime        @updatedAt
   subcats   CursosSubcategorias[]
   cursos    Cursos[]
 
@@ -117,6 +119,8 @@ model CursosSubcategorias {
   nome         String          @db.VarChar(120)
   descricao    String?         @db.VarChar(255)
   categoriaId  Int
+  criadoEm     DateTime        @default(now())
+  atualizadoEm DateTime        @updatedAt
   categoria    CursosCategorias  @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
   cursos       Cursos[]
 

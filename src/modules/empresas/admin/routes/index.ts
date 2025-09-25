@@ -4,10 +4,397 @@ import { supabaseAuthMiddleware } from '@/modules/usuarios/auth';
 import { Roles } from '@/modules/usuarios/enums/Roles';
 import { AdminEmpresasController } from '@/modules/empresas/admin/controllers/admin-empresas.controller';
 import { AdminVagasController } from '@/modules/empresas/admin/controllers/admin-vagas.controller';
+import { AdminCandidatosController } from '@/modules/empresas/admin/controllers/admin-candidatos.controller';
 
 const router = Router();
 const adminRoles = [Roles.ADMIN, Roles.MODERADOR];
 const dashboardRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.RECRUTADOR];
+
+/**
+ * @openapi
+ * /api/v1/empresas/admin/candidato:
+ *   get:
+ *     summary: (Admin/Moderador) Listar candidatos com árvore completa
+ *     description: "Retorna candidatos que possuem pelo menos um currículo cadastrado, incluindo currículos, candidaturas e as vagas com suas respectivas empresas."
+ *     operationId: adminCandidatosList
+ *     tags: [Empresas - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Página atual da paginação
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Quantidade de registros por página
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           description: Lista de status separados por vírgula (ex.: ATIVO,BLOQUEADO)
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *           description: Busca por nome, e-mail, CPF ou código do candidato (mínimo 3 caracteres)
+ *     responses:
+ *       200:
+ *         description: Candidatos listados com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminCandidatosListResponse'
+ *             examples:
+ *               default:
+ *                 summary: Lista de candidatos com relacionamentos
+ *                 value:
+ *                   data:
+ *                     - id: 8b1f9c2a-2c41-4f3a-9b7d-15a1a4d9ce20
+ *                       codUsuario: CAND-332211
+ *                       nomeCompleto: João da Silva
+ *                       email: joao.silva@example.com
+ *                       cpf: '12345678901'
+ *                       role: ALUNO_CANDIDATO
+ *                       tipoUsuario: PESSOA_FISICA
+ *                       status: ATIVO
+ *                       criadoEm: '2023-11-02T12:00:00Z'
+ *                       ultimoLogin: '2024-05-18T09:30:00Z'
+ *                       telefone: '+55 11 98888-7777'
+ *                       genero: MASCULINO
+ *                       dataNasc: '1995-08-12T00:00:00Z'
+ *                       inscricao: null
+ *                       avatarUrl: https://cdn.advance.com.br/avatars/joao.png
+ *                       descricao: Analista de dados com 5 anos de experiência.
+ *                       aceitarTermos: true
+ *                       cidade: São Paulo
+ *                       estado: SP
+ *                       enderecos:
+ *                         - id: cand-end-1
+ *                           logradouro: Rua das Flores
+ *                           numero: '200'
+ *                           bairro: Centro
+ *                           cidade: São Paulo
+ *                           estado: SP
+ *                           cep: '01010000'
+ *                       socialLinks:
+ *                         linkedin: https://linkedin.com/in/joaodasilva
+ *                         instagram: null
+ *                         facebook: null
+ *                         youtube: null
+ *                         twitter: null
+ *                         tiktok: null
+ *                       informacoes:
+ *                         telefone: '+55 11 98888-7777'
+ *                         genero: MASCULINO
+ *                         dataNasc: '1995-08-12T00:00:00Z'
+ *                         inscricao: null
+ *                         avatarUrl: https://cdn.advance.com.br/avatars/joao.png
+ *                         descricao: Analista de dados com 5 anos de experiência.
+ *                         aceitarTermos: true
+ *                       curriculos:
+ *                         - id: 6d1f9b8a-3c21-4fb2-8a8f-f6e2c21a7f10
+ *                           usuarioId: 8b1f9c2a-2c41-4f3a-9b7d-15a1a4d9ce20
+ *                           titulo: Currículo principal
+ *                           resumo: Profissional com experiência em analytics e BI.
+ *                           objetivo: Atuar como analista de dados pleno.
+ *                           principal: true
+ *                           areasInteresse:
+ *                             primaria: Tecnologia
+ *                           preferencias: null
+ *                           habilidades:
+ *                             tecnicas:
+ *                               - SQL
+ *                               - Python
+ *                           idiomas:
+ *                             - idioma: Inglês
+ *                               nivel: Avançado
+ *                           experiencias: []
+ *                           formacao: []
+ *                           cursosCertificacoes: []
+ *                           premiosPublicacoes: []
+ *                           acessibilidade: null
+ *                           consentimentos: null
+ *                           ultimaAtualizacao: '2024-04-30T15:00:00Z'
+ *                           criadoEm: '2023-11-02T12:05:00Z'
+ *                           atualizadoEm: '2024-04-30T15:00:00Z'
+ *                       candidaturas:
+ *                         - id: 9f5c2be1-8b1f-4a24-8a55-df0f3ccf13c0
+ *                           vagaId: 7a5b9c1d-2f80-44a6-82da-6b8c1f00ec91
+ *                           candidatoId: 8b1f9c2a-2c41-4f3a-9b7d-15a1a4d9ce20
+ *                           curriculoId: 6d1f9b8a-3c21-4fb2-8a8f-f6e2c21a7f10
+ *                           empresaUsuarioId: 5cefd77b-7a20-47b2-95fe-3eb5bf2c7c11
+ *                           status: RECEBIDA
+ *                           origem: SITE
+ *                           aplicadaEm: '2024-05-11T10:00:00Z'
+ *                           atualizadaEm: '2024-05-11T10:00:00Z'
+ *                           consentimentos:
+ *                             lgpd: true
+ *                           curriculo:
+ *                             id: 6d1f9b8a-3c21-4fb2-8a8f-f6e2c21a7f10
+ *                             usuarioId: 8b1f9c2a-2c41-4f3a-9b7d-15a1a4d9ce20
+ *                             titulo: Currículo principal
+ *                             resumo: Profissional com experiência em analytics e BI.
+ *                             objetivo: Atuar como analista de dados pleno.
+ *                             principal: true
+ *                             areasInteresse:
+ *                               primaria: Tecnologia
+ *                             preferencias: null
+ *                             habilidades:
+ *                               tecnicas:
+ *                                 - SQL
+ *                                 - Python
+ *                             idiomas:
+ *                               - idioma: Inglês
+ *                                 nivel: Avançado
+ *                             experiencias: []
+ *                             formacao: []
+ *                             cursosCertificacoes: []
+ *                             premiosPublicacoes: []
+ *                             acessibilidade: null
+ *                             consentimentos: null
+ *                             ultimaAtualizacao: '2024-04-30T15:00:00Z'
+ *                             criadoEm: '2023-11-02T12:05:00Z'
+ *                             atualizadoEm: '2024-04-30T15:00:00Z'
+ *                           empresa:
+ *                             id: 5cefd77b-7a20-47b2-95fe-3eb5bf2c7c11
+ *                             codUsuario: EMP-123456
+ *                             nomeCompleto: Advance Tech Consultoria
+ *                             email: contato@advance.com.br
+ *                             cnpj: '12345678000190'
+ *                             role: EMPRESA
+ *                             tipoUsuario: PESSOA_JURIDICA
+ *                             status: ATIVO
+ *                             criadoEm: '2024-01-05T12:00:00Z'
+ *                             ultimoLogin: '2024-05-20T08:15:00Z'
+ *                             telefone: '+55 11 99999-0000'
+ *                             avatarUrl: https://cdn.advance.com.br/logo.png
+ *                             descricao: Consultoria especializada em recrutamento e seleção.
+ *                             aceitarTermos: true
+ *                             cidade: São Paulo
+ *                             estado: SP
+ *                             enderecos:
+ *                               - id: end-1
+ *                                 logradouro: Av. Paulista
+ *                                 numero: '1000'
+ *                                 bairro: Bela Vista
+ *                                 cidade: São Paulo
+ *                                 estado: SP
+ *                                 cep: '01310000'
+ *                             socialLinks:
+ *                               linkedin: https://linkedin.com/company/advance
+ *                               instagram: null
+ *                               facebook: null
+ *                               youtube: null
+ *                               twitter: null
+ *                               tiktok: null
+ *                             informacoes:
+ *                               telefone: '+55 11 99999-0000'
+ *                               genero: null
+ *                               dataNasc: null
+ *                               inscricao: null
+ *                               avatarUrl: https://cdn.advance.com.br/logo.png
+ *                               descricao: Consultoria especializada em recrutamento e seleção.
+ *                               aceitarTermos: true
+ *                           vaga:
+ *                             id: 7a5b9c1d-2f80-44a6-82da-6b8c1f00ec91
+ *                             codigo: B24N56
+ *                             slug: analista-dados-pleno-sao-paulo
+ *                             usuarioId: 5cefd77b-7a20-47b2-95fe-3eb5bf2c7c11
+ *                             titulo: Analista de Dados Pleno
+ *                             status: PUBLICADO
+ *                             inseridaEm: '2024-05-10T09:00:00Z'
+ *                             atualizadoEm: '2024-05-12T11:30:00Z'
+ *                             inscricoesAte: '2024-06-01T23:59:59Z'
+ *                             modoAnonimo: false
+ *                             modalidade: REMOTO
+ *                             regimeDeTrabalho: CLT
+ *                             paraPcd: false
+ *                             senioridade: PLENO
+ *                             jornada: INTEGRAL
+ *                             numeroVagas: 2
+ *                             descricao: Oportunidade focada em análises preditivas e governança de dados.
+ *                             requisitos:
+ *                               obrigatorios:
+ *                                 - Experiência com SQL
+ *                                 - Vivência com Python
+ *                               desejaveis:
+ *                                 - Conhecimento em Power BI
+ *                             atividades:
+ *                               principais:
+ *                                 - Construir dashboards executivos
+ *                                 - Garantir qualidade dos dados
+ *                               extras:
+ *                                 - Atuar com stakeholders de negócios
+ *                             beneficios:
+ *                               lista:
+ *                                 - Vale alimentação
+ *                                 - Plano de saúde
+ *                               observacoes: Auxílio home office de R$ 150,00
+ *                             observacoes: Processo seletivo com etapas remotas e presenciais.
+ *                             localizacao:
+ *                               cidade: São Paulo
+ *                               estado: SP
+ *                             salarioMin: '4500.00'
+ *                             salarioMax: '6500.00'
+ *                             salarioConfidencial: false
+ *                             maxCandidaturasPorUsuario: 1
+ *                             areaInteresseId: 3
+ *                             subareaInteresseId: 7
+ *                             areaInteresse:
+ *                               id: 3
+ *                               categoria: Tecnologia da Informação
+ *                             subareaInteresse:
+ *                               id: 7
+ *                               nome: Desenvolvimento Front-end
+ *                               areaId: 3
+ *                             empresa:
+ *                               id: 5cefd77b-7a20-47b2-95fe-3eb5bf2c7c11
+ *                               codUsuario: EMP-123456
+ *                               nomeCompleto: Advance Tech Consultoria
+ *                               email: contato@advance.com.br
+ *                               cnpj: '12345678000190'
+ *                               role: EMPRESA
+ *                               tipoUsuario: PESSOA_JURIDICA
+ *                               status: ATIVO
+ *                               criadoEm: '2024-01-05T12:00:00Z'
+ *                               ultimoLogin: '2024-05-20T08:15:00Z'
+ *                               telefone: '+55 11 99999-0000'
+ *                               genero: null
+ *                               dataNasc: null
+ *                               inscricao: null
+ *                               avatarUrl: https://cdn.advance.com.br/logo.png
+ *                               descricao: Consultoria especializada em recrutamento e seleção.
+ *                               aceitarTermos: true
+ *                               cidade: São Paulo
+ *                               estado: SP
+ *                               enderecos:
+ *                                 - id: end-1
+ *                                   logradouro: Av. Paulista
+ *                                   numero: '1000'
+ *                                   bairro: Bela Vista
+ *                                   cidade: São Paulo
+ *                                   estado: SP
+ *                                   cep: '01310000'
+ *                               socialLinks:
+ *                                 linkedin: https://linkedin.com/company/advance
+ *                                 instagram: null
+ *                                 facebook: null
+ *                                 youtube: null
+ *                                 twitter: null
+ *                                 tiktok: null
+ *                               informacoes:
+ *                                 telefone: '+55 11 99999-0000'
+ *                                 genero: null
+ *                                 dataNasc: null
+ *                                 inscricao: null
+ *                                 avatarUrl: https://cdn.advance.com.br/logo.png
+ *                                 descricao: Consultoria especializada em recrutamento e seleção.
+ *                                 aceitarTermos: true
+ *                       curriculosResumo:
+ *                         total: 1
+ *                         principais: 1
+ *                       candidaturasResumo:
+ *                         total: 1
+ *                         porStatus:
+ *                           RECEBIDA: 1
+ *                   pagination:
+ *                     page: 1
+ *                     pageSize: 20
+ *                     total: 1
+ *                     totalPages: 1
+ *       400:
+ *         description: Parâmetros inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       500:
+ *         description: Erro interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get('/candidato', supabaseAuthMiddleware(adminRoles), AdminCandidatosController.list);
+
+/**
+ * @openapi
+ * /api/v1/empresas/admin/candidato/{id}:
+ *   get:
+ *     summary: (Admin/Moderador) Detalhar candidato com árvore completa
+ *     description: "Retorna todas as informações do candidato selecionado, incluindo currículos, candidaturas e as vagas aplicadas com suas empresas."
+ *     operationId: adminCandidatosGet
+ *     tags: [Empresas - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Identificador do candidato
+ *     responses:
+ *       200:
+ *         description: Candidato retornado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminCandidatoDetalhe'
+ *       400:
+ *         description: Parâmetros inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       404:
+ *         description: Candidato não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get('/candidato/:id', supabaseAuthMiddleware(adminRoles), AdminCandidatosController.get);
 
 /**
  * @openapi

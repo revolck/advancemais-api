@@ -164,6 +164,10 @@ const mapUsuarioAdmin = (usuario?: UsuarioAdminRecord | null) => {
   }
 
   const merged = attachEnderecoResumo(mergeUsuarioInformacoes(usuario));
+
+  if (!merged) {
+    return null;
+  }
   const socialLinks = mapSocialLinks(merged.redesSociais);
 
   return {

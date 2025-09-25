@@ -30,6 +30,14 @@ export interface EmailTemplate {
   text: string;
 }
 
+export interface AdminEmpresaCredentialsEmailData {
+  nomeCompleto: string;
+  email: string;
+  senha: string;
+  loginUrl: string;
+  cnpj?: string | null;
+}
+
 export interface PlanEmailDataBase {
   nomeCompleto: string;
   planName: string;
@@ -252,6 +260,20 @@ export class EmailTemplates {
     `;
   }
 
+  private static formatCnpj(cnpj?: string | null): string | null {
+    if (!cnpj) {
+      return null;
+    }
+
+    const digits = cnpj.replace(/\D/g, '');
+
+    if (digits.length !== 14) {
+      return cnpj;
+    }
+
+    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
+  }
+
   /**
    * Email de confirmação de conta - design limpo e direto
    */
@@ -419,6 +441,84 @@ export class EmailTemplates {
 </body>
 </html>`,
       text: `Redefinir senha da sua conta Advance+\n\nOlá, ${firstName}\n\nRecebemos uma solicitação para redefinir a senha da sua conta. Se foi você quem solicitou, use o link abaixo para criar uma nova senha:\n\n${data.linkRecuperacao}\n\nEste link expira em ${data.expiracaoHoras} horas por motivos de segurança. Você pode realizar até ${data.maxTentativas} tentativas de recuperação.\n\nSe você não solicitou esta alteração, pode ignorar este email. Sua senha não será alterada.\n\n© ${currentYear} Advance+ - Todos os direitos reservados`,
+    };
+  }
+
+  public static generateAdminEmpresaCredentialsEmail(
+    data: AdminEmpresaCredentialsEmailData,
+  ): EmailTemplate {
+    const firstName = data.nomeCompleto.split(' ')[0];
+    const currentYear = this.getCurrentYear();
+    const loginCnpj = this.formatCnpj(data.cnpj) ?? data.cnpj ?? '—';
+
+    return {
+      subject: 'Oba! Liberamos seu acesso na nossa plataforma 🎉',
+      html: `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oba! Liberamos seu acesso na nossa plataforma 🎉</title>
+  ${this.getBaseStyles()}
+</head>
+<body>
+  <div class="email-wrapper">
+    <div class="email-container">
+
+      <div class="header">
+        <div class="logo">
+          <img src="https://advancemais.com/images/logos/logo_branco.png" alt="Advance+" />
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="greeting">Olá, ${firstName}! 🌟</div>
+
+        <div class="message">
+          Estamos felizes em te receber por aqui! Seu acesso à plataforma Advance+ está liberado. Use o CNPJ abaixo como login e a senha provisória para o primeiro acesso.
+        </div>
+
+        <div class="info-box">
+          <p class="info-text"><strong>Login (CNPJ):</strong> ${loginCnpj}</p>
+          <p class="info-text"><strong>Senha temporária:</strong> ${data.senha}</p>
+          <p class="info-text"><strong>E-mail cadastrado:</strong> ${data.email}</p>
+        </div>
+
+        <div class="message">
+          Assim que entrar, personalize sua senha para garantir ainda mais segurança na sua jornada.
+        </div>
+
+        <div style="text-align: center;">
+          <a
+            href="${data.loginUrl}"
+            class="cta-button"
+            style="color: #ffffff !important;"
+          >
+            Acessar painel
+          </a>
+        </div>
+
+        <div class="fallback-section">
+          <div class="fallback-title">Não consegue clicar no botão?</div>
+          <div>Copie e cole este link no seu navegador:</div>
+          <div style="margin-top: 8px;">
+            <a href="${data.loginUrl}" class="fallback-link">${data.loginUrl}</a>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="footer">
+        <div class="footer-text">
+          Advance+ © ${currentYear} todos os direitos reservados.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>`,
+      text: `Oba! Liberamos seu acesso na nossa plataforma 🎉\n\nOlá, ${firstName}!\n\nEstamos felizes em te receber por aqui. Utilize estas credenciais provisórias para acessar a Advance+:\n- Login (CNPJ): ${loginCnpj}\n- Senha temporária: ${data.senha}\n- E-mail cadastrado: ${data.email}\n\nAcesse o painel pelo link: ${data.loginUrl}\nAssim que entrar, personalize sua senha para reforçar a segurança.\n\n© ${currentYear} Advance+ - Todos os direitos reservados`,
     };
   }
 

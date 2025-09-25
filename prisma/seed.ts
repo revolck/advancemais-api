@@ -1103,7 +1103,7 @@ async function seedVagas(
   if (planCompany) {
     const planVacancySeeds = [
       {
-        code: 'SVPLAN1',
+        code: 'SVPLN1',
         slug: 'seedplan-analista-suporte-rascunho',
         title: 'Analista de Suporte Técnico',
         regime: RegimesDeTrabalhos.CLT,
@@ -1119,7 +1119,7 @@ async function seedVagas(
         destaque: false,
       },
       {
-        code: 'SVPLAN2',
+        code: 'SVPLN2',
         slug: 'seedplan-desenvolvedor-backend-publicada',
         title: 'Desenvolvedor(a) Back-end Node.js',
         regime: RegimesDeTrabalhos.CLT,
@@ -1135,7 +1135,7 @@ async function seedVagas(
         destaque: true,
       },
       {
-        code: 'SVPLAN3',
+        code: 'SVPLN3',
         slug: 'seedplan-analista-marketing-expirada',
         title: 'Analista de Marketing de Produto',
         regime: RegimesDeTrabalhos.CLT,
@@ -1151,7 +1151,7 @@ async function seedVagas(
         destaque: false,
       },
       {
-        code: 'SVPLAN4',
+        code: 'SVPLN4',
         slug: 'seedplan-product-owner-em-andamento',
         title: 'Product Owner',
         regime: RegimesDeTrabalhos.CLT,

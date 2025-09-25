@@ -54,12 +54,9 @@ router.get('/meta', publicCache, CursosController.meta);
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/CursoCategoria'
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/CursoCategoria'
  *       500:
  *         description: Erro ao listar categorias
  *         content:

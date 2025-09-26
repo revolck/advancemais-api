@@ -201,6 +201,15 @@ const createUsuarioDashboardSelect = () =>
       },
     },
     planosContratados: createPlanoAtivoSelect(),
+    bloqueiosRecebidos: {
+      where: {
+        status: StatusDeBloqueios.ATIVO,
+        OR: [{ fim: null }, { fim: { gt: new Date() } }],
+      },
+      orderBy: [{ fim: 'desc' }, { criadoEm: 'desc' }],
+      take: 1,
+      select: bloqueioSelect,
+    },
     _count: {
       select: {
         vagasCriadas: {
@@ -371,6 +380,8 @@ type AdminEmpresasDashboardListItem = {
   vagasPublicadas: number;
   limiteVagasPlano: number | null;
   plano: AdminEmpresasPlanoResumo | null;
+  bloqueada: boolean;
+  bloqueioAtivo: AdminUsuariosEmBloqueiosResumo | null;
 };
 
 type AdminUsuariosBloqueioAlvo = {
@@ -1524,6 +1535,7 @@ export const adminEmpresasService = {
     const data: AdminEmpresasDashboardListItem[] = empresas.map((empresa) => {
       const planoAtual = empresa.planosContratados[0];
       const plano = mapPlanoResumo(planoAtual, referenceDate);
+      const bloqueio = mapBloqueioResumo(empresa.bloqueiosRecebidos?.[0] ?? null);
 
       return {
         id: empresa.id,
@@ -1538,6 +1550,8 @@ export const adminEmpresasService = {
         vagasPublicadas: empresa._count?.vagasCriadas ?? 0,
         limiteVagasPlano: plano?.quantidadeVagas ?? null,
         plano,
+        bloqueada: Boolean(bloqueio),
+        bloqueioAtivo: bloqueio,
       } satisfies AdminEmpresasDashboardListItem;
     });
 

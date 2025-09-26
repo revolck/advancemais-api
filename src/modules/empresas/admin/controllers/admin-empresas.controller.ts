@@ -13,6 +13,8 @@ import {
   adminEmpresasVagaParamSchema,
   adminEmpresasVagasQuerySchema,
   adminEmpresasUpdateSchema,
+  adminEmpresasValidateCpfQuerySchema,
+  adminEmpresasValidateCnpjQuerySchema,
 } from '@/modules/empresas/admin/validators/admin-empresas.schema';
 
 export class AdminEmpresasController {
@@ -60,6 +62,56 @@ export class AdminEmpresasController {
         success: false,
         code: 'ADMIN_EMPRESAS_CREATE_ERROR',
         message: 'Erro ao criar empresa',
+        error: error?.message,
+      });
+    }
+  };
+
+  static validateCnpj = async (req: Request, res: Response) => {
+    try {
+      const query = adminEmpresasValidateCnpjQuerySchema.parse(req.query);
+      const result = await adminEmpresasService.validateCnpj(query.cnpj);
+
+      res.json(result);
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'ADMIN_EMPRESAS_VALIDATE_CNPJ_ERROR',
+        message: 'Erro ao validar CNPJ',
+        error: error?.message,
+      });
+    }
+  };
+
+  static validateCpf = async (req: Request, res: Response) => {
+    try {
+      const query = adminEmpresasValidateCpfQuerySchema.parse(req.query);
+      const result = await adminEmpresasService.validateCpf(query.cpf);
+
+      res.json(result);
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'ADMIN_EMPRESAS_VALIDATE_CPF_ERROR',
+        message: 'Erro ao validar CPF',
         error: error?.message,
       });
     }

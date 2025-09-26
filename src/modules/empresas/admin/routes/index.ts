@@ -1110,6 +1110,186 @@ router.get(
 
 /**
  * @openapi
+ * /api/v1/empresas/admin/validate-cnpj:
+ *   get:
+ *     summary: (Admin/Moderador) Validar CNPJ de empresa
+ *     description: "Verifica se um CNPJ é válido e identifica se já está cadastrado na plataforma."
+ *     operationId: adminEmpresasValidateCnpj
+ *     tags: [Empresas - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: cnpj
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: CNPJ a ser validado (com ou sem máscara)
+ *     responses:
+ *       200:
+ *         description: Resultado da validação do CNPJ
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminEmpresaValidateCnpjResponse'
+ *             examples:
+ *               disponivel:
+ *                 summary: CNPJ válido e disponível
+ *                 value:
+ *                   success: true
+ *                   cnpj:
+ *                     input: '11.000.000/0001-00'
+ *                     normalized: '11000000000100'
+ *                     formatted: '11.000.000/0001-00'
+ *                     valid: true
+ *                   exists: false
+ *                   available: true
+ *                   empresa: null
+ *               emUso:
+ *                 summary: CNPJ já vinculado a uma empresa
+ *                 value:
+ *                   success: true
+ *                   cnpj:
+ *                     input: '12.345.678/0001-90'
+ *                     normalized: '12345678000190'
+ *                     formatted: '12.345.678/0001-90'
+ *                     valid: true
+ *                   exists: true
+ *                   available: false
+ *                   empresa:
+ *                     id: 'f66fbad9-4d3c-41f7-90df-2f4f0f32af10'
+ *                     nome: 'Advance Tech Consultoria'
+ *                     email: 'contato@advance.com.br'
+ *                     telefone: '+55 11 99999-0000'
+ *                     codUsuario: 'EMP-123456'
+ *                     status: 'ATIVO'
+ *                     role: 'EMPRESA'
+ *                     tipoUsuario: 'PESSOA_JURIDICA'
+ *                     criadoEm: '2024-01-05T12:00:00Z'
+ *                     atualizadoEm: '2024-05-20T08:15:00Z'
+ *       400:
+ *         description: Parâmetros inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get(
+  '/validate-cnpj',
+  supabaseAuthMiddleware(adminRoles),
+  AdminEmpresasController.validateCnpj,
+);
+
+/**
+ * @openapi
+ * /api/v1/empresas/admin/validate-cpf:
+ *   get:
+ *     summary: (Admin/Moderador) Validar CPF de usuário
+ *     description: "Verifica se um CPF é válido e identifica se já está cadastrado na plataforma."
+ *     operationId: adminEmpresasValidateCpf
+ *     tags: [Empresas - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: cpf
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: CPF a ser validado (com ou sem máscara)
+ *     responses:
+ *       200:
+ *         description: Resultado da validação do CPF
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminEmpresaValidateCpfResponse'
+ *             examples:
+ *               disponivel:
+ *                 summary: CPF válido e disponível
+ *                 value:
+ *                   success: true
+ *                   cpf:
+ *                     input: '123.456.789-09'
+ *                     normalized: '12345678909'
+ *                     formatted: '123.456.789-09'
+ *                     valid: true
+ *                   exists: false
+ *                   available: true
+ *                   usuario: null
+ *               emUso:
+ *                 summary: CPF já vinculado a um usuário
+ *                 value:
+ *                   success: true
+ *                   cpf:
+ *                     input: '987.654.321-00'
+ *                     normalized: '98765432100'
+ *                     formatted: '987.654.321-00'
+ *                     valid: true
+ *                   exists: true
+ *                   available: false
+ *                   usuario:
+ *                     id: '0d7cda92-8ee9-4d9b-9b98-2f5fb2f6d125'
+ *                     nome: 'Maria Souza'
+ *                     email: 'maria.souza@example.com'
+ *                     telefone: '+55 21 98888-0000'
+ *                     codUsuario: 'USR-789012'
+ *                     status: 'ATIVO'
+ *                     role: 'CANDIDATO'
+ *                     tipoUsuario: 'PESSOA_FISICA'
+ *                     criadoEm: '2024-02-10T10:30:00Z'
+ *                     atualizadoEm: '2024-05-18T15:45:00Z'
+ *       400:
+ *         description: Parâmetros inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get(
+  '/validate-cpf',
+  supabaseAuthMiddleware(adminRoles),
+  AdminEmpresasController.validateCpf,
+);
+
+/**
+ * @openapi
  * /api/v1/empresas/admin:
  *   post:
  *     summary: (Admin) Criar empresa

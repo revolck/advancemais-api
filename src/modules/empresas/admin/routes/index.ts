@@ -1515,7 +1515,7 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  * /api/v1/empresas/admin/{id}/plano:
  *   post:
  *     summary: (Admin/Moderador) Cadastrar plano manualmente para a empresa
- *     description: "Permite registrar manualmente um novo plano empresarial para a empresa selecionada. Qualquer plano ativo é automaticamente cancelado antes do novo vínculo. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     description: "Permite registrar manualmente um novo plano empresarial para a empresa selecionada. Qualquer plano ativo é automaticamente cancelado antes do novo vínculo. Quando informados, os campos de próxima cobrança ou período de carência definem automaticamente a data de término do plano. Endpoint restrito aos perfis ADMIN e MODERADOR."
  *     operationId: adminEmpresasAssignPlanoManual
  *     tags: [Empresas - Admin]
  *     security:
@@ -1571,14 +1571,14 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  *                       modo: CLIENTE
  *                       status: ATIVO
  *                       inicio: '2024-05-10T12:00:00Z'
- *                       fim: '2024-08-10T12:00:00Z'
+ *                       fim: '2024-06-10T12:00:00Z'
  *                       modeloPagamento: ASSINATURA
  *                       metodoPagamento: PIX
  *                       statusPagamento: APROVADO
  *                       valor: '349.90'
  *                       quantidadeVagas: 20
- *                       duracaoEmDias: 92
- *                       diasRestantes: 92
+ *                       duracaoEmDias: 31
+ *                       diasRestantes: 12
  *       400:
  *         description: Dados inválidos
  *         content:

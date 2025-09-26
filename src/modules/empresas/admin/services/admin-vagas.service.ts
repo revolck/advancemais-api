@@ -312,14 +312,46 @@ const countByStatus = <T extends string>(items: { status: T }[]) =>
     return acc;
   }, {});
 
+const mapVagaCandidatos = (candidaturas: CandidaturaRecord[]) => {
+  const candidatosMap = new Map<string, { usuario: ReturnType<typeof mapUsuarioAdmin>; candidaturas: ReturnType<typeof mapCandidatura>[] }>();
+
+  candidaturas.forEach((candidatura) => {
+    const candidatoId = candidatura.candidatoId;
+    const candidatoUsuario = mapUsuarioAdmin(candidatura.candidato ?? null);
+
+    if (!candidatoUsuario) {
+      return;
+    }
+
+    const candidaturaMapeada = mapCandidatura(candidatura);
+    const agrupado = candidatosMap.get(candidatoId);
+
+    if (agrupado) {
+      agrupado.candidaturas.push(candidaturaMapeada);
+    } else {
+      candidatosMap.set(candidatoId, {
+        usuario: candidatoUsuario,
+        candidaturas: [candidaturaMapeada],
+      });
+    }
+  });
+
+  return Array.from(candidatosMap.values()).map(({ usuario, candidaturas: candidaturasDoUsuario }) => ({
+    ...usuario,
+    candidaturas: candidaturasDoUsuario,
+  }));
+};
+
 const mapVagaDetalhada = (vaga: VagaRecord) => {
   const candidaturas = vaga.candidaturas.map(mapCandidatura);
   const processos = vaga.processos.map(mapProcesso);
+  const candidatos = mapVagaCandidatos(vaga.candidaturas);
 
   return {
     ...mapVagaBase(vaga),
     empresa: mapUsuarioAdmin(vaga.empresa ?? null),
     candidaturas,
+    candidatos,
     processos,
     candidaturasResumo: {
       total: candidaturas.length,

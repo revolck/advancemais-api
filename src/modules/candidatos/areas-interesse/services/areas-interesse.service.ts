@@ -9,6 +9,10 @@ export type CreateAreaInteresseData = {
 
 export type UpdateAreaInteresseData = Partial<CreateAreaInteresseData>;
 
+export type CreateSubareaInteresseData = { nome: string };
+
+export type UpdateSubareaInteresseData = Partial<CreateSubareaInteresseData>;
+
 const baseInclude = {
   subareas: {
     orderBy: { nome: 'asc' as const },
@@ -50,8 +54,10 @@ const serialize = (area: AreaWithRelations) => ({
 
 const normalizeCategoria = (categoria: string) => categoria.trim();
 
+const normalizeSubareaNome = (nome: string) => nome.trim();
+
 const normalizeSubareas = (subareas: string[]) =>
-  Array.from(new Set(subareas.map((nome) => nome.trim()).filter(Boolean)));
+  Array.from(new Set(subareas.map(normalizeSubareaNome).filter(Boolean)));
 
 export const areasInteresseService = {
   async list() {
@@ -145,5 +151,48 @@ export const areasInteresseService = {
 
   async remove(id: number) {
     await prisma.candidatosAreasInteresse.delete({ where: { id } });
+  },
+
+  async createSubarea(areaId: number, data: CreateSubareaInteresseData) {
+    const nome = normalizeSubareaNome(data.nome);
+
+    return prisma.$transaction(async (tx) => {
+      await tx.candidatosAreasInteresse.findUniqueOrThrow({ where: { id: areaId } });
+
+      const subarea = await tx.candidatosSubareasInteresse.create({
+        data: { areaId, nome },
+        include: {
+          vagas: {
+            select: { id: true },
+          },
+        },
+      });
+
+      return serializeSubarea(subarea);
+    });
+  },
+
+  async updateSubarea(id: number, data: UpdateSubareaInteresseData) {
+    const updateData: { nome?: string } = {};
+
+    if (data.nome !== undefined) {
+      updateData.nome = normalizeSubareaNome(data.nome);
+    }
+
+    const subarea = await prisma.candidatosSubareasInteresse.update({
+      where: { id },
+      data: updateData,
+      include: {
+        vagas: {
+          select: { id: true },
+        },
+      },
+    });
+
+    return serializeSubarea(subarea);
+  },
+
+  async removeSubarea(id: number) {
+    await prisma.candidatosSubareasInteresse.delete({ where: { id } });
   },
 };

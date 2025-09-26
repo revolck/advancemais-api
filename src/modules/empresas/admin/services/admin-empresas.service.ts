@@ -547,6 +547,42 @@ const sanitizeTelefone = (telefone: string) => telefone.trim();
 const sanitizeSupabaseId = (supabaseId: string) => supabaseId.trim();
 const sanitizeSenha = async (senha: string) => bcrypt.hash(senha, 12);
 const normalizeDocumento = (value: string) => value.replace(/\D/g, '');
+const formatCnpj = (value: string) =>
+  value.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+
+const isValidCnpj = (value: string) => {
+  if (value.length !== 14) {
+    return false;
+  }
+
+  if (/^(\d)\1{13}$/.test(value)) {
+    return false;
+  }
+
+  const calculateDigit = (size: number) => {
+    let sum = 0;
+    let position = size - 7;
+
+    for (let i = size; i >= 1; i--) {
+      const index = size - i;
+      sum += Number(value.charAt(index)) * position--;
+      if (position < 2) {
+        position = 9;
+      }
+    }
+
+    const mod = sum % 11;
+    return mod < 2 ? 0 : 11 - mod;
+  };
+
+  const firstDigit = calculateDigit(12);
+  if (firstDigit !== Number(value.charAt(12))) {
+    return false;
+  }
+
+  const secondDigit = calculateDigit(13);
+  return secondDigit === Number(value.charAt(13));
+};
 
 const PASSWORD_UPPERCASE = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 const PASSWORD_LOWERCASE = 'abcdefghijkmnopqrstuvwxyz';
@@ -1092,6 +1128,73 @@ const listVagas = async (id: string, { page, pageSize, status }: AdminEmpresasVa
 };
 
 export const adminEmpresasService = {
+  validateCnpj: async (input: string) => {
+    const normalized = normalizeDocumento(input);
+    const hasFourteenDigits = normalized.length === 14;
+    const valid = hasFourteenDigits && isValidCnpj(normalized);
+
+    let empresaResumo:
+      | {
+          id: string;
+          nome: string;
+          email: string;
+          telefone: string | null;
+          codUsuario: string;
+          status: Status;
+          role: Roles;
+          tipoUsuario: TiposDeUsuarios;
+          criadoEm: Date;
+          atualizadoEm: Date;
+        }
+      | null = null;
+
+    if (hasFourteenDigits) {
+      const empresa = await prisma.usuarios.findFirst({
+        where: { cnpj: normalized },
+        select: {
+          id: true,
+          nomeCompleto: true,
+          email: true,
+          codUsuario: true,
+          status: true,
+          role: true,
+          tipoUsuario: true,
+          criadoEm: true,
+          atualizadoEm: true,
+          informacoes: { select: { telefone: true } },
+        },
+      });
+
+      if (empresa) {
+        empresaResumo = {
+          id: empresa.id,
+          nome: empresa.nomeCompleto,
+          email: empresa.email,
+          telefone: empresa.informacoes?.telefone ?? null,
+          codUsuario: empresa.codUsuario,
+          status: empresa.status,
+          role: empresa.role,
+          tipoUsuario: empresa.tipoUsuario,
+          criadoEm: empresa.criadoEm,
+          atualizadoEm: empresa.atualizadoEm,
+        };
+      }
+    }
+
+    return {
+      success: true,
+      cnpj: {
+        input,
+        normalized,
+        formatted: hasFourteenDigits ? formatCnpj(normalized) : null,
+        valid,
+      },
+      exists: empresaResumo !== null,
+      available: valid && !empresaResumo,
+      empresa: empresaResumo,
+    };
+  },
+
   create: async (input: AdminEmpresasCreateInput) => {
     const senhaOriginal = input.senha ?? generateSecurePassword();
     const senhaHash = await sanitizeSenha(senhaOriginal);

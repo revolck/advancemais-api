@@ -852,7 +852,7 @@ router.get('/vagas', supabaseAuthMiddleware(adminRoles), AdminVagasController.li
  * /api/v1/empresas/admin/vagas/{id}:
  *   get:
  *     summary: (Admin/Moderador) Detalhar vaga com relacionamentos
- *     description: "Retorna todos os dados da vaga selecionada, incluindo empresa, candidaturas e processos ligados ao fluxo seletivo."
+ *     description: "Retorna todos os dados da vaga selecionada, incluindo empresa, candidaturas, candidatos derivados das inscrições e processos ligados ao fluxo seletivo."
  *     operationId: adminVagasGet
  *     tags: [Empresas - Admin]
  *     security:
@@ -971,6 +971,83 @@ router.get('/vagas', supabaseAuthMiddleware(adminRoles), AdminVagasController.li
  *                       descricao: Consultoria especializada em recrutamento e seleção.
  *                       aceitarTermos: true
  *                   candidaturas: []
+ *                   candidatos:
+ *                     - id: 1c2d3e4f-5678-90ab-cdef-1234567890ab
+ *                       codUsuario: CAND-987654
+ *                       nomeCompleto: Maria Fernanda Lima
+ *                       email: maria.lima@email.com
+ *                       cpf: '98765432100'
+ *                       cnpj: null
+ *                       role: CANDIDATO
+ *                       tipoUsuario: PESSOA_FISICA
+ *                       status: ATIVO
+ *                       criadoEm: '2024-03-01T10:00:00Z'
+ *                       ultimoLogin: '2024-05-22T14:30:00Z'
+ *                       telefone: '+55 11 98888-7777'
+ *                       genero: FEMININO
+ *                       dataNasc: '1995-07-20'
+ *                       inscricao: null
+ *                       avatarUrl: https://cdn.advance.com.br/candidatos/maria.png
+ *                       descricao: Analista de dados com 5 anos de experiência em BI.
+ *                       aceitarTermos: true
+ *                       cidade: São Paulo
+ *                       estado: SP
+ *                       enderecos:
+ *                         - id: end-cand-1
+ *                           logradouro: Rua das Flores
+ *                           numero: '250'
+ *                           bairro: Centro
+ *                           cidade: São Paulo
+ *                           estado: SP
+ *                           cep: '01020000'
+ *                       socialLinks:
+ *                         linkedin: https://linkedin.com/in/marialima
+ *                         instagram: null
+ *                         facebook: null
+ *                         youtube: null
+ *                         twitter: null
+ *                         tiktok: null
+ *                       informacoes:
+ *                         telefone: '+55 11 98888-7777'
+ *                         genero: FEMININO
+ *                         dataNasc: '1995-07-20'
+ *                         inscricao: null
+ *                         avatarUrl: https://cdn.advance.com.br/candidatos/maria.png
+ *                         descricao: Analista de dados com 5 anos de experiência em BI.
+ *                         aceitarTermos: true
+ *                       candidaturas:
+ *                         - id: 5f4e3d2c-1b0a-9876-5432-10fedcba0987
+ *                           vagaId: 7a5b9c1d-2f80-44a6-82da-6b8c1f00ec91
+ *                           candidatoId: 1c2d3e4f-5678-90ab-cdef-1234567890ab
+ *                           curriculoId: 4321abcd-5678-90ef-abcd-1234567890ef
+ *                           empresaUsuarioId: 5cefd77b-7a20-47b2-95fe-3eb5bf2c7c11
+ *                           status: RECEBIDA
+ *                           origem: SITE
+ *                           aplicadaEm: '2024-05-12T09:30:00Z'
+ *                           atualizadaEm: '2024-05-12T09:30:00Z'
+ *                           consentimentos: null
+ *                           candidato:
+ *                             $ref: '#/components/schemas/AdminVagaUsuarioResumo/example'
+ *                           curriculo:
+ *                             id: 4321abcd-5678-90ef-abcd-1234567890ef
+ *                             usuarioId: 1c2d3e4f-5678-90ab-cdef-1234567890ab
+ *                             titulo: Currículo principal
+ *                             resumo: Profissional especializada em análise de dados e BI.
+ *                             objetivo: Atuar como Analista de Dados Pleno
+ *                             principal: true
+ *                             areasInteresse: ['Tecnologia', 'Business Intelligence']
+ *                             preferencias: { regime: 'REMOTO' }
+ *                             habilidades: ['SQL', 'Power BI', 'Python']
+ *                             idiomas: ['Inglês avançado']
+ *                             experiencias: []
+ *                             formacao: []
+ *                             cursosCertificacoes: []
+ *                             premiosPublicacoes: []
+ *                             acessibilidade: null
+ *                             consentimentos: null
+ *                             ultimaAtualizacao: '2024-05-10T18:00:00Z'
+ *                             criadoEm: '2023-12-01T10:00:00Z'
+ *                             atualizadoEm: '2024-05-10T18:00:00Z'
  *                   processos: []
  *                   candidaturasResumo:
  *                     total: 0

@@ -7938,6 +7938,8 @@ const options: Options = {
               type: 'string',
               nullable: true,
               example: 'Uso indevido de dados pessoais de candidatos.',
+              description:
+                'Detalhamento adicional sobre o bloqueio. Quando preenchido, é enviado como "Descrição" no e-mail de bloqueio.',
             },
           },
         },

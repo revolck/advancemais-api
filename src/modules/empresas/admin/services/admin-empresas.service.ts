@@ -1956,7 +1956,9 @@ export const adminEmpresasService = {
         const template = EmailTemplates.generateUserBlockedEmail({
           nomeCompleto: user.nomeCompleto,
           motivo: input.motivo,
-          fim,
+          fim: input.tipo === TiposDeBloqueios.TEMPORARIO ? fim : null,
+          descricao: input.observacoes ?? null,
+          tipo: input.tipo,
         });
         await emailService.sendAssinaturaNotificacao(
           { id: empresaId, email: user.email, nomeCompleto: user.nomeCompleto },

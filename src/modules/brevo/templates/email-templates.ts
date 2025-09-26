@@ -279,6 +279,24 @@ export class EmailTemplates {
     `;
   }
 
+  private static getSignatureHtml(): string {
+    return `
+        <div class="message">
+          <p>Obrigado por fazer parte do Advance+.</p>
+        </div>
+        <div class="signature">
+          Atenciosamente,<br />
+          <span class="company-name">Equipe Advance+</span>
+        </div>`;
+  }
+
+  private static getSignatureText(): string {
+    return `Obrigado por fazer parte do Advance+.
+
+Atenciosamente,
+Equipe Advance+`;
+  }
+
   private static formatCnpj(cnpj?: string | null): string | null {
     if (!cnpj) {
       return null;
@@ -354,9 +372,11 @@ export class EmailTemplates {
             Se não confirmar até lá, você precisará fazer um novo cadastro.
           </p>
         </div>
-        
+
+        ${this.getSignatureHtml()}
+
       </div>
-      
+
       <div class="footer">
         <div class="footer-text">
           Advance+ © ${currentYear} todos os direitos reservados.
@@ -371,7 +391,7 @@ export class EmailTemplates {
         data.verificationUrl
       }\n\nEste link expira em ${
         data.expirationHours ?? 72
-      } horas. Se não confirmar até lá, você precisará fazer um novo cadastro.\n\n© ${currentYear} Advance+ - Todos os direitos reservados`,
+      } horas. Se não confirmar até lá, você precisará fazer um novo cadastro.\n\n${this.getSignatureText()}\n\n© ${currentYear} Advance+ - Todos os direitos reservados`,
     };
   }
 
@@ -442,13 +462,15 @@ export class EmailTemplates {
         <div class="warning-box">
           <div class="warning-title">Não foi você?</div>
           <p class="warning-text">
-            Se você não solicitou esta alteração, pode ignorar este email com segurança. 
+            Se você não solicitou esta alteração, pode ignorar este email com segurança.
             Sua senha não será alterada.
           </p>
         </div>
-        
+
+        ${this.getSignatureHtml()}
+
       </div>
-      
+
       <div class="footer">
         <div class="footer-text">
          Advance+ © ${currentYear} todos os direitos reservados.
@@ -459,7 +481,7 @@ export class EmailTemplates {
   </div>
 </body>
 </html>`,
-      text: `Redefinir senha da sua conta Advance+\n\nOlá, ${firstName}\n\nRecebemos uma solicitação para redefinir a senha da sua conta. Se foi você quem solicitou, use o link abaixo para criar uma nova senha:\n\n${data.linkRecuperacao}\n\nEste link expira em ${data.expiracaoHoras} horas por motivos de segurança. Você pode realizar até ${data.maxTentativas} tentativas de recuperação.\n\nSe você não solicitou esta alteração, pode ignorar este email. Sua senha não será alterada.\n\n© ${currentYear} Advance+ - Todos os direitos reservados`,
+      text: `Redefinir senha da sua conta Advance+\n\nOlá, ${firstName}\n\nRecebemos uma solicitação para redefinir a senha da sua conta. Se foi você quem solicitou, use o link abaixo para criar uma nova senha:\n\n${data.linkRecuperacao}\n\nEste link expira em ${data.expiracaoHoras} horas por motivos de segurança. Você pode realizar até ${data.maxTentativas} tentativas de recuperação.\n\nSe você não solicitou esta alteração, pode ignorar este email. Sua senha não será alterada.\n\n${this.getSignatureText()}\n\n© ${currentYear} Advance+ - Todos os direitos reservados`,
     };
   }
 
@@ -525,6 +547,8 @@ export class EmailTemplates {
           </div>
         </div>
 
+        ${this.getSignatureHtml()}
+
       </div>
 
       <div class="footer">
@@ -537,7 +561,7 @@ export class EmailTemplates {
   </div>
 </body>
 </html>`,
-      text: `Oba! Liberamos seu acesso na nossa plataforma 🎉\n\nOlá, ${firstName}!\n\nEstamos felizes em te receber por aqui. Utilize estas credenciais provisórias para acessar a Advance+:\n- Login (CNPJ): ${loginCnpj}\n- Senha temporária: ${data.senha}\n- E-mail cadastrado: ${data.email}\n\nAcesse o painel pelo link: ${data.loginUrl}\nAssim que entrar, personalize sua senha para reforçar a segurança.\n\n© ${currentYear} Advance+ - Todos os direitos reservados`,
+      text: `Oba! Liberamos seu acesso na nossa plataforma 🎉\n\nOlá, ${firstName}!\n\nEstamos felizes em te receber por aqui. Utilize estas credenciais provisórias para acessar a Advance+:\n- Login (CNPJ): ${loginCnpj}\n- Senha temporária: ${data.senha}\n- E-mail cadastrado: ${data.email}\n\nAcesse o painel pelo link: ${data.loginUrl}\nAssim que entrar, personalize sua senha para reforçar a segurança.\n\n${this.getSignatureText()}\n\n© ${currentYear} Advance+ - Todos os direitos reservados`,
     };
   }
 
@@ -585,6 +609,8 @@ export class EmailTemplates {
             controle de novas solicitações de candidatos, conheça os perfis e aumente suas chances de match!
           </p>
         </div>
+
+        ${this.getSignatureHtml()}
       </div>
       <div class="footer">
         <div class="footer-text">Advance+ © ${currentYear} todos os direitos reservados.</div>
@@ -598,6 +624,8 @@ export class EmailTemplates {
 É um prazer ter você com a gente. Seu plano ${data.planName} foi ativado.
 
 O ${data.planName} oferece a você ${vagasText} por mês em nosso site. Tenha o controle de novas solicitações de candidatos, conheça os perfis e aumente suas chances de match!
+
+${this.getSignatureText()}
 
 © ${currentYear} Advance+ - Todos os direitos reservados`;
 
@@ -638,6 +666,8 @@ O ${data.planName} oferece a você ${vagasText} por mês em nosso site. Tenha o 
             <a href="${link}" class="fallback-link">${link}</a>
           </div>
         </div>
+
+        ${this.getSignatureHtml()}
       </div>
       <div class="footer">
         <div class="footer-text">Advance+ © ${currentYear} todos os direitos reservados.</div>
@@ -651,6 +681,8 @@ O ${data.planName} oferece a você ${vagasText} por mês em nosso site. Tenha o 
 
 Não foi possível concluir a compra do seu plano ${data.planName}. O pagamento foi recusado.
 Atualize seus dados ou tente novamente: ${link}
+
+${this.getSignatureText()}
 
 © ${currentYear} Advance+ - Todos os direitos reservados`;
     return { subject, html, text };
@@ -685,6 +717,8 @@ Atualize seus dados ou tente novamente: ${link}
         <div class="info-box">
           <p class="info-text">Agora você conta com <strong>${vagasText} por mês</strong> para publicar e gerenciar no site.</p>
         </div>
+
+        ${this.getSignatureHtml()}
       </div>
       <div class="footer">
         <div class="footer-text">Advance+ © ${currentYear} todos os direitos reservados.</div>
@@ -697,6 +731,8 @@ Atualize seus dados ou tente novamente: ${link}
 
 Seu plano foi atualizado para ${data.planName}.
 Agora você conta com ${vagasText} por mês para publicar e gerenciar no site.
+
+${this.getSignatureText()}
 
 © ${currentYear} Advance+ - Todos os direitos reservados`;
     return { subject, html, text };
@@ -768,6 +804,8 @@ Agora você conta com ${vagasText} por mês para publicar e gerenciar no site.
           <div class="fallback-title">Não consegue clicar?</div>
           <div class="fallback-link">${data.confirmacaoUrl}</div>
         </div>
+
+        ${this.getSignatureHtml()}
       </div>
       <div class="footer">
         <div class="footer-text">Advance+ © ${currentYear} todos os direitos reservados.</div>
@@ -816,6 +854,8 @@ ${
     : ''
 }Confirme sua ciência acessando: ${data.confirmacaoUrl}
 
+${this.getSignatureText()}
+
 © ${currentYear} Advance+ - Todos os direitos reservados`;
 
     return { subject, html, text };
@@ -852,6 +892,8 @@ ${
           <p class="info-text">Recomendamos validar as entregas e atualizar o status do estágio na plataforma.</p>
         </div>
         ${data.observacoes ? `<div class="warning-box"><div class="warning-title">Observações registradas</div><p class="warning-text">${data.observacoes}</p></div>` : ''}
+
+        ${this.getSignatureHtml()}
       </div>
       <div class="footer">
         <div class="footer-text">Advance+ © ${currentYear} todos os direitos reservados.</div>
@@ -871,6 +913,8 @@ ${
 `
     : ''
 }
+
+${this.getSignatureText()}
 
 © ${currentYear} Advance+ - Todos os direitos reservados`;
 
@@ -910,6 +954,8 @@ ${
         <div class="info-box">
           <p class="info-text">O <strong>${data.planName}</strong> oferece ${vagasText} por mês.</p>
         </div>
+
+        ${this.getSignatureHtml()}
       </div>
       <div class="footer">
         <div class="footer-text">Advance+ © ${currentYear} todos os direitos reservados.</div>
@@ -921,6 +967,8 @@ ${
     const text = `Olá, ${firstName}!
 
 Seu plano foi alterado para ${data.planName}. Todas as vagas foram movidas para rascunho. O ${data.planName} oferece ${vagasText} por mês.
+
+${this.getSignatureText()}
 
 © ${currentYear} Advance+ - Todos os direitos reservados`;
     return { subject, html, text };
@@ -991,10 +1039,7 @@ Seu plano foi alterado para ${data.planName}. Todas as vagas foram movidas para 
             <li>Breve descrição do ocorrido.</li>
           </ul>
         </div>
-        <div class="signature">
-          Atenciosamente,<br />
-          <span class="company-name">Equipe Advance+</span>
-        </div>
+        ${this.getSignatureHtml()}
       </div>
       <div class="footer">
         <div class="footer-text">Advance+ © ${currentYear} todos os direitos reservados.</div>
@@ -1014,10 +1059,9 @@ Se você acredita que houve engano, envie um e-mail para contato@advancemais.com
 - Data e Hora do bloqueio;
 - Breve descrição do ocorrido.
 
-Atenciosamente,
-Equipe Advance+
+  ${this.getSignatureText()}
 
-© ${currentYear} Advance+ - Todos os direitos reservados`;
+  © ${currentYear} Advance+ - Todos os direitos reservados`;
     return { subject, html, text };
   }
 
@@ -1042,10 +1086,16 @@ Equipe Advance+
         </div>
       </div>
       <div class="content">
-        <div class="greeting">Olá, ${firstName}!</div>
+        <div class="greeting">Olá, ${firstName}.</div>
         <div class="message">
-          Seu bloqueio foi <strong>revogado</strong>. Seu acesso foi restaurado.
+          <p>A sua conta está ativa novamente. O bloqueio que existia foi removido com sucesso e você já pode voltar a usar a nossa plataforma normalmente.</p>
+          <p>
+            Se não reconhece esta ação ou precisa de suporte, acesse nosso centro de ajuda:
+            <a href="http://ajuda.advancemais.com/" target="_blank" rel="noopener noreferrer">Suporte</a>.
+          </p>
         </div>
+
+        ${this.getSignatureHtml()}
       </div>
       <div class="footer">
         <div class="footer-text">Advance+ © ${currentYear} todos os direitos reservados.</div>
@@ -1054,11 +1104,15 @@ Equipe Advance+
   </div>
 </body>
 </html>`;
-    const text = `Olá, ${firstName}!
+    const text = `Olá, ${firstName}.
 
-Seu bloqueio foi revogado. Seu acesso foi restaurado.
+A sua conta está ativa novamente. O bloqueio que existia foi removido com sucesso e você já pode voltar a usar a nossa plataforma normalmente.
 
-© ${currentYear} Advance+ - Todos os direitos reservados`;
+Se não reconhece esta ação ou precisa de suporte, acesse nosso centro de ajuda: Suporte (http://ajuda.advancemais.com/).
+
+  ${this.getSignatureText()}
+
+  © ${currentYear} Advance+ - Todos os direitos reservados`;
     return { subject, html, text };
   }
 }

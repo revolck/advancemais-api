@@ -207,6 +207,25 @@ export class EmailTemplates {
           color: #64748b;
           margin: 0;
         }
+
+        .info-list {
+          margin: 12px 0 0;
+          padding-left: 20px;
+          color: #475569;
+          font-size: 14px;
+          line-height: 1.6;
+        }
+
+        .info-list li {
+          margin-bottom: 4px;
+        }
+
+        .signature {
+          font-size: 14px;
+          color: #475569;
+          margin-top: 32px;
+          line-height: 1.6;
+        }
         
         .footer {
           background-color: #f8fafc;
@@ -912,13 +931,32 @@ Seu plano foi alterado para ${data.planName}. Todas as vagas foram movidas para 
     nomeCompleto: string;
     motivo: string;
     fim?: Date | null;
+    descricao?: string | null;
+    tipo?: 'TEMPORARIO' | 'PERMANENTE' | 'RESTRICAO_DE_RECURSO';
   }): EmailTemplate {
     const firstName = data.nomeCompleto.split(' ')[0];
     const currentYear = this.getCurrentYear();
-    const untilText = data.fim
-      ? `até ${new Date(data.fim).toLocaleString('pt-BR')}`
-      : 'por tempo indeterminado';
-    const subject = `Sua conta foi bloqueada`;
+    const fimDate = data.fim ? new Date(data.fim) : null;
+    const terminoData = fimDate?.toLocaleDateString('pt-BR') ?? null;
+    const terminoHora = fimDate?.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }) ?? null;
+    const isTemporario = data.tipo === 'TEMPORARIO';
+    const terminoTexto = terminoData && terminoHora ? `${terminoData}, ${terminoHora}` : 'Indeterminado';
+    const mensagemBloqueio = isTemporario
+      ? 'Sua conta foi temporariamente bloqueada por possível violação das nossas políticas.'
+      : 'Sua conta foi bloqueada por possível violação das nossas políticas.';
+    const terminoHtml = isTemporario
+      ? `<p class="info-text"><strong>Término do bloqueio:</strong> ${terminoTexto}</p>`
+      : '';
+    const terminoText = isTemporario ? `Término do bloqueio: ${terminoTexto}.\n` : '';
+    const descricaoHtml = data.descricao
+      ? `<p class="info-text"><strong>Descrição:</strong> ${data.descricao}</p>`
+      : '';
+    const descricaoText = data.descricao ? `Descrição: ${data.descricao}\n` : '';
+    const subject = `Seu acesso foi bloqueado`;
     const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -938,11 +976,24 @@ Seu plano foi alterado para ${data.planName}. Todas as vagas foram movidas para 
       <div class="content">
         <div class="greeting">Olá, ${firstName}.</div>
         <div class="message">
-          Informamos que sua conta foi <strong>bloqueada</strong> ${untilText}.
+          ${mensagemBloqueio}
         </div>
         <div class="info-box">
+          ${terminoHtml}
           <p class="info-text"><strong>Motivo:</strong> ${data.motivo}</p>
-          <p class="info-text">Caso acredite que foi um engano, responda este email com mais detalhes.</p>
+          ${descricaoHtml}
+        </div>
+        <div class="info-box">
+          <p class="info-text">Se você acredita que houve engano, envie um e-mail para <strong>contato@advancemais.com</strong> informando:</p>
+          <ul class="info-list">
+            <li>E-mail cadastrado na plataforma;</li>
+            <li>Data e Hora do bloqueio;</li>
+            <li>Breve descrição do ocorrido.</li>
+          </ul>
+        </div>
+        <div class="signature">
+          Atenciosamente,<br />
+          <span class="company-name">Equipe Advance+</span>
         </div>
       </div>
       <div class="footer">
@@ -954,10 +1005,17 @@ Seu plano foi alterado para ${data.planName}. Todas as vagas foram movidas para 
 </html>`;
     const text = `Olá, ${firstName}.
 
-Informamos que sua conta foi bloqueada ${untilText}.
+${mensagemBloqueio}
+${terminoText}
 Motivo: ${data.motivo}.
+${descricaoText}
+Se você acredita que houve engano, envie um e-mail para contato@advancemais.com informando:
+- E-mail cadastrado na plataforma;
+- Data e Hora do bloqueio;
+- Breve descrição do ocorrido.
 
-Se acreditar que foi um engano, responda este email com mais detalhes.
+Atenciosamente,
+Equipe Advance+
 
 © ${currentYear} Advance+ - Todos os direitos reservados`;
     return { subject, html, text };

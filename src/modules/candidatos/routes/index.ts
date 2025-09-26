@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { publicCache } from '@/middlewares/cache-control';
 
 import { areasInteresseRoutes } from '../areas-interesse/routes';
+import { subareasInteresseRoutes } from '../areas-interesse/routes/subareas';
 import { curriculosRoutes } from '@/modules/candidatos/curriculos/routes';
 import { CandidaturasController } from '@/modules/candidatos/candidaturas/controllers';
 import { supabaseAuthMiddleware } from '@/modules/usuarios/auth';
@@ -43,6 +44,7 @@ router.get('/', publicCache, (_req, res) => {
     timestamp: new Date().toISOString(),
     endpoints: {
       areasInteresse: '/areas-interesse',
+      subareasInteresse: '/subareas-interesse',
       curriculos: '/curriculos',
       aplicar: '/aplicar',
       vagas: '/vagas',
@@ -52,6 +54,7 @@ router.get('/', publicCache, (_req, res) => {
 });
 
 router.use('/areas-interesse', areasInteresseRoutes);
+router.use('/subareas-interesse', subareasInteresseRoutes);
 router.use('/curriculos', curriculosRoutes);
 /**
  * @openapi

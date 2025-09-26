@@ -4,7 +4,9 @@ import { ZodError } from 'zod';
 import { areasInteresseService } from '../services/areas-interesse.service';
 import {
   createAreaInteresseSchema,
+  createSubareaInteresseSchema,
   updateAreaInteresseSchema,
+  updateSubareaInteresseSchema,
 } from '../validators/areas-interesse.schema';
 
 const parseId = (raw: string) => {
@@ -164,6 +166,120 @@ export class AreasInteresseController {
         success: false,
         code: 'AREAS_INTERESSE_DELETE_ERROR',
         message: 'Erro ao remover área de interesse',
+        error: error?.message,
+      });
+    }
+  };
+
+  static createSubarea = async (req: Request, res: Response) => {
+    const areaId = parseId(req.params.areaId);
+    if (!areaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificador inválido para área de interesse',
+      });
+    }
+
+    try {
+      const data = createSubareaInteresseSchema.parse(req.body);
+      const subarea = await areasInteresseService.createSubarea(areaId, data);
+
+      res.status(201).json(subarea);
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Dados inválidos para criação da subárea de interesse',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'P2025') {
+        return res.status(404).json({
+          success: false,
+          code: 'AREAS_INTERESSE_NOT_FOUND',
+          message: 'Área de interesse não encontrada',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'AREAS_INTERESSE_SUBAREA_CREATE_ERROR',
+        message: 'Erro ao criar subárea de interesse',
+        error: error?.message,
+      });
+    }
+  };
+
+  static updateSubarea = async (req: Request, res: Response) => {
+    const subareaId = parseId(req.params.subareaId);
+    if (!subareaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificador inválido para subárea de interesse',
+      });
+    }
+
+    try {
+      const data = updateSubareaInteresseSchema.parse(req.body);
+      const subarea = await areasInteresseService.updateSubarea(subareaId, data);
+      res.json(subarea);
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Dados inválidos para atualização da subárea de interesse',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'P2025') {
+        return res.status(404).json({
+          success: false,
+          code: 'AREAS_INTERESSE_SUBAREA_NOT_FOUND',
+          message: 'Subárea de interesse não encontrada',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'AREAS_INTERESSE_SUBAREA_UPDATE_ERROR',
+        message: 'Erro ao atualizar subárea de interesse',
+        error: error?.message,
+      });
+    }
+  };
+
+  static removeSubarea = async (req: Request, res: Response) => {
+    const subareaId = parseId(req.params.subareaId);
+    if (!subareaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificador inválido para subárea de interesse',
+      });
+    }
+
+    try {
+      await areasInteresseService.removeSubarea(subareaId);
+      res.status(204).send();
+    } catch (error: any) {
+      if (error?.code === 'P2025') {
+        return res.status(404).json({
+          success: false,
+          code: 'AREAS_INTERESSE_SUBAREA_NOT_FOUND',
+          message: 'Subárea de interesse não encontrada',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'AREAS_INTERESSE_SUBAREA_DELETE_ERROR',
+        message: 'Erro ao remover subárea de interesse',
         error: error?.message,
       });
     }

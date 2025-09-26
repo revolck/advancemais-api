@@ -3699,6 +3699,8 @@ const options: Options = {
               format: 'date-time',
               nullable: true,
               example: '2024-02-01T12:00:00Z',
+              description:
+                'Data final prevista do registro do plano. Em planos do modo CLIENTE, considera automaticamente a próxima cobrança ou data de carência disponível, privilegiando a data mais distante.',
             },
             criadoEm: {
               type: 'string',
@@ -6170,6 +6172,8 @@ const options: Options = {
               format: 'date-time',
               nullable: true,
               example: '2024-01-08T12:00:00Z',
+              description:
+                'Data configurada para expiração do plano. No modo CLIENTE, reflete automaticamente a próxima cobrança ou a data de carência mais recente informada.',
             },
             status: {
               type: 'string',
@@ -6389,6 +6393,8 @@ const options: Options = {
               format: 'date-time',
               nullable: true,
               example: '2024-02-10T12:00:00Z',
+              description:
+                'Data prevista para término do plano. Para planos no modo CLIENTE, corresponde à data mais recente entre a próxima cobrança registrada e o período de carência (grace period) informado.',
             },
             modeloPagamento: {
               allOf: [{ $ref: '#/components/schemas/ModeloPagamento' }],
@@ -6426,17 +6432,17 @@ const options: Options = {
           example: {
             id: '38f73d2d-40fa-47a6-9657-6a4f7f1bb610',
             nome: 'Plano Avançado',
-            modo: 'PARCEIRO',
+            modo: 'CLIENTE',
             status: 'ATIVO',
-            inicio: '2024-01-10T12:00:00Z',
-            fim: null,
+            inicio: '2024-05-10T12:00:00Z',
+            fim: '2024-06-10T12:00:00Z',
             modeloPagamento: 'ASSINATURA',
             metodoPagamento: 'PIX',
             statusPagamento: 'APROVADO',
             valor: '249.90',
             quantidadeVagas: 5,
-            duracaoEmDias: null,
-            diasRestantes: 18,
+            duracaoEmDias: 31,
+            diasRestantes: 12,
           },
         },
         UsuarioEndereco: {

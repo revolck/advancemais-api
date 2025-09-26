@@ -811,7 +811,13 @@ const assignPlanoToEmpresa = async (
 ) => {
   const modo = plano.modo ?? EmpresasPlanoModo.CLIENTE;
   const inicio = plano.iniciarEm ?? new Date();
-  const fim = calcularFim(modo, inicio, plano.diasTeste ?? undefined);
+  const fim = calcularFim(
+    modo,
+    inicio,
+    plano.diasTeste ?? undefined,
+    plano.proximaCobranca ?? undefined,
+    plano.graceUntil ?? undefined,
+  );
   const status = EmpresasPlanoStatus.ATIVO;
 
   const pagamentoData = mapPlanoPagamentoData(plano);
@@ -850,11 +856,35 @@ const atualizarPlanoSemReset = async (
     return;
   }
 
+  const modo = plano.modo ?? planoAtual.modo;
   const data: Prisma.EmpresasPlanoUpdateInput = {
     plano: { connect: { id: plano.planosEmpresariaisId } },
-    modo: plano.modo ?? EmpresasPlanoModo.CLIENTE,
+    modo,
     ...mapPlanoPagamentoData(plano),
   };
+
+  const shouldRecalculateFim =
+    plano.modo !== undefined ||
+    plano.diasTeste !== undefined ||
+    plano.proximaCobranca !== undefined ||
+    plano.graceUntil !== undefined;
+
+  if (shouldRecalculateFim) {
+    const proximaCobranca =
+      plano.proximaCobranca !== undefined
+        ? plano.proximaCobranca
+        : planoAtual.proximaCobranca ?? undefined;
+    const graceUntil =
+      plano.graceUntil !== undefined ? plano.graceUntil : planoAtual.graceUntil ?? undefined;
+
+    data.fim = calcularFim(
+      modo,
+      planoAtual.inicio ?? null,
+      plano.diasTeste ?? undefined,
+      proximaCobranca,
+      graceUntil,
+    );
+  }
 
   await tx.empresasPlano.update({
     where: { id: planoAtual.id },
@@ -1558,7 +1588,13 @@ export const adminEmpresasService = {
 
       const inicio = plano.iniciarEm ?? new Date();
       const modo = plano.modo;
-      const fim = calcularFim(modo, inicio, plano.diasTeste ?? undefined);
+      const fim = calcularFim(
+        modo,
+        inicio,
+        plano.diasTeste ?? undefined,
+        plano.proximaCobranca ?? undefined,
+        plano.graceUntil ?? undefined,
+      );
 
       await tx.empresasPlano.updateMany({
         where: { usuarioId: id, status: EmpresasPlanoStatus.ATIVO },

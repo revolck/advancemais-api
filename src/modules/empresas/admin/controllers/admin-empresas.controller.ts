@@ -9,6 +9,7 @@ import {
   adminEmpresasHistoryQuerySchema,
   adminEmpresasIdParamSchema,
   adminEmpresasListQuerySchema,
+  adminEmpresasPlanoManualAssignSchema,
   adminEmpresasPlanoUpdateSchema,
   adminEmpresasVagaParamSchema,
   adminEmpresasVagasQuerySchema,
@@ -298,6 +299,56 @@ export class AdminEmpresasController {
         success: false,
         code: 'ADMIN_EMPRESAS_UPDATE_PLANO_ERROR',
         message: 'Erro ao atualizar plano da empresa',
+        error: error?.message,
+      });
+    }
+  };
+
+  static assignPlanoManual = async (req: Request, res: Response) => {
+    try {
+      const params = adminEmpresasIdParamSchema.parse(req.params);
+      const payload = adminEmpresasPlanoManualAssignSchema.parse(req.body);
+      const empresa = await adminEmpresasService.assignPlanoManual(params.id, payload);
+
+      if (!empresa) {
+        return res.status(404).json({
+          success: false,
+          code: 'EMPRESA_NOT_FOUND',
+          message: 'Empresa não encontrada',
+        });
+      }
+
+      res.status(201).json({ empresa });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Dados inválidos para cadastro manual do plano',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'EMPRESA_NOT_FOUND' || error?.code === 'P2025') {
+        return res.status(404).json({
+          success: false,
+          code: 'EMPRESA_NOT_FOUND',
+          message: 'Empresa não encontrada',
+        });
+      }
+
+      if (error?.code === 'P2003') {
+        return res.status(404).json({
+          success: false,
+          code: 'PLANO_EMPRESARIAL_NOT_FOUND',
+          message: 'Plano empresarial informado não foi encontrado',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'ADMIN_EMPRESAS_ASSIGN_PLANO_ERROR',
+        message: 'Erro ao cadastrar plano da empresa manualmente',
         error: error?.message,
       });
     }

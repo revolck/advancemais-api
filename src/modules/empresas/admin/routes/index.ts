@@ -1513,9 +1513,105 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
 /**
  * @openapi
  * /api/v1/empresas/admin/{id}/plano:
+ *   post:
+ *     summary: (Admin/Moderador) Cadastrar plano manualmente para a empresa
+ *     description: "Permite registrar manualmente um novo plano empresarial para a empresa selecionada. Qualquer plano ativo é automaticamente cancelado antes do novo vínculo. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     operationId: adminEmpresasAssignPlanoManual
+ *     tags: [Empresas - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Identificador da empresa
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AdminEmpresasPlanoManualAssignInput'
+ *           examples:
+ *             pagamentoConfirmado:
+ *               summary: Cadastro com pagamento aprovado e dados financeiros
+ *               value:
+ *                 planosEmpresariaisId: 7d1c88e3-90e7-43df-9a29-b4096b5a79c4
+ *                 modo: cliente
+ *                 iniciarEm: '2024-05-10T12:00:00Z'
+ *                 modeloPagamento: ASSINATURA
+ *                 metodoPagamento: PIX
+ *                 statusPagamento: APROVADO
+ *             cortesiaTeste:
+ *               summary: Concessão manual de período teste
+ *               value:
+ *                 planosEmpresariaisId: 6db3f1f2-5a8b-4cf7-9341-2bb6d78c9a10
+ *                 modo: teste
+ *                 diasTeste: 14
+ *     responses:
+ *       201:
+ *         description: Plano cadastrado manualmente com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminEmpresaDetailResponse'
+ *             examples:
+ *               cadastrado:
+ *                 summary: Novo plano manual ativo
+ *                 value:
+ *                   empresa:
+ *                     id: f66fbad9-4d3c-41f7-90df-2f4f0f32af10
+ *                     nome: Advance Tech Consultoria LTDA
+ *                     status: ATIVO
+ *                     plano:
+ *                       id: 38f73d2d-40fa-47a6-9657-6a4f7f1bb610
+ *                       nome: Plano Corporativo Premium
+ *                       modo: CLIENTE
+ *                       status: ATIVO
+ *                       inicio: '2024-05-10T12:00:00Z'
+ *                       fim: '2024-08-10T12:00:00Z'
+ *                       modeloPagamento: ASSINATURA
+ *                       metodoPagamento: PIX
+ *                       statusPagamento: APROVADO
+ *                       valor: '349.90'
+ *                       quantidadeVagas: 20
+ *                       duracaoEmDias: 92
+ *                       diasRestantes: 92
+ *       400:
+ *         description: Dados inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       404:
+ *         description: Empresa ou plano empresarial não encontrados
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *   put:
  *     summary: (Admin/Moderador) Atualizar plano da empresa
- *     description: "Atualiza ou atribui um novo plano empresarial para a empresa informada. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     description: "Atualiza ou atribui um novo plano empresarial para a empresa informada, permitindo também o ajuste de dados de cobrança manual (modelo, método, status, próximas cobranças e período de carência). Endpoint restrito aos perfis ADMIN e MODERADOR."
  *     operationId: adminEmpresasUpdatePlano
  *     tags: [Empresas - Admin]
  *     security:
@@ -1540,12 +1636,22 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  *               value:
  *                 planosEmpresariaisId: b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e
  *                 modo: parceiro
+ *                 statusPagamento: APROVADO
+ *                 proximaCobranca: '2024-06-15T12:00:00Z'
  *             resetarPeriodo:
  *               summary: Reiniciar vigência do plano
  *               value:
  *                 planosEmpresariaisId: 0f3b9e4c-1b2a-4d7f-9123-5a6b7c8d9e10
  *                 modo: cliente
  *                 resetPeriodo: true
+ *                 modeloPagamento: ASSINATURA
+ *                 metodoPagamento: PIX
+ *             ajustarGracePeriod:
+ *               summary: Ajustar dados financeiros sem trocar de plano
+ *               value:
+ *                 planosEmpresariaisId: b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e
+ *                 modo: cliente
+ *                 graceUntil: '2024-06-30T23:59:59Z'
  *     responses:
  *       200:
  *         description: Plano atualizado com sucesso
@@ -1571,6 +1677,8 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  *                       modeloPagamento: ASSINATURA
  *                       metodoPagamento: PIX
  *                       statusPagamento: APROVADO
+ *                       proximaCobranca: '2024-06-15T12:00:00Z'
+ *                       graceUntil: null
  *                       valor: '249.90'
  *                       quantidadeVagas: 10
  *                       duracaoEmDias: 92
@@ -1606,6 +1714,11 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
+router.post(
+  '/:id/plano',
+  supabaseAuthMiddleware(adminRoles),
+  AdminEmpresasController.assignPlanoManual,
+);
 router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.updatePlano);
 
 /**

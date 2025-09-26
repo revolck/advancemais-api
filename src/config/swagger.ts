@@ -7091,7 +7091,17 @@ const options: Options = {
         AdminEmpresasDashboardListItem: {
           type: 'object',
           description: 'Resumo otimizado de empresas para exibição em dashboards administrativos.',
-          required: ['id', 'codUsuario', 'nome', 'email', 'status', 'criadoEm', 'vagasPublicadas'],
+          required: [
+            'id',
+            'codUsuario',
+            'nome',
+            'email',
+            'status',
+            'criadoEm',
+            'vagasPublicadas',
+            'bloqueada',
+            'bloqueioAtivo',
+          ],
           properties: {
             id: { type: 'string', format: 'uuid', example: 'empresa-uuid' },
             codUsuario: { type: 'string', example: 'EMP-123456' },
@@ -7146,6 +7156,16 @@ const options: Options = {
               allOf: [{ $ref: '#/components/schemas/AdminEmpresasPlanoResumo' }],
               nullable: true,
             },
+            bloqueada: {
+              type: 'boolean',
+              example: false,
+              description: 'Indica se a empresa possui algum bloqueio ativo aplicado à conta.',
+            },
+            bloqueioAtivo: {
+              allOf: [{ $ref: '#/components/schemas/AdminUsuariosEmBloqueiosResumo' }],
+              nullable: true,
+              description: 'Detalhes do bloqueio ativo quando existente.',
+            },
           },
         },
         AdminEmpresasDashboardListResponse: {
@@ -7189,6 +7209,8 @@ const options: Options = {
                   duracaoEmDias: null,
                   diasRestantes: 18,
                 },
+                bloqueada: false,
+                bloqueioAtivo: null,
               },
             ],
             pagination: {

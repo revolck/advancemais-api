@@ -98,13 +98,21 @@ export const adminEmpresasPlanoUpdateSchema = adminEmpresasPlanoBase
 
 export type AdminEmpresasPlanoUpdateInput = z.infer<typeof adminEmpresasPlanoUpdateSchema>;
 
-export const adminEmpresasPlanoManualAssignSchema = adminEmpresasPlanoSchema.extend({
-  modeloPagamento: z.nativeEnum(MODELO_PAGAMENTO).optional().nullable(),
-  metodoPagamento: z.nativeEnum(METODO_PAGAMENTO).optional().nullable(),
-  statusPagamento: z.nativeEnum(STATUS_PAGAMENTO).optional().nullable(),
-  proximaCobranca: nullableDate,
-  graceUntil: nullableDate,
-});
+export const adminEmpresasPlanoManualAssignSchema = adminEmpresasPlanoBase
+  .extend({
+    modeloPagamento: z.nativeEnum(MODELO_PAGAMENTO).optional().nullable(),
+    metodoPagamento: z.nativeEnum(METODO_PAGAMENTO).optional().nullable(),
+    statusPagamento: z.nativeEnum(STATUS_PAGAMENTO).optional().nullable(),
+    proximaCobranca: nullableDate,
+    graceUntil: nullableDate,
+  })
+  .refine(
+    (val) => (val.modo !== EmpresasPlanoModo.TESTE ? true : typeof val.diasTeste === 'number'),
+    {
+      message: 'Informe diasTeste para o modo teste',
+      path: ['diasTeste'],
+    },
+  );
 
 export type AdminEmpresasPlanoManualAssignInput = z.infer<
   typeof adminEmpresasPlanoManualAssignSchema

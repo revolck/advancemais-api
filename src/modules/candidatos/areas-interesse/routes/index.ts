@@ -24,6 +24,24 @@ const adminRoles = [Roles.ADMIN, Roles.MODERADOR];
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/CandidatoAreaInteresse'
+ *             examples:
+ *               exemplo:
+ *                 summary: Áreas de interesse disponíveis
+ *                 value:
+ *                   - id: 1
+ *                     categoria: Tecnologia da Informação
+ *                     subareas:
+ *                       - id: 10
+ *                         areaId: 1
+ *                         nome: Desenvolvimento de Software
+ *                         vagasRelacionadas:
+ *                           - cb94b4e2-7f9c-4ee5-a5be-0fda6b0c5489
+ *                         criadoEm: '2024-01-01T12:00:00.000Z'
+ *                         atualizadoEm: '2024-02-15T08:30:00.000Z'
+ *                     vagasRelacionadas:
+ *                       - 62baf310-49b0-4d3f-b493-4230ae5cb3a3
+ *                     criadoEm: '2024-01-01T12:00:00.000Z'
+ *                     atualizadoEm: '2024-02-15T08:30:00.000Z'
  *       500:
  *         description: Erro interno do servidor
  *         content:
@@ -58,6 +76,24 @@ router.get('/', publicCache, AreasInteresseController.list);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/CandidatoAreaInteresse'
+ *             examples:
+ *               exemplo:
+ *                 summary: Área de interesse com subáreas detalhadas
+ *                 value:
+ *                   id: 1
+ *                   categoria: Tecnologia da Informação
+ *                   subareas:
+ *                     - id: 10
+ *                       areaId: 1
+ *                       nome: Desenvolvimento de Software
+ *                       vagasRelacionadas:
+ *                         - cb94b4e2-7f9c-4ee5-a5be-0fda6b0c5489
+ *                       criadoEm: '2024-01-01T12:00:00.000Z'
+ *                       atualizadoEm: '2024-02-15T08:30:00.000Z'
+ *                   vagasRelacionadas:
+ *                     - 62baf310-49b0-4d3f-b493-4230ae5cb3a3
+ *                   criadoEm: '2024-01-01T12:00:00.000Z'
+ *                   atualizadoEm: '2024-02-15T08:30:00.000Z'
  *       400:
  *         description: Identificador inválido
  *         content:
@@ -106,6 +142,28 @@ router.get('/:id', publicCache, AreasInteresseController.get);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/CandidatoAreaInteresse'
+ *             examples:
+ *               exemplo:
+ *                 summary: Área criada com subáreas normalizadas
+ *                 value:
+ *                   id: 8
+ *                   categoria: Tecnologia da Informação
+ *                   subareas:
+ *                     - id: 61
+ *                       areaId: 8
+ *                       nome: Desenvolvimento de Software
+ *                       vagasRelacionadas: []
+ *                       criadoEm: '2024-04-10T10:15:00.000Z'
+ *                       atualizadoEm: '2024-04-10T10:15:00.000Z'
+ *                     - id: 62
+ *                       areaId: 8
+ *                       nome: UX/UI Design
+ *                       vagasRelacionadas: []
+ *                       criadoEm: '2024-04-10T10:15:00.000Z'
+ *                       atualizadoEm: '2024-04-10T10:15:00.000Z'
+ *                   vagasRelacionadas: []
+ *                   criadoEm: '2024-04-10T10:15:00.000Z'
+ *                   atualizadoEm: '2024-04-10T10:15:00.000Z'
  *       400:
  *         description: Dados inválidos para criação
  *         content:
@@ -176,6 +234,30 @@ router.post('/', supabaseAuthMiddleware(adminRoles), AreasInteresseController.cr
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/CandidatoAreaInteresse'
+ *             examples:
+ *               exemplo:
+ *                 summary: Área após atualização parcial
+ *                 value:
+ *                   id: 1
+ *                   categoria: Tecnologia e Inovação
+ *                   subareas:
+ *                     - id: 10
+ *                       areaId: 1
+ *                       nome: Desenvolvimento de Software
+ *                       vagasRelacionadas:
+ *                         - cb94b4e2-7f9c-4ee5-a5be-0fda6b0c5489
+ *                       criadoEm: '2024-01-01T12:00:00.000Z'
+ *                       atualizadoEm: '2024-02-15T08:30:00.000Z'
+ *                     - id: 75
+ *                       areaId: 1
+ *                       nome: Segurança da Informação
+ *                       vagasRelacionadas: []
+ *                       criadoEm: '2024-05-01T09:00:00.000Z'
+ *                       atualizadoEm: '2024-05-01T09:00:00.000Z'
+ *                   vagasRelacionadas:
+ *                     - 62baf310-49b0-4d3f-b493-4230ae5cb3a3
+ *                   criadoEm: '2024-01-01T12:00:00.000Z'
+ *                   atualizadoEm: '2024-05-01T09:00:00.000Z'
  *       400:
  *         description: Dados inválidos ou nenhum campo informado
  *         content:

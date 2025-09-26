@@ -3825,32 +3825,81 @@ const options: Options = {
         EmpresasCandidatosRecebida: {
           allOf: [{ $ref: '#/components/schemas/EmpresasCandidatos' }],
         },
-        CandidatoAreaInteresse: {
+        CandidatoSubareaInteresse: {
           type: 'object',
           description:
-            'Representa um registro da tabela CandidatosAreasInteresse utilizando a nomenclatura padrão do schema Prisma.',
+            'Representa um registro da tabela CandidatosSubareasInteresse vinculado a uma área principal.',
           properties: {
-            id: { type: 'integer', example: 1 },
-            categoria: {
-              type: 'string',
-              example: 'Tecnologia da Informação',
+            id: { type: 'integer', example: 10 },
+            areaId: {
+              type: 'integer',
+              description: 'Identificador da área de interesse à qual a subárea pertence.',
+              example: 1,
             },
-            subareas: {
+            nome: {
+              type: 'string',
+              description: 'Nome normalizado da subárea.',
+              example: 'Desenvolvimento de Software',
+              maxLength: 120,
+            },
+            vagasRelacionadas: {
               type: 'array',
-              items: {
-                type: 'string',
-                example: 'Desenvolvimento de Software',
-              },
+              readOnly: true,
+              description:
+                'Lista opcional com os identificadores das vagas empresariais relacionadas à subárea.',
+              items: { type: 'string', format: 'uuid', example: '62baf310-49b0-4d3f-b493-4230ae5cb3a3' },
             },
             criadoEm: {
               type: 'string',
               format: 'date-time',
+              description: 'Data de criação do registro.',
               example: '2024-01-01T12:00:00Z',
             },
             atualizadoEm: {
               type: 'string',
               format: 'date-time',
+              description: 'Data da última atualização do registro.',
+              example: '2024-02-15T08:30:00Z',
+            },
+          },
+        },
+        CandidatoAreaInteresse: {
+          type: 'object',
+          description:
+            'Representa um registro da tabela CandidatosAreasInteresse utilizando a nomenclatura padrão do schema Prisma e contendo as subáreas normalizadas.',
+          properties: {
+            id: { type: 'integer', example: 1 },
+            categoria: {
+              type: 'string',
+              description: 'Título normalizado da área de interesse.',
+              example: 'Tecnologia da Informação',
+              maxLength: 120,
+            },
+            subareas: {
+              type: 'array',
+              description: 'Lista de subáreas vinculadas ordenadas alfabeticamente.',
+              items: {
+                $ref: '#/components/schemas/CandidatoSubareaInteresse',
+              },
+            },
+            vagasRelacionadas: {
+              type: 'array',
+              readOnly: true,
+              description:
+                'Identificadores das vagas empresariais associadas à área de interesse por meio da relação EmpresasVagasAreaInteresse.',
+              items: { type: 'string', format: 'uuid', example: 'cb94b4e2-7f9c-4ee5-a5be-0fda6b0c5489' },
+            },
+            criadoEm: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Data de criação do registro.',
               example: '2024-01-01T12:00:00Z',
+            },
+            atualizadoEm: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Data da última atualização do registro.',
+              example: '2024-02-15T08:30:00Z',
             },
           },
         },
@@ -3868,6 +3917,8 @@ const options: Options = {
             subareas: {
               type: 'array',
               minItems: 1,
+              description:
+                'Lista com os nomes das subáreas que serão cadastradas para a categoria. Valores duplicados ou vazios são automaticamente ignorados.',
               items: {
                 type: 'string',
                 example: 'Desenvolvimento de Software',
@@ -3889,6 +3940,8 @@ const options: Options = {
             subareas: {
               type: 'array',
               minItems: 1,
+              description:
+                'Lista com os nomes das subáreas que devem permanecer vinculadas à categoria. Nomes ausentes serão removidos e novos nomes serão criados automaticamente.',
               items: {
                 type: 'string',
                 example: 'Segurança da Informação',

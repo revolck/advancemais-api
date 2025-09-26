@@ -199,6 +199,20 @@ export const adminEmpresasDashboardListQuerySchema = z
 
 export type AdminEmpresasDashboardListQuery = z.infer<typeof adminEmpresasDashboardListQuerySchema>;
 
+export const adminEmpresasValidateCnpjQuerySchema = z
+  .object({
+    cnpj: z
+      .string({ required_error: 'CNPJ é obrigatório' })
+      .trim()
+      .min(1, 'Informe um CNPJ para validação')
+      .max(30, 'CNPJ muito longo'),
+  })
+  .transform((values) => ({
+    cnpj: values.cnpj,
+  }));
+
+export type AdminEmpresasValidateCnpjQuery = z.infer<typeof adminEmpresasValidateCnpjQuerySchema>;
+
 export const adminEmpresasIdParamSchema = z.object({
   id: z.string().uuid(),
 });

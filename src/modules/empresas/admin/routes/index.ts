@@ -1110,6 +1110,96 @@ router.get(
 
 /**
  * @openapi
+ * /api/v1/empresas/admin/validate-cnpj:
+ *   get:
+ *     summary: (Admin/Moderador) Validar CNPJ de empresa
+ *     description: "Verifica se um CNPJ é válido e identifica se já está cadastrado na plataforma."
+ *     operationId: adminEmpresasValidateCnpj
+ *     tags: [Empresas - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: cnpj
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: CNPJ a ser validado (com ou sem máscara)
+ *     responses:
+ *       200:
+ *         description: Resultado da validação do CNPJ
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdminEmpresaValidateCnpjResponse'
+ *             examples:
+ *               disponivel:
+ *                 summary: CNPJ válido e disponível
+ *                 value:
+ *                   success: true
+ *                   cnpj:
+ *                     input: '11.000.000/0001-00'
+ *                     normalized: '11000000000100'
+ *                     formatted: '11.000.000/0001-00'
+ *                     valid: true
+ *                   exists: false
+ *                   available: true
+ *                   empresa: null
+ *               emUso:
+ *                 summary: CNPJ já vinculado a uma empresa
+ *                 value:
+ *                   success: true
+ *                   cnpj:
+ *                     input: '12.345.678/0001-90'
+ *                     normalized: '12345678000190'
+ *                     formatted: '12.345.678/0001-90'
+ *                     valid: true
+ *                   exists: true
+ *                   available: false
+ *                   empresa:
+ *                     id: 'f66fbad9-4d3c-41f7-90df-2f4f0f32af10'
+ *                     nome: 'Advance Tech Consultoria'
+ *                     email: 'contato@advance.com.br'
+ *                     telefone: '+55 11 99999-0000'
+ *                     codUsuario: 'EMP-123456'
+ *                     status: 'ATIVO'
+ *                     role: 'EMPRESA'
+ *                     tipoUsuario: 'PESSOA_JURIDICA'
+ *                     criadoEm: '2024-01-05T12:00:00Z'
+ *                     atualizadoEm: '2024-05-20T08:15:00Z'
+ *       400:
+ *         description: Parâmetros inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado por falta de permissões válidas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get(
+  '/validate-cnpj',
+  supabaseAuthMiddleware(adminRoles),
+  AdminEmpresasController.validateCnpj,
+);
+
+/**
+ * @openapi
  * /api/v1/empresas/admin:
  *   post:
  *     summary: (Admin) Criar empresa

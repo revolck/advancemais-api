@@ -7273,6 +7273,105 @@ const options: Options = {
             },
           },
         },
+        AdminEmpresaValidateCnpjEmpresa: {
+          type: 'object',
+          description: 'Resumo da empresa proprietária do CNPJ informado',
+          required: [
+            'id',
+            'nome',
+            'email',
+            'telefone',
+            'codUsuario',
+            'status',
+            'role',
+            'tipoUsuario',
+            'criadoEm',
+            'atualizadoEm',
+          ],
+          properties: {
+            id: { type: 'string', format: 'uuid', example: 'f66fbad9-4d3c-41f7-90df-2f4f0f32af10' },
+            nome: { type: 'string', example: 'Advance Tech Consultoria' },
+            email: { type: 'string', format: 'email', example: 'contato@advance.com.br' },
+            telefone: {
+              type: 'string',
+              nullable: true,
+              example: '+55 11 99999-0000',
+            },
+            codUsuario: { type: 'string', example: 'EMP-123456' },
+            status: { allOf: [{ $ref: '#/components/schemas/Status' }] },
+            role: { allOf: [{ $ref: '#/components/schemas/Roles' }] },
+            tipoUsuario: { allOf: [{ $ref: '#/components/schemas/TiposDeUsuarios' }] },
+            criadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-01-05T12:00:00Z',
+            },
+            atualizadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-05-20T08:15:00Z',
+            },
+          },
+        },
+        AdminEmpresaValidateCnpjResponse: {
+          type: 'object',
+          required: ['success', 'cnpj', 'exists', 'available', 'empresa'],
+          properties: {
+            success: {
+              type: 'boolean',
+              example: true,
+            },
+            cnpj: {
+              type: 'object',
+              required: ['input', 'normalized', 'formatted', 'valid'],
+              properties: {
+                input: {
+                  type: 'string',
+                  example: '11.000.000/0001-00',
+                },
+                normalized: {
+                  type: 'string',
+                  example: '11000000000100',
+                },
+                formatted: {
+                  type: 'string',
+                  nullable: true,
+                  example: '11.000.000/0001-00',
+                },
+                valid: {
+                  type: 'boolean',
+                  example: true,
+                },
+              },
+            },
+            exists: {
+              type: 'boolean',
+              example: false,
+              description: 'Indica se já existe empresa cadastrada com o CNPJ informado',
+            },
+            available: {
+              type: 'boolean',
+              example: true,
+              description: 'Disponibilidade do CNPJ para um novo cadastro',
+            },
+            empresa: {
+              allOf: [{ $ref: '#/components/schemas/AdminEmpresaValidateCnpjEmpresa' }],
+              nullable: true,
+            },
+          },
+          example: {
+            success: true,
+            cnpj: {
+              input: '11.000.000/0001-00',
+              normalized: '11000000000100',
+              formatted: '11.000.000/0001-00',
+              valid: true,
+            },
+            exists: false,
+            available: true,
+            empresa: null,
+          },
+        },
         AdminEmpresaDetail: {
           type: 'object',
           description: 'Informações detalhadas da empresa para o painel administrativo',
@@ -10496,6 +10595,7 @@ const swaggerSpec = swaggerJsdoc(options);
 
 export function setupSwagger(app: Application): void {
   const swaggerServeHandlers = swaggerUi.serve as RequestHandler[];
+  const docsAllowedRoles = ['ADMIN', 'MODERADOR'];
 
   const resolveSwaggerAsset = (file: string): string => {
     const distPath = path.join(__dirname, file);
@@ -10518,7 +10618,7 @@ export function setupSwagger(app: Application): void {
     '/docs',
     (req, res, next) => {
       if (req.path === '/login') return next();
-      return supabaseAuthMiddleware(['ADMIN'])(req, res, next);
+      return supabaseAuthMiddleware(docsAllowedRoles)(req, res, next);
     },
     ...swaggerServeHandlers.map(
       (handler): RequestHandler =>
@@ -10582,9 +10682,11 @@ export function setupSwagger(app: Application): void {
     }) as RequestHandler,
   );
 
-  app.get('/docs.json', supabaseAuthMiddleware(['ADMIN']), (req, res) => res.json(swaggerSpec));
+  app.get('/docs.json', supabaseAuthMiddleware(docsAllowedRoles), (req, res) =>
+    res.json(swaggerSpec),
+  );
 
-  app.get('/redoc', supabaseAuthMiddleware(['ADMIN']), (req, res) => {
+  app.get('/redoc', supabaseAuthMiddleware(docsAllowedRoles), (req, res) => {
     res.send(`<!DOCTYPE html>
 <html>
   <head>

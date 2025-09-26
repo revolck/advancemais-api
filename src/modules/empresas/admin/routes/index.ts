@@ -1072,6 +1072,8 @@ router.get('/vagas/:id', supabaseAuthMiddleware(adminRoles), AdminVagasControlle
  *                         quantidadeVagas: 10
  *                         duracaoEmDias: null
  *                         diasRestantes: 18
+ *                       bloqueada: false
+ *                       bloqueioAtivo: null
  *                   pagination:
  *                     page: 1
  *                     pageSize: 10

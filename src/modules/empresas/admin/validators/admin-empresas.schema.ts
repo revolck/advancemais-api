@@ -1,6 +1,9 @@
 import {
   EmpresasPlanoModo,
+  METODO_PAGAMENTO,
+  MODELO_PAGAMENTO,
   MotivosDeBloqueios,
+  STATUS_PAGAMENTO,
   Status,
   StatusDeVagas,
   TiposDeBloqueios,
@@ -55,6 +58,13 @@ const diasTesteSchema = z
   .positive('Dias de teste deve ser maior que zero')
   .max(365, 'Máximo de 365 dias');
 
+const nullableDate = z
+  .union([
+    z.coerce.date({ invalid_type_error: 'Informe uma data válida' }),
+    z.null(),
+  ])
+  .optional();
+
 const adminEmpresasPlanoBase = z.object({
   planosEmpresariaisId: uuidSchema,
   modo: clientePlanoModoSchema,
@@ -70,7 +80,14 @@ export const adminEmpresasPlanoSchema = adminEmpresasPlanoBase.refine(
 export type AdminEmpresasPlanoInput = z.infer<typeof adminEmpresasPlanoSchema>;
 
 export const adminEmpresasPlanoUpdateSchema = adminEmpresasPlanoBase
-  .extend({ resetPeriodo: z.boolean().optional() })
+  .extend({
+    resetPeriodo: z.boolean().optional(),
+    modeloPagamento: z.nativeEnum(MODELO_PAGAMENTO).nullable().optional(),
+    metodoPagamento: z.nativeEnum(METODO_PAGAMENTO).nullable().optional(),
+    statusPagamento: z.nativeEnum(STATUS_PAGAMENTO).nullable().optional(),
+    proximaCobranca: nullableDate,
+    graceUntil: nullableDate,
+  })
   .refine(
     (val) => (val.modo !== EmpresasPlanoModo.TESTE ? true : typeof val.diasTeste === 'number'),
     {
@@ -80,6 +97,18 @@ export const adminEmpresasPlanoUpdateSchema = adminEmpresasPlanoBase
   );
 
 export type AdminEmpresasPlanoUpdateInput = z.infer<typeof adminEmpresasPlanoUpdateSchema>;
+
+export const adminEmpresasPlanoManualAssignSchema = adminEmpresasPlanoSchema.extend({
+  modeloPagamento: z.nativeEnum(MODELO_PAGAMENTO).optional().nullable(),
+  metodoPagamento: z.nativeEnum(METODO_PAGAMENTO).optional().nullable(),
+  statusPagamento: z.nativeEnum(STATUS_PAGAMENTO).optional().nullable(),
+  proximaCobranca: nullableDate,
+  graceUntil: nullableDate,
+});
+
+export type AdminEmpresasPlanoManualAssignInput = z.infer<
+  typeof adminEmpresasPlanoManualAssignSchema
+>;
 
 export const adminEmpresasCreateSchema = z.object({
   nome: z

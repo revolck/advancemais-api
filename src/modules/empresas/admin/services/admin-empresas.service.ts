@@ -54,6 +54,7 @@ import type {
   AdminEmpresasHistoryQuery,
   AdminEmpresasListQuery,
   AdminEmpresasPlanoInput,
+  AdminEmpresasPlanoManualAssignInput,
   AdminEmpresasPlanoUpdateInput,
   AdminEmpresasUpdateInput,
   AdminEmpresasVagasQuery,
@@ -319,6 +320,42 @@ type BloqueioResumoData = Prisma.UsuariosEmBloqueiosGetPayload<{
   select: typeof bloqueioSelect;
 }>;
 type VagaRecord = Prisma.EmpresasVagasGetPayload<{ select: typeof vagaSelect }>;
+
+type AdminEmpresasPlanoPaymentFields = {
+  modeloPagamento?: MODELO_PAGAMENTO | null;
+  metodoPagamento?: METODO_PAGAMENTO | null;
+  statusPagamento?: STATUS_PAGAMENTO | null;
+  proximaCobranca?: Date | null;
+  graceUntil?: Date | null;
+};
+
+type AdminEmpresasPlanoPersistInput = AdminEmpresasPlanoInput & AdminEmpresasPlanoPaymentFields;
+
+const mapPlanoPagamentoData = (plano: AdminEmpresasPlanoPaymentFields) => {
+  const data: Record<string, unknown> = {};
+
+  if (plano.modeloPagamento !== undefined) {
+    data.modeloPagamento = plano.modeloPagamento;
+  }
+
+  if (plano.metodoPagamento !== undefined) {
+    data.metodoPagamento = plano.metodoPagamento;
+  }
+
+  if (plano.statusPagamento !== undefined) {
+    data.statusPagamento = plano.statusPagamento;
+  }
+
+  if (plano.proximaCobranca !== undefined) {
+    data.proximaCobranca = plano.proximaCobranca;
+  }
+
+  if (plano.graceUntil !== undefined) {
+    data.graceUntil = plano.graceUntil;
+  }
+
+  return data;
+};
 
 type AdminEmpresasPlanoResumo = {
   id: string;
@@ -770,12 +807,14 @@ const generateUniqueEmpresaCode = async (tx: Prisma.TransactionClient): Promise<
 const assignPlanoToEmpresa = async (
   tx: Prisma.TransactionClient,
   usuarioId: string,
-  plano: AdminEmpresasPlanoInput,
+  plano: AdminEmpresasPlanoPersistInput,
 ) => {
   const modo = plano.modo ?? EmpresasPlanoModo.CLIENTE;
   const inicio = plano.iniciarEm ?? new Date();
   const fim = calcularFim(modo, inicio, plano.diasTeste ?? undefined);
   const status = EmpresasPlanoStatus.ATIVO;
+
+  const pagamentoData = mapPlanoPagamentoData(plano);
 
   await tx.empresasPlano.updateMany({
     where: { usuarioId, status: EmpresasPlanoStatus.ATIVO },
@@ -791,6 +830,7 @@ const assignPlanoToEmpresa = async (
       origin: 'ADMIN',
       inicio,
       fim,
+      ...pagamentoData,
     },
   });
 };
@@ -798,7 +838,7 @@ const assignPlanoToEmpresa = async (
 const atualizarPlanoSemReset = async (
   tx: Prisma.TransactionClient,
   usuarioId: string,
-  plano: AdminEmpresasPlanoInput,
+  plano: AdminEmpresasPlanoPersistInput,
 ) => {
   const planoAtual = await tx.empresasPlano.findFirst({
     where: { usuarioId, status: EmpresasPlanoStatus.ATIVO },
@@ -813,6 +853,7 @@ const atualizarPlanoSemReset = async (
   const data: Prisma.EmpresasPlanoUpdateInput = {
     plano: { connect: { id: plano.planosEmpresariaisId } },
     modo: plano.modo ?? EmpresasPlanoModo.CLIENTE,
+    ...mapPlanoPagamentoData(plano),
   };
 
   await tx.empresasPlano.update({
@@ -1480,7 +1521,7 @@ export const adminEmpresasService = {
         });
       } else if (data.plano) {
         const { resetPeriodo, ...planoPayload } = data.plano;
-        const planoInput = planoPayload as AdminEmpresasPlanoInput;
+        const planoInput = planoPayload as AdminEmpresasPlanoPersistInput;
 
         if (resetPeriodo || planoPayload.iniciarEm !== undefined) {
           await assignPlanoToEmpresa(tx, id, planoInput);
@@ -1498,7 +1539,7 @@ export const adminEmpresasService = {
       await ensureEmpresaExiste(tx, id);
 
       const { resetPeriodo, ...planoPayload } = plano;
-      const planoInput = planoPayload as AdminEmpresasPlanoInput;
+      const planoInput = planoPayload as AdminEmpresasPlanoPersistInput;
 
       if (resetPeriodo || planoPayload.iniciarEm !== undefined) {
         await assignPlanoToEmpresa(tx, id, planoInput);
@@ -1506,6 +1547,36 @@ export const adminEmpresasService = {
       }
 
       await atualizarPlanoSemReset(tx, id, planoInput);
+    });
+
+    return adminEmpresasService.get(id);
+  },
+
+  assignPlanoManual: async (id: string, plano: AdminEmpresasPlanoManualAssignInput) => {
+    await prisma.$transaction(async (tx) => {
+      await ensureEmpresaExiste(tx, id);
+
+      const inicio = plano.iniciarEm ?? new Date();
+      const modo = plano.modo;
+      const fim = calcularFim(modo, inicio, plano.diasTeste ?? undefined);
+
+      await tx.empresasPlano.updateMany({
+        where: { usuarioId: id, status: EmpresasPlanoStatus.ATIVO },
+        data: { status: EmpresasPlanoStatus.CANCELADO, fim: new Date() },
+      });
+
+      await tx.empresasPlano.create({
+        data: {
+          usuarioId: id,
+          planosEmpresariaisId: plano.planosEmpresariaisId,
+          modo,
+          status: EmpresasPlanoStatus.ATIVO,
+          origin: EmpresasPlanoOrigin.ADMIN,
+          inicio,
+          fim,
+          ...mapPlanoPagamentoData(plano),
+        },
+      });
     });
 
     return adminEmpresasService.get(id);

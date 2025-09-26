@@ -7372,6 +7372,105 @@ const options: Options = {
             empresa: null,
           },
         },
+        AdminEmpresaValidateCpfUsuario: {
+          type: 'object',
+          description: 'Resumo do usuário proprietário do CPF informado',
+          required: [
+            'id',
+            'nome',
+            'email',
+            'telefone',
+            'codUsuario',
+            'status',
+            'role',
+            'tipoUsuario',
+            'criadoEm',
+            'atualizadoEm',
+          ],
+          properties: {
+            id: { type: 'string', format: 'uuid', example: '0d7cda92-8ee9-4d9b-9b98-2f5fb2f6d125' },
+            nome: { type: 'string', example: 'Maria Souza' },
+            email: { type: 'string', format: 'email', example: 'maria.souza@example.com' },
+            telefone: {
+              type: 'string',
+              nullable: true,
+              example: '+55 21 98888-0000',
+            },
+            codUsuario: { type: 'string', example: 'USR-789012' },
+            status: { allOf: [{ $ref: '#/components/schemas/Status' }] },
+            role: { allOf: [{ $ref: '#/components/schemas/Roles' }] },
+            tipoUsuario: { allOf: [{ $ref: '#/components/schemas/TiposDeUsuarios' }] },
+            criadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-02-10T10:30:00Z',
+            },
+            atualizadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-05-18T15:45:00Z',
+            },
+          },
+        },
+        AdminEmpresaValidateCpfResponse: {
+          type: 'object',
+          required: ['success', 'cpf', 'exists', 'available', 'usuario'],
+          properties: {
+            success: {
+              type: 'boolean',
+              example: true,
+            },
+            cpf: {
+              type: 'object',
+              required: ['input', 'normalized', 'formatted', 'valid'],
+              properties: {
+                input: {
+                  type: 'string',
+                  example: '123.456.789-09',
+                },
+                normalized: {
+                  type: 'string',
+                  example: '12345678909',
+                },
+                formatted: {
+                  type: 'string',
+                  nullable: true,
+                  example: '123.456.789-09',
+                },
+                valid: {
+                  type: 'boolean',
+                  example: true,
+                },
+              },
+            },
+            exists: {
+              type: 'boolean',
+              example: false,
+              description: 'Indica se já existe usuário cadastrado com o CPF informado',
+            },
+            available: {
+              type: 'boolean',
+              example: true,
+              description: 'Disponibilidade do CPF para um novo cadastro',
+            },
+            usuario: {
+              allOf: [{ $ref: '#/components/schemas/AdminEmpresaValidateCpfUsuario' }],
+              nullable: true,
+            },
+          },
+          example: {
+            success: true,
+            cpf: {
+              input: '123.456.789-09',
+              normalized: '12345678909',
+              formatted: '123.456.789-09',
+              valid: true,
+            },
+            exists: false,
+            available: true,
+            usuario: null,
+          },
+        },
         AdminEmpresaDetail: {
           type: 'object',
           description: 'Informações detalhadas da empresa para o painel administrativo',

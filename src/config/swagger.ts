@@ -3863,6 +3863,31 @@ const options: Options = {
             },
           },
         },
+        CandidatoSubareaInteresseCreateInput: {
+          type: 'object',
+          description: 'Payload para criação de uma nova subárea vinculada a uma área existente.',
+          required: ['nome'],
+          properties: {
+            nome: {
+              type: 'string',
+              example: 'Desenvolvimento Back-end',
+              maxLength: 120,
+            },
+          },
+        },
+        CandidatoSubareaInteresseUpdateInput: {
+          type: 'object',
+          description:
+            'Payload para atualização das informações de uma subárea de interesse específica.',
+          required: ['nome'],
+          properties: {
+            nome: {
+              type: 'string',
+              example: 'Segurança da Informação',
+              maxLength: 120,
+            },
+          },
+        },
         CandidatoAreaInteresse: {
           type: 'object',
           description:

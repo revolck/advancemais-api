@@ -363,4 +363,91 @@ router.put('/:id', supabaseAuthMiddleware(adminRoles), AreasInteresseController.
  */
 router.delete('/:id', supabaseAuthMiddleware(adminRoles), AreasInteresseController.remove);
 
+/**
+ * @openapi
+ * /api/v1/candidatos/areas-interesse/{areaId}/subareas:
+ *   post:
+ *     summary: Criar subárea vinculada a uma área de interesse
+ *     description: Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR).
+ *     tags: [Candidatos - Áreas de Interesse]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: areaId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: Identificador da área de interesse principal
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CandidatoSubareaInteresseCreateInput'
+ *     responses:
+ *       201:
+ *         description: Subárea criada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CandidatoSubareaInteresse'
+ *             examples:
+ *               exemplo:
+ *                 summary: Subárea criada
+ *                 value:
+ *                   id: 98
+ *                   areaId: 10
+ *                   nome: Desenvolvimento Back-end
+ *                   vagasRelacionadas: []
+ *                   criadoEm: '2024-05-10T12:00:00.000Z'
+ *                   atualizadoEm: '2024-05-10T12:00:00.000Z'
+ *       400:
+ *         description: Dados inválidos para criação ou identificador incorreto
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token de autenticação ausente ou inválido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Usuário sem permissão para executar a ação
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       404:
+ *         description: Área de interesse não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno ao criar subárea
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/candidatos/areas-interesse/10/subareas" \\
+ *            -H "Authorization: Bearer <TOKEN>" \\
+ *            -H "Content-Type: application/json" \\
+ *            -d '{
+ *                  "nome": "Desenvolvimento Back-end"
+ *                }'
+ */
+router.post(
+  '/:areaId/subareas',
+  supabaseAuthMiddleware(adminRoles),
+  AreasInteresseController.createSubarea,
+);
+
 export { router as areasInteresseRoutes };

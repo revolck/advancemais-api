@@ -12,15 +12,38 @@ export type UpdateAreaInteresseData = Partial<CreateAreaInteresseData>;
 const baseInclude = {
   subareas: {
     orderBy: { nome: 'asc' as const },
+    include: {
+      vagas: {
+        select: { id: true },
+      },
+    },
   },
+  vagas: {
+    select: { id: true },
+  },
+} as const;
+
+type SubareaWithRelations = CandidatosSubareasInteresse & { vagas: { id: string }[] };
+
+type AreaWithRelations = CandidatosAreasInteresse & {
+  subareas: SubareaWithRelations[];
+  vagas: { id: string }[];
 };
 
-const serialize = (
-  area: CandidatosAreasInteresse & { subareas: CandidatosSubareasInteresse[] },
-) => ({
+const serializeSubarea = (subarea: SubareaWithRelations) => ({
+  id: subarea.id,
+  areaId: subarea.areaId,
+  nome: subarea.nome,
+  vagasRelacionadas: subarea.vagas.map((vaga) => vaga.id),
+  criadoEm: subarea.criadoEm,
+  atualizadoEm: subarea.atualizadoEm,
+});
+
+const serialize = (area: AreaWithRelations) => ({
   id: area.id,
   categoria: area.categoria,
-  subareas: area.subareas.map((subarea) => subarea.nome),
+  subareas: area.subareas.map(serializeSubarea),
+  vagasRelacionadas: area.vagas.map((vaga) => vaga.id),
   criadoEm: area.criadoEm,
   atualizadoEm: area.atualizadoEm,
 });

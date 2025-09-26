@@ -6905,6 +6905,33 @@ const options: Options = {
                     'Quando verdadeiro, reinicia os campos de início e fim do novo plano. Caso não seja enviado, mantém as datas anteriores.',
                   example: true,
                 },
+                modeloPagamento: {
+                  allOf: [{ $ref: '#/components/schemas/ModeloPagamento' }],
+                  nullable: true,
+                  description: 'Modelo de cobrança associado ao plano (ex.: ASSINATURA, LICENCA).',
+                },
+                metodoPagamento: {
+                  allOf: [{ $ref: '#/components/schemas/MetodoPagamento' }],
+                  nullable: true,
+                  description: 'Método utilizado para pagamento do plano (PIX, CARTAO, etc.).',
+                },
+                statusPagamento: {
+                  allOf: [{ $ref: '#/components/schemas/StatusPagamento' }],
+                  nullable: true,
+                  description: 'Situação atual do pagamento vinculado ao plano.',
+                },
+                proximaCobranca: {
+                  type: 'string',
+                  format: 'date-time',
+                  nullable: true,
+                  description: 'Data agendada para a próxima cobrança do plano, quando aplicável.',
+                },
+                graceUntil: {
+                  type: 'string',
+                  format: 'date-time',
+                  nullable: true,
+                  description: 'Data limite de carência (grace period) configurada para o plano.',
+                },
               },
             },
           ],
@@ -6912,6 +6939,55 @@ const options: Options = {
             planosEmpresariaisId: 'b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e',
             modo: 'PARCEIRO',
             resetPeriodo: true,
+            modeloPagamento: 'ASSINATURA',
+            statusPagamento: 'APROVADO',
+            proximaCobranca: '2024-06-15T12:00:00Z',
+          },
+        },
+        AdminEmpresasPlanoManualAssignInput: {
+          allOf: [
+            { $ref: '#/components/schemas/AdminEmpresasPlanoInput' },
+            {
+              type: 'object',
+              properties: {
+                modeloPagamento: {
+                  allOf: [{ $ref: '#/components/schemas/ModeloPagamento' }],
+                  nullable: true,
+                  description: 'Modelo de cobrança registrado manualmente para o plano',
+                },
+                metodoPagamento: {
+                  allOf: [{ $ref: '#/components/schemas/MetodoPagamento' }],
+                  nullable: true,
+                  description: 'Método utilizado para registrar o pagamento manual (PIX, BOLETO, etc.)',
+                },
+                statusPagamento: {
+                  allOf: [{ $ref: '#/components/schemas/StatusPagamento' }],
+                  nullable: true,
+                  description: 'Situação atual do pagamento associado ao plano manual',
+                },
+                proximaCobranca: {
+                  type: 'string',
+                  format: 'date-time',
+                  nullable: true,
+                  description: 'Data planejada para a próxima cobrança manual registrada.',
+                },
+                graceUntil: {
+                  type: 'string',
+                  format: 'date-time',
+                  nullable: true,
+                  description: 'Data limite do período de carência acordado manualmente.',
+                },
+              },
+            },
+          ],
+          example: {
+            planosEmpresariaisId: '7d1c88e3-90e7-43df-9a29-b4096b5a79c4',
+            modo: 'CLIENTE',
+            iniciarEm: '2024-05-10T12:00:00Z',
+            modeloPagamento: 'ASSINATURA',
+            metodoPagamento: 'PIX',
+            statusPagamento: 'APROVADO',
+            proximaCobranca: '2024-06-10T12:00:00Z',
           },
         },
         AdminEmpresaCreateInput: {

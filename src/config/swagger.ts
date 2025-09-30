@@ -119,6 +119,10 @@ const options: Options = {
         description: 'Administração de vagas corporativas vinculadas às empresas',
       },
       {
+        name: 'Empresas - VagasCategorias',
+        description: 'Gestão de categorias e subcategorias das vagas corporativas',
+      },
+      {
         name: 'Empresas - VagasProcessos',
         description: 'Gestão das etapas e candidatos vinculados aos processos seletivos das vagas',
       },
@@ -212,6 +216,7 @@ const options: Options = {
           'Empresas - Planos Empresariais',
           'Empresas - Clientes',
           'Empresas - EmpresasVagas',
+          'Empresas - VagasCategorias',
           'Empresas - VagasProcessos',
           'Empresas - Admin',
         ],
@@ -3454,6 +3459,123 @@ const options: Options = {
               type: 'string',
               format: 'date-time',
               example: '2024-01-01T12:00:00Z',
+            },
+          },
+        },
+        EmpresasVagaSubcategoria: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid', example: 'subcat-uuid' },
+            codSubcategoria: { type: 'string', example: 'ABC123' },
+            categoriaId: { type: 'string', format: 'uuid', example: 'categoria-uuid' },
+            nome: { type: 'string', example: 'Backend' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Vagas focadas em desenvolvimento de APIs',
+            },
+            criadoEm: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00Z' },
+            atualizadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-01-02T12:00:00Z',
+            },
+          },
+          required: ['id', 'codSubcategoria', 'categoriaId', 'nome', 'criadoEm', 'atualizadoEm'],
+        },
+        EmpresasVagaCategoria: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid', example: 'categoria-uuid' },
+            codCategoria: { type: 'string', example: 'XYZ789' },
+            nome: { type: 'string', example: 'Tecnologia da Informação' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Vagas relacionadas a tecnologia e inovação',
+            },
+            criadoEm: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00Z' },
+            atualizadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-01-02T12:00:00Z',
+            },
+            subcategorias: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/EmpresasVagaSubcategoria' },
+            },
+          },
+          required: ['id', 'codCategoria', 'nome', 'criadoEm', 'atualizadoEm', 'subcategorias'],
+        },
+        EmpresasVagaCategoriaCreateInput: {
+          type: 'object',
+          required: ['nome'],
+          properties: {
+            nome: {
+              type: 'string',
+              example: 'Tecnologia da Informação',
+              minLength: 3,
+              maxLength: 120,
+            },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Vagas relacionadas à área de TI',
+              maxLength: 255,
+            },
+          },
+        },
+        EmpresasVagaCategoriaUpdateInput: {
+          type: 'object',
+          properties: {
+            nome: {
+              type: 'string',
+              nullable: true,
+              example: 'Tecnologia e Inovação',
+              minLength: 3,
+              maxLength: 120,
+            },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Vagas de tecnologia e inovação',
+              maxLength: 255,
+            },
+          },
+        },
+        EmpresasVagaSubcategoriaCreateInput: {
+          type: 'object',
+          required: ['nome'],
+          properties: {
+            nome: {
+              type: 'string',
+              example: 'Backend',
+              minLength: 3,
+              maxLength: 120,
+            },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Vagas para desenvolvimento de APIs e serviços',
+              maxLength: 255,
+            },
+          },
+        },
+        EmpresasVagaSubcategoriaUpdateInput: {
+          type: 'object',
+          properties: {
+            nome: {
+              type: 'string',
+              nullable: true,
+              example: 'Desenvolvimento Backend',
+              minLength: 3,
+              maxLength: 120,
+            },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Subcategoria para vagas backend',
+              maxLength: 255,
             },
           },
         },

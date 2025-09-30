@@ -567,6 +567,8 @@ model EmpresasVagas {
   codigo           String         @unique @db.VarChar(6)
   slug             String         @unique @db.VarChar(120)
   usuarioId        String
+  categoriaVagaId  String?
+  subcategoriaVagaId String?
   areaInteresseId  Int?
   subareaInteresseId Int?
   modoAnonimo      Boolean        @default(false)
@@ -595,15 +597,48 @@ model EmpresasVagas {
 
   empresa Usuarios @relation("UsuarioVagas", fields: [usuarioId], references: [id], onDelete: Cascade)
   destaqueInfo EmpresasVagasDestaque?
+  categoriaVaga   EmpresasVagasCategorias?   @relation("EmpresasVagasCategoriaVaga", fields: [categoriaVagaId], references: [id], onDelete: SetNull)
+  subcategoriaVaga EmpresasVagasSubcategorias? @relation("EmpresasVagasSubcategoriaVaga", fields: [subcategoriaVagaId], references: [id], onDelete: SetNull)
   areaInteresse   CandidatosAreasInteresse?    @relation("EmpresasVagasAreaInteresse", fields: [areaInteresseId], references: [id], onDelete: SetNull)
   subareaInteresse CandidatosSubareasInteresse? @relation("EmpresasVagasSubareaInteresse", fields: [subareaInteresseId], references: [id], onDelete: SetNull)
   processos        EmpresasVagasProcesso[]
   candidaturas     EmpresasCandidatos[]
 
   @@index([usuarioId])
+  @@index([categoriaVagaId])
+  @@index([subcategoriaVagaId])
   @@index([areaInteresseId])
   @@index([subareaInteresseId])
   @@index([status, inseridaEm])
+}
+
+model EmpresasVagasCategorias {
+  id           String                       @id @default(uuid())
+  codCategoria String                       @unique @db.VarChar(12)
+  nome         String                       @db.VarChar(120)
+  descricao    String?                      @db.VarChar(255)
+  criadoEm     DateTime                     @default(now())
+  atualizadoEm DateTime                     @updatedAt
+  vagas        EmpresasVagas[]              @relation("EmpresasVagasCategoriaVaga")
+  subcategorias EmpresasVagasSubcategorias[]
+
+  @@unique([nome])
+  @@index([nome])
+}
+
+model EmpresasVagasSubcategorias {
+  id              String                  @id @default(uuid())
+  codSubcategoria String                  @unique @db.VarChar(12)
+  nome            String                  @db.VarChar(120)
+  descricao       String?                 @db.VarChar(255)
+  categoriaId     String
+  criadoEm        DateTime                @default(now())
+  atualizadoEm    DateTime                @updatedAt
+  categoria       EmpresasVagasCategorias @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+  vagas           EmpresasVagas[]         @relation("EmpresasVagasSubcategoriaVaga")
+
+  @@unique([categoriaId, nome])
+  @@index([nome])
 }
 
 model EmpresasVagasProcesso {

@@ -1803,7 +1803,7 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  * /api/v1/empresas/admin/{id}:
  *   put:
  *     summary: (Admin) Atualizar empresa
- *     description: "Atualiza dados cadastrais da empresa e permite gerenciar o plano vinculado. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     description: "Atualiza dados cadastrais da empresa, permite redefinir a senha e gerenciar o plano vinculado. Endpoint restrito aos perfis ADMIN e MODERADOR."
  *     operationId: adminEmpresasUpdate
  *     tags: [Empresas - Admin]
  *     security:
@@ -1827,6 +1827,8 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *               value:
  *                 telefone: '11912345678'
  *                 descricao: Consultoria especializada em tecnologia e inovação.
+ *                 senha: NovaSenhaForte123!
+ *                 confirmarSenha: NovaSenhaForte123!
  *                 status: ATIVO
  *                 plano:
  *                   planosEmpresariaisId: b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e

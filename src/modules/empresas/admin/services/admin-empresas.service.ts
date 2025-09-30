@@ -1521,6 +1521,10 @@ export const adminEmpresasService = {
         updates.status = data.status;
       }
 
+      if (data.senha !== undefined) {
+        updates.senha = await sanitizeSenha(data.senha);
+      }
+
       if (Object.keys(informacoesUpdates).length > 0) {
         updates.informacoes = { update: informacoesUpdates };
       }

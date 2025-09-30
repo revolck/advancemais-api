@@ -181,8 +181,29 @@ export const adminEmpresasUpdateSchema = z
     socialLinks: socialLinksSchema.optional().nullable(),
     avatarUrl: nullableUrl.optional().nullable(),
     status: z.nativeEnum(Status).optional(),
+    senha: optionalSecurePassword,
+    confirmarSenha: optionalSecurePassword,
     plano: adminEmpresasPlanoUpdateSchema.optional().nullable(),
   })
+  .refine(
+    (values) =>
+      (values.senha === undefined && values.confirmarSenha === undefined) ||
+      (values.senha !== undefined && values.confirmarSenha !== undefined),
+    {
+      message: 'Informe senha e confirmarSenha para redefinir a senha',
+      path: ['confirmarSenha'],
+    },
+  )
+  .refine(
+    (values) =>
+      values.senha === undefined && values.confirmarSenha === undefined
+        ? true
+        : values.senha === values.confirmarSenha,
+    {
+      message: 'Senha e confirmarSenha devem ser iguais',
+      path: ['confirmarSenha'],
+    },
+  )
   .refine(
     (values) =>
       Object.values({ ...values, plano: undefined }).some((value) => value !== undefined) ||

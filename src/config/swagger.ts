@@ -7227,6 +7227,20 @@ const options: Options = {
               enum: ['ATIVO', 'INATIVO', 'BLOQUEADO', 'PENDENTE', 'SUSPENSO'],
               example: 'ATIVO',
             },
+            senha: {
+              type: 'string',
+              nullable: true,
+              minLength: 8,
+              example: 'NovaSenhaForte123!',
+              description: 'Informe para redefinir a senha da empresa. Requer confirmarSenha.',
+            },
+            confirmarSenha: {
+              type: 'string',
+              nullable: true,
+              minLength: 8,
+              example: 'NovaSenhaForte123!',
+              description: 'Deve ser idêntica à senha quando informado.',
+            },
             plano: {
               allOf: [{ $ref: '#/components/schemas/AdminEmpresasPlanoUpdateInput' }],
               nullable: true,

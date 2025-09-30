@@ -3,12 +3,534 @@ import { Router } from 'express';
 import { publicCache } from '@/middlewares/cache-control';
 import { supabaseAuthMiddleware, optionalSupabaseAuth } from '@/modules/usuarios/auth';
 import { Roles } from '@/modules/usuarios/enums/Roles';
+import { VagasCategoriasController } from '@/modules/empresas/vagas/controllers/categorias.controller';
 import { VagasController } from '@/modules/empresas/vagas/controllers/vagas.controller';
 import { vagasProcessosRoutes } from '@/modules/empresas/vagas-processos';
 
 const router = Router();
 const protectedRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.EMPRESA, Roles.RECRUTADOR];
 const updateRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.RECRUTADOR];
+const categoriaAdminRoles = [Roles.ADMIN, Roles.MODERADOR];
+
+/**
+ * @openapi
+ * /api/v1/empresas/vagas/categorias:
+ *   get:
+ *     summary: Listar categorias de vagas
+ *     description: "Retorna todas as categorias de vagas disponíveis com suas subcategorias relacionadas. Endpoint público, não requer autenticação."
+ *     tags: [Empresas - VagasCategorias]
+ *     responses:
+ *       200:
+ *         description: Lista de categorias de vagas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/EmpresasVagaCategoria'
+ *       500:
+ *         description: Erro ao listar categorias
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/empresas/vagas/categorias"
+ */
+router.get('/categorias', publicCache, VagasCategoriasController.list);
+
+/**
+ * @openapi
+ * /api/v1/empresas/vagas/categorias:
+ *   post:
+ *     summary: Criar categoria de vaga
+ *     description: "Disponível apenas para administradores e moderadores. Permite cadastrar uma nova categoria para organização das vagas."
+ *     tags: [Empresas - VagasCategorias]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/EmpresasVagaCategoriaCreateInput'
+ *     responses:
+ *       201:
+ *         description: Categoria criada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/EmpresasVagaCategoria'
+ *       400:
+ *         description: Dados inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       409:
+ *         description: Categoria duplicada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro ao criar categoria
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/empresas/vagas/categorias" \
+ *            -H "Authorization: Bearer <TOKEN>" \
+ *            -H "Content-Type: application/json" \
+ *            -d '{"nome":"Tecnologia","descricao":"Vagas na área de TI"}'
+ */
+router.post(
+  '/categorias',
+  supabaseAuthMiddleware(categoriaAdminRoles),
+  VagasCategoriasController.create,
+);
+
+/**
+ * @openapi
+ * /api/v1/empresas/vagas/categorias/{categoriaId}:
+ *   get:
+ *     summary: Obter categoria de vaga por ID
+ *     description: Recupera os detalhes de uma categoria de vaga com suas subcategorias. Endpoint público.
+ *     tags: [Empresas - VagasCategorias]
+ *     parameters:
+ *       - in: path
+ *         name: categoriaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Categoria encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/EmpresasVagaCategoria'
+ *       400:
+ *         description: Identificador inválido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Categoria não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro ao buscar categoria
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/empresas/vagas/categorias/{categoriaId}"
+ */
+router.get('/categorias/:categoriaId', publicCache, VagasCategoriasController.get);
+
+/**
+ * @openapi
+ * /api/v1/empresas/vagas/categorias/{categoriaId}:
+ *   put:
+ *     summary: Atualizar categoria de vaga
+ *     description: "Disponível apenas para administradores e moderadores. Permite atualizar nome e descrição da categoria."
+ *     tags: [Empresas - VagasCategorias]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: categoriaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/EmpresasVagaCategoriaUpdateInput'
+ *     responses:
+ *       200:
+ *         description: Categoria atualizada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/EmpresasVagaCategoria'
+ *       400:
+ *         description: Dados inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       404:
+ *         description: Categoria não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: Categoria em uso ou duplicada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro ao atualizar categoria
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X PUT "http://localhost:3000/api/v1/empresas/vagas/categorias/{categoriaId}" \
+ *            -H "Authorization: Bearer <TOKEN>" \
+ *            -H "Content-Type: application/json" \
+ *            -d '{"nome":"Tecnologia e Inovação"}'
+ */
+router.put(
+  '/categorias/:categoriaId',
+  supabaseAuthMiddleware(categoriaAdminRoles),
+  VagasCategoriasController.update,
+);
+
+/**
+ * @openapi
+ * /api/v1/empresas/vagas/categorias/{categoriaId}:
+ *   delete:
+ *     summary: Remover categoria de vaga
+ *     description: "Disponível apenas para administradores e moderadores. Remove a categoria caso não existam vínculos ativos."
+ *     tags: [Empresas - VagasCategorias]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: categoriaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       204:
+ *         description: Categoria removida com sucesso
+ *       400:
+ *         description: Identificador inválido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       404:
+ *         description: Categoria não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: Categoria em uso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro ao remover categoria
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X DELETE "http://localhost:3000/api/v1/empresas/vagas/categorias/{categoriaId}" \
+ *            -H "Authorization: Bearer <TOKEN>"
+ */
+router.delete(
+  '/categorias/:categoriaId',
+  supabaseAuthMiddleware(categoriaAdminRoles),
+  VagasCategoriasController.remove,
+);
+
+/**
+ * @openapi
+ * /api/v1/empresas/vagas/categorias/{categoriaId}/subcategorias:
+ *   post:
+ *     summary: Criar subcategoria de vaga
+ *     description: "Disponível apenas para administradores e moderadores. Permite cadastrar uma subcategoria vinculada à categoria informada."
+ *     tags: [Empresas - VagasCategorias]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: categoriaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/EmpresasVagaSubcategoriaCreateInput'
+ *     responses:
+ *       201:
+ *         description: Subcategoria criada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/EmpresasVagaSubcategoria'
+ *       400:
+ *         description: Dados inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       404:
+ *         description: Categoria não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: Subcategoria duplicada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro ao criar subcategoria
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/empresas/vagas/categorias/{categoriaId}/subcategorias" \
+ *            -H "Authorization: Bearer <TOKEN>" \
+ *            -H "Content-Type: application/json" \
+ *            -d '{"nome":"Backend","descricao":"Desenvolvimento de APIs"}'
+ */
+router.post(
+  '/categorias/:categoriaId/subcategorias',
+  supabaseAuthMiddleware(categoriaAdminRoles),
+  VagasCategoriasController.createSubcategoria,
+);
+
+/**
+ * @openapi
+ * /api/v1/empresas/vagas/subcategorias/{subcategoriaId}:
+ *   put:
+ *     summary: Atualizar subcategoria de vaga
+ *     description: "Disponível apenas para administradores e moderadores. Permite atualizar nome e descrição da subcategoria."
+ *     tags: [Empresas - VagasCategorias]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: subcategoriaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/EmpresasVagaSubcategoriaUpdateInput'
+ *     responses:
+ *       200:
+ *         description: Subcategoria atualizada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/EmpresasVagaSubcategoria'
+ *       400:
+ *         description: Dados inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       404:
+ *         description: Subcategoria não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: Subcategoria em uso ou duplicada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro ao atualizar subcategoria
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X PUT "http://localhost:3000/api/v1/empresas/vagas/subcategorias/{subcategoriaId}" \
+ *            -H "Authorization: Bearer <TOKEN>" \
+ *            -H "Content-Type: application/json" \
+ *            -d '{"nome":"Desenvolvimento Backend"}'
+ */
+router.put(
+  '/subcategorias/:subcategoriaId',
+  supabaseAuthMiddleware(categoriaAdminRoles),
+  VagasCategoriasController.updateSubcategoria,
+);
+
+/**
+ * @openapi
+ * /api/v1/empresas/vagas/subcategorias/{subcategoriaId}:
+ *   delete:
+ *     summary: Remover subcategoria de vaga
+ *     description: "Disponível apenas para administradores e moderadores. Remove a subcategoria caso não existam vínculos ativos."
+ *     tags: [Empresas - VagasCategorias]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: subcategoriaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       204:
+ *         description: Subcategoria removida com sucesso
+ *       400:
+ *         description: Identificador inválido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       404:
+ *         description: Subcategoria não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: Subcategoria em uso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro ao remover subcategoria
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X DELETE "http://localhost:3000/api/v1/empresas/vagas/subcategorias/{subcategoriaId}" \
+ *            -H "Authorization: Bearer <TOKEN>"
+ */
+router.delete(
+  '/subcategorias/:subcategoriaId',
+  supabaseAuthMiddleware(categoriaAdminRoles),
+  VagasCategoriasController.removeSubcategoria,
+);
 
 /**
  * @openapi

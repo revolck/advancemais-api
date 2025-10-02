@@ -1826,6 +1826,12 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *               summary: Atualização de dados cadastrais e plano
  *               value:
  *                 telefone: '11912345678'
+ *                 logradouro: 'Rua Manoel Pedro de Oliveira'
+ *                 numero: '245'
+ *                 bairro: 'Benedito Bentes'
+ *                 cep: '57084028'
+ *                 cidade: 'Maceió'
+ *                 estado: 'AL'
  *                 descricao: Consultoria especializada em tecnologia e inovação.
  *                 senha: NovaSenhaForte123!
  *                 confirmarSenha: NovaSenhaForte123!

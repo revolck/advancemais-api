@@ -721,13 +721,47 @@ const generateSecurePassword = (length = DEFAULT_ADMIN_PASSWORD_LENGTH) => {
 const upsertEnderecoPrincipal = async (
   tx: Prisma.TransactionClient,
   usuarioId: string,
-  endereco: { cidade?: string | null; estado?: string | null },
+  endereco: {
+    logradouro?: string | null;
+    numero?: string | null;
+    bairro?: string | null;
+    cidade?: string | null;
+    estado?: string | null;
+    cep?: string | null;
+  },
 ) => {
   const dataToUpdate: Prisma.UsuariosEnderecosUpdateInput = {};
   const dataToCreate: Prisma.UsuariosEnderecosUncheckedCreateInput = { usuarioId };
 
   let hasDefinedField = false;
   let hasCreateValue = false;
+
+  if (endereco.logradouro !== undefined) {
+    dataToUpdate.logradouro = endereco.logradouro;
+    dataToCreate.logradouro = endereco.logradouro ?? null;
+    hasDefinedField = true;
+    if (endereco.logradouro && endereco.logradouro.length > 0) {
+      hasCreateValue = true;
+    }
+  }
+
+  if (endereco.numero !== undefined) {
+    dataToUpdate.numero = endereco.numero;
+    dataToCreate.numero = endereco.numero ?? null;
+    hasDefinedField = true;
+    if (endereco.numero && endereco.numero.length > 0) {
+      hasCreateValue = true;
+    }
+  }
+
+  if (endereco.bairro !== undefined) {
+    dataToUpdate.bairro = endereco.bairro;
+    dataToCreate.bairro = endereco.bairro ?? null;
+    hasDefinedField = true;
+    if (endereco.bairro && endereco.bairro.length > 0) {
+      hasCreateValue = true;
+    }
+  }
 
   if (endereco.cidade !== undefined) {
     dataToUpdate.cidade = endereco.cidade;
@@ -743,6 +777,15 @@ const upsertEnderecoPrincipal = async (
     dataToCreate.estado = endereco.estado ?? null;
     hasDefinedField = true;
     if (endereco.estado && endereco.estado.length > 0) {
+      hasCreateValue = true;
+    }
+  }
+
+  if (endereco.cep !== undefined) {
+    dataToUpdate.cep = endereco.cep;
+    dataToCreate.cep = endereco.cep ?? null;
+    hasDefinedField = true;
+    if (endereco.cep && endereco.cep.length > 0) {
       hasCreateValue = true;
     }
   }
@@ -1380,8 +1423,12 @@ export const adminEmpresasService = {
     const senhaHash = await sanitizeSenha(senhaOriginal);
     const aceitarTermos = input.aceitarTermos ?? true;
     const status = input.status ?? Status.ATIVO;
+    const logradouro = sanitizeOptionalValue(input.logradouro);
+    const numero = sanitizeOptionalValue(input.numero);
+    const bairro = sanitizeOptionalValue(input.bairro);
     const cidade = sanitizeOptionalValue(input.cidade);
     const estado = sanitizeOptionalValue(input.estado);
+    const cep = sanitizeOptionalValue(input.cep);
     const descricao = sanitizeOptionalValue(input.descricao);
     const avatarUrl = sanitizeOptionalValue(input.avatarUrl);
     const socialLinksInput = extractSocialLinksFromPayload(
@@ -1432,7 +1479,14 @@ export const adminEmpresasService = {
         select: { id: true },
       });
 
-      await upsertEnderecoPrincipal(tx, usuario.id, { cidade, estado });
+      await upsertEnderecoPrincipal(tx, usuario.id, {
+        logradouro,
+        numero,
+        bairro,
+        cidade,
+        estado,
+        cep,
+      });
 
       if (input.plano) {
         await assignPlanoToEmpresa(tx, usuario.id, input.plano);
@@ -1501,9 +1555,12 @@ export const adminEmpresasService = {
         updates.cnpj = data.cnpj === null ? null : normalizeDocumento(data.cnpj);
       }
 
+      const logradouro = sanitizeOptionalValue(data.logradouro);
+      const numero = sanitizeOptionalValue(data.numero);
+      const bairro = sanitizeOptionalValue(data.bairro);
       const cidade = sanitizeOptionalValue(data.cidade);
-
       const estado = sanitizeOptionalValue(data.estado);
+      const cep = sanitizeOptionalValue(data.cep);
 
       const descricao = sanitizeOptionalValue(data.descricao);
       if (descricao !== undefined) {
@@ -1515,7 +1572,14 @@ export const adminEmpresasService = {
         informacoesUpdates.avatarUrl = avatarUrl;
       }
 
-      await upsertEnderecoPrincipal(tx, id, { cidade, estado });
+      await upsertEnderecoPrincipal(tx, id, {
+        logradouro,
+        numero,
+        bairro,
+        cidade,
+        estado,
+        cep,
+      });
 
       if (data.status !== undefined) {
         updates.status = data.status;

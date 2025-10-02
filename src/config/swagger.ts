@@ -7231,6 +7231,21 @@ const options: Options = {
               example: '12345678000190',
               description: 'CNPJ da empresa, apenas números',
             },
+            logradouro: {
+              type: 'string',
+              nullable: true,
+              example: 'Rua Manoel Pedro de Oliveira',
+            },
+            numero: {
+              type: 'string',
+              nullable: true,
+              example: '245',
+            },
+            bairro: {
+              type: 'string',
+              nullable: true,
+              example: 'Benedito Bentes',
+            },
             cidade: {
               type: 'string',
               nullable: true,
@@ -7240,6 +7255,11 @@ const options: Options = {
               type: 'string',
               nullable: true,
               example: 'SP',
+            },
+            cep: {
+              type: 'string',
+              nullable: true,
+              example: '57084028',
             },
             descricao: {
               type: 'string',
@@ -7280,8 +7300,12 @@ const options: Options = {
             senha: 'SenhaForte123!',
             supabaseId: 'supabase-user-id',
             cnpj: '12345678000190',
+            logradouro: 'Rua Manoel Pedro de Oliveira',
+            numero: '245',
+            bairro: 'Benedito Bentes',
             cidade: 'São Paulo',
             estado: 'SP',
+            cep: '57084028',
             descricao: 'Consultoria especializada em recrutamento e seleção.',
             socialLinks: {
               instagram: 'https://instagram.com/advancemais',
@@ -7318,6 +7342,21 @@ const options: Options = {
               nullable: true,
               example: '12345678000190',
             },
+            logradouro: {
+              type: 'string',
+              nullable: true,
+              example: 'Rua Manoel Pedro de Oliveira',
+            },
+            numero: {
+              type: 'string',
+              nullable: true,
+              example: '245',
+            },
+            bairro: {
+              type: 'string',
+              nullable: true,
+              example: 'Benedito Bentes',
+            },
             cidade: {
               type: 'string',
               nullable: true,
@@ -7327,6 +7366,11 @@ const options: Options = {
               type: 'string',
               nullable: true,
               example: 'SP',
+            },
+            cep: {
+              type: 'string',
+              nullable: true,
+              example: '57084028',
             },
             descricao: {
               type: 'string',
@@ -7372,6 +7416,12 @@ const options: Options = {
           example: {
             nome: 'Advance Tech Consultoria LTDA',
             telefone: '11912345678',
+            logradouro: 'Rua Manoel Pedro de Oliveira',
+            numero: '245',
+            bairro: 'Benedito Bentes',
+            cidade: 'Maceió',
+            estado: 'AL',
+            cep: '57084028',
             descricao: 'Consultoria especializada em tecnologia e inovação.',
             socialLinks: {
               instagram: 'https://instagram.com/advancetech',

@@ -20,6 +20,24 @@ const nullableString = z
   .min(1, 'Informe um valor válido')
   .max(255, 'Valor muito longo');
 
+const nullableEnderecoString = z
+  .string()
+  .trim()
+  .min(1, 'Informe um valor válido para o endereço')
+  .max(255, 'Valor muito longo');
+
+const nullableEnderecoNumero = z
+  .string()
+  .trim()
+  .min(1, 'Informe um número válido')
+  .max(50, 'Número muito longo');
+
+const nullableCep = z
+  .string()
+  .trim()
+  .min(5, 'Informe um CEP válido')
+  .max(20, 'CEP muito longo');
+
 const securePasswordSchema = z
   .string()
   .min(8, 'Senha deve ter pelo menos 8 caracteres')
@@ -145,8 +163,12 @@ export const adminEmpresasCreateSchema = z.object({
     .trim()
     .min(14, 'CNPJ deve ter 14 dígitos')
     .max(18, 'CNPJ muito longo'),
+  logradouro: nullableEnderecoString.optional(),
+  numero: nullableEnderecoNumero.optional(),
+  bairro: nullableEnderecoString.optional(),
   cidade: nullableString.optional(),
   estado: nullableString.optional(),
+  cep: nullableCep.optional(),
   descricao: z.string().trim().max(500, 'Descrição muito longa').optional(),
   instagram: nullableString.optional(),
   linkedin: nullableString.optional(),
@@ -169,8 +191,12 @@ export const adminEmpresasUpdateSchema = z
     email: z.string().trim().toLowerCase().email('Informe um e-mail válido').optional(),
     telefone: z.string().trim().min(10, 'Informe um telefone válido').max(20).optional(),
     cnpj: z.string().trim().min(14, 'CNPJ deve ter 14 dígitos').max(18).optional().nullable(),
+    logradouro: nullableEnderecoString.optional().nullable(),
+    numero: nullableEnderecoNumero.optional().nullable(),
+    bairro: nullableEnderecoString.optional().nullable(),
     cidade: nullableString.optional().nullable(),
     estado: nullableString.optional().nullable(),
+    cep: nullableCep.optional().nullable(),
     descricao: z.string().trim().max(500, 'Descrição muito longa').optional().nullable(),
     instagram: nullableString.optional().nullable(),
     linkedin: nullableString.optional().nullable(),

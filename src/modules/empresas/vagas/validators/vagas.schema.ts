@@ -223,11 +223,6 @@ const baseVagaSchemaRaw = z.object({
   salarioConfidencial: z
     .boolean({ invalid_type_error: 'O campo salarioConfidencial deve ser verdadeiro ou falso' })
     .optional(),
-  maxCandidaturasPorUsuario: z.coerce
-    .number({ invalid_type_error: 'O limite de candidaturas deve ser um número' })
-    .int('O limite de candidaturas deve ser um número inteiro')
-    .positive('O limite de candidaturas deve ser maior que zero')
-    .optional(),
 });
 
 export const createVagaSchema = baseVagaSchemaRaw.superRefine((data, ctx) => {
@@ -265,12 +260,6 @@ export const updateVagaSchema = baseVagaSchemaRaw
     salarioMax: decimalField('O salário máximo').or(z.null()).optional(),
     salarioConfidencial: z
       .boolean({ invalid_type_error: 'O campo salarioConfidencial deve ser verdadeiro ou falso' })
-      .optional(),
-    maxCandidaturasPorUsuario: z.coerce
-      .number({ invalid_type_error: 'O limite de candidaturas deve ser um número' })
-      .int('O limite de candidaturas deve ser um número inteiro')
-      .positive('O limite de candidaturas deve ser maior que zero')
-      .or(z.null())
       .optional(),
   })
   .superRefine((data, ctx) => {

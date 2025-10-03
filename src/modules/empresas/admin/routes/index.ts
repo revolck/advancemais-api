@@ -246,7 +246,6 @@ const dashboardRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.RECRUTADOR];
  *                             salarioMin: '4500.00'
  *                             salarioMax: '6500.00'
  *                             salarioConfidencial: false
- *                             maxCandidaturasPorUsuario: 1
  *                             areaInteresseId: 3
  *                             subareaInteresseId: 7
  *                             areaInteresse:
@@ -475,7 +474,6 @@ router.get('/candidato', supabaseAuthMiddleware(adminRoles), AdminCandidatosCont
  *                         salarioMin: null
  *                         salarioMax: null
  *                         salarioConfidencial: false
- *                         maxCandidaturasPorUsuario: null
  *                         areaInteresseId: null
  *                         subareaInteresseId: null
  *                         areaInteresse: null
@@ -617,7 +615,6 @@ router.get('/candidato/:id', supabaseAuthMiddleware(adminRoles), AdminCandidatos
  *                       salarioMin: '4500.00'
  *                       salarioMax: '6500.00'
  *                       salarioConfidencial: false
- *                       maxCandidaturasPorUsuario: 1
  *                       areaInteresseId: 3
  *                       subareaInteresseId: 7
  *                       areaInteresse:
@@ -914,7 +911,6 @@ router.get('/vagas', supabaseAuthMiddleware(adminRoles), AdminVagasController.li
  *                   salarioMin: '4500.00'
  *                   salarioMax: '6500.00'
  *                   salarioConfidencial: false
- *                   maxCandidaturasPorUsuario: 1
  *                   areaInteresseId: 3
  *                   subareaInteresseId: 7
  *                   areaInteresse:

@@ -95,19 +95,17 @@ export const candidaturasService = {
 
     const vaga = await prisma.empresasVagas.findUnique({
       where: { id: params.vagaId },
-      select: { id: true, usuarioId: true, maxCandidaturasPorUsuario: true },
+      select: { id: true, usuarioId: true },
     });
     if (!vaga) throw Object.assign(new Error('Vaga não encontrada'), { code: 'VAGA_NOT_FOUND' });
 
-    if (typeof vaga.maxCandidaturasPorUsuario === 'number' && vaga.maxCandidaturasPorUsuario > 0) {
-      const count = await prisma.empresasCandidatos.count({
-        where: { vagaId: vaga.id, candidatoId: params.usuarioId },
+    const candidaturasExistentes = await prisma.empresasCandidatos.count({
+      where: { vagaId: vaga.id, candidatoId: params.usuarioId },
+    });
+    if (candidaturasExistentes > 0) {
+      throw Object.assign(new Error('Limite de candidaturas atingido para esta vaga'), {
+        code: 'VAGA_LIMIT_CANDIDATURAS',
       });
-      if (count >= vaga.maxCandidaturasPorUsuario) {
-        throw Object.assign(new Error('Limite de candidaturas atingido para esta vaga'), {
-          code: 'VAGA_LIMIT_CANDIDATURAS',
-        });
-      }
     }
 
     return prisma.$transaction(async (tx) => {

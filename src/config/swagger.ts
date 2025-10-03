@@ -8711,12 +8711,6 @@ const options: Options = {
               description:
                 'Indica se a faixa salarial deve permanecer confidencial para candidatos.',
             },
-            maxCandidaturasPorUsuario: {
-              type: 'integer',
-              nullable: true,
-              example: 1,
-              description: 'Limite de candidaturas permitidas por usuário nesta vaga.',
-            },
             areaInteresseId: {
               type: 'integer',
               nullable: true,
@@ -8811,7 +8805,6 @@ const options: Options = {
             salarioMin: '4500.00',
             salarioMax: '6500.00',
             salarioConfidencial: false,
-            maxCandidaturasPorUsuario: 1,
             areaInteresseId: 3,
             subareaInteresseId: 7,
             areaInteresse: { id: 3, categoria: 'Tecnologia da Informação' },
@@ -8870,7 +8863,6 @@ const options: Options = {
                 salarioMin: '4500.00',
                 salarioMax: '6500.00',
                 salarioConfidencial: false,
-                maxCandidaturasPorUsuario: 1,
                 areaInteresseId: 3,
                 subareaInteresseId: 7,
                 areaInteresse: { id: 3, categoria: 'Tecnologia da Informação' },
@@ -8932,7 +8924,6 @@ const options: Options = {
               salarioMin: '4500.00',
               salarioMax: '6500.00',
               salarioConfidencial: false,
-              maxCandidaturasPorUsuario: 1,
               areaInteresseId: 3,
               subareaInteresseId: 7,
               areaInteresse: { id: 3, categoria: 'Tecnologia da Informação' },
@@ -9251,7 +9242,6 @@ const options: Options = {
                 salarioMin: '4500.00',
                 salarioMax: '6500.00',
                 salarioConfidencial: false,
-                maxCandidaturasPorUsuario: 1,
                 areaInteresseId: 3,
                 subareaInteresseId: 7,
                 areaInteresse: { id: 3, categoria: 'Tecnologia da Informação' },
@@ -9633,7 +9623,6 @@ const options: Options = {
             salarioMin: { type: 'string', nullable: true, example: '4500.00' },
             salarioMax: { type: 'string', nullable: true, example: '6500.00' },
             salarioConfidencial: { type: 'boolean', example: false },
-            maxCandidaturasPorUsuario: { type: 'integer', nullable: true, example: 1 },
             areaInteresseId: { type: 'integer', nullable: true, example: 3 },
             subareaInteresseId: { type: 'integer', nullable: true, example: 7 },
             areaInteresse: {
@@ -9846,7 +9835,6 @@ const options: Options = {
                   salarioMin: null,
                   salarioMax: null,
                   salarioConfidencial: false,
-                  maxCandidaturasPorUsuario: null,
                   areaInteresseId: null,
                   subareaInteresseId: null,
                   areaInteresse: null,
@@ -9903,7 +9891,8 @@ const options: Options = {
         },
         Vaga: {
           type: 'object',
-          description: 'Representação completa da vaga cadastrada pela empresa',
+          description:
+            'Representação completa da vaga cadastrada pela empresa. Cada candidato só pode se candidatar uma vez por vaga, com controle automático pela plataforma.',
           properties: {
             id: { type: 'string', example: 'vaga-uuid' },
             codigo: {
@@ -10051,11 +10040,6 @@ const options: Options = {
               example: '6500.00',
             },
             salarioConfidencial: { type: 'boolean', example: true },
-            maxCandidaturasPorUsuario: {
-              type: 'integer',
-              nullable: true,
-              example: 1,
-            },
             areaInteresseId: {
               type: 'integer',
               nullable: true,
@@ -10114,7 +10098,7 @@ const options: Options = {
         VagaCreateInput: {
           type: 'object',
           description:
-            'Dados necessários para cadastrar uma vaga. O status inicial é definido automaticamente como EM_ANALISE e o código alfanumérico de 6 caracteres é gerado pelo sistema.',
+            'Dados necessários para cadastrar uma vaga. O status inicial é definido automaticamente como EM_ANALISE e o código alfanumérico de 6 caracteres é gerado pelo sistema. Cada candidato poderá se candidatar apenas uma vez por vaga, sem necessidade de configurar limites manualmente.',
           required: [
             'usuarioId',
             'areaInteresseId',
@@ -10295,19 +10279,12 @@ const options: Options = {
               example: true,
               description: 'Indica se a faixa salarial ficará visível para candidatos.',
             },
-            maxCandidaturasPorUsuario: {
-              type: 'integer',
-              nullable: true,
-              minimum: 1,
-              example: 1,
-              description: 'Limite de candidaturas permitidas por usuário.',
-            },
           },
         },
         VagaUpdateInput: {
           type: 'object',
           description:
-            'Campos permitidos para atualização da vaga, inclusive o status do fluxo de aprovação (RASCUNHO, EM_ANALISE, PUBLICADO, DESPUBLICADA, PAUSADA, EXPIRADO ou ENCERRADA).',
+            'Campos permitidos para atualização da vaga, inclusive o status do fluxo de aprovação (RASCUNHO, EM_ANALISE, PUBLICADO, DESPUBLICADA, PAUSADA, EXPIRADO ou ENCERRADA). O limite de uma candidatura por candidato é aplicado automaticamente e não pode ser alterado.',
           properties: {
             usuarioId: {
               type: 'string',
@@ -10444,10 +10421,6 @@ const options: Options = {
               example: '7000.00',
             },
             salarioConfidencial: { type: 'boolean', example: false },
-            maxCandidaturasPorUsuario: {
-              oneOf: [{ type: 'integer', minimum: 1 }, { type: 'null' }],
-              example: 1,
-            },
           },
         },
         AdminModuleInfo: {

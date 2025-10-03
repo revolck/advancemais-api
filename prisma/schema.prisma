@@ -592,7 +592,6 @@ model EmpresasVagas {
   salarioMin       Decimal?       @db.Decimal(12, 2)
   salarioMax       Decimal?       @db.Decimal(12, 2)
   salarioConfidencial Boolean     @default(true)
-  maxCandidaturasPorUsuario Int?
   destaque         Boolean        @default(false)
 
   empresa Usuarios @relation("UsuarioVagas", fields: [usuarioId], references: [id], onDelete: Cascade)

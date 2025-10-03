@@ -359,7 +359,6 @@ const sanitizeCreateData = (
     salarioMin: data.salarioMin ?? undefined,
     salarioMax: data.salarioMax ?? undefined,
     salarioConfidencial: data.salarioConfidencial ?? true,
-    maxCandidaturasPorUsuario: data.maxCandidaturasPorUsuario ?? undefined,
     destaque: data.vagaEmDestaque ?? false,
   };
 };
@@ -441,10 +440,6 @@ const sanitizeUpdateData = (data: UpdateVagaData): Prisma.EmpresasVagasUnchecked
   }
   if (data.salarioConfidencial !== undefined) {
     update.salarioConfidencial = data.salarioConfidencial;
-  }
-  if (data.maxCandidaturasPorUsuario !== undefined) {
-    update.maxCandidaturasPorUsuario =
-      data.maxCandidaturasPorUsuario === null ? null : data.maxCandidaturasPorUsuario;
   }
   if (data.areaInteresseId !== undefined) {
     update.areaInteresseId = data.areaInteresseId;

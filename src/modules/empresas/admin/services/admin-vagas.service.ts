@@ -116,7 +116,6 @@ const vagaSelect = {
   salarioMin: true,
   salarioMax: true,
   salarioConfidencial: true,
-  maxCandidaturasPorUsuario: true,
   areaInteresseId: true,
   subareaInteresseId: true,
   areaInteresse: {
@@ -279,7 +278,6 @@ const mapVagaBase = (vaga: VagaRecord) => ({
   salarioMin: vaga.salarioMin ?? null,
   salarioMax: vaga.salarioMax ?? null,
   salarioConfidencial: vaga.salarioConfidencial,
-  maxCandidaturasPorUsuario: vaga.maxCandidaturasPorUsuario ?? null,
   areaInteresseId: vaga.areaInteresseId ?? null,
   subareaInteresseId: vaga.subareaInteresseId ?? null,
   areaInteresse: vaga.areaInteresse

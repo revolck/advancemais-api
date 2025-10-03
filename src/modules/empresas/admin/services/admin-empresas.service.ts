@@ -285,7 +285,6 @@ const vagaSelect = {
   salarioMin: true,
   salarioMax: true,
   salarioConfidencial: true,
-  maxCandidaturasPorUsuario: true,
   areaInteresseId: true,
   subareaInteresseId: true,
   areaInteresse: {
@@ -495,7 +494,6 @@ type AdminEmpresaJobResumo = {
   salarioMin: Prisma.Decimal | null;
   salarioMax: Prisma.Decimal | null;
   salarioConfidencial: boolean;
-  maxCandidaturasPorUsuario: number | null;
   areaInteresseId: number | null;
   subareaInteresseId: number | null;
   areaInteresse: {
@@ -1129,7 +1127,6 @@ const mapVagaResumo = (vaga: VagaRecord): AdminEmpresaJobResumo => ({
   salarioMin: vaga.salarioMin ?? null,
   salarioMax: vaga.salarioMax ?? null,
   salarioConfidencial: vaga.salarioConfidencial,
-  maxCandidaturasPorUsuario: vaga.maxCandidaturasPorUsuario ?? null,
   areaInteresseId: vaga.areaInteresseId ?? null,
   subareaInteresseId: vaga.subareaInteresseId ?? null,
   areaInteresse: vaga.areaInteresse

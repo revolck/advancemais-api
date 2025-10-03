@@ -760,7 +760,6 @@ router.get('/:id', publicCache, VagasController.get);
  *                  "salarioMin": "4500.00",
  *                  "salarioMax": "6500.00",
  *                  "salarioConfidencial": false,
- *                  "maxCandidaturasPorUsuario": 1,
  *                  "inscricoesAte": "2024-12-20T23:59:59.000Z",
  *                  "vagaEmDestaque": true
  *                }'
@@ -861,7 +860,6 @@ router.post('/', supabaseAuthMiddleware(protectedRoles), VagasController.create)
  *                  "salarioMin": "5000.00",
  *                  "salarioMax": "7000.00",
  *                  "salarioConfidencial": false,
- *                  "maxCandidaturasPorUsuario": 1,
  *                  "status": "PUBLICADO",
  *                  "inseridaEm": "2024-10-10T09:00:00Z",
  *                  "vagaEmDestaque": false

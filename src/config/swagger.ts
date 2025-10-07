@@ -8193,7 +8193,7 @@ const options: Options = {
         AdminEmpresaOverviewEmpresa: {
           type: 'object',
           description:
-            'Dados consolidados da empresa exibidos no overview administrativo sem duplicar estatísticas já agregadas em outras seções.',
+            'Dados consolidados da empresa exibidos no overview administrativo. Campos duplicados foram removidos para otimizar a resposta - informações completas do plano estão disponíveis em planos.atual.',
           required: [
             'id',
             'codUsuario',
@@ -8217,7 +8217,11 @@ const options: Options = {
               example: 'contato@advance.com.br',
             },
             telefone: { type: 'string', example: '+55 11 99999-0000' },
-            avatarUrl: { type: 'string', nullable: true, example: 'https://cdn.advance.com.br/logo.png' },
+            avatarUrl: {
+              type: 'string',
+              nullable: true,
+              example: 'https://cdn.advance.com.br/logo.png',
+            },
             cnpj: { type: 'string', nullable: true, example: '12345678000190' },
             descricao: {
               type: 'string',
@@ -8226,7 +8230,8 @@ const options: Options = {
             },
             informacoes: {
               allOf: [{ $ref: '#/components/schemas/UsuarioInformacoes' }],
-              description: 'Dados complementares registrados pela empresa.',
+              description:
+                'Dados complementares registrados pela empresa. Campos duplicados (telefone, descricao, avatarUrl) foram removidos - use os campos no nível principal da empresa.',
             },
             socialLinks: {
               allOf: [{ $ref: '#/components/schemas/UsuarioSocialLinks' }],
@@ -8256,7 +8261,8 @@ const options: Options = {
             planoAtual: {
               allOf: [{ $ref: '#/components/schemas/AdminEmpresasPlanoResumo' }],
               nullable: true,
-              description: 'Resumo do plano vigente (se houver).',
+              description:
+                'DEPRECATED: Use planos.atual para informações completas do plano. Este campo retorna null para evitar duplicação.',
             },
             bloqueada: {
               type: 'boolean',
@@ -8289,47 +8295,38 @@ const options: Options = {
             ativa: true,
             parceira: true,
             diasTesteDisponibilizados: 30,
-            planoAtual: {
-              id: '38f73d2d-40fa-47a6-9657-6a4f7f1bb610',
-              nome: 'Plano Avançado',
-              modo: 'PARCEIRO',
-              status: 'ATIVO',
-              inicio: '2024-01-10T12:00:00Z',
-              fim: null,
-              modeloPagamento: 'ASSINATURA',
-              metodoPagamento: 'PIX',
-              statusPagamento: 'APROVADO',
-              valor: '249.90',
-              quantidadeVagas: 10,
-              duracaoEmDias: null,
-              diasRestantes: 12,
-            },
+            planoAtual: null,
             bloqueada: false,
             bloqueioAtivo: null,
             informacoes: {
-              telefone: '+55 11 99999-0000',
-              descricao: 'Consultoria especializada em tecnologia e recrutamento.',
-              avatarUrl: 'https://cdn.advance.com.br/logo.png',
+              telefone: null,
+              descricao: null,
+              avatarUrl: null,
+              genero: null,
+              dataNasc: null,
+              inscricao: null,
               aceitarTermos: true,
             },
           },
         },
         AdminEmpresaPlanosOverview: {
           type: 'object',
-          required: ['atual', 'ativos', 'historico'],
+          description:
+            'Informações completas sobre planos da empresa. O primeiro item de "ativos" representa o plano atual. Esta é a fonte principal para dados de planos - substitui o campo planoAtual na empresa.',
+          required: ['ativos', 'historico'],
           properties: {
-            atual: {
-              allOf: [{ $ref: '#/components/schemas/AdminEmpresaPlanoHistoricoItem' }],
-              nullable: true,
-              description: 'Plano considerado vigente no momento da consulta.',
-            },
             ativos: {
               type: 'array',
               items: { $ref: '#/components/schemas/AdminEmpresaPlanoHistoricoItem' },
+              description:
+                'Lista de planos ativos. O primeiro item (ativos[0]) representa o plano atual.',
             },
             historico: {
               type: 'array',
               items: { $ref: '#/components/schemas/AdminEmpresaPlanoHistoricoItem' },
+              maxItems: 4,
+              description:
+                'Histórico dos últimos 4 planos anteriores (expirados, cancelados, etc.), ordenados por data de início decrescente.',
             },
           },
         },
@@ -8400,7 +8397,17 @@ const options: Options = {
         },
         AdminEmpresaOverviewResponse: {
           type: 'object',
-          required: ['empresa', 'planos', 'pagamentos', 'vagas', 'candidaturas', 'bloqueios'],
+          description:
+            'Resposta otimizada do endpoint de visão geral da empresa. Redundâncias foram removidas - use planos.ativos[0] para o plano atual. Inclui histórico de alterações com auditoria completa.',
+          required: [
+            'empresa',
+            'planos',
+            'pagamentos',
+            'vagas',
+            'candidaturas',
+            'bloqueios',
+            'auditoria',
+          ],
           properties: {
             empresa: { $ref: '#/components/schemas/AdminEmpresaOverviewEmpresa' },
             planos: { $ref: '#/components/schemas/AdminEmpresaPlanosOverview' },
@@ -8418,6 +8425,7 @@ const options: Options = {
             vagas: { $ref: '#/components/schemas/AdminEmpresaVagasOverview' },
             candidaturas: { $ref: '#/components/schemas/AdminEmpresaCandidaturasOverview' },
             bloqueios: { $ref: '#/components/schemas/AdminEmpresaBloqueiosOverview' },
+            auditoria: { $ref: '#/components/schemas/AdminEmpresaAuditoriaOverview' },
           },
           example: {
             empresa: {
@@ -11564,6 +11572,60 @@ const options: Options = {
               type: 'string',
               format: 'date-time',
               example: '2024-01-01T12:00:00Z',
+            },
+          },
+        },
+        AdminEmpresaAuditoriaItem: {
+          type: 'object',
+          required: ['id', 'acao', 'descricao', 'criadoEm', 'alteradoPor'],
+          properties: {
+            id: { type: 'string', format: 'uuid', example: 'audit_123456' },
+            acao: {
+              type: 'string',
+              enum: [
+                'EMPRESA_CRIADA',
+                'EMPRESA_ATUALIZADA',
+                'PLANO_ASSIGNADO',
+                'PLANO_ATUALIZADO',
+                'PLANO_CANCELADO',
+                'PLANO_EXPIRADO',
+                'BLOQUEIO_APLICADO',
+                'BLOQUEIO_REVOGADO',
+                'STATUS_ALTERADO',
+                'DADOS_ALTERADOS',
+              ],
+              example: 'EMPRESA_ATUALIZADA',
+            },
+            campo: { type: 'string', nullable: true, example: 'nome' },
+            valorAnterior: { type: 'string', nullable: true, example: 'Empresa Antiga' },
+            valorNovo: { type: 'string', nullable: true, example: 'Empresa Nova' },
+            descricao: {
+              type: 'string',
+              example: 'João alterou Plano de assinaturas para NOME DO PLANO',
+            },
+            metadata: { type: 'object', nullable: true },
+            criadoEm: { type: 'string', format: 'date-time', example: '2024-10-25T15:30:00Z' },
+            alteradoPor: {
+              type: 'object',
+              required: ['id', 'nomeCompleto', 'role'],
+              properties: {
+                id: { type: 'string', format: 'uuid', example: 'user_123456' },
+                nomeCompleto: { type: 'string', example: 'João Silva' },
+                role: { type: 'string', example: 'ADMIN' },
+              },
+            },
+          },
+        },
+        AdminEmpresaAuditoriaOverview: {
+          type: 'object',
+          description: 'Histórico de alterações da empresa com auditoria completa.',
+          required: ['total', 'recentes'],
+          properties: {
+            total: { type: 'integer', minimum: 0, example: 15 },
+            recentes: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/AdminEmpresaAuditoriaItem' },
+              description: 'Últimas 20 alterações registradas na empresa.',
             },
           },
         },

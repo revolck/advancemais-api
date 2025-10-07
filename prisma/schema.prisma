@@ -8,51 +8,47 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// =============================================
-// MODELS
-// =============================================
-
 model Usuarios {
-  id           String      @id @default(uuid())
-  nomeCompleto String
-  supabaseId   String      @unique
-  cpf          String?     @unique
-  cnpj         String?     @unique
-  email        String      @unique
-  senha        String
-  codUsuario   String      @unique
-  tipoUsuario  TiposDeUsuarios
-  role         Roles
-  status       Status      @default(ATIVO)
-  criadoEm     DateTime    @default(now())
-  atualizadoEm DateTime    @updatedAt
-  ultimoLogin  DateTime?
-  refreshToken String?
-  sessoes      UsuariosSessoes[]
-
-  // RELACIONAMENTOS EXISTENTES
-  enderecos            UsuariosEnderecos[]
-  vagasCriadas         EmpresasVagas[]    @relation("UsuarioVagas")
-  processosCandidatados EmpresasVagasProcesso[] @relation("UsuariosProcessos")
-  curriculos            UsuariosCurriculos[]
-  candidaturasFeitas    EmpresasCandidatos[]   @relation("CandidatoUsuario")
-  candidaturasRecebidas EmpresasCandidatos[]   @relation("EmpresaUsuario")
+  id                    String                       @id @default(uuid())
+  nomeCompleto          String
+  supabaseId            String                       @unique
+  cpf                   String?                      @unique
+  cnpj                  String?                      @unique
+  email                 String                       @unique
+  senha                 String
+  codUsuario            String                       @unique
+  tipoUsuario           TiposDeUsuarios
+  role                  Roles
+  status                Status                       @default(ATIVO)
+  criadoEm              DateTime                     @default(now())
+  atualizadoEm          DateTime                     @updatedAt
+  ultimoLogin           DateTime?
+  refreshToken          String?
+  cuponsCriados         CuponsDesconto[]
+  cursosComoInstrutor   Cursos[]                     @relation("CursosInstrutor")
+  certificadosEmitidos  CursosCertificadosEmitidos[] @relation("CursosCertificadosEmitidosEmitidoPor")
+  estagiosComoAluno     CursosEstagios[]             @relation("CursosEstagiosAluno")
+  estagiosAtualizados   CursosEstagios[]             @relation("CursosEstagiosAtualizadoPor")
+  estagiosCriados       CursosEstagios[]             @relation("CursosEstagiosCriadoPor")
+  turmasInscritas       CursosTurmasInscricoes[]
+  candidaturasFeitas    EmpresasCandidatos[]         @relation("CandidatoUsuario")
+  candidaturasRecebidas EmpresasCandidatos[]         @relation("EmpresaUsuario")
+  planosContratados     EmpresasPlano[]              @relation("UsuarioPlanos")
+  vagasCriadas          EmpresasVagas[]              @relation("UsuarioVagas")
+  processosCandidatados EmpresasVagasProcesso[]      @relation("UsuariosProcessos")
   candidatoLogs         UsuariosCandidatosLogs[]
-  planosContratados    EmpresasPlano[]    @relation("UsuarioPlanos")
-  bloqueiosRecebidos  UsuariosEmBloqueios[] @relation("UsuariosEmBloqueiosUsuario")
-  bloqueiosAplicados  UsuariosEmBloqueios[] @relation("UsuariosEmBloqueiosAdmin")
-  bloqueiosLogsCriados UsuariosEmBloqueiosLogs[] @relation("UsuariosEmBloqueiosLogsAdmin")
-  redesSociais         UsuariosRedesSociais?
-  recuperacaoSenha     UsuariosRecuperacaoSenha?
-  emailVerification    UsuariosVerificacaoEmail?
-  informacoes          UsuariosInformation?
-  cursosComoInstrutor  Cursos[]             @relation("CursosInstrutor")
-  turmasInscritas   CursosTurmasInscricoes[]
-  certificadosEmitidos CursosCertificadosEmitidos[] @relation("CursosCertificadosEmitidosEmitidoPor")
-  estagiosComoAluno   CursosEstagios[]            @relation("CursosEstagiosAluno")
-  estagiosCriados     CursosEstagios[]            @relation("CursosEstagiosCriadoPor")
-  estagiosAtualizados CursosEstagios[]            @relation("CursosEstagiosAtualizadoPor")
-  cuponsCriados       CuponsDesconto[]
+  curriculos            UsuariosCurriculos[]
+  bloqueiosAplicados    UsuariosEmBloqueios[]        @relation("UsuariosEmBloqueiosAdmin")
+  bloqueiosRecebidos    UsuariosEmBloqueios[]        @relation("UsuariosEmBloqueiosUsuario")
+  bloqueiosLogsCriados  UsuariosEmBloqueiosLogs[]    @relation("UsuariosEmBloqueiosLogsAdmin")
+  enderecos             UsuariosEnderecos[]
+  informacoes           UsuariosInformation?
+  recuperacaoSenha      UsuariosRecuperacaoSenha?
+  redesSociais          UsuariosRedesSociais?
+  sessoes               UsuariosSessoes[]
+  emailVerification     UsuariosVerificacaoEmail?
+  auditoriaEmpresas     EmpresasAuditoria[]        @relation("EmpresasAuditoria")
+  auditoriaAlteracoes   EmpresasAuditoria[]        @relation("EmpresasAuditoriaAlteradoPor")
 
   @@index([status])
   @@index([role])
@@ -63,90 +59,88 @@ model Usuarios {
 }
 
 model UsuariosInformation {
-  usuarioId     String   @id
+  usuarioId     String    @id
   telefone      String
   genero        String?
   dataNasc      DateTime?
   inscricao     String?
   avatarUrl     String?
-  descricao     String?  @db.VarChar(500)
-  aceitarTermos Boolean  @default(false)
-
-  usuario Usuarios @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  descricao     String?   @db.VarChar(500)
+  aceitarTermos Boolean   @default(false)
+  usuario       Usuarios  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }
 
 model CandidatosAreasInteresse {
-  id        Int                             @id @default(autoincrement())
-  categoria String                          @db.VarChar(120)
-  subareas  CandidatosSubareasInteresse[]
-  vagas     EmpresasVagas[]                @relation("EmpresasVagasAreaInteresse")
-  criadoEm  DateTime                       @default(now())
-  atualizadoEm DateTime                     @updatedAt
+  id           Int                           @id @default(autoincrement())
+  categoria    String                        @db.VarChar(120)
+  criadoEm     DateTime                      @default(now())
+  atualizadoEm DateTime                      @updatedAt
+  subareas     CandidatosSubareasInteresse[]
+  vagas        EmpresasVagas[]               @relation("EmpresasVagasAreaInteresse")
 
   @@index([categoria])
 }
 
 model CandidatosSubareasInteresse {
-  id        Int                        @id @default(autoincrement())
-  areaId    Int
-  nome      String                     @db.VarChar(120)
-  vagas     EmpresasVagas[]            @relation("EmpresasVagasSubareaInteresse")
-  criadoEm  DateTime                   @default(now())
-  atualizadoEm DateTime                @updatedAt
+  id           Int                      @id @default(autoincrement())
+  areaId       Int
+  nome         String                   @db.VarChar(120)
+  criadoEm     DateTime                 @default(now())
+  atualizadoEm DateTime                 @updatedAt
+  area         CandidatosAreasInteresse @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  vagas        EmpresasVagas[]          @relation("EmpresasVagasSubareaInteresse")
 
-  area CandidatosAreasInteresse @relation(fields: [areaId], references: [id], onDelete: Cascade)
   @@unique([areaId, nome])
   @@index([nome])
 }
 
 model CursosCategorias {
-  id        Int                @id @default(autoincrement())
-  codCategoria String          @unique @db.VarChar(12)
-  nome      String             @db.VarChar(120)
-  descricao String?            @db.VarChar(255)
-  criadoEm  DateTime           @default(now())
-  atualizadoEm DateTime        @updatedAt
-  subcats   CursosSubcategorias[]
-  cursos    Cursos[]
+  id           Int                   @id @default(autoincrement())
+  codCategoria String                @unique @db.VarChar(12)
+  nome         String                @unique @db.VarChar(120)
+  descricao    String?               @db.VarChar(255)
+  criadoEm     DateTime              @default(now())
+  atualizadoEm DateTime              @updatedAt
+  cursos       Cursos[]
+  subcats      CursosSubcategorias[]
 
-  @@unique([nome])
   @@index([nome])
 }
 
 model CursosSubcategorias {
-  id           Int             @id @default(autoincrement())
-  codSubcategoria String       @unique @db.VarChar(12)
-  nome         String          @db.VarChar(120)
-  descricao    String?         @db.VarChar(255)
-  categoriaId  Int
-  criadoEm     DateTime        @default(now())
-  atualizadoEm DateTime        @updatedAt
-  categoria    CursosCategorias  @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
-  cursos       Cursos[]
+  id              Int              @id @default(autoincrement())
+  codSubcategoria String           @unique @db.VarChar(12)
+  nome            String           @db.VarChar(120)
+  descricao       String?          @db.VarChar(255)
+  categoriaId     Int
+  criadoEm        DateTime         @default(now())
+  atualizadoEm    DateTime         @updatedAt
+  cursos          Cursos[]
+  categoria       CursosCategorias @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
 
   @@unique([categoriaId, nome])
   @@index([nome])
 }
 
 model Cursos {
-  id              Int                 @id @default(autoincrement())
-  codigo          String              @unique @db.VarChar(12)
-  nome            String              @db.VarChar(255)
-  descricao       String?             @db.Text
-  cargaHoraria    Int
-  instrutorId     String?
-  statusPadrao    CursosStatusPadrao  @default(RASCUNHO)
-  categoriaId     Int?
-  subcategoriaId  Int?
-  estagioObrigatorio Boolean           @default(false)
-  criadoEm        DateTime            @default(now())
-  atualizadoEm    DateTime            @updatedAt
-  instrutor       Usuarios?           @relation("CursosInstrutor", fields: [instrutorId], references: [id], onDelete: SetNull)
-  categoria       CursosCategorias?   @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
-  subcategoria    CursosSubcategorias? @relation(fields: [subcategoriaId], references: [id], onDelete: SetNull)
-  turmas          CursosTurmas[]
-  estagios        CursosEstagios[]
-  cuponsDesconto  CuponsDescontoCursos[]
+  id                 Int                    @id @default(autoincrement())
+  codigo             String                 @unique @db.VarChar(12)
+  nome               String                 @db.VarChar(255)
+  descricao          String?
+  cargaHoraria       Int
+  instrutorId        String?
+  statusPadrao       CursosStatusPadrao     @default(RASCUNHO)
+  categoriaId        Int?
+  subcategoriaId     Int?
+  estagioObrigatorio Boolean                @default(false)
+  criadoEm           DateTime               @default(now())
+  atualizadoEm       DateTime               @updatedAt
+  cuponsDesconto     CuponsDescontoCursos[]
+  categoria          CursosCategorias?      @relation(fields: [categoriaId], references: [id])
+  instrutor          Usuarios?              @relation("CursosInstrutor", fields: [instrutorId], references: [id])
+  subcategoria       CursosSubcategorias?   @relation(fields: [subcategoriaId], references: [id])
+  estagios           CursosEstagios[]
+  turmas             CursosTurmas[]
 
   @@index([categoriaId])
   @@index([subcategoriaId])
@@ -154,73 +148,71 @@ model Cursos {
 }
 
 model CursosTurmas {
-  id                   String                   @id @default(uuid())
-  codigo               String                   @unique @db.VarChar(12)
-  cursoId              Int
-  nome                 String                   @db.VarChar(255)
-  turno                CursosTurnos             @default(INTEGRAL)
-  metodo               CursosMetodos            @default(ONLINE)
-  dataInicio           DateTime?
-  dataFim              DateTime?
-  dataInscricaoInicio  DateTime?
-  dataInscricaoFim     DateTime?
-  vagasTotais          Int
-  vagasDisponiveis     Int
-  status               CursoStatus              @default(RASCUNHO)
-  criadoEm             DateTime                 @default(now())
-  atualizadoEm         DateTime                 @updatedAt
-  curso                Cursos                   @relation(fields: [cursoId], references: [id], onDelete: Cascade)
-  inscricoes           CursosTurmasInscricoes[]
-  aulas                CursosTurmasAulas[]
-  modulos              CursosTurmasModulos[]
-  provas               CursosTurmasProvas[]
-  agenda               CursosTurmasAgenda[]
-  notas                CursosNotas[]
-  frequencias          CursosFrequenciaAlunos[]
-  regrasAvaliacao      CursosTurmasRegrasAvaliacao?
-  recuperacoes         CursosTurmasRecuperacoes[]
-  estagios             CursosEstagios[]
+  id                  String                       @id @default(uuid())
+  codigo              String                       @unique @db.VarChar(12)
+  cursoId             Int
+  nome                String                       @db.VarChar(255)
+  turno               CursosTurnos                 @default(INTEGRAL)
+  metodo              CursosMetodos                @default(ONLINE)
+  dataInicio          DateTime?
+  dataFim             DateTime?
+  dataInscricaoInicio DateTime?
+  dataInscricaoFim    DateTime?
+  vagasTotais         Int
+  vagasDisponiveis    Int
+  status              CursoStatus                  @default(RASCUNHO)
+  criadoEm            DateTime                     @default(now())
+  atualizadoEm        DateTime                     @updatedAt
+  estagios            CursosEstagios[]
+  frequencias         CursosFrequenciaAlunos[]
+  notas               CursosNotas[]
+  curso               Cursos                       @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+  agenda              CursosTurmasAgenda[]
+  aulas               CursosTurmasAulas[]
+  inscricoes          CursosTurmasInscricoes[]
+  modulos             CursosTurmasModulos[]
+  provas              CursosTurmasProvas[]
+  recuperacoes        CursosTurmasRecuperacoes[]
+  regrasAvaliacao     CursosTurmasRegrasAvaliacao?
 
   @@index([cursoId])
   @@index([status])
 }
 
 model CursosTurmasModulos {
-  id          String   @id @default(uuid())
-  turmaId     String
-  nome        String   @db.VarChar(255)
-  descricao   String?  @db.Text
-  obrigatorio Boolean  @default(true)
-  ordem       Int      @default(0)
-  criadoEm    DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
-
-  turma   CursosTurmas       @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  aulas   CursosTurmasAulas[]
-  provas  CursosTurmasProvas[]
+  id           String               @id @default(uuid())
+  turmaId      String
+  nome         String               @db.VarChar(255)
+  descricao    String?
+  obrigatorio  Boolean              @default(true)
+  ordem        Int                  @default(0)
+  criadoEm     DateTime             @default(now())
+  atualizadoEm DateTime             @updatedAt
+  aulas        CursosTurmasAulas[]
+  turma        CursosTurmas         @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  provas       CursosTurmasProvas[]
 
   @@index([turmaId])
   @@index([turmaId, ordem])
 }
 
 model CursosTurmasAulas {
-  id          String   @id @default(uuid())
-  turmaId     String
-  moduloId    String?
-  nome        String   @db.VarChar(255)
-  descricao   String?  @db.Text
-  ordem       Int      @default(0)
-  urlVideo    String?  @db.VarChar(2048)
-  sala        String?  @db.VarChar(100)
-  urlMeet     String?  @db.VarChar(2048)
-  criadoEm    DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
-
-  turma     CursosTurmas               @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  modulo    CursosTurmasModulos?       @relation(fields: [moduloId], references: [id], onDelete: SetNull)
-  materiais CursosTurmasAulasMateriais[]
-  frequencias CursosFrequenciaAlunos[]
-  agenda     CursosTurmasAgenda[]
+  id           String                       @id @default(uuid())
+  turmaId      String
+  moduloId     String?
+  nome         String                       @db.VarChar(255)
+  descricao    String?
+  ordem        Int                          @default(0)
+  urlVideo     String?                      @db.VarChar(2048)
+  sala         String?                      @db.VarChar(100)
+  urlMeet      String?                      @db.VarChar(2048)
+  criadoEm     DateTime                     @default(now())
+  atualizadoEm DateTime                     @updatedAt
+  frequencias  CursosFrequenciaAlunos[]
+  agenda       CursosTurmasAgenda[]
+  modulo       CursosTurmasModulos?         @relation(fields: [moduloId], references: [id])
+  turma        CursosTurmas                 @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  materiais    CursosTurmasAulasMateriais[]
 
   @@index([turmaId])
   @@index([moduloId])
@@ -240,52 +232,49 @@ model CursosTurmasAulasMateriais {
   ordem             Int               @default(0)
   criadoEm          DateTime          @default(now())
   atualizadoEm      DateTime          @updatedAt
-
-  aula CursosTurmasAulas @relation(fields: [aulaId], references: [id], onDelete: Cascade)
+  aula              CursosTurmasAulas @relation(fields: [aulaId], references: [id], onDelete: Cascade)
 
   @@index([aulaId])
   @@index([tipo])
 }
 
 model CursosTurmasInscricoes {
-  id        String   @id @default(uuid())
-  turmaId   String
-  alunoId   String
-  criadoEm  DateTime @default(now())
-
-  turma CursosTurmas @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  aluno Usuarios     @relation(fields: [alunoId], references: [id], onDelete: Cascade)
-  envios CursosTurmasProvasEnvios[]
-  recuperacoes CursosTurmasRecuperacoes[]
-  notas CursosNotas[]
-  frequencias CursosFrequenciaAlunos[]
+  id           String                       @id @default(uuid())
+  turmaId      String
+  alunoId      String
+  criadoEm     DateTime                     @default(now())
   certificados CursosCertificadosEmitidos[]
-  estagios CursosEstagios[]
+  estagios     CursosEstagios[]
+  frequencias  CursosFrequenciaAlunos[]
+  notas        CursosNotas[]
+  aluno        Usuarios                     @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+  turma        CursosTurmas                 @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  envios       CursosTurmasProvasEnvios[]
+  recuperacoes CursosTurmasRecuperacoes[]
 
   @@unique([turmaId, alunoId])
   @@index([alunoId])
 }
 
 model CursosTurmasProvas {
-  id           String             @id @default(uuid())
+  id           String                     @id @default(uuid())
   turmaId      String
   moduloId     String?
-  titulo       String             @db.VarChar(255)
-  etiqueta     String             @db.VarChar(30)
-  descricao    String?            @db.Text
-  peso         Decimal            @db.Decimal(5, 2)
-  ativo        Boolean            @default(true)
-  localizacao  CursosLocalProva   @default(TURMA)
-  ordem        Int                @default(0)
-  criadoEm     DateTime           @default(now())
-  atualizadoEm DateTime           @updatedAt
-
-  turma      CursosTurmas         @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  modulo     CursosTurmasModulos? @relation(fields: [moduloId], references: [id], onDelete: SetNull)
-  envios     CursosTurmasProvasEnvios[]
+  titulo       String                     @db.VarChar(255)
+  etiqueta     String                     @db.VarChar(30)
+  descricao    String?
+  peso         Decimal                    @db.Decimal(5, 2)
+  ativo        Boolean                    @default(true)
+  localizacao  CursosLocalProva           @default(TURMA)
+  ordem        Int                        @default(0)
+  criadoEm     DateTime                   @default(now())
+  atualizadoEm DateTime                   @updatedAt
+  notas        CursosNotas[]
+  agenda       CursosTurmasAgenda[]
+  modulo       CursosTurmasModulos?       @relation(fields: [moduloId], references: [id])
+  turma        CursosTurmas               @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  envios       CursosTurmasProvasEnvios[]
   recuperacoes CursosTurmasRecuperacoes[]
-  notas      CursosNotas[]
-  agenda     CursosTurmasAgenda[]
 
   @@unique([turmaId, etiqueta])
   @@index([turmaId])
@@ -294,21 +283,20 @@ model CursosTurmasProvas {
 }
 
 model CursosTurmasAgenda {
-  id          String           @id @default(uuid())
-  turmaId     String
-  tipo        CursosAgendaTipo
-  titulo      String           @db.VarChar(255)
-  descricao   String?          @db.VarChar(1000)
-  inicio      DateTime
-  fim         DateTime?
-  aulaId      String?
-  provaId     String?
-  criadoEm    DateTime         @default(now())
-  atualizadoEm DateTime        @updatedAt
-
-  turma CursosTurmas         @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  aula  CursosTurmasAulas?   @relation(fields: [aulaId], references: [id], onDelete: SetNull)
-  prova CursosTurmasProvas?  @relation(fields: [provaId], references: [id], onDelete: SetNull)
+  id           String              @id @default(uuid())
+  turmaId      String
+  tipo         CursosAgendaTipo
+  titulo       String              @db.VarChar(255)
+  descricao    String?             @db.VarChar(1000)
+  inicio       DateTime
+  fim          DateTime?
+  aulaId       String?
+  provaId      String?
+  criadoEm     DateTime            @default(now())
+  atualizadoEm DateTime            @updatedAt
+  aula         CursosTurmasAulas?  @relation(fields: [aulaId], references: [id])
+  prova        CursosTurmasProvas? @relation(fields: [provaId], references: [id])
+  turma        CursosTurmas        @relation(fields: [turmaId], references: [id], onDelete: Cascade)
 
   @@index([turmaId, inicio])
   @@index([tipo])
@@ -317,18 +305,17 @@ model CursosTurmasAgenda {
 }
 
 model CursosTurmasProvasEnvios {
-  id          String   @id @default(uuid())
-  provaId     String
-  inscricaoId String
-  nota        Decimal? @db.Decimal(4, 1)
-  pesoTotal   Decimal? @db.Decimal(5, 2)
-  realizadoEm DateTime?
-  observacoes String?  @db.Text
-  criadoEm    DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
-
-  prova      CursosTurmasProvas     @relation(fields: [provaId], references: [id], onDelete: Cascade)
-  inscricao  CursosTurmasInscricoes @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
+  id           String                     @id @default(uuid())
+  provaId      String
+  inscricaoId  String
+  nota         Decimal?                   @db.Decimal(4, 1)
+  pesoTotal    Decimal?                   @db.Decimal(5, 2)
+  realizadoEm  DateTime?
+  observacoes  String?
+  criadoEm     DateTime                   @default(now())
+  atualizadoEm DateTime                   @updatedAt
+  inscricao    CursosTurmasInscricoes     @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
+  prova        CursosTurmasProvas         @relation(fields: [provaId], references: [id], onDelete: Cascade)
   recuperacoes CursosTurmasRecuperacoes[]
 
   @@unique([provaId, inscricaoId])
@@ -336,45 +323,43 @@ model CursosTurmasProvasEnvios {
 }
 
 model CursosTurmasRegrasAvaliacao {
-  id                         String                       @id @default(uuid())
-  turmaId                    String                       @unique
-  mediaMinima                Decimal                      @db.Decimal(4, 1)
-  politicaRecuperacaoAtiva   Boolean                      @default(false)
-  modelosRecuperacao         CursosModelosRecuperacao[]   @default([])
-  ordemAplicacaoRecuperacao  CursosModelosRecuperacao[]   @default([])
-  notaMaximaRecuperacao      Decimal?                     @db.Decimal(4, 1)
-  pesoProvaFinal             Decimal?                     @db.Decimal(5, 2)
-  observacoes                String?                      @db.VarChar(500)
-  criadoEm                   DateTime                     @default(now())
-  atualizadoEm               DateTime                     @updatedAt
-
-  turma        CursosTurmas              @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  recuperacoes CursosTurmasRecuperacoes[]
+  id                        String                     @id @default(uuid())
+  turmaId                   String                     @unique
+  mediaMinima               Decimal                    @db.Decimal(4, 1)
+  politicaRecuperacaoAtiva  Boolean                    @default(false)
+  modelosRecuperacao        CursosModelosRecuperacao[] @default([])
+  ordemAplicacaoRecuperacao CursosModelosRecuperacao[] @default([])
+  notaMaximaRecuperacao     Decimal?                   @db.Decimal(4, 1)
+  pesoProvaFinal            Decimal?                   @db.Decimal(5, 2)
+  observacoes               String?                    @db.VarChar(500)
+  criadoEm                  DateTime                   @default(now())
+  atualizadoEm              DateTime                   @updatedAt
+  recuperacoes              CursosTurmasRecuperacoes[]
+  turma                     CursosTurmas               @relation(fields: [turmaId], references: [id], onDelete: Cascade)
 }
 
 model CursosTurmasRecuperacoes {
-  id              String                 @id @default(uuid())
+  id              String                       @id @default(uuid())
   turmaId         String
   inscricaoId     String
   regraId         String?
   provaId         String?
   envioId         String?
-  notaRecuperacao Decimal?               @db.Decimal(4, 1)
-  notaFinal       Decimal?               @db.Decimal(4, 1)
-  mediaCalculada  Decimal?               @db.Decimal(4, 2)
+  notaRecuperacao Decimal?                     @db.Decimal(4, 1)
+  notaFinal       Decimal?                     @db.Decimal(4, 1)
+  mediaCalculada  Decimal?                     @db.Decimal(4, 2)
   modeloAplicado  CursosModelosRecuperacao?
-  statusFinal     CursosSituacaoFinal    @default(EM_ANALISE)
+  statusFinal     CursosSituacaoFinal          @default(EM_ANALISE)
   detalhes        Json?
-  observacoes     String?                @db.VarChar(500)
-  aplicadoEm      DateTime?              @default(now())
-  criadoEm        DateTime               @default(now())
-  atualizadoEm    DateTime               @updatedAt
-
-  turma     CursosTurmas               @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  inscricao CursosTurmasInscricoes     @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
-  regra     CursosTurmasRegrasAvaliacao? @relation(fields: [regraId], references: [id], onDelete: SetNull)
-  prova     CursosTurmasProvas?        @relation(fields: [provaId], references: [id], onDelete: SetNull)
-  envio     CursosTurmasProvasEnvios?  @relation(fields: [envioId], references: [id], onDelete: SetNull)
+  observacoes     String?                      @db.VarChar(500)
+  aplicadoEm      DateTime?                    @default(now())
+  criadoEm        DateTime                     @default(now())
+  atualizadoEm    DateTime                     @updatedAt
+  envio           CursosTurmasProvasEnvios?    @relation(fields: [envioId], references: [id])
+  inscricao       CursosTurmasInscricoes       @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
+  prova           CursosTurmasProvas?          @relation(fields: [provaId], references: [id])
+  regra           CursosTurmasRegrasAvaliacao? @relation(fields: [regraId], references: [id])
+  turma           CursosTurmas                 @relation(fields: [turmaId], references: [id], onDelete: Cascade)
 
   @@index([turmaId])
   @@index([inscricaoId])
@@ -382,226 +367,137 @@ model CursosTurmasRecuperacoes {
 }
 
 model CursosNotas {
-  id                String          @id @default(uuid())
+  id                String                 @id @default(uuid())
   turmaId           String
   inscricaoId       String
   tipo              CursosNotasTipo
   provaId           String?
-  referenciaExterna String?         @db.VarChar(120)
-  titulo            String          @db.VarChar(255)
-  descricao         String?         @db.VarChar(1000)
-  nota              Decimal?        @db.Decimal(4, 1)
-  peso              Decimal?        @db.Decimal(5, 2)
-  valorMaximo       Decimal?        @db.Decimal(4, 1)
+  referenciaExterna String?                @db.VarChar(120)
+  titulo            String                 @db.VarChar(255)
+  descricao         String?                @db.VarChar(1000)
+  nota              Decimal?               @db.Decimal(4, 1)
+  peso              Decimal?               @db.Decimal(5, 2)
+  valorMaximo       Decimal?               @db.Decimal(4, 1)
   dataReferencia    DateTime?
-  observacoes       String?         @db.VarChar(500)
-  criadoEm          DateTime        @default(now())
-  atualizadoEm      DateTime        @updatedAt
+  observacoes       String?                @db.VarChar(500)
+  criadoEm          DateTime               @default(now())
+  atualizadoEm      DateTime               @updatedAt
+  inscricao         CursosTurmasInscricoes @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
+  prova             CursosTurmasProvas?    @relation(fields: [provaId], references: [id])
+  turma             CursosTurmas           @relation(fields: [turmaId], references: [id], onDelete: Cascade)
 
-  turma      CursosTurmas           @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  inscricao  CursosTurmasInscricoes @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
-  prova      CursosTurmasProvas?    @relation(fields: [provaId], references: [id], onDelete: SetNull)
-
+  @@unique([inscricaoId, provaId])
   @@index([turmaId])
   @@index([inscricaoId])
   @@index([tipo])
-  @@unique([inscricaoId, provaId])
 }
 
 model CursosFrequenciaAlunos {
-  id             String                  @id @default(uuid())
+  id             String                 @id @default(uuid())
   turmaId        String
   inscricaoId    String
   aulaId         String?
-  dataReferencia DateTime                @default(now())
-  status         CursosFrequenciaStatus  @default(PRESENTE)
-  justificativa  String?                 @db.VarChar(500)
-  observacoes    String?                 @db.VarChar(500)
-  criadoEm       DateTime                @default(now())
-  atualizadoEm   DateTime                @updatedAt
+  dataReferencia DateTime               @default(now())
+  status         CursosFrequenciaStatus @default(PRESENTE)
+  justificativa  String?                @db.VarChar(500)
+  observacoes    String?                @db.VarChar(500)
+  criadoEm       DateTime               @default(now())
+  atualizadoEm   DateTime               @updatedAt
+  aula           CursosTurmasAulas?     @relation(fields: [aulaId], references: [id])
+  inscricao      CursosTurmasInscricoes @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
+  turma          CursosTurmas           @relation(fields: [turmaId], references: [id], onDelete: Cascade)
 
-  turma      CursosTurmas           @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  inscricao  CursosTurmasInscricoes @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
-  aula       CursosTurmasAulas?     @relation(fields: [aulaId], references: [id], onDelete: SetNull)
-
+  @@unique([turmaId, inscricaoId, aulaId, dataReferencia], map: "cursos_frequencia_unico")
   @@index([turmaId])
   @@index([inscricaoId])
   @@index([aulaId])
   @@index([dataReferencia])
-  @@unique([turmaId, inscricaoId, aulaId, dataReferencia], map: "cursos_frequencia_unico")
-}
-
-enum CursosSituacaoFinal {
-  EM_ANALISE
-  APROVADO
-  REPROVADO
-}
-
-enum CursosModelosRecuperacao {
-  SUBSTITUI_MENOR
-  MEDIA_MINIMA_DIRETA
-  PROVA_FINAL_UNICA
-  NOTA_MAXIMA_LIMITADA
-}
-
-enum CursosNotasTipo {
-  PROVA
-  TRABALHO
-  ATIVIDADE
-  PROJETO
-  SEMINARIO
-  PARTICIPACAO
-  SIMULADO
-  BONUS
-  OUTRO
-}
-
-enum CursosFrequenciaStatus {
-  PRESENTE
-  AUSENTE
-  JUSTIFICADO
-  ATRASADO
-}
-
-enum CursosLocalProva {
-  TURMA
-  MODULO
-}
-
-enum CursosAgendaTipo {
-  AULA
-  PROVA
-  EVENTO
-  ATIVIDADE
-  TRABALHO
-  PROJETO
-  SEMINARIO
-  SIMULADO
-  REUNIAO
-  RECESSO
-  FERIADO
-}
-
-enum CursosStatusPadrao {
-  PUBLICADO
-  RASCUNHO
-  DESPUBLICADO
-}
-
-enum CursosMateriais {
-  APOSTILA
-  SLIDE
-  VIDEOAULA
-  AUDIOAULA
-  ARTIGO
-  EXERCICIO
-  SIMULADO
-  LIVRO
-  CERTIFICADO
-  OUTRO
-}
-
-enum TiposDeArquivos {
-  pdf
-  docx
-  xlsx
-  pptx
-  imagem
-  video
-  audio
-  zip
-  link
-  outro
 }
 
 model UsuariosVerificacaoEmail {
-  usuarioId                  String   @id
-  emailVerificado            Boolean  @default(false)
+  usuarioId                  String    @id
+  emailVerificado            Boolean   @default(false)
   emailVerificadoEm          DateTime?
-  emailVerificationToken     String?  @unique
+  emailVerificationToken     String?   @unique
   emailVerificationTokenExp  DateTime?
-  emailVerificationAttempts  Int      @default(0)
+  emailVerificationAttempts  Int       @default(0)
   ultimaTentativaVerificacao DateTime?
-
-  usuario Usuarios @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuario                    Usuarios  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([emailVerificationToken])
   @@index([emailVerificationTokenExp])
 }
 
 model UsuariosRecuperacaoSenha {
-  id                          String   @id @default(uuid())
-  usuarioId                   String   @unique
-  tokenRecuperacao            String?
-  tokenRecuperacaoExp         DateTime?
-  tentativasRecuperacao       Int      @default(0)
-  ultimaTentativaRecuperacao  DateTime?
-  criadoEm                    DateTime @default(now())
-  atualizadoEm                DateTime @updatedAt
-
-  usuario Usuarios @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  id                         String    @id @default(uuid())
+  usuarioId                  String    @unique
+  tokenRecuperacao           String?
+  tokenRecuperacaoExp        DateTime?
+  tentativasRecuperacao      Int       @default(0)
+  ultimaTentativaRecuperacao DateTime?
+  criadoEm                   DateTime  @default(now())
+  atualizadoEm               DateTime  @updatedAt
+  usuario                    Usuarios  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([tokenRecuperacao])
 }
 
 model UsuariosSessoes {
-  id          String   @id @default(uuid())
-  usuarioId   String
-  refreshToken String   @unique
-  rememberMe  Boolean  @default(false)
-  ip          String?  @db.VarChar(45)
-  userAgent   String?  @db.VarChar(512)
-  criadoEm    DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
-  expiraEm    DateTime
-  revogadoEm  DateTime?
-
-  usuario Usuarios @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  id           String    @id @default(uuid())
+  usuarioId    String
+  refreshToken String    @unique
+  rememberMe   Boolean   @default(false)
+  ip           String?   @db.VarChar(45)
+  userAgent    String?   @db.VarChar(512)
+  criadoEm     DateTime  @default(now())
+  atualizadoEm DateTime  @updatedAt
+  expiraEm     DateTime
+  revogadoEm   DateTime?
+  usuario      Usuarios  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([usuarioId, rememberMe])
   @@index([expiraEm])
 }
 
 model EmpresasVagas {
-  id               String         @id @default(uuid())
-  codigo           String         @unique @db.VarChar(6)
-  slug             String         @unique @db.VarChar(120)
-  usuarioId        String
-  categoriaVagaId  String?
-  subcategoriaVagaId String?
-  areaInteresseId  Int?
-  subareaInteresseId Int?
-  modoAnonimo      Boolean        @default(false)
-  regimeDeTrabalho RegimesDeTrabalhos
-  modalidade       ModalidadesDeVagas
-  titulo           String         @db.VarChar(255)
-  paraPcd          Boolean        @default(false)
-  numeroVagas      Int            @default(1)
-  descricao        String?        @db.Text
-  requisitos       Json
-  atividades       Json
-  beneficios       Json
-  observacoes      String?        @db.Text
-  jornada          Jornadas       @default(INTEGRAL)
-  senioridade      Senioridade    @default(ABERTO)
-  inscricoesAte    DateTime?
-  inseridaEm       DateTime       @default(now())
-  atualizadoEm     DateTime       @updatedAt
-  status           StatusDeVagas @default(RASCUNHO)
-  localizacao      Json?
-  salarioMin       Decimal?       @db.Decimal(12, 2)
-  salarioMax       Decimal?       @db.Decimal(12, 2)
-  salarioConfidencial Boolean     @default(true)
-  destaque         Boolean        @default(false)
-
-  empresa Usuarios @relation("UsuarioVagas", fields: [usuarioId], references: [id], onDelete: Cascade)
-  destaqueInfo EmpresasVagasDestaque?
-  categoriaVaga   EmpresasVagasCategorias?   @relation("EmpresasVagasCategoriaVaga", fields: [categoriaVagaId], references: [id], onDelete: SetNull)
-  subcategoriaVaga EmpresasVagasSubcategorias? @relation("EmpresasVagasSubcategoriaVaga", fields: [subcategoriaVagaId], references: [id], onDelete: SetNull)
-  areaInteresse   CandidatosAreasInteresse?    @relation("EmpresasVagasAreaInteresse", fields: [areaInteresseId], references: [id], onDelete: SetNull)
-  subareaInteresse CandidatosSubareasInteresse? @relation("EmpresasVagasSubareaInteresse", fields: [subareaInteresseId], references: [id], onDelete: SetNull)
-  processos        EmpresasVagasProcesso[]
-  candidaturas     EmpresasCandidatos[]
+  id                  String                       @id @default(uuid())
+  codigo              String                       @unique @db.VarChar(6)
+  slug                String                       @unique @db.VarChar(120)
+  usuarioId           String
+  categoriaVagaId     String?
+  subcategoriaVagaId  String?
+  areaInteresseId     Int?
+  subareaInteresseId  Int?
+  modoAnonimo         Boolean                      @default(false)
+  regimeDeTrabalho    RegimesDeTrabalhos
+  modalidade          ModalidadesDeVagas
+  titulo              String                       @db.VarChar(255)
+  paraPcd             Boolean                      @default(false)
+  numeroVagas         Int                          @default(1)
+  descricao           String?
+  requisitos          Json
+  atividades          Json
+  beneficios          Json
+  observacoes         String?
+  jornada             Jornadas                     @default(INTEGRAL)
+  senioridade         Senioridade                  @default(ABERTO)
+  inscricoesAte       DateTime?
+  inseridaEm          DateTime                     @default(now())
+  atualizadoEm        DateTime                     @updatedAt
+  status              StatusDeVagas                @default(RASCUNHO)
+  localizacao         Json?
+  salarioMin          Decimal?                     @db.Decimal(12, 2)
+  salarioMax          Decimal?                     @db.Decimal(12, 2)
+  salarioConfidencial Boolean                      @default(true)
+  destaque            Boolean                      @default(false)
+  candidaturas        EmpresasCandidatos[]
+  areaInteresse       CandidatosAreasInteresse?    @relation("EmpresasVagasAreaInteresse", fields: [areaInteresseId], references: [id])
+  categoriaVaga       EmpresasVagasCategorias?     @relation("EmpresasVagasCategoriaVaga", fields: [categoriaVagaId], references: [id])
+  subareaInteresse    CandidatosSubareasInteresse? @relation("EmpresasVagasSubareaInteresse", fields: [subareaInteresseId], references: [id])
+  subcategoriaVaga    EmpresasVagasSubcategorias?  @relation("EmpresasVagasSubcategoriaVaga", fields: [subcategoriaVagaId], references: [id])
+  empresa             Usuarios                     @relation("UsuarioVagas", fields: [usuarioId], references: [id], onDelete: Cascade)
+  destaqueInfo        EmpresasVagasDestaque?
+  processos           EmpresasVagasProcesso[]
 
   @@index([usuarioId])
   @@index([categoriaVagaId])
@@ -612,16 +508,15 @@ model EmpresasVagas {
 }
 
 model EmpresasVagasCategorias {
-  id           String                       @id @default(uuid())
-  codCategoria String                       @unique @db.VarChar(12)
-  nome         String                       @db.VarChar(120)
-  descricao    String?                      @db.VarChar(255)
-  criadoEm     DateTime                     @default(now())
-  atualizadoEm DateTime                     @updatedAt
-  vagas        EmpresasVagas[]              @relation("EmpresasVagasCategoriaVaga")
+  id            String                       @id @default(uuid())
+  codCategoria  String                       @unique @db.VarChar(12)
+  nome          String                       @unique @db.VarChar(120)
+  descricao     String?                      @db.VarChar(255)
+  criadoEm      DateTime                     @default(now())
+  atualizadoEm  DateTime                     @updatedAt
+  vagas         EmpresasVagas[]              @relation("EmpresasVagasCategoriaVaga")
   subcategorias EmpresasVagasSubcategorias[]
 
-  @@unique([nome])
   @@index([nome])
 }
 
@@ -633,8 +528,8 @@ model EmpresasVagasSubcategorias {
   categoriaId     String
   criadoEm        DateTime                @default(now())
   atualizadoEm    DateTime                @updatedAt
-  categoria       EmpresasVagasCategorias @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
   vagas           EmpresasVagas[]         @relation("EmpresasVagasSubcategoriaVaga")
+  categoria       EmpresasVagasCategorias @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
 
   @@unique([categoriaId, nome])
   @@index([nome])
@@ -650,9 +545,8 @@ model EmpresasVagasProcesso {
   agendadoEm   DateTime?
   criadoEm     DateTime       @default(now())
   atualizadoEm DateTime       @updatedAt
-
-  vaga      EmpresasVagas @relation(fields: [vagaId], references: [id], onDelete: Cascade)
-  candidato Usuarios      @relation("UsuariosProcessos", fields: [candidatoId], references: [id], onDelete: Cascade)
+  candidato    Usuarios       @relation("UsuariosProcessos", fields: [candidatoId], references: [id], onDelete: Cascade)
+  vaga         EmpresasVagas  @relation(fields: [vagaId], references: [id], onDelete: Cascade)
 
   @@unique([vagaId, candidatoId])
   @@index([vagaId])
@@ -662,28 +556,27 @@ model EmpresasVagasProcesso {
 }
 
 model EmpresasVagasDestaque {
-  id               String     @id @default(uuid())
-  vagaId           String     @unique
-  empresasPlanoId  String
-  ativo            Boolean    @default(true)
-  ativadoEm        DateTime   @default(now())
-  desativadoEm     DateTime?
-  criadoEm         DateTime   @default(now())
-  atualizadoEm     DateTime   @updatedAt
-
-  vaga  EmpresasVagas @relation(fields: [vagaId], references: [id], onDelete: Cascade)
-  plano EmpresasPlano @relation(fields: [empresasPlanoId], references: [id], onDelete: Cascade)
+  id              String        @id @default(uuid())
+  vagaId          String        @unique
+  empresasPlanoId String
+  ativo           Boolean       @default(true)
+  ativadoEm       DateTime      @default(now())
+  desativadoEm    DateTime?
+  criadoEm        DateTime      @default(now())
+  atualizadoEm    DateTime      @updatedAt
+  plano           EmpresasPlano @relation(fields: [empresasPlanoId], references: [id], onDelete: Cascade)
+  vaga            EmpresasVagas @relation(fields: [vagaId], references: [id], onDelete: Cascade)
 
   @@index([empresasPlanoId, ativo])
 }
 
 model UsuariosCurriculos {
-  id                  String   @id @default(uuid())
+  id                  String               @id @default(uuid())
   usuarioId           String
-  titulo              String?  @db.VarChar(255)
-  resumo              String?  @db.Text
-  objetivo            String?  @db.VarChar(1000)
-  principal           Boolean  @default(false)
+  titulo              String?              @db.VarChar(255)
+  resumo              String?
+  objetivo            String?              @db.VarChar(1000)
+  principal           Boolean              @default(false)
   areasInteresse      Json?
   preferencias        Json?
   habilidades         Json?
@@ -694,76 +587,70 @@ model UsuariosCurriculos {
   premiosPublicacoes  Json?
   acessibilidade      Json?
   consentimentos      Json?
-  ultimaAtualizacao   DateTime @default(now())
-  criadoEm            DateTime @default(now())
-  atualizadoEm        DateTime @updatedAt
-
-  usuario      Usuarios           @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  candidaturas EmpresasCandidatos[]
+  ultimaAtualizacao   DateTime             @default(now())
+  criadoEm            DateTime             @default(now())
+  atualizadoEm        DateTime             @updatedAt
+  candidaturas        EmpresasCandidatos[]
+  usuario             Usuarios             @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([usuarioId, criadoEm])
 }
 
 model EmpresasCandidatos {
-  id               String         @id @default(uuid())
+  id               String              @id @default(uuid())
   vagaId           String
   candidatoId      String
   curriculoId      String?
   empresaUsuarioId String
-  status           StatusProcesso @default(RECEBIDA)
-  origem           OrigemVagas    @default(SITE)
-  aplicadaEm       DateTime       @default(now())
-  atualizadaEm     DateTime       @updatedAt
+  status           StatusProcesso      @default(RECEBIDA)
+  origem           OrigemVagas         @default(SITE)
+  aplicadaEm       DateTime            @default(now())
+  atualizadaEm     DateTime            @updatedAt
   consentimentos   Json?
-
-  vaga       EmpresasVagas       @relation(fields: [vagaId], references: [id], onDelete: Cascade)
-  candidato  Usuarios            @relation("CandidatoUsuario", fields: [candidatoId], references: [id], onDelete: Cascade)
-  curriculo  UsuariosCurriculos? @relation(fields: [curriculoId], references: [id], onDelete: SetNull)
-  empresa    Usuarios            @relation("EmpresaUsuario", fields: [empresaUsuarioId], references: [id])
+  candidato        Usuarios            @relation("CandidatoUsuario", fields: [candidatoId], references: [id], onDelete: Cascade)
+  curriculo        UsuariosCurriculos? @relation(fields: [curriculoId], references: [id])
+  empresa          Usuarios            @relation("EmpresaUsuario", fields: [empresaUsuarioId], references: [id])
+  vaga             EmpresasVagas       @relation(fields: [vagaId], references: [id], onDelete: Cascade)
 
   @@unique([vagaId, candidatoId, curriculoId])
   @@index([vagaId, candidatoId])
 }
 
 model UsuariosCandidatosLogs {
-  id         String            @id @default(uuid())
-  usuarioId  String
-  tipo       CandidatoLogTipo
-  descricao  String?           @db.VarChar(500)
-  metadata   Json?
-  criadoEm   DateTime          @default(now())
-
-  usuario Usuarios @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  id        String           @id @default(uuid())
+  usuarioId String
+  tipo      CandidatoLogTipo
+  descricao String?          @db.VarChar(500)
+  metadata  Json?
+  criadoEm  DateTime         @default(now())
+  usuario   Usuarios         @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([usuarioId, criadoEm])
 }
 
 model EmpresasPlano {
-  id                   String               @id @default(uuid())
+  id                   String                  @id @default(uuid())
   usuarioId            String
   planosEmpresariaisId String
-  modo                 EmpresasPlanoModo    @default(CLIENTE)
-  status               EmpresasPlanoStatus  @default(SUSPENSO)
-  origin               EmpresasPlanoOrigin  @default(CHECKOUT)
+  modo                 EmpresasPlanoModo       @default(CLIENTE)
+  status               EmpresasPlanoStatus     @default(SUSPENSO)
+  origin               EmpresasPlanoOrigin     @default(CHECKOUT)
   inicio               DateTime?
   fim                  DateTime?
-  criadoEm             DateTime             @default(now())
-  atualizadoEm         DateTime             @updatedAt
-
-  // Integração de pagamentos/assinaturas (Mercado Pago)
-  modeloPagamento  MODELO_PAGAMENTO?
-  metodoPagamento  METODO_PAGAMENTO?
-  statusPagamento  STATUS_PAGAMENTO?       @default(PENDENTE)
-  mpPreapprovalId  String?                 @unique
-  mpSubscriptionId String?                 @unique
-  mpPayerId        String?
-  mpPaymentId      String?
-  proximaCobranca  DateTime?
-  graceUntil       DateTime?
-
-  empresa Usuarios            @relation("UsuarioPlanos", fields: [usuarioId], references: [id], onDelete: Cascade)
-  plano   PlanosEmpresariais @relation(fields: [planosEmpresariaisId], references: [id])
-  vagasDestaque EmpresasVagasDestaque[]
+  criadoEm             DateTime                @default(now())
+  atualizadoEm         DateTime                @updatedAt
+  modeloPagamento      MODELO_PAGAMENTO?
+  metodoPagamento      METODO_PAGAMENTO?
+  statusPagamento      STATUS_PAGAMENTO?       @default(PENDENTE)
+  mpPreapprovalId      String?                 @unique
+  mpSubscriptionId     String?                 @unique
+  mpPayerId            String?
+  mpPaymentId          String?
+  proximaCobranca      DateTime?
+  graceUntil           DateTime?
+  plano                PlanosEmpresariais      @relation(fields: [planosEmpresariaisId], references: [id])
+  empresa              Usuarios                @relation("UsuarioPlanos", fields: [usuarioId], references: [id], onDelete: Cascade)
+  vagasDestaque        EmpresasVagasDestaque[]
 
   @@index([usuarioId, status])
   @@index([planosEmpresariaisId])
@@ -773,13 +660,13 @@ model LogsPagamentosDeAssinaturas {
   id              String   @id @default(uuid())
   usuarioId       String?
   empresasPlanoId String?
-  tipo           String
-  status         String?
-  externalRef    String?
-  mpResourceId   String?
-  payload        Json?
-  mensagem       String?  @db.Text
-  criadoEm       DateTime @default(now())
+  tipo            String
+  status          String?
+  externalRef     String?
+  mpResourceId    String?
+  payload         Json?
+  mensagem        String?
+  criadoEm        DateTime @default(now())
 
   @@index([usuarioId])
   @@index([empresasPlanoId])
@@ -788,21 +675,20 @@ model LogsPagamentosDeAssinaturas {
 }
 
 model UsuariosEmBloqueios {
-  id            String              @id @default(uuid())
+  id            String                    @id @default(uuid())
   usuarioId     String
   aplicadoPorId String
   tipo          TiposDeBloqueios
   motivo        MotivosDeBloqueios
-  status        StatusDeBloqueios @default(ATIVO)
-  inicio        DateTime           @default(now())
+  status        StatusDeBloqueios         @default(ATIVO)
+  inicio        DateTime                  @default(now())
   fim           DateTime?
-  observacoes   String?            @db.VarChar(500)
-  criadoEm      DateTime           @default(now())
-  atualizadoEm  DateTime           @updatedAt
-
-  usuario     Usuarios                   @relation("UsuariosEmBloqueiosUsuario", fields: [usuarioId], references: [id], onDelete: Cascade)
-  aplicadoPor Usuarios                   @relation("UsuariosEmBloqueiosAdmin", fields: [aplicadoPorId], references: [id])
-  logs        UsuariosEmBloqueiosLogs[]
+  observacoes   String?                   @db.VarChar(500)
+  criadoEm      DateTime                  @default(now())
+  atualizadoEm  DateTime                  @updatedAt
+  aplicadoPor   Usuarios                  @relation("UsuariosEmBloqueiosAdmin", fields: [aplicadoPorId], references: [id])
+  usuario       Usuarios                  @relation("UsuariosEmBloqueiosUsuario", fields: [usuarioId], references: [id], onDelete: Cascade)
+  logs          UsuariosEmBloqueiosLogs[]
 
   @@index([usuarioId])
   @@index([status])
@@ -810,15 +696,14 @@ model UsuariosEmBloqueios {
 }
 
 model UsuariosEmBloqueiosLogs {
-  id           String                 @id @default(uuid())
+  id          String               @id @default(uuid())
   bloqueioId  String
-  acao         AcoesDeLogDeBloqueio
-  descricao    String?                @db.VarChar(500)
-  criadoPorId  String
-  criadoEm     DateTime               @default(now())
-
-  bloqueio UsuariosEmBloqueios @relation(fields: [bloqueioId], references: [id], onDelete: Cascade)
-  criadoPor Usuarios             @relation("UsuariosEmBloqueiosLogsAdmin", fields: [criadoPorId], references: [id])
+  acao        AcoesDeLogDeBloqueio
+  descricao   String?              @db.VarChar(500)
+  criadoPorId String
+  criadoEm    DateTime             @default(now())
+  bloqueio    UsuariosEmBloqueios  @relation(fields: [bloqueioId], references: [id], onDelete: Cascade)
+  criadoPor   Usuarios             @relation("UsuariosEmBloqueiosLogsAdmin", fields: [criadoPorId], references: [id])
 
   @@index([bloqueioId])
   @@index([criadoPorId])
@@ -826,51 +711,46 @@ model UsuariosEmBloqueiosLogs {
 }
 
 model PlanosEmpresariais {
-  id                      String   @id @default(uuid())
+  id                      String                 @id @default(uuid())
   icon                    String
   nome                    String
   descricao               String
   valor                   String
   desconto                Float?
   quantidadeVagas         Int
-  vagaEmDestaque          Boolean  @default(false)
+  vagaEmDestaque          Boolean                @default(false)
   quantidadeVagasDestaque Int?
-  criadoEm                DateTime @default(now())
-  atualizadoEm            DateTime @updatedAt
-
-  empresas EmpresasPlano[]
-
-  // Integração Mercado Pago - plano recorrente reutilizável
-  mpPreapprovalPlanId String? @unique
-
-  cupons CuponsDescontoPlanos[]
+  criadoEm                DateTime               @default(now())
+  atualizadoEm            DateTime               @updatedAt
+  mpPreapprovalPlanId     String?                @unique
+  cupons                  CuponsDescontoPlanos[]
+  empresas                EmpresasPlano[]
 }
 
 model CuponsDesconto {
-  id                         String               @id @default(uuid())
-  codigo                     String               @unique
-  descricao                  String?              @db.VarChar(300)
+  id                         String                 @id @default(uuid())
+  codigo                     String                 @unique
+  descricao                  String?                @db.VarChar(300)
   tipoDesconto               CuponsTipoDesconto
-  valorPorcentagem           Decimal?             @db.Decimal(5, 2)
-  valorFixo                  Decimal?             @db.Decimal(12, 2)
+  valorPorcentagem           Decimal?               @db.Decimal(5, 2)
+  valorFixo                  Decimal?               @db.Decimal(12, 2)
   aplicarEm                  CuponsAplicarEm
-  aplicarEmTodosItens        Boolean              @default(false)
-  limiteUsoTotalTipo         CuponsLimiteUso      @default(ILIMITADO)
+  aplicarEmTodosItens        Boolean                @default(false)
+  limiteUsoTotalTipo         CuponsLimiteUso        @default(ILIMITADO)
   limiteUsoTotalQuantidade   Int?
-  limitePorUsuarioTipo       CuponsLimiteUsuario  @default(ILIMITADO)
+  limitePorUsuarioTipo       CuponsLimiteUsuario    @default(ILIMITADO)
   limitePorUsuarioQuantidade Int?
-  periodoTipo                CuponsPeriodo        @default(ILIMITADO)
+  periodoTipo                CuponsPeriodo          @default(ILIMITADO)
   periodoInicio              DateTime?
   periodoFim                 DateTime?
-  usosTotais                 Int                  @default(0)
-  status                     WebsiteStatus        @default(PUBLICADO)
+  usosTotais                 Int                    @default(0)
+  status                     WebsiteStatus          @default(PUBLICADO)
   criadoPorId                String
-  criadoEm                   DateTime             @default(now())
-  atualizadoEm               DateTime             @updatedAt
-
-  criadoPor Usuarios               @relation(fields: [criadoPorId], references: [id])
-  cursos    CuponsDescontoCursos[]
-  planos    CuponsDescontoPlanos[]
+  criadoEm                   DateTime               @default(now())
+  atualizadoEm               DateTime               @updatedAt
+  criadoPor                  Usuarios               @relation(fields: [criadoPorId], references: [id])
+  cursos                     CuponsDescontoCursos[]
+  planos                     CuponsDescontoPlanos[]
 
   @@index([codigo])
   @@index([status])
@@ -878,24 +758,22 @@ model CuponsDesconto {
 }
 
 model CuponsDescontoCursos {
-  id       Int            @id @default(autoincrement())
-  cupomId  String
-  cursoId  Int
-
-  cupom CuponsDesconto @relation(fields: [cupomId], references: [id], onDelete: Cascade)
-  curso Cursos          @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+  id      Int            @id @default(autoincrement())
+  cupomId String
+  cursoId Int
+  cupom   CuponsDesconto @relation(fields: [cupomId], references: [id], onDelete: Cascade)
+  curso   Cursos         @relation(fields: [cursoId], references: [id], onDelete: Cascade)
 
   @@unique([cupomId, cursoId])
   @@index([cursoId])
 }
 
 model CuponsDescontoPlanos {
-  id      Int    @id @default(autoincrement())
+  id      Int                @id @default(autoincrement())
   cupomId String
   planoId String
-
-  cupom CuponsDesconto    @relation(fields: [cupomId], references: [id], onDelete: Cascade)
-  plano PlanosEmpresariais @relation(fields: [planoId], references: [id], onDelete: Cascade)
+  cupom   CuponsDesconto     @relation(fields: [cupomId], references: [id], onDelete: Cascade)
+  plano   PlanosEmpresariais @relation(fields: [planoId], references: [id], onDelete: Cascade)
 
   @@unique([cupomId, planoId])
   @@index([planoId])
@@ -915,18 +793,17 @@ model UsuariosEnderecos {
   usuario      Usuarios @relation(fields: [usuarioId], references: [id])
 }
 
-
 model LogEmail {
-  id           String      @id @default(uuid())
+  id           String        @id @default(uuid())
   usuarioId    String?
   email        String
   tipoEmail    TiposDeEmails
   status       StatusEmail
-  tentativas   Int         @default(1)
+  tentativas   Int           @default(1)
   erro         String?
   messageId    String?
-  criadoEm     DateTime    @default(now())
-  atualizadoEm DateTime    @updatedAt
+  criadoEm     DateTime      @default(now())
+  atualizadoEm DateTime      @updatedAt
 
   @@index([usuarioId])
   @@index([email])
@@ -999,52 +876,46 @@ model WebsiteSobreEmpresa {
 }
 
 model WebsiteTeam {
-  id           String   @id @default(uuid())
+  id           String            @id @default(uuid())
   photoUrl     String
   nome         String
   cargo        String
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
-
-  ordem WebsiteTeamOrdem?
+  criadoEm     DateTime          @default(now())
+  atualizadoEm DateTime          @updatedAt
+  ordem        WebsiteTeamOrdem?
 }
 
 model WebsiteTeamOrdem {
   id            String        @id @default(uuid())
   websiteTeamId String        @unique
-  ordem         Int
+  ordem         Int           @unique
   status        WebsiteStatus @default(RASCUNHO)
   criadoEm      DateTime      @default(now())
+  team          WebsiteTeam   @relation(fields: [websiteTeamId], references: [id], onDelete: Cascade)
 
-  team WebsiteTeam @relation(fields: [websiteTeamId], references: [id], onDelete: Cascade)
-
-  @@unique([ordem])
   @@index([ordem])
   @@index([status])
 }
 
 model WebsiteDepoimento {
-  id           String   @id @default(uuid())
+  id           String                  @id @default(uuid())
   depoimento   String
   nome         String
   cargo        String
   fotoUrl      String
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
-
-  ordem WebsiteDepoimentoOrdem?
+  criadoEm     DateTime                @default(now())
+  atualizadoEm DateTime                @updatedAt
+  ordem        WebsiteDepoimentoOrdem?
 }
 
 model WebsiteDepoimentoOrdem {
-  id                  String        @id @default(uuid())
-  websiteDepoimentoId String        @unique
-  ordem               Int
-  status              WebsiteStatus @default(RASCUNHO)
-  criadoEm            DateTime      @default(now())
+  id                  String            @id @default(uuid())
+  websiteDepoimentoId String            @unique
+  ordem               Int               @unique
+  status              WebsiteStatus     @default(RASCUNHO)
+  criadoEm            DateTime          @default(now())
+  depoimento          WebsiteDepoimento @relation(fields: [websiteDepoimentoId], references: [id], onDelete: Cascade)
 
-  depoimento WebsiteDepoimento @relation(fields: [websiteDepoimentoId], references: [id], onDelete: Cascade)
-
-  @@unique([ordem])
   @@index([ordem])
 }
 
@@ -1071,77 +942,69 @@ model WebsiteDiferenciais {
 }
 
 model WebsiteSlider {
-  id           String   @id @default(uuid())
+  id           String              @id @default(uuid())
   sliderName   String
   imagemUrl    String
   link         String?
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
-
-  ordem WebsiteSliderOrdem?
+  criadoEm     DateTime            @default(now())
+  atualizadoEm DateTime            @updatedAt
+  ordem        WebsiteSliderOrdem?
 }
 
 model WebsiteSliderOrdem {
-  id              String            @id @default(uuid())
-  websiteSliderId String            @unique
+  id              String                     @id @default(uuid())
+  websiteSliderId String                     @unique
   ordem           Int
   orientacao      WebsiteSlidersOrientations
-  status          WebsiteStatus     @default(RASCUNHO)
-  criadoEm        DateTime          @default(now())
-
-  slider WebsiteSlider @relation(fields: [websiteSliderId], references: [id], onDelete: Cascade)
+  status          WebsiteStatus              @default(RASCUNHO)
+  criadoEm        DateTime                   @default(now())
+  slider          WebsiteSlider              @relation(fields: [websiteSliderId], references: [id], onDelete: Cascade)
 
   @@unique([ordem, orientacao])
   @@index([ordem])
 }
 
 model WebsiteBanner {
-  id           String   @id @default(uuid())
+  id           String              @id @default(uuid())
   imagemUrl    String
   imagemTitulo String
   link         String?
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
-
-  ordem WebsiteBannerOrdem?
+  criadoEm     DateTime            @default(now())
+  atualizadoEm DateTime            @updatedAt
+  ordem        WebsiteBannerOrdem?
 }
 
 model WebsiteBannerOrdem {
   id              String        @id @default(uuid())
   websiteBannerId String        @unique
-  ordem           Int
+  ordem           Int           @unique
   status          WebsiteStatus @default(RASCUNHO)
   criadoEm        DateTime      @default(now())
+  banner          WebsiteBanner @relation(fields: [websiteBannerId], references: [id], onDelete: Cascade)
 
-  banner WebsiteBanner @relation(fields: [websiteBannerId], references: [id], onDelete: Cascade)
-
-  @@unique([ordem])
   @@index([ordem])
   @@index([status])
 }
 
 model WebsiteLogoEnterprise {
-  id           String   @id @default(uuid())
+  id           String                      @id @default(uuid())
   nome         String
   imagemUrl    String
   imagemAlt    String
   website      String?
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
-
-  ordem WebsiteLogoEnterpriseOrdem?
+  criadoEm     DateTime                    @default(now())
+  atualizadoEm DateTime                    @updatedAt
+  ordem        WebsiteLogoEnterpriseOrdem?
 }
 
 model WebsiteLogoEnterpriseOrdem {
-  id                      String        @id @default(uuid())
-  websiteLogoEnterpriseId String        @unique
-  ordem                   Int
-  status                  WebsiteStatus @default(RASCUNHO)
-  criadoEm                DateTime      @default(now())
+  id                      String                @id @default(uuid())
+  websiteLogoEnterpriseId String                @unique
+  ordem                   Int                   @unique
+  status                  WebsiteStatus         @default(RASCUNHO)
+  criadoEm                DateTime              @default(now())
+  logo                    WebsiteLogoEnterprise @relation(fields: [websiteLogoEnterpriseId], references: [id], onDelete: Cascade)
 
-  logo WebsiteLogoEnterprise @relation(fields: [websiteLogoEnterpriseId], references: [id], onDelete: Cascade)
-
-  @@unique([ordem])
   @@index([ordem])
   @@index([status])
 }
@@ -1156,14 +1019,14 @@ model WebsiteImagemLogin {
 }
 
 model WebsiteScript {
-  id          String                    @id @default(uuid())
-  nome        String?
-  descricao   String?
-  codigo      String                    @db.Text
-  aplicacao   WebsiteScriptAplicacao    @default(WEBSITE)
-  orientacao  WebsiteScriptOrientation
-  status      WebsiteStatus             @default(RASCUNHO)
-  criadoEm    DateTime                  @default(now())
+  id           String                   @id @default(uuid())
+  nome         String?
+  descricao    String?
+  codigo       String
+  aplicacao    WebsiteScriptAplicacao   @default(WEBSITE)
+  orientacao   WebsiteScriptOrientation
+  status       WebsiteStatus            @default(RASCUNHO)
+  criadoEm     DateTime                 @default(now())
   atualizadoEm DateTime                 @updatedAt
 
   @@index([orientacao, status])
@@ -1280,7 +1143,7 @@ model WebsiteTreinamentosInCompany {
 }
 
 model WebsiteInformacoes {
-  id           String   @id @default(uuid())
+  id           String                        @id @default(uuid())
   endereco     String?
   cep          String?
   cidade       String?
@@ -1293,25 +1156,23 @@ model WebsiteInformacoes {
   instagram    String?
   youtube      String?
   email        String?
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
-
-  horarios WebsiteHorarioFuncionamento[]
+  criadoEm     DateTime                      @default(now())
+  atualizadoEm DateTime                      @updatedAt
+  horarios     WebsiteHorarioFuncionamento[]
 }
 
 model UsuariosRedesSociais {
-  id         String   @id @default(uuid())
-  usuarioId  String   @unique
-  instagram  String?
-  linkedin   String?
-  facebook   String?
-  youtube    String?
-  twitter    String?
-  tiktok     String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  usuario Usuarios @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid())
+  usuarioId String   @unique
+  instagram String?
+  linkedin  String?
+  facebook  String?
+  youtube   String?
+  twitter   String?
+  tiktok    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  usuario   Usuarios @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([usuarioId])
 }
@@ -1321,10 +1182,10 @@ model WebsiteHorarioFuncionamento {
   diaDaSemana   String
   horarioInicio String
   horarioFim    String
-  informacoes   WebsiteInformacoes @relation(fields: [informacoesId], references: [id], onDelete: Cascade)
   informacoesId String
   criadoEm      DateTime           @default(now())
   atualizadoEm  DateTime           @updatedAt
+  informacoes   WebsiteInformacoes @relation(fields: [informacoesId], references: [id], onDelete: Cascade)
 }
 
 model WebsiteHeaderPage {
@@ -1340,9 +1201,232 @@ model WebsiteHeaderPage {
   atualizadoEm DateTime              @updatedAt
 }
 
-// =============================================
-// ENUMS
-// =============================================
+model CursosCertificadosEmitidos {
+  id            String                   @id @default(uuid())
+  inscricaoId   String
+  codigo        String                   @unique @db.VarChar(20)
+  tipo          CursosCertificados
+  formato       CursosCertificadosTipos
+  cargaHoraria  Int
+  assinaturaUrl String?                  @db.VarChar(2048)
+  alunoNome     String                   @db.VarChar(255)
+  alunoCpf      String?                  @db.VarChar(14)
+  cursoNome     String                   @db.VarChar(255)
+  turmaNome     String                   @db.VarChar(255)
+  emitidoPorId  String?
+  emitidoEm     DateTime                 @default(now())
+  observacoes   String?                  @db.VarChar(500)
+  emitidoPor    Usuarios?                @relation("CursosCertificadosEmitidosEmitidoPor", fields: [emitidoPorId], references: [id])
+  inscricao     CursosTurmasInscricoes   @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
+  logs          CursosCertificadosLogs[]
+
+  @@index([inscricaoId])
+  @@index([emitidoPorId])
+  @@index([emitidoEm])
+}
+
+model CursosCertificadosLogs {
+  id            String                     @id @default(uuid())
+  certificadoId String
+  acao          CursosCertificadosLogAcao
+  formato       CursosCertificadosTipos
+  detalhes      String?                    @db.VarChar(500)
+  criadoEm      DateTime                   @default(now())
+  certificado   CursosCertificadosEmitidos @relation(fields: [certificadoId], references: [id], onDelete: Cascade)
+
+  @@index([certificadoId])
+  @@index([acao])
+  @@index([criadoEm])
+}
+
+model CursosEstagios {
+  id                      String                       @id @default(uuid())
+  cursoId                 Int
+  turmaId                 String
+  inscricaoId             String
+  alunoId                 String
+  nome                    String                       @db.VarChar(255)
+  descricao               String?
+  obrigatorio             Boolean                      @default(false)
+  status                  CursosEstagioStatus          @default(PENDENTE)
+  dataInicio              DateTime
+  dataFim                 DateTime
+  cargaHoraria            Int?
+  empresaPrincipal        String?                      @db.VarChar(255)
+  observacoes             String?
+  criadoPorId             String?
+  atualizadoPorId         String?
+  confirmadoEm            DateTime?
+  concluidoEm             DateTime?
+  reprovadoEm             DateTime?
+  reprovadoMotivo         String?
+  ultimoAvisoEncerramento DateTime?
+  criadoEm                DateTime                     @default(now())
+  atualizadoEm            DateTime                     @updatedAt
+  aluno                   Usuarios                     @relation("CursosEstagiosAluno", fields: [alunoId], references: [id], onDelete: Cascade)
+  atualizadoPor           Usuarios?                    @relation("CursosEstagiosAtualizadoPor", fields: [atualizadoPorId], references: [id])
+  criadoPor               Usuarios?                    @relation("CursosEstagiosCriadoPor", fields: [criadoPorId], references: [id])
+  curso                   Cursos                       @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+  inscricao               CursosTurmasInscricoes       @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
+  turma                   CursosTurmas                 @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  confirmacao             CursosEstagiosConfirmacoes?
+  locais                  CursosEstagiosLocais[]
+  notificacoes            CursosEstagiosNotificacoes[]
+
+  @@index([cursoId])
+  @@index([turmaId])
+  @@index([inscricaoId])
+  @@index([alunoId])
+  @@index([status])
+  @@index([dataFim])
+}
+
+model CursosEstagiosLocais {
+  id                  String                   @id @default(uuid())
+  estagioId           String
+  titulo              String?                  @db.VarChar(120)
+  empresaNome         String                   @db.VarChar(255)
+  empresaDocumento    String?                  @db.VarChar(20)
+  contatoNome         String?                  @db.VarChar(120)
+  contatoEmail        String?                  @db.VarChar(255)
+  contatoTelefone     String?                  @db.VarChar(30)
+  dataInicio          DateTime?
+  dataFim             DateTime?
+  horarioInicio       String?                  @db.VarChar(5)
+  horarioFim          String?                  @db.VarChar(5)
+  diasSemana          CursosEstagioDiaSemana[]
+  cargaHorariaSemanal Int?
+  cep                 String?                  @db.VarChar(12)
+  logradouro          String?                  @db.VarChar(255)
+  numero              String?                  @db.VarChar(20)
+  bairro              String?                  @db.VarChar(120)
+  cidade              String?                  @db.VarChar(120)
+  estado              String?                  @db.VarChar(2)
+  complemento         String?                  @db.VarChar(120)
+  pontoReferencia     String?                  @db.VarChar(255)
+  observacoes         String?                  @db.VarChar(500)
+  criadoEm            DateTime                 @default(now())
+  atualizadoEm        DateTime                 @updatedAt
+  estagio             CursosEstagios           @relation(fields: [estagioId], references: [id], onDelete: Cascade)
+
+  @@index([estagioId])
+}
+
+model CursosEstagiosConfirmacoes {
+  id                 String         @id @default(uuid())
+  estagioId          String         @unique
+  token              String         @unique @db.VarChar(64)
+  protocolo          String?        @unique @db.VarChar(40)
+  confirmadoEm       DateTime?
+  ip                 String?        @db.VarChar(45)
+  userAgent          String?        @db.VarChar(500)
+  deviceTipo         String?        @db.VarChar(50)
+  deviceDescricao    String?        @db.VarChar(120)
+  deviceId           String?        @db.VarChar(120)
+  sistemaOperacional String?        @db.VarChar(120)
+  navegador          String?        @db.VarChar(120)
+  localizacao        String?        @db.VarChar(255)
+  criadoEm           DateTime       @default(now())
+  atualizadoEm       DateTime       @updatedAt
+  estagio            CursosEstagios @relation(fields: [estagioId], references: [id], onDelete: Cascade)
+}
+
+model CursosEstagiosNotificacoes {
+  id          String                       @id @default(uuid())
+  estagioId   String
+  tipo        CursosEstagioNotificacaoTipo
+  canal       String?                      @db.VarChar(50)
+  enviadoPara String                       @db.VarChar(255)
+  enviadoEm   DateTime                     @default(now())
+  detalhes    String?                      @db.VarChar(500)
+  estagio     CursosEstagios               @relation(fields: [estagioId], references: [id], onDelete: Cascade)
+
+  @@index([estagioId])
+  @@index([tipo])
+}
+
+enum CursosSituacaoFinal {
+  EM_ANALISE
+  APROVADO
+  REPROVADO
+}
+
+enum CursosModelosRecuperacao {
+  SUBSTITUI_MENOR
+  MEDIA_MINIMA_DIRETA
+  PROVA_FINAL_UNICA
+  NOTA_MAXIMA_LIMITADA
+}
+
+enum CursosNotasTipo {
+  PROVA
+  TRABALHO
+  ATIVIDADE
+  PROJETO
+  SEMINARIO
+  PARTICIPACAO
+  SIMULADO
+  BONUS
+  OUTRO
+}
+
+enum CursosFrequenciaStatus {
+  PRESENTE
+  AUSENTE
+  JUSTIFICADO
+  ATRASADO
+}
+
+enum CursosLocalProva {
+  TURMA
+  MODULO
+}
+
+enum CursosAgendaTipo {
+  AULA
+  PROVA
+  EVENTO
+  ATIVIDADE
+  TRABALHO
+  PROJETO
+  SEMINARIO
+  SIMULADO
+  REUNIAO
+  RECESSO
+  FERIADO
+}
+
+enum CursosStatusPadrao {
+  PUBLICADO
+  RASCUNHO
+  DESPUBLICADO
+}
+
+enum CursosMateriais {
+  APOSTILA
+  SLIDE
+  VIDEOAULA
+  AUDIOAULA
+  ARTIGO
+  EXERCICIO
+  SIMULADO
+  LIVRO
+  CERTIFICADO
+  OUTRO
+}
+
+enum TiposDeArquivos {
+  pdf
+  docx
+  xlsx
+  pptx
+  imagem
+  video
+  audio
+  zip
+  link
+  outro
+}
 
 enum TiposDeUsuarios {
   PESSOA_FISICA
@@ -1394,7 +1478,6 @@ enum StatusSMS {
   PENDENTE
 }
 
-// Métodos de pagamento aceitos para planos
 enum WebsiteSlidersOrientations {
   DESKTOP
   TABLET_MOBILE
@@ -1455,10 +1538,6 @@ enum WebsiteScriptAplicacao {
   DASHBOARD
 }
 
-// ===============================
-// ENUMS DE PAGAMENTOS
-// ===============================
-
 enum STATUS_PAGAMENTO {
   PENDENTE
   EM_PROCESSAMENTO
@@ -1483,10 +1562,6 @@ enum METODO_PAGAMENTO {
   TRANSFERENCIA
   DINHEIRO
 }
-
-// ===============================
-// ENUMS DE VAGAS/EMPRESAS
-// ===============================
 
 enum RegimesDeTrabalhos {
   CLT
@@ -1608,156 +1683,6 @@ enum CursosCertificadosLogAcao {
   VISUALIZACAO
 }
 
-model CursosCertificadosEmitidos {
-  id             String                    @id @default(uuid())
-  inscricaoId    String
-  codigo         String                    @unique @db.VarChar(20)
-  tipo           CursosCertificados
-  formato        CursosCertificadosTipos
-  cargaHoraria   Int
-  assinaturaUrl  String?                   @db.VarChar(2048)
-  alunoNome      String                    @db.VarChar(255)
-  alunoCpf       String?                   @db.VarChar(14)
-  cursoNome      String                    @db.VarChar(255)
-  turmaNome      String                    @db.VarChar(255)
-  emitidoPorId   String?
-  emitidoEm      DateTime                  @default(now())
-  observacoes    String?                   @db.VarChar(500)
-
-  inscricao CursosTurmasInscricoes @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
-  emitidoPor Usuarios?             @relation("CursosCertificadosEmitidosEmitidoPor", fields: [emitidoPorId], references: [id], onDelete: SetNull)
-  logs       CursosCertificadosLogs[]
-
-  @@index([inscricaoId])
-  @@index([emitidoPorId])
-  @@index([emitidoEm])
-}
-
-model CursosCertificadosLogs {
-  id            String                     @id @default(uuid())
-  certificadoId String
-  acao          CursosCertificadosLogAcao
-  formato       CursosCertificadosTipos
-  detalhes      String?                    @db.VarChar(500)
-  criadoEm      DateTime                   @default(now())
-
-  certificado CursosCertificadosEmitidos @relation(fields: [certificadoId], references: [id], onDelete: Cascade)
-
-  @@index([certificadoId])
-  @@index([acao])
-  @@index([criadoEm])
-}
-
-model CursosEstagios {
-  id                     String               @id @default(uuid())
-  cursoId                Int
-  turmaId                String
-  inscricaoId            String
-  alunoId                String
-  nome                   String               @db.VarChar(255)
-  descricao              String?              @db.Text
-  obrigatorio            Boolean              @default(false)
-  status                 CursosEstagioStatus  @default(PENDENTE)
-  dataInicio             DateTime
-  dataFim                DateTime
-  cargaHoraria           Int?
-  empresaPrincipal       String?              @db.VarChar(255)
-  observacoes            String?              @db.Text
-  criadoPorId            String?
-  atualizadoPorId        String?
-  confirmadoEm           DateTime?
-  concluidoEm            DateTime?
-  reprovadoEm            DateTime?
-  reprovadoMotivo        String?              @db.Text
-  ultimoAvisoEncerramento DateTime?
-  criadoEm               DateTime             @default(now())
-  atualizadoEm           DateTime             @updatedAt
-
-  curso        Cursos                    @relation(fields: [cursoId], references: [id], onDelete: Cascade)
-  turma        CursosTurmas              @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  inscricao    CursosTurmasInscricoes    @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
-  aluno        Usuarios                  @relation("CursosEstagiosAluno", fields: [alunoId], references: [id], onDelete: Cascade)
-  criadoPor    Usuarios?                 @relation("CursosEstagiosCriadoPor", fields: [criadoPorId], references: [id], onDelete: SetNull)
-  atualizadoPor Usuarios?                @relation("CursosEstagiosAtualizadoPor", fields: [atualizadoPorId], references: [id], onDelete: SetNull)
-  locais       CursosEstagiosLocais[]
-  confirmacao  CursosEstagiosConfirmacoes?
-  notificacoes CursosEstagiosNotificacoes[]
-
-  @@index([cursoId])
-  @@index([turmaId])
-  @@index([inscricaoId])
-  @@index([alunoId])
-  @@index([status])
-  @@index([dataFim])
-}
-
-model CursosEstagiosLocais {
-  id                String                    @id @default(uuid())
-  estagioId         String
-  titulo            String?                   @db.VarChar(120)
-  empresaNome       String                    @db.VarChar(255)
-  empresaDocumento  String?                   @db.VarChar(20)
-  contatoNome       String?                   @db.VarChar(120)
-  contatoEmail      String?                   @db.VarChar(255)
-  contatoTelefone   String?                   @db.VarChar(30)
-  dataInicio        DateTime?
-  dataFim           DateTime?
-  horarioInicio     String?                   @db.VarChar(5)
-  horarioFim        String?                   @db.VarChar(5)
-  diasSemana        CursosEstagioDiaSemana[]
-  cargaHorariaSemanal Int?
-  cep               String?                   @db.VarChar(12)
-  logradouro        String?                   @db.VarChar(255)
-  numero            String?                   @db.VarChar(20)
-  bairro            String?                   @db.VarChar(120)
-  cidade            String?                   @db.VarChar(120)
-  estado            String?                   @db.VarChar(2)
-  complemento       String?                   @db.VarChar(120)
-  pontoReferencia   String?                   @db.VarChar(255)
-  observacoes       String?                   @db.VarChar(500)
-  criadoEm          DateTime                  @default(now())
-  atualizadoEm      DateTime                  @updatedAt
-
-  estagio CursosEstagios @relation(fields: [estagioId], references: [id], onDelete: Cascade)
-
-  @@index([estagioId])
-}
-
-model CursosEstagiosConfirmacoes {
-  id                  String   @id @default(uuid())
-  estagioId           String   @unique
-  token               String   @unique @db.VarChar(64)
-  protocolo           String?  @unique @db.VarChar(40)
-  confirmadoEm        DateTime?
-  ip                  String?  @db.VarChar(45)
-  userAgent           String?  @db.VarChar(500)
-  deviceTipo          String?  @db.VarChar(50)
-  deviceDescricao     String?  @db.VarChar(120)
-  deviceId            String?  @db.VarChar(120)
-  sistemaOperacional  String?  @db.VarChar(120)
-  navegador           String?  @db.VarChar(120)
-  localizacao         String?  @db.VarChar(255)
-  criadoEm            DateTime @default(now())
-  atualizadoEm        DateTime @updatedAt
-
-  estagio CursosEstagios @relation(fields: [estagioId], references: [id], onDelete: Cascade)
-}
-
-model CursosEstagiosNotificacoes {
-  id          String                         @id @default(uuid())
-  estagioId   String
-  tipo        CursosEstagioNotificacaoTipo
-  canal       String?                        @db.VarChar(50)
-  enviadoPara String                         @db.VarChar(255)
-  enviadoEm   DateTime                       @default(now())
-  detalhes    String?                        @db.VarChar(500)
-
-  estagio CursosEstagios @relation(fields: [estagioId], references: [id], onDelete: Cascade)
-
-  @@index([estagioId])
-  @@index([tipo])
-}
-
 enum CursosEstagioStatus {
   PENDENTE
   EM_ANDAMENTO
@@ -1828,4 +1753,37 @@ enum AcoesDeLogDeBloqueio {
   ATUALIZACAO
   REVOGACAO
   REAVALIACAO
+}
+
+model EmpresasAuditoria {
+  id          String                    @id @default(uuid())
+  empresaId   String
+  alteradoPor String
+  acao        EmpresasAuditoriaAcao
+  campo       String?                   @db.VarChar(100)
+  valorAnterior String?                 @db.VarChar(500)
+  valorNovo   String?                   @db.VarChar(500)
+  descricao   String                    @db.VarChar(500)
+  metadata    Json?
+  criadoEm    DateTime                  @default(now())
+  empresa     Usuarios                  @relation("EmpresasAuditoria", fields: [empresaId], references: [id], onDelete: Cascade)
+  alteradoPorUsuario Usuarios           @relation("EmpresasAuditoriaAlteradoPor", fields: [alteradoPor], references: [id])
+
+  @@index([empresaId])
+  @@index([alteradoPor])
+  @@index([acao])
+  @@index([criadoEm])
+}
+
+enum EmpresasAuditoriaAcao {
+  EMPRESA_CRIADA
+  EMPRESA_ATUALIZADA
+  PLANO_ASSIGNADO
+  PLANO_ATUALIZADO
+  PLANO_CANCELADO
+  PLANO_EXPIRADO
+  BLOQUEIO_APLICADO
+  BLOQUEIO_REVOGADO
+  STATUS_ALTERADO
+  DADOS_ALTERADOS
 }

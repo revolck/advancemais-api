@@ -14,12 +14,7 @@ import { clientePlanoModoSchema } from '@/modules/empresas/clientes/validators/c
 
 const uuidSchema = z.string().uuid('Informe um identificador válido');
 
-const nullableString = z
-  .string()
-  .trim()
-  .max(255, 'Valor muito longo')
-  .optional()
-  .nullable();
+const nullableString = z.string().trim().max(255, 'Valor muito longo').optional().nullable();
 
 const nullableEnderecoString = z
   .string()

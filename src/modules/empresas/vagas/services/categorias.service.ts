@@ -94,7 +94,10 @@ export const vagasCategoriasService = {
         },
       });
 
-      vagasCategoriasLogger.info({ categoriaId: created.id }, 'Categoria de vagas criada com sucesso');
+      vagasCategoriasLogger.info(
+        { categoriaId: created.id },
+        'Categoria de vagas criada com sucesso',
+      );
       return created;
     });
 
@@ -165,10 +168,7 @@ export const vagasCategoriasService = {
       },
     });
 
-    vagasCategoriasLogger.info(
-      { subcategoriaId },
-      'Subcategoria de vagas atualizada com sucesso',
-    );
+    vagasCategoriasLogger.info({ subcategoriaId }, 'Subcategoria de vagas atualizada com sucesso');
 
     return mapSubcategoria(subcategoria);
   },
@@ -177,9 +177,6 @@ export const vagasCategoriasService = {
     await findSubcategoriaOrThrow(subcategoriaId);
 
     await prisma.empresasVagasSubcategorias.delete({ where: { id: subcategoriaId } });
-    vagasCategoriasLogger.info(
-      { subcategoriaId },
-      'Subcategoria de vagas removida com sucesso',
-    );
+    vagasCategoriasLogger.info({ subcategoriaId }, 'Subcategoria de vagas removida com sucesso');
   },
 };

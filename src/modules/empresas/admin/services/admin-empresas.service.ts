@@ -915,9 +915,9 @@ const atualizarPlanoSemReset = async (
     const proximaCobranca =
       plano.proximaCobranca !== undefined
         ? plano.proximaCobranca
-        : planoAtual.proximaCobranca ?? undefined;
+        : (planoAtual.proximaCobranca ?? undefined);
     const graceUntil =
-      plano.graceUntil !== undefined ? plano.graceUntil : planoAtual.graceUntil ?? undefined;
+      plano.graceUntil !== undefined ? plano.graceUntil : (planoAtual.graceUntil ?? undefined);
 
     data.fim = calcularFim(
       modo,
@@ -1287,20 +1287,18 @@ export const adminEmpresasService = {
     const hasFourteenDigits = normalized.length === 14;
     const valid = hasFourteenDigits && isValidCnpj(normalized);
 
-    let empresaResumo:
-      | {
-          id: string;
-          nome: string;
-          email: string;
-          telefone: string | null;
-          codUsuario: string;
-          status: Status;
-          role: Roles;
-          tipoUsuario: TiposDeUsuarios;
-          criadoEm: Date;
-          atualizadoEm: Date;
-        }
-      | null = null;
+    let empresaResumo: {
+      id: string;
+      nome: string;
+      email: string;
+      telefone: string | null;
+      codUsuario: string;
+      status: Status;
+      role: Roles;
+      tipoUsuario: TiposDeUsuarios;
+      criadoEm: Date;
+      atualizadoEm: Date;
+    } | null = null;
 
     if (hasFourteenDigits) {
       const empresa = await prisma.usuarios.findFirst({
@@ -1354,20 +1352,18 @@ export const adminEmpresasService = {
     const hasElevenDigits = normalized.length === 11;
     const valid = hasElevenDigits && isValidCpf(normalized);
 
-    let usuarioResumo:
-      | {
-          id: string;
-          nome: string;
-          email: string;
-          telefone: string | null;
-          codUsuario: string;
-          status: Status;
-          role: Roles;
-          tipoUsuario: TiposDeUsuarios;
-          criadoEm: Date;
-          atualizadoEm: Date;
-        }
-      | null = null;
+    let usuarioResumo: {
+      id: string;
+      nome: string;
+      email: string;
+      telefone: string | null;
+      codUsuario: string;
+      status: Status;
+      role: Roles;
+      tipoUsuario: TiposDeUsuarios;
+      criadoEm: Date;
+      atualizadoEm: Date;
+    } | null = null;
 
     if (hasElevenDigits) {
       const usuario = await prisma.usuarios.findFirst({

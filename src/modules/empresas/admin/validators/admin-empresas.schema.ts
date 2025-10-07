@@ -32,11 +32,7 @@ const nullableEnderecoNumero = z
   .min(1, 'Informe um número válido')
   .max(50, 'Número muito longo');
 
-const nullableCep = z
-  .string()
-  .trim()
-  .min(5, 'Informe um CEP válido')
-  .max(20, 'CEP muito longo');
+const nullableCep = z.string().trim().min(5, 'Informe um CEP válido').max(20, 'CEP muito longo');
 
 const securePasswordSchema = z
   .string()
@@ -77,10 +73,7 @@ const diasTesteSchema = z
   .max(365, 'Máximo de 365 dias');
 
 const nullableDate = z
-  .union([
-    z.coerce.date({ invalid_type_error: 'Informe uma data válida' }),
-    z.null(),
-  ])
+  .union([z.coerce.date({ invalid_type_error: 'Informe uma data válida' }), z.null()])
   .optional();
 
 const adminEmpresasPlanoBase = z.object({

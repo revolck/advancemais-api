@@ -986,13 +986,15 @@ ${this.getSignatureText()}
     const currentYear = this.getCurrentYear();
     const fimDate = data.fim ? new Date(data.fim) : null;
     const terminoData = fimDate?.toLocaleDateString('pt-BR') ?? null;
-    const terminoHora = fimDate?.toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    }) ?? null;
+    const terminoHora =
+      fimDate?.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }) ?? null;
     const isTemporario = data.tipo === 'TEMPORARIO';
-    const terminoTexto = terminoData && terminoHora ? `${terminoData}, ${terminoHora}` : 'Indeterminado';
+    const terminoTexto =
+      terminoData && terminoHora ? `${terminoData}, ${terminoHora}` : 'Indeterminado';
     const mensagemBloqueio = isTemporario
       ? 'Sua conta foi temporariamente bloqueada por possível violação das nossas políticas.'
       : 'Sua conta foi bloqueada por possível violação das nossas políticas.';

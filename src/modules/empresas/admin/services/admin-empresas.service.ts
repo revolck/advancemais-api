@@ -2248,6 +2248,9 @@ export type AdminEmpresasDashboardListResult = Awaited<
 >;
 export type AdminEmpresasListResult = Awaited<ReturnType<typeof adminEmpresasService.list>>;
 export type AdminEmpresaDetailResult = Awaited<ReturnType<typeof adminEmpresasService.get>>;
+export type AdminEmpresaOverviewResult = Awaited<
+  ReturnType<typeof adminEmpresasService.getFullOverview>
+>;
 export type AdminEmpresasPagamentosResult = Awaited<
   ReturnType<typeof adminEmpresasService.listPagamentos>
 >;

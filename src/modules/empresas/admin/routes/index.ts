@@ -1903,8 +1903,8 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *   get:
- *     summary: (Admin) Detalhes completos da empresa
- *     description: "Retorna informações completas da empresa incluindo plano ativo, pagamentos e métricas. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     summary: (Admin) Visão completa da empresa
+ *     description: "Retorna uma visão consolidada da empresa (Pessoa Jurídica) incluindo plano atual e histórico, vagas, candidaturas, pagamentos e bloqueios ativos. Apenas perfis ADMIN e MODERADOR podem acessar."
  *     operationId: adminEmpresasGet
  *     tags: [Empresas - Admin]
  *     security:
@@ -1916,163 +1916,6 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *         schema:
  *           type: string
  *           format: uuid
- *     responses:
- *       200:
- *         description: Empresa encontrada
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AdminEmpresaDetailResponse'
- *             examples:
- *               default:
- *                 summary: Empresa detalhada
- *                 value:
- *                   empresa:
- *                     id: f66fbad9-4d3c-41f7-90df-2f4f0f32af10
- *                     codUsuario: EMP-123456
- *                     nome: Advance Tech Consultoria
- *                     email: contato@advance.com.br
- *                     telefone: '+55 11 99999-0000'
- *                     avatarUrl: https://cdn.advance.com.br/logo.png
- *                     cnpj: '12345678000190'
- *                     descricao: Consultoria especializada em recrutamento e seleção para empresas de tecnologia.
- *                     socialLinks:
- *                       linkedin: https://linkedin.com/company/advancemais
- *                       instagram: https://instagram.com/advancemais
- *                     cidade: São Paulo
- *                     estado: SP
- *                     enderecos:
- *                       - id: end-uuid
- *                         logradouro: Av. Paulista
- *                         numero: '1578'
- *                         bairro: Bela Vista
- *                         cidade: São Paulo
- *                         estado: SP
- *                         cep: '01310-200'
- *                     criadoEm: '2024-01-05T12:00:00Z'
- *                     status: ATIVO
- *                     ultimoLogin: '2024-03-15T18:45:00Z'
- *                     ativa: true
- *                     parceira: true
- *                     diasTesteDisponibilizados: 30
- *                     plano:
- *                       id: 38f73d2d-40fa-47a6-9657-6a4f7f1bb610
- *                       nome: Plano Avançado
- *                       modo: PARCEIRO
- *                       status: ATIVO
- *                       inicio: '2024-01-10T12:00:00Z'
- *                       fim: null
- *                       modeloPagamento: ASSINATURA
- *                       metodoPagamento: PIX
- *                       statusPagamento: APROVADO
- *                       valor: '249.90'
- *                       quantidadeVagas: 10
- *                       duracaoEmDias: null
- *                       diasRestantes: 12
- *                     vagas:
- *                       publicadas: 8
- *                       limitePlano: 10
- *                     pagamento:
- *                       modelo: ASSINATURA
- *                       metodo: PIX
- *                       status: APROVADO
- *                       ultimoPagamentoEm: '2024-02-15T14:20:00Z'
- *                     historicoFinanceiro:
- *                       - id: 725f9f88-3b87-4a32-8d19-2ccf3d6b9a90
- *                         nome: Plano Profissional
- *                         modo: CLIENTE
- *                         status: EXPIRADO
- *                         inicio: '2023-09-01T12:00:00Z'
- *                         fim: '2023-12-01T12:00:00Z'
- *                         modeloPagamento: ASSINATURA
- *                         metodoPagamento: CARTAO
- *                         statusPagamento: APROVADO
- *                         valor: '199.90'
- *                         quantidadeVagas: 5
- *                         duracaoEmDias: 91
- *                         diasRestantes: 0
- *                         origin: CHECKOUT
- *                         criadoEm: '2023-08-28T10:00:00Z'
- *                         atualizadoEm: '2023-12-01T12:00:00Z'
- *                         proximaCobranca: null
- *                         graceUntil: null
- *                       - id: d2f0cdb1-58fe-4f5f-8e27-0f18acbc5a11
- *                         nome: Plano Starter
- *                         modo: CLIENTE
- *                         status: CANCELADO
- *                         inicio: '2023-05-01T12:00:00Z'
- *                         fim: '2023-08-01T12:00:00Z'
- *                         modeloPagamento: ASSINATURA
- *                         metodoPagamento: BOLETO
- *                         statusPagamento: APROVADO
- *                         valor: '149.90'
- *                         quantidadeVagas: 3
- *                         duracaoEmDias: 92
- *                         diasRestantes: 0
- *                         origin: ADMIN
- *                         criadoEm: '2023-04-28T09:30:00Z'
- *                         atualizadoEm: '2023-08-01T12:00:00Z'
- *                         proximaCobranca: null
- *                         graceUntil: null
- *                     bloqueada: false
- *                     bloqueioAtivo: null
- *                     informacoes:
- *                       telefone: '+55 11 99999-0000'
- *                       descricao: Consultoria especializada em tecnologia e recrutamento.
- *                       avatarUrl: https://cdn.advance.com.br/logo.png
- *                       aceitarTermos: true
- *       400:
- *         description: Parâmetros inválidos
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ValidationErrorResponse'
- *       401:
- *         description: Token inválido ou ausente
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/UnauthorizedResponse'
- *       403:
- *         description: Acesso negado por falta de permissões válidas
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ForbiddenResponse'
- *       404:
- *         description: Empresa não encontrada
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       500:
- *         description: Erro interno do servidor
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
-router.put('/:id', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.update);
-router.get('/:id', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.get);
-
-/**
- * @openapi
- * /api/v1/empresas/admin/{id}/overview:
- *   get:
- *     summary: (Admin) Visão completa da empresa
- *     description: "Retorna uma visão consolidada da empresa (Pessoa Jurídica) incluindo plano atual e histórico, vagas, candidaturas, pagamentos e bloqueios ativos. Apenas perfis ADMIN e MODERADOR podem acessar."
- *     operationId: adminEmpresasOverview
- *     tags: [Empresas - Admin]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Identificador da empresa (usuário Pessoa Jurídica)
  *     responses:
  *       200:
  *         description: Visão geral carregada com sucesso
@@ -2120,12 +1963,12 @@ router.get('/:id', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.g
  *                     vagas:
  *                       publicadas: 8
  *                       limitePlano: 10
- *                     bloqueada: false
  *                     pagamento:
  *                       modelo: ASSINATURA
  *                       metodo: PIX
  *                       status: APROVADO
  *                       ultimoPagamentoEm: '2024-02-15T14:20:00Z'
+ *                     bloqueada: false
  *                     bloqueioAtivo: null
  *                     informacoes:
  *                       telefone: '+55 11 99999-0000'
@@ -2257,7 +2100,7 @@ router.get('/:id', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.g
  *             schema:
  *               $ref: '#/components/schemas/UnauthorizedResponse'
  *       403:
- *         description: Acesso negado
+ *         description: Acesso negado por falta de permissões válidas
  *         content:
  *           application/json:
  *             schema:
@@ -2275,11 +2118,8 @@ router.get('/:id', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.g
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get(
-  '/:id/overview',
-  supabaseAuthMiddleware(adminRoles),
-  AdminEmpresasController.getOverview,
-);
+router.put('/:id', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.update);
+router.get('/:id', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.get);
 
 /**
  * @openapi

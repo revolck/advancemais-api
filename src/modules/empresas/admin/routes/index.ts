@@ -1588,7 +1588,7 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  * /api/v1/empresas/admin/{id}/plano:
  *   post:
  *     summary: (Admin/Moderador) Cadastrar plano manualmente para a empresa
- *     description: "Permite registrar manualmente um novo plano empresarial para a empresa selecionada. Qualquer plano ativo é automaticamente cancelado antes do novo vínculo. Quando informados, os campos de próxima cobrança ou período de carência definem automaticamente a data de término do plano. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     description: "Permite registrar manualmente um novo plano empresarial para a empresa selecionada. Qualquer plano ativo é automaticamente cancelado antes do novo vínculo. Quando informados, os campos de próxima cobrança ou período de carência definem automaticamente a data de término do plano. A ação é registrada na auditoria da empresa. Endpoint restrito aos perfis ADMIN e MODERADOR."
  *     operationId: adminEmpresasAssignPlanoManual
  *     tags: [Empresas - Admin]
  *     security:
@@ -1684,7 +1684,7 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  *               $ref: '#/components/schemas/ErrorResponse'
  *   put:
  *     summary: (Admin/Moderador) Atualizar plano da empresa
- *     description: "Atualiza ou atribui um novo plano empresarial para a empresa informada, permitindo também o ajuste de dados de cobrança manual (modelo, método, status, próximas cobranças e período de carência). Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     description: "Atualiza ou atribui um novo plano empresarial para a empresa informada, permitindo também o ajuste de dados de cobrança manual (modelo, método, status, próximas cobranças e período de carência). A ação é registrada na auditoria da empresa. Endpoint restrito aos perfis ADMIN e MODERADOR."
  *     operationId: adminEmpresasUpdatePlano
  *     tags: [Empresas - Admin]
  *     security:
@@ -1799,7 +1799,7 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  * /api/v1/empresas/admin/{id}:
  *   put:
  *     summary: (Admin) Atualizar empresa
- *     description: "Atualiza dados cadastrais da empresa, permite redefinir a senha e gerenciar o plano vinculado. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     description: "Atualiza dados cadastrais da empresa, permite redefinir a senha e gerenciar o plano vinculado. Todas as alterações são automaticamente registradas na auditoria da empresa. Endpoint restrito aos perfis ADMIN e MODERADOR."
  *     operationId: adminEmpresasUpdate
  *     tags: [Empresas - Admin]
  *     security:
@@ -1904,7 +1904,7 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *               $ref: '#/components/schemas/ErrorResponse'
  *   get:
  *     summary: (Admin) Visão completa da empresa
- *     description: "Retorna uma visão consolidada da empresa (Pessoa Jurídica) incluindo plano atual e histórico, vagas, candidaturas, pagamentos e bloqueios ativos. Apenas perfis ADMIN e MODERADOR podem acessar."
+ *     description: "Retorna uma visão consolidada da empresa (Pessoa Jurídica) incluindo plano atual e histórico, vagas, candidaturas, pagamentos, bloqueios ativos e histórico de auditoria. Apenas perfis ADMIN e MODERADOR podem acessar."
  *     operationId: adminEmpresasGet
  *     tags: [Empresas - Admin]
  *     security:
@@ -2131,7 +2131,7 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *                         campo: nome
  *                         valorAnterior: 'Empresa Antiga'
  *                         valorNovo: 'Advance Tech Consultoria'
- *                         descricao: 'João alterou nome da empresa'
+ *                         descricao: 'Nome alterado de "Empresa Antiga" para "Advance Tech Consultoria"'
  *                         metadata: null
  *                         criadoEm: '2024-10-25T15:30:00Z'
  *                         alteradoPor:
@@ -2143,10 +2143,10 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *                         campo: null
  *                         valorAnterior: null
  *                         valorNovo: null
- *                         descricao: 'João alterou Plano de assinaturas para Plano Avançado'
+ *                         descricao: 'plano assignado: Plano Avançado - Plano atribuído pelo administrador'
  *                         metadata:
  *                           planoNome: 'Plano Avançado'
- *                           detalhes: 'Atribuição manual via admin'
+ *                           detalhes: 'Plano atribuído pelo administrador'
  *                         criadoEm: '2024-10-24T10:15:00Z'
  *                         alteradoPor:
  *                           id: user_123456
@@ -2157,7 +2157,7 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *                         campo: null
  *                         valorAnterior: null
  *                         valorNovo: null
- *                         descricao: 'Carlos aplicou bloqueio: VIOLACAO_POLITICAS - Uso indevido de dados'
+ *                         descricao: 'Bloqueio aplicado: VIOLACAO_POLITICAS - Uso indevido de dados pessoais de candidatos'
  *                         metadata:
  *                           motivo: 'VIOLACAO_POLITICAS'
  *                           observacoes: 'Uso indevido de dados pessoais de candidatos'
@@ -2165,6 +2165,20 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *                         alteradoPor:
  *                           id: adm_002
  *                           nomeCompleto: 'Carlos Supervisor'
+ *                           role: 'ADMIN'
+ *                       - id: audit_123459
+ *                         acao: PLANO_ATUALIZADO
+ *                         campo: null
+ *                         valorAnterior: null
+ *                         valorNovo: null
+ *                         descricao: 'plano atualizado: Plano Premium - Plano atualizado pelo administrador'
+ *                         metadata:
+ *                           planoNome: 'Plano Premium'
+ *                           detalhes: 'Plano atualizado pelo administrador'
+ *                         criadoEm: '2024-10-23T14:20:00Z'
+ *                         alteradoPor:
+ *                           id: user_123456
+ *                           nomeCompleto: 'João Silva'
  *                           role: 'ADMIN'
  *       400:
  *         description: Parâmetros inválidos
@@ -2390,7 +2404,7 @@ router.get(
  *               $ref: '#/components/schemas/ErrorResponse'
  *   post:
  *     summary: (Admin) Aplicar bloqueio à empresa
- *     description: "Centraliza o bloqueio do usuário da empresa, permitindo bloqueios temporários ou permanentes com registro de auditoria."
+ *     description: "Centraliza o bloqueio do usuário da empresa, permitindo bloqueios temporários ou permanentes. A ação é automaticamente registrada na auditoria da empresa com detalhes do motivo e responsável."
  *     operationId: adminEmpresasAplicarBloqueio
  *     tags: [Empresas - Admin]
  *     security:

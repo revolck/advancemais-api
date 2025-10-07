@@ -1533,7 +1533,10 @@ export const adminEmpresasService = {
     return empresa;
   },
 
-  update: async (id: string, data: AdminEmpresasUpdateInput) => {
+  update: async (id: string, data: AdminEmpresasUpdateInput, alteradoPor?: string) => {
+    let auditoriaRegistrada = false;
+    let dadosAnteriores: any = null;
+
     await prisma.$transaction(async (tx) => {
       await ensureEmpresaExiste(tx, id);
 
@@ -1544,6 +1547,24 @@ export const adminEmpresasService = {
       );
       const socialLinksSanitized = sanitizeSocialLinks(socialLinksInput);
       const socialLinksUpdate = buildSocialLinksUpdateData(socialLinksSanitized);
+
+      // Buscar dados anteriores para auditoria
+      dadosAnteriores = await tx.usuarios.findUnique({
+        where: { id },
+        select: {
+          nomeCompleto: true,
+          email: true,
+          cnpj: true,
+          status: true,
+          informacoes: {
+            select: {
+              telefone: true,
+              descricao: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      });
 
       if (data.nome !== undefined && data.nome !== null) {
         updates.nomeCompleto = sanitizeNome(data.nome);
@@ -1635,10 +1656,114 @@ export const adminEmpresasService = {
       }
     });
 
+    // Registrar auditoria após a transação
+    if (alteradoPor) {
+      try {
+        // Registrar alterações de dados básicos
+        if (data.nome !== undefined && dadosAnteriores?.nomeCompleto !== data.nome) {
+          await empresasAuditoriaService.registrarAtualizacaoEmpresa(
+            id,
+            alteradoPor,
+            'nome',
+            dadosAnteriores?.nomeCompleto || '',
+            data.nome,
+            `Nome alterado de "${dadosAnteriores?.nomeCompleto || ''}" para "${data.nome}"`,
+          );
+          auditoriaRegistrada = true;
+        }
+
+        if (data.email !== undefined && dadosAnteriores?.email !== data.email) {
+          await empresasAuditoriaService.registrarAtualizacaoEmpresa(
+            id,
+            alteradoPor,
+            'email',
+            dadosAnteriores?.email || '',
+            data.email,
+            `Email alterado de "${dadosAnteriores?.email || ''}" para "${data.email}"`,
+          );
+          auditoriaRegistrada = true;
+        }
+
+        if (data.cnpj !== undefined && dadosAnteriores?.cnpj !== data.cnpj) {
+          await empresasAuditoriaService.registrarAtualizacaoEmpresa(
+            id,
+            alteradoPor,
+            'cnpj',
+            dadosAnteriores?.cnpj || '',
+            data.cnpj || '',
+            `CNPJ alterado de "${dadosAnteriores?.cnpj || ''}" para "${data.cnpj || ''}"`,
+          );
+          auditoriaRegistrada = true;
+        }
+
+        if (data.status !== undefined && dadosAnteriores?.status !== data.status) {
+          await empresasAuditoriaService.registrarAtualizacaoEmpresa(
+            id,
+            alteradoPor,
+            'status',
+            dadosAnteriores?.status || '',
+            data.status,
+            `Status alterado de "${dadosAnteriores?.status || ''}" para "${data.status}"`,
+          );
+          auditoriaRegistrada = true;
+        }
+
+        // Registrar alteração de plano se houver
+        if (data.plano !== undefined) {
+          const planoAtual = await prisma.empresasPlano.findFirst({
+            where: { usuarioId: id, status: EmpresasPlanoStatus.ATIVO },
+            include: { plano: { select: { nome: true } } },
+            orderBy: [{ inicio: 'desc' }, { criadoEm: 'desc' }],
+          });
+
+          if (data.plano === null) {
+            await empresasAuditoriaService.registrarAlteracaoPlano(
+              id,
+              alteradoPor,
+              'PLANO_CANCELADO',
+              planoAtual?.plano?.nome || 'Plano anterior',
+              'Plano cancelado pelo administrador',
+            );
+            auditoriaRegistrada = true;
+          } else {
+            const novoPlano = await prisma.planosEmpresariais.findUnique({
+              where: { id: data.plano.planosEmpresariaisId },
+              select: { nome: true },
+            });
+
+            if (novoPlano) {
+              await empresasAuditoriaService.registrarAlteracaoPlano(
+                id,
+                alteradoPor,
+                'PLANO_ASSIGNADO',
+                novoPlano.nome,
+                'Plano atribuído pelo administrador',
+              );
+              auditoriaRegistrada = true;
+            }
+          }
+        }
+
+        // Se não houve alterações específicas registradas, registrar uma alteração geral
+        if (!auditoriaRegistrada) {
+          await empresasAuditoriaService.registrarAtualizacaoEmpresa(
+            id,
+            alteradoPor,
+            'dados_gerais',
+            '',
+            '',
+            'Dados da empresa atualizados pelo administrador',
+          );
+        }
+      } catch (error) {
+        console.error('Erro ao registrar auditoria de atualização de empresa:', error);
+      }
+    }
+
     return adminEmpresasService.get(id);
   },
 
-  updatePlano: async (id: string, plano: AdminEmpresasPlanoUpdateInput) => {
+  updatePlano: async (id: string, plano: AdminEmpresasPlanoUpdateInput, alteradoPor?: string) => {
     await prisma.$transaction(async (tx) => {
       await ensureEmpresaExiste(tx, id);
 
@@ -1653,10 +1778,36 @@ export const adminEmpresasService = {
       await atualizarPlanoSemReset(tx, id, planoInput);
     });
 
+    // Registrar auditoria após a transação
+    if (alteradoPor) {
+      try {
+        const novoPlano = await prisma.planosEmpresariais.findUnique({
+          where: { id: plano.planosEmpresariaisId },
+          select: { nome: true },
+        });
+
+        if (novoPlano) {
+          await empresasAuditoriaService.registrarAlteracaoPlano(
+            id,
+            alteradoPor,
+            'PLANO_ATUALIZADO',
+            novoPlano.nome,
+            'Plano atualizado pelo administrador',
+          );
+        }
+      } catch (error) {
+        console.error('Erro ao registrar auditoria de atualização de plano:', error);
+      }
+    }
+
     return adminEmpresasService.get(id);
   },
 
-  assignPlanoManual: async (id: string, plano: AdminEmpresasPlanoManualAssignInput) => {
+  assignPlanoManual: async (
+    id: string,
+    plano: AdminEmpresasPlanoManualAssignInput,
+    alteradoPor?: string,
+  ) => {
     await prisma.$transaction(async (tx) => {
       await ensureEmpresaExiste(tx, id);
 
@@ -1688,6 +1839,28 @@ export const adminEmpresasService = {
         },
       });
     });
+
+    // Registrar auditoria após a transação
+    if (alteradoPor) {
+      try {
+        const novoPlano = await prisma.planosEmpresariais.findUnique({
+          where: { id: plano.planosEmpresariaisId },
+          select: { nome: true },
+        });
+
+        if (novoPlano) {
+          await empresasAuditoriaService.registrarAlteracaoPlano(
+            id,
+            alteradoPor,
+            'PLANO_ASSIGNADO',
+            novoPlano.nome,
+            'Plano atribuído manualmente pelo administrador',
+          );
+        }
+      } catch (error) {
+        console.error('Erro ao registrar auditoria de atribuição manual de plano:', error);
+      }
+    }
 
     return adminEmpresasService.get(id);
   },
@@ -2188,6 +2361,19 @@ export const adminEmpresasService = {
       return novoBloqueio;
     });
 
+    // Registrar auditoria após a transação
+    try {
+      await empresasAuditoriaService.registrarBloqueio(
+        empresaId,
+        adminId,
+        'aplicado',
+        input.motivo,
+        observacoes || undefined,
+      );
+    } catch (error) {
+      console.error('Erro ao registrar auditoria de bloqueio:', error);
+    }
+
     // Envia email de bloqueio
     try {
       const user = await prisma.usuarios.findUnique({
@@ -2243,6 +2429,19 @@ export const adminEmpresasService = {
       });
       await tx.usuarios.update({ where: { id: empresaId }, data: { status: Status.ATIVO } });
     });
+
+    // Registrar auditoria após a transação
+    try {
+      await empresasAuditoriaService.registrarBloqueio(
+        empresaId,
+        adminId,
+        'revogado',
+        bloqueioAtivo.motivo,
+        observacoes || undefined,
+      );
+    } catch (error) {
+      console.error('Erro ao registrar auditoria de revogação de bloqueio:', error);
+    }
 
     // E-mail de boas-vindas de volta
     try {

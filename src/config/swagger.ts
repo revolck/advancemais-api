@@ -12,7 +12,7 @@ const options: Options = {
       title: 'Advance+ API',
       version: '1.0.0',
       description:
-        'Documentação detalhada da API Advance+. Todas as rotas protegidas exigem o header `Authorization: Bearer <token>` obtido via login. O acesso ao Swagger é restrito a administradores.',
+        'Documentação detalhada da API Advance+. Todas as rotas protegidas exigem o header `Authorization: Bearer <token>` obtido via login. O acesso ao Swagger é restrito a administradores.\n\n## 🔍 Sistema de Auditoria\n\nTodas as ações administrativas realizadas nas empresas são automaticamente registradas no sistema de auditoria, incluindo:\n\n- **Alterações de dados**: Nome, email, CNPJ, status, etc.\n- **Gestão de planos**: Atribuição, atualização e cancelamento de planos\n- **Bloqueios**: Aplicação e revogação de bloqueios\n- **Rastreabilidade completa**: Quem fez, quando e o que foi alterado\n\nOs registros de auditoria estão disponíveis na rota `GET /api/v1/empresas/admin/{id}` no campo `auditoria.recentes`.',
     },
     tags: [
       {
@@ -11578,8 +11578,14 @@ const options: Options = {
         AdminEmpresaAuditoriaItem: {
           type: 'object',
           required: ['id', 'acao', 'descricao', 'criadoEm', 'alteradoPor'],
+          description: 'Registro de auditoria de alterações na empresa',
           properties: {
-            id: { type: 'string', format: 'uuid', example: 'audit_123456' },
+            id: {
+              type: 'string',
+              format: 'uuid',
+              example: 'audit_123456',
+              description: 'Identificador único do registro de auditoria',
+            },
             acao: {
               type: 'string',
               enum: [
@@ -11595,37 +11601,90 @@ const options: Options = {
                 'DADOS_ALTERADOS',
               ],
               example: 'EMPRESA_ATUALIZADA',
+              description: 'Tipo de ação realizada na empresa',
             },
-            campo: { type: 'string', nullable: true, example: 'nome' },
-            valorAnterior: { type: 'string', nullable: true, example: 'Empresa Antiga' },
-            valorNovo: { type: 'string', nullable: true, example: 'Empresa Nova' },
+            campo: {
+              type: 'string',
+              nullable: true,
+              example: 'nome',
+              description: 'Campo específico que foi alterado (quando aplicável)',
+            },
+            valorAnterior: {
+              type: 'string',
+              nullable: true,
+              example: 'Empresa Antiga',
+              description: 'Valor anterior do campo alterado',
+            },
+            valorNovo: {
+              type: 'string',
+              nullable: true,
+              example: 'Empresa Nova',
+              description: 'Novo valor do campo alterado',
+            },
             descricao: {
               type: 'string',
-              example: 'João alterou Plano de assinaturas para NOME DO PLANO',
+              example: 'Nome alterado de "Empresa Antiga" para "Empresa Nova"',
+              description: 'Descrição detalhada da alteração realizada',
             },
-            metadata: { type: 'object', nullable: true },
-            criadoEm: { type: 'string', format: 'date-time', example: '2024-10-25T15:30:00Z' },
+            metadata: {
+              type: 'object',
+              nullable: true,
+              description:
+                'Informações adicionais sobre a alteração (ex: nome do plano, motivo do bloqueio)',
+              example: {
+                planoNome: 'Plano Premium',
+                detalhes: 'Plano atribuído pelo administrador',
+              },
+            },
+            criadoEm: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-10-25T15:30:00Z',
+              description: 'Data e hora em que a alteração foi registrada',
+            },
             alteradoPor: {
               type: 'object',
               required: ['id', 'nomeCompleto', 'role'],
+              description: 'Informações do usuário que realizou a alteração',
               properties: {
-                id: { type: 'string', format: 'uuid', example: 'user_123456' },
-                nomeCompleto: { type: 'string', example: 'João Silva' },
-                role: { type: 'string', example: 'ADMIN' },
+                id: {
+                  type: 'string',
+                  format: 'uuid',
+                  example: 'user_123456',
+                  description: 'ID do usuário que fez a alteração',
+                },
+                nomeCompleto: {
+                  type: 'string',
+                  example: 'João Silva',
+                  description: 'Nome completo do usuário',
+                },
+                role: {
+                  type: 'string',
+                  example: 'ADMIN',
+                  description: 'Perfil do usuário (ADMIN, MODERADOR)',
+                },
               },
             },
           },
         },
         AdminEmpresaAuditoriaOverview: {
           type: 'object',
-          description: 'Histórico de alterações da empresa com auditoria completa.',
+          description:
+            'Histórico de alterações da empresa com auditoria completa. Registra todas as ações administrativas realizadas na empresa.',
           required: ['total', 'recentes'],
           properties: {
-            total: { type: 'integer', minimum: 0, example: 15 },
+            total: {
+              type: 'integer',
+              minimum: 0,
+              example: 15,
+              description: 'Total de registros de auditoria da empresa',
+            },
             recentes: {
               type: 'array',
               items: { $ref: '#/components/schemas/AdminEmpresaAuditoriaItem' },
-              description: 'Últimas 20 alterações registradas na empresa.',
+              description:
+                'Últimas 20 alterações registradas na empresa, ordenadas por data de criação (mais recentes primeiro).',
+              maxItems: 20,
             },
           },
         },

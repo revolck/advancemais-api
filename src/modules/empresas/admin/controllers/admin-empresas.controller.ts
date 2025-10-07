@@ -152,7 +152,8 @@ export class AdminEmpresasController {
     try {
       const params = adminEmpresasIdParamSchema.parse(req.params);
       const payload = adminEmpresasUpdateSchema.parse(req.body);
-      const empresa = await adminEmpresasService.update(params.id, payload);
+      const alteradoPor = req.user?.id;
+      const empresa = await adminEmpresasService.update(params.id, payload, alteradoPor);
 
       if (!empresa) {
         return res.status(404).json({
@@ -258,7 +259,8 @@ export class AdminEmpresasController {
     try {
       const params = adminEmpresasIdParamSchema.parse(req.params);
       const payload = adminEmpresasPlanoUpdateSchema.parse(req.body);
-      const empresa = await adminEmpresasService.updatePlano(params.id, payload);
+      const alteradoPor = req.user?.id;
+      const empresa = await adminEmpresasService.updatePlano(params.id, payload, alteradoPor);
 
       if (!empresa) {
         return res.status(404).json({
@@ -308,7 +310,8 @@ export class AdminEmpresasController {
     try {
       const params = adminEmpresasIdParamSchema.parse(req.params);
       const payload = adminEmpresasPlanoManualAssignSchema.parse(req.body);
-      const empresa = await adminEmpresasService.assignPlanoManual(params.id, payload);
+      const alteradoPor = req.user?.id;
+      const empresa = await adminEmpresasService.assignPlanoManual(params.id, payload, alteradoPor);
 
       if (!empresa) {
         return res.status(404).json({

@@ -1977,6 +1977,43 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *                       metodo: PIX
  *                       status: APROVADO
  *                       ultimoPagamentoEm: '2024-02-15T14:20:00Z'
+ *                     historicoFinanceiro:
+ *                       - id: 725f9f88-3b87-4a32-8d19-2ccf3d6b9a90
+ *                         nome: Plano Profissional
+ *                         modo: CLIENTE
+ *                         status: EXPIRADO
+ *                         inicio: '2023-09-01T12:00:00Z'
+ *                         fim: '2023-12-01T12:00:00Z'
+ *                         modeloPagamento: ASSINATURA
+ *                         metodoPagamento: CARTAO
+ *                         statusPagamento: APROVADO
+ *                         valor: '199.90'
+ *                         quantidadeVagas: 5
+ *                         duracaoEmDias: 91
+ *                         diasRestantes: 0
+ *                         origin: CHECKOUT
+ *                         criadoEm: '2023-08-28T10:00:00Z'
+ *                         atualizadoEm: '2023-12-01T12:00:00Z'
+ *                         proximaCobranca: null
+ *                         graceUntil: null
+ *                       - id: d2f0cdb1-58fe-4f5f-8e27-0f18acbc5a11
+ *                         nome: Plano Starter
+ *                         modo: CLIENTE
+ *                         status: CANCELADO
+ *                         inicio: '2023-05-01T12:00:00Z'
+ *                         fim: '2023-08-01T12:00:00Z'
+ *                         modeloPagamento: ASSINATURA
+ *                         metodoPagamento: BOLETO
+ *                         statusPagamento: APROVADO
+ *                         valor: '149.90'
+ *                         quantidadeVagas: 3
+ *                         duracaoEmDias: 92
+ *                         diasRestantes: 0
+ *                         origin: ADMIN
+ *                         criadoEm: '2023-04-28T09:30:00Z'
+ *                         atualizadoEm: '2023-08-01T12:00:00Z'
+ *                         proximaCobranca: null
+ *                         graceUntil: null
  *                     bloqueada: false
  *                     bloqueioAtivo: null
  *                     informacoes:

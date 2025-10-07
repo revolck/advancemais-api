@@ -25,7 +25,13 @@ describe('calcularFim', () => {
     const proximaCobranca = new Date('2024-06-10T12:00:00Z');
     const graceUntil = new Date('2024-06-15T12:00:00Z');
 
-    const fim = calcularFim(EmpresasPlanoModo.CLIENTE, inicio, undefined, proximaCobranca, graceUntil);
+    const fim = calcularFim(
+      EmpresasPlanoModo.CLIENTE,
+      inicio,
+      undefined,
+      proximaCobranca,
+      graceUntil,
+    );
 
     expect(fim?.toISOString()).toBe('2024-06-15T12:00:00.000Z');
   });

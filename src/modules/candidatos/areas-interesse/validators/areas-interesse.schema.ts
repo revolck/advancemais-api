@@ -12,9 +12,7 @@ export const createAreaInteresseSchema = z.object({
     .trim()
     .min(1, 'Categoria é obrigatória')
     .max(120, 'Categoria deve ter no máximo 120 caracteres'),
-  subareas: z
-    .array(subareaNomeSchema)
-    .nonempty('Informe ao menos uma subárea'),
+  subareas: z.array(subareaNomeSchema).nonempty('Informe ao menos uma subárea'),
 });
 
 export const updateAreaInteresseSchema = createAreaInteresseSchema.partial({

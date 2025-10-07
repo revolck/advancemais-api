@@ -3969,7 +3969,11 @@ const options: Options = {
               readOnly: true,
               description:
                 'Lista opcional com os identificadores das vagas empresariais relacionadas à subárea.',
-              items: { type: 'string', format: 'uuid', example: '62baf310-49b0-4d3f-b493-4230ae5cb3a3' },
+              items: {
+                type: 'string',
+                format: 'uuid',
+                example: '62baf310-49b0-4d3f-b493-4230ae5cb3a3',
+              },
             },
             criadoEm: {
               type: 'string',
@@ -4034,7 +4038,11 @@ const options: Options = {
               readOnly: true,
               description:
                 'Identificadores das vagas empresariais associadas à área de interesse por meio da relação EmpresasVagasAreaInteresse.',
-              items: { type: 'string', format: 'uuid', example: 'cb94b4e2-7f9c-4ee5-a5be-0fda6b0c5489' },
+              items: {
+                type: 'string',
+                format: 'uuid',
+                example: 'cb94b4e2-7f9c-4ee5-a5be-0fda6b0c5489',
+              },
             },
             criadoEm: {
               type: 'string',
@@ -7164,7 +7172,8 @@ const options: Options = {
                 metodoPagamento: {
                   allOf: [{ $ref: '#/components/schemas/MetodoPagamento' }],
                   nullable: true,
-                  description: 'Método utilizado para registrar o pagamento manual (PIX, BOLETO, etc.)',
+                  description:
+                    'Método utilizado para registrar o pagamento manual (PIX, BOLETO, etc.)',
                 },
                 statusPagamento: {
                   allOf: [{ $ref: '#/components/schemas/StatusPagamento' }],
@@ -8120,20 +8129,20 @@ const options: Options = {
                 {
                   id: '725f9f88-3b87-4a32-8d19-2ccf3d6b9a90',
                   nome: 'Plano Profissional',
-                modo: 'CLIENTE',
-                status: 'EXPIRADO',
-                inicio: '2023-09-01T12:00:00Z',
-                fim: '2023-12-01T12:00:00Z',
-                modeloPagamento: 'ASSINATURA',
-                metodoPagamento: 'CARTAO',
-                statusPagamento: 'APROVADO',
-                valor: '199.90',
-                quantidadeVagas: 5,
-                duracaoEmDias: 91,
-                diasRestantes: 0,
-                origin: 'CHECKOUT',
-                criadoEm: '2023-08-28T10:00:00Z',
-                atualizadoEm: '2023-12-01T12:00:00Z',
+                  modo: 'CLIENTE',
+                  status: 'EXPIRADO',
+                  inicio: '2023-09-01T12:00:00Z',
+                  fim: '2023-12-01T12:00:00Z',
+                  modeloPagamento: 'ASSINATURA',
+                  metodoPagamento: 'CARTAO',
+                  statusPagamento: 'APROVADO',
+                  valor: '199.90',
+                  quantidadeVagas: 5,
+                  duracaoEmDias: 91,
+                  diasRestantes: 0,
+                  origin: 'CHECKOUT',
+                  criadoEm: '2023-08-28T10:00:00Z',
+                  atualizadoEm: '2023-12-01T12:00:00Z',
                   proximaCobranca: null,
                   graceUntil: null,
                 },

@@ -1946,7 +1946,7 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *                     ativa: true
  *                     parceira: true
  *                     diasTesteDisponibilizados: 30
- *                     plano:
+ *                     planoAtual:
  *                       id: 38f73d2d-40fa-47a6-9657-6a4f7f1bb610
  *                       nome: Plano Avançado
  *                       modo: PARCEIRO
@@ -1960,14 +1960,6 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *                       quantidadeVagas: 10
  *                       duracaoEmDias: null
  *                       diasRestantes: 12
- *                     vagas:
- *                       publicadas: 8
- *                       limitePlano: 10
- *                     pagamento:
- *                       modelo: ASSINATURA
- *                       metodo: PIX
- *                       status: APROVADO
- *                       ultimoPagamentoEm: '2024-02-15T14:20:00Z'
  *                     bloqueada: false
  *                     bloqueioAtivo: null
  *                     informacoes:
@@ -1976,6 +1968,25 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *                       avatarUrl: https://cdn.advance.com.br/logo.png
  *                       aceitarTermos: true
  *                   planos:
+ *                     atual:
+ *                       id: 38f73d2d-40fa-47a6-9657-6a4f7f1bb610
+ *                       nome: Plano Avançado
+ *                       modo: PARCEIRO
+ *                       status: ATIVO
+ *                       inicio: '2024-01-10T12:00:00Z'
+ *                       fim: null
+ *                       modeloPagamento: ASSINATURA
+ *                       metodoPagamento: PIX
+ *                       statusPagamento: APROVADO
+ *                       valor: '249.90'
+ *                       quantidadeVagas: 10
+ *                       duracaoEmDias: null
+ *                       diasRestantes: 12
+ *                       origin: ADMIN
+ *                       criadoEm: '2024-01-05T12:00:00Z'
+ *                       atualizadoEm: '2024-03-01T12:00:00Z'
+ *                       proximaCobranca: '2024-04-10T12:00:00Z'
+ *                       graceUntil: null
  *                     ativos:
  *                       - id: 38f73d2d-40fa-47a6-9657-6a4f7f1bb610
  *                         nome: Plano Avançado

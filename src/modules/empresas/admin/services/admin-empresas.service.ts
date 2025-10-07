@@ -550,9 +550,17 @@ type AdminEmpresaDetail = {
   historicoFinanceiro: AdminEmpresaPlanoHistoricoItem[];
 };
 
+type AdminEmpresaOverviewEmpresa = Omit<
+  AdminEmpresaDetail,
+  'plano' | 'vagas' | 'pagamento' | 'historicoFinanceiro'
+> & {
+  planoAtual: AdminEmpresasPlanoResumo | null;
+};
+
 type AdminEmpresaOverview = {
-  empresa: AdminEmpresaDetail;
+  empresa: AdminEmpresaOverviewEmpresa;
   planos: {
+    atual: AdminEmpresaPlanoHistoricoItem | null;
     ativos: AdminEmpresaPlanoHistoricoItem[];
     historico: AdminEmpresaPlanoHistoricoItem[];
   };
@@ -1948,6 +1956,7 @@ export const adminEmpresasService = {
         plano.status === EmpresasPlanoStatus.ATIVO &&
         (!plano.fim || plano.fim.getTime() > referenceDate.getTime()),
     );
+    const planoAtualDetalhe = planosAtivos[0] ?? null;
 
     const bloqueiosHistorico = bloqueiosRecords
       .map((registro) => mapBloqueioResumo(registro))
@@ -1982,9 +1991,23 @@ export const adminEmpresasService = {
       listVagas(id, { page: 1, pageSize: 10 }),
     ]);
 
+    const {
+      plano,
+      vagas: _vagas,
+      pagamento: _pagamento,
+      historicoFinanceiro: _historicoFinanceiro,
+      ...empresaBase
+    } = empresa;
+
+    const overviewEmpresa: AdminEmpresaOverviewEmpresa = {
+      ...empresaBase,
+      planoAtual: plano,
+    };
+
     return {
-      empresa,
+      empresa: overviewEmpresa,
       planos: {
+        atual: planoAtualDetalhe,
         ativos: planosAtivos,
         historico: planosHistorico,
       },

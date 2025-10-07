@@ -28,6 +28,7 @@ import { serverConfig } from '@/config/env';
 import { prisma } from '@/config/prisma';
 import { clientesService } from '@/modules/empresas/clientes/services/clientes.service';
 import { LimiteVagasPlanoAtingidoError } from '@/modules/empresas/vagas/services/errors';
+import { empresasAuditoriaService, type EmpresaAuditoriaItem } from './empresas-auditoria.service';
 import { calcularFim } from '@/modules/empresas/shared/planos';
 import { EmailService } from '@/modules/brevo/services/email-service';
 import { EmailTemplates } from '@/modules/brevo/templates/email-templates';
@@ -560,7 +561,6 @@ type AdminEmpresaOverviewEmpresa = Omit<
 type AdminEmpresaOverview = {
   empresa: AdminEmpresaOverviewEmpresa;
   planos: {
-    atual: AdminEmpresaPlanoHistoricoItem | null;
     ativos: AdminEmpresaPlanoHistoricoItem[];
     historico: AdminEmpresaPlanoHistoricoItem[];
   };
@@ -580,6 +580,10 @@ type AdminEmpresaOverview = {
   bloqueios: {
     ativos: AdminUsuariosEmBloqueiosResumo[];
     historico: AdminUsuariosEmBloqueiosResumo[];
+  };
+  auditoria: {
+    total: number;
+    recentes: EmpresaAuditoriaItem[];
   };
 };
 
@@ -1541,7 +1545,7 @@ export const adminEmpresasService = {
       const socialLinksSanitized = sanitizeSocialLinks(socialLinksInput);
       const socialLinksUpdate = buildSocialLinksUpdateData(socialLinksSanitized);
 
-      if (data.nome !== undefined) {
+      if (data.nome !== undefined && data.nome !== null) {
         updates.nomeCompleto = sanitizeNome(data.nome);
       }
 
@@ -1549,7 +1553,7 @@ export const adminEmpresasService = {
         updates.email = sanitizeEmail(data.email);
       }
 
-      if (data.telefone !== undefined) {
+      if (data.telefone !== undefined && data.telefone !== null) {
         informacoesUpdates.telefone = sanitizeTelefone(data.telefone);
       }
 
@@ -1948,15 +1952,25 @@ export const adminEmpresasService = {
       },
     }));
 
-    const planosHistorico = planosHistoricoRecords.map((plano) =>
+    const planosMapeados = planosHistoricoRecords.map((plano) =>
       mapPlanoHistorico(plano, referenceDate),
     );
-    const planosAtivos = planosHistorico.filter(
+
+    // Separa planos ativos do histórico
+    const planosAtivos = planosMapeados.filter(
       (plano) =>
         plano.status === EmpresasPlanoStatus.ATIVO &&
         (!plano.fim || plano.fim.getTime() > referenceDate.getTime()),
     );
-    const planoAtualDetalhe = planosAtivos[0] ?? null;
+
+    // Histórico: planos não ativos, limitado aos últimos 4
+    const planosHistorico = planosMapeados
+      .filter(
+        (plano) =>
+          plano.status !== EmpresasPlanoStatus.ATIVO ||
+          (plano.fim && plano.fim.getTime() <= referenceDate.getTime()),
+      )
+      .slice(0, 4); // Limita aos últimos 4 planos do histórico
 
     const bloqueiosHistorico = bloqueiosRecords
       .map((registro) => mapBloqueioResumo(registro))
@@ -1986,13 +2000,14 @@ export const adminEmpresasService = {
       0,
     );
 
-    const [pagamentosResumo, vagasResumo] = await Promise.all([
+    const [pagamentosResumo, vagasResumo, auditoriaResumo] = await Promise.all([
       listPagamentos(id, { page: 1, pageSize: 20 }),
       listVagas(id, { page: 1, pageSize: 10 }),
+      empresasAuditoriaService.obterHistoricoAlteracoes(id, 20),
     ]);
 
     const {
-      plano,
+      plano: _plano,
       vagas: _vagas,
       pagamento: _pagamento,
       historicoFinanceiro: _historicoFinanceiro,
@@ -2001,13 +2016,22 @@ export const adminEmpresasService = {
 
     const overviewEmpresa: AdminEmpresaOverviewEmpresa = {
       ...empresaBase,
-      planoAtual: plano,
+      // Remove campos duplicados das informacoes, mantendo apenas aceitarTermos
+      informacoes: {
+        ...empresaBase.informacoes,
+        // Remove campos que já estão no nível principal da empresa
+        telefone: null,
+        descricao: null,
+        avatarUrl: null,
+      },
+      // Mantém planoAtual para compatibilidade com o tipo, mas será null
+      // pois o plano atual será incluído em planos.atual
+      planoAtual: null,
     };
 
     return {
       empresa: overviewEmpresa,
       planos: {
-        atual: planoAtualDetalhe,
         ativos: planosAtivos,
         historico: planosHistorico,
       },
@@ -2027,6 +2051,10 @@ export const adminEmpresasService = {
       bloqueios: {
         ativos: bloqueiosAtivos,
         historico: bloqueiosHistorico,
+      },
+      auditoria: {
+        total: auditoriaResumo.length,
+        recentes: auditoriaResumo,
       },
     } satisfies AdminEmpresaOverview;
   },

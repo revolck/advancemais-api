@@ -1946,47 +1946,18 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *                     ativa: true
  *                     parceira: true
  *                     diasTesteDisponibilizados: 30
- *                     planoAtual:
- *                       id: 38f73d2d-40fa-47a6-9657-6a4f7f1bb610
- *                       nome: Plano Avançado
- *                       modo: PARCEIRO
- *                       status: ATIVO
- *                       inicio: '2024-01-10T12:00:00Z'
- *                       fim: null
- *                       modeloPagamento: ASSINATURA
- *                       metodoPagamento: PIX
- *                       statusPagamento: APROVADO
- *                       valor: '249.90'
- *                       quantidadeVagas: 10
- *                       duracaoEmDias: null
- *                       diasRestantes: 12
+ *                     planoAtual: null
  *                     bloqueada: false
  *                     bloqueioAtivo: null
  *                     informacoes:
- *                       telefone: '+55 11 99999-0000'
- *                       descricao: Consultoria especializada em tecnologia e recrutamento.
- *                       avatarUrl: https://cdn.advance.com.br/logo.png
+ *                       telefone: null
+ *                       descricao: null
+ *                       avatarUrl: null
+ *                       genero: null
+ *                       dataNasc: null
+ *                       inscricao: null
  *                       aceitarTermos: true
  *                   planos:
- *                     atual:
- *                       id: 38f73d2d-40fa-47a6-9657-6a4f7f1bb610
- *                       nome: Plano Avançado
- *                       modo: PARCEIRO
- *                       status: ATIVO
- *                       inicio: '2024-01-10T12:00:00Z'
- *                       fim: null
- *                       modeloPagamento: ASSINATURA
- *                       metodoPagamento: PIX
- *                       statusPagamento: APROVADO
- *                       valor: '249.90'
- *                       quantidadeVagas: 10
- *                       duracaoEmDias: null
- *                       diasRestantes: 12
- *                       origin: ADMIN
- *                       criadoEm: '2024-01-05T12:00:00Z'
- *                       atualizadoEm: '2024-03-01T12:00:00Z'
- *                       proximaCobranca: '2024-04-10T12:00:00Z'
- *                       graceUntil: null
  *                     ativos:
  *                       - id: 38f73d2d-40fa-47a6-9657-6a4f7f1bb610
  *                         nome: Plano Avançado
@@ -2023,6 +1994,60 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *                         origin: CHECKOUT
  *                         criadoEm: '2023-08-05T12:00:00Z'
  *                         atualizadoEm: '2023-11-10T12:00:00Z'
+ *                         proximaCobranca: null
+ *                         graceUntil: null
+ *                       - id: 18f73d2d-40fa-47a6-9657-6a4f7f1bb500
+ *                         nome: Plano Básico
+ *                         modo: CLIENTE
+ *                         status: EXPIRADO
+ *                         inicio: '2023-05-01T12:00:00Z'
+ *                         fim: '2023-08-01T12:00:00Z'
+ *                         modeloPagamento: ASSINATURA
+ *                         metodoPagamento: CARTAO
+ *                         statusPagamento: EXPIRADO
+ *                         valor: '99.90'
+ *                         quantidadeVagas: 2
+ *                         duracaoEmDias: 92
+ *                         diasRestantes: 0
+ *                         origin: CHECKOUT
+ *                         criadoEm: '2023-04-25T12:00:00Z'
+ *                         atualizadoEm: '2023-08-01T12:00:00Z'
+ *                         proximaCobranca: null
+ *                         graceUntil: null
+ *                       - id: 08f73d2d-40fa-47a6-9657-6a4f7f1bb400
+ *                         nome: Plano Teste
+ *                         modo: CLIENTE
+ *                         status: EXPIRADO
+ *                         inicio: '2023-02-01T12:00:00Z'
+ *                         fim: '2023-05-01T12:00:00Z'
+ *                         modeloPagamento: ASSINATURA
+ *                         metodoPagamento: PIX
+ *                         statusPagamento: EXPIRADO
+ *                         valor: '49.90'
+ *                         quantidadeVagas: 1
+ *                         duracaoEmDias: 89
+ *                         diasRestantes: 0
+ *                         origin: ADMIN
+ *                         criadoEm: '2023-01-25T12:00:00Z'
+ *                         atualizadoEm: '2023-05-01T12:00:00Z'
+ *                         proximaCobranca: null
+ *                         graceUntil: null
+ *                       - id: f8f73d2d-40fa-47a6-9657-6a4f7f1bb300
+ *                         nome: Plano Inicial
+ *                         modo: CLIENTE
+ *                         status: CANCELADO
+ *                         inicio: '2022-12-01T12:00:00Z'
+ *                         fim: '2023-02-01T12:00:00Z'
+ *                         modeloPagamento: ASSINATURA
+ *                         metodoPagamento: CARTAO
+ *                         statusPagamento: CANCELADO
+ *                         valor: '29.90'
+ *                         quantidadeVagas: 1
+ *                         duracaoEmDias: 62
+ *                         diasRestantes: 0
+ *                         origin: CHECKOUT
+ *                         criadoEm: '2022-11-25T12:00:00Z'
+ *                         atualizadoEm: '2023-02-01T12:00:00Z'
  *                         proximaCobranca: null
  *                         graceUntil: null
  *                   pagamentos:
@@ -2098,6 +2123,49 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *                         auditoria:
  *                           criadoEm: '2023-09-20T14:05:00Z'
  *                           atualizadoEm: '2023-09-25T10:15:00Z'
+ *                   auditoria:
+ *                     total: 15
+ *                     recentes:
+ *                       - id: audit_123456
+ *                         acao: EMPRESA_ATUALIZADA
+ *                         campo: nome
+ *                         valorAnterior: 'Empresa Antiga'
+ *                         valorNovo: 'Advance Tech Consultoria'
+ *                         descricao: 'João alterou nome da empresa'
+ *                         metadata: null
+ *                         criadoEm: '2024-10-25T15:30:00Z'
+ *                         alteradoPor:
+ *                           id: user_123456
+ *                           nomeCompleto: 'João Silva'
+ *                           role: 'ADMIN'
+ *                       - id: audit_123457
+ *                         acao: PLANO_ASSIGNADO
+ *                         campo: null
+ *                         valorAnterior: null
+ *                         valorNovo: null
+ *                         descricao: 'João alterou Plano de assinaturas para Plano Avançado'
+ *                         metadata:
+ *                           planoNome: 'Plano Avançado'
+ *                           detalhes: 'Atribuição manual via admin'
+ *                         criadoEm: '2024-10-24T10:15:00Z'
+ *                         alteradoPor:
+ *                           id: user_123456
+ *                           nomeCompleto: 'João Silva'
+ *                           role: 'ADMIN'
+ *                       - id: audit_123458
+ *                         acao: BLOQUEIO_APLICADO
+ *                         campo: null
+ *                         valorAnterior: null
+ *                         valorNovo: null
+ *                         descricao: 'Carlos aplicou bloqueio: VIOLACAO_POLITICAS - Uso indevido de dados'
+ *                         metadata:
+ *                           motivo: 'VIOLACAO_POLITICAS'
+ *                           observacoes: 'Uso indevido de dados pessoais de candidatos'
+ *                         criadoEm: '2023-09-20T14:05:00Z'
+ *                         alteradoPor:
+ *                           id: adm_002
+ *                           nomeCompleto: 'Carlos Supervisor'
+ *                           role: 'ADMIN'
  *       400:
  *         description: Parâmetros inválidos
  *         content:

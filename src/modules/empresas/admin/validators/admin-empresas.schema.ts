@@ -17,8 +17,9 @@ const uuidSchema = z.string().uuid('Informe um identificador válido');
 const nullableString = z
   .string()
   .trim()
-  .min(1, 'Informe um valor válido')
-  .max(255, 'Valor muito longo');
+  .max(255, 'Valor muito longo')
+  .optional()
+  .nullable();
 
 const nullableEnderecoString = z
   .string()
@@ -180,23 +181,23 @@ export type AdminEmpresasCreateInput = z.infer<typeof adminEmpresasCreateSchema>
 
 export const adminEmpresasUpdateSchema = z
   .object({
-    nome: nullableString.optional(),
+    nome: nullableString,
     email: z.string().trim().toLowerCase().email('Informe um e-mail válido').optional(),
-    telefone: z.string().trim().min(10, 'Informe um telefone válido').max(20).optional(),
+    telefone: z.string().trim().min(10, 'Informe um telefone válido').max(20).optional().nullable(),
     cnpj: z.string().trim().min(14, 'CNPJ deve ter 14 dígitos').max(18).optional().nullable(),
     logradouro: nullableEnderecoString.optional().nullable(),
     numero: nullableEnderecoNumero.optional().nullable(),
     bairro: nullableEnderecoString.optional().nullable(),
-    cidade: nullableString.optional().nullable(),
-    estado: nullableString.optional().nullable(),
+    cidade: nullableString,
+    estado: nullableString,
     cep: nullableCep.optional().nullable(),
     descricao: z.string().trim().max(500, 'Descrição muito longa').optional().nullable(),
-    instagram: nullableString.optional().nullable(),
-    linkedin: nullableString.optional().nullable(),
-    facebook: nullableString.optional().nullable(),
-    youtube: nullableString.optional().nullable(),
-    twitter: nullableString.optional().nullable(),
-    tiktok: nullableString.optional().nullable(),
+    instagram: nullableString,
+    linkedin: nullableString,
+    facebook: nullableString,
+    youtube: nullableString,
+    twitter: nullableString,
+    tiktok: nullableString,
     socialLinks: socialLinksSchema.optional().nullable(),
     avatarUrl: nullableUrl.optional().nullable(),
     status: z.nativeEnum(Status).optional(),

@@ -547,6 +547,7 @@ type AdminEmpresaDetail = {
   };
   bloqueioAtivo: AdminUsuariosEmBloqueiosResumo | null;
   informacoes: ReturnType<typeof mapUsuarioInformacoes>;
+  historicoFinanceiro: AdminEmpresaPlanoHistoricoItem[];
 };
 
 type AdminEmpresaOverview = {
@@ -1814,16 +1815,38 @@ export const adminEmpresasService = {
         : null;
     const ultimoPagamentoEm =
       planoAtual?.atualizadoEm ?? planoAtual?.inicio ?? planoAtual?.criadoEm ?? null;
-    const bloqueioAtivoRegistro = await prisma.usuariosEmBloqueios.findFirst({
-      where: {
-        usuarioId: id,
-        status: StatusDeBloqueios.ATIVO,
-        OR: [{ fim: null }, { fim: { gt: new Date() } }],
-      },
-      orderBy: [{ fim: 'desc' }, { criadoEm: 'desc' }],
-      select: bloqueioSelect,
-    });
+    const referenceDate = new Date();
+    const historicoWhere: Prisma.EmpresasPlanoWhereInput = {
+      usuarioId: id,
+      status: { not: EmpresasPlanoStatus.ATIVO },
+    };
+
+    if (planoAtual?.id) {
+      historicoWhere.NOT = [{ id: planoAtual.id }];
+    }
+
+    const [bloqueioAtivoRegistro, historicoFinanceiroRegistros] = await Promise.all([
+      prisma.usuariosEmBloqueios.findFirst({
+        where: {
+          usuarioId: id,
+          status: StatusDeBloqueios.ATIVO,
+          OR: [{ fim: null }, { fim: { gt: referenceDate } }],
+        },
+        orderBy: [{ fim: 'desc' }, { criadoEm: 'desc' }],
+        select: bloqueioSelect,
+      }),
+      prisma.empresasPlano.findMany({
+        where: historicoWhere,
+        orderBy: [{ inicio: 'desc' }, { criadoEm: 'desc' }],
+        take: 4,
+        select: planoHistoricoSelect,
+      }),
+    ]);
+
     const bloqueioAtivo = mapBloqueioResumo(bloqueioAtivoRegistro);
+    const historicoFinanceiro = historicoFinanceiroRegistros.map((plano) =>
+      mapPlanoHistorico(plano, referenceDate),
+    );
 
     return {
       id: empresa.id,
@@ -1858,6 +1881,7 @@ export const adminEmpresasService = {
       },
       bloqueioAtivo,
       informacoes: empresa.informacoes,
+      historicoFinanceiro,
     };
   },
 

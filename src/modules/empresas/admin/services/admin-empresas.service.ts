@@ -1648,10 +1648,15 @@ export const adminEmpresasService = {
         if (informacoesExiste) {
           updates.informacoes = { update: informacoesUpdates };
         } else {
-          // Se não existe, precisamos criar com telefone obrigatório
-          const createData = {
-            telefone: informacoesUpdates.telefone || '',
-            ...informacoesUpdates,
+          // Se não existe, precisamos criar com os valores corretos
+          const createData: Prisma.UsuariosInformationCreateWithoutUsuarioInput = {
+            telefone: (informacoesUpdates.telefone as string) || '',
+            genero: informacoesUpdates.genero as string | null | undefined,
+            dataNasc: informacoesUpdates.dataNasc as Date | null | undefined,
+            inscricao: informacoesUpdates.inscricao as string | null | undefined,
+            avatarUrl: informacoesUpdates.avatarUrl as string | null | undefined,
+            descricao: informacoesUpdates.descricao as string | null | undefined,
+            aceitarTermos: informacoesUpdates.aceitarTermos as boolean | undefined,
           };
           updates.informacoes = { create: createData };
         }

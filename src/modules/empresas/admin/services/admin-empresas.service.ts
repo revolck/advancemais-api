@@ -2521,6 +2521,9 @@ export const adminEmpresasService = {
         'aplicado',
         input.motivo,
         observacoes || undefined,
+        input.tipo,
+        inicio,
+        fim,
       );
     } catch (error) {
       console.error('Erro ao registrar auditoria de bloqueio:', error);
@@ -2590,6 +2593,9 @@ export const adminEmpresasService = {
         'revogado',
         bloqueioAtivo.motivo,
         observacoes || undefined,
+        bloqueioAtivo.tipo,
+        bloqueioAtivo.inicio,
+        bloqueioAtivo.fim,
       );
     } catch (error) {
       console.error('Erro ao registrar auditoria de revogação de bloqueio:', error);

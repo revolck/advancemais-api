@@ -144,7 +144,46 @@ class EmpresasAuditoriaService {
     acao: 'aplicado' | 'revogado',
     motivo: string,
     observacoes?: string,
+    tipo?: string,
+    inicio?: Date,
+    fim?: Date | null,
   ) {
+    // Mapear tipo de bloqueio
+    const tipoTexto: Record<string, string> = {
+      TEMPORARIO: 'Temporário',
+      PERMANENTE: 'Permanente',
+      RESTRICAO_DE_RECURSO: 'Restrição de Recurso',
+    };
+
+    // Calcular duração em dias se for temporário
+    let duracaoDias: number | null = null;
+    if (tipo === 'TEMPORARIO' && inicio && fim) {
+      const diffTime = Math.abs(fim.getTime() - inicio.getTime());
+      duracaoDias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    // Construir descrição consolidada
+    let descricao = '';
+
+    if (acao === 'aplicado') {
+      const tipoFormatado = tipo ? tipoTexto[tipo] || tipo : 'Não especificado';
+      descricao = `Bloqueio aplicado: ${tipoFormatado} - Motivo: ${motivo}`;
+
+      if (duracaoDias !== null) {
+        descricao += ` - Duração: ${duracaoDias} dias`;
+      }
+
+      if (observacoes) {
+        descricao += ` - Observação: ${observacoes}`;
+      }
+    } else {
+      descricao = `Bloqueio revogado - Motivo original: ${motivo}`;
+
+      if (observacoes) {
+        descricao += ` - Observação: ${observacoes}`;
+      }
+    }
+
     return await this.registrarAlteracao({
       empresaId,
       alteradoPor,
@@ -152,10 +191,14 @@ class EmpresasAuditoriaService {
         acao === 'aplicado'
           ? EmpresasAuditoriaAcao.BLOQUEIO_APLICADO
           : EmpresasAuditoriaAcao.BLOQUEIO_REVOGADO,
-      descricao: `Bloqueio ${acao}: ${motivo}${observacoes ? ` - ${observacoes}` : ''}`,
+      descricao,
       metadata: {
         motivo,
         observacoes,
+        tipo,
+        inicio: inicio?.toISOString(),
+        fim: fim?.toISOString() || null,
+        duracaoDias,
       },
     });
   }

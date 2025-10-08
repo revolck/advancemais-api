@@ -1841,18 +1841,24 @@ export const adminEmpresasService = {
             );
             auditoriaRegistrada = true;
           } else {
-            const novoPlano = await prisma.planosEmpresariais.findUnique({
-              where: { id: data.plano.planosEmpresariaisId },
-              select: { nome: true },
+            // Buscar plano novo atualizado após a transação
+            const planoNovo = await prisma.empresasPlano.findFirst({
+              where: {
+                usuarioId: id,
+                status: EmpresasPlanoStatus.ATIVO,
+                planosEmpresariaisId: data.plano.planosEmpresariaisId
+              },
+              include: { plano: { select: { nome: true } } },
+              orderBy: [{ inicio: 'desc' }, { criadoEm: 'desc' }],
             });
 
-            if (novoPlano) {
+            if (planoNovo) {
               await empresasAuditoriaService.registrarAlteracaoPlanoDetalhada(
                 id,
                 alteradoPor,
                 'PLANO_ASSIGNADO',
                 planoAtual,
-                novoPlano,
+                planoNovo,
                 'Plano atribuído pelo administrador',
               );
               auditoriaRegistrada = true;
@@ -1906,18 +1912,23 @@ export const adminEmpresasService = {
     // Registrar auditoria após a transação
     if (alteradoPor) {
       try {
-        const novoPlano = await prisma.planosEmpresariais.findUnique({
-          where: { id: plano.planosEmpresariaisId },
-          select: { nome: true },
+        const planoNovo = await prisma.empresasPlano.findFirst({
+          where: {
+            usuarioId: id,
+            status: EmpresasPlanoStatus.ATIVO,
+            planosEmpresariaisId: plano.planosEmpresariaisId
+          },
+          include: { plano: { select: { nome: true } } },
+          orderBy: [{ inicio: 'desc' }, { criadoEm: 'desc' }],
         });
 
-        if (novoPlano) {
+        if (planoNovo) {
           await empresasAuditoriaService.registrarAlteracaoPlanoDetalhada(
             id,
             alteradoPor,
             'PLANO_ATUALIZADO',
             planoAnterior,
-            novoPlano,
+            planoNovo,
             'Plano atualizado pelo administrador',
           );
         }
@@ -1978,18 +1989,23 @@ export const adminEmpresasService = {
     // Registrar auditoria após a transação
     if (alteradoPor) {
       try {
-        const novoPlano = await prisma.planosEmpresariais.findUnique({
-          where: { id: plano.planosEmpresariaisId },
-          select: { nome: true },
+        const planoNovo = await prisma.empresasPlano.findFirst({
+          where: {
+            usuarioId: id,
+            status: EmpresasPlanoStatus.ATIVO,
+            planosEmpresariaisId: plano.planosEmpresariaisId
+          },
+          include: { plano: { select: { nome: true } } },
+          orderBy: [{ inicio: 'desc' }, { criadoEm: 'desc' }],
         });
 
-        if (novoPlano) {
+        if (planoNovo) {
           await empresasAuditoriaService.registrarAlteracaoPlanoDetalhada(
             id,
             alteradoPor,
             'PLANO_ASSIGNADO',
             planoAnterior,
-            novoPlano,
+            planoNovo,
             'Plano atribuído manualmente pelo administrador',
           );
         }

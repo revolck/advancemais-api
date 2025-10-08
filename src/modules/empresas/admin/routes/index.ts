@@ -1588,7 +1588,7 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  * /api/v1/empresas/admin/{id}/plano:
  *   post:
  *     summary: (Admin/Moderador) Cadastrar plano manualmente para a empresa
- *     description: "Permite registrar manualmente um novo plano empresarial para a empresa selecionada. Qualquer plano ativo é automaticamente cancelado antes do novo vínculo. Quando informados, os campos de próxima cobrança ou período de carência definem automaticamente a data de término do plano. A ação é registrada na auditoria da empresa com rastreamento detalhado do plano anterior e novo plano atribuído, incluindo informações de nome, modo e status. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     description: "Permite registrar manualmente um novo plano empresarial para a empresa selecionada. Qualquer plano ativo é automaticamente cancelado antes do novo vínculo. Quando informados, os campos de próxima cobrança ou período de carência definem automaticamente a data de término do plano. A ação é registrada na auditoria da empresa com descrição consolidada incluindo: nome do plano, tipo de vínculo (Cliente/Parceiro/Avaliação), método de pagamento, status do pagamento e período de teste em dias (quando for modo Avaliação). Endpoint restrito aos perfis ADMIN e MODERADOR."
  *     operationId: adminEmpresasAssignPlanoManual
  *     tags: [Empresas - Admin]
  *     security:
@@ -1684,7 +1684,7 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  *               $ref: '#/components/schemas/ErrorResponse'
  *   put:
  *     summary: (Admin/Moderador) Atualizar plano da empresa
- *     description: "Atualiza ou atribui um novo plano empresarial para a empresa informada, permitindo também o ajuste de dados de cobrança manual (modelo, método, status, próximas cobranças e período de carência). A ação é registrada na auditoria da empresa com rastreamento detalhado das mudanças do plano, incluindo comparação entre plano anterior e novo plano com informações de nome, modo e status. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     description: "Atualiza ou atribui um novo plano empresarial para a empresa informada, permitindo também o ajuste de dados de cobrança manual (modelo, método, status, próximas cobranças e período de carência). A ação é registrada na auditoria da empresa com descrição consolidada incluindo: nome do plano anterior e novo, tipo de vínculo (Cliente/Parceiro/Avaliação), método de pagamento, status do pagamento e período de teste (quando aplicável). Endpoint restrito aos perfis ADMIN e MODERADOR."
  *     operationId: adminEmpresasUpdatePlano
  *     tags: [Empresas - Admin]
  *     security:
@@ -1926,7 +1926,7 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *               $ref: '#/components/schemas/ErrorResponse'
  *   get:
  *     summary: (Admin) Visão completa da empresa
- *     description: "Retorna uma visão consolidada da empresa (Pessoa Jurídica) incluindo plano atual e histórico, vagas, candidaturas, pagamentos, bloqueios ativos e histórico de auditoria. Apenas perfis ADMIN e MODERADOR podem acessar."
+ *     description: "Retorna uma visão consolidada da empresa (Pessoa Jurídica) incluindo plano atual e histórico, vagas, candidaturas, pagamentos, bloqueios ativos e histórico de auditoria. O sistema de auditoria registra automaticamente apenas as alterações reais dos campos modificados, incluindo descrições consolidadas para planos (com vínculo, método de pagamento, status e período de teste quando aplicável). Apenas perfis ADMIN e MODERADOR podem acessar."
  *     operationId: adminEmpresasGet
  *     tags: [Empresas - Admin]
  *     security:
@@ -2215,15 +2215,71 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *                         campo: null
  *                         valorAnterior: null
  *                         valorNovo: null
- *                         descricao: 'Plano atribuído: Plano Avançado (parceiro) - Plano atribuído pelo administrador'
+ *                         descricao: 'Plano atribuído: Plano Premium - Vínculo: Parceiro - Método: PIX - Status: Aprovado'
  *                         metadata:
  *                           planoAnterior: null
  *                           planoNovo:
  *                             id: 'b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e'
- *                             nome: 'Plano Avançado'
+ *                             nome: 'Plano Premium'
  *                             modo: 'PARCEIRO'
  *                             status: 'ATIVO'
+ *                             modeloPagamento: 'ASSINATURA'
+ *                             metodoPagamento: 'PIX'
+ *                             statusPagamento: 'APROVADO'
+ *                             diasTeste: null
  *                         criadoEm: '2024-10-25T16:25:00Z'
+ *                         alteradoPor:
+ *                           id: user_123456
+ *                           nomeCompleto: 'João Silva'
+ *                           role: 'ADMIN'
+ *                       - id: audit_123465
+ *                         acao: PLANO_ATUALIZADO
+ *                         campo: null
+ *                         valorAnterior: null
+ *                         valorNovo: null
+ *                         descricao: 'Plano alterado de "Plano Básico" (Cliente) para "Plano Premium" (Parceiro) - Método: PIX - Status: Aprovado'
+ *                         metadata:
+ *                           planoAnterior:
+ *                             id: 'a1b2c3d4-5678-90ab-cdef-123456789abc'
+ *                             nome: 'Plano Básico'
+ *                             modo: 'CLIENTE'
+ *                             status: 'ATIVO'
+ *                             modeloPagamento: 'ASSINATURA'
+ *                             metodoPagamento: 'CARTAO'
+ *                             statusPagamento: 'APROVADO'
+ *                             diasTeste: null
+ *                           planoNovo:
+ *                             id: 'b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e'
+ *                             nome: 'Plano Premium'
+ *                             modo: 'PARCEIRO'
+ *                             status: 'ATIVO'
+ *                             modeloPagamento: 'ASSINATURA'
+ *                             metodoPagamento: 'PIX'
+ *                             statusPagamento: 'APROVADO'
+ *                             diasTeste: null
+ *                         criadoEm: '2024-10-25T16:20:00Z'
+ *                         alteradoPor:
+ *                           id: user_123456
+ *                           nomeCompleto: 'João Silva'
+ *                           role: 'ADMIN'
+ *                       - id: audit_123466
+ *                         acao: PLANO_ASSIGNADO
+ *                         campo: null
+ *                         valorAnterior: null
+ *                         valorNovo: null
+ *                         descricao: 'Plano atribuído: Plano Teste - Vínculo: Avaliação - Método: PIX - Status: Aprovado - Período de teste: 15 dias'
+ *                         metadata:
+ *                           planoAnterior: null
+ *                           planoNovo:
+ *                             id: 'c9e8d7f6-5432-10ba-fedc-987654321xyz'
+ *                             nome: 'Plano Teste'
+ *                             modo: 'TESTE'
+ *                             status: 'ATIVO'
+ *                             modeloPagamento: 'ASSINATURA'
+ *                             metodoPagamento: 'PIX'
+ *                             statusPagamento: 'APROVADO'
+ *                             diasTeste: 15
+ *                         criadoEm: '2024-10-25T16:15:00Z'
  *                         alteradoPor:
  *                           id: user_123456
  *                           nomeCompleto: 'João Silva'

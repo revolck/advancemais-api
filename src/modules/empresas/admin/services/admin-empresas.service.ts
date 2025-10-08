@@ -1537,15 +1537,17 @@ export const adminEmpresasService = {
     let auditoriaRegistrada = false;
     let dadosAnteriores: any = null;
 
+    // Processar dados de redes sociais fora da transação para uso na auditoria
+    const socialLinksInput = extractSocialLinksFromPayload(
+      data as unknown as Record<string, unknown>,
+    );
+    const socialLinksSanitized = sanitizeSocialLinks(socialLinksInput);
+
     await prisma.$transaction(async (tx) => {
       await ensureEmpresaExiste(tx, id);
 
       const updates: Prisma.UsuariosUpdateInput = {};
       const informacoesUpdates: Prisma.UsuariosInformationUpdateInput = {};
-      const socialLinksInput = extractSocialLinksFromPayload(
-        data as unknown as Record<string, unknown>,
-      );
-      const socialLinksSanitized = sanitizeSocialLinks(socialLinksInput);
       const socialLinksUpdate = buildSocialLinksUpdateData(socialLinksSanitized);
 
       // Buscar dados anteriores para auditoria
@@ -1562,6 +1564,27 @@ export const adminEmpresasService = {
               descricao: true,
               avatarUrl: true,
             },
+          },
+          redesSociais: {
+            select: {
+              instagram: true,
+              linkedin: true,
+              facebook: true,
+              youtube: true,
+              twitter: true,
+              tiktok: true,
+            },
+          },
+          enderecos: {
+            select: {
+              logradouro: true,
+              numero: true,
+              bairro: true,
+              cidade: true,
+              estado: true,
+              cep: true,
+            },
+            take: 1,
           },
         },
       });
@@ -1617,7 +1640,21 @@ export const adminEmpresasService = {
       }
 
       if (Object.keys(informacoesUpdates).length > 0) {
-        updates.informacoes = { update: informacoesUpdates };
+        // Verificar se informacoes já existe
+        const informacoesExiste = await tx.usuariosInformation.findUnique({
+          where: { usuarioId: id },
+        });
+
+        if (informacoesExiste) {
+          updates.informacoes = { update: informacoesUpdates };
+        } else {
+          // Se não existe, precisamos criar com telefone obrigatório
+          const createData = {
+            telefone: informacoesUpdates.telefone || '',
+            ...informacoesUpdates,
+          };
+          updates.informacoes = { create: createData };
+        }
       }
 
       if (Object.keys(updates).length > 0) {
@@ -1708,6 +1745,68 @@ export const adminEmpresasService = {
           auditoriaRegistrada = true;
         }
 
+        // Registrar alterações de telefone
+        if (data.telefone !== undefined) {
+          const telefoneAlterado = await empresasAuditoriaService.registrarAlteracaoTelefone(
+            id,
+            alteradoPor,
+            dadosAnteriores?.informacoes?.telefone || null,
+            data.telefone,
+          );
+          if (telefoneAlterado) auditoriaRegistrada = true;
+        }
+
+        // Registrar alterações de endereço
+        const enderecoAnterior = dadosAnteriores?.enderecos?.[0];
+        const dadosEnderecoAnteriores = {
+          logradouro: enderecoAnterior?.logradouro,
+          numero: enderecoAnterior?.numero,
+          bairro: enderecoAnterior?.bairro,
+          cidade: enderecoAnterior?.cidade,
+          estado: enderecoAnterior?.estado,
+          cep: enderecoAnterior?.cep,
+        };
+
+        const dadosEnderecoNovos = {
+          logradouro: data.logradouro,
+          numero: data.numero,
+          bairro: data.bairro,
+          cidade: data.cidade,
+          estado: data.estado,
+          cep: data.cep,
+        };
+
+        const enderecoAlterado = await empresasAuditoriaService.registrarAlteracaoEndereco(
+          id,
+          alteradoPor,
+          dadosEnderecoAnteriores,
+          dadosEnderecoNovos,
+        );
+        if (enderecoAlterado) auditoriaRegistrada = true;
+
+        // Registrar alterações de redes sociais
+        const redesAnteriores = dadosAnteriores?.redesSociais || {};
+        const redesNovas = socialLinksSanitized?.values || {};
+
+        const redesAlteradas = await empresasAuditoriaService.registrarAlteracaoRedesSociais(
+          id,
+          alteradoPor,
+          redesAnteriores,
+          redesNovas,
+        );
+        if (redesAlteradas) auditoriaRegistrada = true;
+
+        // Registrar alterações de descrição
+        if (data.descricao !== undefined) {
+          const descricaoAlterada = await empresasAuditoriaService.registrarAlteracaoDescricao(
+            id,
+            alteradoPor,
+            dadosAnteriores?.informacoes?.descricao || null,
+            data.descricao,
+          );
+          if (descricaoAlterada) auditoriaRegistrada = true;
+        }
+
         // Registrar alteração de plano se houver
         if (data.plano !== undefined) {
           const planoAtual = await prisma.empresasPlano.findFirst({
@@ -1717,11 +1816,12 @@ export const adminEmpresasService = {
           });
 
           if (data.plano === null) {
-            await empresasAuditoriaService.registrarAlteracaoPlano(
+            await empresasAuditoriaService.registrarAlteracaoPlanoDetalhada(
               id,
               alteradoPor,
               'PLANO_CANCELADO',
-              planoAtual?.plano?.nome || 'Plano anterior',
+              planoAtual,
+              null,
               'Plano cancelado pelo administrador',
             );
             auditoriaRegistrada = true;
@@ -1732,11 +1832,12 @@ export const adminEmpresasService = {
             });
 
             if (novoPlano) {
-              await empresasAuditoriaService.registrarAlteracaoPlano(
+              await empresasAuditoriaService.registrarAlteracaoPlanoDetalhada(
                 id,
                 alteradoPor,
                 'PLANO_ASSIGNADO',
-                novoPlano.nome,
+                planoAtual,
+                novoPlano,
                 'Plano atribuído pelo administrador',
               );
               auditoriaRegistrada = true;
@@ -1764,8 +1865,17 @@ export const adminEmpresasService = {
   },
 
   updatePlano: async (id: string, plano: AdminEmpresasPlanoUpdateInput, alteradoPor?: string) => {
+    let planoAnterior: any = null;
+
     await prisma.$transaction(async (tx) => {
       await ensureEmpresaExiste(tx, id);
+
+      // Buscar plano anterior para auditoria
+      planoAnterior = await tx.empresasPlano.findFirst({
+        where: { usuarioId: id, status: EmpresasPlanoStatus.ATIVO },
+        include: { plano: { select: { nome: true } } },
+        orderBy: [{ inicio: 'desc' }, { criadoEm: 'desc' }],
+      });
 
       const { resetPeriodo, ...planoPayload } = plano;
       const planoInput = planoPayload as AdminEmpresasPlanoPersistInput;
@@ -1787,11 +1897,12 @@ export const adminEmpresasService = {
         });
 
         if (novoPlano) {
-          await empresasAuditoriaService.registrarAlteracaoPlano(
+          await empresasAuditoriaService.registrarAlteracaoPlanoDetalhada(
             id,
             alteradoPor,
             'PLANO_ATUALIZADO',
-            novoPlano.nome,
+            planoAnterior,
+            novoPlano,
             'Plano atualizado pelo administrador',
           );
         }
@@ -1808,8 +1919,17 @@ export const adminEmpresasService = {
     plano: AdminEmpresasPlanoManualAssignInput,
     alteradoPor?: string,
   ) => {
+    let planoAnterior: any = null;
+
     await prisma.$transaction(async (tx) => {
       await ensureEmpresaExiste(tx, id);
+
+      // Buscar plano anterior para auditoria
+      planoAnterior = await tx.empresasPlano.findFirst({
+        where: { usuarioId: id, status: EmpresasPlanoStatus.ATIVO },
+        include: { plano: { select: { nome: true } } },
+        orderBy: [{ inicio: 'desc' }, { criadoEm: 'desc' }],
+      });
 
       const inicio = plano.iniciarEm ?? new Date();
       const modo = plano.modo;
@@ -1849,11 +1969,12 @@ export const adminEmpresasService = {
         });
 
         if (novoPlano) {
-          await empresasAuditoriaService.registrarAlteracaoPlano(
+          await empresasAuditoriaService.registrarAlteracaoPlanoDetalhada(
             id,
             alteradoPor,
             'PLANO_ASSIGNADO',
-            novoPlano.nome,
+            planoAnterior,
+            novoPlano,
             'Plano atribuído manualmente pelo administrador',
           );
         }

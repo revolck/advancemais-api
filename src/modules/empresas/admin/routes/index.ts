@@ -2284,6 +2284,60 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *                           id: user_123456
  *                           nomeCompleto: 'João Silva'
  *                           role: 'ADMIN'
+ *                       - id: audit_123467
+ *                         acao: BLOQUEIO_APLICADO
+ *                         campo: null
+ *                         valorAnterior: null
+ *                         valorNovo: null
+ *                         descricao: 'Bloqueio aplicado: Temporário - Motivo: Violação dos termos de uso - Duração: 7 dias - Observação: Empresa postou vagas fraudulentas'
+ *                         metadata:
+ *                           motivo: 'Violação dos termos de uso'
+ *                           observacoes: 'Empresa postou vagas fraudulentas'
+ *                           tipo: 'TEMPORARIO'
+ *                           inicio: '2024-10-25T15:00:00Z'
+ *                           fim: '2024-11-01T15:00:00Z'
+ *                           duracaoDias: 7
+ *                         criadoEm: '2024-10-25T15:00:00Z'
+ *                         alteradoPor:
+ *                           id: user_123456
+ *                           nomeCompleto: 'João Silva'
+ *                           role: 'ADMIN'
+ *                       - id: audit_123468
+ *                         acao: BLOQUEIO_APLICADO
+ *                         campo: null
+ *                         valorAnterior: null
+ *                         valorNovo: null
+ *                         descricao: 'Bloqueio aplicado: Permanente - Motivo: Fraude confirmada - Observação: Múltiplas violações graves'
+ *                         metadata:
+ *                           motivo: 'Fraude confirmada'
+ *                           observacoes: 'Múltiplas violações graves'
+ *                           tipo: 'PERMANENTE'
+ *                           inicio: '2024-10-25T14:30:00Z'
+ *                           fim: null
+ *                           duracaoDias: null
+ *                         criadoEm: '2024-10-25T14:30:00Z'
+ *                         alteradoPor:
+ *                           id: user_123456
+ *                           nomeCompleto: 'João Silva'
+ *                           role: 'ADMIN'
+ *                       - id: audit_123469
+ *                         acao: BLOQUEIO_REVOGADO
+ *                         campo: null
+ *                         valorAnterior: null
+ *                         valorNovo: null
+ *                         descricao: 'Bloqueio revogado - Motivo original: Violação dos termos de uso - Observação: Empresa regularizou a situação'
+ *                         metadata:
+ *                           motivo: 'Violação dos termos de uso'
+ *                           observacoes: 'Empresa regularizou a situação'
+ *                           tipo: 'TEMPORARIO'
+ *                           inicio: '2024-10-20T10:00:00Z'
+ *                           fim: '2024-10-27T10:00:00Z'
+ *                           duracaoDias: 7
+ *                         criadoEm: '2024-10-25T14:00:00Z'
+ *                         alteradoPor:
+ *                           id: user_123456
+ *                           nomeCompleto: 'João Silva'
+ *                           role: 'ADMIN'
  *                       - id: audit_123456
  *                         acao: EMPRESA_ATUALIZADA
  *                         campo: nome
@@ -2291,7 +2345,7 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *                         valorNovo: 'Advance Tech Consultoria'
  *                         descricao: 'Nome alterado de "Empresa Antiga" para "Advance Tech Consultoria"'
  *                         metadata: null
- *                         criadoEm: '2024-10-25T15:30:00Z'
+ *                         criadoEm: '2024-10-25T13:30:00Z'
  *                         alteradoPor:
  *                           id: user_123456
  *                           nomeCompleto: 'João Silva'

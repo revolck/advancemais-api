@@ -1799,7 +1799,7 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  * /api/v1/empresas/admin/{id}:
  *   put:
  *     summary: (Admin) Atualizar empresa
- *     description: "Atualiza dados cadastrais da empresa, permite redefinir a senha e gerenciar o plano vinculado. Todas as alterações são automaticamente registradas na auditoria da empresa com rastreamento detalhado de mudanças em endereço (CEP, logradouro, número, bairro, cidade, estado), telefone, redes sociais (Instagram, LinkedIn, Facebook, YouTube, Twitter, TikTok), descrição da empresa e planos empresariais. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     description: "Atualiza dados cadastrais da empresa, permite redefinir a senha e gerenciar o plano vinculado. Apenas os campos enviados no payload são atualizados e auditados. O sistema registra automaticamente na auditoria apenas as alterações reais dos campos fornecidos: endereço (CEP, logradouro, número, bairro, cidade, estado), telefone, redes sociais (Instagram, LinkedIn, Facebook, YouTube, Twitter, TikTok), descrição da empresa e planos empresariais. Endpoint restrito aos perfis ADMIN e MODERADOR."
  *     operationId: adminEmpresasUpdate
  *     tags: [Empresas - Admin]
  *     security:

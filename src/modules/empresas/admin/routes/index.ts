@@ -1588,7 +1588,7 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  * /api/v1/empresas/admin/{id}/plano:
  *   post:
  *     summary: (Admin/Moderador) Cadastrar plano manualmente para a empresa
- *     description: "Permite registrar manualmente um novo plano empresarial para a empresa selecionada. Qualquer plano ativo é automaticamente cancelado antes do novo vínculo. Quando informados, os campos de próxima cobrança ou período de carência definem automaticamente a data de término do plano. A ação é registrada na auditoria da empresa. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     description: "Permite registrar manualmente um novo plano empresarial para a empresa selecionada. Qualquer plano ativo é automaticamente cancelado antes do novo vínculo. Quando informados, os campos de próxima cobrança ou período de carência definem automaticamente a data de término do plano. A ação é registrada na auditoria da empresa com rastreamento detalhado do plano anterior e novo plano atribuído, incluindo informações de nome, modo e status. Endpoint restrito aos perfis ADMIN e MODERADOR."
  *     operationId: adminEmpresasAssignPlanoManual
  *     tags: [Empresas - Admin]
  *     security:
@@ -1684,7 +1684,7 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  *               $ref: '#/components/schemas/ErrorResponse'
  *   put:
  *     summary: (Admin/Moderador) Atualizar plano da empresa
- *     description: "Atualiza ou atribui um novo plano empresarial para a empresa informada, permitindo também o ajuste de dados de cobrança manual (modelo, método, status, próximas cobranças e período de carência). A ação é registrada na auditoria da empresa. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     description: "Atualiza ou atribui um novo plano empresarial para a empresa informada, permitindo também o ajuste de dados de cobrança manual (modelo, método, status, próximas cobranças e período de carência). A ação é registrada na auditoria da empresa com rastreamento detalhado das mudanças do plano, incluindo comparação entre plano anterior e novo plano com informações de nome, modo e status. Endpoint restrito aos perfis ADMIN e MODERADOR."
  *     operationId: adminEmpresasUpdatePlano
  *     tags: [Empresas - Admin]
  *     security:
@@ -1799,7 +1799,7 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  * /api/v1/empresas/admin/{id}:
  *   put:
  *     summary: (Admin) Atualizar empresa
- *     description: "Atualiza dados cadastrais da empresa, permite redefinir a senha e gerenciar o plano vinculado. Todas as alterações são automaticamente registradas na auditoria da empresa. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     description: "Atualiza dados cadastrais da empresa, permite redefinir a senha e gerenciar o plano vinculado. Todas as alterações são automaticamente registradas na auditoria da empresa com rastreamento detalhado de mudanças em endereço (CEP, logradouro, número, bairro, cidade, estado), telefone, redes sociais (Instagram, LinkedIn, Facebook, YouTube, Twitter, TikTok), descrição da empresa e planos empresariais. Endpoint restrito aos perfis ADMIN e MODERADOR."
  *     operationId: adminEmpresasUpdate
  *     tags: [Empresas - Admin]
  *     security:
@@ -1818,8 +1818,8 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *           schema:
  *             $ref: '#/components/schemas/AdminEmpresaUpdateInput'
  *           examples:
- *             default:
- *               summary: Atualização de dados cadastrais e plano
+ *             atualizacaoCompleta:
+ *               summary: Atualização completa com auditoria detalhada
  *               value:
  *                 telefone: '11912345678'
  *                 logradouro: 'Rua Manoel Pedro de Oliveira'
@@ -1829,6 +1829,8 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *                 cidade: 'Maceió'
  *                 estado: 'AL'
  *                 descricao: Consultoria especializada em tecnologia e inovação.
+ *                 instagram: '@advancetech'
+ *                 linkedin: 'https://linkedin.com/company/advancetech'
  *                 senha: NovaSenhaForte123!
  *                 confirmarSenha: NovaSenhaForte123!
  *                 status: ATIVO
@@ -1836,6 +1838,26 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *                   planosEmpresariaisId: b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e
  *                   modo: parceiro
  *                   resetPeriodo: false
+ *             apenasEndereco:
+ *               summary: Atualização apenas do endereço
+ *               value:
+ *                 logradouro: 'Av. Paulista'
+ *                 numero: '1000'
+ *                 bairro: 'Bela Vista'
+ *                 cidade: 'São Paulo'
+ *                 estado: 'SP'
+ *                 cep: '01310000'
+ *             apenasRedesSociais:
+ *               summary: Atualização das redes sociais
+ *               value:
+ *                 instagram: '@novaempresa'
+ *                 linkedin: 'https://linkedin.com/company/novaempresa'
+ *                 facebook: 'https://facebook.com/novaempresa'
+ *                 youtube: 'https://youtube.com/novaempresa'
+ *             apenasDescricao:
+ *               summary: Atualização da descrição da empresa
+ *               value:
+ *                 descricao: Nova descrição da empresa focada em inovação e tecnologia.
  *     responses:
  *       200:
  *         description: Empresa atualizada com sucesso
@@ -2124,8 +2146,88 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *                           criadoEm: '2023-09-20T14:05:00Z'
  *                           atualizadoEm: '2023-09-25T10:15:00Z'
  *                   auditoria:
- *                     total: 15
+ *                     total: 18
  *                     recentes:
+ *                       - id: audit_123460
+ *                         acao: EMPRESA_ATUALIZADA
+ *                         campo: endereco_completo
+ *                         valorAnterior: '{"logradouro":"Rua Antiga","numero":"123","bairro":"Centro","cidade":"Maceió","estado":"AL","cep":"57000000"}'
+ *                         valorNovo: '{"logradouro":"Rua Manoel Pedro de Oliveira","numero":"245","bairro":"Benedito Bentes","cidade":"Maceió","estado":"AL","cep":"57084028"}'
+ *                         descricao: 'Endereço atualizado: logradouro (Rua Antiga → Rua Manoel Pedro de Oliveira), numero (123 → 245), bairro (Centro → Benedito Bentes), cep (57000000 → 57084028)'
+ *                         metadata:
+ *                           tipo: 'endereco_completo'
+ *                           alteracoes:
+ *                             - campo: 'logradouro'
+ *                               valorAnterior: 'Rua Antiga'
+ *                               valorNovo: 'Rua Manoel Pedro de Oliveira'
+ *                             - campo: 'numero'
+ *                               valorAnterior: '123'
+ *                               valorNovo: '245'
+ *                             - campo: 'bairro'
+ *                               valorAnterior: 'Centro'
+ *                               valorNovo: 'Benedito Bentes'
+ *                             - campo: 'cep'
+ *                               valorAnterior: '57000000'
+ *                               valorNovo: '57084028'
+ *                         criadoEm: '2024-10-25T16:45:00Z'
+ *                         alteradoPor:
+ *                           id: user_123456
+ *                           nomeCompleto: 'João Silva'
+ *                           role: 'ADMIN'
+ *                       - id: audit_123461
+ *                         acao: EMPRESA_ATUALIZADA
+ *                         campo: social_instagram
+ *                         valorAnterior: ''
+ *                         valorNovo: '@advancetech'
+ *                         descricao: 'Rede social Instagram alterada de "vazio" para "@advancetech"'
+ *                         metadata: null
+ *                         criadoEm: '2024-10-25T16:40:00Z'
+ *                         alteradoPor:
+ *                           id: user_123456
+ *                           nomeCompleto: 'João Silva'
+ *                           role: 'ADMIN'
+ *                       - id: audit_123462
+ *                         acao: EMPRESA_ATUALIZADA
+ *                         campo: telefone
+ *                         valorAnterior: '11987654321'
+ *                         valorNovo: '11912345678'
+ *                         descricao: 'Telefone alterado de "11987654321" para "11912345678"'
+ *                         metadata: null
+ *                         criadoEm: '2024-10-25T16:35:00Z'
+ *                         alteradoPor:
+ *                           id: user_123456
+ *                           nomeCompleto: 'João Silva'
+ *                           role: 'ADMIN'
+ *                       - id: audit_123463
+ *                         acao: EMPRESA_ATUALIZADA
+ *                         campo: descricao
+ *                         valorAnterior: 'Consultoria em tecnologia'
+ *                         valorNovo: 'Consultoria especializada em tecnologia e inovação.'
+ *                         descricao: 'Descrição da empresa alterada de "Consultoria em tecnologia" para "Consultoria especializada em tecnologia e inovação."'
+ *                         metadata: null
+ *                         criadoEm: '2024-10-25T16:30:00Z'
+ *                         alteradoPor:
+ *                           id: user_123456
+ *                           nomeCompleto: 'João Silva'
+ *                           role: 'ADMIN'
+ *                       - id: audit_123464
+ *                         acao: PLANO_ASSIGNADO
+ *                         campo: null
+ *                         valorAnterior: null
+ *                         valorNovo: null
+ *                         descricao: 'Plano atribuído: Plano Avançado (parceiro) - Plano atribuído pelo administrador'
+ *                         metadata:
+ *                           planoAnterior: null
+ *                           planoNovo:
+ *                             id: 'b8d96a94-8a3d-4b90-8421-6f0a7bc1d42e'
+ *                             nome: 'Plano Avançado'
+ *                             modo: 'PARCEIRO'
+ *                             status: 'ATIVO'
+ *                         criadoEm: '2024-10-25T16:25:00Z'
+ *                         alteradoPor:
+ *                           id: user_123456
+ *                           nomeCompleto: 'João Silva'
+ *                           role: 'ADMIN'
  *                       - id: audit_123456
  *                         acao: EMPRESA_ATUALIZADA
  *                         campo: nome
@@ -2134,48 +2236,6 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *                         descricao: 'Nome alterado de "Empresa Antiga" para "Advance Tech Consultoria"'
  *                         metadata: null
  *                         criadoEm: '2024-10-25T15:30:00Z'
- *                         alteradoPor:
- *                           id: user_123456
- *                           nomeCompleto: 'João Silva'
- *                           role: 'ADMIN'
- *                       - id: audit_123457
- *                         acao: PLANO_ASSIGNADO
- *                         campo: null
- *                         valorAnterior: null
- *                         valorNovo: null
- *                         descricao: 'plano assignado: Plano Avançado - Plano atribuído pelo administrador'
- *                         metadata:
- *                           planoNome: 'Plano Avançado'
- *                           detalhes: 'Plano atribuído pelo administrador'
- *                         criadoEm: '2024-10-24T10:15:00Z'
- *                         alteradoPor:
- *                           id: user_123456
- *                           nomeCompleto: 'João Silva'
- *                           role: 'ADMIN'
- *                       - id: audit_123458
- *                         acao: BLOQUEIO_APLICADO
- *                         campo: null
- *                         valorAnterior: null
- *                         valorNovo: null
- *                         descricao: 'Bloqueio aplicado: VIOLACAO_POLITICAS - Uso indevido de dados pessoais de candidatos'
- *                         metadata:
- *                           motivo: 'VIOLACAO_POLITICAS'
- *                           observacoes: 'Uso indevido de dados pessoais de candidatos'
- *                         criadoEm: '2023-09-20T14:05:00Z'
- *                         alteradoPor:
- *                           id: adm_002
- *                           nomeCompleto: 'Carlos Supervisor'
- *                           role: 'ADMIN'
- *                       - id: audit_123459
- *                         acao: PLANO_ATUALIZADO
- *                         campo: null
- *                         valorAnterior: null
- *                         valorNovo: null
- *                         descricao: 'plano atualizado: Plano Premium - Plano atualizado pelo administrador'
- *                         metadata:
- *                           planoNome: 'Plano Premium'
- *                           detalhes: 'Plano atualizado pelo administrador'
- *                         criadoEm: '2024-10-23T14:20:00Z'
  *                         alteradoPor:
  *                           id: user_123456
  *                           nomeCompleto: 'João Silva'

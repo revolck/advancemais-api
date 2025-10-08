@@ -1761,45 +1761,55 @@ export const adminEmpresasService = {
           if (telefoneAlterado) auditoriaRegistrada = true;
         }
 
-        // Registrar alterações de endereço
-        const enderecoAnterior = dadosAnteriores?.enderecos?.[0];
-        const dadosEnderecoAnteriores = {
-          logradouro: enderecoAnterior?.logradouro,
-          numero: enderecoAnterior?.numero,
-          bairro: enderecoAnterior?.bairro,
-          cidade: enderecoAnterior?.cidade,
-          estado: enderecoAnterior?.estado,
-          cep: enderecoAnterior?.cep,
-        };
+        // Registrar alterações de endereço APENAS se foram enviadas no payload
+        const camposEndereco = ['logradouro', 'numero', 'bairro', 'cidade', 'estado', 'cep'];
+        const temEnderecoNoPayload = camposEndereco.some(campo => data[campo as keyof typeof data] !== undefined);
 
-        const dadosEnderecoNovos = {
-          logradouro: data.logradouro,
-          numero: data.numero,
-          bairro: data.bairro,
-          cidade: data.cidade,
-          estado: data.estado,
-          cep: data.cep,
-        };
+        if (temEnderecoNoPayload) {
+          const enderecoAnterior = dadosAnteriores?.enderecos?.[0];
+          const dadosEnderecoAnteriores = {
+            logradouro: enderecoAnterior?.logradouro,
+            numero: enderecoAnterior?.numero,
+            bairro: enderecoAnterior?.bairro,
+            cidade: enderecoAnterior?.cidade,
+            estado: enderecoAnterior?.estado,
+            cep: enderecoAnterior?.cep,
+          };
 
-        const enderecoAlterado = await empresasAuditoriaService.registrarAlteracaoEndereco(
-          id,
-          alteradoPor,
-          dadosEnderecoAnteriores,
-          dadosEnderecoNovos,
-        );
-        if (enderecoAlterado) auditoriaRegistrada = true;
+          const dadosEnderecoNovos = {
+            logradouro: data.logradouro,
+            numero: data.numero,
+            bairro: data.bairro,
+            cidade: data.cidade,
+            estado: data.estado,
+            cep: data.cep,
+          };
 
-        // Registrar alterações de redes sociais
-        const redesAnteriores = dadosAnteriores?.redesSociais || {};
-        const redesNovas = socialLinksSanitized?.values || {};
+          const enderecoAlterado = await empresasAuditoriaService.registrarAlteracaoEndereco(
+            id,
+            alteradoPor,
+            dadosEnderecoAnteriores,
+            dadosEnderecoNovos,
+          );
+          if (enderecoAlterado) auditoriaRegistrada = true;
+        }
 
-        const redesAlteradas = await empresasAuditoriaService.registrarAlteracaoRedesSociais(
-          id,
-          alteradoPor,
-          redesAnteriores,
-          redesNovas,
-        );
-        if (redesAlteradas) auditoriaRegistrada = true;
+        // Registrar alterações de redes sociais APENAS se foram enviadas no payload
+        const camposRedesSociais = ['instagram', 'linkedin', 'facebook', 'youtube', 'twitter', 'tiktok'];
+        const temRedesSociaisNoPayload = camposRedesSociais.some(campo => data[campo as keyof typeof data] !== undefined);
+
+        if (temRedesSociaisNoPayload) {
+          const redesAnteriores = dadosAnteriores?.redesSociais || {};
+          const redesNovas = socialLinksSanitized?.values || {};
+
+          const redesAlteradas = await empresasAuditoriaService.registrarAlteracaoRedesSociais(
+            id,
+            alteradoPor,
+            redesAnteriores,
+            redesNovas,
+          );
+          if (redesAlteradas) auditoriaRegistrada = true;
+        }
 
         // Registrar alterações de descrição
         if (data.descricao !== undefined) {

@@ -322,21 +322,52 @@ class EmpresasAuditoriaService {
     planoNovo: any,
     detalhes?: string,
   ) {
+    // Mapear modo para texto legível
+    const modoTexto: Record<string, string> = {
+      CLIENTE: 'Cliente',
+      PARCEIRO: 'Parceiro',
+      TESTE: 'Avaliação',
+    };
+
+    // Mapear método de pagamento
+    const metodoPagamentoTexto: Record<string, string> = {
+      CARTAO: 'Cartão',
+      PIX: 'PIX',
+      BOLETO: 'Boleto',
+    };
+
+    // Mapear status de pagamento
+    const statusPagamentoTexto: Record<string, string> = {
+      APROVADO: 'Aprovado',
+      PENDENTE: 'Pendente',
+      CANCELADO: 'Cancelado',
+      EXPIRADO: 'Expirado',
+      REJEITADO: 'Rejeitado',
+    };
+
     const metadata: any = {
       planoAnterior: planoAnterior
         ? {
             id: planoAnterior.id,
-            nome: planoAnterior.nome,
+            nome: planoAnterior.plano?.nome || planoAnterior.nome,
             modo: planoAnterior.modo,
             status: planoAnterior.status,
+            modeloPagamento: planoAnterior.modeloPagamento,
+            metodoPagamento: planoAnterior.metodoPagamento,
+            statusPagamento: planoAnterior.statusPagamento,
+            diasTeste: planoAnterior.duracaoEmDias,
           }
         : null,
       planoNovo: planoNovo
         ? {
             id: planoNovo.id,
-            nome: planoNovo.nome,
+            nome: planoNovo.plano?.nome || planoNovo.nome,
             modo: planoNovo.modo,
             status: planoNovo.status,
+            modeloPagamento: planoNovo.modeloPagamento,
+            metodoPagamento: planoNovo.metodoPagamento,
+            statusPagamento: planoNovo.statusPagamento,
+            diasTeste: planoNovo.duracaoEmDias,
           }
         : null,
     };
@@ -344,13 +375,62 @@ class EmpresasAuditoriaService {
     let descricao = '';
 
     if (acao === EmpresasAuditoriaAcao.PLANO_ASSIGNADO) {
-      descricao = `Plano atribuído: ${planoNovo?.nome || 'Plano não identificado'} (${planoNovo?.modo || 'modo não definido'})`;
+      const nomePlano = planoNovo?.plano?.nome || planoNovo?.nome || 'Plano não identificado';
+      const modo = modoTexto[planoNovo?.modo] || planoNovo?.modo || 'modo não definido';
+
+      descricao = `Plano atribuído: ${nomePlano} - Vínculo: ${modo}`;
+
+      // Adicionar método de pagamento se disponível
+      if (planoNovo?.metodoPagamento) {
+        const metodo = metodoPagamentoTexto[planoNovo.metodoPagamento] || planoNovo.metodoPagamento;
+        descricao += ` - Método: ${metodo}`;
+      }
+
+      // Adicionar status de pagamento se disponível
+      if (planoNovo?.statusPagamento) {
+        const status = statusPagamentoTexto[planoNovo.statusPagamento] || planoNovo.statusPagamento;
+        descricao += ` - Status: ${status}`;
+      }
+
+      // Adicionar dias de teste se for avaliação
+      if (planoNovo?.modo === 'TESTE' && planoNovo?.duracaoEmDias) {
+        descricao += ` - Período de teste: ${planoNovo.duracaoEmDias} dias`;
+      }
+
     } else if (acao === EmpresasAuditoriaAcao.PLANO_ATUALIZADO) {
-      descricao = `Plano atualizado: ${planoAnterior?.nome || 'Plano anterior'} → ${planoNovo?.nome || 'Plano novo'}`;
+      const nomeAnterior = planoAnterior?.plano?.nome || planoAnterior?.nome || 'Plano anterior';
+      const nomeNovo = planoNovo?.plano?.nome || planoNovo?.nome || 'Plano novo';
+      const modoAnterior = modoTexto[planoAnterior?.modo] || planoAnterior?.modo || 'não definido';
+      const modoNovo = modoTexto[planoNovo?.modo] || planoNovo?.modo || 'não definido';
+
+      descricao = `Plano alterado de "${nomeAnterior}" (${modoAnterior}) para "${nomeNovo}" (${modoNovo})`;
+
+      // Adicionar método de pagamento se mudou
+      if (planoNovo?.metodoPagamento && planoAnterior?.metodoPagamento !== planoNovo?.metodoPagamento) {
+        const metodoNovo = metodoPagamentoTexto[planoNovo.metodoPagamento] || planoNovo.metodoPagamento;
+        descricao += ` - Método: ${metodoNovo}`;
+      }
+
+      // Adicionar status de pagamento se mudou
+      if (planoNovo?.statusPagamento && planoAnterior?.statusPagamento !== planoNovo?.statusPagamento) {
+        const statusNovo = statusPagamentoTexto[planoNovo.statusPagamento] || planoNovo.statusPagamento;
+        descricao += ` - Status: ${statusNovo}`;
+      }
+
+      // Adicionar dias de teste se for avaliação
+      if (planoNovo?.modo === 'TESTE' && planoNovo?.duracaoEmDias) {
+        descricao += ` - Período de teste: ${planoNovo.duracaoEmDias} dias`;
+      }
+
     } else if (acao === EmpresasAuditoriaAcao.PLANO_CANCELADO) {
-      descricao = `Plano cancelado: ${planoAnterior?.nome || 'Plano não identificado'}`;
+      const nomePlano = planoAnterior?.plano?.nome || planoAnterior?.nome || 'Plano não identificado';
+      const modo = modoTexto[planoAnterior?.modo] || planoAnterior?.modo || 'não definido';
+      descricao = `Plano cancelado: ${nomePlano} (${modo})`;
+
     } else if (acao === EmpresasAuditoriaAcao.PLANO_EXPIRADO) {
-      descricao = `Plano expirado: ${planoAnterior?.nome || 'Plano não identificado'}`;
+      const nomePlano = planoAnterior?.plano?.nome || planoAnterior?.nome || 'Plano não identificado';
+      const modo = modoTexto[planoAnterior?.modo] || planoAnterior?.modo || 'não definido';
+      descricao = `Plano expirado: ${nomePlano} (${modo})`;
     }
 
     if (detalhes) {

@@ -207,6 +207,71 @@ router.get(
 );
 /**
  * @openapi
+ * /api/v1/candidatos/candidaturas/overview:
+ *   get:
+ *     summary: Visão consolidada de candidatos e vagas
+ *     description: "Retorna candidatos únicos com seus currículos e candidaturas agrupadas por vaga. Empresas visualizam apenas suas vagas; administradores, moderadores, recrutadores e psicólogos podem consultar todo o sistema."
+ *     tags: [Candidatos - Candidaturas]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, minimum: 1, default: 1 }
+ *       - in: query
+ *         name: pageSize
+ *         schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+ *       - in: query
+ *         name: empresaUsuarioId
+ *         schema: { type: string, format: uuid }
+ *         description: "Filtra por empresa específica (apenas para ADMIN, MODERADOR, RECRUTADOR e PSICOLOGO)."
+ *       - in: query
+ *         name: vagaId
+ *         schema: { type: string, format: uuid }
+ *         description: "Filtra candidaturas de uma vaga específica."
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: array
+ *           items: { $ref: '#/components/schemas/StatusProcesso' }
+ *         style: form
+ *         explode: false
+ *         description: "Lista de status (separados por vírgula) para filtrar candidaturas."
+ *       - in: query
+ *         name: search
+ *         schema: { type: string, minLength: 3, maxLength: 180 }
+ *         description: "Busca por nome, e-mail, CPF ou código do candidato."
+ *       - in: query
+ *         name: onlyWithCandidaturas
+ *         schema: { type: boolean }
+ *         description: "Força o filtro para candidatos com candidaturas mesmo sem parâmetros adicionais."
+ *     responses:
+ *       200:
+ *         description: Lista consolidada de candidatos e candidaturas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CandidatosOverviewResponse'
+ *       400:
+ *         description: Parâmetros inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationErrorResponse'
+ */
+router.get(
+  '/candidaturas/overview',
+  supabaseAuthMiddleware([
+    Roles.EMPRESA,
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.RECRUTADOR,
+    Roles.PSICOLOGO,
+  ]),
+  CandidaturasController.overview,
+);
+/**
+ * @openapi
  * /api/v1/candidatos/candidaturas/recebidas:
  *   get:
  *     summary: Listar candidaturas recebidas pela empresa

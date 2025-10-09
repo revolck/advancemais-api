@@ -9592,13 +9592,18 @@ const options: Options = {
                 },
                 candidaturasResumo: {
                   type: 'object',
-                  required: ['total', 'porStatus'],
+                  required: ['total', 'porStatus', 'vagasDistintas'],
                   properties: {
                     total: { type: 'integer', example: 3 },
                     porStatus: {
                       type: 'object',
                       additionalProperties: { type: 'integer' },
                       example: { RECEBIDA: 2, ENTREVISTA: 1 },
+                    },
+                    vagasDistintas: {
+                      type: 'integer',
+                      example: 2,
+                      description: 'Quantidade de vagas únicas vinculadas às candidaturas do candidato.',
                     },
                   },
                 },
@@ -9964,6 +9969,7 @@ const options: Options = {
                 candidaturasResumo: {
                   total: 1,
                   porStatus: { RECEBIDA: 1 },
+                  vagasDistintas: 1,
                 },
                 processosResumo: {
                   total: 1,
@@ -10134,13 +10140,18 @@ const options: Options = {
                 },
                 candidaturasResumo: {
                   type: 'object',
-                  required: ['total', 'porStatus'],
+                  required: ['total', 'porStatus', 'vagasDistintas'],
                   properties: {
                     total: { type: 'integer', example: 3 },
                     porStatus: {
                       type: 'object',
                       additionalProperties: { type: 'integer' },
                       example: { RECEBIDA: 2, ENTREVISTA: 1 },
+                    },
+                    vagasDistintas: {
+                      type: 'integer',
+                      example: 2,
+                      description: 'Quantidade de vagas únicas vinculadas às candidaturas do candidato.',
                     },
                   },
                 },
@@ -10268,7 +10279,7 @@ const options: Options = {
               },
             ],
             curriculosResumo: { total: 1, principais: 1 },
-            candidaturasResumo: { total: 1, porStatus: { RECEBIDA: 1 } },
+            candidaturasResumo: { total: 1, porStatus: { RECEBIDA: 1 }, vagasDistintas: 1 },
           },
         },
         AdminCandidatosListResponse: {
@@ -10280,6 +10291,96 @@ const options: Options = {
               items: { $ref: '#/components/schemas/AdminCandidatoDetalhe' },
             },
             pagination: { allOf: [{ $ref: '#/components/schemas/PaginationMeta' }] },
+          },
+        },
+        CandidatosOverviewSummary: {
+          type: 'object',
+          required: ['candidatos', 'curriculos', 'candidaturas'],
+          properties: {
+            candidatos: {
+              type: 'integer',
+              description: 'Quantidade total de candidatos dentro do filtro aplicado.',
+              example: 42,
+            },
+            curriculos: {
+              type: 'integer',
+              description: 'Quantidade total de currículos relacionados aos candidatos filtrados.',
+              example: 58,
+            },
+            candidaturas: {
+              type: 'integer',
+              description: 'Quantidade total de candidaturas dentro do filtro aplicado.',
+              example: 120,
+            },
+          },
+        },
+        CandidatosOverviewFilters: {
+          type: 'object',
+          required: [
+            'scope',
+            'empresaUsuarioId',
+            'vagaId',
+            'status',
+            'search',
+            'onlyWithCandidaturas',
+            'viewerRole',
+          ],
+          properties: {
+            scope: {
+              type: 'string',
+              enum: ['GLOBAL', 'EMPRESA'],
+              example: 'EMPRESA',
+              description: 'Escopo efetivo da consulta (GLOBAL para visão completa, EMPRESA quando filtrado por uma empresa).',
+            },
+            empresaUsuarioId: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+              example: '5cefd77b-7a20-47b2-95fe-3eb5bf2c7c11',
+              description: 'Identificador da empresa utilizada no filtro (quando aplicável).',
+            },
+            vagaId: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+              example: '7a5b9c1d-2f80-44a6-82da-6b8c1f00ec91',
+            },
+            status: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/StatusProcesso' },
+              example: ['RECEBIDA', 'ENTREVISTA'],
+            },
+            search: { type: 'string', nullable: true, example: 'João da Silva' },
+            onlyWithCandidaturas: { type: 'boolean', example: true },
+            viewerRole: {
+              type: 'string',
+              enum: [
+                'ADMIN',
+                'MODERADOR',
+                'FINANCEIRO',
+                'PROFESSOR',
+                'EMPRESA',
+                'PEDAGOGICO',
+                'RECRUTADOR',
+                'PSICOLOGO',
+                'ALUNO_CANDIDATO',
+              ],
+              example: 'EMPRESA',
+            },
+          },
+        },
+        CandidatosOverviewResponse: {
+          type: 'object',
+          required: ['data', 'pagination', 'summary', 'filters'],
+          properties: {
+            data: {
+              type: 'array',
+              description: 'Candidatos únicos com todas as candidaturas relacionadas às vagas do escopo.',
+              items: { $ref: '#/components/schemas/AdminCandidatoDetalhe' },
+            },
+            pagination: { allOf: [{ $ref: '#/components/schemas/PaginationMeta' }] },
+            summary: { $ref: '#/components/schemas/CandidatosOverviewSummary' },
+            filters: { $ref: '#/components/schemas/CandidatosOverviewFilters' },
           },
         },
         EmpresaResumo: {

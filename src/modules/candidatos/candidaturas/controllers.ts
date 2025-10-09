@@ -50,7 +50,12 @@ export const CandidaturasController = {
       Roles.MODERADOR,
       Roles.RECRUTADOR,
       Roles.PSICOLOGO,
-    ];
+    ] as const satisfies readonly Roles[];
+
+    type AllowedRole = (typeof allowedRoles)[number];
+
+    const isAllowedRole = (role: Roles): role is AllowedRole =>
+      allowedRoles.includes(role as AllowedRole);
 
     if (!user?.id || !user?.role) {
       return res.status(401).json({ success: false, code: 'UNAUTHORIZED' });
@@ -58,7 +63,7 @@ export const CandidaturasController = {
 
     const viewerRole = user.role as Roles;
 
-    if (!allowedRoles.includes(viewerRole)) {
+    if (!isAllowedRole(viewerRole)) {
       return res.status(403).json({ success: false, code: 'FORBIDDEN' });
     }
 

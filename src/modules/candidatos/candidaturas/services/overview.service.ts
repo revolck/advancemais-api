@@ -76,7 +76,13 @@ const buildFilters = ({
   };
 
   if (searchWhere) {
-    usuariosWhere.AND = [...(usuariosWhere.AND ?? []), searchWhere];
+    const currentAnd = Array.isArray(usuariosWhere.AND)
+      ? usuariosWhere.AND
+      : usuariosWhere.AND
+        ? [usuariosWhere.AND]
+        : [];
+
+    usuariosWhere.AND = [...currentAnd, searchWhere];
   }
 
   const candidaturasWhereBase: Prisma.EmpresasCandidatosWhereInput = {};

@@ -10,7 +10,7 @@ const router = Router();
  * /api/v1/website/planinhas:
  *   get:
  *     summary: Listar conteúdos "Planinhas"
- *     tags: [Website - Planinhas]
+ *     tags: [Website]
  *     responses:
  *       200:
  *         description: Lista de conteúdos
@@ -39,7 +39,7 @@ router.get('/', publicCache, PlaninhasController.list);
  * /api/v1/website/planinhas/{id}:
  *   get:
  *     summary: Obter conteúdo por ID
- *     tags: [Website - Planinhas]
+ *     tags: [Website]
  *     parameters:
  *       - in: path
  *         name: id
@@ -78,7 +78,7 @@ router.get('/:id', publicCache, PlaninhasController.get);
  * /api/v1/website/planinhas:
  *   post:
  *     summary: Criar conteúdo "Planinhas"
- *     tags: [Website - Planinhas]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -116,7 +116,7 @@ router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), PlaninhasContro
  * /api/v1/website/planinhas/{id}:
  *   put:
  *     summary: Atualizar conteúdo "Planinhas"
- *     tags: [Website - Planinhas]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -166,7 +166,7 @@ router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), PlaninhasCont
  * /api/v1/website/planinhas/{id}:
  *   delete:
  *     summary: Remover conteúdo "Planinhas"
- *     tags: [Website - Planinhas]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:

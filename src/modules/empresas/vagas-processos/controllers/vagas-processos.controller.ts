@@ -34,7 +34,12 @@ export class VagasProcessosController {
         candidatoId: typeof req.query.candidatoId === 'string' ? req.query.candidatoId : undefined,
       });
 
-      const processos = await vagasProcessosService.list(vagaId, query);
+      const processos = await vagasProcessosService.list(
+        vagaId,
+        query?.status
+          ? { ...query, statusIds: query.status, status: undefined as any }
+          : (query as any),
+      );
 
       res.json({
         message: 'Lista de processos seletivos vinculados à vaga.',

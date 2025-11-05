@@ -18,7 +18,7 @@ export const sliderService = {
         ordem: true,
         orientacao: true,
         status: true,
-        slider: {
+        WebsiteSlider: {
           select: {
             id: true,
             sliderName: true,
@@ -40,7 +40,7 @@ export const sliderService = {
         ordem: true,
         orientacao: true,
         status: true,
-        slider: {
+        WebsiteSlider: {
           select: {
             id: true,
             sliderName: true,
@@ -69,11 +69,12 @@ export const sliderService = {
         ordem,
         orientacao: data.orientacao,
         status: data.status ?? 'RASCUNHO',
-        slider: {
+        WebsiteSlider: {
           create: {
             sliderName: data.sliderName,
             imagemUrl: data.imagemUrl,
             link: data.link,
+            atualizadoEm: new Date(),
           },
         },
       },
@@ -82,7 +83,7 @@ export const sliderService = {
         ordem: true,
         orientacao: true,
         status: true,
-        slider: {
+        WebsiteSlider: {
           select: {
             id: true,
             sliderName: true,
@@ -164,13 +165,14 @@ export const sliderService = {
           ordem,
           orientacao,
           status: data.status,
-          slider:
+          WebsiteSlider:
             data.sliderName !== undefined || data.imagemUrl !== undefined || data.link !== undefined
               ? {
                   update: {
                     sliderName: data.sliderName,
                     imagemUrl: data.imagemUrl,
                     link: data.link,
+                    atualizadoEm: new Date(),
                   },
                 }
               : undefined,
@@ -180,7 +182,7 @@ export const sliderService = {
           ordem: true,
           orientacao: true,
           status: true,
-          slider: {
+          WebsiteSlider: {
             select: {
               id: true,
               sliderName: true,
@@ -203,7 +205,7 @@ export const sliderService = {
           id: true,
           ordem: true,
           orientacao: true,
-          slider: {
+          WebsiteSlider: {
             select: {
               id: true,
               sliderName: true,

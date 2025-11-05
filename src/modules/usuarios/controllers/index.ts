@@ -7,4 +7,4 @@
 export { loginUsuario, logoutUsuario, refreshToken, obterPerfil } from './usuario-controller';
 
 export { AdminController } from './admin-controller';
-export { StatsController } from './stats-controller';
+// StatsController removido (rotas de estatísticas descontinuadas)

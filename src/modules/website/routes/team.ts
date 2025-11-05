@@ -10,7 +10,7 @@ const router = Router();
  * /api/v1/website/team:
  *   get:
  *     summary: Listar membros da equipe
- *     tags: [Website - Team]
+ *     tags: [Website]
  *     parameters:
  *       - in: query
  *         name: status
@@ -45,7 +45,7 @@ router.get('/', publicCache, TeamController.list);
  * /api/v1/website/team/{id}:
  *   get:
  *     summary: Obter membro da equipe por ID da ordem
- *     tags: [Website - Team]
+ *     tags: [Website]
  *     parameters:
  *       - in: path
  *         name: id
@@ -86,7 +86,7 @@ router.get('/:id', publicCache, TeamController.get);
  *   post:
  *     summary: Criar membro da equipe
  *     description: Cria um novo membro da equipe. O campo `status` representa o estado de publicação do membro e aceita booleano (true = PUBLICADO, false = RASCUNHO) ou string.
- *     tags: [Website - Team]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -125,7 +125,7 @@ router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), TeamController.
  *   put:
  *     summary: Atualizar membro da equipe
  *     description: Atualiza um membro da equipe. O campo `status` representa o estado de publicação do membro e aceita booleano (true = PUBLICADO, false = RASCUNHO) ou string.
- *     tags: [Website - Team]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -177,7 +177,7 @@ router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), TeamControlle
  *   put:
  *     summary: Reordenar membro da equipe
  *     description: Altera a posição do membro utilizando o ID da ordem. Caso a nova posição esteja ocupada, os demais membros serão ajustados automaticamente.
- *     tags: [Website - Team]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -228,7 +228,7 @@ router.put('/:id/reorder', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), TeamC
  * /api/v1/website/team/{id}:
  *   delete:
  *     summary: Remover membro da equipe
- *     tags: [Website - Team]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:

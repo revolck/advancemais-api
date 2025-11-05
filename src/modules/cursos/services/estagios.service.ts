@@ -553,19 +553,19 @@ export const estagiosService = {
 
     try {
       await estagiosEmailService.enviarConvocacao({
-        alunoEmail: estagio.aluno.email,
-        alunoNome: estagio.aluno.nomeCompleto,
-        cursoNome: estagio.curso.nome,
-        turmaNome: estagio.turma.nome,
+        alunoEmail: estagio.Usuarios_CursosEstagios_alunoIdToUsuarios.email,
+        alunoNome: estagio.Usuarios_CursosEstagios_alunoIdToUsuarios.nomeCompleto,
+        cursoNome: estagio.Cursos.nome,
+        turmaNome: estagio.CursosTurmas.nome,
         estagioNome: estagio.nome,
         dataInicio: estagio.dataInicio,
         dataFim: estagio.dataFim,
         obrigatorio: estagio.obrigatorio,
-        confirmacaoToken: estagio.confirmacao.token,
+        confirmacaoToken: estagio.CursosEstagiosConfirmacoes?.token ?? '',
         empresaPrincipal: estagio.empresaPrincipal,
         cargaHoraria: estagio.cargaHoraria,
         observacoes: estagio.observacoes,
-        locais: prepararLocaisEmail(estagio.locais),
+        locais: prepararLocaisEmail(estagio.CursosEstagiosLocais || []),
         destinatarioAlternativo,
       });
 
@@ -573,7 +573,7 @@ export const estagiosService = {
         prisma,
         estagio.id,
         CursosEstagioNotificacaoTipo.ASSINATURA_PENDENTE,
-        destinatarioAlternativo ?? estagio.aluno.email,
+        destinatarioAlternativo ?? estagio.Usuarios_CursosEstagios_alunoIdToUsuarios.email,
         usuarioId ? `Reenvio solicitado por ${usuarioId}` : 'Reenvio de confirmação',
       );
     } catch (error) {
@@ -610,19 +610,19 @@ export const estagiosService = {
         ],
       },
       include: {
-        aluno: { select: { nomeCompleto: true } },
-        curso: { select: { nome: true } },
-        turma: { select: { nome: true } },
-        criadoPor: { select: { nomeCompleto: true, email: true } },
+        Usuarios_CursosEstagios_alunoIdToUsuarios: { select: { nomeCompleto: true } },
+        Cursos: { select: { nome: true } },
+        CursosTurmas: { select: { nome: true } },
+        Usuarios_CursosEstagios_criadoPorIdToUsuarios: { select: { nomeCompleto: true, email: true } },
       },
     });
 
     return estagios.map((estagio) => ({
       id: estagio.id,
-      criadoPor: estagio.criadoPor,
-      alunoNome: estagio.aluno.nomeCompleto,
-      cursoNome: estagio.curso.nome,
-      turmaNome: estagio.turma.nome,
+      criadoPor: estagio.Usuarios_CursosEstagios_criadoPorIdToUsuarios,
+      alunoNome: estagio.Usuarios_CursosEstagios_alunoIdToUsuarios.nomeCompleto,
+      cursoNome: estagio.Cursos.nome,
+      turmaNome: estagio.CursosTurmas.nome,
       estagioNome: estagio.nome,
       dataFim: estagio.dataFim,
       diasRestantes: diferencaEmDias(agora, estagio.dataFim),
@@ -636,9 +636,9 @@ export const estagiosService = {
     const estagio = await prisma.cursosEstagios.findUnique({
       where: { id: estagioId },
       include: {
-        aluno: { select: { nomeCompleto: true } },
-        curso: { select: { nome: true } },
-        turma: { select: { nome: true } },
+        Usuarios_CursosEstagios_alunoIdToUsuarios: { select: { nomeCompleto: true } },
+        Cursos: { select: { nome: true } },
+        CursosTurmas: { select: { nome: true } },
       },
     });
 
@@ -651,9 +651,9 @@ export const estagiosService = {
     await estagiosEmailService.enviarAvisoEncerramento({
       adminEmail: destinatario.email,
       adminNome: destinatario.nome ?? destinatario.email,
-      alunoNome: estagio.aluno.nomeCompleto,
-      cursoNome: estagio.curso.nome,
-      turmaNome: estagio.turma.nome,
+      alunoNome: estagio.Usuarios_CursosEstagios_alunoIdToUsuarios.nomeCompleto,
+      cursoNome: estagio.Cursos.nome,
+      turmaNome: estagio.CursosTurmas.nome,
       estagioNome: estagio.nome,
       dataFim: estagio.dataFim,
       diasRestantes: diferencaEmDias(agora, estagio.dataFim),

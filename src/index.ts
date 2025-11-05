@@ -34,6 +34,9 @@ const bootstrapLogger = logger.child({ module: 'Bootstrap' });
 
 const app = express();
 
+// Exportar app para testes
+export { app };
+
 app.set('trust proxy', 1);
 
 // =============================================
@@ -55,14 +58,22 @@ const corsOptionsDelegate: CorsOptionsDelegate<express.Request> = (req, callback
   const serverHost = req.hostname;
   const originHost = origin ? new URL(origin).host : null;
 
-  if (!origin || allowedOrigins.includes(origin) || originHost === serverHost) {
+  // Verifica se a origem está permitida
+  const isOriginAllowed =
+    !origin ||
+    allowedOrigins.includes(origin) ||
+    originHost === serverHost ||
+    allowedOrigins.includes('*');
+
+  if (isOriginAllowed) {
     const corsOptions: CorsOptions = {
-      origin: true,
+      origin: origin || true,
       credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'],
-      allowedHeaders: ['Authorization', 'Content-Type', 'X-Requested-With'],
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD', 'PATCH'],
+      allowedHeaders: ['Authorization', 'Content-Type', 'X-Requested-With', 'Accept', 'Origin'],
       optionsSuccessStatus: 204,
     };
+
     return callback(null, corsOptions);
   }
 

@@ -10,7 +10,7 @@ const router = Router({ mergeParams: true });
  *   get:
  *     summary: Listar processos seletivos da vaga
  *     description: "Retorna todos os processos seletivos vinculados a uma vaga específica. Permite filtrar por status, origem e candidato."
- *     tags: [Empresas - VagasProcessos]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -26,7 +26,7 @@ const router = Router({ mergeParams: true });
  *         required: false
  *         schema:
  *           type: string
- *           example: RECEBIDA,EM_ANALISE
+ *           example: PENDENTE,EM_ANALISE
  *         description: Lista de status separados por vírgula.
  *       - in: query
  *         name: origem
@@ -101,7 +101,7 @@ router.get('/', VagasProcessosController.list);
  *   post:
  *     summary: Criar novo processo seletivo para a vaga
  *     description: "Cria um processo seletivo para um candidato em uma vaga específica."
- *     tags: [Empresas - VagasProcessos]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -169,7 +169,7 @@ router.get('/', VagasProcessosController.list);
  *            -H "Content-Type: application/json" \
  *            -d '{
  *                  "candidatoId": "candidate-uuid",
- *                  "status": "RECEBIDA",
+ *                  "status": "PENDENTE",
  *                  "origem": "SITE"
  *                }'
  */
@@ -181,7 +181,7 @@ router.post('/', VagasProcessosController.create);
  *   get:
  *     summary: Consultar processo seletivo específico
  *     description: Retorna os detalhes de um processo seletivo associado a uma vaga.
- *     tags: [Empresas - VagasProcessos]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -249,7 +249,7 @@ router.get('/:processoId', VagasProcessosController.get);
  *   patch:
  *     summary: Atualizar processo seletivo da vaga
  *     description: Atualiza status, origem ou observações de um processo seletivo existente.
- *     tags: [Empresas - VagasProcessos]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -316,7 +316,7 @@ router.get('/:processoId', VagasProcessosController.get);
  *            -H "Authorization: Bearer <TOKEN>" \
  *            -H "Content-Type: application/json" \
  *            -d '{
- *                  "status": "ENTREVISTA",
+ *                  "status": "EM_ANALISE",
  *                  "origem": "DASHBOARD",
  *                  "observacoes": "Entrevista agendada com o time de tecnologia."
  *                }'
@@ -329,7 +329,7 @@ router.patch('/:processoId', VagasProcessosController.update);
  *   delete:
  *     summary: Remover processo seletivo da vaga
  *     description: Remove definitivamente um processo seletivo vinculado à vaga.
- *     tags: [Empresas - VagasProcessos]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:

@@ -1,4 +1,4 @@
-import { Prisma, Roles, StatusProcesso } from '@prisma/client';
+import { Prisma, Roles } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import {
@@ -11,8 +11,8 @@ import type { CandidaturasOverviewQuery } from '../validators/overview.schema';
 const GLOBAL_ROLES = new Set<Roles>([
   Roles.ADMIN,
   Roles.MODERADOR,
+  Roles.SETOR_DE_VAGAS,
   Roles.RECRUTADOR,
-  Roles.PSICOLOGO,
 ]);
 
 const buildSearchWhere = (search?: string): Prisma.UsuariosWhereInput | undefined => {
@@ -50,7 +50,7 @@ interface FiltersResult {
   effectiveEmpresaUsuarioId: string | null;
   appliedFilters: {
     vagaId: string | null;
-    status: StatusProcesso[];
+    status: string[];
     search: string | null;
     onlyWithCandidaturas: boolean;
   };
@@ -66,7 +66,7 @@ const buildFilters = ({
   search,
 }: OverviewParams): FiltersResult => {
   const isGlobalViewer = GLOBAL_ROLES.has(viewerRole);
-  const effectiveEmpresaUsuarioId = isGlobalViewer ? empresaUsuarioId ?? null : viewerId;
+  const effectiveEmpresaUsuarioId = isGlobalViewer ? (empresaUsuarioId ?? null) : viewerId;
 
   const searchWhere = buildSearchWhere(search);
 
@@ -96,7 +96,7 @@ const buildFilters = ({
   }
 
   if (status && status.length > 0) {
-    candidaturasWhereBase.status = { in: status };
+    candidaturasWhereBase.statusId = { in: status };
   }
 
   const hasCandidaturaFilters = Object.keys(candidaturasWhereBase).length > 0;

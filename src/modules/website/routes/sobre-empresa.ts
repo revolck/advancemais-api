@@ -10,7 +10,7 @@ const router = Router();
  * /api/v1/website/sobre-empresa:
  *   get:
  *     summary: Listar conteúdos "SobreEmpresa"
- *     tags: [Website - SobreEmpresa]
+ *     tags: [Website]
  *     responses:
  *       200:
  *         description: Lista de conteúdos
@@ -39,7 +39,7 @@ router.get('/', publicCache, SobreEmpresaController.list);
  * /api/v1/website/sobre-empresa/{id}:
  *   get:
  *     summary: Obter conteúdo por ID
- *     tags: [Website - SobreEmpresa]
+ *     tags: [Website]
  *     parameters:
  *       - in: path
  *         name: id
@@ -78,7 +78,7 @@ router.get('/:id', publicCache, SobreEmpresaController.get);
  * /api/v1/website/sobre-empresa:
  *   post:
  *     summary: Criar conteúdo "SobreEmpresa"
- *     tags: [Website - SobreEmpresa]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -116,7 +116,7 @@ router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), SobreEmpresaCon
  * /api/v1/website/sobre-empresa/{id}:
  *   put:
  *     summary: Atualizar conteúdo "SobreEmpresa"
- *     tags: [Website - SobreEmpresa]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -166,7 +166,7 @@ router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), SobreEmpresaC
  * /api/v1/website/sobre-empresa/{id}:
  *   delete:
  *     summary: Remover conteúdo "SobreEmpresa"
- *     tags: [Website - SobreEmpresa]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:

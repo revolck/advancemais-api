@@ -10,7 +10,7 @@ const router = Router();
  * /api/v1/website/treinamentos-in-company:
  *   get:
  *     summary: Listar conteúdos "TreinamentosInCompany"
- *     tags: [Website - TreinamentosInCompany]
+ *     tags: [Website]
  *     responses:
  *       200:
  *         description: Lista de conteúdos
@@ -39,7 +39,7 @@ router.get('/', publicCache, TreinamentosInCompanyController.list);
  * /api/v1/website/treinamentos-in-company/{id}:
  *   get:
  *     summary: Obter conteúdo por ID
- *     tags: [Website - TreinamentosInCompany]
+ *     tags: [Website]
  *     parameters:
  *       - in: path
  *         name: id
@@ -78,7 +78,7 @@ router.get('/:id', publicCache, TreinamentosInCompanyController.get);
  * /api/v1/website/treinamentos-in-company:
  *   post:
  *     summary: Criar conteúdo "TreinamentosInCompany"
- *     tags: [Website - TreinamentosInCompany]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -120,7 +120,7 @@ router.post(
  * /api/v1/website/treinamentos-in-company/{id}:
  *   put:
  *     summary: Atualizar conteúdo "TreinamentosInCompany"
- *     tags: [Website - TreinamentosInCompany]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -174,7 +174,7 @@ router.put(
  * /api/v1/website/treinamentos-in-company/{id}:
  *   delete:
  *     summary: Remover conteúdo "TreinamentosInCompany"
- *     tags: [Website - TreinamentosInCompany]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:

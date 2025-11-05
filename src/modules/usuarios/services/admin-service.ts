@@ -16,7 +16,12 @@ import { logger } from '@/utils/logger';
 import { invalidateCacheByPrefix } from '@/utils/cache';
 import { attachEnderecoResumo } from '../utils/address';
 import { mergeUsuarioInformacoes, usuarioInformacoesSelect } from '../utils/information';
-import { mapSocialLinks, usuarioRedesSociaisSelect } from '../utils/social-links';
+import {
+  mapSocialLinks,
+  usuarioRedesSociaisSelect,
+  sanitizeSocialLinks,
+  buildSocialLinksUpdateData,
+} from '../utils/social-links';
 import { candidaturasService } from '@/modules/candidatos/candidaturas/services';
 import { candidatoLogsService } from '@/modules/candidatos/logs/service';
 import {
@@ -92,9 +97,11 @@ export class AdminService {
       status: z.string().optional(),
       role: z.string().optional(),
       tipoUsuario: z.string().optional(),
+      cidade: z.string().optional(),
+      estado: z.string().optional(),
     });
 
-    const { page, limit, status, role, tipoUsuario } = querySchema.parse(query);
+    const { page, limit, status, role, tipoUsuario, cidade, estado } = querySchema.parse(query);
     const pageSize = Math.min(Number(limit) || 50, 100);
     const skip = (page - 1) * pageSize;
 
@@ -109,6 +116,16 @@ export class AdminService {
     if (roleFilter) where.role = roleFilter;
     if (tipoUsuarioFilter) where.tipoUsuario = tipoUsuarioFilter;
 
+    // Filtro por localização (cidade e/ou estado)
+    if (cidade || estado) {
+      where.UsuariosEnderecos = {
+        some: {
+          ...(cidade ? { cidade: { contains: cidade.trim(), mode: 'insensitive' } } : {}),
+          ...(estado ? { estado: { contains: estado.trim(), mode: 'insensitive' } } : {}),
+        },
+      };
+    }
+
     const [usuarios, total] = await Promise.all([
       prisma.usuarios.findMany({
         where,
@@ -116,11 +133,30 @@ export class AdminService {
           id: true,
           email: true,
           nomeCompleto: true,
+          cpf: true,
+          cnpj: true,
+          codUsuario: true,
           role: true,
           status: true,
           tipoUsuario: true,
           criadoEm: true,
           ultimoLogin: true,
+          UsuariosInformation: {
+            select: usuarioInformacoesSelect,
+          },
+          UsuariosEnderecos: {
+            orderBy: { criadoEm: 'desc' },
+            select: {
+              id: true,
+              logradouro: true,
+              numero: true,
+              bairro: true,
+              cidade: true,
+              estado: true,
+              cep: true,
+            },
+            take: 1, // Pegar apenas o mais recente
+          },
         },
         orderBy: { criadoEm: 'desc' },
         skip,
@@ -129,9 +165,13 @@ export class AdminService {
       prisma.usuarios.count({ where }),
     ]);
 
+    const usuariosComEndereco = usuarios.map(
+      (usuario) => attachEnderecoResumo(mergeUsuarioInformacoes(usuario))!,
+    );
+
     return {
       message: 'Lista de usuários',
-      usuarios,
+      usuarios: usuariosComEndereco,
       pagination: {
         page,
         limit: pageSize,
@@ -164,7 +204,7 @@ export class AdminService {
 
     const where: Prisma.UsuariosWhereInput = {
       role: Roles.ALUNO_CANDIDATO,
-      curriculos: { some: {} },
+      UsuariosCurriculos: { some: {} },
     };
 
     const statusFilter = this.getStatusFilter(status);
@@ -206,8 +246,8 @@ export class AdminService {
           tipoUsuario: true,
           criadoEm: true,
           ultimoLogin: true,
-          informacoes: { select: usuarioInformacoesSelect },
-          enderecos: {
+          UsuariosInformation: { select: usuarioInformacoesSelect },
+          UsuariosEnderecos: {
             orderBy: { criadoEm: 'asc' },
             select: {
               id: true,
@@ -268,10 +308,10 @@ export class AdminService {
         atualizadoEm: true,
         ...usuarioRedesSociaisSelect,
         codUsuario: true,
-        informacoes: {
+        UsuariosInformation: {
           select: usuarioInformacoesSelect,
         },
-        enderecos: {
+        UsuariosEnderecos: {
           orderBy: { criadoEm: 'asc' },
           select: {
             id: true,
@@ -297,10 +337,137 @@ export class AdminService {
       return null;
     }
 
+    // Buscar relações adicionais baseadas na role
+    let relacoesAdicionais: any = {};
+
+    if (usuario.role === Roles.ALUNO_CANDIDATO) {
+      // Para ALUNO_CANDIDATO: incluir currículos, candidaturas e inscrições em cursos
+      const [curriculos, candidaturas, inscricoes] = await Promise.all([
+        prisma.usuariosCurriculos.findMany({
+          where: { usuarioId: userId },
+          select: {
+            id: true,
+            titulo: true,
+            resumo: true,
+            objetivo: true,
+            principal: true,
+            areasInteresse: true,
+            preferencias: true,
+            habilidades: true,
+            idiomas: true,
+            experiencias: true,
+            formacao: true,
+            cursosCertificacoes: true,
+            premiosPublicacoes: true,
+            acessibilidade: true,
+            consentimentos: true,
+            criadoEm: true,
+            atualizadoEm: true,
+            ultimaAtualizacao: true,
+          },
+          orderBy: [{ principal: 'desc' }, { criadoEm: 'desc' }],
+        }),
+        prisma.empresasCandidatos.findMany({
+          where: { candidatoId: userId },
+          select: {
+            id: true,
+            vagaId: true,
+            curriculoId: true,
+            statusId: true,
+            origem: true,
+            aplicadaEm: true,
+            atualizadaEm: true,
+            status: {
+              select: {
+                id: true,
+                nome: true,
+                descricao: true,
+                ativo: true,
+              },
+            },
+            vaga: {
+              select: {
+                id: true,
+                titulo: true,
+                slug: true,
+                status: true,
+              },
+            },
+          },
+          orderBy: { aplicadaEm: 'desc' },
+        }),
+        prisma.cursosTurmasInscricoes.findMany({
+          where: { alunoId: userId },
+          select: {
+            id: true,
+            turmaId: true,
+            status: true,
+            criadoEm: true,
+            turma: {
+              select: {
+                id: true,
+                nome: true,
+                codigo: true,
+                dataInicio: true,
+                dataFim: true,
+                curso: {
+                  select: {
+                    id: true,
+                    nome: true,
+                    descricao: true,
+                    categoria: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: { criadoEm: 'desc' },
+        }),
+      ]);
+
+      relacoesAdicionais = {
+        curriculos,
+        candidaturas,
+        cursosInscricoes: inscricoes,
+      };
+    } else if (usuario.role === Roles.EMPRESA) {
+      // Para EMPRESA: incluir vagas da empresa
+      const vagas = await prisma.empresasVagas.findMany({
+        where: { usuarioId: userId },
+        select: {
+          id: true,
+          titulo: true,
+          slug: true,
+          status: true,
+          modalidade: true,
+          regimeDeTrabalho: true,
+          senioridade: true,
+          localizacao: true,
+          inseridaEm: true,
+          areaInteresse: {
+            select: {
+              id: true,
+              categoria: true,
+            },
+          },
+          subareaInteresse: {
+            select: {
+              id: true,
+              nome: true,
+            },
+          },
+        },
+        orderBy: { inseridaEm: 'desc' },
+      });
+
+      relacoesAdicionais = { vagas };
+    }
+
     return {
       ...usuarioNormalizado,
-      redesSociais: mapSocialLinks(usuario.redesSociais),
+      redesSociais: mapSocialLinks(usuario.UsuariosRedesSociais),
       informacoes: usuarioComInformacoes.informacoes,
+      ...relacoesAdicionais,
     };
   }
 
@@ -316,7 +483,7 @@ export class AdminService {
       where: {
         id: userId,
         role: Roles.ALUNO_CANDIDATO,
-        curriculos: { some: {} },
+        UsuariosCurriculos: { some: {} },
       },
       select: {
         id: true,
@@ -332,10 +499,10 @@ export class AdminService {
         atualizadoEm: true,
         ...usuarioRedesSociaisSelect,
         codUsuario: true,
-        informacoes: {
+        UsuariosInformation: {
           select: usuarioInformacoesSelect,
         },
-        enderecos: {
+        UsuariosEnderecos: {
           orderBy: { criadoEm: 'asc' },
           select: {
             id: true,
@@ -363,7 +530,7 @@ export class AdminService {
 
     return {
       ...candidatoNormalizado,
-      redesSociais: mapSocialLinks(candidato.redesSociais),
+      redesSociais: mapSocialLinks(candidato.UsuariosRedesSociais),
       informacoes: candidatoComInformacoes.informacoes,
     };
   }
@@ -672,7 +839,7 @@ export class AdminService {
         codUsuario: usuario.codUsuario,
         emailVerificado: true,
         emailVerificadoEm: new Date(),
-        socialLinks: mapSocialLinks(usuario.redesSociais),
+        socialLinks: mapSocialLinks(usuario.UsuariosRedesSociais),
       },
       meta: {
         correlationId: options?.correlationId,
@@ -680,5 +847,331 @@ export class AdminService {
         emailVerificationBypassed: true,
       },
     };
+  }
+
+  /**
+   * Atualiza informações completas de um usuário (ADMIN/MODERADOR apenas)
+   */
+  async atualizarUsuario(
+    userId: string,
+    dados: {
+      nomeCompleto?: string;
+      email?: string;
+      telefone?: string | null;
+      genero?: string | null;
+      dataNasc?: Date | string | null;
+      descricao?: string | null;
+      avatarUrl?: string | null;
+      endereco?: {
+        logradouro?: string | null;
+        numero?: string | null;
+        bairro?: string | null;
+        cidade?: string | null;
+        estado?: string | null;
+        cep?: string | null;
+      } | null;
+      redesSociais?: {
+        linkedin?: string | null;
+        instagram?: string | null;
+        facebook?: string | null;
+        youtube?: string | null;
+        twitter?: string | null;
+        tiktok?: string | null;
+      } | null;
+      senha?: string;
+      confirmarSenha?: string;
+    },
+  ) {
+    // Validar senha se fornecida
+    if (dados.senha !== undefined || dados.confirmarSenha !== undefined) {
+      if (dados.senha === undefined || dados.confirmarSenha === undefined) {
+        throw Object.assign(new Error('Informe senha e confirmarSenha para redefinir a senha'), {
+          code: 'PASSWORD_CONFIRMATION_REQUIRED',
+        });
+      }
+
+      if (dados.senha !== dados.confirmarSenha) {
+        throw Object.assign(new Error('Senha e confirmarSenha devem ser iguais'), {
+          code: 'PASSWORD_MISMATCH',
+        });
+      }
+
+      if (dados.senha.length < 8) {
+        throw Object.assign(new Error('Senha deve ter pelo menos 8 caracteres'), {
+          code: 'PASSWORD_TOO_SHORT',
+        });
+      }
+    }
+
+    // Validar email se fornecido
+    if (dados.email !== undefined) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(dados.email)) {
+        throw Object.assign(new Error('Informe um e-mail válido'), {
+          code: 'INVALID_EMAIL',
+        });
+      }
+    }
+
+    // Sanitizar redes sociais
+    const redesSociaisSanitizado = sanitizeSocialLinks(dados.redesSociais);
+    const redesSociaisUpdate = buildSocialLinksUpdateData(redesSociaisSanitizado);
+
+    const usuarioAtualizado = await prisma.$transaction(async (tx) => {
+      // Verificar se usuário existe
+      const usuarioExistente = await tx.usuarios.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          role: true,
+          UsuariosInformation: true,
+          UsuariosRedesSociais: true,
+        },
+      });
+
+      if (!usuarioExistente) {
+        throw Object.assign(new Error('Usuário não encontrado'), {
+          code: 'USER_NOT_FOUND',
+        });
+      }
+
+      // Verificar se email já existe
+      if (dados.email !== undefined) {
+        const emailJaExiste = await tx.usuarios.findFirst({
+          where: {
+            email: dados.email.trim().toLowerCase(),
+            id: { not: userId },
+          },
+        });
+
+        if (emailJaExiste) {
+          throw Object.assign(new Error('Este e-mail já está em uso por outro usuário'), {
+            code: 'EMAIL_ALREADY_EXISTS',
+          });
+        }
+      }
+
+      // Preparar dados de atualização
+      const dadosAtualizacao: any = {};
+      if (dados.nomeCompleto !== undefined) {
+        dadosAtualizacao.nomeCompleto = dados.nomeCompleto.trim();
+      }
+      if (dados.email !== undefined) {
+        dadosAtualizacao.email = dados.email.trim().toLowerCase();
+      }
+      if (dados.senha !== undefined) {
+        dadosAtualizacao.senha = await bcrypt.hash(dados.senha, 12);
+      }
+      if (Object.keys(dadosAtualizacao).length > 0) {
+        dadosAtualizacao.atualizadoEm = new Date();
+      }
+
+      // Atualizar dados básicos do usuário
+      if (Object.keys(dadosAtualizacao).length > 0) {
+        await tx.usuarios.update({
+          where: { id: userId },
+          data: dadosAtualizacao,
+        });
+      }
+
+      // Preparar dados de informações
+      const dadosInformacoes: any = {};
+      if (dados.telefone !== undefined) dadosInformacoes.telefone = dados.telefone?.trim() || null;
+      if (dados.genero !== undefined) dadosInformacoes.genero = dados.genero || null;
+      if (dados.dataNasc !== undefined)
+        dadosInformacoes.dataNasc = dados.dataNasc ? new Date(dados.dataNasc) : null;
+      if (dados.descricao !== undefined)
+        dadosInformacoes.descricao = dados.descricao?.trim() || null;
+      if (dados.avatarUrl !== undefined)
+        dadosInformacoes.avatarUrl = dados.avatarUrl?.trim() || null;
+
+      // Atualizar ou criar informações
+      if (Object.keys(dadosInformacoes).length > 0) {
+        if (usuarioExistente.UsuariosInformation) {
+          await tx.usuariosInformation.update({
+            where: { usuarioId: userId },
+            data: dadosInformacoes,
+          });
+        } else {
+          await tx.usuariosInformation.create({
+            data: {
+              usuarioId: userId,
+              ...dadosInformacoes,
+            },
+          });
+        }
+      }
+
+      // Atualizar ou criar redes sociais
+      if (redesSociaisUpdate) {
+        if (usuarioExistente.UsuariosRedesSociais) {
+          await tx.usuariosRedesSociais.update({
+            where: { usuarioId: userId },
+            data: {
+              ...redesSociaisUpdate,
+              updatedAt: new Date(),
+            },
+          });
+        } else {
+          await tx.usuariosRedesSociais.create({
+            data: {
+              usuarioId: userId,
+              ...redesSociaisUpdate,
+              updatedAt: new Date(),
+            },
+          });
+        }
+      }
+
+      // Atualizar endereço se fornecido
+      if (dados.endereco && typeof dados.endereco === 'object') {
+        const dadosEndereco: any = {};
+        if (dados.endereco.logradouro !== undefined)
+          dadosEndereco.logradouro = dados.endereco.logradouro?.trim() || null;
+        if (dados.endereco.numero !== undefined)
+          dadosEndereco.numero = dados.endereco.numero?.trim() || null;
+        if (dados.endereco.bairro !== undefined)
+          dadosEndereco.bairro = dados.endereco.bairro?.trim() || null;
+        if (dados.endereco.cidade !== undefined)
+          dadosEndereco.cidade = dados.endereco.cidade?.trim() || null;
+        if (dados.endereco.estado !== undefined)
+          dadosEndereco.estado = dados.endereco.estado?.trim() || null;
+        if (dados.endereco.cep !== undefined)
+          dadosEndereco.cep = dados.endereco.cep?.replace(/\D/g, '') || null;
+
+        dadosEndereco.atualizadoEm = new Date();
+
+        // Se tem algum campo preenchido, atualizar endereço
+        if (Object.keys(dadosEndereco).length > 1) {
+          // Buscar endereço mais recente do usuário
+          const enderecoExistente = await tx.usuariosEnderecos.findFirst({
+            where: { usuarioId: userId },
+            orderBy: { criadoEm: 'desc' },
+          });
+
+          if (enderecoExistente) {
+            // Atualizar endereço existente
+            await tx.usuariosEnderecos.update({
+              where: { id: enderecoExistente.id },
+              data: dadosEndereco,
+            });
+          } else {
+            // Criar novo endereço
+            await tx.usuariosEnderecos.create({
+              data: {
+                usuarioId: userId,
+                ...dadosEndereco,
+              },
+            });
+          }
+        }
+      }
+
+      // Buscar dados completos atualizados
+      const usuarioCompleto = await tx.usuarios.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          codUsuario: true,
+          nomeCompleto: true,
+          email: true,
+          cpf: true,
+          cnpj: true,
+          role: true,
+          status: true,
+          tipoUsuario: true,
+          criadoEm: true,
+          atualizadoEm: true,
+          ultimoLogin: true,
+          UsuariosInformation: {
+            select: {
+              telefone: true,
+              genero: true,
+              dataNasc: true,
+              descricao: true,
+              avatarUrl: true,
+            },
+          },
+          UsuariosRedesSociais: {
+            select: {
+              linkedin: true,
+              instagram: true,
+              facebook: true,
+              youtube: true,
+              twitter: true,
+              tiktok: true,
+            },
+          },
+          UsuariosEnderecos: {
+            select: {
+              id: true,
+              logradouro: true,
+              numero: true,
+              bairro: true,
+              cidade: true,
+              estado: true,
+              cep: true,
+              criadoEm: true,
+            },
+            orderBy: {
+              criadoEm: 'desc',
+            },
+          },
+        },
+      });
+
+      return usuarioCompleto!;
+    });
+
+    // Invalidar cache do usuário
+    await invalidateUserCache(usuarioAtualizado);
+
+    const usuarioComInformacoes = mergeUsuarioInformacoes(usuarioAtualizado);
+    const usuarioNormalizado = attachEnderecoResumo(usuarioComInformacoes);
+
+    this.log.info(
+      {
+        userId,
+        camposAtualizados: Object.keys(dados).filter(
+          (k) => dados[k as keyof typeof dados] !== undefined,
+        ),
+      },
+      '✅ Informações do usuário atualizadas com sucesso',
+    );
+
+    return usuarioNormalizado;
+  }
+
+  async buscarCurriculoPorId(curriculoId: string) {
+    try {
+      const curriculo = await prisma.usuariosCurriculos.findUnique({
+        where: { id: curriculoId },
+        select: {
+          id: true,
+          titulo: true,
+          resumo: true,
+          objetivo: true,
+          principal: true,
+          areasInteresse: true,
+          preferencias: true,
+          habilidades: true,
+          idiomas: true,
+          experiencias: true,
+          formacao: true,
+          cursosCertificacoes: true,
+          premiosPublicacoes: true,
+          acessibilidade: true,
+          consentimentos: true,
+          criadoEm: true,
+          atualizadoEm: true,
+          ultimaAtualizacao: true,
+        },
+      });
+
+      return curriculo;
+    } catch (error) {
+      this.log.error({ error, curriculoId }, 'Erro ao buscar currículo por ID');
+      throw error;
+    }
   }
 }

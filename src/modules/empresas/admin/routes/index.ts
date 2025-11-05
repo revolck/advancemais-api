@@ -8,16 +8,16 @@ import { AdminCandidatosController } from '@/modules/empresas/admin/controllers/
 
 const router = Router();
 const adminRoles = [Roles.ADMIN, Roles.MODERADOR];
-const dashboardRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.RECRUTADOR];
+const dashboardRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.SETOR_DE_VAGAS];
 
 /**
  * @openapi
- * /api/v1/empresas/admin/candidato:
+ * /api/v1/empresas/candidato:
  *   get:
  *     summary: (Admin/Moderador) Listar candidatos com árvore completa
  *     description: "Retorna candidatos que possuem pelo menos um currículo cadastrado, incluindo currículos, candidaturas e as vagas com suas respectivas empresas."
  *     operationId: adminCandidatosList
- *     tags: [Empresas - Admin]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -40,7 +40,7 @@ const dashboardRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.RECRUTADOR];
  *         name: status
  *         schema:
  *           type: string
- *           description: Lista de status separados por vírgula (ex.: ATIVO,BLOQUEADO)
+ *           description: "Lista de status separados por vírgula (ex.: ATIVO,BLOQUEADO)"
  *       - in: query
  *         name: search
  *         schema:
@@ -339,12 +339,12 @@ router.get('/candidato', supabaseAuthMiddleware(adminRoles), AdminCandidatosCont
 
 /**
  * @openapi
- * /api/v1/empresas/admin/candidato/{id}:
+ * /api/v1/empresas/candidato/{id}:
  *   get:
  *     summary: (Admin/Moderador) Detalhar candidato com árvore completa
  *     description: "Retorna todas as informações do candidato selecionado, incluindo currículos, candidaturas e as vagas aplicadas com suas empresas."
  *     operationId: adminCandidatosGet
- *     tags: [Empresas - Admin]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -522,12 +522,12 @@ router.get('/candidato/:id', supabaseAuthMiddleware(adminRoles), AdminCandidatos
 
 /**
  * @openapi
- * /api/v1/empresas/admin/vagas:
+ * /api/v1/empresas/vagas:
  *   get:
  *     summary: (Admin/Moderador) Listar vagas com árvore completa
  *     description: "Retorna uma visão administrativa completa de todas as vagas cadastradas, incluindo informações da empresa responsável, candidaturas recebidas e processos vinculados."
  *     operationId: adminVagasList
- *     tags: [Empresas - Admin]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -550,7 +550,7 @@ router.get('/candidato/:id', supabaseAuthMiddleware(adminRoles), AdminCandidatos
  *         name: status
  *         schema:
  *           type: string
- *           description: Lista de status separados por vírgula (ex.: PUBLICADO,EM_ANALISE)
+ *           description: "Lista de status separados por vírgula (ex.: PUBLICADO,EM_ANALISE)"
  *       - in: query
  *         name: empresaId
  *         schema:
@@ -846,12 +846,12 @@ router.get('/vagas', supabaseAuthMiddleware(adminRoles), AdminVagasController.li
 
 /**
  * @openapi
- * /api/v1/empresas/admin/vagas/{id}:
+ * /api/v1/empresas/vagas/{id}:
  *   get:
  *     summary: (Admin/Moderador) Detalhar vaga com relacionamentos
  *     description: "Retorna todos os dados da vaga selecionada, incluindo empresa, candidaturas, candidatos derivados das inscrições e processos ligados ao fluxo seletivo."
  *     operationId: adminVagasGet
- *     tags: [Empresas - Admin]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1086,12 +1086,12 @@ router.get('/vagas/:id', supabaseAuthMiddleware(adminRoles), AdminVagasControlle
 
 /**
  * @openapi
- * /api/v1/empresas/admin/dashboard:
+ * /api/v1/empresas/dashboard:
  *   get:
- *     summary: (Admin/Moderador/Recrutador) Listar empresas para dashboard
- *     description: "Retorna uma listagem paginada otimizada com até 10 empresas por página para exibição em dashboards administrativos. Disponível para ADMIN, MODERADOR e RECRUTADOR."
+ *     summary: (Admin/Moderador/Setor de Vagas) Listar empresas para dashboard
+ *     description: "Retorna uma listagem paginada otimizada com até 10 empresas por página para exibição em dashboards administrativos. Disponível para ADMIN, MODERADOR e SETOR_DE_VAGAS."
  *     operationId: adminEmpresasDashboardList
- *     tags: [Empresas - Admin]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1185,12 +1185,12 @@ router.get(
 
 /**
  * @openapi
- * /api/v1/empresas/admin/validate-cnpj:
+ * /api/v1/empresas/validate-cnpj:
  *   get:
  *     summary: (Admin/Moderador) Validar CNPJ de empresa
  *     description: "Verifica se um CNPJ é válido e identifica se já está cadastrado na plataforma."
  *     operationId: adminEmpresasValidateCnpj
- *     tags: [Empresas - Admin]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1275,12 +1275,12 @@ router.get(
 
 /**
  * @openapi
- * /api/v1/empresas/admin/validate-cpf:
+ * /api/v1/empresas/validate-cpf:
  *   get:
  *     summary: (Admin/Moderador) Validar CPF de usuário
  *     description: "Verifica se um CPF é válido e identifica se já está cadastrado na plataforma."
  *     operationId: adminEmpresasValidateCpf
- *     tags: [Empresas - Admin]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1365,12 +1365,12 @@ router.get(
 
 /**
  * @openapi
- * /api/v1/empresas/admin:
+ * /api/v1/empresas:
  *   post:
  *     summary: (Admin) Criar empresa
  *     description: "Cria uma nova empresa (Pessoa Jurídica) e permite opcionalmente vincular um plano ativo no momento da criação. Endpoint restrito aos perfis ADMIN e MODERADOR."
  *     operationId: adminEmpresasCreate
- *     tags: [Empresas - Admin]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -1470,7 +1470,7 @@ router.get(
  *     summary: (Admin) Listar empresas
  *     description: "Retorna empresas (Pessoa Jurídica) com dados resumidos do plano ativo. Endpoint restrito aos perfis ADMIN e MODERADOR."
  *     operationId: adminEmpresasList
- *     tags: [Empresas - Admin]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1585,12 +1585,12 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
 
 /**
  * @openapi
- * /api/v1/empresas/admin/{id}/plano:
+ * /api/v1/empresas/{id}/plano:
  *   post:
  *     summary: (Admin/Moderador) Cadastrar plano manualmente para a empresa
  *     description: "Permite registrar manualmente um novo plano empresarial para a empresa selecionada. Qualquer plano ativo é automaticamente cancelado antes do novo vínculo. Quando informados, os campos de próxima cobrança ou período de carência definem automaticamente a data de término do plano. A ação é registrada na auditoria da empresa com descrição consolidada incluindo: nome do plano, tipo de vínculo (Cliente/Parceiro/Avaliação), método de pagamento, status do pagamento e período de teste em dias (quando for modo Avaliação). Endpoint restrito aos perfis ADMIN e MODERADOR."
  *     operationId: adminEmpresasAssignPlanoManual
- *     tags: [Empresas - Admin]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1686,7 +1686,7 @@ router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list
  *     summary: (Admin/Moderador) Atualizar plano da empresa
  *     description: "Atualiza ou atribui um novo plano empresarial para a empresa informada, permitindo também o ajuste de dados de cobrança manual (modelo, método, status, próximas cobranças e período de carência). A ação é registrada na auditoria da empresa com descrição consolidada incluindo: nome do plano anterior e novo, tipo de vínculo (Cliente/Parceiro/Avaliação), método de pagamento, status do pagamento e período de teste (quando aplicável). Endpoint restrito aos perfis ADMIN e MODERADOR."
  *     operationId: adminEmpresasUpdatePlano
- *     tags: [Empresas - Admin]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1796,12 +1796,12 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
 
 /**
  * @openapi
- * /api/v1/empresas/admin/{id}:
+ * /api/v1/empresas/{id}:
  *   put:
  *     summary: (Admin) Atualizar empresa
  *     description: "Atualiza dados cadastrais da empresa, permite redefinir a senha e gerenciar o plano vinculado. Apenas os campos enviados no payload são atualizados e auditados. O sistema registra automaticamente na auditoria apenas as alterações reais dos campos fornecidos: endereço (CEP, logradouro, número, bairro, cidade, estado), telefone, redes sociais (Instagram, LinkedIn, Facebook, YouTube, Twitter, TikTok), descrição da empresa e planos empresariais. Endpoint restrito aos perfis ADMIN e MODERADOR."
  *     operationId: adminEmpresasUpdate
- *     tags: [Empresas - Admin]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1928,7 +1928,7 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *     summary: (Admin) Visão completa da empresa
  *     description: "Retorna uma visão consolidada da empresa (Pessoa Jurídica) incluindo plano atual e histórico, vagas, candidaturas, pagamentos, bloqueios ativos e histórico de auditoria. O sistema de auditoria registra automaticamente apenas as alterações reais dos campos modificados, incluindo descrições consolidadas para planos (com vínculo, método de pagamento, status e período de teste quando aplicável). Apenas perfis ADMIN e MODERADOR podem acessar."
  *     operationId: adminEmpresasGet
- *     tags: [Empresas - Admin]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2386,12 +2386,12 @@ router.get('/:id', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.g
 
 /**
  * @openapi
- * /api/v1/empresas/admin/{id}/pagamentos:
+ * /api/v1/empresas/{id}/pagamentos:
  *   get:
  *     summary: (Admin) Histórico de pagamentos da empresa
  *     description: "Lista eventos de pagamento relacionados à empresa sem expor dados sensíveis de cartão. Apenas perfis ADMIN e MODERADOR podem acessar."
  *     operationId: adminEmpresasListPagamentos
- *     tags: [Empresas - Admin]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2477,12 +2477,12 @@ router.get(
 
 /**
  * @openapi
- * /api/v1/empresas/admin/{id}/bloqueios:
+ * /api/v1/empresas/{id}/bloqueios:
  *   get:
  *     summary: (Admin) Listar bloqueios aplicados
  *     description: "Retorna o histórico de bloqueios aplicados ao usuário da empresa, detalhando vigência, status e responsável."
  *     operationId: adminEmpresasListBloqueios
- *     tags: [Empresas - Admin]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2576,7 +2576,7 @@ router.get(
  *     summary: (Admin) Aplicar bloqueio à empresa
  *     description: "Centraliza o bloqueio do usuário da empresa, permitindo bloqueios temporários ou permanentes. A ação é automaticamente registrada na auditoria da empresa com detalhes do motivo e responsável."
  *     operationId: adminEmpresasAplicarBloqueio
- *     tags: [Empresas - Admin]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2671,12 +2671,12 @@ router.get(
 router.post('/:id/bloqueios', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.block);
 /**
  * @openapi
- * /api/v1/empresas/admin/{id}/bloqueios/revogar:
+ * /api/v1/empresas/{id}/bloqueios/revogar:
  *   post:
  *     summary: (Admin) Revogar bloqueio ativo
  *     description: "Revoga o bloqueio ativo da empresa, restaura o status do usuário e registra auditoria da ação."
  *     operationId: adminEmpresasRevogarBloqueio
- *     tags: [Empresas - Admin]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2748,12 +2748,12 @@ router.post(
 
 /**
  * @openapi
- * /api/v1/empresas/admin/{id}/vagas:
+ * /api/v1/empresas/{id}/vagas:
  *   get:
  *     summary: (Admin) Histórico de vagas da empresa
  *     description: "Lista vagas criadas pela empresa com opção de filtrar por status, incluindo o código curto gerado automaticamente para cada vaga."
  *     operationId: adminEmpresasListVagas
- *     tags: [Empresas - Admin]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2839,12 +2839,12 @@ router.get('/:id/vagas', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
 
 /**
  * @openapi
- * /api/v1/empresas/admin/{id}/vagas/em-analise:
+ * /api/v1/empresas/{id}/vagas/em-analise:
  *   get:
  *     summary: (Admin) Vagas em análise da empresa
  *     description: "Retorna vagas da empresa com status EM_ANALISE aguardando aprovação."
  *     operationId: adminEmpresasListVagasAnalise
- *     tags: [Empresas - Admin]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2881,7 +2881,7 @@ router.get('/:id/vagas', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *                   data:
  *                     - id: 9b57ab89-0f8e-4bb6-9183-5a4b7bd6c001
  *                       codigo: K45L89
- *                       titulo: Coordenador de Projetos TI
+ *                       titulo: Gerente de Projetos TI
  *                       status: EM_ANALISE
  *                       inseridaEm: '2024-05-15T09:30:00Z'
  *                       atualizadoEm: '2024-05-16T11:45:00Z'
@@ -2929,12 +2929,12 @@ router.get(
 
 /**
  * @openapi
- * /api/v1/empresas/admin/{id}/vagas/{vagaId}/aprovar:
+ * /api/v1/empresas/{id}/vagas/{vagaId}/aprovar:
  *   post:
  *     summary: (Admin) Aprovar vaga em análise
  *     description: "Altera o status da vaga para PUBLICADO caso esteja em análise."
  *     operationId: adminEmpresasAprovarVaga
- *     tags: [Empresas - Admin]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:

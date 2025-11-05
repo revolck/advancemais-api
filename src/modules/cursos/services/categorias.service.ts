@@ -8,7 +8,7 @@ import { generateUniqueCategoryCode, generateUniqueSubcategoryCode } from '../ut
 const categoriasLogger = logger.child({ module: 'CursosCategoriasService' });
 
 const categoriaInclude = {
-  subcats: {
+  CursosSubcategorias: {
     orderBy: { nome: 'asc' },
   },
 } satisfies Prisma.CursosCategoriasInclude;
@@ -33,7 +33,7 @@ const mapCategoria = (
   descricao: categoria.descricao ?? null,
   criadoEm: categoria.criadoEm.toISOString(),
   atualizadoEm: categoria.atualizadoEm.toISOString(),
-  subcategorias: (categoria.subcats ?? []).map(mapSubcategoria),
+  subcategorias: (categoria.CursosSubcategorias ?? []).map(mapSubcategoria),
 });
 
 const fetchCategoria = async (id: number) => {
@@ -87,6 +87,46 @@ export const categoriasService = {
 
   async get(id: number) {
     return fetchCategoria(id);
+  },
+
+  async listSubcategorias(
+    categoriaId: number,
+    options: { page: number; pageSize: number },
+  ) {
+    const categoria = await prisma.cursosCategorias.findUnique({
+      where: { id: categoriaId },
+      select: { id: true },
+    });
+
+    if (!categoria) {
+      const error = new Error('Categoria não encontrada');
+      (error as any).code = 'CATEGORIA_NOT_FOUND';
+      throw error;
+    }
+
+    const skip = (options.page - 1) * options.pageSize;
+
+    const [subcategorias, total] = await prisma.$transaction([
+      prisma.cursosSubcategorias.findMany({
+        where: { categoriaId },
+        orderBy: { nome: 'asc' },
+        skip,
+        take: options.pageSize,
+      }),
+      prisma.cursosSubcategorias.count({
+        where: { categoriaId },
+      }),
+    ]);
+
+    return {
+      items: subcategorias.map(mapSubcategoria),
+      meta: {
+        page: options.page,
+        pageSize: options.pageSize,
+        totalItems: total,
+        totalPages: total === 0 ? 0 : Math.ceil(total / options.pageSize),
+      },
+    };
   },
 
   async create(data: { nome: string; descricao?: string | null }) {

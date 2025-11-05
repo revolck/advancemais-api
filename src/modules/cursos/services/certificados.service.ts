@@ -205,7 +205,7 @@ export const certificadosService = {
             nomeCompleto: true,
             email: true,
             cpf: true,
-            informacoes: {
+            UsuariosInformation: {
               select: { inscricao: true },
             },
           },
@@ -254,7 +254,7 @@ export const certificadosService = {
           nome: inscricao.aluno.nomeCompleto,
           email: inscricao.aluno.email,
           cpf: inscricao.aluno.cpf,
-          inscricao: inscricao.aluno.informacoes?.inscricao ?? null,
+          inscricao: inscricao.aluno.UsuariosInformation?.inscricao ?? null,
         },
       },
       curso: {

@@ -17,7 +17,7 @@ export const bannerService = {
         id: true,
         ordem: true,
         status: true,
-        banner: {
+        WebsiteBanner: {
           select: {
             id: true,
             imagemUrl: true,
@@ -38,7 +38,7 @@ export const bannerService = {
         id: true,
         ordem: true,
         status: true,
-        banner: {
+        WebsiteBanner: {
           select: {
             id: true,
             imagemUrl: true,
@@ -63,11 +63,12 @@ export const bannerService = {
         data: {
           ordem,
           status: data.status ?? 'RASCUNHO',
-          banner: {
+          WebsiteBanner: {
             create: {
               imagemUrl: data.imagemUrl,
               imagemTitulo: data.imagemTitulo,
               link: data.link,
+              atualizadoEm: new Date(),
             },
           },
         },
@@ -75,7 +76,7 @@ export const bannerService = {
           id: true,
           ordem: true,
           status: true,
-          banner: {
+          WebsiteBanner: {
             select: {
               id: true,
               imagemUrl: true,
@@ -127,7 +128,7 @@ export const bannerService = {
         data: {
           ordem,
           status: data.status,
-          banner:
+          WebsiteBanner:
             data.imagemUrl !== undefined ||
             data.imagemTitulo !== undefined ||
             data.link !== undefined
@@ -136,6 +137,7 @@ export const bannerService = {
                     imagemUrl: data.imagemUrl,
                     imagemTitulo: data.imagemTitulo,
                     link: data.link,
+                    atualizadoEm: new Date(),
                   },
                 }
               : undefined,
@@ -144,7 +146,7 @@ export const bannerService = {
           id: true,
           ordem: true,
           status: true,
-          banner: {
+          WebsiteBanner: {
             select: {
               id: true,
               imagemUrl: true,
@@ -166,7 +168,7 @@ export const bannerService = {
         select: {
           id: true,
           ordem: true,
-          banner: {
+          WebsiteBanner: {
             select: {
               id: true,
               imagemUrl: true,
@@ -202,7 +204,7 @@ export const bannerService = {
           select: {
             id: true,
             ordem: true,
-            banner: {
+            WebsiteBanner: {
               select: {
                 id: true,
                 imagemUrl: true,

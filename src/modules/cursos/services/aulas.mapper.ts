@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 
 export const aulaWithMateriaisInclude = Prisma.validator<Prisma.CursosTurmasAulasDefaultArgs>()({
   include: {
-    materiais: {
+    CursosTurmasAulasMateriais: {
       orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
     },
   },
@@ -10,7 +10,7 @@ export const aulaWithMateriaisInclude = Prisma.validator<Prisma.CursosTurmasAula
 
 export type AulaWithMateriais = Prisma.CursosTurmasAulasGetPayload<typeof aulaWithMateriaisInclude>;
 
-export const mapMaterial = (material: AulaWithMateriais['materiais'][number]) => ({
+export const mapMaterial = (material: any) => ({
   id: material.id,
   aulaId: material.aulaId,
   titulo: material.titulo,
@@ -36,5 +36,5 @@ export const mapAula = (aula: AulaWithMateriais) => ({
   urlMeet: aula.urlMeet ?? null,
   criadoEm: aula.criadoEm.toISOString(),
   atualizadoEm: aula.atualizadoEm.toISOString(),
-  materiais: aula.materiais.map(mapMaterial),
+  materiais: ((aula as any).CursosTurmasAulasMateriais || aula.materiais || []).map(mapMaterial),
 });

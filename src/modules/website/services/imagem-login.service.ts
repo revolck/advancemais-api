@@ -1,5 +1,5 @@
 import { WebsiteImagemLogin } from '@prisma/client';
-import { prisma } from '@/config/prisma';
+import { prisma, retryOperation } from '@/config/prisma';
 import { getCache, setCache, invalidateCache } from '@/utils/cache';
 import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
 
@@ -9,7 +9,12 @@ export const imagemLoginService = {
   list: async () => {
     const cached = await getCache<WebsiteImagemLogin[]>(CACHE_KEY);
     if (cached) return cached;
-    const result = await prisma.websiteImagemLogin.findMany();
+    // 🔄 Usar retry logic para evitar timeout
+    const result = await retryOperation(
+      async () => await prisma.websiteImagemLogin.findMany(),
+      3,
+      1500,
+    );
     await setCache(CACHE_KEY, result, WEBSITE_CACHE_TTL);
     return result;
   },

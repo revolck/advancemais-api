@@ -284,4 +284,50 @@ export class AreasInteresseController {
       });
     }
   };
+
+  static listSubareas = async (req: Request, res: Response) => {
+    try {
+      const subareas = await areasInteresseService.listSubareas();
+      res.json(subareas);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        code: 'SUBAREAS_INTERESSE_LIST_ERROR',
+        message: 'Erro ao listar subáreas de interesse',
+        error: error?.message,
+      });
+    }
+  };
+
+  static getSubarea = async (req: Request, res: Response) => {
+    const subareaId = parseId(req.params.subareaId);
+    if (!subareaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificador inválido para subárea de interesse',
+      });
+    }
+
+    try {
+      const subarea = await areasInteresseService.getSubarea(subareaId);
+
+      if (!subarea) {
+        return res.status(404).json({
+          success: false,
+          code: 'SUBAREAS_INTERESSE_NOT_FOUND',
+          message: 'Subárea de interesse não encontrada',
+        });
+      }
+
+      res.json(subarea);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        code: 'SUBAREAS_INTERESSE_GET_ERROR',
+        message: 'Erro ao buscar subárea de interesse',
+        error: error?.message,
+      });
+    }
+  };
 }

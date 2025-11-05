@@ -12,7 +12,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  * /api/v1/website/advance-ajuda:
  *   get:
  *     summary: Listar conteúdos "Advance Ajuda"
- *     tags: [Website - Advance Ajuda]
+ *     tags: [Website]
  *     responses:
  *       200:
  *         description: Lista de conteúdos
@@ -41,7 +41,7 @@ router.get('/', publicCache, AdvanceAjudaController.list);
  * /api/v1/website/advance-ajuda/{id}:
  *   get:
  *     summary: Obter conteúdo por ID
- *     tags: [Website - Advance Ajuda]
+ *     tags: [Website]
  *     parameters:
  *       - in: path
  *         name: id
@@ -80,7 +80,7 @@ router.get('/:id', publicCache, AdvanceAjudaController.get);
  * /api/v1/website/advance-ajuda:
  *   post:
  *     summary: Criar conteúdo "Advance Ajuda"
- *     tags: [Website - Advance Ajuda]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -124,7 +124,7 @@ router.post(
  * /api/v1/website/advance-ajuda/{id}:
  *   put:
  *     summary: Atualizar conteúdo "Advance Ajuda"
- *     tags: [Website - Advance Ajuda]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -179,7 +179,7 @@ router.put(
  * /api/v1/website/advance-ajuda/{id}:
  *   delete:
  *     summary: Remover conteúdo "Advance Ajuda"
- *     tags: [Website - Advance Ajuda]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:

@@ -12,7 +12,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  * /api/v1/website/conexao-forte:
  *   get:
  *     summary: Listar conteúdos "ConexaoForte"
- *     tags: [Website - ConexaoForte]
+ *     tags: [Website]
  *     responses:
  *       200:
  *         description: Lista de conteúdos
@@ -41,7 +41,7 @@ router.get('/', publicCache, ConexaoForteController.list);
  * /api/v1/website/conexao-forte/{id}:
  *   get:
  *     summary: Obter conteúdo por ID
- *     tags: [Website - ConexaoForte]
+ *     tags: [Website]
  *     parameters:
  *       - in: path
  *         name: id
@@ -80,7 +80,7 @@ router.get('/:id', publicCache, ConexaoForteController.get);
  * /api/v1/website/conexao-forte:
  *   post:
  *     summary: Criar conteúdo "ConexaoForte"
- *     tags: [Website - ConexaoForte]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -129,7 +129,7 @@ router.post(
  * /api/v1/website/conexao-forte/{id}:
  *   put:
  *     summary: Atualizar conteúdo "ConexaoForte"
- *     tags: [Website - ConexaoForte]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -189,7 +189,7 @@ router.put(
  * /api/v1/website/conexao-forte/{id}:
  *   delete:
  *     summary: Remover conteúdo "ConexaoForte"
- *     tags: [Website - ConexaoForte]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:

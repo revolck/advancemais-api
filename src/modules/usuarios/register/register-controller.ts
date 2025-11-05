@@ -176,7 +176,7 @@ export const criarUsuario = async (req: Request, res: Response, next: NextFuncti
         status: usuario.status,
         criadoEm: usuario.criadoEm,
         codUsuario: usuario.codUsuario,
-        socialLinks: mapSocialLinks(usuario.redesSociais),
+        socialLinks: mapSocialLinks(usuario.UsuariosRedesSociais),
       },
       // Metadados para debugging
       correlationId,

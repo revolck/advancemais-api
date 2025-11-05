@@ -10,7 +10,7 @@ const router = Router();
  * /api/v1/website/depoimentos:
  *   get:
  *     summary: Listar depoimentos
- *     tags: [Website - Depoimentos]
+ *     tags: [Website]
  *     parameters:
  *       - in: query
  *         name: status
@@ -45,7 +45,7 @@ router.get('/', publicCache, DepoimentosController.list);
  * /api/v1/website/depoimentos/{id}:
  *   get:
  *     summary: Obter depoimento por ID da ordem
- *     tags: [Website - Depoimentos]
+ *     tags: [Website]
  *     parameters:
  *       - in: path
  *         name: id
@@ -86,7 +86,7 @@ router.get('/:id', publicCache, DepoimentosController.get);
  *   post:
  *     summary: Criar depoimento
  *     description: Cria um novo depoimento. O campo `status` representa o estado de publicação e aceita boolean (true = PUBLICADO, false = RASCUNHO) ou string.
- *     tags: [Website - Depoimentos]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -125,7 +125,7 @@ router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), DepoimentosCont
  *   put:
  *     summary: Atualizar depoimento
  *     description: Atualiza um depoimento. O campo `status` representa o estado de publicação e aceita boolean (true = PUBLICADO, false = RASCUNHO) ou string.
- *     tags: [Website - Depoimentos]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -177,7 +177,7 @@ router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), DepoimentosCo
  *   put:
  *     summary: Reordenar depoimento
  *     description: Altera a posição do depoimento utilizando o ID da ordem. Caso a nova posição esteja ocupada, os demais serão ajustados automaticamente.
- *     tags: [Website - Depoimentos]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -232,7 +232,7 @@ router.put(
  * /api/v1/website/depoimentos/{id}:
  *   delete:
  *     summary: Remover depoimento
- *     tags: [Website - Depoimentos]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:

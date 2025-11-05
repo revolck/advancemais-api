@@ -10,236 +10,149 @@ const options: Options = {
     openapi: '3.0.0',
     info: {
       title: 'Advance+ API',
-      version: '1.0.0',
-      description:
-        'Documentação detalhada da API Advance+. Todas as rotas protegidas exigem o header `Authorization: Bearer <token>` obtido via login. O acesso ao Swagger é restrito a administradores.\n\n## 🔍 Sistema de Auditoria\n\nTodas as ações administrativas realizadas nas empresas são automaticamente registradas no sistema de auditoria, incluindo:\n\n- **Alterações de dados**: Nome, email, CNPJ, status, etc.\n- **Gestão de planos**: Atribuição, atualização e cancelamento de planos\n- **Bloqueios**: Aplicação e revogação de bloqueios\n- **Rastreabilidade completa**: Quem fez, quando e o que foi alterado\n\nOs registros de auditoria estão disponíveis na rota `GET /api/v1/empresas/admin/{id}` no campo `auditoria.recentes`.',
+      version: '3.0.4',
+      description: `API Advance+ - Plataforma de gestão de RH, cursos e recrutamento.
+
+## 🔐 Autenticação
+
+Rotas protegidas exigem header \`Authorization: Bearer <token>\` obtido via login.
+
+Use o botão **Authorize** para configurar seu token JWT.
+
+## ⚡ Performance e Otimizações
+
+### Conexão com Banco de Dados
+- **Direct Connection**: Prioriza conexão direta ao PostgreSQL (recomendado para apps Node.js persistentes)
+- **Pool de Conexões**: Configurado automaticamente baseado no número de instâncias
+- **Timeout e Fail-Fast**: Timeouts de 3-5s por operação para evitar esperas longas
+
+### Cache e Rate Limiting
+- **Cache Redis**: Implementado para login, rate limiting e queries frequentes
+- **Fallback In-Memory**: Cache local quando Redis não está disponível
+- **Rate Limiting**: 5 tentativas de login por 15 minutos (bloqueio automático após 5 falhas)
+
+### Índices Otimizados
+- Índices compostos para busca por CPF/CNPJ/Email com status
+- Índices parciais para usuários ativos
+- Otimizações específicas para queries de login
+
+### Timeouts
+- **Login**: 3s por tentativa, máximo 6-9s total (fail-fast)
+- **Queries**: 5s por padrão em produção (sem timeout em testes)
+
+## 📊 Métricas de Performance Esperadas
+
+- **Login**: 50-100ms (p50), 100-200ms (p95)
+- **Queries**: 50-60% mais rápido com cache
+- **Conexão**: 100% menos erros com Direct Connection
+
+## ✅ Novidades v3.0.4
+
+### Otimização de Contagem de Inscrições em Turmas
+- **Endpoints otimizados**: \`GET /cursos/{cursoId}/turmas\` e \`GET /cursos/{cursoId}/turmas/{turmaId}\`
+- **Campos calculados**: Inclui automaticamente \`inscricoesCount\`, \`vagasOcupadas\` e \`vagasDisponiveisCalculadas\`
+- **Performance**: Reduz N requisições para 1 requisição (elimina múltiplas queries do frontend)
+- **Cálculo em tempo real**: Dados sempre atualizados baseados em inscrições ativas
+- **Tratamento de erros**: Fallback seguro se cálculo falhar (campos retornam como \`null\`)
+
+**Definição de inscrição ativa:**
+- Status da inscrição NÃO é: \`CANCELADO\`, \`TRANCADO\`
+- Status do aluno é: \`ATIVO\`
+
+## 🚀 Configuração Recomendada
+
+Para melhor performance, configure no \`.env\`:
+\`\`\`env
+DIRECT_URL="postgres://postgres:[PASSWORD]@aws-1-sa-east-1.connect.psql.cloud:5432/postgres?sslmode=require"
+REDIS_URL="redis://localhost:6379"
+DATABASE_CONNECTION_LIMIT=10
+\`\`\`
+
+Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
     },
     tags: [
+      // === PRINCIPAIS ===
       {
         name: 'Default',
-        description: 'Endpoints públicos da API',
+        description: '🏠 Endpoints públicos da API - Health check, informações e documentação',
       },
-      { name: 'Brevo', description: 'Serviços de e-mail' },
       {
         name: 'Usuários',
         description:
-          'Gerenciamento de contas e autenticação: registro, login, refresh, logout, perfil e recuperação de senha',
+          '👤 Autenticação e Perfil - Registro, login, recuperação de senha, atualização de dados pessoais',
       },
+
+      // === MÓDULOS DE NEGÓCIO ===
       {
-        name: 'Usuários - Admin',
-        description: 'Gestão administrativa de usuários',
-      },
-      {
-        name: 'Usuários - Stats',
-        description: 'Métricas e relatórios de usuários',
-      },
-      { name: 'Website', description: 'Conteúdo público do site' },
-      { name: 'Website - Banner', description: 'Gestão de banners' },
-      { name: 'Website - LogoEnterprises', description: 'Logos de empresas' },
-      { name: 'Website - Slider', description: 'Gestão de sliders' },
-      { name: 'Website - Sobre', description: 'Conteúdos "Sobre"' },
-      {
-        name: 'Website - Consultoria',
-        description: 'Conteúdos "Consultoria"',
-      },
-      {
-        name: 'Website - Recrutamento',
-        description: 'Conteúdos "Recrutamento"',
-      },
-      {
-        name: 'Website - SobreEmpresa',
-        description: 'Conteúdos "Sobre Empresa"',
-      },
-      {
-        name: 'Website - Team',
-        description: 'Conteúdos "Team"',
-      },
-      {
-        name: 'Website - Depoimentos',
-        description: 'Conteúdos "Depoimentos"',
-      },
-      {
-        name: 'Website - Diferenciais',
-        description: 'Conteúdos "Diferenciais"',
-      },
-      {
-        name: 'Website - Planinhas',
-        description: 'Conteúdos "Planinhas"',
-      },
-      {
-        name: 'Website - Advance Ajuda',
-        description: 'Conteúdos "Advance Ajuda"',
-      },
-      {
-        name: 'Website - RecrutamentoSelecao',
-        description: 'Conteúdos "RecrutamentoSelecao"',
-      },
-      {
-        name: 'Website - Sistema',
-        description: 'Conteúdos "Sistema"',
-      },
-      {
-        name: 'Website - TreinamentoCompany',
-        description: 'Conteúdos "TreinamentoCompany"',
-      },
-      {
-        name: 'Website - ConexaoForte',
-        description: 'Conteúdos "ConexaoForte"',
-      },
-      {
-        name: 'Website - TreinamentosInCompany',
-        description: 'Conteúdos "TreinamentosInCompany"',
-      },
-      {
-        name: 'Website - InformacoesGerais',
-        description: 'Informações gerais do site',
-      },
-      {
-        name: 'Website - ImagemLogin',
-        description: 'Imagem exibida na página de login',
-      },
-      {
-        name: 'Website - Header Pages',
-        description: 'Cabeçalhos de páginas',
-      },
-      {
-        name: 'Website - Scripts',
-        description: 'Scripts e pixels do site',
-      },
-      {
-        name: 'Empresas - Planos Empresariais',
-        description: 'Gestão dos planos empresariais corporativos',
-      },
-      {
-        name: 'Empresas - Clientes',
-        description: 'Clientes (empresas) vinculados a planos pagos',
-      },
-      {
-        name: 'Empresas - EmpresasVagas',
-        description: 'Administração de vagas corporativas vinculadas às empresas',
-      },
-      {
-        name: 'Empresas - VagasCategorias',
-        description: 'Gestão de categorias e subcategorias das vagas corporativas',
-      },
-      {
-        name: 'Empresas - VagasProcessos',
-        description: 'Gestão das etapas e candidatos vinculados aos processos seletivos das vagas',
-      },
-      {
-        name: 'Empresas - Admin',
+        name: 'Empresas',
         description:
-          'Gestão administrativa completa das empresas: cadastro, planos, pagamentos, vagas, bloqueios e monitoramento operacional',
+          '🏢 Gestão Empresarial - Dashboard, vagas, processos seletivos, candidatos e planos',
       },
       {
         name: 'Candidatos',
-        description: 'Recursos públicos e administrativos relacionados aos candidatos',
-      },
-      {
-        name: 'Candidatos - Áreas de Interesse',
-        description: 'Gestão das áreas de interesse disponíveis para candidatos',
+        description:
+          '💼 Portal do Candidato - Busca de vagas, candidaturas, currículos e áreas de interesse',
       },
       {
         name: 'Cursos',
-        description: 'Gerenciamento de cursos, cargas horárias e instrutores',
+        description: '📚 Plataforma de Cursos - Catálogo, turmas, aulas, inscrições e certificados',
+      },
+
+      // === FINANCEIRO E COMERCIAL ===
+      {
+        name: 'Pagamentos',
+        description: '💳 Pagamentos e Assinaturas - Integração Mercado Pago, cobranças recorrentes',
       },
       {
-        name: 'Cursos - Categorias',
-        description: 'Gestão de categorias e subcategorias de cursos',
+        name: 'Comercial',
+        description: '🎫 Cupons e Promoções - Descontos, cupons e campanhas promocionais',
+      },
+
+      // === SISTEMA E ADMINISTRAÇÃO ===
+      {
+        name: 'Auditoria',
+        description: '🔍 Auditoria e Logs - Rastreamento de ações, logs de sistema e segurança',
       },
       {
-        name: 'Cursos - Turmas',
-        description: 'Gestão de turmas e inscrições dos cursos',
+        name: 'Status Processo',
+        description: '📊 Status Customizados - Gestão de status do processo seletivo',
+      },
+
+      // === INFRAESTRUTURA ===
+      {
+        name: 'Brevo',
+        description: '📧 E-mails Transacionais - Envio de e-mails, SMS e notificações',
       },
       {
-        name: 'Cursos - Aulas',
-        description: 'Gestão de aulas e materiais vinculados às turmas',
-      },
-      {
-        name: 'Cursos - Notas',
-        description: 'Lançamento e acompanhamento das notas dos alunos em provas e trabalhos',
-      },
-      {
-        name: 'Cursos - Frequências',
-        description: 'Registro e acompanhamento da presença dos alunos nas turmas e aulas',
-      },
-      {
-        name: 'Cursos - Estágios',
-        description: 'Gestão dos estágios supervisionados vinculados às inscrições dos cursos',
-      },
-      {
-        name: 'Comercial - Cupons de Desconto',
-        description: 'Administração de cupons promocionais aplicados a assinaturas e cursos',
-      },
-      {
-        name: 'MercadoPago - Assinaturas',
-        description: 'Assinaturas e cobranças recorrentes (Mercado Pago)',
+        name: 'Website',
+        description: '🌐 Conteúdo Público - Dados para o site institucional',
       },
     ],
     'x-tagGroups': [
-      { name: 'Default', tags: ['Default'] },
-      { name: 'Brevo', tags: ['Brevo'] },
       {
-        name: 'Usuários',
-        tags: ['Usuários', 'Usuários - Admin', 'Usuários - Stats'],
+        name: '🏠 Geral',
+        tags: ['Default', 'Usuários'],
       },
       {
-        name: 'Websites',
-        tags: [
-          'Website',
-          'Website - Banner',
-          'Website - LogoEnterprises',
-          'Website - Slider',
-          'Website - Sobre',
-          'Website - Consultoria',
-          'Website - Recrutamento',
-          'Website - SobreEmpresa',
-          'Website - Team',
-          'Website - Depoimentos',
-          'Website - Diferenciais',
-          'Website - Planinhas',
-          'Website - Advance Ajuda',
-          'Website - RecrutamentoSelecao',
-          'Website - Sistema',
-          'Website - TreinamentoCompany',
-          'Website - ConexaoForte',
-          'Website - TreinamentosInCompany',
-          'Website - InformacoesGerais',
-          'Website - ImagemLogin',
-          'Website - Header Pages',
-          'Website - Scripts',
-        ],
+        name: '💼 Gestão de Talentos',
+        tags: ['Empresas', 'Candidatos'],
       },
       {
-        name: 'Empresas',
-        tags: [
-          'Empresas - Planos Empresariais',
-          'Empresas - Clientes',
-          'Empresas - EmpresasVagas',
-          'Empresas - VagasCategorias',
-          'Empresas - VagasProcessos',
-          'Empresas - Admin',
-        ],
+        name: '📚 Educação',
+        tags: ['Cursos'],
       },
       {
-        name: 'Candidatos',
-        tags: ['Candidatos', 'Candidatos - Áreas de Interesse'],
+        name: '💰 Financeiro',
+        tags: ['Pagamentos', 'Comercial'],
       },
       {
-        name: 'Cursos',
-        tags: [
-          'Cursos',
-          'Cursos - Categorias',
-          'Cursos - Turmas',
-          'Cursos - Aulas',
-          'Cursos - Notas',
-          'Cursos - Frequências',
-          'Cursos - Estágios',
-          'Cursos - Certificados',
-        ],
+        name: '⚙️ Sistema',
+        tags: ['Auditoria', 'Status Processo'],
       },
-      { name: 'Pagamentos', tags: ['MercadoPago - Assinaturas'] },
-      { name: 'Comercial', tags: ['Comercial - Cupons de Desconto'] },
+      {
+        name: '🔌 Integrações',
+        tags: ['Brevo', 'Website'],
+      },
     ],
     components: {
       schemas: {
@@ -299,6 +212,20 @@ const options: Options = {
           enum: ['ILIMITADO', 'PERIODO'],
           example: 'PERIODO',
           description: 'Determina se o cupom possui período de validade configurado',
+        },
+        StatusInscricao: {
+          type: 'string',
+          enum: [
+            'INSCRITO',
+            'EM_ANDAMENTO',
+            'CONCLUIDO',
+            'REPROVADO',
+            'EM_ESTAGIO',
+            'CANCELADO',
+            'TRANCADO',
+          ],
+          example: 'INSCRITO',
+          description: 'Status da inscrição do aluno em uma turma/curso',
         },
         CupomDescontoCursoAplicado: {
           type: 'object',
@@ -586,11 +513,11 @@ const options: Options = {
             'ADMIN',
             'MODERADOR',
             'FINANCEIRO',
-            'PROFESSOR',
+            'INSTRUTOR',
             'EMPRESA',
             'PEDAGOGICO',
+            'SETOR_DE_VAGAS',
             'RECRUTADOR',
-            'PSICOLOGO',
             'ALUNO_CANDIDATO',
           ],
           example: 'ADMIN',
@@ -598,7 +525,7 @@ const options: Options = {
         },
         CursosStatusPadrao: {
           type: 'string',
-          enum: ['PUBLICADO', 'RASCUNHO', 'DESPUBLICADO'],
+          enum: ['PUBLICADO', 'RASCUNHO'],
           example: 'RASCUNHO',
           description: 'Status base utilizado na configuração de visibilidade dos cursos.',
         },
@@ -696,12 +623,12 @@ const options: Options = {
         CursoInstrutor: {
           type: 'object',
           properties: {
-            id: { type: 'string', format: 'uuid', example: 'P-01' },
-            nome: { type: 'string', example: 'João Silva' },
-            email: { type: 'string', format: 'email', example: 'joao.silva@example.com' },
+            id: { type: 'string', format: 'uuid', example: 'P-02' },
+            nome: { type: 'string', example: 'Maria Santos' },
+            email: { type: 'string', format: 'email', example: 'maria.santos@example.com' },
             codUsuario: {
               type: 'string',
-              example: 'USR-0001',
+              example: 'USR-0002',
               description: 'Código interno do usuário instrutor.',
             },
           },
@@ -818,11 +745,34 @@ const options: Options = {
             metodo: { $ref: '#/components/schemas/CursosMetodos' },
             status: { $ref: '#/components/schemas/CursoStatus' },
             vagasTotais: { type: 'integer', example: 30 },
-            vagasDisponiveis: { type: 'integer', example: 12 },
+            vagasDisponiveis: {
+              type: 'integer',
+              example: 12,
+              description: 'Vagas disponíveis (campo do banco, pode estar desatualizado)',
+            },
+            inscricoesCount: {
+              type: 'integer',
+              example: 3,
+              description: '✅ NOVO: Número total de inscrições ativas (calculado em tempo real). Inscrições canceladas/trancadas e alunos inativos não são contados.',
+            },
+            vagasOcupadas: {
+              type: 'integer',
+              example: 3,
+              description: '✅ NOVO: Número de vagas ocupadas (igual a inscricoesCount)',
+            },
+            vagasDisponiveisCalculadas: {
+              type: 'integer',
+              example: 27,
+              description: '✅ NOVO: Vagas disponíveis calculadas em tempo real (vagasTotais - inscricoesCount). Sempre atualizado e preciso.',
+            },
             dataInicio: { type: 'string', format: 'date-time', nullable: true },
             dataFim: { type: 'string', format: 'date-time', nullable: true },
             dataInscricaoInicio: { type: 'string', format: 'date-time', nullable: true },
             dataInscricaoFim: { type: 'string', format: 'date-time', nullable: true },
+            instrutor: {
+              nullable: true,
+              allOf: [{ $ref: '#/components/schemas/CursoInstrutor' }],
+            },
             alunos: {
               type: 'array',
               items: { $ref: '#/components/schemas/CursoTurmaAluno' },
@@ -969,6 +919,14 @@ const options: Options = {
               nullable: true,
               example: 'Curso completo de Excel para negócios.',
             },
+            imagemUrl: {
+              type: 'string',
+              format: 'uri',
+              nullable: true,
+              example:
+                'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800&h=600&fit=crop',
+              description: 'URL da imagem de capa do curso.',
+            },
             cargaHoraria: { type: 'integer', example: 40 },
             estagioObrigatorio: {
               type: 'boolean',
@@ -988,10 +946,6 @@ const options: Options = {
             },
             criadoEm: { type: 'string', format: 'date-time', example: '2024-01-01T12:00:00Z' },
             atualizadoEm: { type: 'string', format: 'date-time', example: '2024-01-15T12:00:00Z' },
-            instrutor: {
-              nullable: true,
-              allOf: [{ $ref: '#/components/schemas/CursoInstrutor' }],
-            },
             turmas: {
               type: 'array',
               items: { $ref: '#/components/schemas/CursoTurma' },
@@ -1002,7 +956,7 @@ const options: Options = {
         },
         CursoCreateInput: {
           type: 'object',
-          required: ['nome', 'cargaHoraria', 'instrutorId'],
+          required: ['nome', 'cargaHoraria'],
           properties: {
             nome: { type: 'string', example: 'Excel Avançado' },
             descricao: {
@@ -1010,13 +964,20 @@ const options: Options = {
               nullable: true,
               example: 'Curso completo de Excel para negócios.',
             },
+            imagemUrl: {
+              type: 'string',
+              format: 'uri',
+              nullable: true,
+              example:
+                'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800&h=600&fit=crop',
+              description: 'URL da imagem de capa do curso.',
+            },
             cargaHoraria: { type: 'integer', example: 40, minimum: 1 },
             estagioObrigatorio: {
               type: 'boolean',
               nullable: true,
               description: 'Define se novas inscrições do curso exigirão estágio obrigatório.',
             },
-            instrutorId: { type: 'string', format: 'uuid', example: 'P-01' },
             categoriaId: { type: 'integer', nullable: true, example: 2 },
             subcategoriaId: { type: 'integer', nullable: true, example: 5 },
             statusPadrao: { $ref: '#/components/schemas/CursosStatusPadrao' },
@@ -1031,13 +992,20 @@ const options: Options = {
               nullable: true,
               example: 'Curso completo de Excel para negócios.',
             },
+            imagemUrl: {
+              type: 'string',
+              format: 'uri',
+              nullable: true,
+              example:
+                'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800&h=600&fit=crop',
+              description: 'URL da imagem de capa do curso.',
+            },
             cargaHoraria: { type: 'integer', example: 60 },
             estagioObrigatorio: {
               type: 'boolean',
               nullable: true,
               description: 'Atualiza se o estágio é requisito obrigatório para conclusão do curso.',
             },
-            instrutorId: { type: 'string', format: 'uuid', example: 'P-01' },
             categoriaId: { type: 'integer', nullable: true, example: 3 },
             subcategoriaId: { type: 'integer', nullable: true, example: 7 },
             statusPadrao: { $ref: '#/components/schemas/CursosStatusPadrao' },
@@ -1048,6 +1016,7 @@ const options: Options = {
           required: ['nome', 'vagasTotais'],
           properties: {
             nome: { type: 'string', example: 'Turma 01 - Manhã' },
+            instrutorId: { type: 'string', format: 'uuid', nullable: true, example: 'P-02' },
             turno: {
               $ref: '#/components/schemas/CursosTurnos',
               description: 'Opcional. Se não informado, assume INTEGRAL.',
@@ -1069,6 +1038,7 @@ const options: Options = {
           type: 'object',
           properties: {
             nome: { type: 'string', example: 'Turma 02 - Noite' },
+            instrutorId: { type: 'string', format: 'uuid', nullable: true, example: 'P-02' },
             turno: {
               $ref: '#/components/schemas/CursosTurnos',
               description: 'Atualiza o turno da turma.',
@@ -2208,6 +2178,14 @@ const options: Options = {
             codigo: { type: 'string', example: 'CRS1234' },
             nome: { type: 'string', example: 'Excel Básico' },
             descricao: { type: 'string', nullable: true },
+            imagemUrl: {
+              type: 'string',
+              format: 'uri',
+              nullable: true,
+              example:
+                'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800&h=600&fit=crop',
+              description: 'URL da imagem de capa do curso.',
+            },
             cargaHoraria: { type: 'integer', example: 20 },
             estagioObrigatorio: {
               type: 'boolean',
@@ -2267,6 +2245,14 @@ const options: Options = {
             codigo: { type: 'string' },
             nome: { type: 'string' },
             descricao: { type: 'string', nullable: true },
+            imagemUrl: {
+              type: 'string',
+              format: 'uri',
+              nullable: true,
+              example:
+                'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800&h=600&fit=crop',
+              description: 'URL da imagem de capa do curso.',
+            },
             cargaHoraria: { type: 'integer' },
             estagioObrigatorio: {
               type: 'boolean',
@@ -3141,7 +3127,7 @@ const options: Options = {
           type: 'object',
           properties: {
             message: { type: 'string', example: 'Advance+ API' },
-            version: { type: 'string', example: 'v3.0.3' },
+            version: { type: 'string', example: 'v3.0.4' },
             timestamp: {
               type: 'string',
               format: 'date-time',
@@ -3171,7 +3157,7 @@ const options: Options = {
           properties: {
             status: { type: 'string', example: 'OK' },
             uptime: { type: 'number', example: 1 },
-            version: { type: 'string', example: 'v3.0.3' },
+            version: { type: 'string', example: 'v3.0.4' },
             timestamp: {
               type: 'string',
               format: 'date-time',
@@ -6512,23 +6498,114 @@ const options: Options = {
           example: 'PUBLICADO',
         },
         StatusProcesso: {
-          type: 'string',
-          description: 'Etapas do acompanhamento do candidato durante o processo seletivo da vaga.',
-          enum: [
-            'RECEBIDA',
-            'EM_ANALISE',
-            'EM_TRIAGEM',
-            'ENTREVISTA',
-            'DESAFIO',
-            'DOCUMENTACAO',
-            'CONTRATADO',
-            'RECUSADO',
-            'DESISTIU',
-            'NAO_COMPARECEU',
-            'ARQUIVADO',
-            'CANCELADO',
-          ],
-          example: 'EM_ANALISE',
+          type: 'object',
+          description: 'Status do processo seletivo da candidatura.',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            nome: { type: 'string' },
+            descricao: { type: 'string', nullable: true },
+            ativo: { type: 'boolean' },
+            isDefault: { type: 'boolean' },
+          },
+        },
+        CreateStatusProcessoInput: {
+          type: 'object',
+          required: ['nome'],
+          properties: {
+            nome: { type: 'string', example: 'Entrevista Técnica', description: 'Nome do status' },
+            descricao: {
+              type: 'string',
+              example: 'Candidato em processo de entrevista técnica',
+              description: 'Descrição do status',
+            },
+            ativo: { type: 'boolean', example: true, description: 'Status ativo/inativo' },
+            isDefault: {
+              type: 'boolean',
+              example: false,
+              description: 'Status padrão do sistema. Apenas 1 status pode ser padrão por vez.',
+            },
+          },
+        },
+        UpdateStatusProcessoInput: {
+          type: 'object',
+          properties: {
+            nome: { type: 'string', example: 'Entrevista Técnica', description: 'Nome do status' },
+            descricao: {
+              type: 'string',
+              example: 'Candidato em processo de entrevista técnica',
+              description: 'Descrição do status',
+            },
+            ativo: { type: 'boolean', example: true, description: 'Status ativo/inativo' },
+            isDefault: {
+              type: 'boolean',
+              example: false,
+              description: 'Status padrão do sistema. Apenas 1 status pode ser padrão por vez.',
+            },
+          },
+        },
+        StatusProcessoResponse: {
+          type: 'object',
+          required: ['id', 'nome', 'ativo', 'isDefault', 'criadoPor', 'criadoEm', 'atualizadoEm'],
+          properties: {
+            id: { type: 'string', format: 'uuid', example: '123e4567-e89b-12d3-a456-426614174000' },
+            nome: { type: 'string', example: 'Entrevista Técnica', description: 'Nome do status' },
+            descricao: {
+              type: 'string',
+              nullable: true,
+              example: 'Candidato em processo de entrevista técnica',
+              description: 'Descrição do status',
+            },
+            ativo: { type: 'boolean', example: true, description: 'Status ativo/inativo' },
+            isDefault: {
+              type: 'boolean',
+              example: false,
+              description: 'Status padrão do sistema. Apenas 1 status pode ser padrão por vez.',
+            },
+            criadoPor: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                nomeCompleto: { type: 'string' },
+                email: { type: 'string' },
+              },
+            },
+            criadoEm: { type: 'string', format: 'date-time' },
+            atualizadoEm: { type: 'string', format: 'date-time' },
+          },
+        },
+        StatusProcessoListResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: true },
+            data: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/StatusProcessoResponse' },
+            },
+            pagination: { $ref: '#/components/schemas/Pagination' },
+          },
+        },
+        StatusProcessoApiResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: true },
+            message: { type: 'string', example: 'Status criado com sucesso.' },
+            data: { $ref: '#/components/schemas/StatusProcessoResponse' },
+          },
+        },
+        StatusProcessoFilters: {
+          type: 'object',
+          properties: {
+            ativo: { type: 'boolean', description: 'Filtrar por status ativo/inativo' },
+            search: { type: 'string', description: 'Buscar por nome ou descrição' },
+            page: { type: 'integer', minimum: 1, default: 1, description: 'Número da página' },
+            pageSize: {
+              type: 'integer',
+              minimum: 1,
+              maximum: 100,
+              default: 20,
+              description: 'Tamanho da página',
+            },
+          },
         },
         OrigemVagas: {
           type: 'string',
@@ -6897,7 +6974,7 @@ const options: Options = {
             status: {
               allOf: [{ $ref: '#/components/schemas/StatusProcesso' }],
               nullable: true,
-              description: 'Quando omitido, o status padrão RECEBIDA é aplicado automaticamente.',
+              description: 'Quando omitido, o status padrão PENDENTE é aplicado automaticamente.',
             },
             origem: {
               allOf: [{ $ref: '#/components/schemas/OrigemVagas' }],
@@ -8347,18 +8424,13 @@ const options: Options = {
           type: 'object',
           additionalProperties: false,
           properties: {
-            RECEBIDA: { type: 'integer', minimum: 0, example: 80 },
+            PENDENTE: { type: 'integer', minimum: 0, example: 80 },
             EM_ANALISE: { type: 'integer', minimum: 0, example: 20 },
-            EM_TRIAGEM: { type: 'integer', minimum: 0, example: 5 },
-            ENTREVISTA: { type: 'integer', minimum: 0, example: 10 },
-            DESAFIO: { type: 'integer', minimum: 0, example: 6 },
-            DOCUMENTACAO: { type: 'integer', minimum: 0, example: 5 },
-            CONTRATADO: { type: 'integer', minimum: 0, example: 4 },
-            RECUSADO: { type: 'integer', minimum: 0, example: 7 },
-            DESISTIU: { type: 'integer', minimum: 0, example: 1 },
-            NAO_COMPARECEU: { type: 'integer', minimum: 0, example: 1 },
-            ARQUIVADO: { type: 'integer', minimum: 0, example: 0 },
-            CANCELADO: { type: 'integer', minimum: 0, example: 0 },
+            FORA_DO_PERFIL: { type: 'integer', minimum: 0, example: 5 },
+            PRE_APROVADO: { type: 'integer', minimum: 0, example: 10 },
+            REPROVADO: { type: 'integer', minimum: 0, example: 6 },
+            APROVADO: { type: 'integer', minimum: 0, example: 4 },
+            DESISTENTE: { type: 'integer', minimum: 0, example: 1 },
           },
         },
         AdminEmpresaVagasOverview: {
@@ -8587,18 +8659,13 @@ const options: Options = {
             candidaturas: {
               total: 134,
               porStatus: {
-                RECEBIDA: 80,
+                PENDENTE: 80,
                 EM_ANALISE: 20,
-                ENTREVISTA: 10,
-                DESAFIO: 6,
-                DOCUMENTACAO: 5,
-                CONTRATADO: 4,
-                RECUSADO: 7,
-                DESISTIU: 1,
-                NAO_COMPARECEU: 1,
-                EM_TRIAGEM: 0,
-                ARQUIVADO: 0,
-                CANCELADO: 0,
+                FORA_DO_PERFIL: 5,
+                PRE_APROVADO: 10,
+                REPROVADO: 6,
+                APROVADO: 4,
+                DESISTENTE: 1,
               },
             },
             bloqueios: {
@@ -9598,12 +9665,13 @@ const options: Options = {
                     porStatus: {
                       type: 'object',
                       additionalProperties: { type: 'integer' },
-                      example: { RECEBIDA: 2, ENTREVISTA: 1 },
+                      example: { PENDENTE: 2, EM_ANALISE: 1 },
                     },
                     vagasDistintas: {
                       type: 'integer',
                       example: 2,
-                      description: 'Quantidade de vagas únicas vinculadas às candidaturas do candidato.',
+                      description:
+                        'Quantidade de vagas únicas vinculadas às candidaturas do candidato.',
                     },
                   },
                 },
@@ -9615,7 +9683,7 @@ const options: Options = {
                     porStatus: {
                       type: 'object',
                       additionalProperties: { type: 'integer' },
-                      example: { ENTREVISTA: 2 },
+                      example: { EM_ANALISE: 2 },
                     },
                   },
                 },
@@ -9727,7 +9795,7 @@ const options: Options = {
                     candidatoId: '8b1f9c2a-2c41-4f3a-9b7d-15a1a4d9ce20',
                     curriculoId: '6d1f9b8a-3c21-4fb2-8a8f-f6e2c21a7f10',
                     empresaUsuarioId: '5cefd77b-7a20-47b2-95fe-3eb5bf2c7c11',
-                    status: 'RECEBIDA',
+                    status: 'PENDENTE',
                     origem: 'SITE',
                     aplicadaEm: '2024-05-11T10:00:00Z',
                     atualizadaEm: '2024-05-11T10:00:00Z',
@@ -9843,7 +9911,7 @@ const options: Options = {
                         candidatoId: '8b1f9c2a-2c41-4f3a-9b7d-15a1a4d9ce20',
                         curriculoId: '6d1f9b8a-3c21-4fb2-8a8f-f6e2c21a7f10',
                         empresaUsuarioId: '5cefd77b-7a20-47b2-95fe-3eb5bf2c7c11',
-                        status: 'RECEBIDA',
+                        status: 'PENDENTE',
                         origem: 'SITE',
                         aplicadaEm: '2024-05-11T10:00:00Z',
                         atualizadaEm: '2024-05-11T10:00:00Z',
@@ -9919,7 +9987,7 @@ const options: Options = {
                     id: '8fd4c1e2-5f11-4a5c-9ab2-bc401ea77e10',
                     vagaId: '7a5b9c1d-2f80-44a6-82da-6b8c1f00ec91',
                     candidatoId: '8b1f9c2a-2c41-4f3a-9b7d-15a1a4d9ce20',
-                    status: 'ENTREVISTA',
+                    status: 'EM_ANALISE',
                     origem: 'SITE',
                     observacoes: 'Entrevista técnica agendada.',
                     agendadoEm: '2024-05-18T14:00:00Z',
@@ -9968,12 +10036,12 @@ const options: Options = {
                 ],
                 candidaturasResumo: {
                   total: 1,
-                  porStatus: { RECEBIDA: 1 },
+                  porStatus: { PENDENTE: 1 },
                   vagasDistintas: 1,
                 },
                 processosResumo: {
                   total: 1,
-                  porStatus: { ENTREVISTA: 1 },
+                  porStatus: { EM_ANALISE: 1 },
                 },
               },
             ],
@@ -10146,12 +10214,13 @@ const options: Options = {
                     porStatus: {
                       type: 'object',
                       additionalProperties: { type: 'integer' },
-                      example: { RECEBIDA: 2, ENTREVISTA: 1 },
+                      example: { PENDENTE: 2, EM_ANALISE: 1 },
                     },
                     vagasDistintas: {
                       type: 'integer',
                       example: 2,
-                      description: 'Quantidade de vagas únicas vinculadas às candidaturas do candidato.',
+                      description:
+                        'Quantidade de vagas únicas vinculadas às candidaturas do candidato.',
                     },
                   },
                 },
@@ -10330,7 +10399,8 @@ const options: Options = {
               type: 'string',
               enum: ['GLOBAL', 'EMPRESA'],
               example: 'EMPRESA',
-              description: 'Escopo efetivo da consulta (GLOBAL para visão completa, EMPRESA quando filtrado por uma empresa).',
+              description:
+                'Escopo efetivo da consulta (GLOBAL para visão completa, EMPRESA quando filtrado por uma empresa).',
             },
             empresaUsuarioId: {
               type: 'string',
@@ -10358,11 +10428,11 @@ const options: Options = {
                 'ADMIN',
                 'MODERADOR',
                 'FINANCEIRO',
-                'PROFESSOR',
+                'INSTRUTOR',
                 'EMPRESA',
                 'PEDAGOGICO',
+                'SETOR_DE_VAGAS',
                 'RECRUTADOR',
-                'PSICOLOGO',
                 'ALUNO_CANDIDATO',
               ],
               example: 'EMPRESA',
@@ -10375,7 +10445,8 @@ const options: Options = {
           properties: {
             data: {
               type: 'array',
-              description: 'Candidatos únicos com todas as candidaturas relacionadas às vagas do escopo.',
+              description:
+                'Candidatos únicos com todas as candidaturas relacionadas às vagas do escopo.',
               items: { $ref: '#/components/schemas/AdminCandidatoDetalhe' },
             },
             pagination: { allOf: [{ $ref: '#/components/schemas/PaginationMeta' }] },
@@ -10444,7 +10515,7 @@ const options: Options = {
             titulo: {
               type: 'string',
               maxLength: 255,
-              example: 'Coordenador de Projetos TI',
+              example: 'Gerente de Projetos TI',
             },
             paraPcd: { type: 'boolean', example: false },
             numeroVagas: {
@@ -11810,7 +11881,15 @@ const options: Options = {
         url: 'http://localhost:3000',
         description: 'Servidor de desenvolvimento',
       },
+      {
+        url: 'https://api.advancemais.com',
+        description: 'Servidor de produção',
+      },
     ],
+    externalDocs: {
+      description: 'Documentação de Performance e Otimizações',
+      url: '/docs/PERFORMANCE_OPTIMIZATIONS.md',
+    },
   },
   apis: ['./src/routes/**/*.ts', './src/modules/**/*.ts'],
 };
@@ -11860,38 +11939,23 @@ export function setupSwagger(app: Application): void {
           layout: 'BaseLayout',
           tagsSorter: (a: string, b: string) => {
             const order = [
+              // Geral
               'Default',
-              'Brevo',
               'Usuários',
-              'Usuários - Admin',
-              'Usuários - Stats',
+              // Gestão de Talentos
+              'Empresas',
+              'Candidatos',
+              // Educação
+              'Cursos',
+              // Financeiro
+              'Pagamentos',
+              'Comercial',
+              // Sistema
+              'Auditoria',
+              'Status Processo',
+              // Integrações
+              'Brevo',
               'Website',
-              'Website - Banner',
-              'Website - LogoEnterprises',
-              'Website - Slider',
-              'Website - Sobre',
-              'Website - Consultoria',
-              'Website - Recrutamento',
-              'Website - SobreEmpresa',
-              'Website - Team',
-              'Website - Depoimentos',
-              'Website - Diferenciais',
-              'Website - Planinhas',
-              'Website - Advance Ajuda',
-              'Website - RecrutamentoSelecao',
-              'Website - Sistema',
-              'Website - TreinamentoCompany',
-              'Website - ConexaoForte',
-              'Website - TreinamentosInCompany',
-              'Website - InformacoesGerais',
-              'Website - ImagemLogin',
-              'Website - Header Pages',
-              'MercadoPago - Assinaturas',
-              // Empresas - após Website - Header Pages
-              'Empresas - Planos Empresariais',
-              'Empresas - Clientes',
-              'Empresas - EmpresasVagas',
-              'Empresas - VagasProcessos',
             ];
             const ai = order.indexOf(a);
             const bi = order.indexOf(b);
@@ -11900,6 +11964,239 @@ export function setupSwagger(app: Application): void {
             if (ai === -1) return 1;
             if (bi === -1) return -1;
             return ai - bi;
+          },
+          operationsSorter: (a: any, b: any) => {
+            const pathA: string = a.get('path') || '';
+            const pathB: string = b.get('path') || '';
+            const methodA = (a.get('method') || '').toString().toUpperCase();
+            const methodB = (b.get('method') || '').toString().toUpperCase();
+
+            // Normalize path variables
+            const norm = (p: string) => p.replace(/\{[^}]+\}/g, '{}');
+            const nA = norm(pathA);
+            const nB = norm(pathB);
+
+            // Domain-specific ordering rules (lower weight = appears first)
+            const rules: { re: RegExp; w: number }[] = [
+              // ===== EMPRESAS - GESTÃO COMPLETA =====
+              // Listagem e criação de empresas
+              { re: /^\/api\/v1\/empresas\/?$/, w: 100 },
+              { re: /^\/api\/v1\/empresas\/dashboard\/?$/, w: 105 },
+              { re: /^\/api\/v1\/empresas\/\{\}\/?$/, w: 110 },
+
+              // Gestão de bloqueios de empresas
+              { re: /^\/api\/v1\/empresas\/\{\}\/bloqueios\/?$/, w: 120 },
+              { re: /^\/api\/v1\/empresas\/\{\}\/bloqueios\/revogar\/?$/, w: 121 },
+
+              // Gestão de pagamentos de empresas
+              { re: /^\/api\/v1\/empresas\/\{\}\/pagamentos\/?$/, w: 130 },
+
+              // Gestão de planos de empresas
+              { re: /^\/api\/v1\/empresas\/\{\}\/plano\/?$/, w: 140 },
+
+              // Gestão de vagas de empresas
+              { re: /^\/api\/v1\/empresas\/\{\}\/vagas\/?$/, w: 150 },
+              { re: /^\/api\/v1\/empresas\/\{\}\/vagas\/em-analise\/?$/, w: 151 },
+              { re: /^\/api\/v1\/empresas\/\{\}\/vagas\/\{\}\/aprovar\/?$/, w: 152 },
+
+              // ===== EMPRESAS - CATEGORIAS DE VAGAS =====
+              { re: /^\/api\/v1\/empresas\/vagas\/categorias\/?$/, w: 200 },
+              { re: /^\/api\/v1\/empresas\/vagas\/categorias\/\{\}\/?$/, w: 205 },
+              { re: /^\/api\/v1\/empresas\/vagas\/categorias\/\{\}\/subcategorias\/?$/, w: 210 },
+              { re: /^\/api\/v1\/empresas\/vagas\/subcategorias\/\{\}\/?$/, w: 215 },
+
+              // ===== EMPRESAS - GESTÃO DE VAGAS =====
+              { re: /^\/api\/v1\/empresas\/vagas\/?$/, w: 300 },
+              { re: /^\/api\/v1\/empresas\/vagas\/\{\}\/?$/, w: 305 },
+
+              // Processos seletivos
+              { re: /^\/api\/v1\/empresas\/vagas\/\{\}\/processos\/?$/, w: 310 },
+              { re: /^\/api\/v1\/empresas\/vagas\/\{\}\/processos\/\{\}\/?$/, w: 315 },
+
+              // ===== EMPRESAS - CANDIDATOS E CLIENTES =====
+              { re: /^\/api\/v1\/empresas\/candidato\/?$/, w: 400 },
+              { re: /^\/api\/v1\/empresas\/candidato\/\{\}\/?$/, w: 405 },
+              { re: /^\/api\/v1\/empresas\/clientes\/?$/, w: 410 },
+              { re: /^\/api\/v1\/empresas\/clientes\/\{\}\/?$/, w: 415 },
+
+              // ===== EMPRESAS - PLANOS EMPRESARIAIS =====
+              { re: /^\/api\/v1\/empresas\/planos-empresariais\/?$/, w: 500 },
+              { re: /^\/api\/v1\/empresas\/planos-empresariais\/\{\}\/?$/, w: 505 },
+
+              // ===== EMPRESAS - VALIDAÇÕES =====
+              { re: /^\/api\/v1\/empresas\/validate-cnpj\/?$/, w: 600 },
+              { re: /^\/api\/v1\/empresas\/validate-cpf\/?$/, w: 605 },
+
+              // ===== CANDIDATOS - GESTÃO PESSOAL =====
+              { re: /^\/api\/v1\/candidatos\/?$/, w: 2000 },
+              { re: /^\/api\/v1\/candidatos\/vagas\/?$/, w: 2005 },
+              { re: /^\/api\/v1\/candidatos\/aplicar\/?$/, w: 2010 },
+              { re: /^\/api\/v1\/candidatos\/candidaturas\/?$/, w: 2020 },
+              { re: /^\/api\/v1\/candidatos\/candidaturas\/overview\/?$/, w: 2021 },
+              { re: /^\/api\/v1\/candidatos\/candidaturas\/recebidas\/?$/, w: 2022 },
+              { re: /^\/api\/v1\/candidatos\/candidaturas\/\{\}\/?$/, w: 2025 },
+              { re: /^\/api\/v1\/candidatos\/curriculos/, w: 2030 },
+              { re: /^\/api\/v1\/candidatos\/(areas-interesse|subareas-interesse)/, w: 2040 },
+
+              // ===== CURSOS - GESTÃO COMPLETA =====
+              // Informações e listagem de cursos
+              { re: /^\/api\/v1\/cursos\/meta\/?$/, w: 3000 },
+              { re: /^\/api\/v1\/cursos\/?$/, w: 3005 },
+
+              // Categorias de cursos (logo após listagem)
+              { re: /^\/api\/v1\/cursos\/categorias\/?$/, w: 3010 },
+              { re: /^\/api\/v1\/cursos\/categorias\/\{\}\/?$/, w: 3015 },
+              { re: /^\/api\/v1\/cursos\/categorias\/\{\}\/subcategorias\/?$/, w: 3020 },
+              { re: /^\/api\/v1\/cursos\/subcategorias\/\{\}\/?$/, w: 3025 },
+
+              // Gestão específica de cursos (depois das categorias)
+              { re: /^\/api\/v1\/cursos\/\{\}\/?$/, w: 3030 },
+
+              // Gestão de turmas
+              { re: /^\/api\/v1\/cursos\/\{\}\/turmas\/?$/, w: 3040 },
+              { re: /^\/api\/v1\/cursos\/\{\}\/turmas\/\{\}\/?$/, w: 3045 },
+
+              // Gestão de aulas
+              { re: /^\/api\/v1\/cursos\/\{\}\/turmas\/\{\}\/aulas\/?$/, w: 3050 },
+              { re: /^\/api\/v1\/cursos\/\{\}\/turmas\/\{\}\/aulas\/\{\}\/?$/, w: 3055 },
+
+              // Gestão de agenda
+              { re: /^\/api\/v1\/cursos\/\{\}\/turmas\/\{\}\/agenda\/?$/, w: 3060 },
+              { re: /^\/api\/v1\/cursos\/\{\}\/turmas\/\{\}\/agenda\/\{\}\/?$/, w: 3065 },
+
+              // Gestão de inscrições
+              { re: /^\/api\/v1\/cursos\/\{\}\/turmas\/\{\}\/inscricoes\/?$/, w: 3070 },
+              { re: /^\/api\/v1\/cursos\/\{\}\/turmas\/\{\}\/inscricoes\/\{\}\/?$/, w: 3075 },
+
+              // Gestão de módulos
+              { re: /^\/api\/v1\/cursos\/\{\}\/turmas\/\{\}\/modulos\/?$/, w: 3080 },
+              { re: /^\/api\/v1\/cursos\/\{\}\/turmas\/\{\}\/modulos\/\{\}\/?$/, w: 3085 },
+
+              // Gestão de provas
+              { re: /^\/api\/v1\/cursos\/\{\}\/turmas\/\{\}\/provas\/?$/, w: 3090 },
+              { re: /^\/api\/v1\/cursos\/\{\}\/turmas\/\{\}\/provas\/\{\}\/?$/, w: 3095 },
+              { re: /^\/api\/v1\/cursos\/\{\}\/turmas\/\{\}\/provas\/\{\}\/notas\/?$/, w: 3100 },
+
+              // Gestão de notas
+              { re: /^\/api\/v1\/cursos\/\{\}\/turmas\/\{\}\/notas\/?$/, w: 3105 },
+              { re: /^\/api\/v1\/cursos\/\{\}\/turmas\/\{\}\/notas\/\{\}\/?$/, w: 3110 },
+
+              // Gestão de frequências
+              { re: /^\/api\/v1\/cursos\/\{\}\/turmas\/\{\}\/frequencias\/?$/, w: 3115 },
+              { re: /^\/api\/v1\/cursos\/\{\}\/turmas\/\{\}\/frequencias\/\{\}\/?$/, w: 3120 },
+
+              // Gestão de certificados
+              { re: /^\/api\/v1\/cursos\/\{\}\/turmas\/\{\}\/certificados\/?$/, w: 3125 },
+
+              // Regras de avaliação
+              { re: /^\/api\/v1\/cursos\/\{\}\/turmas\/\{\}\/regras-avaliacao\/?$/, w: 3130 },
+
+              // Recuperações
+              { re: /^\/api\/v1\/cursos\/\{\}\/turmas\/\{\}\/recuperacoes\/?$/, w: 3135 },
+
+              // ===== CURSOS - ÁREA DO ALUNO =====
+              // Minha agenda
+              { re: /^\/api\/v1\/cursos\/me\/agenda\/?$/, w: 3200 },
+
+              // Meus certificados
+              { re: /^\/api\/v1\/cursos\/me\/certificados\/?$/, w: 3210 },
+              { re: /^\/api\/v1\/cursos\/me\/inscricoes\/\{\}\/certificados\/?$/, w: 3215 },
+
+              // Minhas inscrições
+              { re: /^\/api\/v1\/cursos\/me\/inscricoes\/\{\}\/estagios\/?$/, w: 3220 },
+              {
+                re: /^\/api\/v1\/cursos\/me\/inscricoes\/\{\}\/frequencias-detalhadas\/?$/,
+                w: 3225,
+              },
+              { re: /^\/api\/v1\/cursos\/me\/inscricoes\/\{\}\/notas\/?$/, w: 3230 },
+              { re: /^\/api\/v1\/cursos\/me\/inscricoes\/\{\}\/notas-detalhadas\/?$/, w: 3235 },
+
+              // ===== CURSOS - ÁREA PÚBLICA =====
+              // Vitrine pública
+              { re: /^\/api\/v1\/cursos\/publico\/cursos\/?$/, w: 3300 },
+              { re: /^\/api\/v1\/cursos\/publico\/cursos\/\{\}\/?$/, w: 3305 },
+              { re: /^\/api\/v1\/cursos\/publico\/turmas\/\{\}\/?$/, w: 3310 },
+
+              // ===== CURSOS - ESTÁGIOS =====
+              // Gestão de estágios
+              { re: /^\/api\/v1\/cursos\/estagios\/\{\}\/?$/, w: 3400 },
+              { re: /^\/api\/v1\/cursos\/estagios\/\{\}\/reenviar-confirmacao\/?$/, w: 3405 },
+              { re: /^\/api\/v1\/cursos\/estagios\/\{\}\/status\/?$/, w: 3410 },
+              { re: /^\/api\/v1\/cursos\/estagios\/confirmacoes\/\{\}\/?$/, w: 3415 },
+
+              // Estágios por inscrição
+              {
+                re: /^\/api\/v1\/cursos\/\{\}\/turmas\/\{\}\/inscricoes\/\{\}\/estagios\/?$/,
+                w: 3420,
+              },
+
+              // ===== CURSOS - ADMINISTRAÇÃO =====
+              // Inscrições administrativas
+              { re: /^\/api\/v1\/cursos\/inscricoes\/\{\}\/certificados\/?$/, w: 3500 },
+              { re: /^\/api\/v1\/cursos\/inscricoes\/\{\}\/frequencias-detalhadas\/?$/, w: 3505 },
+              { re: /^\/api\/v1\/cursos\/inscricoes\/\{\}\/notas\/?$/, w: 3510 },
+              { re: /^\/api\/v1\/cursos\/inscricoes\/\{\}\/notas-detalhadas\/?$/, w: 3515 },
+
+              // Verificação de certificados
+              { re: /^\/api\/v1\/cursos\/certificados\/codigo\/\{\}\/?$/, w: 3520 },
+
+              // ===== USUÁRIOS =====
+              { re: /^\/api\/v1\/usuarios\/?$/, w: 4000 },
+              { re: /^\/api\/v1\/usuarios\/auth\/?$/, w: 4005 },
+              { re: /^\/api\/v1\/usuarios\/profile\/?$/, w: 4010 },
+              { re: /^\/api\/v1\/usuarios\/password\/?$/, w: 4015 },
+
+              // ===== OUTROS MÓDULOS =====
+              { re: /^\/api\/v1\/brevo\/?$/, w: 6000 },
+              { re: /^\/api\/v1\/website\/?$/, w: 7000 },
+              { re: /^\/api\/v1\/cupons\/?$/, w: 8000 },
+              { re: /^\/api\/v1\/mercadopago\/?$/, w: 9000 },
+            ];
+
+            const findWeight = (p: string): number | undefined => {
+              const np = norm(p);
+              for (const r of rules) {
+                if (r.re.test(np)) return r.w;
+              }
+              return undefined;
+            };
+
+            const wa = findWeight(pathA);
+            const wb = findWeight(pathB);
+            if (wa !== undefined || wb !== undefined) {
+              if ((wa ?? 9999) !== (wb ?? 9999)) return (wa ?? 9999) - (wb ?? 9999);
+            }
+
+            // Generic ordering (collection -> detail -> nested)
+            const isCollection = (p: string) => !/\{[^}]+\}/.test(p);
+            const depth = (p: string) => p.match(/\//g)?.length || 0;
+            const baseWeight = (p: string) => {
+              if (p.endsWith('/meta')) return 5;
+              if (isCollection(p)) return 10 + depth(p);
+              return 20 + depth(p); // details/nested
+            };
+
+            const wga = baseWeight(pathA);
+            const wgb = baseWeight(pathB);
+            if (wga !== wgb) return wga - wgb;
+
+            // Method order within same normalized path
+            const methodOrder: Record<string, number> = {
+              GET: 1,
+              POST: 2,
+              PUT: 3,
+              PATCH: 4,
+              DELETE: 5,
+            };
+            if (nA === nB) {
+              const ma = methodOrder[methodA] ?? 99;
+              const mb = methodOrder[methodB] ?? 99;
+              if (ma !== mb) return ma - mb;
+            }
+
+            // Fallback
+            if (pathA !== pathB) return pathA.localeCompare(pathB);
+            return methodA.localeCompare(methodB);
           },
         },
       })(req, res, next);
@@ -11910,6 +12207,7 @@ export function setupSwagger(app: Application): void {
     res.json(swaggerSpec),
   );
 
+  // ReDoc - Documentação alternativa com melhor visualização
   app.get('/redoc', supabaseAuthMiddleware(docsAllowedRoles), (req, res) => {
     res.send(`<!DOCTYPE html>
 <html>

@@ -20,7 +20,7 @@ export const usuarioAdminSelect = {
   criadoEm: true,
   ultimoLogin: true,
   ...usuarioRedesSociaisSelect,
-  informacoes: { select: usuarioInformacoesSelect },
+  UsuariosInformation: { select: usuarioInformacoesSelect },
   enderecos: {
     orderBy: { criadoEm: 'asc' },
     select: {
@@ -133,20 +133,19 @@ export type CandidaturaRecord = Prisma.EmpresasCandidatosGetPayload<{
   select: typeof candidaturaSelect;
 }>;
 
-export const buildCandidatoSelect = (
-  candidaturasWhere?: Prisma.EmpresasCandidatosWhereInput,
-) => ({
-  ...usuarioAdminSelect,
-  curriculos: {
-    orderBy: [{ principal: 'desc' }, { atualizadoEm: 'desc' }],
-    select: curriculoSelect,
-  },
-  candidaturasFeitas: {
-    orderBy: { aplicadaEm: 'desc' },
-    ...(candidaturasWhere ? { where: candidaturasWhere } : {}),
-    select: candidaturaSelect,
-  },
-}) satisfies Prisma.UsuariosSelect;
+export const buildCandidatoSelect = (candidaturasWhere?: Prisma.EmpresasCandidatosWhereInput) =>
+  ({
+    ...usuarioAdminSelect,
+    curriculos: {
+      orderBy: [{ principal: 'desc' }, { atualizadoEm: 'desc' }],
+      select: curriculoSelect,
+    },
+    candidaturasFeitas: {
+      orderBy: { aplicadaEm: 'desc' },
+      ...(candidaturasWhere ? { where: candidaturasWhere } : {}),
+      select: candidaturaSelect,
+    },
+  }) satisfies Prisma.UsuariosSelect;
 
 export type CandidatoRecord = Prisma.UsuariosGetPayload<{
   select: ReturnType<typeof buildCandidatoSelect>;
@@ -280,9 +279,11 @@ export const mapCandidatura = (candidatura: CandidaturaRecord) => ({
   empresa: mapUsuarioAdmin(candidatura.empresa ?? null),
 });
 
-const countByStatus = <T extends string>(items: { status: T }[]) =>
+const countByStatus = (items: { status: { nome: string } | string }[]) =>
   items.reduce<Record<string, number>>((acc, item) => {
-    acc[item.status] = (acc[item.status] ?? 0) + 1;
+    const key =
+      typeof item.status === 'string' ? item.status : (item.status?.nome ?? 'DESCONHECIDO');
+    acc[key] = (acc[key] ?? 0) + 1;
     return acc;
   }, {});
 

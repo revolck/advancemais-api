@@ -383,7 +383,7 @@ export const assinaturasService = {
       where: { id: params.usuarioId },
       include: {
         enderecos: { take: 1, orderBy: { criadoEm: 'asc' } },
-        informacoes: { select: { telefone: true } },
+        UsuariosInformation: { select: { telefone: true } },
       },
     });
     if (!usuario) {
@@ -451,7 +451,7 @@ export const assinaturasService = {
           federal_unit: endereco.estado ?? undefined,
         }
       : undefined;
-    const phoneDigits = sanitizeDigits(usuario.informacoes?.telefone ?? '');
+    const phoneDigits = sanitizeDigits(usuario.UsuariosInformation?.telefone ?? '');
     const payerPhone =
       phoneDigits.length >= 10
         ? {

@@ -59,7 +59,9 @@ export const attachEnderecoResumo = <T extends Record<string, any>>(
     return null;
   }
 
-  const { enderecos, cidade, estado } = extractEnderecoResumo((usuario as any).enderecos ?? []);
+  // Suporta tanto 'enderecos' quanto 'UsuariosEnderecos' (nome correto do Prisma)
+  const rawEnderecos = (usuario as any).enderecos ?? (usuario as any).UsuariosEnderecos ?? [];
+  const { enderecos, cidade, estado } = extractEnderecoResumo(rawEnderecos);
 
   return {
     ...usuario,

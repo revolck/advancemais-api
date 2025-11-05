@@ -12,7 +12,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  * /api/v1/website/banner:
  *   get:
  *     summary: Listar banners
- *     tags: [Website - Banner]
+ *     tags: [Website]
  *     responses:
  *       200:
  *         description: Lista de banners
@@ -41,7 +41,7 @@ router.get('/', publicCache, BannerController.list);
  * /api/v1/website/banner/{id}:
  *   get:
  *     summary: Obter banner por ID da ordem
- *     tags: [Website - Banner]
+ *     tags: [Website]
  *     parameters:
  *       - in: path
  *         name: id
@@ -81,7 +81,7 @@ router.get('/:id', publicCache, BannerController.get);
  * /api/v1/website/banner:
  *   post:
  *     summary: Criar banner
- *     tags: [Website - Banner]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -125,7 +125,7 @@ router.post(
  * /api/v1/website/banner/{id}:
  *   put:
  *     summary: Atualizar banner
- *     tags: [Website - Banner]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -183,7 +183,7 @@ router.put(
  *   put:
  *     summary: Reordenar banner
  *     description: Altera a posição do banner utilizando o ID da ordem. Caso a nova posição esteja ocupada, os demais banners serão ajustados automaticamente.
- *     tags: [Website - Banner]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -238,7 +238,7 @@ router.put(
  * /api/v1/website/banner/{id}:
  *   delete:
  *     summary: Remover banner
- *     tags: [Website - Banner]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:

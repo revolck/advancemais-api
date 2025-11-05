@@ -11,7 +11,7 @@ const router = Router();
  * /api/v1/website/scripts:
  *   get:
  *     summary: Listar scripts e pixels configurados para o website
- *     tags: [Website - Scripts]
+ *     tags: [Website]
  *     parameters:
  *       - in: query
  *         name: aplicacao
@@ -64,7 +64,7 @@ router.get('/', publicCache, WebsiteScriptsController.list);
  * /api/v1/website/scripts/{id}:
  *   get:
  *     summary: Obter um script específico por ID
- *     tags: [Website - Scripts]
+ *     tags: [Website]
  *     parameters:
  *       - in: path
  *         name: id
@@ -103,7 +103,7 @@ router.get('/:id', publicCache, WebsiteScriptsController.get);
  * /api/v1/website/scripts:
  *   post:
  *     summary: Cadastrar um novo script para o website
- *     tags: [Website - Scripts]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -147,7 +147,7 @@ router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), WebsiteScriptsC
  * /api/v1/website/scripts/{id}:
  *   put:
  *     summary: Atualizar um script existente
- *     tags: [Website - Scripts]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -203,7 +203,7 @@ router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), WebsiteScript
  * /api/v1/website/scripts/{id}:
  *   delete:
  *     summary: Remover um script cadastrado
- *     tags: [Website - Scripts]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:

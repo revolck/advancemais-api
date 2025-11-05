@@ -25,7 +25,7 @@ export const informacoesGeraisService = {
         instagram: true,
         youtube: true,
         email: true,
-        horarios: {
+        WebsiteHorarioFuncionamento: {
           select: {
             id: true,
             diaDaSemana: true,
@@ -55,7 +55,7 @@ export const informacoesGeraisService = {
         instagram: true,
         youtube: true,
         email: true,
-        horarios: {
+        WebsiteHorarioFuncionamento: {
           select: {
             id: true,
             diaDaSemana: true,
@@ -82,7 +82,7 @@ export const informacoesGeraisService = {
         instagram: true,
         youtube: true,
         email: true,
-        horarios: {
+        WebsiteHorarioFuncionamento: {
           select: {
             id: true,
             diaDaSemana: true,
@@ -113,7 +113,7 @@ export const informacoesGeraisService = {
         instagram: true,
         youtube: true,
         email: true,
-        horarios: {
+        WebsiteHorarioFuncionamento: {
           select: {
             id: true,
             diaDaSemana: true,

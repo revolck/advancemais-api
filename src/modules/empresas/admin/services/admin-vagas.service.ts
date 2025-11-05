@@ -36,7 +36,7 @@ const usuarioAdminSelect = {
   criadoEm: true,
   ultimoLogin: true,
   ...usuarioRedesSociaisSelect,
-  informacoes: { select: usuarioInformacoesSelect },
+  UsuariosInformation: { select: usuarioInformacoesSelect },
   enderecos: usuarioEnderecoSelect,
 } satisfies Prisma.UsuariosSelect;
 
@@ -167,7 +167,7 @@ const mapUsuarioAdmin = (usuario?: UsuarioAdminRecord | null) => {
   if (!merged) {
     return null;
   }
-  const socialLinks = mapSocialLinks(merged.redesSociais);
+  const socialLinks = mapSocialLinks(merged.UsuariosRedesSociais);
 
   return {
     id: merged.id,
@@ -304,9 +304,11 @@ const mapVagaBase = (vaga: VagaRecord) => ({
     : null,
 });
 
-const countByStatus = <T extends string>(items: { status: T }[]) =>
+const countByStatus = (items: { status: { nome: string } | string }[]) =>
   items.reduce<Record<string, number>>((acc, item) => {
-    acc[item.status] = (acc[item.status] ?? 0) + 1;
+    const key =
+      typeof item.status === 'string' ? item.status : (item.status?.nome ?? 'DESCONHECIDO');
+    acc[key] = (acc[key] ?? 0) + 1;
     return acc;
   }, {});
 

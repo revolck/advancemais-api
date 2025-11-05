@@ -19,7 +19,6 @@ import {
   Status,
   StatusDeBloqueios,
   StatusDeVagas,
-  StatusProcesso,
   TiposDeBloqueios,
   TiposDeUsuarios,
 } from '@prisma/client';
@@ -151,7 +150,7 @@ const createUsuarioListSelect = () =>
     cnpj: true,
     criadoEm: true,
     status: true,
-    informacoes: {
+    UsuariosInformation: {
       select: usuarioInformacoesSelect,
     },
     planosContratados: createPlanoAtivoSelect(),
@@ -196,7 +195,7 @@ const createUsuarioDashboardSelect = () =>
     cnpj: true,
     status: true,
     criadoEm: true,
-    informacoes: {
+    UsuariosInformation: {
       select: {
         telefone: true,
         avatarUrl: true,
@@ -234,7 +233,7 @@ const usuarioDetailSelect = {
   tipoUsuario: true,
   status: true,
   ultimoLogin: true,
-  informacoes: {
+  UsuariosInformation: {
     select: usuarioInformacoesSelect,
   },
   planosContratados: createPlanoAtivoSelect(),
@@ -575,7 +574,7 @@ type AdminEmpresaOverview = {
   };
   candidaturas: {
     total: number;
-    porStatus: Record<StatusProcesso, number>;
+    porStatus: Record<string, number>;
   };
   bloqueios: {
     ativos: AdminUsuariosEmBloqueiosResumo[];
@@ -1325,7 +1324,7 @@ export const adminEmpresasService = {
           tipoUsuario: true,
           criadoEm: true,
           atualizadoEm: true,
-          informacoes: { select: { telefone: true } },
+          UsuariosInformation: { select: { telefone: true } },
         },
       });
 
@@ -1334,7 +1333,7 @@ export const adminEmpresasService = {
           id: empresa.id,
           nome: empresa.nomeCompleto,
           email: empresa.email,
-          telefone: empresa.informacoes?.telefone ?? null,
+          telefone: empresa.UsuariosInformation?.telefone ?? null,
           codUsuario: empresa.codUsuario,
           status: empresa.status,
           role: empresa.role,
@@ -1390,7 +1389,7 @@ export const adminEmpresasService = {
           tipoUsuario: true,
           criadoEm: true,
           atualizadoEm: true,
-          informacoes: { select: { telefone: true } },
+          UsuariosInformation: { select: { telefone: true } },
         },
       });
 
@@ -1399,7 +1398,7 @@ export const adminEmpresasService = {
           id: usuario.id,
           nome: usuario.nomeCompleto,
           email: usuario.email,
-          telefone: usuario.informacoes?.telefone ?? null,
+          telefone: usuario.UsuariosInformation?.telefone ?? null,
           codUsuario: usuario.codUsuario,
           status: usuario.status,
           role: usuario.role,
@@ -1466,7 +1465,7 @@ export const adminEmpresasService = {
               ultimaTentativaVerificacao: new Date(),
             },
           },
-          informacoes: {
+          UsuariosInformation: {
             create: {
               telefone: sanitizeTelefone(input.telefone),
               aceitarTermos,
@@ -1476,7 +1475,7 @@ export const adminEmpresasService = {
           },
           ...(socialLinksCreate
             ? {
-                redesSociais: {
+                UsuariosRedesSociais: {
                   create: socialLinksCreate,
                 },
               }
@@ -1558,14 +1557,14 @@ export const adminEmpresasService = {
           email: true,
           cnpj: true,
           status: true,
-          informacoes: {
+          UsuariosInformation: {
             select: {
               telefone: true,
               descricao: true,
               avatarUrl: true,
             },
           },
-          redesSociais: {
+          UsuariosRedesSociais: {
             select: {
               instagram: true,
               linkedin: true,
@@ -1646,7 +1645,7 @@ export const adminEmpresasService = {
         });
 
         if (informacoesExiste) {
-          updates.informacoes = { update: informacoesUpdates };
+          updates.UsuariosInformation = { update: informacoesUpdates };
         } else {
           // Se não existe, precisamos criar com os valores corretos
           const createData: Prisma.UsuariosInformationCreateWithoutUsuarioInput = {
@@ -1658,7 +1657,7 @@ export const adminEmpresasService = {
             descricao: informacoesUpdates.descricao as string | null | undefined,
             aceitarTermos: informacoesUpdates.aceitarTermos as boolean | undefined,
           };
-          updates.informacoes = { create: createData };
+          updates.UsuariosInformation = { create: createData };
         }
       }
 
@@ -1755,7 +1754,7 @@ export const adminEmpresasService = {
           const telefoneAlterado = await empresasAuditoriaService.registrarAlteracaoTelefone(
             id,
             alteradoPor,
-            dadosAnteriores?.informacoes?.telefone || null,
+            dadosAnteriores?.UsuariosInformation?.telefone || null,
             data.telefone,
           );
           if (telefoneAlterado) auditoriaRegistrada = true;
@@ -1763,7 +1762,9 @@ export const adminEmpresasService = {
 
         // Registrar alterações de endereço APENAS se foram enviadas no payload
         const camposEndereco = ['logradouro', 'numero', 'bairro', 'cidade', 'estado', 'cep'];
-        const temEnderecoNoPayload = camposEndereco.some(campo => data[campo as keyof typeof data] !== undefined);
+        const temEnderecoNoPayload = camposEndereco.some(
+          (campo) => data[campo as keyof typeof data] !== undefined,
+        );
 
         if (temEnderecoNoPayload) {
           const enderecoAnterior = dadosAnteriores?.enderecos?.[0];
@@ -1795,11 +1796,20 @@ export const adminEmpresasService = {
         }
 
         // Registrar alterações de redes sociais APENAS se foram enviadas no payload
-        const camposRedesSociais = ['instagram', 'linkedin', 'facebook', 'youtube', 'twitter', 'tiktok'];
-        const temRedesSociaisNoPayload = camposRedesSociais.some(campo => data[campo as keyof typeof data] !== undefined);
+        const camposRedesSociais = [
+          'instagram',
+          'linkedin',
+          'facebook',
+          'youtube',
+          'twitter',
+          'tiktok',
+        ];
+        const temRedesSociaisNoPayload = camposRedesSociais.some(
+          (campo) => data[campo as keyof typeof data] !== undefined,
+        );
 
         if (temRedesSociaisNoPayload) {
-          const redesAnteriores = dadosAnteriores?.redesSociais || {};
+          const redesAnteriores = dadosAnteriores?.UsuariosRedesSociais || {};
           const redesNovas = socialLinksSanitized?.values || {};
 
           const redesAlteradas = await empresasAuditoriaService.registrarAlteracaoRedesSociais(
@@ -1816,7 +1826,7 @@ export const adminEmpresasService = {
           const descricaoAlterada = await empresasAuditoriaService.registrarAlteracaoDescricao(
             id,
             alteradoPor,
-            dadosAnteriores?.informacoes?.descricao || null,
+            dadosAnteriores?.UsuariosInformation?.descricao || null,
             data.descricao,
           );
           if (descricaoAlterada) auditoriaRegistrada = true;
@@ -1846,7 +1856,7 @@ export const adminEmpresasService = {
               where: {
                 usuarioId: id,
                 status: EmpresasPlanoStatus.ATIVO,
-                planosEmpresariaisId: data.plano.planosEmpresariaisId
+                planosEmpresariaisId: data.plano.planosEmpresariaisId,
               },
               include: { plano: { select: { nome: true } } },
               orderBy: [{ inicio: 'desc' }, { criadoEm: 'desc' }],
@@ -1916,7 +1926,7 @@ export const adminEmpresasService = {
           where: {
             usuarioId: id,
             status: EmpresasPlanoStatus.ATIVO,
-            planosEmpresariaisId: plano.planosEmpresariaisId
+            planosEmpresariaisId: plano.planosEmpresariaisId,
           },
           include: { plano: { select: { nome: true } } },
           orderBy: [{ inicio: 'desc' }, { criadoEm: 'desc' }],
@@ -1993,7 +2003,7 @@ export const adminEmpresasService = {
           where: {
             usuarioId: id,
             status: EmpresasPlanoStatus.ATIVO,
-            planosEmpresariaisId: plano.planosEmpresariaisId
+            planosEmpresariaisId: plano.planosEmpresariaisId,
           },
           include: { plano: { select: { nome: true } } },
           orderBy: [{ inicio: 'desc' }, { criadoEm: 'desc' }],
@@ -2048,8 +2058,8 @@ export const adminEmpresasService = {
         codUsuario: empresa.codUsuario,
         nome: empresa.nomeCompleto,
         email: empresa.email,
-        telefone: empresa.informacoes?.telefone ?? null,
-        avatarUrl: empresa.informacoes?.avatarUrl ?? null,
+        telefone: empresa.UsuariosInformation?.telefone ?? null,
+        avatarUrl: empresa.UsuariosInformation?.avatarUrl ?? null,
         cnpj: empresa.cnpj ?? null,
         status: empresa.status,
         criadoEm: empresa.criadoEm,
@@ -2190,7 +2200,7 @@ export const adminEmpresasService = {
       avatarUrl: empresa.avatarUrl,
       cnpj: empresa.cnpj ?? null,
       descricao: empresa.descricao,
-      socialLinks: mapSocialLinks(empresa.redesSociais),
+      socialLinks: mapSocialLinks(empresa.UsuariosRedesSociais),
       cidade: empresa.cidade,
       estado: empresa.estado,
       enderecos: empresa.enderecos,
@@ -2250,9 +2260,9 @@ export const adminEmpresasService = {
         _count: { _all: true },
       }),
       prisma.empresasCandidatos.groupBy({
-        by: ['status'],
+        by: ['statusId'],
         where: { empresaUsuarioId: id },
-        orderBy: { status: 'asc' },
+        orderBy: { statusId: 'asc' },
         _count: { _all: true },
       }),
     ]);
@@ -2268,7 +2278,7 @@ export const adminEmpresasService = {
     }));
 
     const candidaturasStatusCounts = candidaturasStatusCountsRaw.map((item) => ({
-      status: item.status,
+      status: item.statusId,
       _count: {
         _all:
           typeof item._count === 'object' && item._count !== null
@@ -2316,9 +2326,12 @@ export const adminEmpresasService = {
     );
     const totalVagas = Object.values(vagasPorStatus).reduce((acc, value) => acc + value, 0);
 
-    const candidaturasPorStatus = buildStatusCountMap(
-      Object.values(StatusProcesso) as StatusProcesso[],
-      candidaturasStatusCounts,
+    const candidaturasPorStatus = candidaturasStatusCounts.reduce<Record<string, number>>(
+      (acc, item) => {
+        acc[item.status] = item._count._all;
+        return acc;
+      },
+      {},
     );
     const totalCandidaturas = Object.values(candidaturasPorStatus).reduce(
       (acc, value) => acc + value,

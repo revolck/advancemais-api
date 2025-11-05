@@ -23,6 +23,19 @@ const parseIdParam = (raw: string | undefined) => {
   return value;
 };
 
+const parsePositiveIntegerQuery = (raw: unknown, fallback: number) => {
+  if (raw === undefined) {
+    return fallback;
+  }
+
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value <= 0) {
+    return null;
+  }
+
+  return value;
+};
+
 const isUniqueConstraintError = (error: unknown) =>
   error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
 
@@ -102,6 +115,53 @@ export class CategoriasController {
         success: false,
         code: 'CATEGORIA_GET_ERROR',
         message: 'Erro ao buscar categoria',
+        error: error?.message,
+      });
+    }
+  };
+
+  static listSubcategorias = async (req: Request, res: Response) => {
+    const categoriaId = parseIdParam(req.params.categoriaId);
+    if (!categoriaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificador de categoria inválido',
+      });
+    }
+
+    const page = parsePositiveIntegerQuery(req.query.page, 1);
+    if (!page) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Parâmetro page inválido',
+      });
+    }
+
+    const pageSizeRaw = parsePositiveIntegerQuery(req.query.pageSize, 50);
+    if (!pageSizeRaw) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Parâmetro pageSize inválido',
+      });
+    }
+
+    const pageSize = Math.min(pageSizeRaw, 100);
+
+    try {
+      const result = await categoriasService.listSubcategorias(categoriaId, { page, pageSize });
+      res.json(result);
+    } catch (error: any) {
+      if (handleKnownErrors(res, error)) {
+        return;
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'SUBCATEGORIAS_LIST_ERROR',
+        message: 'Erro ao listar subcategorias da categoria',
         error: error?.message,
       });
     }

@@ -19,7 +19,7 @@ export const logoEnterpriseService = {
         id: true,
         ordem: true,
         status: true,
-        logo: {
+        WebsiteLogoEnterprise: {
           select: {
             id: true,
             nome: true,
@@ -41,7 +41,7 @@ export const logoEnterpriseService = {
         id: true,
         ordem: true,
         status: true,
-        logo: {
+        WebsiteLogoEnterprise: {
           select: {
             id: true,
             nome: true,
@@ -70,12 +70,13 @@ export const logoEnterpriseService = {
         data: {
           ordem,
           status: data.status ?? 'RASCUNHO',
-          logo: {
+          WebsiteLogoEnterprise: {
             create: {
               nome: data.nome,
               imagemUrl: data.imagemUrl,
               imagemAlt: data.imagemAlt,
               ...(data.website !== undefined && { website: data.website }),
+              atualizadoEm: new Date(),
             },
           },
         },
@@ -83,7 +84,7 @@ export const logoEnterpriseService = {
           id: true,
           ordem: true,
           status: true,
-          logo: {
+          WebsiteLogoEnterprise: {
             select: {
               id: true,
               nome: true,
@@ -137,7 +138,7 @@ export const logoEnterpriseService = {
         data: {
           ordem,
           status: data.status,
-          logo:
+          WebsiteLogoEnterprise:
             data.nome !== undefined ||
             data.imagemUrl !== undefined ||
             data.imagemAlt !== undefined ||
@@ -150,6 +151,7 @@ export const logoEnterpriseService = {
                     ...(data.website !== undefined && {
                       website: data.website,
                     }),
+                    atualizadoEm: new Date(),
                   },
                 }
               : undefined,
@@ -158,7 +160,7 @@ export const logoEnterpriseService = {
           id: true,
           ordem: true,
           status: true,
-          logo: {
+          WebsiteLogoEnterprise: {
             select: {
               id: true,
               nome: true,
@@ -181,7 +183,7 @@ export const logoEnterpriseService = {
         select: {
           id: true,
           ordem: true,
-          logo: {
+          WebsiteLogoEnterprise: {
             select: {
               id: true,
               nome: true,
@@ -218,7 +220,7 @@ export const logoEnterpriseService = {
           select: {
             id: true,
             ordem: true,
-            logo: {
+            WebsiteLogoEnterprise: {
               select: {
                 id: true,
                 nome: true,

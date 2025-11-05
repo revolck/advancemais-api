@@ -10,7 +10,7 @@ const router = Router();
  * /api/v1/website/diferenciais:
  *   get:
  *     summary: Listar conteúdos "Diferenciais"
- *     tags: [Website - Diferenciais]
+ *     tags: [Website]
  *     responses:
  *       200:
  *         description: Lista de conteúdos
@@ -39,7 +39,7 @@ router.get('/', publicCache, DiferenciaisController.list);
  * /api/v1/website/diferenciais/{id}:
  *   get:
  *     summary: Obter conteúdo por ID
- *     tags: [Website - Diferenciais]
+ *     tags: [Website]
  *     parameters:
  *       - in: path
  *         name: id
@@ -78,7 +78,7 @@ router.get('/:id', publicCache, DiferenciaisController.get);
  * /api/v1/website/diferenciais:
  *   post:
  *     summary: Criar conteúdo "Diferenciais"
- *     tags: [Website - Diferenciais]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -116,7 +116,7 @@ router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), DiferenciaisCon
  * /api/v1/website/diferenciais/{id}:
  *   put:
  *     summary: Atualizar conteúdo "Diferenciais"
- *     tags: [Website - Diferenciais]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -166,7 +166,7 @@ router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), DiferenciaisC
  * /api/v1/website/diferenciais/{id}:
  *   delete:
  *     summary: Remover conteúdo "Diferenciais"
- *     tags: [Website - Diferenciais]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:

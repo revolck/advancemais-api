@@ -354,10 +354,21 @@ router.post(
  * @openapi
  * /api/v1/usuarios/login:
  *   post:
- *     summary: Login de usuário
+ *     summary: Login de usuário (Otimizado com Cache e Rate Limiting)
  *     description: |-
  *       Autentica o usuário, gera par de tokens JWT e define um cookie HTTP-only com o refresh token.
  *       Marque `rememberMe` para manter a sessão ativa por mais tempo no mesmo dispositivo/navegador.
+ *       
+ *       **⚡ Otimizações de Performance:**
+ *       - ✅ **Timeout**: 3s por tentativa, máximo 6-9s total (fail-fast)
+ *       - ✅ **Cache Redis**: Rate limiting e bloqueio automático (fallback in-memory)
+ *       - ✅ **Rate Limit**: 5 tentativas por 15 minutos
+ *       - ✅ **Bloqueio Automático**: Após 5 tentativas falhadas = 1 hora bloqueado
+ *       - ✅ **Índices Otimizados**: CPF/CNPJ/Email com status para busca rápida
+ *       
+ *       **📊 Performance Esperada:**
+ *       - Login bem-sucedido: 50-100ms (p50)
+ *       - Com banco lento: 6-9s fail-fast (vs 30s+ antes)
  *     tags: [Usuários]
  *     requestBody:
  *       required: true
@@ -456,18 +467,39 @@ router.post(
  *                   status: "SUSPENSO"
  *                   correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
  *       429:
- *         description: Muitas tentativas
+ *         description: Muitas tentativas de login ou bloqueio temporário
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               rateLimit:
+ *                 summary: Rate limit excedido
+ *                 value:
+ *                   success: false
+ *                   message: "Muitas tentativas. Tente novamente mais tarde"
+ *                   code: "RATE_LIMIT_EXCEEDED"
+ *                   retryAfter: 900
+ *               blocked:
+ *                 summary: Bloqueio temporário (5 tentativas falhadas)
+ *                 value:
+ *                   success: false
+ *                   message: "Muitas tentativas de login. Tente novamente mais tarde."
+ *                   code: "LOGIN_BLOCKED"
+ *                   correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
+ *       503:
+ *         description: Serviço temporariamente indisponível (banco de dados não disponível)
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *             example:
  *               success: false
- *               message: "Muitas tentativas. Tente novamente mais tarde"
- *               code: "RATE_LIMIT_EXCEEDED"
- *               retryAfter: 900
+ *               message: "Serviço temporariamente indisponível. Por favor, tente novamente mais tarde."
+ *               code: "SERVICE_UNAVAILABLE"
+ *               correlationId: "d4e8c2a7-ff52-4f42-b6de-1234567890ab"
  *       500:
- *         description: Erro interno
+ *         description: Erro interno do servidor
  *         content:
  *           application/json:
  *             schema:

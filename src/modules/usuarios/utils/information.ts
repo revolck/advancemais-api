@@ -49,11 +49,17 @@ export const mapUsuarioInformacoes = (
 });
 
 export const mergeUsuarioInformacoes = <
-  T extends { informacoes?: UsuarioInformacoesRecord | null },
+  T extends { 
+    informacoes?: UsuarioInformacoesRecord | null; 
+    UsuariosInformation?: UsuarioInformacoesRecord | null;
+    redesSociais?: any;
+    UsuariosRedesSociais?: any;
+  },
 >(
   usuario: T,
-): Omit<T, 'informacoes'> & {
+): Omit<T, 'informacoes' | 'UsuariosInformation' | 'UsuariosRedesSociais'> & {
   informacoes: UsuarioInformacoesDto;
+  redesSociais?: any;
   telefone: string | null;
   genero: string | null;
   dataNasc: Date | null;
@@ -62,12 +68,17 @@ export const mergeUsuarioInformacoes = <
   descricao: string | null;
   aceitarTermos: boolean;
 } => {
-  const { informacoes: rawInformacoes, ...usuarioSemInformacoes } = usuario;
+  // Suporta tanto 'informacoes' quanto 'UsuariosInformation' (nome correto do Prisma)
+  const rawInformacoes = (usuario as any).informacoes ?? (usuario as any).UsuariosInformation;
+  // Suporta tanto 'redesSociais' quanto 'UsuariosRedesSociais' (nome correto do Prisma)
+  const rawRedesSociais = (usuario as any).redesSociais ?? (usuario as any).UsuariosRedesSociais;
+  const { informacoes: _, UsuariosInformation: __, UsuariosRedesSociais: ___, ...usuarioSemInformacoes } = usuario as any;
   const informacoes = mapUsuarioInformacoes(rawInformacoes);
 
   return {
     ...usuarioSemInformacoes,
     ...informacoes,
     informacoes,
+    redesSociais: rawRedesSociais,
   };
 };

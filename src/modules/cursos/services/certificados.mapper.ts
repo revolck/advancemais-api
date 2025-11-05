@@ -18,7 +18,7 @@ const certificadoWithRelations = Prisma.validator<Prisma.CursosCertificadosEmiti
             nomeCompleto: true,
             email: true,
             cpf: true,
-            informacoes: {
+            UsuariosInformation: {
               select: {
                 inscricao: true,
               },
@@ -94,7 +94,7 @@ export const mapCertificado = (
       email: certificado.inscricao.aluno.email,
       cpf: maskCpf ? null : formattedCpf,
       cpfMascarado: maskedCpf,
-      inscricao: certificado.inscricao.aluno.informacoes?.inscricao ?? null,
+      inscricao: certificado.inscricao.aluno.UsuariosInformation?.inscricao ?? null,
     },
     curso: {
       id: certificado.inscricao.turma.curso.id,

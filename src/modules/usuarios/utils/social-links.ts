@@ -137,7 +137,7 @@ export const mapSocialLinks = (links?: UsuarioSocialLinks | null): UsuarioSocial
 };
 
 export const usuarioRedesSociaisSelect = {
-  redesSociais: {
+  UsuariosRedesSociais: {
     select: {
       instagram: true,
       linkedin: true,

@@ -1,5 +1,6 @@
 import { z, type ZodError, type ZodIssue } from 'zod';
 import { Roles, Status, TiposDeUsuarios } from '../enums';
+import { TiposDeBloqueios, MotivosDeBloqueios } from '@prisma/client';
 
 export const loginSchema = z.object({
   documento: z
@@ -84,6 +85,36 @@ export const updateRoleSchema = z.object({
   motivo: z.string().max(500).optional(),
 });
 
+export const adminAlunoBloqueioSchema = z
+  .object({
+    tipo: z.nativeEnum(TiposDeBloqueios, { required_error: 'Tipo de bloqueio é obrigatório' }),
+    motivo: z.nativeEnum(MotivosDeBloqueios, {
+      required_error: 'Motivo do bloqueio é obrigatório',
+    }),
+    dias: z.coerce
+      .number()
+      .int()
+      .min(1, 'Informe pelo menos 1 dia de bloqueio')
+      .max(3650, 'Bloqueio temporário deve ter no máximo 10 anos')
+      .describe('Quantidade de dias para bloqueio temporário')
+      .optional(),
+    observacoes: z
+      .string()
+      .trim()
+      .min(3, 'Informe observações com pelo menos 3 caracteres')
+      .max(500, 'Observações devem ter no máximo 500 caracteres')
+      .optional(),
+  })
+  .refine(
+    (values) =>
+      values.tipo !== TiposDeBloqueios.TEMPORARIO ||
+      (values.dias !== undefined && Number.isFinite(values.dias) && values.dias > 0),
+    {
+      message: 'Informe a quantidade de dias para bloqueios temporários',
+      path: ['dias'],
+    },
+  );
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type RegisterPessoaFisicaInput = z.infer<typeof pessoaFisicaRegisterSchema>;
@@ -91,6 +122,7 @@ export type RegisterPessoaJuridicaInput = z.infer<typeof pessoaJuridicaRegisterS
 export type UpdateStatusInput = z.infer<typeof updateStatusSchema>;
 export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
 export type AdminCreateUserInput = z.infer<typeof adminCreateUserSchema>;
+export type AdminAlunoBloqueioInput = z.infer<typeof adminAlunoBloqueioSchema>;
 
 type FormattedError = {
   path: string;

@@ -8,9 +8,9 @@ import { prisma } from '../../../config/prisma';
 describe('bannerService.reorder', () => {
   it('reorders when moving to an occupied position', async () => {
     const items = [
-      { id: 'ord1', ordem: 1, banner: {} },
-      { id: 'ord2', ordem: 2, banner: {} },
-      { id: 'ord3', ordem: 3, banner: {} },
+      { id: 'ord1', ordem: 1, WebsiteBanner: {} },
+      { id: 'ord2', ordem: 2, WebsiteBanner: {} },
+      { id: 'ord3', ordem: 3, WebsiteBanner: {} },
     ];
 
     (prisma.$transaction as jest.Mock).mockImplementation(async (fn) => {

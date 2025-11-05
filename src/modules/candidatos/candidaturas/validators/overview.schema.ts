@@ -1,4 +1,3 @@
-import { StatusProcesso } from '@prisma/client';
 import { z } from 'zod';
 
 const booleanPreprocessor = z.preprocess((value) => {
@@ -35,12 +34,10 @@ const statusListPreprocessor = z.preprocess((value) => {
         .map((item) => item.trim())
         .filter(Boolean);
 
-  const unique = Array.from(
-    new Set(entries.map((item) => item.toUpperCase() as keyof typeof StatusProcesso)),
-  );
-
+  // Retorna lista única de IDs (UUIDs)
+  const unique = Array.from(new Set(entries.map((item) => String(item))));
   return unique;
-}, z.array(z.nativeEnum(StatusProcesso)).optional());
+}, z.array(z.string().uuid()).optional());
 
 export const candidaturasOverviewQuerySchema = z
   .object({

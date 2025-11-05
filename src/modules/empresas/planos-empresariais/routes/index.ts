@@ -12,7 +12,7 @@ const router = Router();
  *   get:
  *     summary: Listar planos empresariais disponíveis
  *     description: "Retorna todos os planos empresariais configurados, incluindo regras de publicação de vagas. A tabela está limitada a no máximo 4 registros. Endpoint público, não requer autenticação."
- *     tags: [Empresas - Planos Empresariais]
+ *     tags: [Empresas]
  *     responses:
  *       200:
  *         description: Lista de planos empresariais
@@ -41,7 +41,7 @@ router.get('/', publicCache, PlanosEmpresariaisController.list);
  * /api/v1/empresas/planos-empresariais/{id}:
  *   get:
  *     summary: Obter plano empresarial por ID
- *     tags: [Empresas - Planos Empresariais]
+ *     tags: [Empresas]
  *     parameters:
  *       - in: path
  *         name: id
@@ -81,7 +81,7 @@ router.get('/:id', publicCache, PlanosEmpresariaisController.get);
  *   post:
  *     summary: Criar um novo plano empresarial
  *     description: "Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR). A criação respeita o limite máximo de 4 planos ativos e permite definir descontos percentuais e regras de publicação de vagas."
- *     tags: [Empresas - Planos Empresariais]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -157,7 +157,7 @@ router.post(
  *   put:
  *     summary: Atualizar plano empresarial
  *     description: "Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR)."
- *     tags: [Empresas - Planos Empresariais]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -235,7 +235,7 @@ router.put(
  *   delete:
  *     summary: Remover plano empresarial
  *     description: "Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR)."
- *     tags: [Empresas - Planos Empresariais]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:

@@ -12,7 +12,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  * /api/v1/website/consultoria:
  *   get:
  *     summary: Listar conteúdos "Consultoria"
- *     tags: [Website - Consultoria]
+ *     tags: [Website]
  *     responses:
  *       200:
  *         description: Lista de conteúdos
@@ -41,7 +41,7 @@ router.get('/', publicCache, ConsultoriaController.list);
  * /api/v1/website/consultoria/{id}:
  *   get:
  *     summary: Obter conteúdo por ID
- *     tags: [Website - Consultoria]
+ *     tags: [Website]
  *     parameters:
  *       - in: path
  *         name: id
@@ -80,7 +80,7 @@ router.get('/:id', publicCache, ConsultoriaController.get);
  * /api/v1/website/consultoria:
  *   post:
  *     summary: Criar conteúdo "Consultoria"
- *     tags: [Website - Consultoria]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -126,7 +126,7 @@ router.post(
  * /api/v1/website/consultoria/{id}:
  *   put:
  *     summary: Atualizar conteúdo "Consultoria"
- *     tags: [Website - Consultoria]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -184,7 +184,7 @@ router.put(
  * /api/v1/website/consultoria/{id}:
  *   delete:
  *     summary: Remover conteúdo "Consultoria"
- *     tags: [Website - Consultoria]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:

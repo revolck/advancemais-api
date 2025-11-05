@@ -33,7 +33,7 @@ const includeEmpresa = {
       select: {
         id: true,
         nomeCompleto: true,
-        informacoes: {
+        UsuariosInformation: {
           select: usuarioInformacoesSelect,
         },
         ...usuarioRedesSociaisSelect,
@@ -492,7 +492,7 @@ const transformVaga = (vaga: VagaWithEmpresa) => {
         descricao: displayDescription,
         socialLinks: vagaSemMetadados.modoAnonimo
           ? null
-          : mapSocialLinks(empresaUsuario.redesSociais),
+          : mapSocialLinks(empresaUsuario.UsuariosRedesSociais),
         codUsuario: empresaUsuario.codUsuario,
         enderecos: empresaUsuario.enderecos,
         informacoes: empresaUsuario.informacoes,

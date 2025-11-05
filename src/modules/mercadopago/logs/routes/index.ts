@@ -4,14 +4,14 @@ import { Roles } from '@/modules/usuarios/enums/Roles';
 import { logsController } from '../services/logs.controller';
 
 const router = Router();
-const empresaRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.EMPRESA, Roles.RECRUTADOR];
+const empresaRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.EMPRESA, Roles.SETOR_DE_VAGAS];
 
 /**
  * @openapi
  * /api/v1/mercadopago/logs:
  *   get:
  *     summary: Listar logs de pagamentos/assinaturas
- *     tags: [MercadoPago - Assinaturas]
+ *     tags: [Pagamentos]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -47,7 +47,7 @@ router.get('/', supabaseAuthMiddleware(empresaRoles), logsController.list);
  * /api/v1/mercadopago/logs/{id}:
  *   get:
  *     summary: Obter log por ID
- *     tags: [MercadoPago - Assinaturas]
+ *     tags: [Pagamentos]
  *     security:
  *       - bearerAuth: []
  *     parameters:

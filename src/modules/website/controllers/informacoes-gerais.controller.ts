@@ -34,7 +34,7 @@ export class InformacoesGeraisController {
       const { horarios = [], ...data } = req.body;
       const info = await informacoesGeraisService.create({
         ...data,
-        horarios: { create: horarios },
+        WebsiteHorarioFuncionamento: { create: horarios },
       });
       res.status(201).json(info);
     } catch (error: any) {
@@ -52,7 +52,7 @@ export class InformacoesGeraisController {
       const info = await informacoesGeraisService.update(id, {
         ...data,
         ...(horarios && {
-          horarios: { deleteMany: {}, create: horarios },
+          WebsiteHorarioFuncionamento: { deleteMany: {}, create: horarios },
         }),
       });
       res.json(info);

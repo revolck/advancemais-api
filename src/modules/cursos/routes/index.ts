@@ -47,7 +47,7 @@ router.get('/meta', publicCache, CursosController.meta);
  * /api/v1/cursos/categorias:
  *   get:
  *     summary: Listar categorias de cursos
- *     tags: ['Cursos - Categorias']
+ *     tags: ['Cursos']
  *     responses:
  *       200:
  *         description: Lista de categorias com subcategorias associadas
@@ -71,7 +71,7 @@ router.get('/categorias', publicCache, CategoriasController.list);
  * /api/v1/cursos/categorias/{categoriaId}:
  *   get:
  *     summary: Obter detalhes de uma categoria específica
- *     tags: ['Cursos - Categorias']
+ *     tags: ['Cursos']
  *     parameters:
  *       - in: path
  *         name: categoriaId
@@ -104,7 +104,7 @@ router.get('/categorias/:categoriaId', publicCache, CategoriasController.get);
  * /api/v1/cursos/categorias:
  *   post:
  *     summary: Criar uma nova categoria de curso
- *     tags: ['Cursos - Categorias']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -148,7 +148,7 @@ router.post(
  * /api/v1/cursos/categorias/{categoriaId}:
  *   put:
  *     summary: Atualizar uma categoria de curso
- *     tags: ['Cursos - Categorias']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -189,7 +189,7 @@ router.put(
  * /api/v1/cursos/categorias/{categoriaId}:
  *   delete:
  *     summary: Remover uma categoria de curso
- *     tags: ['Cursos - Categorias']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -222,9 +222,58 @@ router.delete(
 /**
  * @openapi
  * /api/v1/cursos/categorias/{categoriaId}/subcategorias:
+ *   get:
+ *     summary: Listar subcategorias de uma categoria de curso
+ *     tags: ['Cursos']
+ *     parameters:
+ *       - in: path
+ *         name: categoriaId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema: { type: integer, minimum: 1, default: 1 }
+ *       - in: query
+ *         name: pageSize
+ *         required: false
+ *         schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+ *     responses:
+ *       200:
+ *         description: Lista de subcategorias retornada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 items:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/CursoSubcategoria'
+ *                 meta:
+ *                   type: object
+ *                   properties:
+ *                     page: { type: integer, example: 1 }
+ *                     pageSize: { type: integer, example: 50 }
+ *                     totalItems: { type: integer, example: 3 }
+ *                     totalPages: { type: integer, example: 1 }
+ *       400:
+ *         description: Parâmetros inválidos
+ *       404:
+ *         description: Categoria não encontrada
+ */
+router.get(
+  '/categorias/:categoriaId/subcategorias',
+  publicCache,
+  CategoriasController.listSubcategorias,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/categorias/{categoriaId}/subcategorias:
  *   post:
  *     summary: Criar uma subcategoria vinculada a uma categoria
- *     tags: ['Cursos - Categorias']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -261,7 +310,7 @@ router.post(
  * /api/v1/cursos/subcategorias/{subcategoriaId}:
  *   put:
  *     summary: Atualizar uma subcategoria existente
- *     tags: ['Cursos - Categorias']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -298,7 +347,7 @@ router.put(
  * /api/v1/cursos/subcategorias/{subcategoriaId}:
  *   delete:
  *     summary: Remover uma subcategoria de curso
- *     tags: ['Cursos - Categorias']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -320,30 +369,596 @@ router.delete(
 
 /**
  * @openapi
+ * /api/v1/cursos/alunos:
+ *   get:
+ *     summary: 👥 Listar alunos com inscrições em cursos
+ *     description: |
+ *       Retorna lista paginada de alunos que possuem inscrições em cursos,
+ *       incluindo detalhes das inscrições, turmas e cursos associados.
+ *
+ *       **FILTROS DISPONÍVEIS:**
+ *       - `cidade`: Filtra por cidade do aluno
+ *       - `status`: Filtra por status da inscrição
+ *       - `curso`: Filtra por ID do curso
+ *       - `turma`: Filtra por ID da turma
+ *       - `search`: Busca por nome, email, CPF ou matrícula
+ *     tags: [Cursos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, minimum: 1, default: 1 }
+ *         description: Número da página
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+ *         description: Quantidade de itens por página
+ *       - in: query
+ *         name: cidade
+ *         schema: { type: string }
+ *         description: Filtrar por cidade do aluno
+ *         example: "Campinas"
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [INSCRITO, EM_ANDAMENTO, CONCLUIDO, REPROVADO, EM_ESTAGIO, CANCELADO, TRANCADO]
+ *         description: Filtrar por status da inscrição
+ *       - in: query
+ *         name: curso
+ *         schema: { type: string }
+ *         description: Filtrar por ID do curso
+ *       - in: query
+ *         name: turma
+ *         schema: { type: string }
+ *         description: Filtrar por ID da turma
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *         description: Buscar por nome, email, CPF ou código de inscrição do aluno
+ *     responses:
+ *       200:
+ *         description: Lista paginada de alunos com inscrições
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       codigo:
+ *                         type: string
+ *                         description: "Código único do aluno (formato: MAT0001)"
+ *                       nomeCompleto:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       cpf:
+ *                         type: string
+ *                       status:
+ *                         type: string
+ *                       cidade:
+ *                         type: string
+ *                         nullable: true
+ *                         description: Cidade do aluno
+ *                       estado:
+ *                         type: string
+ *                         nullable: true
+ *                         description: Estado do aluno (UF)
+ *                       ultimoLogin:
+ *                         type: string
+ *                         format: date-time
+ *                         nullable: true
+ *                         description: Data/hora do último login do aluno
+ *                       criadoEm:
+ *                         type: string
+ *                         format: date-time
+ *                       ultimoCurso:
+ *                         type: object
+ *                         nullable: true
+ *                         description: Dados da última inscrição do aluno
+ *                         properties:
+ *                           inscricaoId:
+ *                             type: string
+ *                             format: uuid
+ *                           statusInscricao:
+ *                             type: string
+ *                             enum: [INSCRITO, EM_ANDAMENTO, CONCLUIDO, REPROVADO, EM_ESTAGIO, CANCELADO, TRANCADO]
+ *                             description: "Status da inscrição do aluno na turma"
+ *                           dataInscricao:
+ *                             type: string
+ *                             format: date-time
+ *                           turma:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 format: uuid
+ *                               nome:
+ *                                 type: string
+ *                               codigo:
+ *                                 type: string
+ *                               status:
+ *                                 type: string
+ *                           curso:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: integer
+ *                               nome:
+ *                                 type: string
+ *                               codigo:
+ *                                 type: string
+ *                 pagination:
+ *                   $ref: '#/components/schemas/PaginationMeta'
+ *       500:
+ *         description: Erro ao listar alunos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get(
+  '/alunos',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  CursosController.listAlunosComInscricoes,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/alunos/{alunoId}:
+ *   get:
+ *     summary: 👤 Buscar detalhes completos de um aluno específico
+ *     description: |
+ *       Retorna informações detalhadas de um aluno, incluindo:
+ *       - Dados pessoais completos
+ *       - Redes sociais (LinkedIn, Instagram, etc.)
+ *       - Todos os endereços cadastrados
+ *       - **TODAS as inscrições em cursos** (não apenas a última)
+ *       - Estatísticas de cursos (ativos, concluídos, cancelados)
+ *
+ *       **Diferença do /alunos (lista):**
+ *       - Lista: Retorna apenas o último curso de cada aluno (performance)
+ *       - Detalhes: Retorna TODOS os cursos do aluno específico
+ *     tags: [Cursos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: alunoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID do aluno (UUID)
+ *         example: "0b89ee94-f3ab-4682-999b-36574f81751a"
+ *     responses:
+ *       200:
+ *         description: Detalhes do aluno retornados com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                     codigo:
+ *                       type: string
+ *                       description: "Código único do aluno"
+ *                       example: "MAT0005"
+ *                     nomeCompleto:
+ *                       type: string
+ *                       example: "Lucas Ferreira"
+ *                     email:
+ *                       type: string
+ *                     cpf:
+ *                       type: string
+ *                     telefone:
+ *                       type: string
+ *                       nullable: true
+ *                     status:
+ *                       type: string
+ *                       example: "ATIVO"
+ *                     genero:
+ *                       type: string
+ *                       nullable: true
+ *                     dataNasc:
+ *                       type: string
+ *                       format: date
+ *                       nullable: true
+ *                     descricao:
+ *                       type: string
+ *                       nullable: true
+ *                     avatarUrl:
+ *                       type: string
+ *                       nullable: true
+ *                     ultimoLogin:
+ *                       type: string
+ *                       format: date-time
+ *                       nullable: true
+ *                     criadoEm:
+ *                       type: string
+ *                       format: date-time
+ *                     atualizadoEm:
+ *                       type: string
+ *                       format: date-time
+ *                       nullable: true
+ *                     redesSociais:
+ *                       type: object
+ *                       nullable: true
+ *                       description: "Redes sociais do aluno (LinkedIn, Instagram, Facebook, etc.)"
+ *                       properties:
+ *                         linkedin:
+ *                           type: string
+ *                           nullable: true
+ *                           example: "https://linkedin.com/in/john-doe"
+ *                         instagram:
+ *                           type: string
+ *                           nullable: true
+ *                           example: "https://instagram.com/johndoe"
+ *                         facebook:
+ *                           type: string
+ *                           nullable: true
+ *                         youtube:
+ *                           type: string
+ *                           nullable: true
+ *                         twitter:
+ *                           type: string
+ *                           nullable: true
+ *                         tiktok:
+ *                           type: string
+ *                           nullable: true
+ *                     enderecos:
+ *                       type: array
+ *                       description: "Lista de endereços do aluno"
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             format: uuid
+ *                           logradouro:
+ *                             type: string
+ *                             nullable: true
+ *                           numero:
+ *                             type: string
+ *                             nullable: true
+ *                           bairro:
+ *                             type: string
+ *                             nullable: true
+ *                           cidade:
+ *                             type: string
+ *                           estado:
+ *                             type: string
+ *                           cep:
+ *                             type: string
+ *                             nullable: true
+ *                     inscricoes:
+ *                       type: array
+ *                       description: "TODAS as inscrições do aluno em cursos"
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             format: uuid
+ *                           statusInscricao:
+ *                             type: string
+ *                             enum: [INSCRITO, EM_ANDAMENTO, CONCLUIDO, REPROVADO, EM_ESTAGIO, CANCELADO, TRANCADO]
+ *                           criadoEm:
+ *                             type: string
+ *                             format: date-time
+ *                           atualizadoEm:
+ *                             type: string
+ *                             format: date-time
+ *                             nullable: true
+ *                           turma:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                               nome:
+ *                                 type: string
+ *                               codigo:
+ *                                 type: string
+ *                               status:
+ *                                 type: string
+ *                               dataInicio:
+ *                                 type: string
+ *                                 format: date
+ *                               dataFim:
+ *                                 type: string
+ *                                 format: date
+ *                                 nullable: true
+ *                           curso:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: integer
+ *                               nome:
+ *                                 type: string
+ *                               codigo:
+ *                                 type: string
+ *                               descricao:
+ *                                 type: string
+ *                                 nullable: true
+ *                               cargaHoraria:
+ *                                 type: integer
+ *                               imagemUrl:
+ *                                 type: string
+ *                                 nullable: true
+ *                     totalInscricoes:
+ *                       type: integer
+ *                       description: "Total de inscrições do aluno"
+ *                       example: 4
+ *                     estatisticas:
+ *                       type: object
+ *                       description: "Resumo estatístico dos cursos do aluno"
+ *                       properties:
+ *                         cursosAtivos:
+ *                           type: integer
+ *                           description: "Cursos com status INSCRITO ou EM_ANDAMENTO"
+ *                           example: 3
+ *                         cursosConcluidos:
+ *                           type: integer
+ *                           example: 1
+ *                         cursosCancelados:
+ *                           type: integer
+ *                           description: "Cursos CANCELADO ou TRANCADO"
+ *                           example: 0
+ *       400:
+ *         description: ID inválido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: "INVALID_ID"
+ *                 message:
+ *                   type: string
+ *                   example: "ID do aluno inválido. Deve ser um UUID válido."
+ *       404:
+ *         description: Aluno não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: "ALUNO_NOT_FOUND"
+ *                 message:
+ *                   type: string
+ *                   example: "Aluno não encontrado ou não possui role de ALUNO_CANDIDATO."
+ *       500:
+ *         description: Erro ao buscar aluno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get(
+  '/alunos/:alunoId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  CursosController.getAlunoById,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/alunos/{alunoId}:
+ *   put:
+ *     summary: ✏️ Atualizar informações de um aluno
+ *     description: |
+ *       Atualiza informações de um aluno específico.
+ *       Apenas ADMIN e MODERADOR podem atualizar.
+ *       Campos opcionais: nomeCompleto, email, senha, confirmarSenha, telefone, genero, dataNasc, descricao, avatarUrl, endereco, redesSociais
+ *     tags: [Cursos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: alunoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID do aluno (UUID)
+ *         example: "0b89ee94-f3ab-4682-999b-36574f81751a"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nomeCompleto:
+ *                 type: string
+ *                 example: "João da Silva"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "joao.silva@example.com"
+ *                 description: "Novo e-mail do aluno (deve ser único)"
+ *               senha:
+ *                 type: string
+ *                 minLength: 8
+ *                 example: "NovaSenha123!"
+ *                 description: "Nova senha (mínimo 8 caracteres)"
+ *               confirmarSenha:
+ *                 type: string
+ *                 minLength: 8
+ *                 example: "NovaSenha123!"
+ *                 description: "Confirmação da nova senha"
+ *               telefone:
+ *                 type: string
+ *                 nullable: true
+ *               genero:
+ *                 type: string
+ *                 nullable: true
+ *               dataNasc:
+ *                 type: string
+ *                 format: date
+ *                 nullable: true
+ *               descricao:
+ *                 type: string
+ *                 nullable: true
+ *               avatarUrl:
+ *                 type: string
+ *                 nullable: true
+ *               endereco:
+ *                 type: object
+ *                 nullable: true
+ *                 properties:
+ *                   logradouro: { type: string, nullable: true }
+ *                   numero: { type: string, nullable: true }
+ *                   bairro: { type: string, nullable: true }
+ *                   cidade: { type: string, nullable: true }
+ *                   estado: { type: string, nullable: true }
+ *                   cep: { type: string, nullable: true }
+ *               redesSociais:
+ *                 type: object
+ *                 nullable: true
+ *                 properties:
+ *                   linkedin:
+ *                     type: string
+ *                     nullable: true
+ *                   instagram:
+ *                     type: string
+ *                     nullable: true
+ *                   facebook:
+ *                     type: string
+ *                     nullable: true
+ *                   youtube:
+ *                     type: string
+ *                     nullable: true
+ *                   twitter:
+ *                     type: string
+ *                     nullable: true
+ *                   tiktok:
+ *                     type: string
+ *                     nullable: true
+ *     responses:
+ *       200:
+ *         description: Informações atualizadas com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Informações do aluno atualizadas com sucesso"
+ *                 data:
+ *                   type: object
+ *       400:
+ *         description: ID inválido ou dados inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: "PASSWORD_MISMATCH"
+ *                 message:
+ *                   type: string
+ *                   example: "Senha e confirmarSenha devem ser iguais"
+ *       404:
+ *         description: Aluno não encontrado
+ *       409:
+ *         description: Email já está em uso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: "EMAIL_ALREADY_EXISTS"
+ *                 message:
+ *                   type: string
+ *                   example: "Este e-mail já está em uso por outro usuário"
+ *       500:
+ *         description: Erro ao atualizar aluno
+ */
+router.put(
+  '/alunos/:alunoId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR]),
+  CursosController.atualizarAlunoById,
+);
+
+/**
+ * @openapi
  * /api/v1/cursos:
  *   get:
- *     summary: Listar cursos com paginação
+ *     summary: 📋 Listar TODOS os cursos (Administrativo)
+ *     description: |
+ *       **USO:** Dashboard administrativo, gestão de cursos
+ *
+ *       Retorna todos os cursos do sistema com paginação e filtros avançados.
+ *       Inclui cursos em RASCUNHO, PUBLICADOS e ARQUIVADOS.
+ *
+ *       **ROTA PÚBLICA ALTERNATIVA:** Para listar apenas cursos publicados use `/api/v1/cursos/publico/cursos`
+ *
+ *       **EXEMPLO:** `GET /api/v1/cursos?page=1&pageSize=10&search=Excel`
  *     tags: [Cursos]
  *     parameters:
  *       - in: query
  *         name: page
  *         schema: { type: integer, minimum: 1, default: 1 }
+ *         description: Número da página
  *       - in: query
  *         name: pageSize
  *         schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+ *         description: Quantidade de itens por página
  *       - in: query
  *         name: search
  *         schema: { type: string }
  *         description: Busca por nome ou código do curso
+ *         example: "Excel"
  *       - in: query
  *         name: statusPadrao
  *         schema: { $ref: '#/components/schemas/CursosStatusPadrao' }
+ *         description: Filtrar por status (RASCUNHO, PUBLICADO, ARQUIVADO)
  *       - in: query
  *         name: instrutorId
  *         schema: { type: string, format: uuid }
+ *         description: Filtrar por instrutor
  *       - in: query
  *         name: includeTurmas
  *         schema: { type: boolean }
+ *         description: Incluir turmas vinculadas ao curso
  *     responses:
  *       200:
  *         description: Lista paginada de cursos
@@ -371,13 +986,24 @@ router.get('/', publicCache, CursosController.list);
  * @openapi
  * /api/v1/cursos/{cursoId}:
  *   get:
- *     summary: Obter detalhes de um curso específico
+ *     summary: 🔍 Buscar curso por ID (Administrativo)
+ *     description: |
+ *       **USO:** Visualizar detalhes completos de um curso específico no dashboard
+ *
+ *       Retorna todos os dados de um curso, independente do status (RASCUNHO, PUBLICADO, ARQUIVADO).
+ *       Inclui informações completas como categoria, subcategoria, carga horária, etc.
+ *
+ *       **ROTA PÚBLICA ALTERNATIVA:** Para buscar apenas cursos publicados use `/api/v1/cursos/publico/cursos/{cursoId}`
+ *
+ *       **EXEMPLO:** `GET /api/v1/cursos/4`
  *     tags: [Cursos]
  *     parameters:
  *       - in: path
  *         name: cursoId
  *         required: true
  *         schema: { type: integer, minimum: 1 }
+ *         description: ID numérico do curso
+ *         example: 4
  *     responses:
  *       200:
  *         description: Dados completos do curso
@@ -391,6 +1017,9 @@ router.get('/', publicCache, CursosController.list);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               message: "Curso não encontrado"
+ *               statusCode: 404
  */
 router.get('/:cursoId', publicCache, CursosController.get);
 
@@ -398,8 +1027,19 @@ router.get('/:cursoId', publicCache, CursosController.get);
  * @openapi
  * /api/v1/cursos/publico/cursos:
  *   get:
- *     summary: Listar cursos publicados para vitrine pública
- *     tags: [Cursos - Público]
+ *     summary: 🌐 Listar cursos PUBLICADOS (Público)
+ *     description: |
+ *       **USO:** Vitrine pública de cursos, catálogo no site
+ *
+ *       ⚠️ **ATENÇÃO:** Esta rota retorna apenas cursos com `statusPadrao = PUBLICADO`
+ *
+ *       Ideal para exibição pública no site/app onde usuários não autenticados navegam pelo catálogo.
+ *       Cursos em RASCUNHO ou ARQUIVADOS não aparecem nesta lista.
+ *
+ *       **ROTA ADMINISTRATIVA:** Para ver todos os cursos use `/api/v1/cursos`
+ *
+ *       **EXEMPLO:** `GET /api/v1/cursos/publico/cursos`
+ *     tags: [Cursos]
  *     responses:
  *       200:
  *         description: Lista de cursos disponíveis publicamente
@@ -421,13 +1061,26 @@ router.get('/publico/cursos', publicCache, CursosController.publicList);
  * @openapi
  * /api/v1/cursos/publico/cursos/{cursoId}:
  *   get:
- *     summary: Detalhar curso publicado
- *     tags: [Cursos - Público]
+ *     summary: 🔍 Buscar curso PUBLICADO por ID (Público)
+ *     description: |
+ *       **USO:** Página de detalhes do curso no site público
+ *
+ *       ⚠️ **ATENÇÃO:** Esta rota retorna apenas cursos com `statusPadrao = PUBLICADO`
+ *
+ *       Retorna detalhes completos do curso incluindo turmas disponíveis e módulos.
+ *       Ideal para a landing page do curso no site onde usuários podem se inscrever.
+ *
+ *       **ROTA ADMINISTRATIVA:** Para ver qualquer curso (incluindo rascunhos) use `/api/v1/cursos/{cursoId}`
+ *
+ *       **EXEMPLO:** `GET /api/v1/cursos/publico/cursos/4`
+ *     tags: [Cursos]
  *     parameters:
  *       - in: path
  *         name: cursoId
  *         required: true
  *         schema: { type: integer, minimum: 1 }
+ *         description: ID numérico do curso
+ *         example: 4
  *     responses:
  *       200:
  *         description: Detalhes do curso com turmas e módulos
@@ -436,7 +1089,14 @@ router.get('/publico/cursos', publicCache, CursosController.publicList);
  *             schema:
  *               $ref: '#/components/schemas/CursoPublicoDetalhado'
  *       404:
- *         description: Curso não encontrado ou indisponível
+ *         description: Curso não encontrado ou indisponível (não publicado)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               message: "Curso não encontrado ou indisponível"
+ *               statusCode: 404
  */
 router.get('/publico/cursos/:cursoId', publicCache, CursosController.publicGet);
 
@@ -445,7 +1105,7 @@ router.get('/publico/cursos/:cursoId', publicCache, CursosController.publicGet);
  * /api/v1/cursos/publico/turmas/{turmaId}:
  *   get:
  *     summary: Detalhar turma publicada
- *     tags: [Cursos - Público]
+ *     tags: [Cursos]
  *     parameters:
  *       - in: path
  *         name: turmaId
@@ -497,7 +1157,7 @@ router.get('/publico/turmas/:turmaId', publicCache, TurmasController.publicGet);
  */
 router.post(
   '/',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   CursosController.create,
 );
 
@@ -534,7 +1194,7 @@ router.post(
  */
 router.put(
   '/:cursoId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   CursosController.update,
 );
 
@@ -571,16 +1231,73 @@ router.delete(
  * @openapi
  * /api/v1/cursos/{cursoId}/turmas:
  *   get:
- *     summary: Listar turmas de um curso
- *     tags: ['Cursos - Turmas']
+ *     summary: Listar turmas de um curso (Paginado com filtros e contagem de inscrições)
+ *     description: |
+ *       **✅ OTIMIZAÇÃO DE PERFORMANCE:**
+ *       
+ *       Este endpoint retorna turmas paginadas com contagem automática de inscrições ativas,
+ *       eliminando a necessidade de múltiplas requisições do frontend.
+ *       
+ *       **Campos adicionados:**
+ *       - `inscricoesCount`: Número de inscrições ativas (calculado em tempo real)
+ *       - `vagasOcupadas`: Vagas ocupadas (igual a inscricoesCount)
+ *       - `vagasDisponiveisCalculadas`: Vagas disponíveis calculadas (vagasTotais - inscricoesCount)
+ *       - `curso`: Objeto com informações do curso vinculado (id, nome, codigo)
+ *       
+ *       **Inscrição ativa:** Status não é CANCELADO/TRANCADO E aluno está ATIVO.
+ *       
+ *       **Performance:** Contagem é calculada em batch usando agregação SQL, garantindo eficiência mesmo com muitas turmas.
+ *       
+ *       **Paginação:** Padrão de 10 itens por página, máximo 100.
+ *       
+ *       **Filtros disponíveis:** status, turno, metodo, instrutorId
+ *     tags: ['Cursos']
  *     parameters:
  *       - in: path
  *         name: cursoId
  *         required: true
  *         schema: { type: integer, minimum: 1 }
+ *         description: ID numérico do curso
+ *         example: 1
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, minimum: 1, default: 1 }
+ *         description: Número da página
+ *         example: 1
+ *       - in: query
+ *         name: pageSize
+ *         schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+ *         description: Quantidade de itens por página
+ *         example: 10
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [RASCUNHO, PUBLICADO, INSCRICOES_ABERTAS, INSCRICOES_ENCERRADAS, EM_ANDAMENTO, CONCLUIDO, SUSPENSO, CANCELADO]
+ *         description: Filtrar por status da turma
+ *         example: "INSCRICOES_ABERTAS"
+ *       - in: query
+ *         name: turno
+ *         schema:
+ *           type: string
+ *           enum: [MANHA, TARDE, NOITE, INTEGRAL]
+ *         description: Filtrar por turno
+ *         example: "NOITE"
+ *       - in: query
+ *         name: metodo
+ *         schema:
+ *           type: string
+ *           enum: [ONLINE, PRESENCIAL, LIVE, SEMIPRESENCIAL]
+ *         description: Filtrar por método de ensino
+ *         example: "ONLINE"
+ *       - in: query
+ *         name: instrutorId
+ *         schema: { type: string, format: uuid }
+ *         description: Filtrar por instrutor (UUID)
+ *         example: "550e8400-e29b-41d4-a716-446655440000"
  *     responses:
  *       200:
- *         description: Lista de turmas do curso
+ *         description: Lista paginada de turmas do curso com contagem de inscrições
  *         content:
  *           application/json:
  *             schema:
@@ -589,9 +1306,82 @@ router.delete(
  *                 data:
  *                   type: array
  *                   items:
- *                     allOf: [{ $ref: '#/components/schemas/CursoTurma' }]
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       codigo:
+ *                         type: string
+ *                       nome:
+ *                         type: string
+ *                       turno:
+ *                         type: string
+ *                       metodo:
+ *                         type: string
+ *                       status:
+ *                         type: string
+ *                       vagasTotais:
+ *                         type: integer
+ *                       vagasDisponiveis:
+ *                         type: integer
+ *                       inscricoesCount:
+ *                         type: integer
+ *                         description: Número de inscrições ativas (calculado)
+ *                       vagasOcupadas:
+ *                         type: integer
+ *                         description: Vagas ocupadas (igual a inscricoesCount)
+ *                       vagasDisponiveisCalculadas:
+ *                         type: integer
+ *                         description: Vagas disponíveis calculadas (vagasTotais - inscricoesCount)
+ *                       curso:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                           nome:
+ *                             type: string
+ *                           codigo:
+ *                             type: string
+ *                 pagination:
+ *                   $ref: '#/components/schemas/PaginationMeta'
+ *                 filters:
+ *                   type: object
+ *                   properties:
+ *                     applied:
+ *                       type: object
+ *                       properties:
+ *                         cursoId:
+ *                           type: integer
+ *                         status:
+ *                           type: string
+ *                           nullable: true
+ *                         turno:
+ *                           type: string
+ *                           nullable: true
+ *                         metodo:
+ *                           type: string
+ *                           nullable: true
+ *                         instrutorId:
+ *                           type: string
+ *                           nullable: true
+ *                 meta:
+ *                   type: object
+ *                   properties:
+ *                     empty:
+ *                       type: boolean
+ *       400:
+ *         description: Parâmetros de consulta inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
  *         description: Curso não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get('/:cursoId/turmas', publicCache, TurmasController.list);
 
@@ -599,35 +1389,215 @@ router.get('/:cursoId/turmas', publicCache, TurmasController.list);
  * @openapi
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}:
  *   get:
- *     summary: Obter detalhes de uma turma específica
- *     tags: ['Cursos - Turmas']
+ *     summary: Obter detalhes de uma turma específica (Otimizado com contagem de inscrições)
+ *     description: |
+ *       **✅ OTIMIZAÇÃO DE PERFORMANCE:**
+ *       
+ *       Este endpoint retorna dados completos da turma incluindo automaticamente a contagem de inscrições ativas,
+ *       eliminando a necessidade de múltiplas requisições do frontend.
+ *       
+ *       **Campos adicionados:**
+ *       - `inscricoesCount`: Número de inscrições ativas (calculado em tempo real)
+ *       - `vagasOcupadas`: Vagas ocupadas (igual a inscricoesCount)
+ *       - `vagasDisponiveisCalculadas`: Vagas disponíveis calculadas (vagasTotais - inscricoesCount)
+ *       
+ *       **Inscrição ativa:** Status não é CANCELADO/TRANCADO E aluno está ATIVO.
+ *       
+ *       **Performance:** Contagem é calculada usando agregação SQL eficiente, garantindo resposta rápida mesmo com muitas inscrições.
+ *       
+ *       **Tratamento de Erros:** Se o cálculo de inscrições falhar, os campos serão retornados como `null` e o endpoint não falhará.
+ *     tags: ['Cursos']
  *     parameters:
  *       - in: path
  *         name: cursoId
  *         required: true
  *         schema: { type: integer, minimum: 1 }
+ *         description: ID numérico do curso
+ *         example: 4
  *       - in: path
  *         name: turmaId
  *         required: true
  *         schema: { type: string, format: uuid }
+ *         description: UUID da turma
+ *         example: "80288180-a09c-4a2a-bade-022c7268e395"
  *     responses:
  *       200:
- *         description: Dados completos da turma
+ *         description: Dados completos da turma com contagem de inscrições
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/CursoTurma'
+ *             example:
+ *               id: "80288180-a09c-4a2a-bade-022c7268e395"
+ *               codigo: "GEST-PROJ-T1"
+ *               nome: "Turma 1 - Gestão de Projetos Ágeis"
+ *               vagasTotais: 30
+ *               vagasDisponiveis: 30
+ *               inscricoesCount: 3
+ *               vagasOcupadas: 3
+ *               vagasDisponiveisCalculadas: 27
+ *               status: "INSCRICOES_ABERTAS"
+ *       400:
+ *         description: Parâmetros inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
  *         description: Turma ou curso não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               code: "TURMA_NOT_FOUND"
+ *               message: "Turma não encontrada para o curso informado"
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get('/:cursoId/turmas/:turmaId', publicCache, TurmasController.get);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/inscricoes:
+ *   get:
+ *     summary: Listar inscrições de uma turma
+ *     description: |
+ *       Retorna a lista completa de inscrições de uma turma específica, incluindo dados dos alunos.
+ *       
+ *       **✅ OTIMIZAÇÃO:**
+ *       - Este endpoint retorna dados completos das inscrições com informações dos alunos
+ *       - Inclui dados de contato, endereço e informações adicionais dos alunos
+ *       - Ordenado por data de criação (mais recentes primeiro)
+ *     tags: ['Cursos']
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *         description: ID numérico do curso
+ *         example: 4
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: UUID da turma
+ *         example: "80288180-a09c-4a2a-bade-022c7268e395"
+ *     responses:
+ *       200:
+ *         description: Lista de inscrições da turma
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                         example: "f8a6c3b5-1234-4d9c-9a1b-abcdef123456"
+ *                       alunoId:
+ *                         type: string
+ *                         format: uuid
+ *                       turmaId:
+ *                         type: string
+ *                         format: uuid
+ *                       status:
+ *                         type: string
+ *                         enum: [INSCRITO, EM_ANDAMENTO, CONCLUIDO, REPROVADO, EM_ESTAGIO, CANCELADO, TRANCADO]
+ *                         description: |
+ *                           Status da inscrição:
+ *                           - **INSCRITO**: Aluno inscrito (status inicial padrão)
+ *                           - **EM_ANDAMENTO**: Curso em andamento
+ *                           - **CONCLUIDO**: Curso concluído com sucesso
+ *                           - **REPROVADO**: Aluno reprovado
+ *                           - **EM_ESTAGIO**: Aluno em estágio obrigatório
+ *                           - **CANCELADO**: Inscrição cancelada
+ *                           - **TRANCADO**: Inscrição trancada
+ *                         example: "INSCRITO"
+ *                       criadoEm:
+ *                         type: string
+ *                         format: date-time
+ *                       aluno:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             format: uuid
+ *                           nome:
+ *                             type: string
+ *                           email:
+ *                             type: string
+ *                           inscricao:
+ *                             type: string
+ *                             nullable: true
+ *                           telefone:
+ *                             type: string
+ *                             nullable: true
+ *                           endereco:
+ *                             type: object
+ *                             nullable: true
+ *                 count:
+ *                   type: integer
+ *                   example: 3
+ *             example:
+ *               success: true
+ *               data:
+ *                 - id: "f8a6c3b5-1234-4d9c-9a1b-abcdef123456"
+ *                   alunoId: "0b89ee94-f3ab-4682-999b-36574f81751a"
+ *                   turmaId: "80288180-a09c-4a2a-bade-022c7268e395"
+ *                   status: "INSCRITO"
+ *                   criadoEm: "2024-01-01T00:00:00Z"
+ *                   atualizadoEm: "2024-01-01T00:00:00Z"
+ *                   aluno:
+ *                     id: "0b89ee94-f3ab-4682-999b-36574f81751a"
+ *                     nome: "João da Silva"
+ *                     email: "joao.silva@example.com"
+ *                     inscricao: "MAT0001"
+ *                     telefone: "11988881111"
+ *                     endereco:
+ *                       cidade: "São Paulo"
+ *                       estado: "SP"
+ *               count: 3
+ *       400:
+ *         description: Parâmetros inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Turma ou curso não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get('/:cursoId/turmas/:turmaId/inscricoes', TurmasController.listInscricoes);
 
 /**
  * @openapi
  * /api/v1/cursos/{cursoId}/turmas:
  *   post:
  *     summary: Criar uma nova turma para o curso
- *     tags: ['Cursos - Turmas']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -655,7 +1625,7 @@ router.get('/:cursoId/turmas/:turmaId', publicCache, TurmasController.get);
  */
 router.post(
   '/:cursoId/turmas',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   TurmasController.create,
 );
 
@@ -664,7 +1634,7 @@ router.post(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}:
  *   put:
  *     summary: Atualizar informações de uma turma
- *     tags: ['Cursos - Turmas']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -696,7 +1666,7 @@ router.post(
  */
 router.put(
   '/:cursoId/turmas/:turmaId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   TurmasController.update,
 );
 
@@ -706,9 +1676,21 @@ router.put(
  *   post:
  *     summary: Inscrever um aluno em uma turma
  *     description: >-
- *       Respeita automaticamente o período de inscrição informado na turma. Após o encerramento,
- *       apenas usuários com perfis ADMIN ou MODERADOR podem incluir alunos manualmente.
- *     tags: ['Cursos - Turmas']
+ *       Inscreve um aluno em uma turma específica de um curso.
+ *
+ *       **AUTORIZAÇÕES ESPECIAIS (ADMIN/MODERADOR):**
+ *       - ✅ Podem inscrever alunos mesmo **após o término** do período de inscrição
+ *       - ✅ Podem inscrever alunos mesmo em turmas **sem vagas disponíveis**
+ *       - ✅ Logs automáticos de todas as ações privilegiadas
+ *
+ *       **VALIDAÇÕES AUTOMÁTICAS:**
+ *       - Verifica se curso existe
+ *       - Verifica se turma pertence ao curso
+ *       - Verifica se aluno existe e é do tipo ALUNO_CANDIDATO
+ *       - Verifica se aluno já está inscrito na turma
+ *       - Verifica período de inscrição (restringido para usuários sem privilégio)
+ *       - Verifica vagas disponíveis (restringido para usuários sem privilégio)
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -716,16 +1698,32 @@ router.put(
  *         name: cursoId
  *         required: true
  *         schema: { type: integer, minimum: 1 }
+ *         description: ID numérico do curso
+ *         example: 4
  *       - in: path
  *         name: turmaId
  *         required: true
  *         schema: { type: string, format: uuid }
+ *         description: ID da turma (UUID)
+ *         example: "8438a571-d7ca-4cf7-92d3-3cecf272c9a0"
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/CursoTurmaInscricaoInput'
+ *             type: object
+ *             required: [alunoId]
+ *             properties:
+ *               alunoId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: ID do aluno a ser inscrito
+ *                 example: "0b89ee94-f3ab-4682-999b-36574f81751a"
+ *           examples:
+ *             exemplo:
+ *               summary: Inscrição simples
+ *               value:
+ *                 alunoId: "0b89ee94-f3ab-4682-999b-36574f81751a"
  *     responses:
  *       201:
  *         description: Inscrição registrada com sucesso
@@ -735,14 +1733,56 @@ router.put(
  *               $ref: '#/components/schemas/CursoTurma'
  *       400:
  *         description: Dados inválidos para inscrição
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: "VALIDATION_ERROR"
+ *                 message:
+ *                   type: string
+ *                   example: "Dados inválidos para inscrição na turma"
  *       404:
  *         description: Curso, turma ou aluno não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: "TURMA_NOT_FOUND"
+ *                 message:
+ *                   type: string
+ *                   example: "Turma não encontrada para o curso informado"
  *       409:
  *         description: Conflitos de inscrição ou período de inscrição encerrado para perfis sem privilégio
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: "ALUNO_JA_INSCRITO"
+ *                 message:
+ *                   type: string
+ *                   example: "Aluno já está inscrito nesta turma"
  */
 router.post(
   '/:cursoId/turmas/:turmaId/inscricoes',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   TurmasController.enroll,
 );
 
@@ -751,7 +1791,7 @@ router.post(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/inscricoes/{alunoId}:
  *   delete:
  *     summary: Remover inscrição de um aluno na turma
- *     tags: ['Cursos - Turmas']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -777,9 +1817,140 @@ router.post(
  *       404:
  *         description: Turma ou aluno não encontrado
  */
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/inscricoes/{inscricaoId}:
+ *   patch:
+ *     summary: Atualizar status de uma inscrição
+ *     description: |
+ *       Atualiza o status de uma inscrição específica em uma turma.
+ *       
+ *       **Status disponíveis:**
+ *       - `INSCRITO`: Aluno inscrito (status inicial)
+ *       - `EM_ANDAMENTO`: Curso em andamento
+ *       - `CONCLUIDO`: Curso concluído com sucesso
+ *       - `REPROVADO`: Aluno reprovado
+ *       - `EM_ESTAGIO`: Aluno em estágio obrigatório
+ *       - `CANCELADO`: Inscrição cancelada
+ *       - `TRANCADO`: Inscrição trancada
+ *       
+ *       **Permissões:** ADMIN, MODERADOR, PEDAGOGICO, INSTRUTOR
+ *     tags: ['Cursos']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *         description: ID numérico do curso
+ *         example: 4
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: UUID da turma
+ *         example: "80288180-a09c-4a2a-bade-022c7268e395"
+ *       - in: path
+ *         name: inscricaoId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: UUID da inscrição
+ *         example: "ed7b4507-8965-4c82-8872-48845c861854"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [INSCRITO, EM_ANDAMENTO, CONCLUIDO, REPROVADO, EM_ESTAGIO, CANCELADO, TRANCADO]
+ *                 description: Novo status da inscrição
+ *                 example: "EM_ANDAMENTO"
+ *           examples:
+ *             emAndamento:
+ *               summary: Marcar como em andamento
+ *               value:
+ *                 status: "EM_ANDAMENTO"
+ *             concluido:
+ *               summary: Marcar como concluído
+ *               value:
+ *                 status: "CONCLUIDO"
+ *             cancelado:
+ *               summary: Cancelar inscrição
+ *               value:
+ *                 status: "CANCELADO"
+ *     responses:
+ *       200:
+ *         description: Status da inscrição atualizado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                     alunoId:
+ *                       type: string
+ *                       format: uuid
+ *                     turmaId:
+ *                       type: string
+ *                       format: uuid
+ *                     status:
+ *                       type: string
+ *                       enum: [INSCRITO, EM_ANDAMENTO, CONCLUIDO, REPROVADO, EM_ESTAGIO, CANCELADO, TRANCADO]
+ *                       example: "EM_ANDAMENTO"
+ *                     criadoEm:
+ *                       type: string
+ *                       format: date-time
+ *                     aluno:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           format: uuid
+ *                         nome:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *       400:
+ *         description: Dados inválidos ou status inválido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Inscrição não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.patch(
+  '/:cursoId/turmas/:turmaId/inscricoes/:inscricaoId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  TurmasController.updateInscricaoStatus,
+);
+
 router.delete(
   '/:cursoId/turmas/:turmaId/inscricoes/:alunoId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   TurmasController.unenroll,
 );
 
@@ -788,7 +1959,7 @@ router.delete(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/aulas:
  *   get:
  *     summary: Listar aulas de uma turma
- *     tags: ['Cursos - Aulas']
+ *     tags: ['Cursos']
  *     parameters:
  *       - in: path
  *         name: cursoId
@@ -820,7 +1991,7 @@ router.get('/:cursoId/turmas/:turmaId/aulas', publicCache, AulasController.list)
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/aulas/{aulaId}:
  *   get:
  *     summary: Obter detalhes de uma aula específica
- *     tags: ['Cursos - Aulas']
+ *     tags: ['Cursos']
  *     parameters:
  *       - in: path
  *         name: cursoId
@@ -851,7 +2022,7 @@ router.get('/:cursoId/turmas/:turmaId/aulas/:aulaId', publicCache, AulasControll
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/aulas:
  *   post:
  *     summary: Criar uma nova aula para a turma
- *     tags: ['Cursos - Aulas']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -883,7 +2054,7 @@ router.get('/:cursoId/turmas/:turmaId/aulas/:aulaId', publicCache, AulasControll
  */
 router.post(
   '/:cursoId/turmas/:turmaId/aulas',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   AulasController.create,
 );
 
@@ -892,7 +2063,7 @@ router.post(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/aulas/{aulaId}:
  *   put:
  *     summary: Atualizar informações de uma aula
- *     tags: ['Cursos - Aulas']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -928,7 +2099,7 @@ router.post(
  */
 router.put(
   '/:cursoId/turmas/:turmaId/aulas/:aulaId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   AulasController.update,
 );
 
@@ -937,7 +2108,7 @@ router.put(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/aulas/{aulaId}:
  *   delete:
  *     summary: Remover uma aula da turma
- *     tags: ['Cursos - Aulas']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -967,7 +2138,7 @@ router.put(
  */
 router.delete(
   '/:cursoId/turmas/:turmaId/aulas/:aulaId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   AulasController.delete,
 );
 
@@ -976,7 +2147,7 @@ router.delete(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/modulos:
  *   get:
  *     summary: Listar módulos da turma
- *     tags: ['Cursos - Módulos']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -996,7 +2167,7 @@ router.delete(
  */
 router.get(
   '/:cursoId/turmas/:turmaId/modulos',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   ModulosController.list,
 );
 
@@ -1005,7 +2176,7 @@ router.get(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/modulos/{moduloId}:
  *   get:
  *     summary: Detalhar módulo da turma
- *     tags: ['Cursos - Módulos']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1029,7 +2200,7 @@ router.get(
  */
 router.get(
   '/:cursoId/turmas/:turmaId/modulos/:moduloId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   ModulosController.get,
 );
 
@@ -1038,7 +2209,7 @@ router.get(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/modulos:
  *   post:
  *     summary: Criar módulo na turma
- *     tags: ['Cursos - Módulos']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1062,7 +2233,7 @@ router.get(
  */
 router.post(
   '/:cursoId/turmas/:turmaId/modulos',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   ModulosController.create,
 );
 
@@ -1071,7 +2242,7 @@ router.post(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/modulos/{moduloId}:
  *   put:
  *     summary: Atualizar módulo da turma
- *     tags: ['Cursos - Módulos']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1099,7 +2270,7 @@ router.post(
  */
 router.put(
   '/:cursoId/turmas/:turmaId/modulos/:moduloId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   ModulosController.update,
 );
 
@@ -1108,7 +2279,7 @@ router.put(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/modulos/{moduloId}:
  *   delete:
  *     summary: Remover módulo da turma
- *     tags: ['Cursos - Módulos']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1130,7 +2301,7 @@ router.put(
  */
 router.delete(
   '/:cursoId/turmas/:turmaId/modulos/:moduloId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   ModulosController.delete,
 );
 
@@ -1139,7 +2310,7 @@ router.delete(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/provas:
  *   get:
  *     summary: Listar provas da turma
- *     tags: ['Cursos - Provas']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1157,7 +2328,7 @@ router.delete(
  */
 router.get(
   '/:cursoId/turmas/:turmaId/provas',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   ProvasController.list,
 );
 
@@ -1166,7 +2337,7 @@ router.get(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/provas/{provaId}:
  *   get:
  *     summary: Detalhar prova da turma
- *     tags: ['Cursos - Provas']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1188,7 +2359,7 @@ router.get(
  */
 router.get(
   '/:cursoId/turmas/:turmaId/provas/:provaId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   ProvasController.get,
 );
 
@@ -1197,7 +2368,7 @@ router.get(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/provas:
  *   post:
  *     summary: Criar prova para a turma
- *     tags: ['Cursos - Provas']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1221,7 +2392,7 @@ router.get(
  */
 router.post(
   '/:cursoId/turmas/:turmaId/provas',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   ProvasController.create,
 );
 
@@ -1230,7 +2401,7 @@ router.post(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/provas/{provaId}:
  *   put:
  *     summary: Atualizar prova da turma
- *     tags: ['Cursos - Provas']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1258,7 +2429,7 @@ router.post(
  */
 router.put(
   '/:cursoId/turmas/:turmaId/provas/:provaId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   ProvasController.update,
 );
 
@@ -1267,7 +2438,7 @@ router.put(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/provas/{provaId}:
  *   delete:
  *     summary: Remover prova da turma
- *     tags: ['Cursos - Provas']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1289,7 +2460,7 @@ router.put(
  */
 router.delete(
   '/:cursoId/turmas/:turmaId/provas/:provaId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   ProvasController.delete,
 );
 
@@ -1298,7 +2469,7 @@ router.delete(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/frequencias:
  *   get:
  *     summary: Listar registros de frequência da turma
- *     tags: ['Cursos - Frequências']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1349,7 +2520,7 @@ router.delete(
  */
 router.get(
   '/:cursoId/turmas/:turmaId/frequencias',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   FrequenciaController.list,
 );
 
@@ -1358,7 +2529,7 @@ router.get(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/frequencias:
  *   post:
  *     summary: Registrar frequência para a turma
- *     tags: ['Cursos - Frequências']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1386,7 +2557,7 @@ router.get(
  */
 router.post(
   '/:cursoId/turmas/:turmaId/frequencias',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   FrequenciaController.create,
 );
 
@@ -1395,7 +2566,7 @@ router.post(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/frequencias/{frequenciaId}:
  *   get:
  *     summary: Detalhar registro de frequência
- *     tags: ['Cursos - Frequências']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1421,7 +2592,7 @@ router.post(
  */
 router.get(
   '/:cursoId/turmas/:turmaId/frequencias/:frequenciaId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   FrequenciaController.get,
 );
 
@@ -1430,7 +2601,7 @@ router.get(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/frequencias/{frequenciaId}:
  *   put:
  *     summary: Atualizar registro de frequência
- *     tags: ['Cursos - Frequências']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1462,7 +2633,7 @@ router.get(
  */
 router.put(
   '/:cursoId/turmas/:turmaId/frequencias/:frequenciaId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   FrequenciaController.update,
 );
 
@@ -1471,7 +2642,7 @@ router.put(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/frequencias/{frequenciaId}:
  *   delete:
  *     summary: Remover registro de frequência
- *     tags: ['Cursos - Frequências']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1499,7 +2670,7 @@ router.put(
  */
 router.delete(
   '/:cursoId/turmas/:turmaId/frequencias/:frequenciaId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   FrequenciaController.delete,
 );
 
@@ -1508,7 +2679,7 @@ router.delete(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/notas:
  *   get:
  *     summary: Listar notas lançadas da turma
- *     tags: ['Cursos - Notas']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1540,7 +2711,7 @@ router.delete(
  */
 router.get(
   '/:cursoId/turmas/:turmaId/notas',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   NotasController.list,
 );
 
@@ -1549,7 +2720,7 @@ router.get(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/notas:
  *   post:
  *     summary: Registrar nota manualmente para a turma
- *     tags: ['Cursos - Notas']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1577,7 +2748,7 @@ router.get(
  */
 router.post(
   '/:cursoId/turmas/:turmaId/notas',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   NotasController.create,
 );
 
@@ -1586,7 +2757,7 @@ router.post(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/notas/{notaId}:
  *   get:
  *     summary: Detalhar nota lançada
- *     tags: ['Cursos - Notas']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1612,7 +2783,7 @@ router.post(
  */
 router.get(
   '/:cursoId/turmas/:turmaId/notas/:notaId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   NotasController.get,
 );
 
@@ -1621,7 +2792,7 @@ router.get(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/notas/{notaId}:
  *   put:
  *     summary: Atualizar nota lançada
- *     tags: ['Cursos - Notas']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1653,7 +2824,7 @@ router.get(
  */
 router.put(
   '/:cursoId/turmas/:turmaId/notas/:notaId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   NotasController.update,
 );
 
@@ -1662,7 +2833,7 @@ router.put(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/notas/{notaId}:
  *   delete:
  *     summary: Remover nota lançada
- *     tags: ['Cursos - Notas']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1690,7 +2861,7 @@ router.put(
  */
 router.delete(
   '/:cursoId/turmas/:turmaId/notas/:notaId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   NotasController.delete,
 );
 
@@ -1699,7 +2870,7 @@ router.delete(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/agenda:
  *   get:
  *     summary: Listar eventos de agenda da turma
- *     tags: ['Cursos - Agenda']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1741,7 +2912,7 @@ router.delete(
  */
 router.get(
   '/:cursoId/turmas/:turmaId/agenda',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   AgendaController.list,
 );
 
@@ -1750,7 +2921,7 @@ router.get(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/agenda/{agendaId}:
  *   get:
  *     summary: Obter evento específico da agenda da turma
- *     tags: ['Cursos - Agenda']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1776,7 +2947,7 @@ router.get(
  */
 router.get(
   '/:cursoId/turmas/:turmaId/agenda/:agendaId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   AgendaController.get,
 );
 
@@ -1785,7 +2956,7 @@ router.get(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/agenda:
  *   post:
  *     summary: Criar evento na agenda da turma
- *     tags: ['Cursos - Agenda']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1813,7 +2984,7 @@ router.get(
  */
 router.post(
   '/:cursoId/turmas/:turmaId/agenda',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   AgendaController.create,
 );
 
@@ -1822,7 +2993,7 @@ router.post(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/agenda/{agendaId}:
  *   put:
  *     summary: Atualizar evento da agenda da turma
- *     tags: ['Cursos - Agenda']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1854,7 +3025,7 @@ router.post(
  */
 router.put(
   '/:cursoId/turmas/:turmaId/agenda/:agendaId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   AgendaController.update,
 );
 
@@ -1863,7 +3034,7 @@ router.put(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/agenda/{agendaId}:
  *   delete:
  *     summary: Remover evento da agenda da turma
- *     tags: ['Cursos - Agenda']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1885,7 +3056,7 @@ router.put(
  */
 router.delete(
   '/:cursoId/turmas/:turmaId/agenda/:agendaId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   AgendaController.delete,
 );
 
@@ -1894,7 +3065,7 @@ router.delete(
  * /api/v1/cursos/me/agenda:
  *   get:
  *     summary: Consultar eventos das turmas em que o aluno está inscrito
- *     tags: ['Cursos - Agenda']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1934,7 +3105,7 @@ router.get('/me/agenda', supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]), Agenda
  * /api/v1/cursos/inscricoes/{inscricaoId}/frequencias-detalhadas:
  *   get:
  *     summary: Consultar registros de frequência de uma inscrição (admin)
- *     tags: ['Cursos - Frequências']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1952,7 +3123,7 @@ router.get('/me/agenda', supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]), Agenda
  */
 router.get(
   '/inscricoes/:inscricaoId/frequencias-detalhadas',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   FrequenciaController.listByInscricao,
 );
 
@@ -1961,7 +3132,7 @@ router.get(
  * /api/v1/cursos/me/inscricoes/{inscricaoId}/frequencias-detalhadas:
  *   get:
  *     summary: Consultar registros de frequência do aluno autenticado
- *     tags: ['Cursos - Frequências']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -1988,7 +3159,7 @@ router.get(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/provas/{provaId}/notas:
  *   put:
  *     summary: Registrar ou atualizar nota de prova
- *     tags: ['Cursos - Provas']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2016,7 +3187,7 @@ router.get(
  */
 router.put(
   '/:cursoId/turmas/:turmaId/provas/:provaId/notas',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   ProvasController.registrarNota,
 );
 
@@ -2025,7 +3196,7 @@ router.put(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/regras-avaliacao:
  *   get:
  *     summary: Obter regras de avaliação da turma
- *     tags: ['Cursos - Avaliação']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2040,7 +3211,7 @@ router.put(
  */
 router.get(
   '/:cursoId/turmas/:turmaId/regras-avaliacao',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   AvaliacaoController.getRules,
 );
 
@@ -2049,7 +3220,7 @@ router.get(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/regras-avaliacao:
  *   put:
  *     summary: Atualizar regras de avaliação da turma
- *     tags: ['Cursos - Avaliação']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2070,7 +3241,7 @@ router.get(
  */
 router.put(
   '/:cursoId/turmas/:turmaId/regras-avaliacao',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   AvaliacaoController.updateRules,
 );
 
@@ -2079,7 +3250,7 @@ router.put(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/recuperacoes:
  *   post:
  *     summary: Registrar tentativa de recuperação
- *     tags: ['Cursos - Avaliação']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2100,7 +3271,7 @@ router.put(
  */
 router.post(
   '/:cursoId/turmas/:turmaId/recuperacoes',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   AvaliacaoController.registrarRecuperacao,
 );
 
@@ -2109,7 +3280,7 @@ router.post(
  * /api/v1/cursos/inscricoes/{inscricaoId}/notas-detalhadas:
  *   get:
  *     summary: Consultar notas lançadas de uma inscrição (admin)
- *     tags: ['Cursos - Notas']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2127,7 +3298,7 @@ router.post(
  */
 router.get(
   '/inscricoes/:inscricaoId/notas-detalhadas',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   NotasController.listByInscricao,
 );
 
@@ -2136,7 +3307,7 @@ router.get(
  * /api/v1/cursos/me/inscricoes/{inscricaoId}/notas-detalhadas:
  *   get:
  *     summary: Consultar notas lançadas do aluno autenticado
- *     tags: ['Cursos - Notas']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2163,7 +3334,7 @@ router.get(
  * /api/v1/cursos/inscricoes/{inscricaoId}/notas:
  *   get:
  *     summary: Consultar notas consolidadas de uma inscrição (admin)
- *     tags: ['Cursos - Avaliação']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2183,7 +3354,7 @@ router.get(
  * /api/v1/cursos/me/inscricoes/{inscricaoId}/notas:
  *   get:
  *     summary: Consultar notas consolidadas do aluno autenticado
- *     tags: ['Cursos - Avaliação']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2203,7 +3374,7 @@ router.get(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/certificados:
  *   post:
  *     summary: Emitir certificado para um aluno inscrito na turma
- *     tags: ['Cursos - Certificados']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2243,7 +3414,7 @@ router.get(
  */
 router.post(
   '/:cursoId/turmas/:turmaId/certificados',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   CertificadosController.emitir,
 );
 
@@ -2252,7 +3423,7 @@ router.post(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/inscricoes/{inscricaoId}/estagios:
  *   post:
  *     summary: Criar estágio supervisionado para a inscrição
- *     tags: ['Cursos - Estágios']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2305,7 +3476,7 @@ router.post(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/inscricoes/{inscricaoId}/estagios:
  *   get:
  *     summary: Listar estágios cadastrados para a inscrição
- *     tags: ['Cursos - Estágios']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2342,7 +3513,7 @@ router.post(
  */
 router.get(
   '/:cursoId/turmas/:turmaId/inscricoes/:inscricaoId/estagios',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   EstagiosController.listByInscricao,
 );
 
@@ -2351,7 +3522,7 @@ router.get(
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/certificados:
  *   get:
  *     summary: Listar certificados emitidos para uma turma
- *     tags: ['Cursos - Certificados']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2388,7 +3559,7 @@ router.get(
  */
 router.get(
   '/:cursoId/turmas/:turmaId/certificados',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   CertificadosController.listar,
 );
 
@@ -2397,7 +3568,7 @@ router.get(
  * /api/v1/cursos/inscricoes/{inscricaoId}/certificados:
  *   get:
  *     summary: Consultar certificados emitidos de uma inscrição (admin)
- *     tags: ['Cursos - Certificados']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2415,7 +3586,7 @@ router.get(
  */
 router.get(
   '/inscricoes/:inscricaoId/certificados',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   CertificadosController.listarPorInscricao,
 );
 
@@ -2424,7 +3595,7 @@ router.get(
  * /api/v1/cursos/me/inscricoes/{inscricaoId}/estagios:
  *   get:
  *     summary: Listar estágios do aluno autenticado para a inscrição
- *     tags: ['Cursos - Estágios']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2458,7 +3629,7 @@ router.get(
  * /api/v1/cursos/me/inscricoes/{inscricaoId}/certificados:
  *   get:
  *     summary: Consultar certificados emitidos do aluno autenticado para uma inscrição
- *     tags: ['Cursos - Certificados']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2485,7 +3656,7 @@ router.get(
  * /api/v1/cursos/me/certificados:
  *   get:
  *     summary: Listar certificados do aluno autenticado
- *     tags: ['Cursos - Certificados']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -2512,7 +3683,7 @@ router.get(
  * /api/v1/cursos/estagios/{estagioId}:
  *   get:
  *     summary: Consultar detalhes de um estágio
- *     tags: ['Cursos - Estágios']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2532,7 +3703,7 @@ router.get(
  */
 router.get(
   '/estagios/:estagioId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.PROFESSOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   EstagiosController.get,
 );
 
@@ -2541,7 +3712,7 @@ router.get(
  * /api/v1/cursos/estagios/{estagioId}:
  *   put:
  *     summary: Atualizar dados cadastrais do estágio
- *     tags: ['Cursos - Estágios']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2576,7 +3747,7 @@ router.put(
  * /api/v1/cursos/estagios/{estagioId}/status:
  *   patch:
  *     summary: Atualizar status de andamento do estágio
- *     tags: ['Cursos - Estágios']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2611,7 +3782,7 @@ router.patch(
  * /api/v1/cursos/estagios/{estagioId}/reenviar-confirmacao:
  *   post:
  *     summary: Reenviar email de confirmação do estágio ao aluno
- *     tags: ['Cursos - Estágios']
+ *     tags: ['Cursos']
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -2644,7 +3815,7 @@ router.post(
  * /api/v1/cursos/estagios/confirmacoes/{token}:
  *   post:
  *     summary: Confirmar ciência do estágio pelo aluno
- *     tags: ['Cursos - Estágios']
+ *     tags: ['Cursos']
  *     requestBody:
  *       required: false
  *       content:
@@ -2673,7 +3844,7 @@ router.post('/estagios/confirmacoes/:token', EstagiosController.confirmar);
  * /api/v1/cursos/certificados/codigo/{codigo}:
  *   get:
  *     summary: Verificar autenticidade de um certificado via código
- *     tags: ['Cursos - Certificados']
+ *     tags: ['Cursos']
  *     parameters:
  *       - in: path
  *         name: codigo

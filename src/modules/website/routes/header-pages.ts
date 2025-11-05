@@ -10,7 +10,7 @@ const router = Router();
  * /api/v1/website/header-pages:
  *   get:
  *     summary: Listar cabeçalhos de páginas
- *     tags: [Website - Header Pages]
+ *     tags: [Website]
  *     responses:
  *       200:
  *         description: Lista de cabeçalhos
@@ -39,7 +39,7 @@ router.get('/', publicCache, HeaderPageController.list);
  * /api/v1/website/header-pages/{id}:
  *   get:
  *     summary: Obter cabeçalho de página por ID
- *     tags: [Website - Header Pages]
+ *     tags: [Website]
  *     parameters:
  *       - in: path
  *         name: id
@@ -78,7 +78,7 @@ router.get('/:id', publicCache, HeaderPageController.get);
  * /api/v1/website/header-pages:
  *   post:
  *     summary: Criar cabeçalho de página
- *     tags: [Website - Header Pages]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -116,7 +116,7 @@ router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), HeaderPageContr
  * /api/v1/website/header-pages/{id}:
  *   put:
  *     summary: Atualizar cabeçalho de página
- *     tags: [Website - Header Pages]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -166,7 +166,7 @@ router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), HeaderPageCon
  * /api/v1/website/header-pages/{id}:
  *   delete:
  *     summary: Remover cabeçalho de página
- *     tags: [Website - Header Pages]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:

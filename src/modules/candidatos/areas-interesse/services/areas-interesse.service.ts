@@ -195,4 +195,30 @@ export const areasInteresseService = {
   async removeSubarea(id: number) {
     await prisma.candidatosSubareasInteresse.delete({ where: { id } });
   },
+
+  async listSubareas() {
+    const subareas = await prisma.candidatosSubareasInteresse.findMany({
+      include: {
+        vagas: {
+          select: { id: true },
+        },
+      },
+      orderBy: { nome: 'asc' },
+    });
+
+    return subareas.map(serializeSubarea);
+  },
+
+  async getSubarea(id: number) {
+    const subarea = await prisma.candidatosSubareasInteresse.findUnique({
+      where: { id },
+      include: {
+        vagas: {
+          select: { id: true },
+        },
+      },
+    });
+
+    return subarea ? serializeSubarea(subarea) : null;
+  },
 };

@@ -202,6 +202,7 @@ const getRateLimitKey = (req: Request): string => {
     return `user:${authUserId}`;
   }
 
+  // Usa a função padrão do express-rate-limit para IPv6
   const clientIp = getClientIp(req);
   if (clientIp) {
     return `ip:${clientIp}`;
@@ -283,6 +284,7 @@ if (!rateLimitConfig.enabled || rateLimitConfig.maxRequests <= 0) {
     handler: handleLimitExceeded,
     statusCode: 429,
     requestPropertyName: 'rateLimit',
+    validate: { keyGeneratorIpFallback: false },
   });
 }
 

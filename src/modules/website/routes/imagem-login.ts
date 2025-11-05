@@ -12,7 +12,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  * /api/v1/website/imagem-login:
  *   get:
  *     summary: Listar imagens de login
- *     tags: [Website - ImagemLogin]
+ *     tags: [Website]
  *     responses:
  *       200:
  *         description: Lista de imagens
@@ -41,7 +41,7 @@ router.get('/', publicCache, ImagemLoginController.list);
  * /api/v1/website/imagem-login/{id}:
  *   get:
  *     summary: Obter imagem de login por ID
- *     tags: [Website - ImagemLogin]
+ *     tags: [Website]
  *     parameters:
  *       - in: path
  *         name: id
@@ -80,7 +80,7 @@ router.get('/:id', publicCache, ImagemLoginController.get);
  * /api/v1/website/imagem-login:
  *   post:
  *     summary: Criar imagem de login
- *     tags: [Website - ImagemLogin]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -123,7 +123,7 @@ router.post(
  * /api/v1/website/imagem-login/{id}:
  *   put:
  *     summary: Atualizar imagem de login
- *     tags: [Website - ImagemLogin]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -177,7 +177,7 @@ router.put(
  * /api/v1/website/imagem-login/{id}:
  *   delete:
  *     summary: Remover imagem de login
- *     tags: [Website - ImagemLogin]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:

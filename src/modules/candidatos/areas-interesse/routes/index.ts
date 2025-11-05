@@ -14,7 +14,7 @@ const adminRoles = [Roles.ADMIN, Roles.MODERADOR];
  * /api/v1/candidatos/areas-interesse:
  *   get:
  *     summary: Listar áreas de interesse publicadas
- *     tags: [Candidatos - Áreas de Interesse]
+ *     tags: [Candidatos]
  *     responses:
  *       200:
  *         description: Lista de áreas de interesse disponíveis para candidatos
@@ -61,7 +61,7 @@ router.get('/', publicCache, AreasInteresseController.list);
  * /api/v1/candidatos/areas-interesse/{id}:
  *   get:
  *     summary: Obter área de interesse por ID
- *     tags: [Candidatos - Áreas de Interesse]
+ *     tags: [Candidatos]
  *     parameters:
  *       - in: path
  *         name: id
@@ -125,8 +125,8 @@ router.get('/:id', publicCache, AreasInteresseController.get);
  * /api/v1/candidatos/areas-interesse:
  *   post:
  *     summary: Criar nova área de interesse
- *     description: Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR).
- *     tags: [Candidatos - Áreas de Interesse]
+ *     description: "Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR)."
+ *     tags: [Candidatos]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -210,8 +210,8 @@ router.post('/', supabaseAuthMiddleware(adminRoles), AreasInteresseController.cr
  * /api/v1/candidatos/areas-interesse/{id}:
  *   put:
  *     summary: Atualizar área de interesse
- *     description: Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR).
- *     tags: [Candidatos - Áreas de Interesse]
+ *     description: "Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR)."
+ *     tags: [Candidatos]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -310,8 +310,8 @@ router.put('/:id', supabaseAuthMiddleware(adminRoles), AreasInteresseController.
  * /api/v1/candidatos/areas-interesse/{id}:
  *   delete:
  *     summary: Remover área de interesse
- *     description: Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR).
- *     tags: [Candidatos - Áreas de Interesse]
+ *     description: "Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR)."
+ *     tags: [Candidatos]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -368,8 +368,8 @@ router.delete('/:id', supabaseAuthMiddleware(adminRoles), AreasInteresseControll
  * /api/v1/candidatos/areas-interesse/{areaId}/subareas:
  *   post:
  *     summary: Criar subárea vinculada a uma área de interesse
- *     description: Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR).
- *     tags: [Candidatos - Áreas de Interesse]
+ *     description: "Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR)."
+ *     tags: [Candidatos]
  *     security:
  *       - bearerAuth: []
  *     parameters:

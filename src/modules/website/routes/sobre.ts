@@ -10,7 +10,7 @@ const router = Router();
  * /api/v1/website/sobre:
  *   get:
  *     summary: Listar conteúdos "Sobre"
- *     tags: [Website - Sobre]
+ *     tags: [Website]
  *     responses:
  *       200:
  *         description: Lista de conteúdos
@@ -39,7 +39,7 @@ router.get('/', publicCache, SobreController.list);
  * /api/v1/website/sobre/{id}:
  *   get:
  *     summary: Obter conteúdo por ID
- *     tags: [Website - Sobre]
+ *     tags: [Website]
  *     parameters:
  *       - in: path
  *         name: id
@@ -78,7 +78,7 @@ router.get('/:id', publicCache, SobreController.get);
  * /api/v1/website/sobre:
  *   post:
  *     summary: Criar conteúdo "Sobre"
- *     tags: [Website - Sobre]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -116,7 +116,7 @@ router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), SobreController
  * /api/v1/website/sobre/{id}:
  *   put:
  *     summary: Atualizar conteúdo "Sobre"
- *     tags: [Website - Sobre]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -166,7 +166,7 @@ router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), SobreControll
  * /api/v1/website/sobre/{id}:
  *   delete:
  *     summary: Remover conteúdo "Sobre"
- *     tags: [Website - Sobre]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:

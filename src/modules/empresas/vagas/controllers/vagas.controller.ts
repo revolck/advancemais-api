@@ -47,7 +47,7 @@ export class VagasController {
         Roles.ADMIN,
         Roles.MODERADOR,
         Roles.EMPRESA,
-        Roles.RECRUTADOR,
+        Roles.SETOR_DE_VAGAS,
         Roles.ALUNO_CANDIDATO,
       ];
       let statusesFilter: StatusDeVagas[] | undefined = undefined;

@@ -1,4 +1,4 @@
-import { OrigemVagas, StatusProcesso } from '@prisma/client';
+import { OrigemVagas } from '@prisma/client';
 import { z } from 'zod';
 
 const observacoesSchema = z
@@ -35,10 +35,9 @@ export const vagaProcessoListQuerySchema = z
         value
           .split(',')
           .map((item) => item.trim())
-          .filter(Boolean)
-          .map((item) => item.toUpperCase()),
+          .filter(Boolean),
       )
-      .pipe(z.array(z.nativeEnum(StatusProcesso)))
+      .pipe(z.array(z.string().uuid()))
       .optional(),
     origem: z
       .string()
@@ -59,7 +58,7 @@ export const createVagaProcessoSchema = z.object({
   candidatoId: z
     .string({ required_error: 'O identificador do candidato é obrigatório.' })
     .uuid('Informe um ID de candidato válido.'),
-  status: z.nativeEnum(StatusProcesso).optional(),
+  statusId: z.string().uuid().optional(),
   origem: z.nativeEnum(OrigemVagas).optional(),
   observacoes: observacoesSchema,
   agendadoEm: z.coerce.date().optional(),
@@ -70,5 +69,5 @@ export const updateVagaProcessoSchema = createVagaProcessoSchema
   .extend({ candidatoId: z.never().optional() })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'Informe ao menos um campo para atualização do processo seletivo.',
-    path: ['status'],
+    path: ['statusId'],
   });

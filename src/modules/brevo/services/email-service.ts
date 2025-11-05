@@ -136,7 +136,7 @@ export class EmailService {
         where: { id: userData.id },
         select: {
           id: true,
-          emailVerification: {
+          UsuariosVerificacaoEmail: {
             select: emailVerificationSelect,
           },
         },

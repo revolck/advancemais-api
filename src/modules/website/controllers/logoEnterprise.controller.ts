@@ -7,15 +7,16 @@ import { logoEnterpriseService } from '@/modules/website/services/logoEnterprise
 import { respondWithCache } from '@/modules/website/utils/cache-response';
 
 function mapLogo(ordem: any) {
+  const logo = ordem.WebsiteLogoEnterprise || ordem.logo; // Suporta ambos para compatibilidade
   return {
     id: ordem.id,
-    logoId: ordem.logo.id,
-    nome: ordem.logo.nome,
-    imagemUrl: ordem.logo.imagemUrl,
-    imagemAlt: ordem.logo.imagemAlt,
-    website: ordem.logo.website,
-    criadoEm: ordem.logo.criadoEm,
-    atualizadoEm: ordem.logo.atualizadoEm,
+    logoId: logo.id,
+    nome: logo.nome,
+    imagemUrl: logo.imagemUrl,
+    imagemAlt: logo.imagemAlt,
+    website: logo.website,
+    criadoEm: logo.criadoEm,
+    atualizadoEm: logo.atualizadoEm,
     ordem: ordem.ordem,
     status: ordem.status,
     ordemCriadoEm: ordem.criadoEm,

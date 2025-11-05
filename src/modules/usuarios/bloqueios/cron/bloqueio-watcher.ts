@@ -4,6 +4,8 @@ import { logger } from '@/utils/logger';
 import { AcoesDeLogDeBloqueio, Status, StatusDeBloqueios } from '@prisma/client';
 import { EmailService } from '@/modules/brevo/services/email-service';
 import { EmailTemplates } from '@/modules/brevo/templates/email-templates';
+import { handlePrismaConnectionError } from '@/utils/prisma-errors';
+import { checkDatabaseConnection } from '@/utils/db-connection-check';
 
 const log = logger.child({ module: 'BloqueiosWatcher' });
 
@@ -14,11 +16,19 @@ const metrics = {
 };
 
 export async function processExpiredBlocks() {
-  const now = new Date();
-  const expirados = await prisma.usuariosEmBloqueios.findMany({
-    where: { status: StatusDeBloqueios.ATIVO, fim: { lt: now } },
-    select: { id: true, usuarioId: true },
-  });
+  // Verificar conexão ANTES de tentar executar qualquer query
+  const isConnected = await checkDatabaseConnection();
+  if (!isConnected) {
+    log.debug('Banco de dados não disponível, pulando processamento de bloqueios expirados');
+    return { processed: 0 };
+  }
+
+  try {
+    const now = new Date();
+    const expirados = await prisma.usuariosEmBloqueios.findMany({
+      where: { status: StatusDeBloqueios.ATIVO, fim: { lt: now } },
+      select: { id: true, usuarioId: true },
+    });
 
   let processed = 0;
   for (const bloqueio of expirados) {
@@ -68,13 +78,27 @@ export async function processExpiredBlocks() {
     }
   }
 
-  metrics.totalProcessed += processed;
-  metrics.processedLastRun = processed;
-  metrics.lastRunAt = new Date();
-  return { processed };
+    metrics.totalProcessed += processed;
+    metrics.processedLastRun = processed;
+    metrics.lastRunAt = new Date();
+    return { processed };
+  } catch (error) {
+    // Tratar erros de conexão como warning
+    if (handlePrismaConnectionError(error, log, 'processExpiredBlocks')) {
+      return { processed: 0 }; // Retornar 0 processados em caso de erro de conexão
+    }
+    // Re-lançar outros erros
+    throw error;
+  }
 }
 
 export function startBloqueiosWatcherJob() {
+  // Não executar em ambiente de teste
+  if (process.env.NODE_ENV === 'test') {
+    log.debug('Test environment detectado, pulando watcher de bloqueios');
+    return;
+  }
+
   // A cada hora, minuto 5
   const schedule = process.env.BLOQUEIOS_WATCHER_SCHEDULE || '5 * * * *';
   cron.schedule(schedule, async () => {
@@ -84,6 +108,11 @@ export function startBloqueiosWatcherJob() {
         log.info({ processed: result.processed }, 'Bloqueios expirados revogados');
       }
     } catch (err) {
+      // Tratar erros de conexão como warning, outros erros como error
+      if (handlePrismaConnectionError(err, log, 'bloqueios-watcher')) {
+        return; // Erro de conexão tratado, não precisa logar como error
+      }
+
       log.error({ err }, 'Erro ao processar bloqueios expirados');
     }
   });

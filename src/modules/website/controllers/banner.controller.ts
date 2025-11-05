@@ -7,14 +7,15 @@ import { bannerService } from '@/modules/website/services/banner.service';
 import { respondWithCache } from '@/modules/website/utils/cache-response';
 
 function mapBanner(ordem: any) {
+  const banner = ordem.WebsiteBanner || ordem.banner; // Suporta ambos para compatibilidade
   return {
     id: ordem.id,
-    bannerId: ordem.banner.id,
-    imagemUrl: ordem.banner.imagemUrl,
-    imagemTitulo: ordem.banner.imagemTitulo,
-    link: ordem.banner.link,
-    criadoEm: ordem.banner.criadoEm,
-    atualizadoEm: ordem.banner.atualizadoEm,
+    bannerId: banner.id,
+    imagemUrl: banner.imagemUrl,
+    imagemTitulo: banner.imagemTitulo,
+    link: banner.link,
+    criadoEm: banner.criadoEm,
+    atualizadoEm: banner.atualizadoEm,
     ordem: ordem.ordem,
     status: ordem.status,
     ordemCriadoEm: ordem.criadoEm,

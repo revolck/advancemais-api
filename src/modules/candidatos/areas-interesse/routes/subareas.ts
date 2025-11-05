@@ -10,11 +10,92 @@ const adminRoles = [Roles.ADMIN, Roles.MODERADOR];
 
 /**
  * @openapi
+ * /api/v1/candidatos/subareas-interesse:
+ *   get:
+ *     summary: Listar subáreas de interesse
+ *     description: Retorna lista de todas as subáreas de interesse disponíveis
+ *     tags: [Candidatos]
+ *     parameters:
+ *       - in: query
+ *         name: areaId
+ *         schema: { type: integer }
+ *         description: Filtrar por área de interesse específica
+ *     responses:
+ *       200:
+ *         description: Lista de subáreas de interesse
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/CandidatoSubareaInteresse'
+ *       500:
+ *         description: Erro interno do servidor
+ */
+router.get('/', AreasInteresseController.listSubareas);
+
+/**
+ * @openapi
+ * /api/v1/candidatos/subareas-interesse/{subareaId}:
+ *   get:
+ *     summary: Obter subárea de interesse por ID
+ *     description: Retorna dados de uma subárea específica
+ *     tags: [Candidatos]
+ *     parameters:
+ *       - in: path
+ *         name: subareaId
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Subárea encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CandidatoSubareaInteresse'
+ *       404:
+ *         description: Subárea não encontrada
+ */
+router.get('/:subareaId', AreasInteresseController.getSubarea);
+
+/**
+ * @openapi
+ * /api/v1/candidatos/subareas-interesse:
+ *   post:
+ *     summary: Criar nova subárea de interesse
+ *     description: "Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR)."
+ *     tags: [Candidatos]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CandidatoSubareaInteresseCreateInput'
+ *     responses:
+ *       201:
+ *         description: Subárea criada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CandidatoSubareaInteresse'
+ *       400:
+ *         description: Dados inválidos
+ *       401:
+ *         description: Não autenticado
+ *       403:
+ *         description: Sem permissão
+ */
+router.post('/', supabaseAuthMiddleware(adminRoles), AreasInteresseController.createSubarea);
+
+/**
+ * @openapi
  * /api/v1/candidatos/subareas-interesse/{subareaId}:
  *   put:
  *     summary: Atualizar subárea de interesse
- *     description: Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR).
- *     tags: [Candidatos - Áreas de Interesse]
+ *     description: "Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR)."
+ *     tags: [Candidatos]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -100,8 +181,8 @@ router.put(
  * /api/v1/candidatos/subareas-interesse/{subareaId}:
  *   delete:
  *     summary: Remover subárea de interesse
- *     description: Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR).
- *     tags: [Candidatos - Áreas de Interesse]
+ *     description: "Disponível apenas para administradores e moderadores (roles: ADMIN, MODERADOR)."
+ *     tags: [Candidatos]
  *     security:
  *       - bearerAuth: []
  *     parameters:

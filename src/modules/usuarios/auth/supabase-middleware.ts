@@ -53,121 +53,204 @@ export const supabaseAuthMiddleware =
       path: req.originalUrl,
       method: req.method,
     });
-    if (req.originalUrl.startsWith('/docs/login')) {
-      return next();
-    }
 
-    const isDocsRoute = (url: string) =>
-      (url.startsWith('/docs') && !url.startsWith('/docs/login')) || url.startsWith('/redoc');
-
-    const token = req.headers.authorization?.split(' ')[1] || req.cookies?.token;
-
-    if (!token) {
-      if (isDocsRoute(req.originalUrl)) {
-        return res.redirect(`/docs/login?redirect=${encodeURIComponent(req.originalUrl)}`);
+    // Timeout para evitar loops infinitos (aumentado para 15s devido ao pool de conexões)
+    const authTimeout = setTimeout(() => {
+      if (!res.headersSent) {
+        log.warn('Timeout na autenticação - requisição demorou mais de 15 segundos');
+        return res.status(408).json({
+          success: false,
+          message: 'Timeout na autenticação. Tente novamente.',
+          code: 'AUTH_TIMEOUT',
+        });
       }
-      return res.status(401).json({ message: 'Token de autorização necessário' });
-    }
+    }, 15000);
 
-    jwt.verify(
-      token,
-      getKey,
-      { algorithms: ['RS256', 'ES256', 'HS256'] },
-      async (err: any, decoded: any) => {
-        if (err) {
-          if (isDocsRoute(req.originalUrl)) {
-            res.clearCookie('token');
-            return res.redirect(`/docs/login?redirect=${encodeURIComponent(req.originalUrl)}`);
+    try {
+      if (req.originalUrl.startsWith('/docs/login')) {
+        clearTimeout(authTimeout);
+        return next();
+      }
+
+      const isDocsRoute = (url: string) =>
+        (url.startsWith('/docs') && !url.startsWith('/docs/login')) || url.startsWith('/redoc');
+
+      const token = req.headers.authorization?.split(' ')[1] || req.cookies?.token;
+
+      if (!token) {
+        clearTimeout(authTimeout);
+        if (isDocsRoute(req.originalUrl)) {
+          return res.redirect(`/docs/login?redirect=${encodeURIComponent(req.originalUrl)}`);
+        }
+        return res.status(401).json({
+          success: false,
+          message: 'Token de autorização necessário',
+          code: 'MISSING_TOKEN',
+        });
+      }
+
+      jwt.verify(
+        token,
+        getKey,
+        { algorithms: ['RS256', 'ES256', 'HS256'] },
+        async (err: any, decoded: any) => {
+          if (err) {
+            clearTimeout(authTimeout);
+            if (isDocsRoute(req.originalUrl)) {
+              res.clearCookie('token');
+              return res.redirect(`/docs/login?redirect=${encodeURIComponent(req.originalUrl)}`);
+            }
+
+            return res.status(401).json({
+              success: false,
+              message: 'Token inválido ou expirado',
+              error: err.message,
+              code: 'INVALID_TOKEN',
+            });
           }
 
-          return res.status(401).json({
-            message: 'Token inválido ou expirado',
-            error: err.message,
-          });
-        }
+          try {
+            const cacheKey = `user:${decoded.sub}`;
 
-        try {
-          const cacheKey = `user:${decoded.sub}`;
-
-          const usuarioSelect = {
-            id: true,
-            email: true,
-            nomeCompleto: true,
-            cpf: true,
-            cnpj: true,
-            role: true,
-            status: true,
-            tipoUsuario: true,
-            supabaseId: true,
-            ultimoLogin: true,
-            informacoes: {
-              select: { telefone: true },
-            },
-            // Não inclui senha por segurança
-          } as const;
-
-          type UsuarioSelect = Prisma.UsuariosGetPayload<{
-            select: typeof usuarioSelect;
-          }>;
-
-          type UsuarioCache = Omit<UsuarioSelect, 'informacoes'> & {
-            telefone: string | null;
-          };
-
-          let usuario: UsuarioCache | null = await getCache<UsuarioCache>(cacheKey);
-
-          if (!usuario) {
-            const usuarioDb = await prisma.usuarios.findFirst({
-              where: {
-                OR: [{ supabaseId: decoded.sub as string }, { id: decoded.sub as string }],
+            const usuarioSelect = {
+              id: true,
+              email: true,
+              nomeCompleto: true,
+              cpf: true,
+              cnpj: true,
+              role: true,
+              status: true,
+              tipoUsuario: true,
+              supabaseId: true,
+              ultimoLogin: true,
+              UsuariosInformation: {
+                select: { telefone: true },
               },
-              select: usuarioSelect,
-            });
+              // Não inclui senha por segurança
+            } as const;
 
-            if (usuarioDb) {
-              const { informacoes, ...rest } = usuarioDb;
-              usuario = {
-                ...rest,
-                telefone: informacoes?.telefone ?? null,
-              };
-              await setCache(cacheKey, usuario, 300);
+            type UsuarioSelect = Prisma.UsuariosGetPayload<{
+              select: typeof usuarioSelect;
+            }>;
+
+            type UsuarioCache = Omit<UsuarioSelect, 'UsuariosInformation'> & {
+              telefone: string | null;
+            };
+
+            let usuario: UsuarioCache | null = await getCache<UsuarioCache>(cacheKey);
+
+            if (!usuario) {
+              try {
+                const usuarioDb = await prisma.usuarios.findFirst({
+                  where: {
+                    OR: [{ supabaseId: decoded.sub as string }, { id: decoded.sub as string }],
+                  },
+                  select: usuarioSelect,
+                });
+
+                if (usuarioDb) {
+                  const { UsuariosInformation, ...rest } = usuarioDb;
+                  usuario = {
+                    ...rest,
+                    telefone: UsuariosInformation?.telefone ?? null,
+                  };
+                  await setCache(cacheKey, usuario, 300);
+                }
+              } catch (dbError: any) {
+                // 🔄 Se for erro de conexão, retornar erro temporário (não crashar)
+                if (
+                  dbError?.code === 'P1001' ||
+                  dbError?.code === 'P2024' ||
+                  dbError?.message?.includes('database server') ||
+                  dbError?.message?.includes('connection')
+                ) {
+                  logger.warn(
+                    {
+                      error: dbError?.message,
+                      code: dbError?.code,
+                      userId: decoded.sub,
+                    },
+                    '⚠️ Erro de conexão ao buscar usuário (será retentado)',
+                  );
+
+                  return res.status(503).json({
+                    success: false,
+                    message:
+                      'Serviço temporariamente indisponível. Tente novamente em alguns segundos.',
+                    code: 'DATABASE_UNAVAILABLE',
+                  });
+                }
+
+                // Se não for erro de conexão, re-lançar
+                throw dbError;
+              }
+            }
+
+            if (!usuario) {
+              clearTimeout(authTimeout);
+              return res.status(401).json({
+                success: false,
+                message: 'Usuário não encontrado no sistema',
+                code: 'USER_NOT_FOUND',
+              });
+            }
+
+            // Verifica se o usuário está ativo
+            if (usuario.status !== 'ATIVO') {
+              clearTimeout(authTimeout);
+              return res.status(403).json({
+                success: false,
+                message: `Acesso negado: usuário está ${usuario.status.toLowerCase()}`,
+                code: 'USER_INACTIVE',
+              });
+            }
+
+            // Verifica permissões de role se especificadas
+            if (roles && !roles.includes(usuario.role)) {
+              clearTimeout(authTimeout);
+              return res.status(403).json({
+                success: false,
+                message: 'Acesso negado: permissões insuficientes',
+                requiredRoles: roles,
+                userRole: usuario.role,
+                code: 'INSUFFICIENT_PERMISSIONS',
+              });
+            }
+
+            // Adiciona informações do usuário à requisição
+            req.user = {
+              ...decoded,
+              ...usuario,
+            };
+
+            clearTimeout(authTimeout);
+            next();
+          } catch (error) {
+            clearTimeout(authTimeout);
+            log.error({ err: error }, 'Erro no middleware de autenticação');
+            // Verifica se headers já foram enviados (ex: por timeout)
+            if (!res.headersSent) {
+              return res.status(500).json({
+                success: false,
+                message: 'Erro interno do servidor',
+                error: error instanceof Error ? error.message : 'Erro desconhecido',
+                code: 'INTERNAL_ERROR',
+              });
             }
           }
-
-          if (!usuario) {
-            return res.status(401).json({ message: 'Usuário não encontrado no sistema' });
-          }
-
-          // Verifica se o usuário está ativo
-          if (usuario.status !== 'ATIVO') {
-            return res.status(403).json({
-              message: `Acesso negado: usuário está ${usuario.status.toLowerCase()}`,
-            });
-          }
-
-          // Verifica permissões de role se especificadas
-          if (roles && !roles.includes(usuario.role)) {
-            return res.status(403).json({
-              message: 'Acesso negado: permissões insuficientes',
-              requiredRoles: roles,
-              userRole: usuario.role,
-            });
-          }
-
-          // Adiciona informações do usuário à requisição
-          req.user = {
-            ...decoded,
-            ...usuario,
-          };
-
-          next();
-        } catch (error) {
-          log.error({ err: error }, 'Erro no middleware de autenticação');
-          return res.status(500).json({
-            message: 'Erro interno do servidor',
-            error: error instanceof Error ? error.message : 'Erro desconhecido',
-          });
-        }
-      },
-    );
+        },
+      );
+    } catch (error) {
+      clearTimeout(authTimeout);
+      log.error({ err: error }, 'Erro no middleware de autenticação (try/catch externo)');
+      // Verifica se headers já foram enviados (ex: por timeout)
+      if (!res.headersSent) {
+        return res.status(500).json({
+          success: false,
+          message: 'Erro interno do servidor',
+          error: error instanceof Error ? error.message : 'Erro desconhecido',
+          code: 'INTERNAL_ERROR',
+        });
+      }
+    }
   };

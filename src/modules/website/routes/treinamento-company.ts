@@ -12,7 +12,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  * /api/v1/website/treinamento-company:
  *   get:
  *     summary: Listar conteúdos "TreinamentoCompany"
- *     tags: [Website - TreinamentoCompany]
+ *     tags: [Website]
  *     responses:
  *       200:
  *         description: Lista de conteúdos
@@ -41,7 +41,7 @@ router.get('/', publicCache, TreinamentoCompanyController.list);
  * /api/v1/website/treinamento-company/{id}:
  *   get:
  *     summary: Obter conteúdo por ID
- *     tags: [Website - TreinamentoCompany]
+ *     tags: [Website]
  *     parameters:
  *       - in: path
  *         name: id
@@ -80,7 +80,7 @@ router.get('/:id', publicCache, TreinamentoCompanyController.get);
  * /api/v1/website/treinamento-company:
  *   post:
  *     summary: Criar conteúdo "TreinamentoCompany"
- *     tags: [Website - TreinamentoCompany]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -124,7 +124,7 @@ router.post(
  * /api/v1/website/treinamento-company/{id}:
  *   put:
  *     summary: Atualizar conteúdo "TreinamentoCompany"
- *     tags: [Website - TreinamentoCompany]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -179,7 +179,7 @@ router.put(
  * /api/v1/website/treinamento-company/{id}:
  *   delete:
  *     summary: Remover conteúdo "TreinamentoCompany"
- *     tags: [Website - TreinamentoCompany]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:

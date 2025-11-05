@@ -8,8 +8,8 @@ import { VagasController } from '@/modules/empresas/vagas/controllers/vagas.cont
 import { vagasProcessosRoutes } from '@/modules/empresas/vagas-processos';
 
 const router = Router();
-const protectedRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.EMPRESA, Roles.RECRUTADOR];
-const updateRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.RECRUTADOR];
+const protectedRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.EMPRESA, Roles.SETOR_DE_VAGAS];
+const updateRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.SETOR_DE_VAGAS];
 const categoriaAdminRoles = [Roles.ADMIN, Roles.MODERADOR];
 
 /**
@@ -18,7 +18,7 @@ const categoriaAdminRoles = [Roles.ADMIN, Roles.MODERADOR];
  *   get:
  *     summary: Listar categorias de vagas
  *     description: "Retorna todas as categorias de vagas disponíveis com suas subcategorias relacionadas. Endpoint público, não requer autenticação."
- *     tags: [Empresas - VagasCategorias]
+ *     tags: [Empresas]
  *     responses:
  *       200:
  *         description: Lista de categorias de vagas
@@ -48,7 +48,7 @@ router.get('/categorias', publicCache, VagasCategoriasController.list);
  *   post:
  *     summary: Criar categoria de vaga
  *     description: "Disponível apenas para administradores e moderadores. Permite cadastrar uma nova categoria para organização das vagas."
- *     tags: [Empresas - VagasCategorias]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -115,7 +115,7 @@ router.post(
  *   get:
  *     summary: Obter categoria de vaga por ID
  *     description: Recupera os detalhes de uma categoria de vaga com suas subcategorias. Endpoint público.
- *     tags: [Empresas - VagasCategorias]
+ *     tags: [Empresas]
  *     parameters:
  *       - in: path
  *         name: categoriaId
@@ -162,7 +162,7 @@ router.get('/categorias/:categoriaId', publicCache, VagasCategoriasController.ge
  *   put:
  *     summary: Atualizar categoria de vaga
  *     description: "Disponível apenas para administradores e moderadores. Permite atualizar nome e descrição da categoria."
- *     tags: [Empresas - VagasCategorias]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -242,7 +242,7 @@ router.put(
  *   delete:
  *     summary: Remover categoria de vaga
  *     description: "Disponível apenas para administradores e moderadores. Remove a categoria caso não existam vínculos ativos."
- *     tags: [Empresas - VagasCategorias]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -310,7 +310,7 @@ router.delete(
  *   post:
  *     summary: Criar subcategoria de vaga
  *     description: "Disponível apenas para administradores e moderadores. Permite cadastrar uma subcategoria vinculada à categoria informada."
- *     tags: [Empresas - VagasCategorias]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -390,7 +390,7 @@ router.post(
  *   put:
  *     summary: Atualizar subcategoria de vaga
  *     description: "Disponível apenas para administradores e moderadores. Permite atualizar nome e descrição da subcategoria."
- *     tags: [Empresas - VagasCategorias]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -470,7 +470,7 @@ router.put(
  *   delete:
  *     summary: Remover subcategoria de vaga
  *     description: "Disponível apenas para administradores e moderadores. Remove a subcategoria caso não existam vínculos ativos."
- *     tags: [Empresas - VagasCategorias]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -537,8 +537,8 @@ router.delete(
  * /api/v1/empresas/vagas:
  *   get:
  *     summary: Listar vagas publicadas
- *     description: "Retorna as vagas disponíveis para visualização. Por padrão, apenas vagas PUBLICADAS são retornadas. É possível filtrar por status via query string. Consultas envolvendo os status RASCUNHO, EM_ANALISE, DESPUBLICADA, PAUSADA ou ENCERRADA exigem autenticação com roles válidas (ADMIN, MODERADOR, EMPRESA, RECRUTADOR ou ALUNO_CANDIDATO)."
- *     tags: [Empresas - EmpresasVagas]
+ *     description: "Retorna as vagas disponíveis para visualização. Por padrão, apenas vagas PUBLICADAS são retornadas. É possível filtrar por status via query string. Consultas envolvendo os status RASCUNHO, EM_ANALISE, DESPUBLICADA, PAUSADA ou ENCERRADA exigem autenticação com roles válidas (ADMIN, MODERADOR, EMPRESA, SETOR_DE_VAGAS ou ALUNO_CANDIDATO)."
+ *     tags: [Empresas]
  *     parameters:
  *       - in: query
  *         name: status
@@ -617,7 +617,7 @@ router.get('/', optionalSupabaseAuth(), publicCache, VagasController.list);
  *   get:
  *     summary: Obter vaga por ID
  *     description: Recupera os detalhes de uma vaga PUBLICADA. O conteúdo é público e preserva o anonimato das empresas quando configurado.
- *     tags: [Empresas - EmpresasVagas]
+ *     tags: [Empresas]
  *     parameters:
  *       - in: path
  *         name: id
@@ -658,8 +658,8 @@ router.get('/:id', publicCache, VagasController.get);
  * /api/v1/empresas/vagas:
  *   post:
  *     summary: Criar uma nova vaga
- *     description: "Disponível para administradores, moderadores, empresas e recrutadores autenticados (roles: ADMIN, MODERADOR, EMPRESA, RECRUTADOR). Permite cadastrar vagas vinculadas a uma empresa, gera um código alfanumérico curto para facilitar a identificação e envia automaticamente o registro para a fila de revisão com status EM_ANALISE."
- *     tags: [Empresas - EmpresasVagas]
+ *     description: "Disponível para administradores, moderadores, empresas e setor de vagas autenticados (roles: ADMIN, MODERADOR, EMPRESA, SETOR_DE_VAGAS). Permite cadastrar vagas vinculadas a uma empresa, gera um código alfanumérico curto para facilitar a identificação e envia automaticamente o registro para a fila de revisão com status EM_ANALISE."
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -771,8 +771,8 @@ router.post('/', supabaseAuthMiddleware(protectedRoles), VagasController.create)
  * /api/v1/empresas/vagas/{id}:
  *   put:
  *     summary: Atualizar vaga
- *     description: "Permite editar os dados de uma vaga existente, incluindo o status do fluxo (RASCUNHO, EM_ANALISE, PUBLICADO, DESPUBLICADA, PAUSADA, EXPIRADO ou ENCERRADA). Requer autenticação com perfil autorizado (roles: ADMIN, MODERADOR ou RECRUTADOR)."
- *     tags: [Empresas - EmpresasVagas]
+ *     description: "Permite editar os dados de uma vaga existente, incluindo o status do fluxo (RASCUNHO, EM_ANALISE, PUBLICADO, DESPUBLICADA, PAUSADA, EXPIRADO ou ENCERRADA). Requer autenticação com perfil autorizado (roles: ADMIN, MODERADOR ou SETOR_DE_VAGAS)."
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -872,8 +872,8 @@ router.put('/:id', supabaseAuthMiddleware(updateRoles), VagasController.update);
  * /api/v1/empresas/vagas/{id}:
  *   delete:
  *     summary: Remover vaga
- *     description: "Exclui uma vaga cadastrada. Requer autenticação com perfil autorizado (roles: ADMIN, MODERADOR, EMPRESA ou RECRUTADOR)."
- *     tags: [Empresas - EmpresasVagas]
+ *     description: "Exclui uma vaga cadastrada. Requer autenticação com perfil autorizado (roles: ADMIN, MODERADOR, EMPRESA ou SETOR_DE_VAGAS)."
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:

@@ -1,9 +1,10 @@
 import { NextFunction, Request, Response } from 'express';
 import bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 
-import { prisma } from '@/config/prisma';
+import { prisma, retryOperation } from '@/config/prisma';
 import { logger } from '@/utils/logger';
-import { getCache, setCache } from '@/utils/cache';
+import { loginCache, getCache, userCache } from '@/utils/cache';
 import {
   clearRefreshTokenCookie,
   extractRefreshTokenFromRequest,
@@ -95,7 +96,7 @@ const USER_PROFILE_CACHE_TTL = 300;
 
 const reviveUsuario = (usuario: UsuarioPerfil): UsuarioPerfil => {
   const emailVerificationSummary = usuario.emailVerification ?? buildEmailVerificationSummary();
-  const enderecos = normalizeUsuarioEnderecos(usuario.enderecos);
+  const enderecos = normalizeUsuarioEnderecos(usuario.enderecos ?? (usuario as any).UsuariosEnderecos);
   const [principal] = enderecos;
   const informacoes = mapUsuarioInformacoes(usuario.informacoes);
   const dataNasc = informacoes.dataNasc ?? (usuario.dataNasc ? new Date(usuario.dataNasc) : null);
@@ -196,6 +197,17 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
       });
     }
 
+    // ✅ Cache: Verificar se usuário está bloqueado (rate limiting)
+    const isBlocked = await loginCache.getBlocked(documentoLimpo);
+    if (isBlocked) {
+      log.warn({ documentoPrefix: documentoLimpo.substring(0, 3) }, '⚠️ Tentativa de login bloqueada (cache)');
+      return res.status(429).json({
+        success: false,
+        message: 'Muitas tentativas de login. Tente novamente mais tarde.',
+        correlationId,
+      });
+    }
+
     log.info(
       {
         documentoPrefix:
@@ -205,49 +217,67 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
       '🔍 Buscando usuário por documento',
     );
 
-    // Busca usuário no banco com todos os campos necessários
-    const usuarioRecord = await prisma.usuarios.findUnique({
-      where: campoBusca === 'cpf' ? { cpf: documentoLimpo } : { cnpj: documentoLimpo },
-      select: {
-        id: true,
-        email: true,
-        senha: true,
-        nomeCompleto: true,
-        role: true,
-        status: true,
-        tipoUsuario: true,
-        supabaseId: true,
-        ultimoLogin: true,
-        criadoEm: true,
-        ...usuarioRedesSociaisSelect,
-        codUsuario: true,
-        informacoes: {
-          select: usuarioInformacoesSelect,
-        },
-        enderecos: {
-          orderBy: { criadoEm: 'asc' },
+    // ✅ Busca usuário no banco com todos os campos necessários
+    // Timeout de 3s por tentativa (fail-fast) para evitar esperas longas
+    // Usa índices otimizados (cpf/cnpj unique + índice composto com status)
+    const usuarioRecord = await retryOperation(
+      () =>
+        prisma.usuarios.findUnique({
+          where: campoBusca === 'cpf' ? { cpf: documentoLimpo } : { cnpj: documentoLimpo },
           select: {
             id: true,
-            logradouro: true,
-            numero: true,
-            bairro: true,
-            cidade: true,
-            estado: true,
-            cep: true,
+            email: true,
+            senha: true,
+            nomeCompleto: true,
+            role: true,
+            status: true,
+            tipoUsuario: true,
+            supabaseId: true,
+            ultimoLogin: true,
+            criadoEm: true,
+            ...usuarioRedesSociaisSelect,
+            codUsuario: true,
+            UsuariosInformation: {
+              select: usuarioInformacoesSelect,
+            },
+            UsuariosEnderecos: {
+              orderBy: { criadoEm: 'asc' },
+              select: {
+                id: true,
+                logradouro: true,
+                numero: true,
+                bairro: true,
+                cidade: true,
+                estado: true,
+                cep: true,
+              },
+            },
+            UsuariosVerificacaoEmail: {
+              select: emailVerificationSelect,
+            },
           },
-        },
-        emailVerification: {
-          select: emailVerificationSelect,
-        },
-      },
-    });
+        }),
+      2, // 2 tentativas apenas (reduzido de 3)
+      500, // 500ms delay entre tentativas
+      3000, // 3s timeout por tentativa (fail-fast)
+    );
 
     if (!usuarioRecord) {
+      // ✅ Cache: Incrementar tentativas de login falhadas
+      const attempts = (await loginCache.getAttempts(documentoLimpo)) || 0;
+      await loginCache.setAttempts(documentoLimpo, attempts + 1, 900); // 15 min TTL
+
+      // Bloquear após 5 tentativas
+      if (attempts + 1 >= 5) {
+        await loginCache.setBlocked(documentoLimpo, true, 3600); // 1 hora bloqueado
+      }
+
       log.warn(
         {
           documentoPrefix:
             campoBusca === 'cpf' ? documentoLimpo.substring(0, 3) : documentoLimpo.substring(0, 5),
           tipoDocumento: campoBusca.toUpperCase(),
+          attempts: attempts + 1,
         },
         '⚠️ Usuário não encontrado',
       );
@@ -258,13 +288,15 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
       });
     }
 
-    const { emailVerification, ...usuarioSemVerificacao } = usuarioRecord;
+    const { UsuariosVerificacaoEmail: emailVerification, UsuariosRedesSociais, UsuariosEnderecos, ...usuarioSemVerificacao } = usuarioRecord;
     const verification = normalizeEmailVerification(emailVerification);
     const usuarioComInformacoes = mergeUsuarioInformacoes({
       ...usuarioSemVerificacao,
       emailVerificado: verification.emailVerificado,
       emailVerificadoEm: verification.emailVerificadoEm,
       emailVerification: buildEmailVerificationSummary(emailVerification),
+      redesSociais: UsuariosRedesSociais,
+      UsuariosEnderecos,
     });
     const usuario = attachEnderecoResumo(usuarioComInformacoes);
     if (!usuario) {
@@ -338,44 +370,64 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
 
     // Atualiza último login e armazena refresh token
     log.info({ userId: usuario.id }, '💾 Atualizando último login');
-    await prisma.usuarios.update({
-      where: { id: usuario.id },
-      data: {
-        ultimoLogin: new Date(),
-        refreshToken: tokens.refreshToken,
-        atualizadoEm: new Date(),
-      },
-    });
+    await retryOperation(
+      () =>
+        prisma.usuarios.update({
+          where: { id: usuario.id },
+          data: {
+            ultimoLogin: new Date(),
+            refreshToken: tokens.refreshToken,
+            atualizadoEm: new Date(),
+          },
+        }),
+      3,
+      500,
+    );
 
     // Remove sessões expiradas antes de criar a nova
-    await prisma.usuariosSessoes.updateMany({
-      where: {
-        usuarioId: usuario.id,
-        revogadoEm: null,
-        expiraEm: { lt: new Date() },
-      },
-      data: { revogadoEm: new Date() },
-    });
+    await retryOperation(
+      () =>
+        prisma.usuariosSessoes.updateMany({
+          where: {
+            usuarioId: usuario.id,
+            revogadoEm: null,
+            expiraEm: { lt: new Date() },
+          },
+          data: { revogadoEm: new Date() },
+        }),
+      3,
+      500,
+    );
 
-    const session = await prisma.usuariosSessoes.create({
-      data: {
-        usuarioId: usuario.id,
-        refreshToken: tokens.refreshToken,
-        rememberMe,
-        ip: req.ip || null,
-        userAgent: req.get('user-agent')?.slice(0, 512) || null,
-        expiraEm: refreshSettings.expiresAt,
-      },
-      select: {
-        id: true,
-        rememberMe: true,
-        criadoEm: true,
-        expiraEm: true,
-      },
-    });
+    const session = await retryOperation(
+      () =>
+        prisma.usuariosSessoes.create({
+          data: {
+            id: randomUUID(),
+            usuarioId: usuario.id,
+            refreshToken: tokens.refreshToken,
+            rememberMe,
+            ip: req.ip || null,
+            userAgent: req.get('user-agent')?.slice(0, 512) || null,
+            expiraEm: refreshSettings.expiresAt,
+            atualizadoEm: new Date(),
+          },
+          select: {
+            id: true,
+            rememberMe: true,
+            criadoEm: true,
+            expiraEm: true,
+          },
+        }),
+      3,
+      500,
+    );
 
     setRefreshTokenCookie(res, tokens.refreshToken, rememberMe);
 
+    // ✅ Cache: Limpar tentativas de login e cache de bloqueio ao fazer login bem-sucedido
+    await loginCache.deleteAttempts(documentoLimpo);
+    await loginCache.setBlocked(documentoLimpo, false, 0); // Remove bloqueio
     await invalidateUserCache(usuario);
 
     const duration = Date.now() - startTime;
@@ -392,7 +444,7 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
     );
 
     // Prepara dados de resposta (sem informações sensíveis)
-    const socialLinks = mapSocialLinks(usuario.redesSociais);
+    const socialLinks = mapSocialLinks(usuario.UsuariosRedesSociais);
 
     const responseData = {
       id: usuario.id,
@@ -574,7 +626,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
         rememberMe: true,
         expiraEm: true,
         criadoEm: true,
-        usuario: {
+        Usuarios: {
           select: {
             id: true,
             email: true,
@@ -586,10 +638,10 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
             codUsuario: true,
             ...usuarioRedesSociaisSelect,
             ultimoLogin: true,
-            informacoes: {
+            UsuariosInformation: {
               select: usuarioInformacoesSelect,
             },
-            enderecos: {
+            UsuariosEnderecos: {
               orderBy: { criadoEm: 'asc' },
               select: {
                 id: true,
@@ -601,7 +653,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
                 cep: true,
               },
             },
-            emailVerification: {
+            UsuariosVerificacaoEmail: {
               select: emailVerificationSelect,
             },
           },
@@ -609,7 +661,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       },
     });
 
-    if (!sessionRecord || !sessionRecord.usuario) {
+    if (!sessionRecord || !sessionRecord.Usuarios) {
       log.warn('⚠️ Sessão não encontrada para o refresh token informado');
       clearRefreshTokenCookie(res);
       return res.status(401).json({
@@ -642,14 +694,16 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       });
     }
 
-    const { usuario: usuarioRecord } = sessionRecord;
-    const { emailVerification, ...usuarioSemVerificacao } = usuarioRecord;
+    const usuarioRecord = sessionRecord.Usuarios;
+    const { UsuariosVerificacaoEmail: emailVerification, UsuariosRedesSociais, UsuariosEnderecos, ...usuarioSemVerificacao } = usuarioRecord;
     const verification = normalizeEmailVerification(emailVerification);
     const usuarioComInformacoes = mergeUsuarioInformacoes({
       ...usuarioSemVerificacao,
       emailVerificado: verification.emailVerificado,
       emailVerificadoEm: verification.emailVerificadoEm,
       emailVerification: buildEmailVerificationSummary(emailVerification),
+      redesSociais: UsuariosRedesSociais,
+      UsuariosEnderecos,
     });
     const usuario = attachEnderecoResumo(usuarioComInformacoes);
     if (!usuario) {
@@ -756,7 +810,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
 
     setRefreshTokenCookie(res, tokens.refreshToken, sessionRecord.rememberMe);
 
-    const socialLinks = mapSocialLinks(usuario.redesSociais);
+    const socialLinks = mapSocialLinks(usuario.UsuariosRedesSociais);
 
     const responseData = {
       id: usuario.id,
@@ -883,10 +937,10 @@ export const obterPerfil = async (req: Request, res: Response, next: NextFunctio
         atualizadoEm: true,
         ...usuarioRedesSociaisSelect,
         codUsuario: true,
-        informacoes: {
+        UsuariosInformation: {
           select: usuarioInformacoesSelect,
         },
-        enderecos: {
+        UsuariosEnderecos: {
           orderBy: { criadoEm: 'asc' },
           select: {
             id: true,
@@ -898,14 +952,14 @@ export const obterPerfil = async (req: Request, res: Response, next: NextFunctio
             cep: true,
           },
         },
-        emailVerification: {
+        UsuariosVerificacaoEmail: {
           select: emailVerificationSelect,
         },
         // Estatísticas de pagamentos removidas
       },
     });
 
-    const { emailVerification, ...usuarioSemVerificacao } = usuarioDb ?? {};
+    const { UsuariosVerificacaoEmail: emailVerification, UsuariosRedesSociais, UsuariosEnderecos, ...usuarioSemVerificacao } = usuarioDb ?? {};
     const verification = normalizeEmailVerification(emailVerification);
     const usuario = attachEnderecoResumo(
       usuarioDb
@@ -914,6 +968,8 @@ export const obterPerfil = async (req: Request, res: Response, next: NextFunctio
             emailVerificado: verification.emailVerificado,
             emailVerificadoEm: verification.emailVerificadoEm,
             emailVerification: buildEmailVerificationSummary(emailVerification),
+            redesSociais: UsuariosRedesSociais,
+            UsuariosEnderecos,
           })
         : null,
     ) as UsuarioPerfil | null;

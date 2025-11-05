@@ -11,6 +11,7 @@ router.use('/planos-empresariais', planosEmpresariaisRoutes);
 // Rota oficial para clientes (empresas vinculadas a planos pagos)
 router.use('/clientes', clientesRoutes);
 router.use('/vagas', vagasRoutes);
-router.use('/admin', adminEmpresasRoutes);
+// Centraliza operações administrativas sob o caminho principal de empresas
+router.use('/', adminEmpresasRoutes);
 
 export { router as empresasRoutes };

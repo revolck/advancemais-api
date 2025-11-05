@@ -5,7 +5,7 @@ import { Roles } from '@/modules/usuarios/enums/Roles';
 
 const router = Router();
 const adminRoles = [Roles.ADMIN, Roles.MODERADOR];
-const empresaRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.EMPRESA, Roles.RECRUTADOR];
+const empresaRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.EMPRESA, Roles.SETOR_DE_VAGAS];
 const empresaOnly = [Roles.EMPRESA];
 
 /**
@@ -14,7 +14,7 @@ const empresaOnly = [Roles.EMPRESA];
  *   post:
  *     summary: Iniciar checkout de plano (pagamento único ou assinatura)
  *     description: "Recebe a intenção de pagamento do frontend (usuário, plano, método e token do cartão quando aplicável) e delega toda a comunicação com o Mercado Pago ao backend. Retorna os dados necessários para exibir o QR Code PIX, acompanhar o pagamento com cartão ou continuar o fluxo de assinatura via preapproval. Boleto permanece pendente até confirmação via webhook ou monitoramento agendado."
- *     tags: [MercadoPago - Assinaturas]
+ *     tags: [Pagamentos]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -48,7 +48,7 @@ router.post('/checkout', supabaseAuthMiddleware(empresaOnly), AssinaturasControl
  *   post:
  *     summary: Webhook de notificações do Mercado Pago
  *     description: "Recebe eventos de pagamento/assinatura e atualiza o status do plano do cliente."
- *     tags: [MercadoPago - Assinaturas]
+ *     tags: [Pagamentos]
  *     responses:
  *       200:
  *         description: Evento recebido
@@ -61,7 +61,7 @@ router.post('/webhook', AssinaturasController.webhook);
  *   post:
  *     summary: Cancelar assinatura
  *     description: "Cancela o plano ativo do cliente. Todas as vagas PUBLICADO/EM_ANALISE/PAUSADA são colocadas em RASCUNHO."
- *     tags: [MercadoPago - Assinaturas]
+ *     tags: [Pagamentos]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -85,7 +85,7 @@ router.post('/cancelar', supabaseAuthMiddleware(empresaRoles), AssinaturasContro
  *   post:
  *     summary: Upgrade de plano
  *     description: "Realiza upgrade do plano do cliente sem alterar status das vagas."
- *     tags: [MercadoPago - Assinaturas]
+ *     tags: [Pagamentos]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -109,7 +109,7 @@ router.post('/upgrade', supabaseAuthMiddleware(empresaRoles), AssinaturasControl
  *   post:
  *     summary: Downgrade de plano
  *     description: "Realiza downgrade do plano do cliente e coloca vagas PUBLICADO/EM_ANALISE/PAUSADA em RASCUNHO."
- *     tags: [MercadoPago - Assinaturas]
+ *     tags: [Pagamentos]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -133,7 +133,7 @@ router.post('/downgrade', supabaseAuthMiddleware(empresaRoles), AssinaturasContr
  *   post:
  *     summary: Reemitir cobrança (PIX/BOLETO) e enviar lembrete
  *     description: "Gera uma nova preferência de pagamento para o plano ativo do cliente (recorrência assistida) e envia email com link."
- *     tags: [MercadoPago - Assinaturas]
+ *     tags: [Pagamentos]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -160,7 +160,7 @@ router.post(
  *   post:
  *     summary: Reconciliação de assinaturas
  *     description: "Processa pendências: aplica cancelamento após 5 dias sem pagamento e normaliza estados."
- *     tags: [MercadoPago - Assinaturas]
+ *     tags: [Pagamentos]
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -175,7 +175,7 @@ router.post('/reconcile', supabaseAuthMiddleware(adminRoles), AssinaturasControl
  *   post:
  *     summary: (Admin) Reemitir cobrança por plano específico
  *     description: "Cria uma nova preferência de pagamento para o plano informado e usuário alvo. Útil para auxiliar cobranças PIX/BOLETO ou migrações manuais."
- *     tags: [MercadoPago - Assinaturas]
+ *     tags: [Pagamentos]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -204,7 +204,7 @@ router.post(
  *   post:
  *     summary: (Admin) Sincronizar Planos Empresariais com PreApprovalPlan
  *     description: "Cria/garante um PreApprovalPlan no Mercado Pago para cada plano empresarial (PlanosEmpresariais) e salva o id (mpPreapprovalPlanId)."
- *     tags: [MercadoPago - Assinaturas]
+ *     tags: [Pagamentos]
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -223,7 +223,7 @@ router.post(
  *   post:
  *     summary: (Admin) Sincronizar um plano empresarial com PreApprovalPlan
  *     description: "Cria/garante um PreApprovalPlan no Mercado Pago para o plano empresarial (PlanosEmpresariais) informado."
- *     tags: [MercadoPago - Assinaturas]
+ *     tags: [Pagamentos]
  *     security:
  *       - bearerAuth: []
  *     requestBody:

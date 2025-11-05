@@ -73,7 +73,7 @@ export class EmailVerificationService {
         where: { id: userData.id },
         select: {
           email: true,
-          emailVerification: {
+          UsuariosVerificacaoEmail: {
             select: emailVerificationSelect,
           },
         },
@@ -83,7 +83,7 @@ export class EmailVerificationService {
         throw new Error('Usuário não encontrado');
       }
 
-      const verification = normalizeEmailVerification(usuario.emailVerification);
+      const verification = normalizeEmailVerification(usuario.UsuariosVerificacaoEmail);
 
       if (verification.emailVerificado) {
         log.info('ℹ️ Email já verificado');
@@ -179,7 +179,7 @@ export class EmailVerificationService {
           nomeCompleto: true,
           tipoUsuario: true,
           status: true,
-          emailVerification: {
+          UsuariosVerificacaoEmail: {
             select: emailVerificationSelect,
           },
         },
@@ -189,7 +189,7 @@ export class EmailVerificationService {
         return { success: false, error: 'Usuário não encontrado' };
       }
 
-      const verification = normalizeEmailVerification(usuario.emailVerification);
+      const verification = normalizeEmailVerification(usuario.UsuariosVerificacaoEmail);
 
       if (verification.emailVerificado) {
         return { success: false, error: 'Email já verificado' };

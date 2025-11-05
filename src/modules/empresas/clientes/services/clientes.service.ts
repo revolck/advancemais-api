@@ -20,7 +20,7 @@ const includePlanoEmpresa = {
       select: {
         id: true,
         nomeCompleto: true,
-        informacoes: {
+        UsuariosInformation: {
           select: usuarioInformacoesSelect,
         },
         ...usuarioRedesSociaisSelect,
@@ -87,7 +87,7 @@ const transformarPlano = (plano: EmpresasPlanoWithRelations) => {
         cidade: empresaUsuario.cidade,
         estado: empresaUsuario.estado,
         descricao: empresaUsuario.descricao,
-        socialLinks: mapSocialLinks(empresaUsuario.redesSociais),
+        socialLinks: mapSocialLinks(empresaUsuario.UsuariosRedesSociais),
         codUsuario: empresaUsuario.codUsuario,
         enderecos: empresaUsuario.enderecos,
         informacoes: empresaUsuario.informacoes,

@@ -8,6 +8,8 @@ import {
   createTurmaSchema,
   turmaInscricaoSchema,
   updateTurmaSchema,
+  updateInscricaoStatusSchema,
+  listTurmasQuerySchema,
 } from '../validators/turmas.schema';
 
 const parseCursoId = (raw: string) => {
@@ -39,9 +41,28 @@ export class TurmasController {
     }
 
     try {
-      const turmas = await turmasService.list(cursoId);
-      res.json({ data: turmas });
+      const params = listTurmasQuerySchema.parse(req.query);
+      const result = await turmasService.list({
+        cursoId,
+        page: params.page,
+        pageSize: params.pageSize,
+        status: params.status,
+        turno: params.turno,
+        metodo: params.metodo,
+        instrutorId: params.instrutorId,
+      });
+
+      res.json(result);
     } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros de consulta inválidos',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
       if (error?.code === 'CURSO_NOT_FOUND') {
         return res.status(404).json({
           success: false,
@@ -87,6 +108,57 @@ export class TurmasController {
         success: false,
         code: 'TURMA_GET_ERROR',
         message: 'Erro ao buscar turma do curso',
+        error: error?.message,
+      });
+    }
+  };
+
+  static listInscricoes = async (req: Request, res: Response) => {
+    const cursoId = parseCursoId(req.params.cursoId);
+    const turmaId = parseTurmaId(req.params.turmaId);
+
+    if (!cursoId || !turmaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificadores de curso ou turma inválidos',
+      });
+    }
+
+    try {
+      const inscricoes = await turmasService.listInscricoes(cursoId, turmaId);
+      
+      // Log para depuração (apenas em desenvolvimento)
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[listInscricoes] cursoId: ${cursoId}, turmaId: ${turmaId}, count: ${inscricoes.length}`);
+      }
+
+      // Garantir que sempre retorna um array (mesmo que vazio)
+      const response = {
+        success: true,
+        data: Array.isArray(inscricoes) ? inscricoes : [],
+        count: Array.isArray(inscricoes) ? inscricoes.length : 0,
+      };
+
+      // Headers para evitar cache problemático
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+
+      res.json(response);
+    } catch (error: any) {
+      if (error?.code === 'TURMA_NOT_FOUND' || error?.code === 'CURSO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'TURMA_NOT_FOUND',
+          message: 'Turma não encontrada para o curso informado',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'INSCRICOES_LIST_ERROR',
+        message: 'Erro ao listar inscrições da turma',
         error: error?.message,
       });
     }
@@ -372,6 +444,63 @@ export class TurmasController {
         success: false,
         code: 'TURMA_UNENROLL_ERROR',
         message: 'Erro ao remover inscrição do aluno na turma',
+        error: error?.message,
+      });
+    }
+  };
+
+  static updateInscricaoStatus = async (req: Request, res: Response) => {
+    const cursoId = parseCursoId(req.params.cursoId);
+    const turmaId = parseTurmaId(req.params.turmaId);
+    const inscricaoId = req.params.inscricaoId;
+
+    if (!cursoId || !turmaId || !inscricaoId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificadores de curso, turma ou inscrição inválidos',
+      });
+    }
+
+    try {
+      const payload = updateInscricaoStatusSchema.parse(req.body);
+      const inscricao = await turmasService.updateInscricaoStatus(
+        cursoId,
+        turmaId,
+        inscricaoId,
+        payload.status,
+      );
+
+      res.json({
+        success: true,
+        data: inscricao,
+      });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Dados inválidos para atualização de status',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (
+        error?.code === 'TURMA_NOT_FOUND' ||
+        error?.code === 'CURSO_NOT_FOUND' ||
+        error?.code === 'INSCRICAO_NOT_FOUND'
+      ) {
+        return res.status(404).json({
+          success: false,
+          code: 'INSCRICAO_NOT_FOUND',
+          message: 'Inscrição não encontrada para a turma informada',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'INSCRICAO_STATUS_UPDATE_ERROR',
+        message: 'Erro ao atualizar status da inscrição',
         error: error?.message,
       });
     }

@@ -13,7 +13,7 @@ const adminRoles = [Roles.ADMIN, Roles.MODERADOR];
  *   get:
  *     summary: Listar clientes (empresas) vinculados a planos pagos
  *     description: "Retorna o histórico de vinculações de planos de assinatura para clientes (empresas). Por padrão retorna apenas assinaturas de clientes pagantes (modo CLIENTE), mas é possível filtrar por outros modos quando necessário. Endpoint restrito a administradores e moderadores (roles: ADMIN, MODERADOR)."
- *     tags: [Empresas - Clientes]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -77,7 +77,7 @@ router.get('/', supabaseAuthMiddleware(adminRoles), ClientesController.list);
  *   get:
  *     summary: Consultar vinculação de plano de um cliente
  *     description: "Endpoint restrito a administradores e moderadores (roles: ADMIN, MODERADOR)."
- *     tags: [Empresas - Clientes]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -127,7 +127,7 @@ router.get('/:id', supabaseAuthMiddleware(adminRoles), ClientesController.get);
  *   post:
  *     summary: Vincular plano a um cliente
  *     description: "Disponibiliza o acesso temporário ou permanente aos recursos do plano empresarial selecionado para o cliente informado. Endpoint restrito a administradores e moderadores (roles: ADMIN, MODERADOR)."
- *     tags: [Empresas - Clientes]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -195,7 +195,7 @@ router.post('/', supabaseAuthMiddleware(adminRoles), ClientesController.assign);
  *   put:
  *     summary: Atualizar vinculação de plano do cliente
  *     description: "Endpoint restrito a administradores e moderadores (roles: ADMIN, MODERADOR)."
- *     tags: [Empresas - Clientes]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -267,7 +267,7 @@ router.put('/:id', supabaseAuthMiddleware(adminRoles), ClientesController.update
  *   delete:
  *     summary: Encerrar vínculo de plano do cliente
  *     description: "Endpoint restrito a administradores e moderadores (roles: ADMIN, MODERADOR)."
- *     tags: [Empresas - Clientes]
+ *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
  *     parameters:

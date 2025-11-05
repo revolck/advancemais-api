@@ -13,9 +13,21 @@ export const CurriculosController = {
   },
 
   get: async (req: Request, res: Response) => {
-    const usuarioId = (req as any).user?.id || req.query.usuarioId;
+    const userId = (req as any).user?.id;
+    const userRole = (req as any).user?.role;
+    const curriculoId = req.params.id;
+
+    // Admin/Moderador podem ver qualquer currículo
+    if (userRole === Roles.ADMIN || userRole === Roles.MODERADOR) {
+      const item = await curriculosService.findById(curriculoId);
+      if (!item) return res.status(404).json({ success: false, code: 'NOT_FOUND' });
+      return res.json(item);
+    }
+
+    // Candidato só pode ver seus próprios currículos
+    const usuarioId = userId || req.query.usuarioId;
     if (!usuarioId) return res.status(401).json({ success: false, code: 'UNAUTHORIZED' });
-    const item = await curriculosService.getOwn(String(usuarioId), req.params.id);
+    const item = await curriculosService.getOwn(String(usuarioId), curriculoId);
     if (!item) return res.status(404).json({ success: false, code: 'NOT_FOUND' });
     res.json(item);
   },

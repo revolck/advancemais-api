@@ -12,7 +12,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  * /api/v1/website/recrutamento:
  *   get:
  *     summary: Listar conteúdos "Recrutamento"
- *     tags: [Website - Recrutamento]
+ *     tags: [Website]
  *     responses:
  *       200:
  *         description: Lista de conteúdos
@@ -41,7 +41,7 @@ router.get('/', publicCache, RecrutamentoController.list);
  * /api/v1/website/recrutamento/{id}:
  *   get:
  *     summary: Obter conteúdo por ID
- *     tags: [Website - Recrutamento]
+ *     tags: [Website]
  *     parameters:
  *       - in: path
  *         name: id
@@ -80,7 +80,7 @@ router.get('/:id', publicCache, RecrutamentoController.get);
  * /api/v1/website/recrutamento:
  *   post:
  *     summary: Criar conteúdo "Recrutamento"
- *     tags: [Website - Recrutamento]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -126,7 +126,7 @@ router.post(
  * /api/v1/website/recrutamento/{id}:
  *   put:
  *     summary: Atualizar conteúdo "Recrutamento"
- *     tags: [Website - Recrutamento]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -184,7 +184,7 @@ router.put(
  * /api/v1/website/recrutamento/{id}:
  *   delete:
  *     summary: Remover conteúdo "Recrutamento"
- *     tags: [Website - Recrutamento]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:

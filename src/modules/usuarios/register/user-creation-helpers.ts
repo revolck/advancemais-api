@@ -238,14 +238,14 @@ export const checkForDuplicates = async (
         cpf: true,
         cnpj: true,
         supabaseId: true,
-        emailVerification: {
+        UsuariosVerificacaoEmail: {
           select: emailVerificationSelect,
         },
       },
     });
 
     if (usuarioExistente) {
-      const verification = normalizeEmailVerification(usuarioExistente.emailVerification);
+      const verification = normalizeEmailVerification(usuarioExistente.UsuariosVerificacaoEmail);
 
       if (
         !verification.emailVerificado &&
@@ -376,7 +376,7 @@ export const createUserWithTransaction = async (
         criadoEm: true,
         ...usuarioRedesSociaisSelect,
         codUsuario: true,
-        informacoes: {
+        UsuariosInformation: {
           select: usuarioInformacoesSelect,
         },
       } as const;
@@ -398,15 +398,15 @@ export const createUserWithTransaction = async (
         data: {
           ...userData.usuario,
           codUsuario,
-          emailVerification: {
+          UsuariosVerificacaoEmail: {
             create: emailVerificationData,
           },
-          informacoes: {
+          UsuariosInformation: {
             create: userData.informacoes,
           },
           ...(userData.socialLinks
             ? {
-                redesSociais: {
+                UsuariosRedesSociais: {
                   create: userData.socialLinks,
                 },
               }

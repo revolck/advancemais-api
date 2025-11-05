@@ -18,6 +18,10 @@ export const curriculosService = {
     return prisma.usuariosCurriculos.findFirst({ where: { id, usuarioId } });
   },
 
+  findById: async (id: string) => {
+    return prisma.usuariosCurriculos.findUnique({ where: { id } });
+  },
+
   create: async (usuarioId: string, role: Roles, data: CurriculoCreateInput) => {
     if (role !== Roles.ALUNO_CANDIDATO) {
       throw Object.assign(new Error('Apenas candidatos podem criar currículos'), {

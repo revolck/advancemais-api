@@ -2,7 +2,7 @@ import { CursosEstagioDiaSemana, Prisma } from '@prisma/client';
 
 export const estagioWithRelations = Prisma.validator<Prisma.CursosEstagiosDefaultArgs>()({
   include: {
-    curso: {
+    Cursos: {
       select: {
         id: true,
         nome: true,
@@ -10,44 +10,44 @@ export const estagioWithRelations = Prisma.validator<Prisma.CursosEstagiosDefaul
         estagioObrigatorio: true,
       },
     },
-    turma: {
+    CursosTurmas: {
       select: {
         id: true,
         nome: true,
         codigo: true,
       },
     },
-    inscricao: {
+    CursosTurmasInscricoes: {
       select: {
         id: true,
       },
     },
-    aluno: {
+    Usuarios_CursosEstagios_alunoIdToUsuarios: {
       select: {
         id: true,
         nomeCompleto: true,
         email: true,
       },
     },
-    locais: {
+    CursosEstagiosLocais: {
       orderBy: { criadoEm: 'asc' },
     },
-    confirmacao: true,
-    criadoPor: {
+    CursosEstagiosConfirmacoes: true,
+    Usuarios_CursosEstagios_criadoPorIdToUsuarios: {
       select: {
         id: true,
         nomeCompleto: true,
         email: true,
       },
     },
-    atualizadoPor: {
+    Usuarios_CursosEstagios_atualizadoPorIdToUsuarios: {
       select: {
         id: true,
         nomeCompleto: true,
         email: true,
       },
     },
-    notificacoes: {
+    CursosEstagiosNotificacoes: {
       orderBy: { enviadoEm: 'desc' },
       take: 20,
     },
@@ -77,7 +77,7 @@ const translateWeekday = (value: CursosEstagioDiaSemana): string => {
   }
 };
 
-const mapLocal = (local: EstagioWithRelations['locais'][number]) => ({
+const mapLocal = (local: EstagioWithRelations['CursosEstagiosLocais'][number]) => ({
   id: local.id,
   titulo: local.titulo ?? null,
   empresaNome: local.empresaNome,
@@ -119,20 +119,20 @@ export const mapEstagio = (
   turmaId: estagio.turmaId,
   inscricaoId: estagio.inscricaoId,
   aluno: {
-    id: estagio.aluno.id,
-    nome: estagio.aluno.nomeCompleto,
-    email: estagio.aluno.email,
+    id: estagio.Usuarios_CursosEstagios_alunoIdToUsuarios.id,
+    nome: estagio.Usuarios_CursosEstagios_alunoIdToUsuarios.nomeCompleto,
+    email: estagio.Usuarios_CursosEstagios_alunoIdToUsuarios.email,
   },
   curso: {
-    id: estagio.curso.id,
-    nome: estagio.curso.nome,
-    codigo: estagio.curso.codigo,
-    estagioObrigatorio: estagio.curso.estagioObrigatorio,
+    id: estagio.Cursos.id,
+    nome: estagio.Cursos.nome,
+    codigo: estagio.Cursos.codigo,
+    estagioObrigatorio: estagio.Cursos.estagioObrigatorio,
   },
   turma: {
-    id: estagio.turma.id,
-    nome: estagio.turma.nome,
-    codigo: estagio.turma.codigo,
+    id: estagio.CursosTurmas.id,
+    nome: estagio.CursosTurmas.nome,
+    codigo: estagio.CursosTurmas.codigo,
   },
   nome: estagio.nome,
   descricao: estagio.descricao ?? null,
@@ -152,43 +152,43 @@ export const mapEstagio = (
     : null,
   criadoEm: estagio.criadoEm.toISOString(),
   atualizadoEm: estagio.atualizadoEm.toISOString(),
-  criadoPor: estagio.criadoPor
+  criadoPor: estagio.Usuarios_CursosEstagios_criadoPorIdToUsuarios
     ? {
-        id: estagio.criadoPor.id,
-        nome: estagio.criadoPor.nomeCompleto,
-        email: estagio.criadoPor.email,
+        id: estagio.Usuarios_CursosEstagios_criadoPorIdToUsuarios.id,
+        nome: estagio.Usuarios_CursosEstagios_criadoPorIdToUsuarios.nomeCompleto,
+        email: estagio.Usuarios_CursosEstagios_criadoPorIdToUsuarios.email,
       }
     : null,
-  atualizadoPor: estagio.atualizadoPor
+  atualizadoPor: estagio.Usuarios_CursosEstagios_atualizadoPorIdToUsuarios
     ? {
-        id: estagio.atualizadoPor.id,
-        nome: estagio.atualizadoPor.nomeCompleto,
-        email: estagio.atualizadoPor.email,
+        id: estagio.Usuarios_CursosEstagios_atualizadoPorIdToUsuarios.id,
+        nome: estagio.Usuarios_CursosEstagios_atualizadoPorIdToUsuarios.nomeCompleto,
+        email: estagio.Usuarios_CursosEstagios_atualizadoPorIdToUsuarios.email,
       }
     : null,
-  locais: estagio.locais.map(mapLocal),
-  confirmacao: estagio.confirmacao
+  locais: estagio.CursosEstagiosLocais.map(mapLocal),
+  confirmacao: estagio.CursosEstagiosConfirmacoes
     ? {
-        confirmadoEm: estagio.confirmacao.confirmadoEm
-          ? estagio.confirmacao.confirmadoEm.toISOString()
+        confirmadoEm: estagio.CursosEstagiosConfirmacoes.confirmadoEm
+          ? estagio.CursosEstagiosConfirmacoes.confirmadoEm.toISOString()
           : null,
-        protocolo: estagio.confirmacao.protocolo ?? null,
-        token: includeToken ? estagio.confirmacao.token : undefined,
+        protocolo: estagio.CursosEstagiosConfirmacoes.protocolo ?? null,
+        token: includeToken ? estagio.CursosEstagiosConfirmacoes.token : undefined,
         registro: {
-          ip: estagio.confirmacao.ip ?? null,
-          userAgent: estagio.confirmacao.userAgent ?? null,
-          deviceTipo: estagio.confirmacao.deviceTipo ?? null,
-          deviceDescricao: estagio.confirmacao.deviceDescricao ?? null,
-          deviceId: estagio.confirmacao.deviceId ?? null,
-          sistemaOperacional: estagio.confirmacao.sistemaOperacional ?? null,
-          navegador: estagio.confirmacao.navegador ?? null,
-          localizacao: estagio.confirmacao.localizacao ?? null,
+          ip: estagio.CursosEstagiosConfirmacoes.ip ?? null,
+          userAgent: estagio.CursosEstagiosConfirmacoes.userAgent ?? null,
+          deviceTipo: estagio.CursosEstagiosConfirmacoes.deviceTipo ?? null,
+          deviceDescricao: estagio.CursosEstagiosConfirmacoes.deviceDescricao ?? null,
+          deviceId: estagio.CursosEstagiosConfirmacoes.deviceId ?? null,
+          sistemaOperacional: estagio.CursosEstagiosConfirmacoes.sistemaOperacional ?? null,
+          navegador: estagio.CursosEstagiosConfirmacoes.navegador ?? null,
+          localizacao: estagio.CursosEstagiosConfirmacoes.localizacao ?? null,
         },
       }
     : null,
   notificacoes:
-    includeNotificacoes && estagio.notificacoes
-      ? estagio.notificacoes.map((item) => ({
+    includeNotificacoes && estagio.CursosEstagiosNotificacoes
+      ? estagio.CursosEstagiosNotificacoes.map((item) => ({
           id: item.id,
           tipo: item.tipo,
           canal: item.canal ?? null,

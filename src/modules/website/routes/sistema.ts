@@ -10,7 +10,7 @@ const router = Router();
  * /api/v1/website/sistema:
  *   get:
  *     summary: Listar conteúdos "Sistema"
- *     tags: [Website - Sistema]
+ *     tags: [Website]
  *     responses:
  *       200:
  *         description: Lista de conteúdos
@@ -39,7 +39,7 @@ router.get('/', publicCache, SistemaController.list);
  * /api/v1/website/sistema/{id}:
  *   get:
  *     summary: Obter conteúdo por ID
- *     tags: [Website - Sistema]
+ *     tags: [Website]
  *     parameters:
  *       - in: path
  *         name: id
@@ -78,7 +78,7 @@ router.get('/:id', publicCache, SistemaController.get);
  * /api/v1/website/sistema:
  *   post:
  *     summary: Criar conteúdo "Sistema"
- *     tags: [Website - Sistema]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -116,7 +116,7 @@ router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), SistemaControll
  * /api/v1/website/sistema/{id}:
  *   put:
  *     summary: Atualizar conteúdo "Sistema"
- *     tags: [Website - Sistema]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -166,7 +166,7 @@ router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), SistemaContro
  * /api/v1/website/sistema/{id}:
  *   delete:
  *     summary: Remover conteúdo "Sistema"
- *     tags: [Website - Sistema]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:

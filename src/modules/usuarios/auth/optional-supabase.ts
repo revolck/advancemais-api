@@ -77,7 +77,7 @@ export const optionalSupabaseAuth =
             tipoUsuario: true,
             supabaseId: true,
             ultimoLogin: true,
-            informacoes: {
+            UsuariosInformation: {
               select: { telefone: true },
             },
           } as const;

@@ -23,8 +23,6 @@ router.get('/', (req, res) => {
     endpoints: {
       auth: 'POST /login, POST /registrar, POST /logout',
       profile: 'GET /perfil',
-      admin: '/admin/*',
-      stats: '/stats/*',
       recovery: '/recuperar-senha/*',
     },
     status: 'operational',
@@ -37,7 +35,7 @@ router.get('/', (req, res) => {
 
 let usuarioRoutes: Router | undefined;
 let adminRoutes: Router | undefined;
-let statsRoutes: Router | undefined;
+// Rotas de estatísticas removidas
 
 // Import das rotas básicas (ESSENCIAL)
 try {
@@ -57,34 +55,13 @@ try {
   usuarioModuleLogger.warn({ err: error }, '⚠️ admin-routes não disponível');
 }
 
-// Import das rotas de estatísticas (OPCIONAL)
-try {
-  const { default: routes } = require('./stats-routes');
-  statsRoutes = routes;
-  usuarioModuleLogger.info('✅ stats-routes carregado');
-} catch (error) {
-  usuarioModuleLogger.warn({ err: error }, '⚠️ stats-routes não disponível');
-}
+// Rotas de estatísticas removidas (não utilizadas)
 
 // =============================================
 // REGISTRO DE SUB-ROTAS - ORDEM IMPORTANTE
 // =============================================
 
-/**
- * Rotas administrativas - PRIMEIRO (mais específicas)
- */
-if (adminRoutes) {
-  router.use('/admin', adminRoutes);
-  usuarioModuleLogger.info('✅ Rotas administrativas registradas');
-}
-
-/**
- * Rotas de estatísticas
- */
-if (statsRoutes) {
-  router.use('/stats', statsRoutes);
-  usuarioModuleLogger.info('✅ Rotas de estatísticas registradas');
-}
+// Rotas de estatísticas removidas
 
 /**
  * Rotas básicas de usuário - ÚLTIMO (mais genéricas)
@@ -94,6 +71,15 @@ if (usuarioRoutes) {
   usuarioModuleLogger.info('✅ Rotas básicas de usuário registradas');
 } else {
   usuarioModuleLogger.error('❌ CRÍTICO: usuario-routes não disponível');
+}
+
+/**
+ * Rotas administrativas incorporadas ao caminho principal
+ * (substitui /admin/* por rotas sob /)
+ */
+if (adminRoutes) {
+  router.use('/', adminRoutes);
+  usuarioModuleLogger.info('✅ Rotas administrativas centralizadas no caminho principal');
 }
 
 export { router as usuarioRoutes };

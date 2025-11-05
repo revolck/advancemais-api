@@ -12,7 +12,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  * /api/v1/website/slider:
  *   get:
  *     summary: Listar sliders
- *     tags: [Website - Slider]
+ *     tags: [Website]
  *     responses:
  *       200:
  *         description: Lista de sliders
@@ -41,7 +41,7 @@ router.get('/', publicCache, SliderController.list);
  * /api/v1/website/slider/{id}:
  *   get:
  *     summary: Obter slider por ID da ordem
- *     tags: [Website - Slider]
+ *     tags: [Website]
  *     parameters:
  *       - in: path
  *         name: id
@@ -82,7 +82,7 @@ router.get('/:id', publicCache, SliderController.get);
  *   post:
  *     summary: Criar slider
  *     description: Cria um novo slider. O campo `status` aceita booleano (true = PUBLICADO, false = RASCUNHO) ou string.
- *     tags: [Website - Slider]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -129,7 +129,7 @@ router.post(
  *   put:
  *     summary: Atualizar slider
  *     description: Atualiza dados do slider utilizando o ID do slider. Permite alterar a ordem dos banners, reordenando automaticamente os demais. Apenas campos enviados serão modificados. O campo `status` aceita booleano (true = PUBLICADO, false = RASCUNHO) ou string.
- *     tags: [Website - Slider]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -190,7 +190,7 @@ router.put(
  *   put:
  *     summary: Reordenar slider
  *     description: Altera a posição do slider utilizando o ID da ordem. Caso a nova posição esteja ocupada, os demais sliders serão ajustados automaticamente.
- *     tags: [Website - Slider]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -245,7 +245,7 @@ router.put(
  * /api/v1/website/slider/{id}:
  *   delete:
  *     summary: Remover slider
- *     tags: [Website - Slider]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:

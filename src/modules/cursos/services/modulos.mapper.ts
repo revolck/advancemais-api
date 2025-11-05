@@ -5,12 +5,12 @@ import { ProvaWithRelations, mapProva, provaDefaultInclude } from './provas.mapp
 
 export const moduloDetailedInclude = Prisma.validator<Prisma.CursosTurmasModulosDefaultArgs>()({
   include: {
-    aulas: {
-      ...aulaWithMateriaisInclude.include,
+    CursosTurmasAulas: {
+      include: aulaWithMateriaisInclude.include,
       orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
     },
-    provas: {
-      ...provaDefaultInclude.include,
+    CursosTurmasProvas: {
+      include: provaDefaultInclude.include,
       orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
     },
   },
@@ -21,8 +21,8 @@ export type ModuloWithRelations = Prisma.CursosTurmasModulosGetPayload<
 >;
 
 export const mapModulo = (modulo: ModuloWithRelations) => {
-  const aulas = (modulo.aulas ?? []) as unknown as AulaWithMateriais[];
-  const provas = (modulo.provas ?? []) as unknown as ProvaWithRelations[];
+  const aulas = ((modulo as any).CursosTurmasAulas || (modulo as any).aulas || []) as unknown as AulaWithMateriais[];
+  const provas = ((modulo as any).CursosTurmasProvas || (modulo as any).provas || []) as unknown as ProvaWithRelations[];
 
   return {
     id: modulo.id,

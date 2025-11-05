@@ -62,7 +62,7 @@ router.use('/curriculos', curriculosRoutes);
  *   get:
  *     summary: Listar vagas publicadas (público e dashboard)
  *     description: "Retorna vagas PUBLICADAS com paginação (10 por página por padrão)."
- *     tags: [Candidatos - Vagas]
+ *     tags: [Candidatos]
  *     parameters:
  *       - in: query
  *         name: page
@@ -146,7 +146,7 @@ router.get('/vagas', publicCache, async (req, res) => {
  * /api/v1/candidatos/aplicar:
  *   post:
  *     summary: Aplicar a uma vaga usando um currículo
- *     tags: [Candidatos - Candidaturas]
+ *     tags: [Candidatos]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -178,7 +178,7 @@ router.post(
  * /api/v1/candidatos/candidaturas:
  *   get:
  *     summary: Listar minhas candidaturas
- *     tags: [Candidatos - Candidaturas]
+ *     tags: [Candidatos]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -210,8 +210,8 @@ router.get(
  * /api/v1/candidatos/candidaturas/overview:
  *   get:
  *     summary: Visão consolidada de candidatos e vagas
- *     description: "Retorna candidatos únicos com seus currículos e candidaturas agrupadas por vaga. Empresas visualizam apenas suas vagas; administradores, moderadores, recrutadores e psicólogos podem consultar todo o sistema."
- *     tags: [Candidatos - Candidaturas]
+ *     description: "Retorna candidatos únicos com seus currículos e candidaturas agrupadas por vaga. Empresas visualizam apenas suas vagas; administradores, moderadores, setor de vagas e recrutadores podem consultar todo o sistema."
+ *     tags: [Candidatos]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -224,7 +224,7 @@ router.get(
  *       - in: query
  *         name: empresaUsuarioId
  *         schema: { type: string, format: uuid }
- *         description: "Filtra por empresa específica (apenas para ADMIN, MODERADOR, RECRUTADOR e PSICOLOGO)."
+ *         description: "Filtra por empresa específica (apenas para ADMIN, MODERADOR, SETOR_DE_VAGAS e RECRUTADOR)."
  *       - in: query
  *         name: vagaId
  *         schema: { type: string, format: uuid }
@@ -265,8 +265,8 @@ router.get(
     Roles.EMPRESA,
     Roles.ADMIN,
     Roles.MODERADOR,
+    Roles.SETOR_DE_VAGAS,
     Roles.RECRUTADOR,
-    Roles.PSICOLOGO,
   ]),
   CandidaturasController.overview,
 );
@@ -276,7 +276,7 @@ router.get(
  *   get:
  *     summary: Listar candidaturas recebidas pela empresa
  *     description: "Retorna as candidaturas visíveis para a empresa. Por padrão, candidaturas com status CANCELADO são omitidas."
- *     tags: [Candidatos - Candidaturas]
+ *     tags: [Candidatos]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -300,8 +300,107 @@ router.get(
  */
 router.get(
   '/candidaturas/recebidas',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.EMPRESA, Roles.RECRUTADOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.EMPRESA, Roles.SETOR_DE_VAGAS]),
   CandidaturasController.listReceived,
+);
+
+/**
+ * @openapi
+ * /api/v1/candidatos/candidaturas/{id}:
+ *   get:
+ *     summary: Obter detalhes de uma candidatura
+ *     description: Retorna dados completos de uma candidatura específica
+ *     tags: [Candidatos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Dados da candidatura
+ *       404:
+ *         description: Candidatura não encontrada
+ */
+router.get(
+  '/candidaturas/:id',
+  supabaseAuthMiddleware([
+    Roles.ALUNO_CANDIDATO,
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.EMPRESA,
+    Roles.SETOR_DE_VAGAS,
+  ]),
+  CandidaturasController.get,
+);
+
+/**
+ * @openapi
+ * /api/v1/candidatos/candidaturas/{id}:
+ *   put:
+ *     summary: Atualizar candidatura
+ *     description: Atualiza status ou dados de uma candidatura
+ *     tags: [Candidatos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status: { type: string, enum: ['RECEBIDA','EM_ANALISE','EM_TRIAGEM','ENTREVISTA','DESAFIO','DOCUMENTACAO','CONTRATADO','RECUSADO','DESISTIU','NAO_COMPARECEU','ARQUIVADO','CANCELADO'] }
+ *               observacoes: { type: string }
+ *     responses:
+ *       200:
+ *         description: Candidatura atualizada
+ *       404:
+ *         description: Candidatura não encontrada
+ */
+router.put(
+  '/candidaturas/:id',
+  supabaseAuthMiddleware([
+    Roles.ALUNO_CANDIDATO,
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.EMPRESA,
+    Roles.SETOR_DE_VAGAS,
+  ]),
+  CandidaturasController.update,
+);
+
+/**
+ * @openapi
+ * /api/v1/candidatos/candidaturas/{id}:
+ *   delete:
+ *     summary: Cancelar candidatura
+ *     description: Cancela uma candidatura (apenas candidatos podem cancelar suas próprias candidaturas)
+ *     tags: [Candidatos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Candidatura cancelada
+ *       404:
+ *         description: Candidatura não encontrada
+ */
+router.delete(
+  '/candidaturas/:id',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO, Roles.ADMIN, Roles.MODERADOR]),
+  CandidaturasController.cancel,
 );
 
 export { router as candidatosRoutes };

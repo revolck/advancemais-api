@@ -10,7 +10,7 @@ const router = Router();
  * /api/v1/website/informacoes-gerais:
  *   get:
  *     summary: Listar informações gerais
- *     tags: [Website - InformacoesGerais]
+ *     tags: [Website]
  *     responses:
  *       200:
  *         description: Lista de informações gerais
@@ -39,7 +39,7 @@ router.get('/', publicCache, InformacoesGeraisController.list);
  * /api/v1/website/informacoes-gerais/{id}:
  *   get:
  *     summary: Obter informação geral por ID
- *     tags: [Website - InformacoesGerais]
+ *     tags: [Website]
  *     parameters:
  *       - in: path
  *         name: id
@@ -78,7 +78,7 @@ router.get('/:id', publicCache, InformacoesGeraisController.get);
  * /api/v1/website/informacoes-gerais:
  *   post:
  *     summary: Criar informação geral
- *     tags: [Website - InformacoesGerais]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -119,7 +119,7 @@ router.post(
  * /api/v1/website/informacoes-gerais/{id}:
  *   put:
  *     summary: Atualizar informação geral
- *     tags: [Website - InformacoesGerais]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -172,7 +172,7 @@ router.put(
  * /api/v1/website/informacoes-gerais/{id}:
  *   delete:
  *     summary: Remover informação geral
- *     tags: [Website - InformacoesGerais]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:

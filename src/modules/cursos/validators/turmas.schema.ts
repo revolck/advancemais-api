@@ -1,4 +1,4 @@
-import { CursoStatus, CursosMetodos, CursosTurnos } from '@prisma/client';
+import { CursoStatus, CursosMetodos, CursosTurnos, StatusInscricao } from '@prisma/client';
 import { z } from 'zod';
 
 const positiveInt = z.coerce
@@ -73,4 +73,19 @@ export const updateTurmaSchema = applyDateValidations(turmaBaseSchema.partial())
 
 export const turmaInscricaoSchema = z.object({
   alunoId: z.string().uuid(),
+});
+
+export const updateInscricaoStatusSchema = z.object({
+  status: z.nativeEnum(StatusInscricao, {
+    errorMap: () => ({ message: 'Status inválido' }),
+  }),
+});
+
+export const listTurmasQuerySchema = z.object({
+  page: positiveInt.min(1).default(1),
+  pageSize: positiveInt.min(1).max(100).default(10),
+  status: z.nativeEnum(CursoStatus).optional(),
+  turno: z.nativeEnum(CursosTurnos).optional(),
+  metodo: z.nativeEnum(CursosMetodos).optional(),
+  instrutorId: z.string().uuid().optional(),
 });

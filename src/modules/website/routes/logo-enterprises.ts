@@ -12,7 +12,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  * /api/v1/website/logo-enterprises:
  *   get:
  *     summary: Listar logos de empresas
- *     tags: [Website - LogoEnterprises]
+ *     tags: [Website]
  *     responses:
  *       200:
  *         description: Lista de logos
@@ -41,7 +41,7 @@ router.get('/', publicCache, LogoEnterpriseController.list);
  * /api/v1/website/logo-enterprises/{id}:
  *   get:
  *     summary: Obter logo por ID da ordem
- *     tags: [Website - LogoEnterprises]
+ *     tags: [Website]
  *     parameters:
  *       - in: path
  *         name: id
@@ -82,7 +82,7 @@ router.get('/:id', publicCache, LogoEnterpriseController.get);
  *   post:
  *     summary: Criar logo de empresa
  *     description: Cria um novo logo. O campo `status` aceita booleano (true = PUBLICADO, false = RASCUNHO) ou string.
- *     tags: [Website - LogoEnterprises]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -128,7 +128,7 @@ router.post(
  *   put:
  *     summary: Atualizar logo de empresa
  *     description: Atualiza dados do logo utilizando o ID do logo. Permite alterar a ordem dos logos, reordenando automaticamente os demais. O campo `status` aceita booleano (true = PUBLICADO, false = RASCUNHO) ou string.
- *     tags: [Website - LogoEnterprises]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -187,7 +187,7 @@ router.put(
  *   put:
  *     summary: Reordenar logo de empresa
  *     description: Altera a posição do logo utilizando o ID da ordem. Caso a nova posição esteja ocupada, os demais logos serão ajustados automaticamente.
- *     tags: [Website - LogoEnterprises]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -242,7 +242,7 @@ router.put(
  * /api/v1/website/logo-enterprises/{id}:
  *   delete:
  *     summary: Remover logo de empresa
- *     tags: [Website - LogoEnterprises]
+ *     tags: [Website]
  *     security:
  *       - bearerAuth: []
  *     parameters:

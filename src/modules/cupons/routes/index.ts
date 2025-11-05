@@ -11,7 +11,7 @@ const router = Router();
  *   get:
  *     summary: Listar cupons de desconto cadastrados
  *     description: "Retorna todos os cupons de desconto disponíveis para gestão administrativa. Requer autenticação e perfil ADMIN ou MODERADOR."
- *     tags: [Comercial - Cupons de Desconto]
+ *     tags: [Comercial]
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -55,7 +55,7 @@ router.get('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), CuponsController
  * /api/v1/cupons/{id}:
  *   get:
  *     summary: Buscar um cupom de desconto pelo identificador
- *     tags: [Comercial - Cupons de Desconto]
+ *     tags: [Comercial]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -105,7 +105,7 @@ router.get('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), CuponsControl
  *   post:
  *     summary: Criar um novo cupom de desconto
  *     description: "Cria um cupom de desconto configurável para assinatura ou cursos. Disponível apenas para usuários com papel ADMIN ou MODERADOR."
- *     tags: [Comercial - Cupons de Desconto]
+ *     tags: [Comercial]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -180,7 +180,7 @@ router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), CuponsControlle
  * /api/v1/cupons/{id}:
  *   put:
  *     summary: Atualizar um cupom de desconto existente
- *     tags: [Comercial - Cupons de Desconto]
+ *     tags: [Comercial]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -247,7 +247,7 @@ router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), CuponsControl
  * /api/v1/cupons/{id}:
  *   delete:
  *     summary: Remover um cupom de desconto
- *     tags: [Comercial - Cupons de Desconto]
+ *     tags: [Comercial]
  *     security:
  *       - bearerAuth: []
  *     parameters:

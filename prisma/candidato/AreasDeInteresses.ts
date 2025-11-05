@@ -147,22 +147,34 @@ export async function seedCandidateInterestAreas(prisma: PrismaClient): Promise<
   });
 
   for (const area of CANDIDATE_INTEREST_AREAS) {
+    // Primeiro, fazer upsert da área
     await prisma.candidatosAreasInteresse.upsert({
       where: { id: area.id },
       update: {
         categoria: area.categoria,
-        subareas: {
-          deleteMany: {},
-          create: area.subareas.map((nome) => ({ nome })),
-        },
+        atualizadoEm: new Date(),
       },
       create: {
         id: area.id,
         categoria: area.categoria,
-        subareas: {
-          create: area.subareas.map((nome) => ({ nome })),
-        },
+        atualizadoEm: new Date(),
       },
     });
+
+    // Deletar subáreas existentes
+    await prisma.candidatosSubareasInteresse.deleteMany({
+      where: { areaId: area.id },
+    });
+
+    // Criar novas subáreas
+    for (const nome of area.subareas) {
+      await prisma.candidatosSubareasInteresse.create({
+        data: {
+          areaId: area.id,
+          nome,
+          atualizadoEm: new Date(),
+        },
+      });
+    }
   }
 }

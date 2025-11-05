@@ -5,6 +5,7 @@ import { CurriculosController } from './controllers';
 
 const router = Router();
 const candidateOnly = [Roles.ALUNO_CANDIDATO];
+const canViewCurriculos = [Roles.ALUNO_CANDIDATO, Roles.ADMIN, Roles.MODERADOR];
 
 router.get('/', supabaseAuthMiddleware(candidateOnly), CurriculosController.list);
 /**
@@ -12,7 +13,7 @@ router.get('/', supabaseAuthMiddleware(candidateOnly), CurriculosController.list
  * /api/v1/candidatos/curriculos:
  *   get:
  *     summary: Listar currículos do candidato
- *     tags: [Candidatos - Currículos]
+ *     tags: [Candidatos]
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -25,13 +26,14 @@ router.get('/', supabaseAuthMiddleware(candidateOnly), CurriculosController.list
  *               items:
  *                 $ref: '#/components/schemas/UsuarioCurriculo'
  */
-router.get('/:id', supabaseAuthMiddleware(candidateOnly), CurriculosController.get);
+router.get('/:id', supabaseAuthMiddleware(canViewCurriculos), CurriculosController.get);
 /**
  * @openapi
  * /api/v1/candidatos/curriculos/{id}:
  *   get:
  *     summary: Obter currículo do candidato
- *     tags: [Candidatos - Currículos]
+ *     description: "Admin e Moderador podem ver qualquer currículo. Candidatos apenas os próprios."
+ *     tags: [Candidatos]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -56,7 +58,7 @@ router.post('/', supabaseAuthMiddleware(candidateOnly), CurriculosController.cre
  *   post:
  *     summary: Criar currículo (até 5 por candidato)
  *     description: "Registra um novo currículo. Ao cadastrar o primeiro currículo, o perfil do aluno passa a ser considerado candidato ativo."
- *     tags: [Candidatos - Currículos]
+ *     tags: [Candidatos]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -82,7 +84,7 @@ router.put('/:id', supabaseAuthMiddleware(candidateOnly), CurriculosController.u
  *   put:
  *     summary: Atualizar currículo
  *     description: "Atualiza os dados do currículo selecionado e registra logs de auditoria com as alterações."
- *     tags: [Candidatos - Currículos]
+ *     tags: [Candidatos]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -113,7 +115,7 @@ router.delete('/:id', supabaseAuthMiddleware(candidateOnly), CurriculosControlle
  *   delete:
  *     summary: Excluir currículo
  *     description: "Remove o currículo informado. As candidaturas vinculadas a ele são canceladas automaticamente e, caso seja o último currículo ativo, o candidato deixa de participar dos processos seletivos."
- *     tags: [Candidatos - Currículos]
+ *     tags: [Candidatos]
  *     security:
  *       - bearerAuth: []
  *     parameters:

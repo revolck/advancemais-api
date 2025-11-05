@@ -71,7 +71,7 @@ const ensureFrequenciaBelongsToTurma = async (
   frequenciaId: string,
 ) => {
   const frequencia = await client.cursosFrequenciaAlunos.findFirst({
-    where: { id: frequenciaId, turmaId, turma: { cursoId } },
+    where: { id: frequenciaId, turmaId, CursosTurmas: { cursoId } },
     select: {
       id: true,
       turmaId: true,
@@ -140,7 +140,7 @@ export const frequenciaService = {
 
     const where: Prisma.CursosFrequenciaAlunosWhereInput = {
       turmaId,
-      turma: { cursoId },
+      CursosTurmas: { cursoId },
       inscricaoId: filters.inscricaoId ?? undefined,
       aulaId: filters.aulaId ?? undefined,
       status: filters.status ?? undefined,
@@ -166,7 +166,7 @@ export const frequenciaService = {
     await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
 
     const frequencia = await prisma.cursosFrequenciaAlunos.findFirst({
-      where: { id: frequenciaId, turmaId, turma: { cursoId } },
+      where: { id: frequenciaId, turmaId, CursosTurmas: { cursoId } },
       ...frequenciaWithRelations,
     });
 
@@ -302,13 +302,13 @@ export const frequenciaService = {
     const inscricao = await prisma.cursosTurmasInscricoes.findUnique({
       where: { id: inscricaoId },
       include: {
-        aluno: { select: { id: true, nomeCompleto: true, email: true } },
-        turma: {
+        Usuarios: { select: { id: true, nomeCompleto: true, email: true } },
+        CursosTurmas: {
           select: {
             id: true,
             nome: true,
             codigo: true,
-            curso: { select: { id: true, nome: true } },
+            Cursos: { select: { id: true, nome: true } },
           },
         },
       },
@@ -336,19 +336,19 @@ export const frequenciaService = {
       inscricao: {
         id: inscricao.id,
         aluno: {
-          id: inscricao.aluno.id,
-          nome: inscricao.aluno.nomeCompleto,
-          email: inscricao.aluno.email,
+          id: inscricao.Usuarios.id,
+          nome: inscricao.Usuarios.nomeCompleto,
+          email: inscricao.Usuarios.email,
         },
       },
       curso: {
-        id: inscricao.turma.curso.id,
-        nome: inscricao.turma.curso.nome,
+        id: inscricao.CursosTurmas.Cursos.id,
+        nome: inscricao.CursosTurmas.Cursos.nome,
       },
       turma: {
-        id: inscricao.turma.id,
-        nome: inscricao.turma.nome,
-        codigo: inscricao.turma.codigo,
+        id: inscricao.CursosTurmas.id,
+        nome: inscricao.CursosTurmas.nome,
+        codigo: inscricao.CursosTurmas.codigo,
       },
       frequencias: frequencias.map(mapFrequencia),
     };

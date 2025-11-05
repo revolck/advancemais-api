@@ -22,7 +22,7 @@ export interface BrevoConfiguration {
   };
 
   // Configurações de verificação
-  emailVerification: {
+  UsuariosVerificacaoEmail: {
     enabled: boolean;
     tokenExpirationHours: number;
     maxResendAttempts: number;
@@ -68,7 +68,7 @@ export class BrevoConfigManager {
    * Verifica se verificação de email está habilitada
    */
   public isEmailVerificationEnabled(): boolean {
-    return this.config.emailVerification.enabled;
+    return this.config.UsuariosVerificacaoEmail.enabled;
   }
 
   /**
@@ -89,7 +89,7 @@ export class BrevoConfigManager {
    * Data de expiração do token
    */
   public getTokenExpirationDate(): Date {
-    const hours = this.config.emailVerification.tokenExpirationHours;
+    const hours = this.config.UsuariosVerificacaoEmail.tokenExpirationHours;
     return new Date(Date.now() + hours * 60 * 60 * 1000);
   }
 
@@ -100,7 +100,7 @@ export class BrevoConfigManager {
     return {
       configured: this.config.isConfigured,
       environment: this.config.environment,
-      emailVerification: this.config.emailVerification.enabled,
+      UsuariosVerificacaoEmail: this.config.UsuariosVerificacaoEmail.enabled,
       urls: this.config.urls,
     };
   }
@@ -128,7 +128,7 @@ export class BrevoConfigManager {
         passwordRecovery: `${authUrl}/recuperar-senha`,
       },
 
-      emailVerification: {
+      UsuariosVerificacaoEmail: {
         enabled: process.env.EMAIL_VERIFICATION_REQUIRED !== 'false',
         tokenExpirationHours: parseInt(process.env.EMAIL_VERIFICATION_EXPIRATION_HOURS || '72', 10),
         maxResendAttempts: parseInt(process.env.EMAIL_VERIFICATION_MAX_RESEND || '3', 10),
@@ -150,10 +150,10 @@ export class BrevoConfigManager {
         module: 'Brevo',
         configured: this.config.isConfigured,
         environment: this.config.environment,
-        emailVerificationEnabled: this.config.emailVerification.enabled,
+        UsuariosVerificacaoEmailEnabled: this.config.UsuariosVerificacaoEmail.enabled,
         features: {
           transactionalEmails: true,
-          emailVerification: this.config.emailVerification.enabled,
+          UsuariosVerificacaoEmail: this.config.UsuariosVerificacaoEmail.enabled,
           passwordRecovery: true,
           welcomeEmails: true,
         },

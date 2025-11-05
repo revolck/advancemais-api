@@ -14,12 +14,12 @@ import { respondWithCache } from '@/modules/website/utils/cache-response';
 function mapSlider(ordem: any) {
   return {
     id: ordem.id,
-    sliderId: ordem.slider.id,
-    sliderName: ordem.slider.sliderName,
-    imagemUrl: ordem.slider.imagemUrl,
-    link: ordem.slider.link,
-    criadoEm: ordem.slider.criadoEm,
-    atualizadoEm: ordem.slider.atualizadoEm,
+    sliderId: ordem.WebsiteSlider.id,
+    sliderName: ordem.WebsiteSlider.WebsiteSliderName,
+    imagemUrl: ordem.WebsiteSlider.imagemUrl,
+    link: ordem.WebsiteSlider.link,
+    criadoEm: ordem.WebsiteSlider.criadoEm,
+    atualizadoEm: ordem.WebsiteSlider.atualizadoEm,
     ordem: ordem.ordem,
     orientacao: ordem.orientacao,
     status: ordem.status,
@@ -112,7 +112,7 @@ export class SliderController {
         imagemUrl = await uploadImage(req.file);
       }
       const data: any = {};
-      if (sliderName !== undefined) data.sliderName = sliderName;
+      if (sliderName !== undefined) data.WebsiteSliderName = sliderName;
       if (link !== undefined) data.link = link;
       if (orientacao !== undefined) data.orientacao = orientacao;
       if (status !== undefined) data.status = status;

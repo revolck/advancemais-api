@@ -96,7 +96,7 @@ router.post('/cancelar', supabaseAuthMiddleware(empresaRoles), AssinaturasContro
  *             type: object
  *             properties:
  *               usuarioId: { type: string, format: uuid }
- *               novoPlanosEmpresariaisId: { type: string, format: uuid }
+ *               novoplanosEmpresariaisId: { type: string, format: uuid }
  *     responses:
  *       200:
  *         description: Upgrade efetuado
@@ -120,7 +120,7 @@ router.post('/upgrade', supabaseAuthMiddleware(empresaRoles), AssinaturasControl
  *             type: object
  *             properties:
  *               usuarioId: { type: string, format: uuid }
- *               novoPlanosEmpresariaisId: { type: string, format: uuid }
+ *               novoplanosEmpresariaisId: { type: string, format: uuid }
  *     responses:
  *       200:
  *         description: Downgrade efetuado

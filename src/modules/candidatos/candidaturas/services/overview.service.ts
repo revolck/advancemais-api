@@ -72,7 +72,7 @@ const buildFilters = ({
 
   const usuariosWhere: Prisma.UsuariosWhereInput = {
     role: Roles.ALUNO_CANDIDATO,
-    curriculos: { some: {} },
+    UsuariosCurriculos: { some: {} },
   };
 
   if (searchWhere) {
@@ -104,7 +104,7 @@ const buildFilters = ({
     !isGlobalViewer || Boolean(onlyWithCandidaturas) || hasCandidaturaFilters;
 
   if (shouldRequireCandidaturas) {
-    usuariosWhere.candidaturasFeitas = {
+    usuariosWhere.EmpresasCandidatos_EmpresasCandidatos_candidatoIdToUsuarios = {
       some: hasCandidaturaFilters ? candidaturasWhereBase : {},
     };
   }
@@ -118,8 +118,8 @@ const buildFilters = ({
 
     const metricsWhere: Prisma.EmpresasCandidatosWhereInput = { ...candidaturasWhereBase };
 
-    if (searchWhere) {
-      metricsWhere.candidato = { is: searchWhere };
+    if (searchWhere && searchWhere.id) {
+      metricsWhere.candidatoId = searchWhere.id as string;
     }
 
     return metricsWhere;
@@ -165,7 +165,7 @@ export const candidaturasOverviewService = {
       }),
       prisma.usuariosCurriculos.count({
         where: {
-          usuario: { is: usuariosWhere },
+          Usuarios: usuariosWhere,
         },
       }),
       prisma.empresasCandidatos.count({
@@ -182,7 +182,7 @@ export const candidaturasOverviewService = {
       pagination: buildPagination(page, pageSize, total),
       summary: {
         candidatos: total,
-        curriculos: totalCurriculos,
+        UsuariosCurriculos: totalCurriculos,
         candidaturas: totalCandidaturas,
       },
       filters: {

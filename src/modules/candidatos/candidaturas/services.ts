@@ -18,12 +18,12 @@ export const candidaturasService = {
         curriculoId: true,
         empresaUsuarioId: true,
         statusId: true,
-        status: { select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true } },
+        status_processo: { select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true } },
         origem: true,
         aplicadaEm: true,
         atualizadaEm: true,
         consentimentos: true,
-        vaga: {
+        EmpresasVagas: {
           select: {
             id: true,
             titulo: true,
@@ -33,7 +33,7 @@ export const candidaturasService = {
             inseridaEm: true,
           },
         },
-        curriculo: {
+        UsuariosCurriculos: {
           select: { id: true, titulo: true, resumo: true, ultimaAtualizacao: true },
         },
       },
@@ -51,7 +51,7 @@ export const candidaturasService = {
       where.statusId = { in: params.statusIds };
     } else {
       // Excluir status de desistente (por nome, case-insensitive)
-      const desistenteStatus = await prisma.statusProcesso.findFirst({
+      const desistenteStatus = await prisma.status_processo.findFirst({
         where: { nome: { equals: 'Desistente', mode: 'insensitive' } },
       });
       if (desistenteStatus) {
@@ -69,12 +69,12 @@ export const candidaturasService = {
         curriculoId: true,
         empresaUsuarioId: true,
         statusId: true,
-        status: { select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true } },
+        status_processo: { select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true } },
         origem: true,
         aplicadaEm: true,
         atualizadaEm: true,
         consentimentos: true,
-        candidato: {
+        Usuarios_EmpresasCandidatos_candidatoIdToUsuarios: {
           select: {
             id: true,
             nomeCompleto: true,
@@ -86,10 +86,10 @@ export const candidaturasService = {
             atualizadoEm: true,
           },
         },
-        curriculo: {
+        UsuariosCurriculos: {
           select: { id: true, titulo: true, resumo: true, ultimaAtualizacao: true },
         },
-        vaga: {
+        EmpresasVagas: {
           select: {
             id: true,
             titulo: true,
@@ -113,12 +113,12 @@ export const candidaturasService = {
         curriculoId: true,
         empresaUsuarioId: true,
         statusId: true,
-        status: { select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true } },
+        status_processo: { select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true } },
         origem: true,
         aplicadaEm: true,
         atualizadaEm: true,
         consentimentos: true,
-        candidato: {
+        Usuarios_EmpresasCandidatos_candidatoIdToUsuarios: {
           select: {
             id: true,
             nomeCompleto: true,
@@ -130,10 +130,10 @@ export const candidaturasService = {
             atualizadoEm: true,
           },
         },
-        curriculo: {
+        UsuariosCurriculos: {
           select: { id: true, titulo: true, resumo: true, ultimaAtualizacao: true },
         },
-        vaga: {
+        EmpresasVagas: {
           select: {
             id: true,
             titulo: true,
@@ -168,7 +168,7 @@ export const candidaturasService = {
     }
 
     // Buscar status padrão
-    const statusPadrao = await prisma.statusProcesso.findFirst({
+    const statusPadrao = await prisma.status_processo.findFirst({
       where: { isDefault: true, ativo: true },
     });
 
@@ -193,8 +193,8 @@ export const candidaturasService = {
         consentimentos: params.consentimentos as Prisma.InputJsonValue,
       },
       include: {
-        status: { select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true } },
-        vaga: {
+        status_processo: { select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true } },
+        EmpresasVagas: {
           select: {
             id: true,
             titulo: true,
@@ -204,7 +204,7 @@ export const candidaturasService = {
             inseridaEm: true,
           },
         },
-        curriculo: {
+        UsuariosCurriculos: {
           select: { id: true, titulo: true, resumo: true, ultimaAtualizacao: true },
         },
       },
@@ -250,7 +250,7 @@ export const candidaturasService = {
 
     // Verificar se o status existe
     if (params.statusId) {
-      const status = await prisma.statusProcesso.findUnique({
+      const status = await prisma.status_processo.findUnique({
         where: { id: params.statusId },
       });
 
@@ -266,8 +266,8 @@ export const candidaturasService = {
         // Adicionar observações se necessário
       },
       include: {
-        status: { select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true } },
-        vaga: {
+        status_processo: { select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true } },
+        EmpresasVagas: {
           select: {
             id: true,
             titulo: true,
@@ -277,7 +277,7 @@ export const candidaturasService = {
             inseridaEm: true,
           },
         },
-        curriculo: {
+        UsuariosCurriculos: {
           select: { id: true, titulo: true, resumo: true, ultimaAtualizacao: true },
         },
       },
@@ -305,7 +305,7 @@ export const candidaturasService = {
     }
 
     // Buscar status de desistente
-    const desistenteStatus = await prisma.statusProcesso.findFirst({
+    const desistenteStatus = await prisma.status_processo.findFirst({
       where: { nome: { equals: 'Desistente', mode: 'insensitive' }, ativo: true },
     });
 
@@ -324,8 +324,8 @@ export const candidaturasService = {
         statusId: desistenteStatus.id,
       },
       include: {
-        status: { select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true } },
-        vaga: {
+        status_processo: { select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true } },
+        EmpresasVagas: {
           select: {
             id: true,
             titulo: true,
@@ -335,7 +335,7 @@ export const candidaturasService = {
             inseridaEm: true,
           },
         },
-        curriculo: {
+        UsuariosCurriculos: {
           select: { id: true, titulo: true, resumo: true, ultimaAtualizacao: true },
         },
       },
@@ -364,7 +364,7 @@ export const candidaturasService = {
   }) => {
     const client = params.tx ?? prisma;
 
-    const desistenteStatus = await client.statusProcesso.findFirst({
+    const desistenteStatus = await client.status_processo.findFirst({
       where: { nome: { equals: 'Desistente', mode: 'insensitive' }, ativo: true },
     });
 
@@ -408,8 +408,8 @@ export const candidaturasService = {
       select: {
         id: true,
         statusId: true,
-        status: { select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true } },
-        vaga: {
+        status_processo: { select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true } },
+        EmpresasVagas: {
           select: {
             id: true,
             titulo: true,
@@ -428,7 +428,7 @@ export const candidaturasService = {
     // Agrupar por status
     const porStatus = candidaturas.reduce(
       (acc, candidatura) => {
-        const statusNome = candidatura.status.nome;
+        const statusNome = candidatura.status_processo.nome;
         if (!acc[statusNome]) {
           acc[statusNome] = [];
         }

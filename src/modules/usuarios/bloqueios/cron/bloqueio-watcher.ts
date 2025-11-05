@@ -38,7 +38,7 @@ export async function processExpiredBlocks() {
           where: { id: bloqueio.id },
           data: {
             status: StatusDeBloqueios.REVOGADO,
-            logs: {
+            UsuariosEmBloqueiosLogs: {
               create: {
                 acao: AcoesDeLogDeBloqueio.REVOGACAO,
                 criadoPorId: bloqueio.usuarioId, // auto, sem administrador explícito

@@ -248,7 +248,7 @@ export const sliderService = {
             id: true,
             ordem: true,
             orientacao: true,
-            slider: {
+            WebsiteSlider: {
               select: {
                 id: true,
                 sliderName: true,

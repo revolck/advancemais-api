@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto';
 
 import { prisma, retryOperation } from '@/config/prisma';
 import { logger } from '@/utils/logger';
-import { loginCache, getCache, userCache } from '@/utils/cache';
+import { loginCache, getCache, userCache, setCache } from '@/utils/cache';
 import {
   clearRefreshTokenCookie,
   extractRefreshTokenFromRequest,
@@ -25,11 +25,11 @@ import {
   mergeUsuarioInformacoes,
   usuarioInformacoesSelect,
 } from '../utils/information';
-import { mapSocialLinks, usuarioRedesSociaisSelect } from '../utils/social-links';
+import { mapSocialLinks } from '../utils/social-links';
 import type { UsuarioSocialLinks } from '../utils/types';
 import {
   buildEmailVerificationSummary,
-  emailVerificationSelect,
+  UsuariosVerificacaoEmailSelect,
   normalizeEmailVerification,
 } from '../utils/email-verification';
 
@@ -87,18 +87,20 @@ interface UsuarioPerfil {
   aceitarTermos: boolean;
   informacoes: ReturnType<typeof mapUsuarioInformacoes>;
   codUsuario: string;
-  emailVerification: ReturnType<typeof buildEmailVerificationSummary>;
+  UsuariosVerificacaoEmail: ReturnType<typeof buildEmailVerificationSummary>;
   enderecos: UsuarioEnderecoDto[];
   redesSociais: UsuarioSocialLinks | null;
+  UsuariosEnderecos?: UsuarioEnderecoDto[];
+  UsuariosInformation?: ReturnType<typeof mapUsuarioInformacoes> | null;
 }
 
 const USER_PROFILE_CACHE_TTL = 300;
 
 const reviveUsuario = (usuario: UsuarioPerfil): UsuarioPerfil => {
-  const emailVerificationSummary = usuario.emailVerification ?? buildEmailVerificationSummary();
-  const enderecos = normalizeUsuarioEnderecos(usuario.enderecos ?? (usuario as any).UsuariosEnderecos);
+  const UsuariosVerificacaoEmailSummary = usuario.UsuariosVerificacaoEmail ?? buildEmailVerificationSummary();
+  const enderecos = normalizeUsuarioEnderecos(usuario.UsuariosEnderecos ?? (usuario as any).UsuariosEnderecos);
   const [principal] = enderecos;
-  const informacoes = mapUsuarioInformacoes(usuario.informacoes);
+  const informacoes = mapUsuarioInformacoes(usuario.UsuariosInformation);
   const dataNasc = informacoes.dataNasc ?? (usuario.dataNasc ? new Date(usuario.dataNasc) : null);
 
   return {
@@ -119,16 +121,16 @@ const reviveUsuario = (usuario: UsuarioPerfil): UsuarioPerfil => {
       ...informacoes,
       dataNasc,
     },
-    emailVerification: {
-      ...emailVerificationSummary,
-      verifiedAt: emailVerificationSummary.verifiedAt
-        ? new Date(emailVerificationSummary.verifiedAt)
+    UsuariosVerificacaoEmail: {
+      ...UsuariosVerificacaoEmailSummary,
+      verifiedAt: UsuariosVerificacaoEmailSummary.verifiedAt
+        ? new Date(UsuariosVerificacaoEmailSummary.verifiedAt)
         : null,
-      tokenExpiration: emailVerificationSummary.tokenExpiration
-        ? new Date(emailVerificationSummary.tokenExpiration)
+      tokenExpiration: UsuariosVerificacaoEmailSummary.tokenExpiration
+        ? new Date(UsuariosVerificacaoEmailSummary.tokenExpiration)
         : null,
-      lastAttemptAt: emailVerificationSummary.lastAttemptAt
-        ? new Date(emailVerificationSummary.lastAttemptAt)
+      lastAttemptAt: UsuariosVerificacaoEmailSummary.lastAttemptAt
+        ? new Date(UsuariosVerificacaoEmailSummary.lastAttemptAt)
         : null,
     },
     enderecos,
@@ -140,13 +142,13 @@ const reviveUsuario = (usuario: UsuarioPerfil): UsuarioPerfil => {
 const buildProfileStats = (usuario: UsuarioPerfil) => ({
   accountAge: Math.floor((Date.now() - usuario.criadoEm.getTime()) / (1000 * 60 * 60 * 24)),
   hasCompletedProfile: !!(usuario.telefone && usuario.nomeCompleto),
-  hasAddress: usuario.enderecos.length > 0,
+  hasAddress: (usuario.UsuariosEnderecos ?? usuario.enderecos ?? []).length > 0,
   totalOrders: 0,
   totalSubscriptions: 0,
-  emailVerificationStatus: {
-    verified: usuario.emailVerification.verified,
-    verifiedAt: usuario.emailVerification.verifiedAt,
-    tokenExpiration: usuario.emailVerification.tokenExpiration,
+  UsuariosVerificacaoEmailStatus: {
+    verified: usuario.UsuariosVerificacaoEmail.verified,
+    verifiedAt: usuario.UsuariosVerificacaoEmail.verifiedAt,
+    tokenExpiration: usuario.UsuariosVerificacaoEmail.tokenExpiration,
   },
 });
 
@@ -235,7 +237,17 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
             supabaseId: true,
             ultimoLogin: true,
             criadoEm: true,
-            ...usuarioRedesSociaisSelect,
+            UsuariosRedesSociais: {
+              select: {
+                id: true,
+                instagram: true,
+                linkedin: true,
+                facebook: true,
+                youtube: true,
+                twitter: true,
+                tiktok: true,
+              },
+            },
             codUsuario: true,
             UsuariosInformation: {
               select: usuarioInformacoesSelect,
@@ -253,7 +265,7 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
               },
             },
             UsuariosVerificacaoEmail: {
-              select: emailVerificationSelect,
+              select: UsuariosVerificacaoEmailSelect,
             },
           },
         }),
@@ -288,13 +300,13 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
       });
     }
 
-    const { UsuariosVerificacaoEmail: emailVerification, UsuariosRedesSociais, UsuariosEnderecos, ...usuarioSemVerificacao } = usuarioRecord;
-    const verification = normalizeEmailVerification(emailVerification);
+    const { UsuariosVerificacaoEmail: UsuariosVerificacaoEmail, UsuariosRedesSociais, UsuariosEnderecos, ...UsuariosSemVerificacao } = usuarioRecord;
+    const verification = normalizeEmailVerification(UsuariosVerificacaoEmail);
     const usuarioComInformacoes = mergeUsuarioInformacoes({
-      ...usuarioSemVerificacao,
+      ...UsuariosSemVerificacao,
       emailVerificado: verification.emailVerificado,
       emailVerificadoEm: verification.emailVerificadoEm,
-      emailVerification: buildEmailVerificationSummary(emailVerification),
+      UsuariosVerificacaoEmail: buildEmailVerificationSummary(UsuariosVerificacaoEmail),
       redesSociais: UsuariosRedesSociais,
       UsuariosEnderecos,
     });
@@ -444,7 +456,7 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
     );
 
     // Prepara dados de resposta (sem informações sensíveis)
-    const socialLinks = mapSocialLinks(usuario.UsuariosRedesSociais);
+    const socialLinks = mapSocialLinks(usuario.redesSociais);
 
     const responseData = {
       id: usuario.id,
@@ -459,7 +471,7 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
       supabaseId: usuario.supabaseId,
       emailVerificado: usuario.emailVerificado,
       emailVerificadoEm: usuario.emailVerificadoEm,
-      emailVerification: usuario.emailVerification,
+      UsuariosVerificacaoEmail: usuario.UsuariosVerificacaoEmail,
       ultimoLogin: new Date().toISOString(),
       codUsuario: usuario.codUsuario,
       cidade: usuario.cidade,
@@ -469,7 +481,7 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
       aceitarTermos: usuario.aceitarTermos,
       informacoes: usuario.informacoes,
       socialLinks,
-      enderecos: usuario.enderecos,
+      enderecos: usuario.UsuariosEnderecos,
     };
 
     // Retorna dados do usuário autenticado com tokens
@@ -636,7 +648,17 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
             tipoUsuario: true,
             supabaseId: true,
             codUsuario: true,
-            ...usuarioRedesSociaisSelect,
+            UsuariosRedesSociais: {
+              select: {
+                id: true,
+                instagram: true,
+                linkedin: true,
+                facebook: true,
+                youtube: true,
+                twitter: true,
+                tiktok: true,
+              },
+            },
             ultimoLogin: true,
             UsuariosInformation: {
               select: usuarioInformacoesSelect,
@@ -654,7 +676,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
               },
             },
             UsuariosVerificacaoEmail: {
-              select: emailVerificationSelect,
+              select: UsuariosVerificacaoEmailSelect,
             },
           },
         },
@@ -695,13 +717,13 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
     }
 
     const usuarioRecord = sessionRecord.Usuarios;
-    const { UsuariosVerificacaoEmail: emailVerification, UsuariosRedesSociais, UsuariosEnderecos, ...usuarioSemVerificacao } = usuarioRecord;
-    const verification = normalizeEmailVerification(emailVerification);
+    const { UsuariosVerificacaoEmail: UsuariosVerificacaoEmail, UsuariosRedesSociais, UsuariosEnderecos, ...UsuariosSemVerificacao } = usuarioRecord;
+    const verification = normalizeEmailVerification(UsuariosVerificacaoEmail);
     const usuarioComInformacoes = mergeUsuarioInformacoes({
-      ...usuarioSemVerificacao,
+      ...UsuariosSemVerificacao,
       emailVerificado: verification.emailVerificado,
       emailVerificadoEm: verification.emailVerificadoEm,
-      emailVerification: buildEmailVerificationSummary(emailVerification),
+      UsuariosVerificacaoEmail: buildEmailVerificationSummary(UsuariosVerificacaoEmail),
       redesSociais: UsuariosRedesSociais,
       UsuariosEnderecos,
     });
@@ -810,7 +832,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
 
     setRefreshTokenCookie(res, tokens.refreshToken, sessionRecord.rememberMe);
 
-    const socialLinks = mapSocialLinks(usuario.UsuariosRedesSociais);
+    const socialLinks = mapSocialLinks(usuario.redesSociais);
 
     const responseData = {
       id: usuario.id,
@@ -833,7 +855,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       aceitarTermos: usuario.aceitarTermos,
       informacoes: usuario.informacoes,
       socialLinks,
-      enderecos: usuario.enderecos,
+      enderecos: usuario.UsuariosEnderecos,
     };
 
     log.info(
@@ -935,7 +957,17 @@ export const obterPerfil = async (req: Request, res: Response, next: NextFunctio
         ultimoLogin: true,
         criadoEm: true,
         atualizadoEm: true,
-        ...usuarioRedesSociaisSelect,
+        UsuariosRedesSociais: {
+          select: {
+            id: true,
+            instagram: true,
+            linkedin: true,
+            facebook: true,
+            youtube: true,
+            twitter: true,
+            tiktok: true,
+          },
+        },
         codUsuario: true,
         UsuariosInformation: {
           select: usuarioInformacoesSelect,
@@ -953,21 +985,21 @@ export const obterPerfil = async (req: Request, res: Response, next: NextFunctio
           },
         },
         UsuariosVerificacaoEmail: {
-          select: emailVerificationSelect,
+          select: UsuariosVerificacaoEmailSelect,
         },
         // Estatísticas de pagamentos removidas
       },
     });
 
-    const { UsuariosVerificacaoEmail: emailVerification, UsuariosRedesSociais, UsuariosEnderecos, ...usuarioSemVerificacao } = usuarioDb ?? {};
-    const verification = normalizeEmailVerification(emailVerification);
+    const { UsuariosVerificacaoEmail: UsuariosVerificacaoEmail, UsuariosRedesSociais, UsuariosEnderecos, ...UsuariosSemVerificacao } = usuarioDb ?? {};
+    const verification = normalizeEmailVerification(UsuariosVerificacaoEmail);
     const usuario = attachEnderecoResumo(
       usuarioDb
         ? mergeUsuarioInformacoes({
-            ...usuarioSemVerificacao,
+            ...UsuariosSemVerificacao,
             emailVerificado: verification.emailVerificado,
             emailVerificadoEm: verification.emailVerificadoEm,
-            emailVerification: buildEmailVerificationSummary(emailVerification),
+            UsuariosVerificacaoEmail: buildEmailVerificationSummary(UsuariosVerificacaoEmail),
             redesSociais: UsuariosRedesSociais,
             UsuariosEnderecos,
           })
@@ -1024,7 +1056,7 @@ export const getControllerStats = () => {
     module: 'usuario-controller',
     version: '6.0.0',
     features: {
-      emailVerificationRequired: true,
+      UsuariosVerificacaoEmailRequired: true,
       rateLimitingIntegrated: true,
       correlationIdTracking: true,
       securePasswordHandling: true,

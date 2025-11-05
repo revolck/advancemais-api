@@ -16,7 +16,7 @@ export const teamService = {
           id: true,
           ordem: true,
           status: true,
-          team: {
+          WebsiteTeam: {
             select: { id: true, photoUrl: true, nome: true, cargo: true },
           },
         },
@@ -32,7 +32,7 @@ export const teamService = {
         id: true,
         ordem: true,
         status: true,
-        team: {
+        WebsiteTeam: {
           select: { id: true, photoUrl: true, nome: true, cargo: true },
         },
       },
@@ -47,7 +47,7 @@ export const teamService = {
         id: true,
         ordem: true,
         status: true,
-        team: {
+        WebsiteTeam: {
           select: { id: true, photoUrl: true, nome: true, cargo: true },
         },
       },
@@ -66,7 +66,7 @@ export const teamService = {
       data: {
         ordem,
         status: data.status ?? 'RASCUNHO',
-        team: {
+        WebsiteTeam: {
           create: {
             photoUrl: data.photoUrl,
             nome: data.nome,
@@ -78,7 +78,7 @@ export const teamService = {
         id: true,
         ordem: true,
         status: true,
-        team: {
+        WebsiteTeam: {
           select: { id: true, photoUrl: true, nome: true, cargo: true },
         },
       },
@@ -125,7 +125,7 @@ export const teamService = {
           ...(data.status !== undefined && { status: data.status }),
           ...(data.photoUrl !== undefined || data.nome !== undefined || data.cargo !== undefined
             ? {
-                team: {
+                WebsiteTeam: {
                   update: {
                     ...(data.photoUrl !== undefined && { photoUrl: data.photoUrl }),
                     ...(data.nome !== undefined && { nome: data.nome }),
@@ -139,7 +139,7 @@ export const teamService = {
           id: true,
           ordem: true,
           status: true,
-          team: {
+          WebsiteTeam: {
             select: { id: true, photoUrl: true, nome: true, cargo: true },
           },
         },
@@ -155,7 +155,7 @@ export const teamService = {
         select: {
           id: true,
           ordem: true,
-          team: { select: { id: true, photoUrl: true, nome: true, cargo: true } },
+          WebsiteTeam: { select: { id: true, photoUrl: true, nome: true, cargo: true } },
         },
       });
       if (!current) throw new Error('Team member não encontrado');
@@ -184,7 +184,7 @@ export const teamService = {
           select: {
             id: true,
             ordem: true,
-            team: {
+            WebsiteTeam: {
               select: { id: true, photoUrl: true, nome: true, cargo: true },
             },
           },

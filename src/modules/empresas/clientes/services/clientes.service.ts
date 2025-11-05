@@ -16,7 +16,7 @@ import { calcularFim, isVigente } from '@/modules/empresas/shared/planos';
 
 const includePlanoEmpresa = {
   include: {
-    empresa: {
+    Usuarios: {
       select: {
         id: true,
         nomeCompleto: true,
@@ -27,7 +27,7 @@ const includePlanoEmpresa = {
         codUsuario: true,
         role: true,
         tipoUsuario: true,
-        enderecos: {
+        UsuariosEnderecos: {
           orderBy: { criadoEm: 'asc' },
           select: {
             id: true,
@@ -41,7 +41,7 @@ const includePlanoEmpresa = {
         },
       },
     },
-    plano: true,
+    PlanosEmpresariais: true,
   },
 } as const;
 
@@ -72,8 +72,8 @@ const transformarPlano = (plano: EmpresasPlanoWithRelations) => {
       : null;
 
   const empresaUsuarioRaw =
-    plano.empresa && plano.empresa.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
-      ? plano.empresa
+    plano.Usuarios && plano.Usuarios.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
+      ? plano.Usuarios
       : null;
   const empresaUsuario = empresaUsuarioRaw
     ? attachEnderecoResumo(mergeUsuarioInformacoes(empresaUsuarioRaw))!
@@ -87,14 +87,14 @@ const transformarPlano = (plano: EmpresasPlanoWithRelations) => {
         cidade: empresaUsuario.cidade,
         estado: empresaUsuario.estado,
         descricao: empresaUsuario.descricao,
-        socialLinks: mapSocialLinks(empresaUsuario.UsuariosRedesSociais),
+        socialLinks: mapSocialLinks(empresaUsuario.redesSociais),
         codUsuario: empresaUsuario.codUsuario,
-        enderecos: empresaUsuario.enderecos,
+        enderecos: empresaUsuario.UsuariosEnderecos,
         informacoes: empresaUsuario.informacoes,
       }
     : null;
 
-  const { empresa: _empresa, ...restoPlano } = plano;
+  const { Usuarios: _Usuarios, PlanosEmpresariais: _PlanosEmpresariais, ...restoPlano } = plano;
 
   return {
     ...restoPlano,
@@ -149,13 +149,13 @@ export const clientesService = {
         OR: [{ fim: null }, { fim: { gt: now } }],
       },
       orderBy: { inicio: 'desc' },
-      include: { plano: true },
+      include: { PlanosEmpresariais: true },
     });
 
     if (!plano) return null;
 
     return {
-      ...plano,
+      ...(plano.PlanosEmpresariais as any),
       modo: plano.modo,
     };
   },
@@ -202,7 +202,7 @@ export const clientesService = {
     const updates: Prisma.EmpresasPlanoUpdateInput = {};
 
     if (data.planosEmpresariaisId !== undefined) {
-      updates.plano = { connect: { id: data.planosEmpresariaisId } };
+      updates.PlanosEmpresariais = { connect: { id: data.planosEmpresariaisId } };
     }
 
     let inicio = planoAtual.inicio ?? null;

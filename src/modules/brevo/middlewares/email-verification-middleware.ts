@@ -14,11 +14,11 @@ import { logger } from '@/utils/logger';
  * - Execução em background
  */
 export class EmailVerificationMiddleware {
-  private emailVerificationService: EmailVerificationService;
+  private UsuariosVerificacaoEmailService: EmailVerificationService;
   private readonly log = logger.child({ module: 'EmailVerificationMiddleware' });
 
   constructor() {
-    this.emailVerificationService = new EmailVerificationService();
+    this.UsuariosVerificacaoEmailService = new EmailVerificationService();
   }
 
   /**
@@ -68,12 +68,12 @@ export class EmailVerificationMiddleware {
     try {
       log.info('🔍 Extraindo dados do res.locals para verificação');
 
-      if (!res.locals?.usuarioCriado?.usuario) {
-        log.warn('⚠️ res.locals.usuarioCriado.usuario não existe');
+      if (!res.locals?.UsuariosCriado?.Usuarios) {
+        log.warn('⚠️ res.locals.UsuariosCriado.Usuarios não existe');
         return null;
       }
 
-      const userData = res.locals.usuarioCriado.usuario;
+      const userData = res.locals.UsuariosCriado.Usuarios;
 
       // Validação rigorosa
       const requiredFields = ['id', 'email', 'nomeCompleto', 'tipoUsuario'];
@@ -125,7 +125,7 @@ export class EmailVerificationMiddleware {
         log.info({ email: userData.email }, '📧 Iniciando envio assíncrono de verificação');
 
         const startTime = Date.now();
-        const result = await this.emailVerificationService.sendVerificationEmail(userData);
+        const result = await this.UsuariosVerificacaoEmailService.sendVerificationEmail(userData);
         const duration = Date.now() - startTime;
 
         if (result.success) {

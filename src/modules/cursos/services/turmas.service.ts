@@ -455,7 +455,7 @@ export const turmasService = {
           cursoId: true,
           vagasTotais: true,
           vagasDisponiveis: true,
-          inscricoes: { select: { id: true } },
+          CursosTurmasInscricoes: { select: { id: true } },
         },
       });
 
@@ -465,7 +465,7 @@ export const turmasService = {
         throw error;
       }
 
-      const inscricoesAtivas = turma.inscricoes.length;
+      const inscricoesAtivas = turma.CursosTurmasInscricoes.length;
       const vagasTotais = data.vagasTotais ?? turma.vagasTotais;
 
       if (vagasTotais < inscricoesAtivas) {

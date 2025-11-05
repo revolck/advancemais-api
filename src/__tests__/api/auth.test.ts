@@ -40,8 +40,8 @@ describe('API - Autenticação', () => {
       expect(response.body).toHaveProperty('token');
       expect(response.body).toHaveProperty('refreshToken');
       expect(response.body).toHaveProperty('usuario');
-      expect(response.body.usuario).toHaveProperty('id', testUser.id);
-      expect(response.body.usuario).toHaveProperty('email', testUser.email);
+      expect(response.body.Usuarios).toHaveProperty('id', testUser.id);
+      expect(response.body.Usuarios).toHaveProperty('email', testUser.email);
     });
 
     it('deve retornar erro 401 com credenciais inválidas', async () => {

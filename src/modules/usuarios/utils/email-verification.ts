@@ -1,6 +1,6 @@
 import type { UsuariosVerificacaoEmail } from '@prisma/client';
 
-export const emailVerificationSelect = {
+export const UsuariosVerificacaoEmailSelect = {
   emailVerificado: true,
   emailVerificadoEm: true,
   emailVerificationToken: true,

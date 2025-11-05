@@ -2,13 +2,13 @@ import { Prisma } from '@prisma/client';
 
 export const agendaWithRelations = Prisma.validator<Prisma.CursosTurmasAgendaDefaultArgs>()({
   include: {
-    turma: {
+    CursosTurmas: {
       select: {
         id: true,
         nome: true,
         codigo: true,
         cursoId: true,
-        curso: {
+        Cursos: {
           select: {
             id: true,
             nome: true,
@@ -16,7 +16,7 @@ export const agendaWithRelations = Prisma.validator<Prisma.CursosTurmasAgendaDef
         },
       },
     },
-    aula: {
+    CursosTurmasAulas: {
       select: {
         id: true,
         nome: true,
@@ -24,7 +24,7 @@ export const agendaWithRelations = Prisma.validator<Prisma.CursosTurmasAgendaDef
         moduloId: true,
       },
     },
-    prova: {
+    CursosTurmasProvas: {
       select: {
         id: true,
         titulo: true,
@@ -47,35 +47,35 @@ export const mapAgendaItem = (agenda: AgendaWithRelations) => ({
   fim: agenda.fim?.toISOString() ?? null,
   criadoEm: agenda.criadoEm.toISOString(),
   atualizadoEm: agenda.atualizadoEm.toISOString(),
-  turma: agenda.turma
+  turma: agenda.CursosTurmas
     ? {
-        id: agenda.turma.id,
-        nome: agenda.turma.nome,
-        codigo: agenda.turma.codigo,
-        cursoId: agenda.turma.cursoId,
-        curso: agenda.turma.curso
+        id: agenda.CursosTurmas.id,
+        nome: agenda.CursosTurmas.nome,
+        codigo: agenda.CursosTurmas.codigo,
+        cursoId: agenda.CursosTurmas.cursoId,
+        curso: agenda.CursosTurmas.Cursos
           ? {
-              id: agenda.turma.curso.id,
-              nome: agenda.turma.curso.nome,
+              id: agenda.CursosTurmas.Cursos.id,
+              nome: agenda.CursosTurmas.Cursos.nome,
             }
           : null,
       }
     : null,
-  referencia: agenda.aula
+  referencia: agenda.CursosTurmasAulas
     ? {
         tipo: 'AULA' as const,
-        id: agenda.aula.id,
-        nome: agenda.aula.nome,
-        moduloId: agenda.aula.moduloId ?? null,
-        ordem: agenda.aula.ordem,
+        id: agenda.CursosTurmasAulas.id,
+        nome: agenda.CursosTurmasAulas.nome,
+        moduloId: agenda.CursosTurmasAulas.moduloId ?? null,
+        ordem: agenda.CursosTurmasAulas.ordem,
       }
-    : agenda.prova
+    : agenda.CursosTurmasProvas
       ? {
           tipo: 'PROVA' as const,
-          id: agenda.prova.id,
-          titulo: agenda.prova.titulo,
-          etiqueta: agenda.prova.etiqueta,
-          moduloId: agenda.prova.moduloId ?? null,
+          id: agenda.CursosTurmasProvas.id,
+          titulo: agenda.CursosTurmasProvas.titulo,
+          etiqueta: agenda.CursosTurmasProvas.etiqueta,
+          moduloId: agenda.CursosTurmasProvas.moduloId ?? null,
         }
       : null,
 });

@@ -45,7 +45,7 @@ router.get('/', publicCache, (_req, res) => {
     endpoints: {
       areasInteresse: '/areas-interesse',
       subareasInteresse: '/subareas-interesse',
-      curriculos: '/curriculos',
+      UsuariosCurriculos: '/curriculos',
       aplicar: '/aplicar',
       vagas: '/vagas',
     },
@@ -129,13 +129,13 @@ router.get('/vagas', publicCache, async (req, res) => {
     modalidade: (req.query.modalidade as any) || undefined,
     regime: (req.query.regime as any) || undefined,
     senioridade: (req.query.senioridade as any) || undefined,
-    areaInteresseId: req.query.areaInteresseId ? Number(req.query.areaInteresseId) : undefined,
-    subareaInteresseId: req.query.subareaInteresseId
-      ? Number(req.query.subareaInteresseId)
+    areaInteresseId: req.query.CandidatosAreasInteresseId ? Number(req.query.CandidatosAreasInteresseId) : undefined,
+    subareaInteresseId: req.query.CandidatosSubareasInteresseId
+      ? Number(req.query.CandidatosSubareasInteresseId)
       : undefined,
     cidade: (req.query.cidade as string) || undefined,
     estado: (req.query.estado as string) || undefined,
-    empresaId: (req.query.empresaId as string) || undefined,
+    empresaId: (req.query.UsuariosId as string) || undefined,
     codUsuario: (req.query.codUsuario as string) || undefined,
     period: (req.query.period as any) || undefined,
   });

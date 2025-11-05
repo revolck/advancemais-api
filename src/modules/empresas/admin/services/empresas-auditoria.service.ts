@@ -55,9 +55,9 @@ class EmpresasAuditoriaService {
     });
 
     // Buscar informações dos usuários separadamente
-    const alteradoPorIds = [...new Set(auditoria.map((item) => item.alteradoPor))];
+    const alteradoPorIds = [...new Set(auditoria.map((item: any) => item.alteradoPor))];
     const usuarios = await prisma.usuarios.findMany({
-      where: { id: { in: alteradoPorIds } },
+      where: { id: { in: alteradoPorIds as string[] } },
       select: {
         id: true,
         nomeCompleto: true,
@@ -65,7 +65,7 @@ class EmpresasAuditoriaService {
       },
     });
 
-    const usuariosMap = new Map(usuarios.map((user) => [user.id, user]));
+    const usuariosMap = new Map(usuarios.map((user: any) => [user.id, user]));
 
     return auditoria.map((item) => ({
       id: item.id,
@@ -392,7 +392,7 @@ class EmpresasAuditoriaService {
       planoAnterior: planoAnterior
         ? {
             id: planoAnterior.id,
-            nome: planoAnterior.plano?.nome || planoAnterior.nome,
+            nome: planoAnterior.PlanosEmpresariais?.nome || planoAnterior.nome,
             modo: planoAnterior.modo,
             status: planoAnterior.status,
             modeloPagamento: planoAnterior.modeloPagamento,
@@ -404,7 +404,7 @@ class EmpresasAuditoriaService {
       planoNovo: planoNovo
         ? {
             id: planoNovo.id,
-            nome: planoNovo.plano?.nome || planoNovo.nome,
+            nome: planoNovo.PlanosEmpresariais?.nome || planoNovo.nome,
             modo: planoNovo.modo,
             status: planoNovo.status,
             modeloPagamento: planoNovo.modeloPagamento,
@@ -418,7 +418,7 @@ class EmpresasAuditoriaService {
     let descricao = '';
 
     if (acao === EmpresasAuditoriaAcao.PLANO_ASSIGNADO) {
-      const nomePlano = planoNovo?.plano?.nome || planoNovo?.nome || 'Plano não identificado';
+      const nomePlano = planoNovo?.PlanosEmpresariais?.nome || planoNovo?.nome || 'Plano não identificado';
       const modo = modoTexto[planoNovo?.modo] || planoNovo?.modo || 'modo não definido';
 
       descricao = `Plano atribuído: ${nomePlano} - Vínculo: ${modo}`;
@@ -440,8 +440,8 @@ class EmpresasAuditoriaService {
         descricao += ` - Período de teste: ${planoNovo.duracaoEmDias} dias`;
       }
     } else if (acao === EmpresasAuditoriaAcao.PLANO_ATUALIZADO) {
-      const nomeAnterior = planoAnterior?.plano?.nome || planoAnterior?.nome || 'Plano anterior';
-      const nomeNovo = planoNovo?.plano?.nome || planoNovo?.nome || 'Plano novo';
+      const nomeAnterior = planoAnterior?.PlanosEmpresariais?.nome || planoAnterior?.nome || 'Plano anterior';
+      const nomeNovo = planoNovo?.PlanosEmpresariais?.nome || planoNovo?.nome || 'Plano novo';
       const modoAnterior = modoTexto[planoAnterior?.modo] || planoAnterior?.modo || 'não definido';
       const modoNovo = modoTexto[planoNovo?.modo] || planoNovo?.modo || 'não definido';
 
@@ -473,12 +473,12 @@ class EmpresasAuditoriaService {
       }
     } else if (acao === EmpresasAuditoriaAcao.PLANO_CANCELADO) {
       const nomePlano =
-        planoAnterior?.plano?.nome || planoAnterior?.nome || 'Plano não identificado';
+        planoAnterior?.PlanosEmpresariais?.nome || planoAnterior?.nome || 'Plano não identificado';
       const modo = modoTexto[planoAnterior?.modo] || planoAnterior?.modo || 'não definido';
       descricao = `Plano cancelado: ${nomePlano} (${modo})`;
     } else if (acao === EmpresasAuditoriaAcao.PLANO_EXPIRADO) {
       const nomePlano =
-        planoAnterior?.plano?.nome || planoAnterior?.nome || 'Plano não identificado';
+        planoAnterior?.PlanosEmpresariais?.nome || planoAnterior?.nome || 'Plano não identificado';
       const modo = modoTexto[planoAnterior?.modo] || planoAnterior?.modo || 'não definido';
       descricao = `Plano expirado: ${nomePlano} (${modo})`;
     }

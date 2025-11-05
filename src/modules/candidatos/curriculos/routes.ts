@@ -10,7 +10,7 @@ const canViewCurriculos = [Roles.ALUNO_CANDIDATO, Roles.ADMIN, Roles.MODERADOR];
 router.get('/', supabaseAuthMiddleware(candidateOnly), CurriculosController.list);
 /**
  * @openapi
- * /api/v1/candidatos/curriculos:
+ * /api/v1/candidatos/UsuariosCurriculos:
  *   get:
  *     summary: Listar currículos do candidato
  *     tags: [Candidatos]
@@ -54,7 +54,7 @@ router.get('/:id', supabaseAuthMiddleware(canViewCurriculos), CurriculosControll
 router.post('/', supabaseAuthMiddleware(candidateOnly), CurriculosController.create);
 /**
  * @openapi
- * /api/v1/candidatos/curriculos:
+ * /api/v1/candidatos/UsuariosCurriculos:
  *   post:
  *     summary: Criar currículo (até 5 por candidato)
  *     description: "Registra um novo currículo. Ao cadastrar o primeiro currículo, o perfil do aluno passa a ser considerado candidato ativo."

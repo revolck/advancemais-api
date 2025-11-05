@@ -16,9 +16,9 @@ import {
 } from '@/modules/cupons/validators/cupons.schema';
 
 const cupomInclude = {
-  cursos: {
+  CuponsDescontoCursos: {
     include: {
-      curso: {
+      Cursos: {
         select: {
           id: true,
           codigo: true,
@@ -27,9 +27,9 @@ const cupomInclude = {
       },
     },
   },
-  planos: {
+  CuponsDescontoPlanos: {
     include: {
-      plano: {
+      PlanosEmpresariais: {
         select: {
           id: true,
           nome: true,
@@ -37,7 +37,7 @@ const cupomInclude = {
       },
     },
   },
-  criadoPor: {
+  Usuarios: {
     select: {
       id: true,
       nomeCompleto: true,
@@ -86,17 +86,17 @@ const transformCupom = (cupom: CupomWithRelations) => ({
   status: cupom.status,
   criadoEm: cupom.criadoEm,
   atualizadoEm: cupom.atualizadoEm,
-  criadoPor: cupom.criadoPor,
+  criadoPor: cupom.Usuarios,
   cursosAplicados:
-    cupom.cursos?.map((item) => ({
+    cupom.CuponsDescontoCursos?.map((item) => ({
       cursoId: item.cursoId,
-      codigo: item.curso?.codigo ?? null,
-      nome: item.curso?.nome ?? null,
+      codigo: item.Cursos?.codigo ?? null,
+      nome: item.Cursos?.nome ?? null,
     })) ?? [],
   planosAplicados:
-    cupom.planos?.map((item) => ({
+    cupom.CuponsDescontoPlanos?.map((item) => ({
       planoId: item.planoId,
-      nome: item.plano?.nome ?? null,
+      nome: item.PlanosEmpresariais?.nome ?? null,
     })) ?? [],
 });
 
@@ -141,8 +141,8 @@ const carregarCupom = async (id: string) => {
   const cupom = await prisma.cuponsDesconto.findUnique({
     where: { id },
     include: {
-      cursos: true,
-      planos: true,
+      CuponsDescontoCursos: true,
+      CuponsDescontoPlanos: true,
     },
   });
 
@@ -269,8 +269,8 @@ export const cuponsService = {
     const limitePorUsuarioTipoFinal = data.limitePorUsuarioTipo ?? existente.limitePorUsuarioTipo;
     const periodoTipoFinal = data.periodoTipo ?? existente.periodoTipo;
 
-    const cursosIdsFinais = data.cursosIds ?? existente.cursos.map((curso) => curso.cursoId);
-    const planosIdsFinais = data.planosIds ?? existente.planos.map((plano) => plano.planoId);
+    const cursosIdsFinais = data.cursosIds ?? existente.CuponsDescontoCursos.map((curso) => curso.cursoId);
+    const planosIdsFinais = data.planosIds ?? existente.CuponsDescontoPlanos.map((plano) => plano.planoId);
 
     const valorPercentualFinal =
       tipoDescontoFinal === CuponsTipoDesconto.PORCENTAGEM

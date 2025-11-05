@@ -28,7 +28,7 @@ export class ScriptsService {
           parametros: input.parametros,
         },
         include: {
-          executadoPorUsuario: {
+          Usuarios: {
             select: {
               id: true,
               nomeCompleto: true,
@@ -59,7 +59,7 @@ export class ScriptsService {
       const script = await prisma.auditoriaScripts.findUnique({
         where: { id },
         include: {
-          executadoPorUsuario: {
+          Usuarios: {
             select: {
               id: true,
               nomeCompleto: true,
@@ -103,7 +103,7 @@ export class ScriptsService {
             duracaoMs,
           },
           include: {
-            executadoPorUsuario: {
+            Usuarios: {
               select: {
                 id: true,
                 nomeCompleto: true,
@@ -128,7 +128,7 @@ export class ScriptsService {
             duracaoMs,
           },
           include: {
-            executadoPorUsuario: {
+            Usuarios: {
               select: {
                 id: true,
                 nomeCompleto: true,
@@ -196,7 +196,7 @@ export class ScriptsService {
         prisma.auditoriaScripts.findMany({
           where,
           include: {
-            executadoPorUsuario: {
+            Usuarios: {
               select: {
                 id: true,
                 nomeCompleto: true,
@@ -235,7 +235,7 @@ export class ScriptsService {
       const script = await prisma.auditoriaScripts.findUnique({
         where: { id },
         include: {
-          executadoPorUsuario: {
+          Usuarios: {
             select: {
               id: true,
               nomeCompleto: true,
@@ -269,7 +269,7 @@ export class ScriptsService {
         where: { id },
         data: updates,
         include: {
-          executadoPorUsuario: {
+          Usuarios: {
             select: {
               id: true,
               nomeCompleto: true,
@@ -311,7 +311,7 @@ export class ScriptsService {
           status: 'CANCELADO' as any,
         },
         include: {
-          executadoPorUsuario: {
+          Usuarios: {
             select: {
               id: true,
               nomeCompleto: true,
@@ -390,7 +390,7 @@ export class ScriptsService {
       duracaoMs: script.duracaoMs,
       criadoEm: script.criadoEm,
       executadoEm: script.executadoEm,
-      executadoPorUsuario: script.executadoPorUsuario,
+      Usuarios: script.Usuarios,
     };
   }
 

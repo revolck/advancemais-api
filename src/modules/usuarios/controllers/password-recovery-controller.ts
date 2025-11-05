@@ -141,7 +141,7 @@ export class PasswordRecoveryController {
           id: true,
           email: true,
           nomeCompleto: true,
-          recuperacaoSenha: {
+          UsuariosRecuperacaoSenha: {
             select: {
               tokenRecuperacao: true,
               tokenRecuperacaoExp: true,
@@ -163,7 +163,7 @@ export class PasswordRecoveryController {
       const cooldownMinutes = brevoConfig.passwordRecovery.cooldownMinutes;
       const maxAttempts = brevoConfig.passwordRecovery.maxAttempts;
 
-      const recuperacao = usuario.recuperacaoSenha;
+      const recuperacao = usuario.UsuariosRecuperacaoSenha;
 
       if (recuperacao?.ultimaTentativaRecuperacao) {
         const tempoCooldown = new Date(
@@ -263,13 +263,13 @@ export class PasswordRecoveryController {
       const recuperacao = await prisma.usuariosRecuperacaoSenha.findFirst({
         where: {
           tokenRecuperacao: token,
-          usuario: {
+          Usuarios: {
             status: 'ATIVO',
           },
         },
         select: {
           tokenRecuperacaoExp: true,
-          usuario: {
+          Usuarios: {
             select: {
               id: true,
               email: true,
@@ -279,7 +279,7 @@ export class PasswordRecoveryController {
         },
       });
 
-      if (!recuperacao || !recuperacao.usuario) {
+      if (!recuperacao || !recuperacao.Usuarios) {
         return res.status(400).json({
           message: 'Token inválido ou expirado',
         });
@@ -289,14 +289,14 @@ export class PasswordRecoveryController {
       if (!recuperacao.tokenRecuperacaoExp || new Date() > recuperacao.tokenRecuperacaoExp) {
         // Remove token expirado
         await prisma.usuariosRecuperacaoSenha.update({
-          where: { usuarioId: recuperacao.usuario.id },
+          where: { usuarioId: recuperacao.Usuarios.id },
           data: {
             tokenRecuperacao: null,
             tokenRecuperacaoExp: null,
           },
         });
 
-        await invalidateUserCache(recuperacao.usuario);
+        await invalidateUserCache(recuperacao.Usuarios);
 
         return res.status(400).json({
           message: 'Token expirado. Solicite uma nova recuperação',
@@ -305,9 +305,9 @@ export class PasswordRecoveryController {
 
       res.json({
         message: 'Token válido',
-        usuario: {
-          email: recuperacao.usuario.email,
-          nomeCompleto: recuperacao.usuario.nomeCompleto,
+          Usuarios: {
+          email: recuperacao.Usuarios.email,
+          nomeCompleto: recuperacao.Usuarios.nomeCompleto,
         },
       });
     } catch (error) {
@@ -356,13 +356,13 @@ export class PasswordRecoveryController {
       const recuperacao = await prisma.usuariosRecuperacaoSenha.findFirst({
         where: {
           tokenRecuperacao: token,
-          usuario: {
+          Usuarios: {
             status: 'ATIVO',
           },
         },
         select: {
           tokenRecuperacaoExp: true,
-          usuario: {
+          Usuarios: {
             select: {
               id: true,
               email: true,
@@ -373,7 +373,7 @@ export class PasswordRecoveryController {
         },
       });
 
-      if (!recuperacao || !recuperacao.usuario) {
+      if (!recuperacao || !recuperacao.Usuarios) {
         return res.status(400).json({
           message: 'Token inválido ou expirado',
         });
@@ -382,14 +382,14 @@ export class PasswordRecoveryController {
       // Verifica se token não expirou
       if (!recuperacao.tokenRecuperacaoExp || new Date() > recuperacao.tokenRecuperacaoExp) {
         await prisma.usuariosRecuperacaoSenha.update({
-          where: { usuarioId: recuperacao.usuario.id },
+          where: { usuarioId: recuperacao.Usuarios.id },
           data: {
             tokenRecuperacao: null,
             tokenRecuperacaoExp: null,
           },
         });
 
-        await invalidateUserCache(recuperacao.usuario);
+        await invalidateUserCache(recuperacao.Usuarios);
 
         return res.status(400).json({
           message: 'Token expirado. Solicite uma nova recuperação',
@@ -397,7 +397,7 @@ export class PasswordRecoveryController {
       }
 
       // Verifica se a nova senha é diferente da atual
-      const senhaIgual = await bcrypt.compare(novaSenha, recuperacao.usuario.senha);
+      const senhaIgual = await bcrypt.compare(novaSenha, recuperacao.Usuarios.senha);
       if (senhaIgual) {
         return res.status(400).json({
           message: 'A nova senha deve ser diferente da senha atual',
@@ -410,14 +410,14 @@ export class PasswordRecoveryController {
       // Atualiza senha e remove token
       await prisma.$transaction([
         prisma.usuarios.update({
-          where: { id: recuperacao.usuario.id },
+          where: { id: recuperacao.Usuarios.id },
           data: {
             senha: novaSenhaHash,
             atualizadoEm: new Date(),
           },
         }),
         prisma.usuariosRecuperacaoSenha.update({
-          where: { usuarioId: recuperacao.usuario.id },
+          where: { usuarioId: recuperacao.Usuarios.id },
           data: {
             tokenRecuperacao: null,
             tokenRecuperacaoExp: null,
@@ -427,7 +427,7 @@ export class PasswordRecoveryController {
         }),
       ]);
 
-      await invalidateUserCache(recuperacao.usuario);
+      await invalidateUserCache(recuperacao.Usuarios);
 
       res.json({
         message: 'Senha redefinida com sucesso',

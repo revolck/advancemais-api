@@ -61,9 +61,9 @@ const ensureAulaBelongsToTurma = async (
     where: {
       id: aulaId,
       turmaId,
-      turma: { cursoId },
+      CursosTurmas: { cursoId },
     },
-    select: { id: true, turma: { select: { metodo: true } } },
+    select: { id: true, CursosTurmas: { select: { metodo: true } } },
   });
 
   if (!aula) {
@@ -72,7 +72,7 @@ const ensureAulaBelongsToTurma = async (
     throw error;
   }
 
-  return { id: aula.id, metodo: aula.turma.metodo };
+  return { id: aula.id, metodo: aula.CursosTurmas.metodo };
 };
 
 const ensureModuloBelongsToTurma = async (

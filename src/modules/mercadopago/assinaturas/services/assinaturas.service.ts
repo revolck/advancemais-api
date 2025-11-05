@@ -382,7 +382,7 @@ export const assinaturasService = {
     const usuario = await prisma.usuarios.findUnique({
       where: { id: params.usuarioId },
       include: {
-        enderecos: { take: 1, orderBy: { criadoEm: 'asc' } },
+        UsuariosEnderecos: { take: 1, orderBy: { criadoEm: 'asc' } },
         UsuariosInformation: { select: { telefone: true } },
       },
     });
@@ -440,7 +440,7 @@ export const assinaturasService = {
       if (cpf) return { type: 'CPF', number: cpf };
       return undefined;
     })();
-    const endereco = usuario.enderecos?.[0];
+    const endereco = usuario.UsuariosEnderecos?.[0];
     const payerAddress = endereco
       ? {
           zip_code: sanitizeDigits(endereco.cep ?? ''),
@@ -451,7 +451,7 @@ export const assinaturasService = {
           federal_unit: endereco.estado ?? undefined,
         }
       : undefined;
-    const phoneDigits = sanitizeDigits(usuario.UsuariosInformation?.telefone ?? '');
+    const phoneDigits = sanitizeDigits((usuario as any).UsuariosInformation?.telefone ?? '');
     const payerPhone =
       phoneDigits.length >= 10
         ? {
@@ -1011,11 +1011,11 @@ export const assinaturasService = {
     return { cancelled: true };
   },
 
-  async downgrade(usuarioId: string, novoPlanosEmpresariaisId: string) {
+  async downgrade(usuarioId: string, novoplanosEmpresariaisId: string) {
     // Cria nova vinculação com downgrade e coloca vagas em rascunho
     const result = await clientesService.assign({
       usuarioId,
-      planosEmpresariaisId: novoPlanosEmpresariaisId,
+      planosEmpresariaisId: novoplanosEmpresariaisId,
       modo: 'parceiro',
     } as any);
 
@@ -1026,7 +1026,7 @@ export const assinaturasService = {
         select: { id: true, email: true, nomeCompleto: true },
       });
       const plano = await prisma.planosEmpresariais.findUnique({
-        where: { id: novoPlanosEmpresariaisId },
+        where: { id: novoplanosEmpresariaisId },
         select: { nome: true, quantidadeVagas: true },
       });
       if (usuario?.email) {
@@ -1045,18 +1045,18 @@ export const assinaturasService = {
       }
     } catch (err) {
       logger.warn(
-        { err, usuarioId, novoPlanosEmpresariaisId },
+        { err, usuarioId, novoplanosEmpresariaisId },
         'Falha ao enviar email de downgrade',
       );
     }
     return result;
   },
 
-  async upgrade(usuarioId: string, novoPlanosEmpresariaisId: string) {
+  async upgrade(usuarioId: string, novoplanosEmpresariaisId: string) {
     // Cria nova vinculação sem alterar status das vagas
     const result = await clientesService.assign({
       usuarioId,
-      planosEmpresariaisId: novoPlanosEmpresariaisId,
+      planosEmpresariaisId: novoplanosEmpresariaisId,
       modo: 'parceiro',
     } as any);
     try {
@@ -1065,7 +1065,7 @@ export const assinaturasService = {
         select: { id: true, email: true, nomeCompleto: true },
       });
       const plano = await prisma.planosEmpresariais.findUnique({
-        where: { id: novoPlanosEmpresariaisId },
+        where: { id: novoplanosEmpresariaisId },
         select: { nome: true, quantidadeVagas: true },
       });
       if (usuario?.email) {
@@ -1083,7 +1083,7 @@ export const assinaturasService = {
         );
       }
     } catch (err) {
-      logger.warn({ err, usuarioId, novoPlanosEmpresariaisId }, 'Falha ao enviar email de upgrade');
+      logger.warn({ err, usuarioId, novoplanosEmpresariaisId }, 'Falha ao enviar email de upgrade');
     }
     return result;
   },
@@ -1092,7 +1092,7 @@ export const assinaturasService = {
     assertMercadoPagoConfigured();
     const plano = await prisma.empresasPlano.findFirst({
       where: { usuarioId, status: EmpresasPlanoStatus.ATIVO },
-      include: { plano: true },
+      include: { PlanosEmpresariais: true },
       orderBy: { criadoEm: 'desc' },
     });
     if (!plano) throw new Error('Plano ativo não encontrado para o usuário');
@@ -1100,8 +1100,8 @@ export const assinaturasService = {
     // Gera nova cobrança (Preference) e envia email com link
     const mp = mpClient!;
     const preference = new Preference(mp);
-    const valor = parseFloat(plano.plano.valor);
-    const titulo = plano.plano.nome + ' - Renovação';
+    const valor = parseFloat(plano.PlanosEmpresariais.valor);
+    const titulo = plano.PlanosEmpresariais.nome + ' - Renovação';
     const { success, failure, pending } = resolveCheckoutReturnUrls();
 
     const usuario = await prisma.usuarios.findUnique({
@@ -1117,7 +1117,7 @@ export const assinaturasService = {
         back_urls: { success, failure, pending },
         items: [
           {
-            id: plano.plano.id,
+            id: plano.PlanosEmpresariais.id,
             title: titulo,
             quantity: 1,
             unit_price: valor,

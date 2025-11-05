@@ -528,7 +528,7 @@ export const transacoesController = {
       res.json(result);
     } catch (error: any) {
       transacoesControllerLogger.error(
-        { err: error, empresaId: req.params.empresaId },
+        { err: error, empresaId: req.params.UsuariosId },
         'Erro ao obter transações da empresa',
       );
       res.status(500).json({

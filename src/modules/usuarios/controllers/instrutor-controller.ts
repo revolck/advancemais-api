@@ -17,6 +17,7 @@ import {
   mapSocialLinks,
 } from '@/modules/usuarios/utils/social-links';
 import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
+import { mergeUsuarioInformacoes } from '@/modules/usuarios/utils/information';
 
 export class InstrutorController {
   /**
@@ -85,7 +86,7 @@ export class InstrutorController {
                     tiktok: true,
                   },
                 },
-                enderecos: {
+                UsuariosEnderecos: {
                   select: {
                     cidade: true,
                     estado: true,
@@ -107,25 +108,28 @@ export class InstrutorController {
         1500,
       );
 
-      const data = instrutores.map((instrutor) => ({
-        id: instrutor.id,
-        codigo: instrutor.codUsuario,
-        nomeCompleto: instrutor.nomeCompleto,
-        email: instrutor.email,
-        cpf: instrutor.cpf,
-        status: instrutor.status,
-        telefone: instrutor.UsuariosInformation?.telefone || null,
-        genero: instrutor.UsuariosInformation?.genero || null,
-        dataNasc: instrutor.UsuariosInformation?.dataNasc || null,
-        descricao: instrutor.UsuariosInformation?.descricao || null,
-        avatarUrl: instrutor.UsuariosInformation?.avatarUrl || null,
-        cidade: instrutor.enderecos[0]?.cidade || null,
-        estado: instrutor.enderecos[0]?.estado || null,
-        criadoEm: instrutor.criadoEm,
-        atualizadoEm: instrutor.atualizadoEm,
-        ultimoLogin: instrutor.ultimoLogin,
-        redesSociais: mapSocialLinks(instrutor.UsuariosRedesSociais),
-      }));
+      const data = instrutores.map((instrutor) => {
+        const merged = mergeUsuarioInformacoes(instrutor);
+        return {
+          id: instrutor.id,
+          codigo: instrutor.codUsuario,
+          nomeCompleto: instrutor.nomeCompleto,
+          email: instrutor.email,
+          cpf: instrutor.cpf,
+          status: instrutor.status,
+          telefone: merged.informacoes?.telefone || null,
+          genero: merged.informacoes?.genero || null,
+          dataNasc: merged.informacoes?.dataNasc || null,
+          descricao: merged.informacoes?.descricao || null,
+          avatarUrl: merged.informacoes?.avatarUrl || null,
+          cidade: instrutor.UsuariosEnderecos[0]?.cidade || null,
+          estado: instrutor.UsuariosEnderecos[0]?.estado || null,
+          criadoEm: instrutor.criadoEm,
+          atualizadoEm: instrutor.atualizadoEm,
+          ultimoLogin: instrutor.ultimoLogin,
+          redesSociais: mapSocialLinks(merged.redesSociais),
+        };
+      });
 
       res.json({
         success: true,
@@ -209,7 +213,7 @@ export class InstrutorController {
                   tiktok: true,
                 },
               },
-              enderecos: {
+              UsuariosEnderecos: {
                 select: {
                   id: true,
                   logradouro: true,
@@ -241,23 +245,24 @@ export class InstrutorController {
       }
 
       // Formatar resposta
+      const merged = mergeUsuarioInformacoes(instrutor);
       const response = {
         id: instrutor.id,
         codigo: instrutor.codUsuario,
         nomeCompleto: instrutor.nomeCompleto,
         email: instrutor.email,
         cpf: instrutor.cpf,
-        telefone: instrutor.informacoes?.telefone || null,
+        telefone: merged.informacoes?.telefone || null,
         status: instrutor.status,
-        genero: instrutor.informacoes?.genero || null,
-        dataNasc: instrutor.informacoes?.dataNasc || null,
-        descricao: instrutor.informacoes?.descricao || null,
-        avatarUrl: instrutor.informacoes?.avatarUrl || null,
+        genero: merged.informacoes?.genero || null,
+        dataNasc: merged.informacoes?.dataNasc || null,
+        descricao: merged.informacoes?.descricao || null,
+        avatarUrl: merged.informacoes?.avatarUrl || null,
         criadoEm: instrutor.criadoEm,
         atualizadoEm: instrutor.atualizadoEm,
         ultimoLogin: instrutor.ultimoLogin,
-        enderecos: instrutor.enderecos,
-        redesSociais: mapSocialLinks(instrutor.UsuariosRedesSociais),
+        enderecos: instrutor.UsuariosEnderecos,
+        redesSociais: mapSocialLinks(merged.redesSociais),
       };
 
       res.json({
@@ -550,7 +555,7 @@ export class InstrutorController {
                     tiktok: true,
                   },
                 },
-                enderecos: {
+                UsuariosEnderecos: {
                   select: {
                     id: true,
                     logradouro: true,
@@ -603,7 +608,7 @@ export class InstrutorController {
         criadoEm: instrutorAtualizado.criadoEm,
         atualizadoEm: instrutorAtualizado.atualizadoEm,
         ultimoLogin: instrutorAtualizado.ultimoLogin,
-        enderecos: instrutorAtualizado.enderecos || [],
+        enderecos: instrutorAtualizado.UsuariosEnderecos || [],
         redesSociais: mapSocialLinks(instrutorAtualizado.UsuariosRedesSociais),
       };
 

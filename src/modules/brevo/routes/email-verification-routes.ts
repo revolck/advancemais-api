@@ -6,24 +6,24 @@ import { EmailVerificationController } from '../controllers/email-verification-c
  * Endpoints públicos para confirmação de conta
  */
 const router = Router();
-const emailVerificationController = new EmailVerificationController();
+const UsuariosVerificacaoEmailController = new EmailVerificationController();
 
 /**
  * Verifica email através de token
  * GET /verificar-email?token=xxx
  */
-router.get('/', emailVerificationController.verifyEmail);
+router.get('/', UsuariosVerificacaoEmailController.verifyEmail);
 
 /**
  * Reenvia email de verificação
  * POST /reenviar-verificacao
  */
-router.post('/reenviar', emailVerificationController.resendVerification);
+router.post('/reenviar', UsuariosVerificacaoEmailController.resendVerification);
 
 /**
  * Verifica status de verificação
  * GET /status/:email
  */
-router.get('/status/:email', emailVerificationController.checkVerificationStatus);
+router.get('/status/:email', UsuariosVerificacaoEmailController.checkVerificationStatus);
 
-export { router as emailVerificationRoutes };
+export { router as UsuariosVerificacaoEmailRoutes };

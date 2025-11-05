@@ -129,7 +129,7 @@ const createAuthRateLimit = (maxRequests: number = 5, windowMinutes: number = 15
  *                 features:
  *                   type: object
  *                   properties:
- *                     emailVerification: { type: boolean, example: true }
+ *                     UsuariosVerificacaoEmail: { type: boolean, example: true }
  *                     registration: { type: boolean, example: true }
  *                     authentication: { type: boolean, example: true }
  *                     profileManagement: { type: boolean, example: true }
@@ -179,7 +179,7 @@ router.get('/', (req, res) => {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
     features: {
-      emailVerification: process.env.EMAIL_VERIFICATION_REQUIRED !== 'false',
+      UsuariosVerificacaoEmail: process.env.EMAIL_VERIFICATION_REQUIRED !== 'false',
       registration: true,
       authentication: true,
       profileManagement: true,
@@ -218,7 +218,7 @@ router.get('/', (req, res) => {
  * FLUXO ATUALIZADO:
  * 1. Rate limiting (3 tentativas por 10 minutos)
  * 2. Log de início do processo
- * 3. criarUsuario -> cria usuário e define res.locals.usuarioCriado
+ * 3. criarUsuario -> cria usuário e define res.locals.UsuariosCriado
  * 4. Middleware de debug -> verifica dados
  * 5. WelcomeEmailMiddleware -> envia email/verificação de forma assíncrona
  */
@@ -325,8 +325,8 @@ router.post(
     const log = usuarioRoutesLogger.child({ correlationId, route: 'registrar' });
     log.info('🔍 Verificando dados para middleware de email');
 
-    if (res.locals?.usuarioCriado?.usuario) {
-      const user = res.locals.usuarioCriado.usuario;
+    if (res.locals?.UsuariosCriado?.Usuarios) {
+      const user = res.locals.UsuariosCriado.Usuarios;
       log.info(
         {
           id: user.id,
@@ -337,7 +337,7 @@ router.post(
         '✅ Dados prontos para email',
       );
     } else {
-      log.warn('⚠️ Dados não encontrados em res.locals.usuarioCriado');
+      log.warn('⚠️ Dados não encontrados em res.locals.UsuariosCriado');
       log.warn({ resLocals: res.locals }, '⚠️ Detalhes do res.locals');
     }
 
@@ -796,7 +796,7 @@ router.post(
  *                 hasAddress: false
  *                 totalOrders: 0
  *                 totalSubscriptions: 0
- *                 emailVerificationStatus:
+ *                 UsuariosVerificacaoEmailStatus:
  *                   verified: true
  *                   verifiedAt: "2024-01-01T12:00:00Z"
  *                   tokenExpiration: null

@@ -151,8 +151,8 @@ describe('GET /api/v1/cursos/alunos - Integração', () => {
 
       // Todos os alunos devem ser de Campinas
       alunos.forEach((aluno) => {
-        if (aluno.enderecos.length > 0) {
-          expect(aluno.enderecos[0].cidade?.toLowerCase()).toBe('campinas');
+        if (aluno.UsuariosEnderecos.length > 0) {
+          expect(aluno.UsuariosEnderecos[0].cidade?.toLowerCase()).toBe('campinas');
         }
       });
     });

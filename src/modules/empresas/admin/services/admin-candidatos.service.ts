@@ -13,7 +13,7 @@ type AdminCandidatoDetalhe = ReturnType<typeof mapCandidatoDetalhe>;
 const buildWhere = ({ status, search }: AdminCandidatosListQuery): Prisma.UsuariosWhereInput => {
   const where: Prisma.UsuariosWhereInput = {
     role: Roles.ALUNO_CANDIDATO,
-    curriculos: { some: {} },
+    UsuariosCurriculos: { some: {} },
   };
 
   if (status && status.length > 0) {
@@ -71,7 +71,7 @@ export const adminCandidatosService = {
       where: {
         id,
         role: Roles.ALUNO_CANDIDATO,
-        curriculos: { some: {} },
+        UsuariosCurriculos: { some: {} },
       },
       select: buildCandidatoSelect(),
     });

@@ -52,16 +52,16 @@ const calcularProgressoCurso = async (
     // Buscar contagem de aulas e provas da turma
     const [totalAulas, totalProvas, aulasComFrequencia, provasComEnvio] = await Promise.all([
       prisma.cursosTurmasAulas.count({
-        where: { turmaId, ativo: true },
+        where: { turmaId },
       }),
       prisma.cursosTurmasProvas.count({
-        where: { turmaId, ativo: true },
+        where: { turmaId },
       }),
-      prisma.cursosTurmasFrequencia.count({
-        where: { turmaId, inscricaoId, presenca: true },
+      prisma.cursosFrequenciaAlunos.count({
+        where: { inscricaoId, status: 'PRESENTE' },
       }),
       prisma.cursosTurmasProvasEnvios.count({
-        where: { turmaId, inscricaoId },
+        where: { inscricaoId },
       }),
     ]);
 
@@ -432,7 +432,7 @@ export class CursosController {
       // Construir filtro dinamicamente
       const where: any = {
             role: 'ALUNO_CANDIDATO',
-            turmasInscritas: {
+            CursosTurmasInscricoes: {
               some: {},
             },
       };
@@ -516,30 +516,30 @@ export class CursosController {
                 criadoEm: 'desc',
               },
             },
-            turmasInscritas: {
+            CursosTurmasInscricoes: {
                   // Aplicar o mesmo filtro aqui para que o take: 1 pegue a inscrição CORRETA
                   where: Object.keys(inscricaoFilter).length > 0 ? inscricaoFilter : undefined,
               select: {
                 id: true,
                 status: true,
                 criadoEm: true,
-                turma: {
-                  select: {
-                    id: true,
-                    nome: true,
-                    codigo: true,
-                    status: true,
-                        dataInicio: true,
-                        dataFim: true,
-                    curso: {
-                      select: {
-                        id: true,
-                        nome: true,
-                        codigo: true,
+                  CursosTurmas: {
+                    select: {
+                      id: true,
+                      nome: true,
+                      codigo: true,
+                      status: true,
+                      dataInicio: true,
+                      dataFim: true,
+                      Cursos: {
+                        select: {
+                          id: true,
+                          nome: true,
+                          codigo: true,
+                        },
                       },
                     },
                   },
-                },
               },
                   // Trazer apenas a inscrição mais recente (QUE CORRESPONDA AO FILTRO)
                   take: 1,
@@ -567,19 +567,19 @@ export class CursosController {
 
       const data = await Promise.all(
         alunos.map(async (aluno) => {
-          let ultimaInscricao = aluno.turmasInscritas[0];
+          let ultimaInscricao: typeof aluno.CursosTurmasInscricoes[0] | undefined = aluno.CursosTurmasInscricoes[0];
 
           // Se filtrou por curso, mas o último curso do aluno não é o filtrado, retorne null
           if (
             cursoIdParam &&
             ultimaInscricao &&
-            ultimaInscricao.turma.curso.id !== parseInt(cursoIdParam)
+            ultimaInscricao.CursosTurmas.Cursos.id !== parseInt(cursoIdParam)
           ) {
             ultimaInscricao = undefined;
           }
 
           // Se filtrou por turma, mas a última inscrição do aluno não é da turma filtrada, retorne null
-          if (turmaIdParam && ultimaInscricao && ultimaInscricao.turma.id !== turmaIdParam) {
+          if (turmaIdParam && ultimaInscricao && ultimaInscricao.CursosTurmas.id !== turmaIdParam) {
             ultimaInscricao = undefined;
           }
 
@@ -588,9 +588,9 @@ export class CursosController {
           if (ultimaInscricao) {
             progresso = await calcularProgressoCurso(
               ultimaInscricao.id,
-              ultimaInscricao.turma.id,
-              ultimaInscricao.turma.dataInicio,
-              ultimaInscricao.turma.dataFim,
+              ultimaInscricao.CursosTurmas.id,
+              ultimaInscricao.CursosTurmas.dataInicio,
+              ultimaInscricao.CursosTurmas.dataFim,
             );
           }
 
@@ -612,16 +612,16 @@ export class CursosController {
                   statusInscricao: ultimaInscricao.status,
                   dataInscricao: ultimaInscricao.criadoEm,
                   progresso, // Percentual de 0 a 100
-                  turma: {
-                    id: ultimaInscricao.turma.id,
-                    nome: ultimaInscricao.turma.nome,
-                    codigo: ultimaInscricao.turma.codigo,
-                    status: ultimaInscricao.turma.status,
+                  CursosTurmas: {
+                    id: ultimaInscricao.CursosTurmas.id,
+                    nome: ultimaInscricao.CursosTurmas.nome,
+                    codigo: ultimaInscricao.CursosTurmas.codigo,
+                    status: ultimaInscricao.CursosTurmas.status,
                   },
                   curso: {
-                    id: ultimaInscricao.turma.curso.id,
-                    nome: ultimaInscricao.turma.curso.nome,
-                    codigo: ultimaInscricao.turma.curso.codigo,
+                    id: ultimaInscricao.CursosTurmas.Cursos.id,
+                    nome: ultimaInscricao.CursosTurmas.Cursos.nome,
+                    codigo: ultimaInscricao.CursosTurmas.Cursos.codigo,
                   },
                 }
               : null,
@@ -746,12 +746,12 @@ export class CursosController {
                   criadoEm: 'desc',
                 },
               },
-              turmasInscritas: {
+              CursosTurmasInscricoes: {
                 select: {
                   id: true,
                   status: true,
                   criadoEm: true,
-                  turma: {
+                  CursosTurmas: {
                     select: {
                       id: true,
                       nome: true,
@@ -759,7 +759,7 @@ export class CursosController {
                       status: true,
                       dataInicio: true,
                       dataFim: true,
-                      curso: {
+                      Cursos: {
                         select: {
                           id: true,
                           nome: true,
@@ -799,24 +799,24 @@ export class CursosController {
         nomeCompleto: aluno.nomeCompleto,
         email: aluno.email,
         cpf: aluno.cpf,
-        telefone: aluno.UsuariosInformation?.telefone || null,
+        telefone: (aluno as any).UsuariosInformation?.telefone || null,
         status: aluno.status,
-        genero: aluno.UsuariosInformation?.genero || null,
-        dataNasc: aluno.UsuariosInformation?.dataNasc || null,
-        descricao: aluno.UsuariosInformation?.descricao || null,
-        avatarUrl: aluno.UsuariosInformation?.avatarUrl || null,
+        genero: (aluno as any).UsuariosInformation?.genero || null,
+        dataNasc: (aluno as any).UsuariosInformation?.dataNasc || null,
+        descricao: (aluno as any).UsuariosInformation?.descricao || null,
+        avatarUrl: (aluno as any).UsuariosInformation?.avatarUrl || null,
         criadoEm: aluno.criadoEm,
         atualizadoEm: aluno.atualizadoEm,
         ultimoLogin: aluno.ultimoLogin,
         enderecos: (aluno as any).UsuariosEnderecos || [],
-        redesSociais: mapSocialLinks(aluno.UsuariosRedesSociais),
+        redesSociais: mapSocialLinks((aluno as any).UsuariosRedesSociais),
         inscricoes: await Promise.all(
-          aluno.turmasInscritas.map(async (inscricao) => {
+          aluno.CursosTurmasInscricoes.map(async (inscricao) => {
             const progresso = await calcularProgressoCurso(
               inscricao.id,
-              inscricao.turma.id,
-              inscricao.turma.dataInicio,
-              inscricao.turma.dataFim,
+              inscricao.CursosTurmas.id,
+              inscricao.CursosTurmas.dataInicio,
+              inscricao.CursosTurmas.dataFim,
             );
 
             return {
@@ -825,31 +825,31 @@ export class CursosController {
             criadoEm: inscricao.criadoEm,
               progresso, // Percentual de 0 a 100
             turma: {
-              id: inscricao.turma.id,
-              nome: inscricao.turma.nome,
-              codigo: inscricao.turma.codigo,
-              status: inscricao.turma.status,
-                dataInicio: inscricao.turma.dataInicio,
-                dataFim: inscricao.turma.dataFim,
+              id: inscricao.CursosTurmas.id,
+              nome: inscricao.CursosTurmas.nome,
+              codigo: inscricao.CursosTurmas.codigo,
+              status: inscricao.CursosTurmas.status,
+              dataInicio: inscricao.CursosTurmas.dataInicio,
+              dataFim: inscricao.CursosTurmas.dataFim,
             },
             curso: {
-              id: inscricao.turma.curso.id,
-              nome: inscricao.turma.curso.nome,
-              codigo: inscricao.turma.curso.codigo,
-                descricao: inscricao.turma.curso.descricao,
-                cargaHoraria: inscricao.turma.curso.cargaHoraria,
-                imagemUrl: inscricao.turma.curso.imagemUrl,
+              id: inscricao.CursosTurmas.Cursos.id,
+              nome: inscricao.CursosTurmas.Cursos.nome,
+              codigo: inscricao.CursosTurmas.Cursos.codigo,
+              descricao: inscricao.CursosTurmas.Cursos.descricao,
+              cargaHoraria: inscricao.CursosTurmas.Cursos.cargaHoraria,
+              imagemUrl: inscricao.CursosTurmas.Cursos.imagemUrl,
             },
             };
           }),
         ),
-          totalInscricoes: aluno.turmasInscritas.length,
+          totalInscricoes: aluno.CursosTurmasInscricoes.length,
         estatisticas: {
-          cursosAtivos: aluno.turmasInscritas.filter((i) =>
+          cursosAtivos: aluno.CursosTurmasInscricoes.filter((i) =>
             ['INSCRITO', 'EM_ANDAMENTO'].includes(i.status),
           ).length,
-          cursosConcluidos: aluno.turmasInscritas.filter((i) => i.status === 'CONCLUIDO').length,
-          cursosCancelados: aluno.turmasInscritas.filter((i) =>
+          cursosConcluidos: aluno.CursosTurmasInscricoes.filter((i) => i.status === 'CONCLUIDO').length,
+          cursosCancelados: aluno.CursosTurmasInscricoes.filter((i) =>
             ['CANCELADO', 'TRANCADO'].includes(i.status),
           ).length,
         },

@@ -86,7 +86,7 @@ export interface AuditoriaScriptResponse {
   duracaoMs?: number;
   criadoEm: Date;
   executadoEm?: Date;
-  executadoPorUsuario: {
+  Usuarios: {
     id: string;
     nomeCompleto: string;
     email: string;

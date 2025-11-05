@@ -2855,7 +2855,7 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
               type: 'array',
               items: { $ref: '#/components/schemas/UsuarioEndereco' },
             },
-            emailVerification: {
+            UsuariosVerificacaoEmail: {
               type: 'object',
               description: 'Detalhes completos da verificação de email',
               properties: {
@@ -2971,7 +2971,7 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
               description: 'Quantidade de assinaturas ativas vinculadas ao usuário.',
               example: 0,
             },
-            emailVerificationStatus: {
+            UsuariosVerificacaoEmailStatus: {
               type: 'object',
               properties: {
                 verified: { type: 'boolean', example: true },
@@ -3266,7 +3266,7 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
                 fromName: { type: 'string', example: 'Advance+' },
               },
             },
-            emailVerification: {
+            UsuariosVerificacaoEmail: {
               type: 'object',
               properties: {
                 enabled: { type: 'boolean', example: true },
@@ -3343,7 +3343,7 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
                   format: 'date-time',
                   example: '2024-01-01T12:00:00Z',
                 },
-                emailVerification: {
+                UsuariosVerificacaoEmail: {
                   type: 'object',
                   description: 'Informações detalhadas de verificação',
                   properties: {
@@ -3857,7 +3857,7 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
               type: 'object',
               properties: {
                 areasInteresse: { type: 'string', example: '/areas-interesse' },
-                curriculos: { type: 'string', example: '/curriculos' },
+                UsuariosCurriculos: { type: 'string', example: '/curriculos' },
                 aplicar: { type: 'string', example: '/aplicar' },
               },
             },
@@ -10190,7 +10190,7 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
               type: 'object',
               required: ['curriculos', 'candidaturas', 'curriculosResumo', 'candidaturasResumo'],
               properties: {
-                curriculos: {
+                UsuariosCurriculos: {
                   type: 'array',
                   items: { $ref: '#/components/schemas/AdminCandidatoCurriculo' },
                 },
@@ -10276,7 +10276,7 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
               descricao: 'Analista de dados com 5 anos de experiência.',
               aceitarTermos: true,
             },
-            curriculos: [
+            UsuariosCurriculos: [
               {
                 id: '6d1f9b8a-3c21-4fb2-8a8f-f6e2c21a7f10',
                 usuarioId: '8b1f9c2a-2c41-4f3a-9b7d-15a1a4d9ce20',
@@ -10371,7 +10371,7 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
               description: 'Quantidade total de candidatos dentro do filtro aplicado.',
               example: 42,
             },
-            curriculos: {
+            UsuariosCurriculos: {
               type: 'integer',
               description: 'Quantidade total de currículos relacionados aos candidatos filtrados.',
               example: 58,
@@ -11410,7 +11410,7 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
                   example: 'admin-uuid',
                   description: 'Identificador do administrador responsável pela criação.',
                 },
-                emailVerificationBypassed: {
+                UsuariosVerificacaoEmailBypassed: {
                   type: 'boolean',
                   example: true,
                   description:

@@ -74,20 +74,20 @@ export class WelcomeEmailMiddleware {
       }
 
       // Verifica se usuarioCriado existe
-      if (!res.locals.usuarioCriado) {
-        log.warn('⚠️ res.locals.usuarioCriado não existe');
+      if (!res.locals.UsuariosCriado) {
+        log.warn('⚠️ res.locals.UsuariosCriado não existe');
         return null;
       }
 
-      const usuarioCriado = res.locals.usuarioCriado;
+      const usuarioCriado = res.locals.UsuariosCriado;
 
       // Verifica se dados do usuário existem
-      if (!usuarioCriado.usuario) {
-        log.warn('⚠️ res.locals.usuarioCriado.usuario não existe');
+      if (!usuarioCriado.Usuarios) {
+        log.warn('⚠️ res.locals.UsuariosCriado.Usuarios não existe');
         return null;
       }
 
-      const userData = usuarioCriado.usuario;
+      const userData = usuarioCriado.Usuarios;
 
       // Validação dos campos obrigatórios
       const requiredFields = ['id', 'email', 'nomeCompleto', 'tipoUsuario'];

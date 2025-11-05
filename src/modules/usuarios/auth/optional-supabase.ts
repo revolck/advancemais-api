@@ -7,6 +7,7 @@ import { prisma } from '@/config/prisma';
 import { supabaseConfig, jwtConfig } from '@/config/env';
 import { getCache, setCache } from '@/utils/cache';
 import { logger } from '@/utils/logger';
+import { mergeUsuarioInformacoes } from '@/modules/usuarios/utils/information';
 
 // JWKS client para validação de tokens Supabase
 const jwksClient = jwksRsa({
@@ -101,7 +102,8 @@ export const optionalSupabaseAuth =
             });
 
             if (usuarioDb) {
-              const { informacoes, ...rest } = usuarioDb;
+              const merged = mergeUsuarioInformacoes(usuarioDb);
+            const { informacoes, ...rest } = merged;
               usuario = {
                 ...rest,
                 telefone: informacoes?.telefone ?? null,

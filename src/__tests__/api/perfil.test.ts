@@ -31,11 +31,11 @@ describe('API - Perfil do Usuário', () => {
 
       expect(response.body).toHaveProperty('success', true);
       expect(response.body).toHaveProperty('usuario');
-      expect(response.body.usuario).toHaveProperty('id', testUser.id);
-      expect(response.body.usuario).toHaveProperty('email', testUser.email);
-      expect(response.body.usuario).toHaveProperty('nomeCompleto', testUser.nomeCompleto);
-      expect(response.body.usuario).toHaveProperty('role');
-      expect(response.body.usuario).toHaveProperty('status');
+      expect(response.body.Usuarios).toHaveProperty('id', testUser.id);
+      expect(response.body.Usuarios).toHaveProperty('email', testUser.email);
+      expect(response.body.Usuarios).toHaveProperty('nomeCompleto', testUser.nomeCompleto);
+      expect(response.body.Usuarios).toHaveProperty('role');
+      expect(response.body.Usuarios).toHaveProperty('status');
     });
 
     it('deve retornar erro 401 sem token', async () => {

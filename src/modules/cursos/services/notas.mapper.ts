@@ -1,28 +1,28 @@
 import { Prisma } from '@prisma/client';
 
 export const notaWithRelations = Prisma.validator<Prisma.CursosNotasDefaultArgs>()({
-  include: {
-    inscricao: {
-      select: {
-        id: true,
-        alunoId: true,
-        aluno: {
-          select: {
-            id: true,
-            nomeCompleto: true,
-            email: true,
+    include: {
+      CursosTurmasInscricoes: {
+        select: {
+          id: true,
+          alunoId: true,
+          Usuarios: {
+            select: {
+              id: true,
+              nomeCompleto: true,
+              email: true,
+            },
           },
         },
       },
-    },
-    prova: {
-      select: {
-        id: true,
-        titulo: true,
-        etiqueta: true,
+      CursosTurmasProvas: {
+        select: {
+          id: true,
+          titulo: true,
+          etiqueta: true,
+        },
       },
     },
-  },
 });
 
 export type NotaWithRelations = Prisma.CursosNotasGetPayload<typeof notaWithRelations>;
@@ -50,22 +50,22 @@ export const mapNota = (nota: NotaWithRelations) => ({
   observacoes: nota.observacoes ?? null,
   criadoEm: nota.criadoEm.toISOString(),
   atualizadoEm: nota.atualizadoEm.toISOString(),
-  prova: nota.prova
+  prova: nota.CursosTurmasProvas
     ? {
-        id: nota.prova.id,
-        titulo: nota.prova.titulo,
-        etiqueta: nota.prova.etiqueta,
+        id: nota.CursosTurmasProvas.id,
+        titulo: nota.CursosTurmasProvas.titulo,
+        etiqueta: nota.CursosTurmasProvas.etiqueta,
       }
     : null,
-  inscricao: nota.inscricao
+  inscricao: nota.CursosTurmasInscricoes
     ? {
-        id: nota.inscricao.id,
-        alunoId: nota.inscricao.alunoId,
-        aluno: nota.inscricao.aluno
+        id: nota.CursosTurmasInscricoes.id,
+        alunoId: nota.CursosTurmasInscricoes.alunoId,
+        aluno: nota.CursosTurmasInscricoes.Usuarios
           ? {
-              id: nota.inscricao.aluno.id,
-              nome: nota.inscricao.aluno.nomeCompleto,
-              email: nota.inscricao.aluno.email,
+              id: nota.CursosTurmasInscricoes.Usuarios.id,
+              nome: nota.CursosTurmasInscricoes.Usuarios.nomeCompleto,
+              email: nota.CursosTurmasInscricoes.Usuarios.email,
             }
           : null,
       }

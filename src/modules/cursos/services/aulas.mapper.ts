@@ -36,5 +36,5 @@ export const mapAula = (aula: AulaWithMateriais) => ({
   urlMeet: aula.urlMeet ?? null,
   criadoEm: aula.criadoEm.toISOString(),
   atualizadoEm: aula.atualizadoEm.toISOString(),
-  materiais: ((aula as any).CursosTurmasAulasMateriais || aula.materiais || []).map(mapMaterial),
+  materiais: ((aula as any).CursosTurmasAulasMateriais || []).map(mapMaterial),
 });

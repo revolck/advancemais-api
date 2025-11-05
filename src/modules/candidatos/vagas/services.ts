@@ -40,7 +40,7 @@ export const vagasPublicasService = {
       const q = params.q.trim();
       where.OR = [
         { titulo: { contains: q, mode: 'insensitive' } },
-        { empresa: { nomeCompleto: { contains: q, mode: 'insensitive' } } },
+        { Usuarios: { nomeCompleto: { contains: q, mode: 'insensitive' } } },
       ];
     }
     if ((params?.cidade && params.cidade.trim()) || (params?.estado && params.estado.trim())) {
@@ -48,8 +48,8 @@ export const vagasPublicasService = {
       const estado = params?.estado?.trim();
       // Filtra por endereço da empresa (endereço principal). JSON de localizacao na vaga pode existir,
       // mas usamos o endereço da empresa por compatibilidade com Prisma.
-      where.empresa = {
-        ...(where.empresa as any),
+      where.Usuarios = {
+        ...(where.Usuarios as any),
         enderecos: {
           some: {
             ...(cidade ? { cidade: { equals: cidade, mode: 'insensitive' as any } } : {}),
@@ -63,8 +63,8 @@ export const vagasPublicasService = {
       where.usuarioId = params.empresaId.trim();
     }
     if (params?.codUsuario && params.codUsuario.trim()) {
-      where.empresa = {
-        ...(where.empresa as any),
+      where.Usuarios = {
+        ...(where.Usuarios as any),
         codUsuario: { equals: params.codUsuario.trim() },
       };
     }
@@ -95,7 +95,7 @@ export const vagasPublicasService = {
           modoAnonimo: true,
           localizacao: true,
           usuarioId: true,
-          empresa: { select: { id: true, nomeCompleto: true } },
+          Usuarios: { select: { id: true, nomeCompleto: true } },
         },
       }),
     ]);
@@ -112,7 +112,7 @@ export const vagasPublicasService = {
       estado: (v.localizacao as any)?.estado ?? null,
       empresa: v.modoAnonimo
         ? { id: null, nome: 'Oportunidade Confidencial' }
-        : { id: v.empresa?.id ?? null, nome: v.empresa?.nomeCompleto ?? null },
+        : { id: v.Usuarios?.id ?? null, nome: v.Usuarios?.nomeCompleto ?? null },
     }));
 
     return {

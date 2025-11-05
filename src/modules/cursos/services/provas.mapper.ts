@@ -6,9 +6,9 @@ export const provaDefaultInclude = Prisma.validator<Prisma.CursosTurmasProvasDef
 
 export const provaWithEnviosInclude = Prisma.validator<Prisma.CursosTurmasProvasDefaultArgs>()({
   include: {
-    envios: {
+    CursosTurmasProvasEnvios: {
       include: {
-        inscricao: {
+        CursosTurmasInscricoes: {
           select: {
             id: true,
             alunoId: true,
@@ -45,12 +45,12 @@ export const mapProva = (prova: ProvaWithRelations | ProvaWithEnvios) => ({
   criadoEm: prova.criadoEm.toISOString(),
   atualizadoEm: prova.atualizadoEm.toISOString(),
   envios:
-    'envios' in prova && Array.isArray(prova.envios)
-      ? prova.envios.map((envio) => ({
+    'CursosTurmasProvasEnvios' in prova && Array.isArray(prova.CursosTurmasProvasEnvios)
+      ? prova.CursosTurmasProvasEnvios.map((envio) => ({
           id: envio.id,
           provaId: envio.provaId,
           inscricaoId: envio.inscricaoId,
-          alunoId: envio.inscricao.alunoId,
+          alunoId: envio.CursosTurmasInscricoes.alunoId,
           nota: normalizeDecimal(envio.nota),
           pesoTotal: normalizeDecimal(envio.pesoTotal),
           realizadoEm: envio.realizadoEm?.toISOString() ?? null,

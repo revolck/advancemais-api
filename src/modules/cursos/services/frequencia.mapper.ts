@@ -3,11 +3,11 @@ import { Prisma } from '@prisma/client';
 export const frequenciaWithRelations = Prisma.validator<Prisma.CursosFrequenciaAlunosDefaultArgs>()(
   {
     include: {
-      inscricao: {
+      CursosTurmasInscricoes: {
         select: {
           id: true,
           alunoId: true,
-          aluno: {
+          Usuarios: {
             select: {
               id: true,
               nomeCompleto: true,
@@ -16,13 +16,13 @@ export const frequenciaWithRelations = Prisma.validator<Prisma.CursosFrequenciaA
           },
         },
       },
-      aula: {
+      CursosTurmasAulas: {
         select: {
           id: true,
           nome: true,
           ordem: true,
           moduloId: true,
-          modulo: {
+          CursosTurmasModulos: {
             select: {
               id: true,
               nome: true,
@@ -49,29 +49,29 @@ export const mapFrequencia = (frequencia: FrequenciaWithRelations) => ({
   observacoes: frequencia.observacoes ?? null,
   criadoEm: frequencia.criadoEm.toISOString(),
   atualizadoEm: frequencia.atualizadoEm.toISOString(),
-  aula: frequencia.aula
+  aula: frequencia.CursosTurmasAulas
     ? {
-        id: frequencia.aula.id,
-        nome: frequencia.aula.nome,
-        ordem: frequencia.aula.ordem,
-        moduloId: frequencia.aula.moduloId,
-        modulo: frequencia.aula.modulo
+        id: frequencia.CursosTurmasAulas.id,
+        nome: frequencia.CursosTurmasAulas.nome,
+        ordem: frequencia.CursosTurmasAulas.ordem,
+        moduloId: frequencia.CursosTurmasAulas.moduloId,
+        modulo: frequencia.CursosTurmasAulas.CursosTurmasModulos
           ? {
-              id: frequencia.aula.modulo.id,
-              nome: frequencia.aula.modulo.nome,
+              id: frequencia.CursosTurmasAulas.CursosTurmasModulos.id,
+              nome: frequencia.CursosTurmasAulas.CursosTurmasModulos.nome,
             }
           : null,
       }
     : null,
-  inscricao: frequencia.inscricao
+  inscricao: frequencia.CursosTurmasInscricoes
     ? {
-        id: frequencia.inscricao.id,
-        alunoId: frequencia.inscricao.alunoId,
-        aluno: frequencia.inscricao.aluno
+        id: frequencia.CursosTurmasInscricoes.id,
+        alunoId: frequencia.CursosTurmasInscricoes.alunoId,
+        aluno: frequencia.CursosTurmasInscricoes.Usuarios
           ? {
-              id: frequencia.inscricao.aluno.id,
-              nome: frequencia.inscricao.aluno.nomeCompleto,
-              email: frequencia.inscricao.aluno.email,
+              id: frequencia.CursosTurmasInscricoes.Usuarios.id,
+              nome: frequencia.CursosTurmasInscricoes.Usuarios.nomeCompleto,
+              email: frequencia.CursosTurmasInscricoes.Usuarios.email,
             }
           : null,
       }

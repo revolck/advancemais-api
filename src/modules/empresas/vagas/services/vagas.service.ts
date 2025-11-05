@@ -29,7 +29,7 @@ const ANON_DESCRIPTION =
 
 const includeEmpresa = {
   include: {
-    empresa: {
+    Usuarios: {
       select: {
         id: true,
         nomeCompleto: true,
@@ -40,7 +40,7 @@ const includeEmpresa = {
         codUsuario: true,
         role: true,
         tipoUsuario: true,
-        enderecos: {
+        UsuariosEnderecos: {
           orderBy: { criadoEm: 'asc' },
           select: {
             id: true,
@@ -54,7 +54,7 @@ const includeEmpresa = {
         },
       },
     },
-    destaqueInfo: {
+    EmpresasVagasDestaque: {
       select: {
         id: true,
         empresasPlanoId: true,
@@ -63,13 +63,13 @@ const includeEmpresa = {
         desativadoEm: true,
       },
     },
-    areaInteresse: {
+    CandidatosAreasInteresse: {
       select: {
         id: true,
         categoria: true,
       },
     },
-    subareaInteresse: {
+    CandidatosSubareasInteresse: {
       select: {
         id: true,
         nome: true,
@@ -90,11 +90,11 @@ const HIGHLIGHT_ACTIVE_STATUSES: StatusDeVagas[] = [
 type PlanoAtivo = Awaited<ReturnType<typeof clientesService.findActiveByUsuario>>;
 
 const resolvePlanoDestaqueLimite = (planoAtivo: PlanoAtivo): number | null => {
-  if (!planoAtivo?.plano?.vagaEmDestaque) {
+  if (!planoAtivo?.PlanosEmpresariais?.vagaEmDestaque) {
     return null;
   }
 
-  const limite = planoAtivo.plano.quantidadeVagasDestaque ?? null;
+  const limite = planoAtivo.PlanosEmpresariais.quantidadeVagasDestaque ?? null;
   if (limite === null || limite <= 0) {
     return null;
   }
@@ -127,7 +127,7 @@ const assertVagasDestaqueDisponiveis = async (
       empresasPlanoId,
       ativo: true,
       ...(vagaIdToIgnorar ? { vagaId: { not: vagaIdToIgnorar } } : {}),
-      vaga: { status: { in: HIGHLIGHT_ACTIVE_STATUSES } },
+      EmpresasVagas: { status: { in: HIGHLIGHT_ACTIVE_STATUSES } },
     },
   });
 
@@ -266,7 +266,7 @@ const ensureAreaAndSubarea = async ({
     select: {
       id: true,
       areaId: true,
-      area: {
+      CandidatosAreasInteresse: {
         select: {
           id: true,
         },
@@ -278,11 +278,11 @@ const ensureAreaAndSubarea = async ({
     throw new VagaAreaSubareaError('SUBAREA_NOT_FOUND');
   }
 
-  if (!subarea.area) {
+  if (!subarea.CandidatosAreasInteresse) {
     throw new VagaAreaSubareaError('AREA_NOT_FOUND');
   }
 
-  const finalAreaId = areaId ?? subarea.areaId;
+  const finalAreaId = areaId ?? (subarea.CandidatosAreasInteresse?.id ?? subarea.areaId);
 
   if (subarea.areaId !== finalAreaId) {
     throw new VagaAreaSubareaError('MISMATCH');
@@ -460,12 +460,12 @@ const sanitizeUpdateData = (data: UpdateVagaData): Prisma.EmpresasVagasUnchecked
 const transformVaga = (vaga: VagaWithEmpresa) => {
   if (!vaga) return null;
 
-  const { destaque, destaqueInfo, areaInteresse, subareaInteresse, ...vagaSemMetadados } = vaga;
+  const { destaque, EmpresasVagasDestaque: destaqueInfo, CandidatosAreasInteresse: areaInteresse, CandidatosSubareasInteresse: subareaInteresse, ...vagaSemMetadados } = vaga;
 
   const empresaUsuarioRaw =
-    vagaSemMetadados.empresa &&
-    vagaSemMetadados.empresa.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
-      ? vagaSemMetadados.empresa
+    vagaSemMetadados.Usuarios &&
+    vagaSemMetadados.Usuarios.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
+      ? vagaSemMetadados.Usuarios
       : null;
   const empresaUsuario = empresaUsuarioRaw
     ? attachEnderecoResumo(mergeUsuarioInformacoes(empresaUsuarioRaw))!
@@ -492,9 +492,9 @@ const transformVaga = (vaga: VagaWithEmpresa) => {
         descricao: displayDescription,
         socialLinks: vagaSemMetadados.modoAnonimo
           ? null
-          : mapSocialLinks(empresaUsuario.UsuariosRedesSociais),
+          : mapSocialLinks(empresaUsuario.redesSociais),
         codUsuario: empresaUsuario.codUsuario,
-        enderecos: empresaUsuario.enderecos,
+        enderecos: empresaUsuario.UsuariosEnderecos,
         informacoes: empresaUsuario.informacoes,
       }
     : null;
@@ -638,7 +638,7 @@ export const vagasService = {
   update: async (id: string, data: UpdateVagaData) => {
     const vagaAtual = await prisma.empresasVagas.findUnique({
       where: { id },
-      include: { destaqueInfo: true },
+      include: { EmpresasVagasDestaque: true },
     });
 
     if (!vagaAtual) {

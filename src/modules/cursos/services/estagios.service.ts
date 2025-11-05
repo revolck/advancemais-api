@@ -88,7 +88,7 @@ const normalizeCursoTurma = async (client: PrismaClientOrTx, cursoId: number, tu
       id: true,
       nome: true,
       codigo: true,
-      curso: {
+      Cursos: {
         select: {
           id: true,
           nome: true,
@@ -112,7 +112,7 @@ const ensureInscricao = async (client: PrismaClientOrTx, turmaId: string, inscri
   const inscricao = await client.cursosTurmasInscricoes.findFirst({
     where: { id: inscricaoId, turmaId },
     include: {
-      aluno: {
+      Usuarios: {
         select: {
           id: true,
           nomeCompleto: true,
@@ -132,7 +132,7 @@ const ensureInscricao = async (client: PrismaClientOrTx, turmaId: string, inscri
 };
 
 const prepararLocaisEmail = (
-  locais: Prisma.CursosEstagiosGetPayload<typeof estagioWithRelations>['locais'],
+  locais: Prisma.CursosEstagiosGetPayload<typeof estagioWithRelations>['CursosEstagiosLocais'],
 ) =>
   locais.map((local) => ({
     empresaNome: local.empresaNome,
@@ -180,15 +180,15 @@ export const estagiosService = {
 
       const token = generateToken();
 
-      const estagio = await tx.cursosEstagios.create({
+      const estagioCreated = await tx.cursosEstagios.create({
         data: {
           cursoId,
           turmaId,
           inscricaoId,
-          alunoId: inscricao.aluno.id,
+          alunoId: inscricao.Usuarios.id,
           nome: data.nome,
           descricao: data.descricao ?? null,
-          obrigatorio: data.obrigatorio ?? turma.curso.estagioObrigatorio,
+          obrigatorio: data.obrigatorio ?? turma.Cursos.estagioObrigatorio,
           status: CursosEstagioStatus.PENDENTE,
           dataInicio: data.dataInicio,
           dataFim: data.dataFim,
@@ -196,7 +196,7 @@ export const estagiosService = {
           empresaPrincipal: data.empresaPrincipal ?? null,
           observacoes: data.observacoes ?? null,
           criadoPorId: usuarioId ?? null,
-          locais: {
+          CursosEstagiosLocais: {
             create: data.locais.map((local) => ({
               titulo: local.titulo ?? null,
               empresaNome: local.empresaNome,
@@ -221,12 +221,16 @@ export const estagiosService = {
               observacoes: local.observacoes ?? null,
             })),
           },
-          confirmacao: {
+          CursosEstagiosConfirmacoes: {
             create: {
               token,
             },
           },
         },
+      });
+
+      const estagio = await tx.cursosEstagios.findUniqueOrThrow({
+        where: { id: estagioCreated.id },
         ...estagioWithRelations,
       });
 
@@ -235,8 +239,8 @@ export const estagiosService = {
       return {
         estagio,
         token,
-        aluno: inscricao.aluno,
-        curso: turma.curso,
+        aluno: inscricao.Usuarios,
+        curso: turma.Cursos,
         turma: { id: turma.id, nome: turma.nome, codigo: turma.codigo },
       };
     });
@@ -255,7 +259,7 @@ export const estagiosService = {
         empresaPrincipal: resultado.estagio.empresaPrincipal,
         cargaHoraria: resultado.estagio.cargaHoraria,
         observacoes: resultado.estagio.observacoes,
-        locais: prepararLocaisEmail(resultado.estagio.locais),
+        locais: prepararLocaisEmail(resultado.estagio.CursosEstagiosLocais),
       });
 
       await registrarNotificacao(
@@ -378,13 +382,13 @@ export const estagiosService = {
       }
 
       if (usuarioId) {
-        updateData.atualizadoPor = {
+        updateData.Usuarios_CursosEstagios_atualizadoPorIdToUsuarios = {
           connect: { id: usuarioId },
         };
       }
 
       if (data.locais) {
-        updateData.locais = {
+        updateData.CursosEstagiosLocais = {
           deleteMany: { estagioId },
           create: data.locais.map((local: EstagioLocalInput) => ({
             titulo: local.titulo ?? null,
@@ -440,7 +444,7 @@ export const estagiosService = {
       };
 
       if (usuarioId) {
-        updateData.atualizadoPor = {
+        updateData.Usuarios_CursosEstagios_atualizadoPorIdToUsuarios = {
           connect: { id: usuarioId },
         };
       }
@@ -484,7 +488,7 @@ export const estagiosService = {
       const confirmacao = await tx.cursosEstagiosConfirmacoes.findUnique({
         where: { token },
         include: {
-          estagio: {
+          CursosEstagios: {
             ...estagioWithRelations,
           },
         },
@@ -497,7 +501,7 @@ export const estagiosService = {
       }
 
       if (confirmacao.confirmadoEm) {
-        return mapEstagio(confirmacao.estagio, { includeToken: false });
+        return mapEstagio(confirmacao.CursosEstagios, { includeToken: false });
       }
 
       const confirmadoEm = new Date();
@@ -524,9 +528,9 @@ export const estagiosService = {
         data: {
           confirmadoEm,
           status:
-            confirmacao.estagio.status === CursosEstagioStatus.PENDENTE
+            confirmacao.CursosEstagios.status === CursosEstagioStatus.PENDENTE
               ? CursosEstagioStatus.EM_ANDAMENTO
-              : confirmacao.estagio.status,
+              : confirmacao.CursosEstagios.status,
         },
         ...estagioWithRelations,
       });
@@ -545,7 +549,7 @@ export const estagiosService = {
       ...estagioWithRelations,
     });
 
-    if (!estagio || !estagio.confirmacao) {
+    if (!estagio || !estagio.CursosEstagiosConfirmacoes) {
       const error = new Error('Estágio não encontrado ou sem confirmação configurada');
       (error as any).code = 'ESTAGIO_NOT_FOUND';
       throw error;

@@ -100,7 +100,7 @@ const dashboardRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.SETOR_DE_VAGAS];
  *                         avatarUrl: https://cdn.advance.com.br/avatars/joao.png
  *                         descricao: Analista de dados com 5 anos de experiência.
  *                         aceitarTermos: true
- *                       curriculos:
+ *                       UsuariosCurriculos:
  *                         - id: 6d1f9b8a-3c21-4fb2-8a8f-f6e2c21a7f10
  *                           usuarioId: 8b1f9c2a-2c41-4f3a-9b7d-15a1a4d9ce20
  *                           titulo: Currículo principal
@@ -409,7 +409,7 @@ router.get('/candidato', supabaseAuthMiddleware(adminRoles), AdminCandidatosCont
  *                     avatarUrl: https://cdn.advance.com.br/avatars/joao.png
  *                     descricao: Analista de dados com 5 anos de experiência.
  *                     aceitarTermos: true
- *                   curriculos:
+ *                   UsuariosCurriculos:
  *                     - id: 6d1f9b8a-3c21-4fb2-8a8f-f6e2c21a7f10
  *                       usuarioId: 8b1f9c2a-2c41-4f3a-9b7d-15a1a4d9ce20
  *                       titulo: Currículo principal

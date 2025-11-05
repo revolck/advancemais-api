@@ -5,14 +5,14 @@ import { prisma } from '../../../config/prisma';
 import { supabaseAuthMiddleware } from '../../usuarios/auth';
 import { logger } from '@/utils/logger';
 import {
-  emailVerificationSelect,
+  UsuariosVerificacaoEmailSelect,
   normalizeEmailVerification,
 } from '@/modules/usuarios/utils/email-verification';
 
 const router = Router();
 
 const brevoController = new BrevoController();
-const emailVerificationController = new EmailVerificationController();
+const UsuariosVerificacaoEmailController = new EmailVerificationController();
 const brevoRoutesLogger = logger.child({ module: 'BrevoRoutes' });
 
 /**
@@ -126,7 +126,7 @@ router.get(
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/brevo/verificar-email?token=TOKEN"
  */
-router.get('/verificar-email', emailVerificationController.verifyEmail);
+router.get('/verificar-email', UsuariosVerificacaoEmailController.verifyEmail);
 /**
  * @openapi
  * /api/v1/brevo/reenviar-verificacao:
@@ -166,8 +166,8 @@ router.get('/verificar-email', emailVerificationController.verifyEmail);
  *            -H "Content-Type: application/json" \\
  *            -d '{"email":"user@example.com"}'
  */
-router.post('/reenviar-verificacao', emailVerificationController.resendVerification);
-router.get('/status-verificacao/:userId', emailVerificationController.getVerificationStatus);
+router.post('/reenviar-verificacao', UsuariosVerificacaoEmailController.resendVerification);
+router.get('/status-verificacao/:userId', UsuariosVerificacaoEmailController.getVerificationStatus);
 
 /**
  * @openapi
@@ -225,8 +225,8 @@ router.get('/status/:email', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), asy
         id: true,
         email: true,
         status: true,
-        emailVerification: {
-          select: emailVerificationSelect,
+        UsuariosVerificacaoEmail: {
+          select: UsuariosVerificacaoEmailSelect,
         },
       },
     });
@@ -239,7 +239,7 @@ router.get('/status/:email', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), asy
       });
     }
 
-    const verification = normalizeEmailVerification(usuario.emailVerification);
+    const verification = normalizeEmailVerification(usuario.UsuariosVerificacaoEmail);
 
     const hasValidToken = verification.emailVerificationTokenExp
       ? verification.emailVerificationTokenExp > new Date()
@@ -254,7 +254,7 @@ router.get('/status/:email', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), asy
         accountStatus: usuario.status,
         hasValidToken,
         tokenExpiration: verification.emailVerificationTokenExp,
-        emailVerification: {
+        UsuariosVerificacaoEmail: {
           verified: verification.emailVerificado,
           verifiedAt: verification.emailVerificadoEm,
           tokenExpiration: verification.emailVerificationTokenExp,
@@ -401,8 +401,8 @@ router.post('/test/sms', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), brevoCo
  *            -H "Content-Type: application/json" \\
  *            -d '{"to":"+5511999999999"}'
  */
-router.get('/verificar', emailVerificationController.verifyEmail);
-router.post('/reenviar', emailVerificationController.resendVerification);
+router.get('/verificar', UsuariosVerificacaoEmailController.verifyEmail);
+router.post('/reenviar', UsuariosVerificacaoEmailController.resendVerification);
 
 /**
  * @openapi

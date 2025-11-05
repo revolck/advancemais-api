@@ -79,7 +79,7 @@ export const certificadosService = {
       const inscricao = await tx.cursosTurmasInscricoes.findFirst({
         where: { id: data.inscricaoId },
         include: {
-          aluno: {
+          Usuarios: {
             select: {
               id: true,
               nomeCompleto: true,
@@ -87,12 +87,12 @@ export const certificadosService = {
               cpf: true,
             },
           },
-          turma: {
+          CursosTurmas: {
             select: {
               id: true,
               nome: true,
               codigo: true,
-              curso: {
+              Cursos: {
                 select: {
                   id: true,
                   nome: true,
@@ -112,7 +112,7 @@ export const certificadosService = {
         throw error;
       }
 
-      if (inscricao.turma.curso.estagioObrigatorio) {
+      if (inscricao.CursosTurmas.Cursos.estagioObrigatorio) {
         const estagioConcluido = await tx.cursosEstagios.findFirst({
           where: {
             inscricaoId: data.inscricaoId,
@@ -128,7 +128,7 @@ export const certificadosService = {
         }
       }
 
-      const cargaHoraria = data.cargaHoraria ?? inscricao.turma.curso.cargaHoraria ?? 0;
+      const cargaHoraria = data.cargaHoraria ?? inscricao.CursosTurmas.Cursos.cargaHoraria ?? 0;
       if (!Number.isFinite(cargaHoraria) || cargaHoraria <= 0) {
         const error = new Error('Carga horária inválida para o certificado');
         (error as any).code = 'INVALID_CARGA_HORARIA';
@@ -145,13 +145,13 @@ export const certificadosService = {
           formato: data.formato,
           cargaHoraria,
           assinaturaUrl: data.assinaturaUrl ?? null,
-          alunoNome: inscricao.aluno.nomeCompleto,
-          alunoCpf: inscricao.aluno.cpf,
-          cursoNome: inscricao.turma.curso.nome,
-          turmaNome: inscricao.turma.nome,
+          alunoNome: inscricao.Usuarios.nomeCompleto,
+          alunoCpf: inscricao.Usuarios.cpf,
+          cursoNome: inscricao.CursosTurmas.Cursos.nome,
+          turmaNome: inscricao.CursosTurmas.nome,
           emitidoPorId: emitidoPorId ?? null,
           observacoes: data.observacoes ?? null,
-          logs: {
+          CursosCertificadosLogs: {
             create: {
               acao: CursosCertificadosLogAcao.EMISSAO,
               formato: data.formato,
@@ -159,7 +159,6 @@ export const certificadosService = {
             },
           },
         },
-        ...certificadoWithRelations,
       });
 
       certificadosLogger.info(
@@ -167,7 +166,55 @@ export const certificadosService = {
         'Certificado emitido com sucesso',
       );
 
-      return mapCertificado(certificado);
+      const certificadoCompleto = await tx.cursosCertificadosEmitidos.findUniqueOrThrow({
+        where: { id: certificado.id },
+        include: {
+          Usuarios: {
+            select: {
+              id: true,
+              nomeCompleto: true,
+              email: true,
+            },
+          },
+          CursosTurmasInscricoes: {
+            select: {
+              id: true,
+              Usuarios: {
+                select: {
+                  id: true,
+                  nomeCompleto: true,
+                  email: true,
+                  cpf: true,
+                  UsuariosInformation: {
+                    select: {
+                      inscricao: true,
+                    },
+                  },
+                },
+              },
+              CursosTurmas: {
+                select: {
+                  id: true,
+                  nome: true,
+                  codigo: true,
+                  Cursos: {
+                    select: {
+                      id: true,
+                      nome: true,
+                      codigo: true,
+                      cargaHoraria: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          CursosCertificadosLogs: {
+            orderBy: { criadoEm: 'desc' },
+          },
+        },
+      });
+      return mapCertificado(certificadoCompleto);
     });
   },
 
@@ -176,9 +223,9 @@ export const certificadosService = {
 
     const certificados = await prisma.cursosCertificadosEmitidos.findMany({
       where: {
-        inscricao: {
+        CursosTurmasInscricoes: {
           turmaId,
-          turma: { cursoId },
+          CursosTurmas: { cursoId },
         },
         ...(filtros.inscricaoId ? { inscricaoId: filtros.inscricaoId } : {}),
         ...(filtros.tipo ? { tipo: filtros.tipo } : {}),
@@ -199,7 +246,7 @@ export const certificadosService = {
     const inscricao = await prisma.cursosTurmasInscricoes.findUnique({
       where: { id: inscricaoId },
       include: {
-        aluno: {
+        Usuarios: {
           select: {
             id: true,
             nomeCompleto: true,
@@ -210,12 +257,12 @@ export const certificadosService = {
             },
           },
         },
-        turma: {
+        CursosTurmas: {
           select: {
             id: true,
             nome: true,
             codigo: true,
-            curso: {
+            Cursos: {
               select: {
                 id: true,
                 nome: true,
@@ -250,23 +297,23 @@ export const certificadosService = {
       inscricao: {
         id: inscricao.id,
         aluno: {
-          id: inscricao.aluno.id,
-          nome: inscricao.aluno.nomeCompleto,
-          email: inscricao.aluno.email,
-          cpf: inscricao.aluno.cpf,
-          inscricao: inscricao.aluno.UsuariosInformation?.inscricao ?? null,
+          id: inscricao.Usuarios.id,
+          nome: inscricao.Usuarios.nomeCompleto,
+          email: inscricao.Usuarios.email,
+          cpf: inscricao.Usuarios.cpf,
+          inscricao: inscricao.Usuarios.UsuariosInformation?.inscricao ?? null,
         },
       },
       curso: {
-        id: inscricao.turma.curso.id,
-        nome: inscricao.turma.curso.nome,
-        codigo: inscricao.turma.curso.codigo,
-        cargaHoraria: inscricao.turma.curso.cargaHoraria,
+        id: inscricao.CursosTurmas.Cursos.id,
+        nome: inscricao.CursosTurmas.Cursos.nome,
+        codigo: inscricao.CursosTurmas.Cursos.codigo,
+        cargaHoraria: inscricao.CursosTurmas.Cursos.cargaHoraria,
       },
       turma: {
-        id: inscricao.turma.id,
-        nome: inscricao.turma.nome,
-        codigo: inscricao.turma.codigo,
+        id: inscricao.CursosTurmas.id,
+        nome: inscricao.CursosTurmas.nome,
+        codigo: inscricao.CursosTurmas.codigo,
       },
       certificados: certificados.map((item) => mapCertificado(item)),
     } as const;
@@ -274,7 +321,7 @@ export const certificadosService = {
 
   async listarDoAluno(usuarioId: string) {
     const certificados = await prisma.cursosCertificadosEmitidos.findMany({
-      where: { inscricao: { alunoId: usuarioId } },
+      where: { CursosTurmasInscricoes: { alunoId: usuarioId } },
       orderBy: { emitidoEm: 'desc' },
       ...certificadoWithRelations,
     });

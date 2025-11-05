@@ -6,7 +6,7 @@ import { brevoConfig } from '../../../config/env';
 import { invalidateUserCache } from '../../usuarios/utils/cache';
 import { logger } from '@/utils/logger';
 import {
-  emailVerificationSelect,
+  UsuariosVerificacaoEmailSelect,
   normalizeEmailVerification,
 } from '@/modules/usuarios/utils/email-verification';
 
@@ -137,7 +137,7 @@ export class EmailService {
         select: {
           id: true,
           UsuariosVerificacaoEmail: {
-            select: emailVerificationSelect,
+            select: UsuariosVerificacaoEmailSelect,
           },
         },
       });
@@ -146,7 +146,7 @@ export class EmailService {
         throw new Error(`Usuário ${userData.id} não encontrado`);
       }
 
-      const verification = normalizeEmailVerification(usuarioExiste.emailVerification);
+      const verification = normalizeEmailVerification(usuarioExiste.UsuariosVerificacaoEmail);
 
       if (verification.emailVerificado) {
         return { success: true, simulated: true };
@@ -164,7 +164,7 @@ export class EmailService {
         tipoUsuario: userData.tipoUsuario,
         verificationUrl,
         token,
-        expirationHours: this.config.getConfig().emailVerification.tokenExpirationHours,
+        expirationHours: this.config.getConfig().UsuariosVerificacaoEmail.tokenExpirationHours,
         frontendUrl: this.config.getConfig().urls.frontend,
       };
 
@@ -334,7 +334,7 @@ export class EmailService {
       const verification = await prisma.usuariosVerificacaoEmail.findFirst({
         where: { emailVerificationToken: token },
         include: {
-          usuario: {
+          Usuarios: {
             select: {
               id: true,
               email: true,
@@ -344,14 +344,14 @@ export class EmailService {
         },
       });
 
-      if (!verification || !verification.usuario) {
+      if (!verification || !verification.Usuarios) {
         return { valid: false, error: 'Token inválido' };
       }
 
       const normalized = normalizeEmailVerification(verification);
 
       if (normalized.emailVerificado) {
-        return { valid: false, alreadyVerified: true, userId: verification.usuario.id };
+        return { valid: false, alreadyVerified: true, userId: verification.Usuarios.id };
       }
 
       if (

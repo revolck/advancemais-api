@@ -35,8 +35,8 @@ export class AssinaturasService {
         where.usuarioId = filters.usuarioId;
       }
 
-      if (filters.empresaId) {
-        where.entidadeId = filters.empresaId;
+      if (filters.usuarioId) {
+        where.entidadeId = filters.usuarioId;
         where.entidadeTipo = 'EMPRESA';
       }
 
@@ -69,7 +69,7 @@ export class AssinaturasService {
         prisma.auditoriaLogs.findMany({
           where,
           include: {
-            usuario: {
+            Usuarios: {
               select: {
                 id: true,
                 nomeCompleto: true,
@@ -220,7 +220,7 @@ export class AssinaturasService {
         prisma.empresasPlano.findMany({
           where,
           include: {
-            empresa: {
+            Usuarios: {
               select: {
                 id: true,
                 nomeCompleto: true,
@@ -228,7 +228,7 @@ export class AssinaturasService {
                 role: true,
               },
             },
-            plano: {
+            PlanosEmpresariais: {
               select: {
                 id: true,
                 nome: true,
@@ -488,7 +488,7 @@ export class AssinaturasService {
       ip: log.ip,
       userAgent: log.userAgent,
       criadoEm: log.criadoEm,
-      usuario: log.usuario,
+      usuario: log.Usuarios,
     };
   }
 }

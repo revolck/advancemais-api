@@ -48,16 +48,9 @@ export const mapUsuarioInformacoes = (
   aceitarTermos: informacoes?.aceitarTermos ?? false,
 });
 
-export const mergeUsuarioInformacoes = <
-  T extends { 
-    informacoes?: UsuarioInformacoesRecord | null; 
-    UsuariosInformation?: UsuarioInformacoesRecord | null;
-    redesSociais?: any;
-    UsuariosRedesSociais?: any;
-  },
->(
+export const mergeUsuarioInformacoes = <T extends Record<string, any>>(
   usuario: T,
-): Omit<T, 'informacoes' | 'UsuariosInformation' | 'UsuariosRedesSociais'> & {
+): T & {
   informacoes: UsuarioInformacoesDto;
   redesSociais?: any;
   telefone: string | null;
@@ -69,14 +62,13 @@ export const mergeUsuarioInformacoes = <
   aceitarTermos: boolean;
 } => {
   // Suporta tanto 'informacoes' quanto 'UsuariosInformation' (nome correto do Prisma)
-  const rawInformacoes = (usuario as any).informacoes ?? (usuario as any).UsuariosInformation;
+  const rawInformacoes = (usuario as any).UsuariosInformation ?? (usuario as any).informacoes;
   // Suporta tanto 'redesSociais' quanto 'UsuariosRedesSociais' (nome correto do Prisma)
-  const rawRedesSociais = (usuario as any).redesSociais ?? (usuario as any).UsuariosRedesSociais;
-  const { informacoes: _, UsuariosInformation: __, UsuariosRedesSociais: ___, ...usuarioSemInformacoes } = usuario as any;
+  const rawRedesSociais = (usuario as any).UsuariosRedesSociais ?? (usuario as any).redesSociais;
   const informacoes = mapUsuarioInformacoes(rawInformacoes);
 
   return {
-    ...usuarioSemInformacoes,
+    ...(usuario as any),
     ...informacoes,
     informacoes,
     redesSociais: rawRedesSociais,

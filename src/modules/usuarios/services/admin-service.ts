@@ -306,7 +306,17 @@ export class AdminService {
         ultimoLogin: true,
         criadoEm: true,
         atualizadoEm: true,
-        ...usuarioRedesSociaisSelect,
+        UsuariosRedesSociais: {
+          select: {
+            id: true,
+            instagram: true,
+            linkedin: true,
+            facebook: true,
+            youtube: true,
+            twitter: true,
+            tiktok: true,
+          },
+        },
         codUsuario: true,
         UsuariosInformation: {
           select: usuarioInformacoesSelect,
@@ -377,7 +387,7 @@ export class AdminService {
             origem: true,
             aplicadaEm: true,
             atualizadaEm: true,
-            status: {
+            status_processo: {
               select: {
                 id: true,
                 nome: true,
@@ -385,7 +395,7 @@ export class AdminService {
                 ativo: true,
               },
             },
-            vaga: {
+            EmpresasVagas: {
               select: {
                 id: true,
                 titulo: true,
@@ -403,19 +413,19 @@ export class AdminService {
             turmaId: true,
             status: true,
             criadoEm: true,
-            turma: {
+            CursosTurmas: {
               select: {
                 id: true,
                 nome: true,
                 codigo: true,
                 dataInicio: true,
                 dataFim: true,
-                curso: {
+                Cursos: {
                   select: {
                     id: true,
                     nome: true,
                     descricao: true,
-                    categoria: true,
+                    categoriaId: true,
                   },
                 },
               },
@@ -444,13 +454,13 @@ export class AdminService {
           senioridade: true,
           localizacao: true,
           inseridaEm: true,
-          areaInteresse: {
+          CandidatosAreasInteresse: {
             select: {
               id: true,
               categoria: true,
             },
           },
-          subareaInteresse: {
+          CandidatosSubareasInteresse: {
             select: {
               id: true,
               nome: true,
@@ -465,7 +475,7 @@ export class AdminService {
 
     return {
       ...usuarioNormalizado,
-      redesSociais: mapSocialLinks(usuario.UsuariosRedesSociais),
+      redesSociais: mapSocialLinks(usuarioComInformacoes.redesSociais),
       informacoes: usuarioComInformacoes.informacoes,
       ...relacoesAdicionais,
     };
@@ -497,7 +507,17 @@ export class AdminService {
         ultimoLogin: true,
         criadoEm: true,
         atualizadoEm: true,
-        ...usuarioRedesSociaisSelect,
+        UsuariosRedesSociais: {
+          select: {
+            id: true,
+            instagram: true,
+            linkedin: true,
+            facebook: true,
+            youtube: true,
+            twitter: true,
+            tiktok: true,
+          },
+        },
         codUsuario: true,
         UsuariosInformation: {
           select: usuarioInformacoesSelect,
@@ -530,7 +550,7 @@ export class AdminService {
 
     return {
       ...candidatoNormalizado,
-      redesSociais: mapSocialLinks(candidato.UsuariosRedesSociais),
+      redesSociais: mapSocialLinks(candidatoComInformacoes.redesSociais),
       informacoes: candidatoComInformacoes.informacoes,
     };
   }
@@ -839,12 +859,12 @@ export class AdminService {
         codUsuario: usuario.codUsuario,
         emailVerificado: true,
         emailVerificadoEm: new Date(),
-        socialLinks: mapSocialLinks(usuario.UsuariosRedesSociais),
+        socialLinks: mapSocialLinks(usuario.redesSociais ?? null),
       },
       meta: {
         correlationId: options?.correlationId,
         createdBy: options?.adminId,
-        emailVerificationBypassed: true,
+        UsuariosVerificacaoEmailBypassed: true,
       },
     };
   }

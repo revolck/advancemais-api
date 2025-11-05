@@ -159,7 +159,7 @@ export const authMiddlewareWithDB = (roles?: string[]) => {
 
         req.user = {
           ...decoded,
-          ...usuario,
+              ...usuario,
         };
 
         next();

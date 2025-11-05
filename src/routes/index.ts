@@ -23,7 +23,7 @@ import { checkDatabaseHealth } from '@/utils/database-health';
  * Router principal da aplicação
  */
 const router = Router();
-const emailVerificationController = new EmailVerificationController();
+const UsuariosVerificacaoEmailController = new EmailVerificationController();
 const routesLogger = logger.child({ module: 'Router' });
 
 const parseEtags = (header: Request['headers']['if-none-match']) => {
@@ -138,7 +138,7 @@ router.get('/', publicCache, (req, res) => {
       {
         icon: '🏢',
         name: 'Empresas',
-        path: data.endpoints.empresas,
+        path: data.endpoints.usuarios,
         description: 'Gestão de empresas parceiras',
       },
       {
@@ -1050,7 +1050,7 @@ router.get('/health', async (req, res) => {
 });
 
 // Rota pública para verificação de email
-router.get('/verificar-email', emailVerificationController.verifyEmail);
+router.get('/verificar-email', UsuariosVerificacaoEmailController.verifyEmail);
 
 // =============================================
 // REGISTRO DE MÓDULOS - COM ERROR HANDLING

@@ -50,7 +50,7 @@ const ensureProvaBelongsToTurma = async (
   provaId: string,
 ) => {
   const prova = await client.cursosTurmasProvas.findFirst({
-    where: { id: provaId, turmaId, turma: { cursoId } },
+    where: { id: provaId, turmaId, CursosTurmas: { cursoId } },
     select: {
       id: true,
       titulo: true,
@@ -75,7 +75,7 @@ const ensureNotaBelongsToTurma = async (
   notaId: string,
 ) => {
   const nota = await client.cursosNotas.findFirst({
-    where: { id: notaId, turmaId, turma: { cursoId } },
+    where: { id: notaId, turmaId, CursosTurmas: { cursoId } },
     select: { id: true, inscricaoId: true, tipo: true, provaId: true, titulo: true },
   });
 
@@ -118,7 +118,7 @@ export const notasService = {
     const notas = await prisma.cursosNotas.findMany({
       where: {
         turmaId,
-        turma: { cursoId },
+        CursosTurmas: { cursoId },
         inscricaoId: filters.inscricaoId ?? undefined,
       },
       orderBy: [{ dataReferencia: 'desc' }, { criadoEm: 'desc' }],
@@ -132,7 +132,7 @@ export const notasService = {
     await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
 
     const nota = await prisma.cursosNotas.findFirst({
-      where: { id: notaId, turmaId, turma: { cursoId } },
+      where: { id: notaId, turmaId, CursosTurmas: { cursoId } },
       ...notaWithRelations,
     });
 
@@ -325,13 +325,13 @@ export const notasService = {
     const inscricao = await prisma.cursosTurmasInscricoes.findUnique({
       where: { id: inscricaoId },
       include: {
-        aluno: { select: { id: true, nomeCompleto: true, email: true } },
-        turma: {
+        Usuarios: { select: { id: true, nomeCompleto: true, email: true } },
+        CursosTurmas: {
           select: {
             id: true,
             nome: true,
             codigo: true,
-            curso: { select: { id: true, nome: true } },
+            Cursos: { select: { id: true, nome: true } },
           },
         },
       },
@@ -359,19 +359,19 @@ export const notasService = {
       inscricao: {
         id: inscricao.id,
         aluno: {
-          id: inscricao.aluno.id,
-          nome: inscricao.aluno.nomeCompleto,
-          email: inscricao.aluno.email,
+          id: inscricao.Usuarios.id,
+          nome: inscricao.Usuarios.nomeCompleto,
+          email: inscricao.Usuarios.email,
         },
       },
       curso: {
-        id: inscricao.turma.curso.id,
-        nome: inscricao.turma.curso.nome,
+        id: inscricao.CursosTurmas.Cursos.id,
+        nome: inscricao.CursosTurmas.Cursos.nome,
       },
       turma: {
-        id: inscricao.turma.id,
-        nome: inscricao.turma.nome,
-        codigo: inscricao.turma.codigo,
+        id: inscricao.CursosTurmas.id,
+        nome: inscricao.CursosTurmas.nome,
+        codigo: inscricao.CursosTurmas.codigo,
       },
       notas: notas.map(mapNota),
     };

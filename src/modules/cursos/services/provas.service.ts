@@ -50,7 +50,7 @@ const ensureProvaBelongsToTurma = async (
   provaId: string,
 ): Promise<void> => {
   const prova = await client.cursosTurmasProvas.findFirst({
-    where: { id: provaId, turmaId, turma: { cursoId } },
+    where: { id: provaId, turmaId, CursosTurmas: { cursoId } },
     select: { id: true },
   });
 

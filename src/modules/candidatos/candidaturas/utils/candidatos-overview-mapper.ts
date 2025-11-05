@@ -19,9 +19,19 @@ export const usuarioAdminSelect = {
   status: true,
   criadoEm: true,
   ultimoLogin: true,
-  ...usuarioRedesSociaisSelect,
+  UsuariosRedesSociais: {
+    select: {
+      id: true,
+      instagram: true,
+      linkedin: true,
+      facebook: true,
+      youtube: true,
+      twitter: true,
+      tiktok: true,
+    },
+  },
   UsuariosInformation: { select: usuarioInformacoesSelect },
-  enderecos: {
+  UsuariosEnderecos: {
     orderBy: { criadoEm: 'asc' },
     select: {
       id: true,
@@ -93,20 +103,20 @@ export const vagaSelect = {
   salarioConfidencial: true,
   areaInteresseId: true,
   subareaInteresseId: true,
-  areaInteresse: {
+  CandidatosAreasInteresse: {
     select: {
       id: true,
       categoria: true,
     },
   },
-  subareaInteresse: {
+  CandidatosSubareasInteresse: {
     select: {
       id: true,
       nome: true,
       areaId: true,
     },
   },
-  empresa: { select: usuarioAdminSelect },
+  Usuarios: { select: usuarioAdminSelect },
 } satisfies Prisma.EmpresasVagasSelect;
 
 export type VagaRecord = Prisma.EmpresasVagasGetPayload<{
@@ -119,14 +129,14 @@ export const candidaturaSelect = {
   candidatoId: true,
   curriculoId: true,
   empresaUsuarioId: true,
-  status: true,
+  status_processo: { select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true } },
   origem: true,
   aplicadaEm: true,
   atualizadaEm: true,
   consentimentos: true,
-  curriculo: { select: curriculoSelect },
-  vaga: { select: vagaSelect },
-  empresa: { select: usuarioAdminSelect },
+  UsuariosCurriculos: { select: curriculoSelect },
+  EmpresasVagas: { select: vagaSelect },
+  Usuarios_EmpresasCandidatos_empresaUsuarioIdToUsuarios: { select: usuarioAdminSelect },
 } satisfies Prisma.EmpresasCandidatosSelect;
 
 export type CandidaturaRecord = Prisma.EmpresasCandidatosGetPayload<{
@@ -136,11 +146,11 @@ export type CandidaturaRecord = Prisma.EmpresasCandidatosGetPayload<{
 export const buildCandidatoSelect = (candidaturasWhere?: Prisma.EmpresasCandidatosWhereInput) =>
   ({
     ...usuarioAdminSelect,
-    curriculos: {
+    UsuariosCurriculos: {
       orderBy: [{ principal: 'desc' }, { atualizadoEm: 'desc' }],
       select: curriculoSelect,
     },
-    candidaturasFeitas: {
+    EmpresasCandidatos_EmpresasCandidatos_candidatoIdToUsuarios: {
       orderBy: { aplicadaEm: 'desc' },
       ...(candidaturasWhere ? { where: candidaturasWhere } : {}),
       select: candidaturaSelect,
@@ -185,7 +195,7 @@ export const mapUsuarioAdmin = (usuario?: UsuarioAdminRecord | null) => {
     aceitarTermos: merged.aceitarTermos ?? false,
     cidade: merged.cidade,
     estado: merged.estado,
-    enderecos: merged.enderecos,
+    enderecos: merged.UsuariosEnderecos,
     socialLinks,
     informacoes: merged.informacoes,
   };
@@ -246,20 +256,20 @@ export const mapVaga = (vaga?: VagaRecord | null) => {
     salarioConfidencial: vaga.salarioConfidencial,
     areaInteresseId: vaga.areaInteresseId ?? null,
     subareaInteresseId: vaga.subareaInteresseId ?? null,
-    areaInteresse: vaga.areaInteresse
+    areaInteresse: vaga.CandidatosAreasInteresse
       ? {
-          id: vaga.areaInteresse.id,
-          categoria: vaga.areaInteresse.categoria,
+          id: vaga.CandidatosAreasInteresse.id,
+          categoria: vaga.CandidatosAreasInteresse.categoria,
         }
       : null,
-    subareaInteresse: vaga.subareaInteresse
+    subareaInteresse: vaga.CandidatosSubareasInteresse
       ? {
-          id: vaga.subareaInteresse.id,
-          nome: vaga.subareaInteresse.nome,
-          areaId: vaga.subareaInteresse.areaId,
+          id: vaga.CandidatosSubareasInteresse.id,
+          nome: vaga.CandidatosSubareasInteresse.nome,
+          areaId: vaga.CandidatosSubareasInteresse.areaId,
         }
       : null,
-    empresa: mapUsuarioAdmin(vaga.empresa ?? null),
+    empresa: mapUsuarioAdmin(vaga.Usuarios ?? null),
   };
 };
 
@@ -269,20 +279,20 @@ export const mapCandidatura = (candidatura: CandidaturaRecord) => ({
   candidatoId: candidatura.candidatoId,
   curriculoId: candidatura.curriculoId ?? null,
   empresaUsuarioId: candidatura.empresaUsuarioId,
-  status: candidatura.status,
+  status_processo: candidatura.status_processo,
   origem: candidatura.origem,
   aplicadaEm: candidatura.aplicadaEm,
   atualizadaEm: candidatura.atualizadaEm,
   consentimentos: candidatura.consentimentos ?? null,
-  curriculo: candidatura.curriculo ? mapCurriculo(candidatura.curriculo) : null,
-  vaga: mapVaga(candidatura.vaga ?? null),
-  empresa: mapUsuarioAdmin(candidatura.empresa ?? null),
+  UsuariosCurriculos: candidatura.UsuariosCurriculos ? mapCurriculo(candidatura.UsuariosCurriculos) : null,
+  EmpresasVagas: mapVaga(candidatura.EmpresasVagas ?? null),
+  empresa: mapUsuarioAdmin(candidatura.Usuarios_EmpresasCandidatos_empresaUsuarioIdToUsuarios ?? null),
 });
 
-const countByStatus = (items: { status: { nome: string } | string }[]) =>
+const countByStatus = (items: { status_processo: { nome: string } | string }[]) =>
   items.reduce<Record<string, number>>((acc, item) => {
     const key =
-      typeof item.status === 'string' ? item.status : (item.status?.nome ?? 'DESCONHECIDO');
+      typeof item.status_processo === 'string' ? item.status_processo : (item.status_processo?.nome ?? 'DESCONHECIDO');
     acc[key] = (acc[key] ?? 0) + 1;
     return acc;
   }, {});
@@ -294,8 +304,8 @@ export const mapCandidatoDetalhe = (candidato: CandidatoRecord) => {
     return null;
   }
 
-  const curriculos = candidato.curriculos.map(mapCurriculo);
-  const candidaturas = candidato.candidaturasFeitas.map(mapCandidatura);
+  const curriculos = candidato.UsuariosCurriculos.map(mapCurriculo);
+  const candidaturas = candidato.EmpresasCandidatos_EmpresasCandidatos_candidatoIdToUsuarios.map(mapCandidatura);
   const vagasDistintas = new Set(candidaturas.map((candidatura) => candidatura.vagaId)).size;
 
   return {

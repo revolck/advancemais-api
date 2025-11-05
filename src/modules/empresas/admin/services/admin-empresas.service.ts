@@ -79,7 +79,7 @@ const createPlanoAtivoSelect = () =>
       modeloPagamento: true,
       metodoPagamento: true,
       statusPagamento: true,
-      plano: {
+      PlanosEmpresariais: {
         select: {
           id: true,
           nome: true,
@@ -88,7 +88,7 @@ const createPlanoAtivoSelect = () =>
         },
       },
     },
-  }) satisfies Prisma.Usuarios$planosContratadosArgs;
+  }) satisfies Prisma.EmpresasPlanoFindManyArgs;
 
 const planoHistoricoSelect = {
   id: true,
@@ -104,7 +104,7 @@ const planoHistoricoSelect = {
   statusPagamento: true,
   proximaCobranca: true,
   graceUntil: true,
-  plano: {
+  PlanosEmpresariais: {
     select: {
       id: true,
       nome: true,
@@ -124,14 +124,14 @@ const bloqueioSelect = {
   observacoes: true,
   criadoEm: true,
   atualizadoEm: true,
-  aplicadoPor: {
+  Usuarios_UsuariosEmBloqueios_aplicadoPorIdToUsuarios: {
     select: {
       id: true,
       nomeCompleto: true,
       role: true,
     },
   },
-  usuario: {
+  Usuarios_UsuariosEmBloqueios_usuarioIdToUsuarios: {
     select: {
       id: true,
       nomeCompleto: true,
@@ -153,8 +153,8 @@ const createUsuarioListSelect = () =>
     UsuariosInformation: {
       select: usuarioInformacoesSelect,
     },
-    planosContratados: createPlanoAtivoSelect(),
-    bloqueiosRecebidos: {
+    EmpresasPlano: createPlanoAtivoSelect(),
+    UsuariosEmBloqueios_UsuariosEmBloqueios_usuarioIdToUsuarios: {
       where: {
         status: StatusDeBloqueios.ATIVO,
         OR: [{ fim: null }, { fim: { gt: new Date() } }],
@@ -163,7 +163,7 @@ const createUsuarioListSelect = () =>
       take: 1,
       select: bloqueioSelect,
     },
-    enderecos: {
+    UsuariosEnderecos: {
       orderBy: { criadoEm: 'asc' },
       select: {
         id: true,
@@ -177,7 +177,7 @@ const createUsuarioListSelect = () =>
     },
     _count: {
       select: {
-        vagasCriadas: {
+        EmpresasVagas: {
           where: {
             status: StatusDeVagas.PUBLICADO,
           },
@@ -201,8 +201,8 @@ const createUsuarioDashboardSelect = () =>
         avatarUrl: true,
       },
     },
-    planosContratados: createPlanoAtivoSelect(),
-    bloqueiosRecebidos: {
+    EmpresasPlano: createPlanoAtivoSelect(),
+    UsuariosEmBloqueios_UsuariosEmBloqueios_usuarioIdToUsuarios: {
       where: {
         status: StatusDeBloqueios.ATIVO,
         OR: [{ fim: null }, { fim: { gt: new Date() } }],
@@ -213,7 +213,7 @@ const createUsuarioDashboardSelect = () =>
     },
     _count: {
       select: {
-        vagasCriadas: {
+        EmpresasVagas: {
           where: {
             status: StatusDeVagas.PUBLICADO,
           },
@@ -228,7 +228,17 @@ const usuarioDetailSelect = {
   nomeCompleto: true,
   email: true,
   cnpj: true,
-  ...usuarioRedesSociaisSelect,
+  UsuariosRedesSociais: {
+    select: {
+      id: true,
+      instagram: true,
+      linkedin: true,
+      facebook: true,
+      youtube: true,
+      twitter: true,
+      tiktok: true,
+    },
+  },
   criadoEm: true,
   tipoUsuario: true,
   status: true,
@@ -236,8 +246,8 @@ const usuarioDetailSelect = {
   UsuariosInformation: {
     select: usuarioInformacoesSelect,
   },
-  planosContratados: createPlanoAtivoSelect(),
-  enderecos: {
+  EmpresasPlano: createPlanoAtivoSelect(),
+  UsuariosEnderecos: {
     orderBy: { criadoEm: 'asc' },
     select: {
       id: true,
@@ -251,11 +261,11 @@ const usuarioDetailSelect = {
   },
   _count: {
     select: {
-      vagasCriadas: {
-        where: {
-          status: StatusDeVagas.PUBLICADO,
+        EmpresasVagas: {
+          where: {
+            status: StatusDeVagas.PUBLICADO,
+          },
         },
-      },
     },
   },
 } satisfies Prisma.UsuariosSelect;
@@ -287,13 +297,13 @@ const vagaSelect = {
   salarioConfidencial: true,
   areaInteresseId: true,
   subareaInteresseId: true,
-  areaInteresse: {
+  CandidatosAreasInteresse: {
     select: {
       id: true,
       categoria: true,
     },
   },
-  subareaInteresse: {
+  CandidatosSubareasInteresse: {
     select: {
       id: true,
       nome: true,
@@ -301,7 +311,7 @@ const vagaSelect = {
     },
   },
   destaque: true,
-  destaqueInfo: {
+  EmpresasVagasDestaque: {
     select: {
       empresasPlanoId: true,
       ativo: true,
@@ -313,7 +323,7 @@ const vagaSelect = {
 
 type UsuarioListSelect = ReturnType<typeof createUsuarioListSelect>;
 type UsuarioListResult = Prisma.UsuariosGetPayload<{ select: UsuarioListSelect }>;
-type PlanoResumoData = UsuarioListResult['planosContratados'][number];
+type PlanoResumoData = UsuarioListResult['EmpresasPlano'][number];
 type PlanoHistoricoRecord = Prisma.EmpresasPlanoGetPayload<{ select: typeof planoHistoricoSelect }>;
 type BloqueioResumoData = Prisma.UsuariosEmBloqueiosGetPayload<{
   select: typeof bloqueioSelect;
@@ -911,7 +921,7 @@ const atualizarPlanoSemReset = async (
 
   const modo = plano.modo ?? planoAtual.modo;
   const data: Prisma.EmpresasPlanoUpdateInput = {
-    plano: { connect: { id: plano.planosEmpresariaisId } },
+    PlanosEmpresariais: { connect: { id: plano.planosEmpresariaisId } },
     modo,
     ...mapPlanoPagamentoData(plano),
   };
@@ -1023,7 +1033,7 @@ const mapPlanoResumo = (
 
   return {
     id: plano.id,
-    nome: plano.plano?.nome ?? null,
+    nome: plano.PlanosEmpresariais?.nome ?? null,
     modo: plano.modo ?? null,
     status: plano.status ?? null,
     inicio,
@@ -1031,8 +1041,8 @@ const mapPlanoResumo = (
     modeloPagamento: plano.modeloPagamento ?? null,
     metodoPagamento: plano.metodoPagamento ?? null,
     statusPagamento: plano.statusPagamento ?? null,
-    valor: plano.plano?.valor ?? null,
-    quantidadeVagas: plano.plano?.quantidadeVagas ?? null,
+    valor: plano.PlanosEmpresariais?.valor ?? null,
+    quantidadeVagas: plano.PlanosEmpresariais?.quantidadeVagas ?? null,
     duracaoEmDias: calculateDurationInDays(inicio, fim),
     diasRestantes: calculateDaysRemaining(fim, referenceDate),
   };
@@ -1044,7 +1054,7 @@ const mapPlanoHistorico = (
 ): AdminEmpresaPlanoHistoricoItem => {
   const resumo = mapPlanoResumo(plano as unknown as PlanoResumoData, referenceDate) ?? {
     id: plano.id,
-    nome: plano.plano?.nome ?? null,
+    nome: plano.PlanosEmpresariais?.nome ?? null,
     modo: plano.modo ?? null,
     status: plano.status ?? null,
     inicio: plano.inicio ?? null,
@@ -1052,8 +1062,8 @@ const mapPlanoHistorico = (
     modeloPagamento: plano.modeloPagamento ?? null,
     metodoPagamento: plano.metodoPagamento ?? null,
     statusPagamento: plano.statusPagamento ?? null,
-    valor: plano.plano?.valor ?? null,
-    quantidadeVagas: plano.plano?.quantidadeVagas ?? null,
+    valor: plano.PlanosEmpresariais?.valor ?? null,
+    quantidadeVagas: plano.PlanosEmpresariais?.quantidadeVagas ?? null,
     duracaoEmDias: calculateDurationInDays(plano.inicio ?? null, plano.fim ?? null),
     diasRestantes: calculateDaysRemaining(plano.fim ?? null, referenceDate),
   };
@@ -1071,31 +1081,31 @@ const mapPlanoHistorico = (
 const mapBloqueioResumo = (
   bloqueio: BloqueioResumoData | null,
 ): AdminUsuariosEmBloqueiosResumo | null => {
-  if (!bloqueio || !bloqueio.usuario) {
+  if (!bloqueio || !bloqueio.Usuarios_UsuariosEmBloqueios_usuarioIdToUsuarios) {
     return null;
   }
 
   const alvoTipo: AdminUsuariosBloqueioAlvo['tipo'] =
-    bloqueio.usuario.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
+    bloqueio.Usuarios_UsuariosEmBloqueios_usuarioIdToUsuarios.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
       ? 'EMPRESA'
-      : bloqueio.usuario.tipoUsuario === TiposDeUsuarios.PESSOA_FISICA
+      : bloqueio.Usuarios_UsuariosEmBloqueios_usuarioIdToUsuarios.tipoUsuario === TiposDeUsuarios.PESSOA_FISICA
         ? 'USUARIO'
         : 'ESTUDANTE';
 
-  const aplicadoPor = bloqueio.aplicadoPor
+  const aplicadoPor = bloqueio.Usuarios_UsuariosEmBloqueios_aplicadoPorIdToUsuarios
     ? {
-        id: bloqueio.aplicadoPor.id,
-        nome: bloqueio.aplicadoPor.nomeCompleto,
-        role: bloqueio.aplicadoPor.role,
+        id: bloqueio.Usuarios_UsuariosEmBloqueios_aplicadoPorIdToUsuarios.id,
+        nome: bloqueio.Usuarios_UsuariosEmBloqueios_aplicadoPorIdToUsuarios.nomeCompleto,
+        role: bloqueio.Usuarios_UsuariosEmBloqueios_aplicadoPorIdToUsuarios.role,
       }
     : null;
 
   return {
     id: bloqueio.id,
     alvo: {
-      id: bloqueio.usuario.id,
-      nome: bloqueio.usuario.nomeCompleto,
-      role: bloqueio.usuario.role,
+      id: bloqueio.Usuarios_UsuariosEmBloqueios_usuarioIdToUsuarios.id,
+      nome: bloqueio.Usuarios_UsuariosEmBloqueios_usuarioIdToUsuarios.nomeCompleto,
+      role: bloqueio.Usuarios_UsuariosEmBloqueios_usuarioIdToUsuarios.role,
       tipo: alvoTipo,
     },
     bloqueio: {
@@ -1141,26 +1151,26 @@ const mapVagaResumo = (vaga: VagaRecord): AdminEmpresaJobResumo => ({
   salarioConfidencial: vaga.salarioConfidencial,
   areaInteresseId: vaga.areaInteresseId ?? null,
   subareaInteresseId: vaga.subareaInteresseId ?? null,
-  areaInteresse: vaga.areaInteresse
+  areaInteresse: vaga.CandidatosAreasInteresse
     ? {
-        id: vaga.areaInteresse.id,
-        categoria: vaga.areaInteresse.categoria,
+        id: vaga.CandidatosAreasInteresse.id,
+        categoria: vaga.CandidatosAreasInteresse.categoria,
       }
     : null,
-  subareaInteresse: vaga.subareaInteresse
+  subareaInteresse: vaga.CandidatosSubareasInteresse
     ? {
-        id: vaga.subareaInteresse.id,
-        nome: vaga.subareaInteresse.nome,
-        areaId: vaga.subareaInteresse.areaId,
+        id: vaga.CandidatosSubareasInteresse.id,
+        nome: vaga.CandidatosSubareasInteresse.nome,
+        areaId: vaga.CandidatosSubareasInteresse.areaId,
       }
     : null,
   vagaEmDestaque: vaga.destaque,
-  destaqueInfo: vaga.destaqueInfo
+  destaqueInfo: vaga.EmpresasVagasDestaque
     ? {
-        empresasPlanoId: vaga.destaqueInfo.empresasPlanoId,
-        ativo: vaga.destaqueInfo.ativo,
-        ativadoEm: vaga.destaqueInfo.ativadoEm,
-        desativadoEm: vaga.destaqueInfo.desativadoEm ?? null,
+        empresasPlanoId: vaga.EmpresasVagasDestaque.empresasPlanoId,
+        ativo: vaga.EmpresasVagasDestaque.ativo,
+        ativadoEm: vaga.EmpresasVagasDestaque.ativadoEm,
+        desativadoEm: vaga.EmpresasVagasDestaque.desativadoEm ?? null,
       }
     : null,
 });
@@ -1238,12 +1248,12 @@ const listPagamentos = async (id: string, { page, pageSize }: AdminEmpresasHisto
         where: { id: { in: referencedPlanoIds } },
         select: {
           id: true,
-          plano: { select: { nome: true } },
+          PlanosEmpresariais: { select: { nome: true } },
         },
       })
     : [];
 
-  const planoMap = new Map(planosResumo.map((item) => [item.id, item.plano?.nome ?? null]));
+  const planoMap = new Map(planosResumo.map((item) => [item.id, item.PlanosEmpresariais?.nome ?? null]));
 
   const data: AdminEmpresaPaymentLog[] = logs.map((log) => ({
     id: log.id,
@@ -1455,7 +1465,7 @@ export const adminEmpresasService = {
           status,
           codUsuario,
           cnpj: normalizeDocumento(input.cnpj),
-          emailVerification: {
+          UsuariosVerificacaoEmail: {
             create: {
               emailVerificado: true,
               emailVerificadoEm: new Date(),
@@ -1476,7 +1486,15 @@ export const adminEmpresasService = {
           ...(socialLinksCreate
             ? {
                 UsuariosRedesSociais: {
-                  create: socialLinksCreate,
+                  create: {
+                    instagram: socialLinksCreate.instagram,
+                    linkedin: socialLinksCreate.linkedin,
+                    facebook: socialLinksCreate.facebook,
+                    youtube: socialLinksCreate.youtube,
+                    twitter: socialLinksCreate.twitter,
+                    tiktok: socialLinksCreate.tiktok,
+                    updatedAt: new Date(),
+                  },
                 },
               }
             : {}),
@@ -1574,7 +1592,7 @@ export const adminEmpresasService = {
               tiktok: true,
             },
           },
-          enderecos: {
+          UsuariosEnderecos: {
             select: {
               logradouro: true,
               numero: true,
@@ -1648,7 +1666,7 @@ export const adminEmpresasService = {
           updates.UsuariosInformation = { update: informacoesUpdates };
         } else {
           // Se não existe, precisamos criar com os valores corretos
-          const createData: Prisma.UsuariosInformationCreateWithoutUsuarioInput = {
+          const createData: Prisma.UsuariosInformationCreateWithoutUsuariosInput = {
             telefone: (informacoesUpdates.telefone as string) || '',
             genero: informacoesUpdates.genero as string | null | undefined,
             dataNasc: informacoesUpdates.dataNasc as Date | null | undefined,
@@ -1672,6 +1690,7 @@ export const adminEmpresasService = {
             create: {
               usuarioId: id,
               ...socialLinksSanitized.values,
+              updatedAt: new Date(),
             },
             update: socialLinksUpdate ?? socialLinksSanitized.values,
           });
@@ -1680,16 +1699,17 @@ export const adminEmpresasService = {
         }
       }
 
-      if (data.plano === null) {
+      if ((data as any).PlanosEmpresariais === null || (data as any).plano === null) {
         await tx.empresasPlano.updateMany({
           where: { usuarioId: id, status: EmpresasPlanoStatus.ATIVO },
           data: { status: EmpresasPlanoStatus.CANCELADO, fim: new Date() },
         });
-      } else if (data.plano) {
-        const { resetPeriodo, ...planoPayload } = data.plano;
-        const planoInput = planoPayload as AdminEmpresasPlanoPersistInput;
+      } else if ((data as any).PlanosEmpresariais || (data as any).plano) {
+        const planoData = (data as any).PlanosEmpresariais || (data as any).plano;
+        const { resetPeriodo, ...planosEmpresariaisPayload } = planoData;
+        const planoInput = planosEmpresariaisPayload as AdminEmpresasPlanoPersistInput;
 
-        if (resetPeriodo || planoPayload.iniciarEm !== undefined) {
+        if (resetPeriodo || planosEmpresariaisPayload.iniciarEm !== undefined) {
           await assignPlanoToEmpresa(tx, id, planoInput);
         } else {
           await atualizarPlanoSemReset(tx, id, planoInput);
@@ -1767,7 +1787,7 @@ export const adminEmpresasService = {
         );
 
         if (temEnderecoNoPayload) {
-          const enderecoAnterior = dadosAnteriores?.enderecos?.[0];
+          const enderecoAnterior = dadosAnteriores?.UsuariosEnderecos?.[0];
           const dadosEnderecoAnteriores = {
             logradouro: enderecoAnterior?.logradouro,
             numero: enderecoAnterior?.numero,
@@ -1833,14 +1853,15 @@ export const adminEmpresasService = {
         }
 
         // Registrar alteração de plano se houver
-        if (data.plano !== undefined) {
+        if ((data as any).PlanosEmpresariais !== undefined || (data as any).plano !== undefined) {
+          const planoData = (data as any).PlanosEmpresariais || (data as any).plano;
           const planoAtual = await prisma.empresasPlano.findFirst({
             where: { usuarioId: id, status: EmpresasPlanoStatus.ATIVO },
-            include: { plano: { select: { nome: true } } },
+            include: { PlanosEmpresariais: { select: { nome: true } } },
             orderBy: [{ inicio: 'desc' }, { criadoEm: 'desc' }],
           });
 
-          if (data.plano === null) {
+          if (planoData === null) {
             await empresasAuditoriaService.registrarAlteracaoPlanoDetalhada(
               id,
               alteradoPor,
@@ -1856,9 +1877,9 @@ export const adminEmpresasService = {
               where: {
                 usuarioId: id,
                 status: EmpresasPlanoStatus.ATIVO,
-                planosEmpresariaisId: data.plano.planosEmpresariaisId,
+                planosEmpresariaisId: planoData.planosEmpresariaisId,
               },
-              include: { plano: { select: { nome: true } } },
+              include: { PlanosEmpresariais: { select: { nome: true } } },
               orderBy: [{ inicio: 'desc' }, { criadoEm: 'desc' }],
             });
 
@@ -1904,14 +1925,14 @@ export const adminEmpresasService = {
       // Buscar plano anterior para auditoria
       planoAnterior = await tx.empresasPlano.findFirst({
         where: { usuarioId: id, status: EmpresasPlanoStatus.ATIVO },
-        include: { plano: { select: { nome: true } } },
+        include: { PlanosEmpresariais: { select: { nome: true } } },
         orderBy: [{ inicio: 'desc' }, { criadoEm: 'desc' }],
       });
 
-      const { resetPeriodo, ...planoPayload } = plano;
-      const planoInput = planoPayload as AdminEmpresasPlanoPersistInput;
+      const { resetPeriodo, ...planosEmpresariaisPayload } = plano;
+      const planoInput = planosEmpresariaisPayload as AdminEmpresasPlanoPersistInput;
 
-      if (resetPeriodo || planoPayload.iniciarEm !== undefined) {
+      if (resetPeriodo || planosEmpresariaisPayload.iniciarEm !== undefined) {
         await assignPlanoToEmpresa(tx, id, planoInput);
         return;
       }
@@ -1928,7 +1949,7 @@ export const adminEmpresasService = {
             status: EmpresasPlanoStatus.ATIVO,
             planosEmpresariaisId: plano.planosEmpresariaisId,
           },
-          include: { plano: { select: { nome: true } } },
+          include: { PlanosEmpresariais: { select: { nome: true } } },
           orderBy: [{ inicio: 'desc' }, { criadoEm: 'desc' }],
         });
 
@@ -1963,7 +1984,7 @@ export const adminEmpresasService = {
       // Buscar plano anterior para auditoria
       planoAnterior = await tx.empresasPlano.findFirst({
         where: { usuarioId: id, status: EmpresasPlanoStatus.ATIVO },
-        include: { plano: { select: { nome: true } } },
+        include: { PlanosEmpresariais: { select: { nome: true } } },
         orderBy: [{ inicio: 'desc' }, { criadoEm: 'desc' }],
       });
 
@@ -2005,7 +2026,7 @@ export const adminEmpresasService = {
             status: EmpresasPlanoStatus.ATIVO,
             planosEmpresariaisId: plano.planosEmpresariaisId,
           },
-          include: { plano: { select: { nome: true } } },
+          include: { PlanosEmpresariais: { select: { nome: true } } },
           orderBy: [{ inicio: 'desc' }, { criadoEm: 'desc' }],
         });
 
@@ -2049,9 +2070,9 @@ export const adminEmpresasService = {
     ]);
 
     const data: AdminEmpresasDashboardListItem[] = empresas.map((empresa) => {
-      const planoAtual = empresa.planosContratados[0];
+      const planoAtual = empresa.EmpresasPlano[0];
       const plano = mapPlanoResumo(planoAtual, referenceDate);
-      const bloqueio = mapBloqueioResumo(empresa.bloqueiosRecebidos?.[0] ?? null);
+      const bloqueio = mapBloqueioResumo(empresa.UsuariosEmBloqueios_UsuariosEmBloqueios_usuarioIdToUsuarios?.[0] ?? null);
 
       return {
         id: empresa.id,
@@ -2063,7 +2084,7 @@ export const adminEmpresasService = {
         cnpj: empresa.cnpj ?? null,
         status: empresa.status,
         criadoEm: empresa.criadoEm,
-        vagasPublicadas: empresa._count?.vagasCriadas ?? 0,
+        vagasPublicadas: empresa._count?.EmpresasVagas ?? 0,
         limiteVagasPlano: plano?.quantidadeVagas ?? null,
         plano,
         bloqueada: Boolean(bloqueio),
@@ -2100,13 +2121,13 @@ export const adminEmpresasService = {
 
     const data: AdminEmpresaListItem[] = empresas.map((empresaRaw) => {
       const empresa = attachEnderecoResumo(mergeUsuarioInformacoes(empresaRaw))!;
-      const planoAtual = empresa.planosContratados[0];
+      const planoAtual = empresa.EmpresasPlano[0];
       const plano = mapPlanoResumo(planoAtual, referenceDate);
       const diasTeste =
         planoAtual && planoAtual.inicio && planoAtual.fim
           ? calculateDurationInDays(planoAtual.inicio, planoAtual.fim)
           : null;
-      const bloqueio = mapBloqueioResumo(empresa.bloqueiosRecebidos?.[0] ?? null);
+      const bloqueio = mapBloqueioResumo(empresa.UsuariosEmBloqueios_UsuariosEmBloqueios_usuarioIdToUsuarios?.[0] ?? null);
 
       return {
         id: empresa.id,
@@ -2118,13 +2139,13 @@ export const adminEmpresasService = {
         cnpj: empresa.cnpj ?? null,
         cidade: empresa.cidade,
         estado: empresa.estado,
-        enderecos: empresa.enderecos,
+        enderecos: empresa.UsuariosEnderecos,
         criadoEm: empresa.criadoEm,
         ativa: empresa.status === Status.ATIVO,
         parceira: Boolean(planoAtual && planoAtual.modo === EmpresasPlanoModo.PARCEIRO),
         diasTesteDisponibilizados: diasTeste,
         plano,
-        vagasPublicadas: empresa._count?.vagasCriadas ?? 0,
+        vagasPublicadas: empresa._count?.EmpresasVagas ?? 0,
         limiteVagasPlano: plano?.quantidadeVagas ?? null,
         bloqueada: Boolean(bloqueio),
         bloqueioAtivo: bloqueio,
@@ -2150,7 +2171,7 @@ export const adminEmpresasService = {
 
     const empresa = attachEnderecoResumo(mergeUsuarioInformacoes(empresaRecord))!;
 
-    const planoAtual = empresa.planosContratados[0];
+    const planoAtual = empresa.EmpresasPlano[0];
     const plano = mapPlanoResumo(planoAtual);
     const diasTeste =
       planoAtual && planoAtual.inicio && planoAtual.fim
@@ -2200,10 +2221,10 @@ export const adminEmpresasService = {
       avatarUrl: empresa.avatarUrl,
       cnpj: empresa.cnpj ?? null,
       descricao: empresa.descricao,
-      socialLinks: mapSocialLinks(empresa.UsuariosRedesSociais),
+      socialLinks: mapSocialLinks(empresa.redesSociais),
       cidade: empresa.cidade,
       estado: empresa.estado,
-      enderecos: empresa.enderecos,
+      enderecos: empresa.UsuariosEnderecos,
       criadoEm: empresa.criadoEm,
       status: empresa.status,
       ultimoLogin: empresa.ultimoLogin ?? null,
@@ -2211,8 +2232,8 @@ export const adminEmpresasService = {
       parceira: Boolean(planoAtual && planoAtual.modo === EmpresasPlanoModo.PARCEIRO),
       diasTesteDisponibilizados: diasTeste,
       plano,
-      vagas: {
-        publicadas: empresa._count?.vagasCriadas ?? 0,
+        vagas: {
+        publicadas: empresa._count?.EmpresasVagas ?? 0,
         limitePlano: plano?.quantidadeVagas ?? null,
       },
       bloqueada: Boolean(bloqueioAtivo),
@@ -2349,14 +2370,14 @@ export const adminEmpresasService = {
       vagas: _vagas,
       pagamento: _pagamento,
       historicoFinanceiro: _historicoFinanceiro,
-      ...empresaBase
+      ...UsuariosBase
     } = empresa;
 
     const overviewEmpresa: AdminEmpresaOverviewEmpresa = {
-      ...empresaBase,
+      ...UsuariosBase,
       // Remove campos duplicados das informacoes, mantendo apenas aceitarTermos
       informacoes: {
-        ...empresaBase.informacoes,
+        ...UsuariosBase.informacoes,
         // Remove campos que já estão no nível principal da empresa
         telefone: null,
         descricao: null,
@@ -2427,7 +2448,7 @@ export const adminEmpresasService = {
 
       // Verifica limite do plano considerando apenas PUBLICADO
       const planoAtivo = await clientesService.findActiveByUsuario(empresaId);
-      const limite = planoAtivo?.plano?.quantidadeVagas ?? null;
+      const limite = planoAtivo?.PlanosEmpresariais?.quantidadeVagas ?? null;
       if (typeof limite === 'number' && limite > 0) {
         const publicados = await tx.empresasVagas.count({
           where: { usuarioId: empresaId, status: StatusDeVagas.PUBLICADO },
@@ -2510,7 +2531,7 @@ export const adminEmpresasService = {
           inicio,
           fim,
           ...(observacoes !== undefined ? { observacoes } : {}),
-          logs: {
+          UsuariosEmBloqueiosLogs: {
             create: {
               acao: AcoesDeLogDeBloqueio.CRIACAO,
               criadoPorId: adminId,
@@ -2586,7 +2607,7 @@ export const adminEmpresasService = {
         where: { id: bloqueioAtivo.id },
         data: {
           status: StatusDeBloqueios.REVOGADO,
-          logs: {
+          UsuariosEmBloqueiosLogs: {
             create: {
               acao: AcoesDeLogDeBloqueio.REVOGACAO,
               criadoPorId: adminId,

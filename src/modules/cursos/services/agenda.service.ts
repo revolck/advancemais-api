@@ -67,7 +67,7 @@ const ensureAgendaBelongsToTurma = async (
   agendaId: string,
 ) => {
   const agenda = await client.cursosTurmasAgenda.findFirst({
-    where: { id: agendaId, turmaId, turma: { cursoId } },
+    where: { id: agendaId, turmaId, CursosTurmas: { cursoId } },
     select: {
       id: true,
       turmaId: true,
@@ -191,7 +191,7 @@ export const agendaService = {
 
     const where: Prisma.CursosTurmasAgendaWhereInput = {
       turmaId,
-      turma: { cursoId },
+      CursosTurmas: { cursoId },
       tipo: filters.tipo ?? undefined,
     };
 
@@ -213,7 +213,7 @@ export const agendaService = {
     await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
 
     const evento = await prisma.cursosTurmasAgenda.findFirst({
-      where: { id: agendaId, turmaId, turma: { cursoId } },
+      where: { id: agendaId, turmaId, CursosTurmas: { cursoId } },
       ...agendaWithRelations,
     });
 

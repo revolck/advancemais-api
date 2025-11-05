@@ -62,7 +62,7 @@ export class BrevoController {
         },
 
         configuration: {
-          emailVerificationEnabled: config.emailVerification.enabled,
+          UsuariosVerificacaoEmailEnabled: config.UsuariosVerificacaoEmail.enabled,
           environment: config.environment,
           fromEmail: config.fromEmail,
           fromName: config.fromName,
@@ -71,7 +71,7 @@ export class BrevoController {
 
         features: {
           transactionalEmails: true,
-          emailVerification: config.emailVerification.enabled,
+          UsuariosVerificacaoEmail: config.UsuariosVerificacaoEmail.enabled,
           welcomeEmails: true,
           passwordRecovery: true,
           smsSupport: true,
@@ -119,7 +119,7 @@ export class BrevoController {
 
         features: {
           transactionalEmails: true,
-          emailVerification: config.emailVerification.enabled,
+          UsuariosVerificacaoEmail: config.UsuariosVerificacaoEmail.enabled,
           welcomeEmails: true,
           passwordRecovery: true,
           smsSupport: true,
@@ -143,10 +143,10 @@ export class BrevoController {
 
         configuration: {
           environment: config.environment,
-          emailVerificationEnabled: config.emailVerification.enabled,
-          tokenExpirationHours: config.emailVerification.tokenExpirationHours,
-          maxResendAttempts: config.emailVerification.maxResendAttempts,
-          resendCooldownMinutes: config.emailVerification.resendCooldownMinutes,
+          UsuariosVerificacaoEmailEnabled: config.UsuariosVerificacaoEmail.enabled,
+          tokenExpirationHours: config.UsuariosVerificacaoEmail.tokenExpirationHours,
+          maxResendAttempts: config.UsuariosVerificacaoEmail.maxResendAttempts,
+          resendCooldownMinutes: config.UsuariosVerificacaoEmail.resendCooldownMinutes,
         },
 
         urls: config.urls,
@@ -337,7 +337,7 @@ export class BrevoController {
           fromName: config.fromName,
         },
 
-        emailVerification: config.emailVerification,
+        UsuariosVerificacaoEmail: config.UsuariosVerificacaoEmail,
         urls: config.urls,
 
         client: {

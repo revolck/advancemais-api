@@ -26,7 +26,7 @@ export const CandidaturasController = {
 
   listReceived: async (req: Request, res: Response) => {
     try {
-      const empresaUsuarioId = (req as any).user?.id || req.query.empresaUsuarioId;
+      const empresaUsuarioId = (req as any).user?.id || req.query.UsuariosUsuarioId;
       if (!empresaUsuarioId) return res.status(401).json({ success: false, code: 'UNAUTHORIZED' });
       const { vagaId, status } = req.query as any;
       const statusList = Array.isArray(status) ? status : status ? [status] : [];

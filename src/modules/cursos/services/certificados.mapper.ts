@@ -2,17 +2,17 @@ import { Prisma } from '@prisma/client';
 
 const certificadoWithRelations = Prisma.validator<Prisma.CursosCertificadosEmitidosDefaultArgs>()({
   include: {
-    emitidoPor: {
+    Usuarios: {
       select: {
         id: true,
         nomeCompleto: true,
         email: true,
       },
     },
-    inscricao: {
+    CursosTurmasInscricoes: {
       select: {
         id: true,
-        aluno: {
+        Usuarios: {
           select: {
             id: true,
             nomeCompleto: true,
@@ -25,12 +25,12 @@ const certificadoWithRelations = Prisma.validator<Prisma.CursosCertificadosEmiti
             },
           },
         },
-        turma: {
+        CursosTurmas: {
           select: {
             id: true,
             nome: true,
             codigo: true,
-            curso: {
+            Cursos: {
               select: {
                 id: true,
                 nome: true,
@@ -42,7 +42,7 @@ const certificadoWithRelations = Prisma.validator<Prisma.CursosCertificadosEmiti
         },
       },
     },
-    logs: {
+    CursosCertificadosLogs: {
       orderBy: { criadoEm: 'desc' },
     },
   },
@@ -89,34 +89,34 @@ export const mapCertificado = (
     emitidoEm: certificado.emitidoEm,
     observacoes: certificado.observacoes,
     aluno: {
-      id: certificado.inscricao.aluno.id,
-      nome: certificado.inscricao.aluno.nomeCompleto,
-      email: certificado.inscricao.aluno.email,
+      id: certificado.CursosTurmasInscricoes.Usuarios.id,
+      nome: certificado.CursosTurmasInscricoes.Usuarios.nomeCompleto,
+      email: certificado.CursosTurmasInscricoes.Usuarios.email,
       cpf: maskCpf ? null : formattedCpf,
       cpfMascarado: maskedCpf,
-      inscricao: certificado.inscricao.aluno.UsuariosInformation?.inscricao ?? null,
+      inscricao: certificado.CursosTurmasInscricoes.Usuarios.UsuariosInformation?.inscricao ?? null,
     },
     curso: {
-      id: certificado.inscricao.turma.curso.id,
-      nome: certificado.inscricao.turma.curso.nome,
-      codigo: certificado.inscricao.turma.curso.codigo,
+      id: certificado.CursosTurmasInscricoes.CursosTurmas.Cursos.id,
+      nome: certificado.CursosTurmasInscricoes.CursosTurmas.Cursos.nome,
+      codigo: certificado.CursosTurmasInscricoes.CursosTurmas.Cursos.codigo,
       cargaHoraria: certificado.cargaHoraria,
     },
     turma: {
-      id: certificado.inscricao.turma.id,
-      nome: certificado.inscricao.turma.nome,
-      codigo: certificado.inscricao.turma.codigo,
+      id: certificado.CursosTurmasInscricoes.CursosTurmas.id,
+      nome: certificado.CursosTurmasInscricoes.CursosTurmas.nome,
+      codigo: certificado.CursosTurmasInscricoes.CursosTurmas.codigo,
     },
-    emitidoPor: certificado.emitidoPor
+    emitidoPor: certificado.Usuarios
       ? {
-          id: certificado.emitidoPor.id,
-          nome: certificado.emitidoPor.nomeCompleto,
-          email: certificado.emitidoPor.email,
+          id: certificado.Usuarios.id,
+          nome: certificado.Usuarios.nomeCompleto,
+          email: certificado.Usuarios.email,
         }
       : null,
     logs:
-      includeLogs && certificado.logs
-        ? certificado.logs.map((log) => ({
+      includeLogs && certificado.CursosCertificadosLogs
+        ? certificado.CursosCertificadosLogs.map((log: any) => ({
             id: log.id,
             acao: log.acao,
             formato: log.formato,

@@ -165,7 +165,7 @@ export const criarUsuario = async (req: Request, res: Response, next: NextFuncti
     // ===================================================================
     log.info('📧 Preparando dados para middleware de email');
 
-    res.locals.usuarioCriado = {
+    res.locals.UsuariosCriado = {
       usuario: {
         id: usuario.id,
         email: usuario.email,
@@ -176,7 +176,7 @@ export const criarUsuario = async (req: Request, res: Response, next: NextFuncti
         status: usuario.status,
         criadoEm: usuario.criadoEm,
         codUsuario: usuario.codUsuario,
-        socialLinks: mapSocialLinks(usuario.UsuariosRedesSociais),
+        socialLinks: mapSocialLinks(usuario.redesSociais),
       },
       // Metadados para debugging
       correlationId,

@@ -24,7 +24,7 @@ const mapSubcategoria = (
 
 const mapCategoria = (
   categoria: Prisma.EmpresasVagasCategoriasGetPayload<{
-    include: { subcategorias: true };
+    include: { EmpresasVagasSubcategorias: true };
   }>,
 ) => ({
   id: categoria.id,
@@ -33,7 +33,7 @@ const mapCategoria = (
   descricao: categoria.descricao,
   criadoEm: categoria.criadoEm,
   atualizadoEm: categoria.atualizadoEm,
-  subcategorias: (categoria.subcategorias ?? [])
+  subcategorias: (categoria.EmpresasVagasSubcategorias ?? [])
     .sort((a, b) => a.nome.localeCompare(b.nome))
     .map(mapSubcategoria),
 });
@@ -61,7 +61,7 @@ const findSubcategoriaOrThrow = async (id: string) => {
 export const vagasCategoriasService = {
   list: async () => {
     const categorias = await prisma.empresasVagasCategorias.findMany({
-      include: { subcategorias: true },
+      include: { EmpresasVagasSubcategorias: true },
       orderBy: { nome: 'asc' },
     });
 
@@ -71,7 +71,7 @@ export const vagasCategoriasService = {
   get: async (id: string) => {
     const categoria = await prisma.empresasVagasCategorias.findUnique({
       where: { id },
-      include: { subcategorias: true },
+      include: { EmpresasVagasSubcategorias: true },
     });
 
     if (!categoria) {
@@ -113,7 +113,7 @@ export const vagasCategoriasService = {
         ...(payload.nome !== undefined ? { nome: payload.nome } : {}),
         ...(payload.descricao !== undefined ? { descricao: payload.descricao } : {}),
       },
-      include: { subcategorias: true },
+      include: { EmpresasVagasSubcategorias: true },
     });
 
     vagasCategoriasLogger.info({ categoriaId: id }, 'Categoria de vagas atualizada com sucesso');

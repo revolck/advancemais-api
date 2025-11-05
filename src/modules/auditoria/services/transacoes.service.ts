@@ -33,7 +33,7 @@ export class TransacoesService {
           metadata: input.metadata,
         },
         include: {
-          usuario: {
+          Usuarios_AuditoriaTransacoes_usuarioIdToUsuarios: {
             select: {
               id: true,
               nomeCompleto: true,
@@ -41,7 +41,7 @@ export class TransacoesService {
               role: true,
             },
           },
-          empresa: {
+          Usuarios_AuditoriaTransacoes_empresaIdToUsuarios: {
             select: {
               id: true,
               nomeCompleto: true,
@@ -81,7 +81,7 @@ export class TransacoesService {
           metadata: metadata ? { ...metadata } : undefined,
         },
         include: {
-          usuario: {
+          Usuarios_AuditoriaTransacoes_usuarioIdToUsuarios: {
             select: {
               id: true,
               nomeCompleto: true,
@@ -89,7 +89,7 @@ export class TransacoesService {
               role: true,
             },
           },
-          empresa: {
+          Usuarios_AuditoriaTransacoes_empresaIdToUsuarios: {
             select: {
               id: true,
               nomeCompleto: true,
@@ -140,8 +140,8 @@ export class TransacoesService {
         where.usuarioId = filters.usuarioId;
       }
 
-      if (filters.empresaId) {
-        where.empresaId = filters.empresaId;
+      if (filters.usuarioId) {
+        where.usuarioId = filters.usuarioId;
       }
 
       if (filters.gateway) {
@@ -166,7 +166,7 @@ export class TransacoesService {
         prisma.auditoriaTransacoes.findMany({
           where,
           include: {
-            usuario: {
+            Usuarios_AuditoriaTransacoes_usuarioIdToUsuarios: {
               select: {
                 id: true,
                 nomeCompleto: true,
@@ -174,7 +174,7 @@ export class TransacoesService {
                 role: true,
               },
             },
-            empresa: {
+            Usuarios_AuditoriaTransacoes_empresaIdToUsuarios: {
               select: {
                 id: true,
                 nomeCompleto: true,
@@ -213,7 +213,7 @@ export class TransacoesService {
       const transacao = await prisma.auditoriaTransacoes.findUnique({
         where: { id },
         include: {
-          usuario: {
+          Usuarios_AuditoriaTransacoes_usuarioIdToUsuarios: {
             select: {
               id: true,
               nomeCompleto: true,
@@ -221,7 +221,7 @@ export class TransacoesService {
               role: true,
             },
           },
-          empresa: {
+          Usuarios_AuditoriaTransacoes_empresaIdToUsuarios: {
             select: {
               id: true,
               nomeCompleto: true,
@@ -535,8 +535,8 @@ export class TransacoesService {
       metadata: transacao.metadata,
       criadoEm: transacao.criadoEm,
       processadoEm: transacao.processadoEm,
-      usuario: transacao.usuario,
-      empresa: transacao.empresa,
+      usuario: transacao.Usuarios_AuditoriaTransacoes_usuarioIdToUsuarios,
+      empresa: transacao.Usuarios_AuditoriaTransacoes_empresaIdToUsuarios,
     };
   }
 }

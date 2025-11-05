@@ -7,15 +7,15 @@ import { respondWithCache } from '@/modules/website/utils/cache-response';
 function mapDepoimento(ordem: any) {
   return {
     id: ordem.id,
-    depoimentoId: ordem.depoimento.id,
-    depoimento: ordem.depoimento.depoimento,
-    nome: ordem.depoimento.nome,
-    cargo: ordem.depoimento.cargo,
-    fotoUrl: ordem.depoimento.fotoUrl,
+    depoimentoId: ordem.WebsiteDepoimento.id,
+    depoimento: ordem.WebsiteDepoimento.WebsiteDepoimento,
+    nome: ordem.WebsiteDepoimento.nome,
+    cargo: ordem.WebsiteDepoimento.cargo,
+    fotoUrl: ordem.WebsiteDepoimento.fotoUrl,
     status: ordem.status,
     ordem: ordem.ordem,
-    criadoEm: ordem.depoimento.criadoEm,
-    atualizadoEm: ordem.depoimento.atualizadoEm,
+    criadoEm: ordem.WebsiteDepoimento.criadoEm,
+    atualizadoEm: ordem.WebsiteDepoimento.atualizadoEm,
     ordemCriadoEm: ordem.criadoEm,
   };
 }

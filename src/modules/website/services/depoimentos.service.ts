@@ -16,7 +16,7 @@ export const depoimentosService = {
           id: true,
           ordem: true,
           status: true,
-          depoimento: {
+          WebsiteDepoimento: {
             select: {
               id: true,
               depoimento: true,
@@ -38,7 +38,7 @@ export const depoimentosService = {
         id: true,
         ordem: true,
         status: true,
-        depoimento: {
+        WebsiteDepoimento: {
           select: {
             id: true,
             depoimento: true,
@@ -59,7 +59,7 @@ export const depoimentosService = {
         id: true,
         ordem: true,
         status: true,
-        depoimento: {
+        WebsiteDepoimento: {
           select: {
             id: true,
             depoimento: true,
@@ -85,7 +85,7 @@ export const depoimentosService = {
       data: {
         ordem,
         status: data.status ?? 'RASCUNHO',
-        depoimento: {
+        WebsiteDepoimento: {
           create: {
             depoimento: data.depoimento,
             nome: data.nome,
@@ -98,7 +98,7 @@ export const depoimentosService = {
         id: true,
         ordem: true,
         status: true,
-        depoimento: {
+        WebsiteDepoimento: {
           select: {
             id: true,
             depoimento: true,
@@ -155,7 +155,7 @@ export const depoimentosService = {
           data.cargo !== undefined ||
           data.fotoUrl !== undefined
             ? {
-                depoimento: {
+                WebsiteDepoimento: {
                   update: {
                     ...(data.depoimento !== undefined && {
                       depoimento: data.depoimento,
@@ -172,7 +172,7 @@ export const depoimentosService = {
           id: true,
           ordem: true,
           status: true,
-          depoimento: {
+          WebsiteDepoimento: {
             select: {
               id: true,
               depoimento: true,
@@ -194,7 +194,7 @@ export const depoimentosService = {
         select: {
           id: true,
           ordem: true,
-          depoimento: {
+          WebsiteDepoimento: {
             select: {
               id: true,
               depoimento: true,
@@ -231,7 +231,7 @@ export const depoimentosService = {
           select: {
             id: true,
             ordem: true,
-            depoimento: {
+            WebsiteDepoimento: {
               select: {
                 id: true,
                 depoimento: true,

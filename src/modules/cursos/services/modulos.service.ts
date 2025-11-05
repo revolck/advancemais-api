@@ -33,7 +33,7 @@ const ensureModuloBelongsToTurma = async (
   moduloId: string,
 ): Promise<void> => {
   const modulo = await client.cursosTurmasModulos.findFirst({
-    where: { id: moduloId, turmaId, turma: { cursoId } },
+    where: { id: moduloId, turmaId, CursosTurmas: { cursoId } },
     select: { id: true },
   });
 

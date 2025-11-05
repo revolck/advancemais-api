@@ -5,7 +5,7 @@ import { EmailTemplates } from '../templates/email-templates';
 import { prisma } from '../../../config/prisma';
 import { invalidateUserCache } from '../../usuarios/utils/cache';
 import {
-  emailVerificationSelect,
+  UsuariosVerificacaoEmailSelect,
   normalizeEmailVerification,
 } from '@/modules/usuarios/utils/email-verification';
 import { logger } from '@/utils/logger';
@@ -74,7 +74,7 @@ export class EmailVerificationService {
         select: {
           email: true,
           UsuariosVerificacaoEmail: {
-            select: emailVerificationSelect,
+            select: UsuariosVerificacaoEmailSelect,
           },
         },
       });
@@ -111,7 +111,7 @@ export class EmailVerificationService {
         tipoUsuario: userData.tipoUsuario,
         verificationUrl,
         token,
-        expirationHours: this.config.getConfig().emailVerification.tokenExpirationHours,
+        expirationHours: this.config.getConfig().UsuariosVerificacaoEmail.tokenExpirationHours,
         frontendUrl: this.config.getConfig().urls.frontend,
       };
 
@@ -180,7 +180,7 @@ export class EmailVerificationService {
           tipoUsuario: true,
           status: true,
           UsuariosVerificacaoEmail: {
-            select: emailVerificationSelect,
+            select: UsuariosVerificacaoEmailSelect,
           },
         },
       });
@@ -227,7 +227,7 @@ export class EmailVerificationService {
       const verification = await prisma.usuariosVerificacaoEmail.findFirst({
         where: { emailVerificationToken: token },
         include: {
-          usuario: {
+          Usuarios: {
             select: {
               id: true,
               email: true,
@@ -237,14 +237,14 @@ export class EmailVerificationService {
         },
       });
 
-      if (!verification || !verification.usuario) {
+      if (!verification || !verification.Usuarios) {
         return { valid: false, error: 'Token inválido' };
       }
 
       const normalized = normalizeEmailVerification(verification);
 
       if (normalized.emailVerificado) {
-        return { valid: false, alreadyVerified: true, userId: verification.usuario.id };
+        return { valid: false, alreadyVerified: true, userId: verification.Usuarios.id };
       }
 
       if (
@@ -300,8 +300,8 @@ export class EmailVerificationService {
   private async checkResendLimit(userId: string, correlationId: string): Promise<boolean> {
     try {
       const config = this.config.getConfig();
-      const cooldownMinutes = config.emailVerification.resendCooldownMinutes;
-      const maxAttempts = config.emailVerification.maxResendAttempts;
+      const cooldownMinutes = config.UsuariosVerificacaoEmail.resendCooldownMinutes;
+      const maxAttempts = config.UsuariosVerificacaoEmail.maxResendAttempts;
 
       const since = new Date(Date.now() - cooldownMinutes * 60 * 1000);
 

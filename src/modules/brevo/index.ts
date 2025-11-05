@@ -116,7 +116,7 @@ export class BrevoModule {
         configuration: {
           configured: this.config.isConfigured(),
           simulated: this.client.isSimulated(),
-          emailVerificationEnabled: this.config.isEmailVerificationEnabled(),
+          UsuariosVerificacaoEmailEnabled: this.config.isEmailVerificationEnabled(),
           environment: this.config.getConfig().environment,
         },
       };
@@ -146,7 +146,7 @@ export class BrevoModule {
       simulated: this.client.isSimulated(),
       features: {
         transactionalEmails: true,
-        emailVerification: config.emailVerification.enabled,
+        UsuariosVerificacaoEmail: config.UsuariosVerificacaoEmail.enabled,
         welcomeEmails: true,
         passwordRecovery: true,
         smsSupport: true,

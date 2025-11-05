@@ -37,7 +37,7 @@ export class AuditoriaService {
           userAgent: input.userAgent,
         },
         include: {
-          usuario: {
+          Usuarios: {
             select: {
               id: true,
               nomeCompleto: true,
@@ -113,7 +113,7 @@ export class AuditoriaService {
         prisma.auditoriaLogs.findMany({
           where,
           include: {
-            usuario: {
+            Usuarios: {
               select: {
                 id: true,
                 nomeCompleto: true,
@@ -199,7 +199,7 @@ export class AuditoriaService {
       const log = await prisma.auditoriaLogs.findUnique({
         where: { id },
         include: {
-          usuario: {
+          Usuarios: {
             select: {
               id: true,
               nomeCompleto: true,
@@ -240,7 +240,7 @@ export class AuditoriaService {
       ip: log.ip,
       userAgent: log.userAgent,
       criadoEm: log.criadoEm,
-      usuario: log.usuario,
+      usuario: log.Usuarios,
     };
   }
 

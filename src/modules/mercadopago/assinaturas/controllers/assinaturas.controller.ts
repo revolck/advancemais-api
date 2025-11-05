@@ -84,7 +84,7 @@ export class AssinaturasController {
       const payload = changePlanSchema.parse(req.body);
       const result = await assinaturasService.upgrade(
         payload.usuarioId,
-        payload.novoPlanosEmpresariaisId,
+        payload.novoplanosEmpresariaisId,
       );
       res.json({ success: true, assinatura: result });
     } catch (error: any) {
@@ -107,7 +107,7 @@ export class AssinaturasController {
       const payload = changePlanSchema.parse(req.body);
       const result = await assinaturasService.downgrade(
         payload.usuarioId,
-        payload.novoPlanosEmpresariaisId,
+        payload.novoplanosEmpresariaisId,
       );
       res.json({ success: true, assinatura: result });
     } catch (error: any) {

@@ -135,10 +135,10 @@ const ensureInscricaoBelongsToTurma = async (
 };
 
 const mapProvaToReferencia = (
-  prova: Prisma.CursosTurmasProvasGetPayload<{ include: { envios: true } }>,
+  prova: Prisma.CursosTurmasProvasGetPayload<{ include: { CursosTurmasProvasEnvios: true } }>,
   inscricaoId: string,
 ): CursosReferenciasDeProvas => {
-  const envio = prova.envios.find((item) => item.inscricaoId === inscricaoId) ?? null;
+  const envio = prova.CursosTurmasProvasEnvios.find((item) => item.inscricaoId === inscricaoId) ?? null;
   return {
     id: prova.id,
     etiqueta: prova.etiqueta,
@@ -150,7 +150,7 @@ const mapProvaToReferencia = (
 const buildRecuperacaoResponse = (
   recuperacao: Prisma.CursosTurmasRecuperacoesGetPayload<{
     include: {
-      prova: { select: { id: true; etiqueta: true } };
+      CursosTurmasProvas: { select: { id: true; etiqueta: true } };
     };
   }> | null,
   resultadoRecuperacao: ResultadoAplicacaoRecuperacao | null,
@@ -170,8 +170,8 @@ const buildRecuperacaoResponse = (
       resultadoRecuperacao?.notaRecuperacao ??
       (recuperacao.notaRecuperacao ? round(recuperacao.notaRecuperacao, 1) : null),
     status: mapStatusFinal(recuperacao.statusFinal),
-    prova: recuperacao.prova
-      ? { id: recuperacao.prova.id, etiqueta: recuperacao.prova.etiqueta }
+    prova: recuperacao.CursosTurmasProvas
+      ? { id: recuperacao.CursosTurmasProvas.id, etiqueta: recuperacao.CursosTurmasProvas.etiqueta }
       : null,
     modeloAplicado: recuperacao.modeloAplicado
       ? traduzirModelosPrisma([recuperacao.modeloAplicado])[0]
@@ -293,7 +293,7 @@ export const avaliacaoService = {
 
       if (data.envioId) {
         const envio = await tx.cursosTurmasProvasEnvios.findFirst({
-          where: { id: data.envioId, prova: { turmaId } },
+          where: { id: data.envioId, CursosTurmasProvas: { turmaId } },
           select: { inscricaoId: true },
         });
         if (!envio || envio.inscricaoId !== data.inscricaoId) {
@@ -340,7 +340,7 @@ export const avaliacaoService = {
             )?.id ?? null,
         },
         include: {
-          prova: { select: { id: true, etiqueta: true } },
+          CursosTurmasProvas: { select: { id: true, etiqueta: true } },
         },
       });
 
@@ -358,27 +358,27 @@ export const avaliacaoService = {
     const inscricao = await prisma.cursosTurmasInscricoes.findUnique({
       where: { id: inscricaoId },
       include: {
-        aluno: { select: { id: true, nomeCompleto: true, email: true } },
-        turma: {
+        Usuarios: { select: { id: true, nomeCompleto: true, email: true } },
+        CursosTurmas: {
           include: {
-            curso: { select: { id: true, nome: true } },
-            provas: {
+            Cursos: { select: { id: true, nome: true } },
+            CursosTurmasProvas: {
               orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
               include: {
-                envios: {
+                CursosTurmasProvasEnvios: {
                   where: { inscricaoId },
                   orderBy: { atualizadoEm: 'desc' },
                 },
               },
             },
-            regrasAvaliacao: { select: regrasSelect },
+            CursosTurmasRegrasAvaliacao: true,
           },
         },
-        recuperacoes: {
+        CursosTurmasRecuperacoes: {
           orderBy: { criadoEm: 'desc' },
           take: 1,
           include: {
-            prova: { select: { id: true, etiqueta: true } },
+            CursosTurmasProvas: { select: { id: true, etiqueta: true } },
           },
         },
       },
@@ -396,14 +396,14 @@ export const avaliacaoService = {
       throw error;
     }
 
-    const regras = mapRegrasFromDb(inscricao.turma.regrasAvaliacao as any);
-    const provasAtivas = inscricao.turma.provas.filter((prova) => prova.ativo !== false);
+    const regras = mapRegrasFromDb((inscricao.CursosTurmas.CursosTurmasRegrasAvaliacao as any) ?? {});
+    const provasAtivas = inscricao.CursosTurmas.CursosTurmasProvas.filter((prova) => prova.ativo !== false);
     const referencias: CursosReferenciasDeProvas[] = provasAtivas.map((prova) =>
       mapProvaToReferencia(prova as any, inscricaoId),
     );
 
     const mediaInicial = computeInitialAverage(referencias);
-    const ultimaRecuperacao = inscricao.recuperacoes[0] ?? null;
+    const ultimaRecuperacao = inscricao.CursosTurmasRecuperacoes[0] ?? null;
     const notaRecuperacao = ultimaRecuperacao
       ? ultimaRecuperacao.notaFinal
         ? round(ultimaRecuperacao.notaFinal, 1)
@@ -426,19 +426,19 @@ export const avaliacaoService = {
       inscricao: {
         id: inscricao.id,
         aluno: {
-          id: inscricao.aluno.id,
-          nome: inscricao.aluno.nomeCompleto,
-          email: inscricao.aluno.email,
+          id: inscricao.Usuarios.id,
+          nome: inscricao.Usuarios.nomeCompleto,
+          email: inscricao.Usuarios.email,
         },
       },
       curso: {
-        id: inscricao.turma.curso.id,
-        nome: inscricao.turma.curso.nome,
+        id: inscricao.CursosTurmas.Cursos.id,
+        nome: inscricao.CursosTurmas.Cursos.nome,
       },
       turma: {
         id: inscricao.turmaId,
-        nome: inscricao.turma.nome,
-        codigo: inscricao.turma.codigo,
+        nome: inscricao.CursosTurmas.nome,
+        codigo: inscricao.CursosTurmas.codigo,
       },
       regras,
       provas: {
@@ -462,7 +462,7 @@ const ensureProvaBelongsToTurma = async (
   provaId: string,
 ): Promise<void> => {
   const prova = await client.cursosTurmasProvas.findFirst({
-    where: { id: provaId, turmaId, turma: { cursoId } },
+    where: { id: provaId, turmaId, CursosTurmas: { cursoId } },
     select: { id: true },
   });
 

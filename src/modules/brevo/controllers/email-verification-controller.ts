@@ -4,7 +4,7 @@ import { prisma } from '../../../config/prisma';
 import { BrevoConfigManager } from '../config/brevo-config';
 import { logger } from '../../../utils/logger';
 import {
-  emailVerificationSelect,
+  UsuariosVerificacaoEmailSelect,
   normalizeEmailVerification,
 } from '@/modules/usuarios/utils/email-verification';
 
@@ -145,8 +145,8 @@ export class EmailVerificationController {
           nomeCompleto: true,
           tipoUsuario: true,
           status: true,
-          emailVerification: {
-            select: emailVerificationSelect,
+          UsuariosVerificacaoEmail: {
+            select: UsuariosVerificacaoEmailSelect,
           },
         },
       });
@@ -160,7 +160,7 @@ export class EmailVerificationController {
         return;
       }
 
-      const verification = normalizeEmailVerification(usuario.emailVerification);
+      const verification = normalizeEmailVerification(usuario.UsuariosVerificacaoEmail);
 
       if (verification.emailVerificado) {
         res.status(400).json({
@@ -241,8 +241,8 @@ export class EmailVerificationController {
           id: true,
           email: true,
           status: true,
-          emailVerification: {
-            select: emailVerificationSelect,
+          UsuariosVerificacaoEmail: {
+            select: UsuariosVerificacaoEmailSelect,
           },
         },
       });
@@ -256,7 +256,7 @@ export class EmailVerificationController {
         return;
       }
 
-      const verification = normalizeEmailVerification(usuario.emailVerification);
+      const verification = normalizeEmailVerification(usuario.UsuariosVerificacaoEmail);
 
       const hasValidToken = verification.emailVerificationTokenExp
         ? verification.emailVerificationTokenExp > new Date()
@@ -271,7 +271,7 @@ export class EmailVerificationController {
           accountStatus: usuario.status,
           hasValidToken,
           tokenExpiration: verification.emailVerificationTokenExp,
-          emailVerification: {
+          UsuariosVerificacaoEmail: {
             verified: verification.emailVerificado,
             verifiedAt: verification.emailVerificadoEm,
             tokenExpiration: verification.emailVerificationTokenExp,

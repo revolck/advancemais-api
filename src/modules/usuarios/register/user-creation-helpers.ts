@@ -15,7 +15,7 @@ import {
   usuarioRedesSociaisSelect,
   type UsuarioSocialLinksInput,
 } from '../utils/social-links';
-import { emailVerificationSelect, normalizeEmailVerification } from '../utils/email-verification';
+import { UsuariosVerificacaoEmailSelect, normalizeEmailVerification } from '../utils/email-verification';
 import { mergeUsuarioInformacoes, usuarioInformacoesSelect } from '../utils/information';
 import {
   type AdminCreateUserInput,
@@ -239,7 +239,7 @@ export const checkForDuplicates = async (
         cnpj: true,
         supabaseId: true,
         UsuariosVerificacaoEmail: {
-          select: emailVerificationSelect,
+          select: UsuariosVerificacaoEmailSelect,
         },
       },
     });
@@ -317,7 +317,7 @@ export const buildUserDataForDatabase = (params: BuildUserDataForDatabaseParams)
     ...(params.cnpjLimpo ? { cnpj: params.cnpjLimpo } : {}),
   };
 
-  const informacoes: Prisma.UsuariosInformationCreateWithoutUsuarioInput = {
+  const informacoes: Prisma.UsuariosInformationCreateWithoutUsuariosInput = {
     telefone: params.telefone.trim(),
     aceitarTermos: params.aceitarTermos,
   };
@@ -383,7 +383,7 @@ export const createUserWithTransaction = async (
 
       const codUsuario = await generateUniqueUserCode(tx, scopedLogger);
 
-      const emailVerificationData = options?.markEmailVerified
+      const UsuariosVerificacaoEmailData = options?.markEmailVerified
         ? {
             emailVerificado: true,
             emailVerificadoEm: new Date(),
@@ -399,7 +399,7 @@ export const createUserWithTransaction = async (
           ...userData.usuario,
           codUsuario,
           UsuariosVerificacaoEmail: {
-            create: emailVerificationData,
+            create: UsuariosVerificacaoEmailData,
           },
           UsuariosInformation: {
             create: userData.informacoes,
@@ -407,11 +407,19 @@ export const createUserWithTransaction = async (
           ...(userData.socialLinks
             ? {
                 UsuariosRedesSociais: {
-                  create: userData.socialLinks,
+                  create: {
+                    instagram: userData.socialLinks.instagram ?? null,
+                    linkedin: userData.socialLinks.linkedin ?? null,
+                    facebook: userData.socialLinks.facebook ?? null,
+                    youtube: userData.socialLinks.youtube ?? null,
+                    twitter: userData.socialLinks.twitter ?? null,
+                    tiktok: userData.socialLinks.tiktok ?? null,
+                    updatedAt: new Date(),
+                  } as Prisma.UsuariosRedesSociaisCreateWithoutUsuariosInput,
                 },
               }
             : {}),
-        },
+        } as Prisma.UsuariosCreateInput,
         select: userSelect,
       });
 

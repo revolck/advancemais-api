@@ -7,14 +7,14 @@ import { respondWithCache } from '@/modules/website/utils/cache-response';
 function mapTeam(ordem: any) {
   return {
     id: ordem.id,
-    teamId: ordem.team.id,
-    photoUrl: ordem.team.photoUrl,
-    nome: ordem.team.nome,
-    cargo: ordem.team.cargo,
+    teamId: ordem.WebsiteTeam.id,
+    photoUrl: ordem.WebsiteTeam.photoUrl,
+    nome: ordem.WebsiteTeam.nome,
+    cargo: ordem.WebsiteTeam.cargo,
     status: ordem.status,
     ordem: ordem.ordem,
-    criadoEm: ordem.team.criadoEm,
-    atualizadoEm: ordem.team.atualizadoEm,
+    criadoEm: ordem.WebsiteTeam.criadoEm,
+    atualizadoEm: ordem.WebsiteTeam.atualizadoEm,
     ordemCriadoEm: ordem.criadoEm,
   };
 }

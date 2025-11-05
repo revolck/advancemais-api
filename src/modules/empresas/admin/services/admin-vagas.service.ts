@@ -35,9 +35,19 @@ const usuarioAdminSelect = {
   status: true,
   criadoEm: true,
   ultimoLogin: true,
-  ...usuarioRedesSociaisSelect,
+  UsuariosRedesSociais: {
+    select: {
+      id: true,
+      instagram: true,
+      linkedin: true,
+      facebook: true,
+      youtube: true,
+      twitter: true,
+      tiktok: true,
+    },
+  },
   UsuariosInformation: { select: usuarioInformacoesSelect },
-  enderecos: usuarioEnderecoSelect,
+  UsuariosEnderecos: usuarioEnderecoSelect,
 } satisfies Prisma.UsuariosSelect;
 
 const curriculoSelect = {
@@ -68,26 +78,44 @@ const candidaturaSelect = {
   candidatoId: true,
   curriculoId: true,
   empresaUsuarioId: true,
-  status: true,
+  statusId: true,
+  status_processo: {
+    select: {
+      id: true,
+      nome: true,
+      descricao: true,
+      ativo: true,
+      isDefault: true,
+    },
+  },
   origem: true,
   aplicadaEm: true,
   atualizadaEm: true,
   consentimentos: true,
-  candidato: { select: usuarioAdminSelect },
-  curriculo: { select: curriculoSelect },
+  Usuarios_EmpresasCandidatos_candidatoIdToUsuarios: { select: usuarioAdminSelect },
+  UsuariosCurriculos: { select: curriculoSelect },
 } satisfies Prisma.EmpresasCandidatosSelect;
 
 const processoSelect = {
   id: true,
   vagaId: true,
   candidatoId: true,
-  status: true,
+  statusId: true,
+  status_processo: {
+    select: {
+      id: true,
+      nome: true,
+      descricao: true,
+      ativo: true,
+      isDefault: true,
+    },
+  },
   origem: true,
   observacoes: true,
   agendadoEm: true,
   criadoEm: true,
   atualizadoEm: true,
-  candidato: { select: usuarioAdminSelect },
+  Usuarios: { select: usuarioAdminSelect },
 } satisfies Prisma.EmpresasVagasProcessoSelect;
 
 const vagaSelect = {
@@ -118,13 +146,13 @@ const vagaSelect = {
   salarioConfidencial: true,
   areaInteresseId: true,
   subareaInteresseId: true,
-  areaInteresse: {
+  CandidatosAreasInteresse: {
     select: {
       id: true,
       categoria: true,
     },
   },
-  subareaInteresse: {
+  CandidatosSubareasInteresse: {
     select: {
       id: true,
       nome: true,
@@ -132,7 +160,7 @@ const vagaSelect = {
     },
   },
   destaque: true,
-  destaqueInfo: {
+  EmpresasVagasDestaque: {
     select: {
       empresasPlanoId: true,
       ativo: true,
@@ -140,12 +168,12 @@ const vagaSelect = {
       desativadoEm: true,
     },
   },
-  empresa: { select: usuarioAdminSelect },
-  candidaturas: {
+  Usuarios: { select: usuarioAdminSelect },
+  EmpresasCandidatos: {
     orderBy: { aplicadaEm: 'desc' },
     select: candidaturaSelect,
   },
-  processos: {
+  EmpresasVagasProcesso: {
     orderBy: { criadoEm: 'desc' },
     select: processoSelect,
   },
@@ -167,7 +195,7 @@ const mapUsuarioAdmin = (usuario?: UsuarioAdminRecord | null) => {
   if (!merged) {
     return null;
   }
-  const socialLinks = mapSocialLinks(merged.UsuariosRedesSociais);
+  const socialLinks = mapSocialLinks(merged.redesSociais);
 
   return {
     id: merged.id,
@@ -190,7 +218,7 @@ const mapUsuarioAdmin = (usuario?: UsuarioAdminRecord | null) => {
     aceitarTermos: merged.aceitarTermos ?? false,
     cidade: merged.cidade,
     estado: merged.estado,
-    enderecos: merged.enderecos,
+    enderecos: merged.UsuariosEnderecos,
     socialLinks,
     informacoes: merged.informacoes,
   };
@@ -230,26 +258,26 @@ const mapCandidatura = (candidatura: CandidaturaRecord) => ({
   candidatoId: candidatura.candidatoId,
   curriculoId: candidatura.curriculoId ?? null,
   empresaUsuarioId: candidatura.empresaUsuarioId,
-  status: candidatura.status,
+  status_processo: candidatura.status_processo,
   origem: candidatura.origem,
   aplicadaEm: candidatura.aplicadaEm,
   atualizadaEm: candidatura.atualizadaEm,
   consentimentos: candidatura.consentimentos ?? null,
-  candidato: mapUsuarioAdmin(candidatura.candidato ?? null),
-  curriculo: mapCurriculo(candidatura.curriculo ?? null),
+  candidato: mapUsuarioAdmin(candidatura.Usuarios_EmpresasCandidatos_candidatoIdToUsuarios ?? null),
+  curriculo: mapCurriculo(candidatura.UsuariosCurriculos ?? null),
 });
 
 const mapProcesso = (processo: ProcessoRecord) => ({
   id: processo.id,
   vagaId: processo.vagaId,
   candidatoId: processo.candidatoId,
-  status: processo.status,
+  status_processo: processo.status_processo,
   origem: processo.origem,
   observacoes: processo.observacoes ?? null,
   agendadoEm: processo.agendadoEm ?? null,
   criadoEm: processo.criadoEm,
   atualizadoEm: processo.atualizadoEm,
-  candidato: mapUsuarioAdmin(processo.candidato ?? null),
+  candidato: mapUsuarioAdmin(processo.Usuarios ?? null),
 });
 
 const mapVagaBase = (vaga: VagaRecord) => ({
@@ -280,26 +308,26 @@ const mapVagaBase = (vaga: VagaRecord) => ({
   salarioConfidencial: vaga.salarioConfidencial,
   areaInteresseId: vaga.areaInteresseId ?? null,
   subareaInteresseId: vaga.subareaInteresseId ?? null,
-  areaInteresse: vaga.areaInteresse
+  areaInteresse: vaga.CandidatosAreasInteresse
     ? {
-        id: vaga.areaInteresse.id,
-        categoria: vaga.areaInteresse.categoria,
+        id: vaga.CandidatosAreasInteresse.id,
+        categoria: vaga.CandidatosAreasInteresse.categoria,
       }
     : null,
-  subareaInteresse: vaga.subareaInteresse
+  subareaInteresse: vaga.CandidatosSubareasInteresse
     ? {
-        id: vaga.subareaInteresse.id,
-        nome: vaga.subareaInteresse.nome,
-        areaId: vaga.subareaInteresse.areaId,
+        id: vaga.CandidatosSubareasInteresse.id,
+        nome: vaga.CandidatosSubareasInteresse.nome,
+        areaId: vaga.CandidatosSubareasInteresse.areaId,
       }
     : null,
   vagaEmDestaque: vaga.destaque,
-  destaqueInfo: vaga.destaqueInfo
+  destaqueInfo: vaga.EmpresasVagasDestaque
     ? {
-        empresasPlanoId: vaga.destaqueInfo.empresasPlanoId,
-        ativo: vaga.destaqueInfo.ativo,
-        ativadoEm: vaga.destaqueInfo.ativadoEm,
-        desativadoEm: vaga.destaqueInfo.desativadoEm ?? null,
+        empresasPlanoId: vaga.EmpresasVagasDestaque.empresasPlanoId,
+        ativo: vaga.EmpresasVagasDestaque.ativo,
+        ativadoEm: vaga.EmpresasVagasDestaque.ativadoEm,
+        desativadoEm: vaga.EmpresasVagasDestaque.desativadoEm ?? null,
       }
     : null,
 });
@@ -323,7 +351,7 @@ const mapVagaCandidatos = (candidaturas: CandidaturaRecord[]) => {
 
   candidaturas.forEach((candidatura) => {
     const candidatoId = candidatura.candidatoId;
-    const candidatoUsuario = mapUsuarioAdmin(candidatura.candidato ?? null);
+    const candidatoUsuario = mapUsuarioAdmin(candidatura.Usuarios_EmpresasCandidatos_candidatoIdToUsuarios ?? null);
 
     if (!candidatoUsuario) {
       return;
@@ -351,13 +379,13 @@ const mapVagaCandidatos = (candidaturas: CandidaturaRecord[]) => {
 };
 
 const mapVagaDetalhada = (vaga: VagaRecord) => {
-  const candidaturas = vaga.candidaturas.map(mapCandidatura);
-  const processos = vaga.processos.map(mapProcesso);
-  const candidatos = mapVagaCandidatos(vaga.candidaturas);
+  const candidaturas = (vaga as any).EmpresasCandidatos?.map(mapCandidatura) ?? [];
+  const processos = (vaga as any).EmpresasVagasProcesso?.map(mapProcesso) ?? [];
+  const candidatos = mapVagaCandidatos((vaga as any).EmpresasCandidatos ?? []);
 
   return {
     ...mapVagaBase(vaga),
-    empresa: mapUsuarioAdmin(vaga.empresa ?? null),
+    empresa: mapUsuarioAdmin((vaga as any).Usuarios ?? null),
     candidaturas,
     candidatos,
     processos,

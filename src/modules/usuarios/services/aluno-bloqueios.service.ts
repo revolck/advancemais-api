@@ -30,14 +30,14 @@ const bloqueioSelect = {
   observacoes: true,
   criadoEm: true,
   atualizadoEm: true,
-  aplicadoPor: {
+  Usuarios_UsuariosEmBloqueios_aplicadoPorIdToUsuarios: {
     select: {
       id: true,
       nomeCompleto: true,
       role: true,
     },
   },
-  usuario: {
+  Usuarios_UsuariosEmBloqueios_usuarioIdToUsuarios: {
     select: {
       id: true,
       nomeCompleto: true,
@@ -78,24 +78,24 @@ export type AlunoBloqueioResumo = {
  * Mapeia bloqueio para formato de resposta
  */
 const mapBloqueioResumo = (bloqueio: BloqueioResumoData | null): AlunoBloqueioResumo | null => {
-  if (!bloqueio || !bloqueio.usuario) {
+  if (!bloqueio || !bloqueio.Usuarios_UsuariosEmBloqueios_usuarioIdToUsuarios) {
     return null;
   }
 
-  const aplicadoPor = bloqueio.aplicadoPor
+  const aplicadoPor = bloqueio.Usuarios_UsuariosEmBloqueios_aplicadoPorIdToUsuarios
     ? {
-        id: bloqueio.aplicadoPor.id,
-        nome: bloqueio.aplicadoPor.nomeCompleto,
-        role: bloqueio.aplicadoPor.role,
+        id: bloqueio.Usuarios_UsuariosEmBloqueios_aplicadoPorIdToUsuarios.id,
+        nome: bloqueio.Usuarios_UsuariosEmBloqueios_aplicadoPorIdToUsuarios.nomeCompleto,
+        role: bloqueio.Usuarios_UsuariosEmBloqueios_aplicadoPorIdToUsuarios.role,
       }
     : null;
 
   return {
     id: bloqueio.id,
     alvo: {
-      id: bloqueio.usuario.id,
-      nome: bloqueio.usuario.nomeCompleto,
-      role: bloqueio.usuario.role,
+      id: bloqueio.Usuarios_UsuariosEmBloqueios_usuarioIdToUsuarios.id,
+      nome: bloqueio.Usuarios_UsuariosEmBloqueios_usuarioIdToUsuarios.nomeCompleto,
+      role: bloqueio.Usuarios_UsuariosEmBloqueios_usuarioIdToUsuarios.role,
     },
     bloqueio: {
       tipo: bloqueio.tipo,
@@ -185,7 +185,7 @@ export async function aplicarBloqueioAluno(
         inicio,
         fim,
         ...(observacoes !== undefined ? { observacoes } : {}),
-        logs: {
+        UsuariosEmBloqueiosLogs: {
           create: {
             acao: AcoesDeLogDeBloqueio.CRIACAO,
             criadoPorId: adminId,
@@ -241,7 +241,7 @@ export async function revogarBloqueioAluno(
       where: { id: bloqueioAtivo.id },
       data: {
         status: StatusDeBloqueios.REVOGADO,
-        logs: {
+        UsuariosEmBloqueiosLogs: {
           create: {
             acao: AcoesDeLogDeBloqueio.REVOGACAO,
             criadoPorId: adminId,

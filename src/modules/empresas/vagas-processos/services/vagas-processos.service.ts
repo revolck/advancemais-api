@@ -4,7 +4,7 @@ import { prisma } from '@/config/prisma';
 
 // Função auxiliar para buscar status padrão
 const getStatusPadrao = async () => {
-  const statusPadrao = await prisma.statusProcesso.findFirst({
+  const statusPadrao = await prisma.status_processo.findFirst({
     where: { isDefault: true, ativo: true },
   });
 
@@ -32,7 +32,7 @@ const processoSelect = {
   vagaId: true,
   candidatoId: true,
   statusId: true,
-  status: {
+  status_processo: {
     select: {
       id: true,
       nome: true,
@@ -46,7 +46,7 @@ const processoSelect = {
   agendadoEm: true,
   criadoEm: true,
   atualizadoEm: true,
-  candidato: {
+  Usuarios: {
     select: {
       id: true,
       nomeCompleto: true,
@@ -60,7 +60,7 @@ const processoSelect = {
       UsuariosInformation: {
         select: usuarioInformacoesSelect,
       },
-      enderecos: {
+      UsuariosEnderecos: {
         orderBy: { criadoEm: 'asc' },
         select: {
           id: true,
@@ -81,11 +81,11 @@ type ProcessoSelect = typeof processoSelect;
 type ProcessoResult = Prisma.EmpresasVagasProcessoGetPayload<{ select: ProcessoSelect }>;
 
 const mapProcesso = (processo: ProcessoResult) => {
-  if (!processo.candidato) {
+  if (!processo.Usuarios) {
     return { ...processo, candidato: null };
   }
 
-  const candidatoComInformacoes = mergeUsuarioInformacoes(processo.candidato);
+  const candidatoComInformacoes = mergeUsuarioInformacoes(processo.Usuarios);
   const candidatoComEndereco = attachEnderecoResumo(candidatoComInformacoes);
 
   return {
@@ -112,7 +112,7 @@ const ensureCandidatoElegivel = async (candidatoId: string) => {
       id: true,
       role: true,
       _count: {
-        select: { curriculos: true },
+        select: { UsuariosCurriculos: true },
       },
     },
   });
@@ -125,7 +125,7 @@ const ensureCandidatoElegivel = async (candidatoId: string) => {
     throw new VagaProcessoCandidatoInvalidoError();
   }
 
-  if (!candidato._count || candidato._count.curriculos === 0) {
+  if (!candidato._count || candidato._count.UsuariosCurriculos === 0) {
     throw new VagaProcessoCandidatoInvalidoError();
   }
 };

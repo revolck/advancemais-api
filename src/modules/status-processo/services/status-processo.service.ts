@@ -13,19 +13,19 @@ export class StatusProcessoService {
    * Remove o padrão anterior quando um novo é definido
    */
   private async ensureSingleDefault() {
-    const defaultCount = await this.prisma.statusProcesso.count({
+    const defaultCount = await this.prisma.status_processo.count({
       where: { isDefault: true },
     });
 
     if (defaultCount > 1) {
       // Se há mais de 1 padrão, manter apenas o mais recente
-      const latestDefault = await this.prisma.statusProcesso.findFirst({
+      const latestDefault = await this.prisma.status_processo.findFirst({
         where: { isDefault: true },
         orderBy: { criadoEm: 'desc' },
       });
 
       if (latestDefault) {
-        await this.prisma.statusProcesso.updateMany({
+        await this.prisma.status_processo.updateMany({
           where: {
             isDefault: true,
             id: { not: latestDefault.id },
@@ -66,13 +66,13 @@ export class StatusProcessoService {
     }
 
     const [status, total] = await Promise.all([
-      this.prisma.statusProcesso.findMany({
+      this.prisma.status_processo.findMany({
         where,
         skip,
         take: pageSize,
         orderBy,
         include: {
-          criadoPorUsuario: {
+          Usuarios: {
             select: {
               id: true,
               nomeCompleto: true,
@@ -81,7 +81,7 @@ export class StatusProcessoService {
           },
         },
       }),
-      this.prisma.statusProcesso.count({ where }),
+      this.prisma.status_processo.count({ where }),
     ]);
 
     return {
@@ -96,10 +96,10 @@ export class StatusProcessoService {
   }
 
   async getById(id: string) {
-    const status = await this.prisma.statusProcesso.findUnique({
+    const status = await this.prisma.status_processo.findUnique({
       where: { id },
       include: {
-        criadoPorUsuario: {
+          Usuarios: {
           select: {
             id: true,
             nomeCompleto: true,
@@ -120,19 +120,19 @@ export class StatusProcessoService {
     // Se este status será o padrão, remover o padrão anterior
     // Garantir que apenas 1 status seja padrão por vez
     if (data.isDefault) {
-      await this.prisma.statusProcesso.updateMany({
+      await this.prisma.status_processo.updateMany({
         where: { isDefault: true },
         data: { isDefault: false },
       });
     }
 
-    const status = await this.prisma.statusProcesso.create({
+    const status = await this.prisma.status_processo.create({
       data: {
         ...data,
         criadoPor,
       },
       include: {
-        criadoPorUsuario: {
+          Usuarios: {
           select: {
             id: true,
             nomeCompleto: true,
@@ -149,7 +149,7 @@ export class StatusProcessoService {
   }
 
   async update(id: string, data: UpdateStatusProcessoInput) {
-    const existingStatus = await this.prisma.statusProcesso.findUnique({
+    const existingStatus = await this.prisma.status_processo.findUnique({
       where: { id },
     });
 
@@ -160,17 +160,17 @@ export class StatusProcessoService {
     // Se este status será o padrão, remover o padrão anterior
     // Garantir que apenas 1 status seja padrão por vez
     if (data.isDefault) {
-      await this.prisma.statusProcesso.updateMany({
+      await this.prisma.status_processo.updateMany({
         where: { isDefault: true },
         data: { isDefault: false },
       });
     }
 
-    const status = await this.prisma.statusProcesso.update({
+    const status = await this.prisma.status_processo.update({
       where: { id },
       data,
       include: {
-        criadoPorUsuario: {
+          Usuarios: {
           select: {
             id: true,
             nomeCompleto: true,
@@ -187,7 +187,7 @@ export class StatusProcessoService {
   }
 
   async delete(id: string) {
-    const existingStatus = await this.prisma.statusProcesso.findUnique({
+    const existingStatus = await this.prisma.status_processo.findUnique({
       where: { id },
     });
 
@@ -211,16 +211,16 @@ export class StatusProcessoService {
       );
     }
 
-    await this.prisma.statusProcesso.delete({
+    await this.prisma.status_processo.delete({
       where: { id },
     });
   }
 
   async getDefault() {
-    const status = await this.prisma.statusProcesso.findFirst({
+    const status = await this.prisma.status_processo.findFirst({
       where: { isDefault: true, ativo: true },
       include: {
-        criadoPorUsuario: {
+          Usuarios: {
           select: {
             id: true,
             nomeCompleto: true,
@@ -238,11 +238,11 @@ export class StatusProcessoService {
   }
 
   async getAllActive() {
-    const status = await this.prisma.statusProcesso.findMany({
+    const status = await this.prisma.status_processo.findMany({
       where: { ativo: true },
       orderBy: [{ nome: 'asc' }],
       include: {
-        criadoPorUsuario: {
+          Usuarios: {
           select: {
             id: true,
             nomeCompleto: true,

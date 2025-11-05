@@ -14,31 +14,31 @@ export type CreateSubareaInteresseData = { nome: string };
 export type UpdateSubareaInteresseData = Partial<CreateSubareaInteresseData>;
 
 const baseInclude = {
-  subareas: {
+  CandidatosSubareasInteresse: {
     orderBy: { nome: 'asc' as const },
     include: {
-      vagas: {
+      EmpresasVagas: {
         select: { id: true },
       },
     },
   },
-  vagas: {
+  EmpresasVagas: {
     select: { id: true },
   },
 } as const;
 
-type SubareaWithRelations = CandidatosSubareasInteresse & { vagas: { id: string }[] };
+type SubareaWithRelations = CandidatosSubareasInteresse & { EmpresasVagas: { id: string }[] };
 
 type AreaWithRelations = CandidatosAreasInteresse & {
-  subareas: SubareaWithRelations[];
-  vagas: { id: string }[];
+  CandidatosSubareasInteresse: SubareaWithRelations[];
+  EmpresasVagas: { id: string }[];
 };
 
 const serializeSubarea = (subarea: SubareaWithRelations) => ({
   id: subarea.id,
   areaId: subarea.areaId,
   nome: subarea.nome,
-  vagasRelacionadas: subarea.vagas.map((vaga) => vaga.id),
+  vagasRelacionadas: subarea.EmpresasVagas.map((vaga) => vaga.id),
   criadoEm: subarea.criadoEm,
   atualizadoEm: subarea.atualizadoEm,
 });
@@ -46,8 +46,8 @@ const serializeSubarea = (subarea: SubareaWithRelations) => ({
 const serialize = (area: AreaWithRelations) => ({
   id: area.id,
   categoria: area.categoria,
-  subareas: area.subareas.map(serializeSubarea),
-  vagasRelacionadas: area.vagas.map((vaga) => vaga.id),
+  subareas: area.CandidatosSubareasInteresse.map(serializeSubarea),
+  vagasRelacionadas: area.EmpresasVagas.map((vaga) => vaga.id),
   criadoEm: area.criadoEm,
   atualizadoEm: area.atualizadoEm,
 });
@@ -85,7 +85,7 @@ export const areasInteresseService = {
     const area = await prisma.candidatosAreasInteresse.create({
       data: {
         categoria,
-        subareas: {
+        CandidatosSubareasInteresse: {
           create: subareas.map((nome) => ({ nome })),
         },
       },
@@ -162,7 +162,7 @@ export const areasInteresseService = {
       const subarea = await tx.candidatosSubareasInteresse.create({
         data: { areaId, nome },
         include: {
-          vagas: {
+          EmpresasVagas: {
             select: { id: true },
           },
         },
@@ -183,7 +183,7 @@ export const areasInteresseService = {
       where: { id },
       data: updateData,
       include: {
-        vagas: {
+        EmpresasVagas: {
           select: { id: true },
         },
       },
@@ -199,7 +199,7 @@ export const areasInteresseService = {
   async listSubareas() {
     const subareas = await prisma.candidatosSubareasInteresse.findMany({
       include: {
-        vagas: {
+        EmpresasVagas: {
           select: { id: true },
         },
       },
@@ -213,7 +213,7 @@ export const areasInteresseService = {
     const subarea = await prisma.candidatosSubareasInteresse.findUnique({
       where: { id },
       include: {
-        vagas: {
+        EmpresasVagas: {
           select: { id: true },
         },
       },

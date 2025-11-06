@@ -5,11 +5,13 @@ import bcrypt from 'bcrypt';
 import { prisma, retryOperation } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import { cursosService } from '../services/cursos.service';
+import { buscarVisaoGeralCursos } from '../services/visaogeral.service';
 import {
   createCourseSchema,
   listCoursesQuerySchema,
   updateCourseSchema,
 } from '../validators/cursos.schema';
+import { listAlunosComInscricoesQuerySchema } from '../validators/alunos.schema';
 import {
   sanitizeSocialLinks,
   buildSocialLinksUpdateData,
@@ -399,35 +401,18 @@ export class CursosController {
    */
   static listAlunosComInscricoes = async (req: Request, res: Response) => {
     try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = Math.min(parseInt(req.query.limit as string) || 10, 50); // Padrão 10, max 50 para performance
+      // Validar e parsear query params usando schema Zod
+      const params = listAlunosComInscricoesQuerySchema.parse(req.query);
+      const page = params.page;
+      const limit = params.limit;
       const skip = (page - 1) * limit;
 
-      // Parâmetros de filtro
-      const cidade = req.query.cidade as string | undefined;
-      const statusInscricao = req.query.status as string | undefined;
-      const cursoIdParam = (req.query.cursoId || req.query.curso) as string | undefined;
-      const turmaIdParam = (req.query.turmaId || req.query.turma) as string | undefined;
-      const search = req.query.search as string | undefined;
-
-      // Validar status de inscrição se fornecido
-      const statusValidos = [
-        'INSCRITO',
-        'EM_ANDAMENTO',
-        'CONCLUIDO',
-        'REPROVADO',
-        'EM_ESTAGIO',
-        'CANCELADO',
-        'TRANCADO',
-      ];
-
-      if (statusInscricao && !statusValidos.includes(statusInscricao)) {
-        return res.status(400).json({
-          success: false,
-          code: 'INVALID_STATUS',
-          message: `Status inválido: "${statusInscricao}". Valores aceitos: ${statusValidos.join(', ')}`,
-        });
-      }
+      // Parâmetros de filtro (já validados pelo schema)
+      const cidade = params.cidade;
+      const statusInscricao = params.status;
+      const cursoIdParam = params.cursoId;
+      const turmaIdParam = params.turmaId || params.turma;
+      const search = params.search;
 
       // Construir filtro dinamicamente
       const where: any = {
@@ -437,12 +422,12 @@ export class CursosController {
             },
       };
 
-      // Filtro por cidade
-      if (cidade) {
+      // Filtro por cidade (já normalizado como array pelo schema)
+      if (cidade && cidade.length > 0) {
         where.UsuariosEnderecos = {
           some: {
             cidade: {
-              equals: cidade,
+              in: cidade,
               mode: 'insensitive',
             },
           },
@@ -450,36 +435,50 @@ export class CursosController {
       }
 
       // Construir filtros de inscrições
-      const inscricaoFilter: any = {};
+      // SEMPRE filtrar apenas inscrições ATIVAS (EM_ANDAMENTO ou INSCRITO)
+      // Um aluno não pode estar em múltiplos cursos simultaneamente
+      // statusInscricao já vem como array após transform do schema
+      const inscricaoFilter: any = {
+        status: {
+          in: statusInscricao && statusInscricao.length > 0
+            ? statusInscricao
+            : ['EM_ANDAMENTO', 'INSCRITO'], // Priorizar status ativos se não especificado
+        },
+      };
 
-      if (cursoIdParam || turmaIdParam || statusInscricao) {
-        // Filtro por status da inscrição
-        if (statusInscricao) {
-          inscricaoFilter.status = statusInscricao;
+      // Filtro por turma (e opcionalmente por curso)
+      if (cursoIdParam || turmaIdParam) {
+        // No Prisma, dentro de CursosTurmasInscricoes, usamos CursosTurmas (a relação), não "turma"
+        const turmaFilter: any = {};
+
+        if (cursoIdParam) {
+          // cursoId é String UUID após validação do schema
+          // Validar se é UUID válido antes de usar
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          if (!uuidRegex.test(cursoIdParam)) {
+            return res.status(400).json({
+              success: false,
+              code: 'INVALID_CURSO_ID',
+              message: 'Curso ID deve ser um UUID válido',
+              error: `O ID "${cursoIdParam}" não é um UUID válido`,
+            });
+          }
+          // CursosTurmas tem cursoId diretamente, não precisa fazer curso: { id }
+          turmaFilter.cursoId = cursoIdParam;
         }
 
-        // Filtro por turma (e opcionalmente por curso)
-        if (cursoIdParam || turmaIdParam) {
-          const turmaFilter: any = {};
-
-          if (cursoIdParam) {
-            turmaFilter.curso = {
-              id: parseInt(cursoIdParam),
-            };
-          }
-
-          if (turmaIdParam) {
-            turmaFilter.id = turmaIdParam;
-          }
-
-          inscricaoFilter.turma = turmaFilter;
+        if (turmaIdParam) {
+          turmaFilter.id = turmaIdParam;
         }
 
-        // Aplicar filtro de inscrições no WHERE (valida que aluno TEM essa inscrição)
-        where.turmasInscritas = {
-          some: inscricaoFilter,
-        };
+        // Usar CursosTurmas (a relação) ao invés de "turma"
+        inscricaoFilter.CursosTurmas = turmaFilter;
       }
+
+      // Aplicar filtro de inscrições no WHERE (valida que aluno TEM inscrição ATIVA)
+      where.CursosTurmasInscricoes = {
+        some: inscricaoFilter,
+      };
 
       // Filtro por busca (nome, email ou CPF)
       if (search) {
@@ -517,35 +516,37 @@ export class CursosController {
               },
             },
             CursosTurmasInscricoes: {
-                  // Aplicar o mesmo filtro aqui para que o take: 1 pegue a inscrição CORRETA
-                  where: Object.keys(inscricaoFilter).length > 0 ? inscricaoFilter : undefined,
+              // Aplicar filtro para pegar apenas inscrições ATIVAS
+              // Priorizar EM_ANDAMENTO sobre INSCRITO, depois por data mais recente
+              where: inscricaoFilter,
               select: {
                 id: true,
                 status: true,
                 criadoEm: true,
-                  CursosTurmas: {
-                    select: {
-                      id: true,
-                      nome: true,
-                      codigo: true,
-                      status: true,
-                      dataInicio: true,
-                      dataFim: true,
-                      Cursos: {
-                        select: {
-                          id: true,
-                          nome: true,
-                          codigo: true,
-                        },
+                CursosTurmas: {
+                  select: {
+                    id: true,
+                    nome: true,
+                    codigo: true,
+                    status: true,
+                    dataInicio: true,
+                    dataFim: true,
+                    Cursos: {
+                      select: {
+                        id: true,
+                        nome: true,
+                        codigo: true,
                       },
                     },
                   },
+                },
               },
-                  // Trazer apenas a inscrição mais recente (QUE CORRESPONDA AO FILTRO)
-                  take: 1,
-                  orderBy: {
-                    criadoEm: 'desc',
-                  },
+              // Trazer apenas a inscrição ATIVA mais recente
+              // Prioridade: EM_ANDAMENTO primeiro, depois INSCRITO, depois por data mais recente
+              take: 1,
+              orderBy: {
+                criadoEm: 'desc', // Mais recente primeiro
+              },
             },
           },
           skip,
@@ -567,30 +568,22 @@ export class CursosController {
 
       const data = await Promise.all(
         alunos.map(async (aluno) => {
-          let ultimaInscricao: typeof aluno.CursosTurmasInscricoes[0] | undefined = aluno.CursosTurmasInscricoes[0];
+          // Buscar inscrição ATIVA (priorizando EM_ANDAMENTO > INSCRITO)
+          // O filtro do Prisma já garante que só traz alunos com inscrição no curso/turma filtrado
+          // e status ativo, então pegar a primeira (mais recente)
+          let inscricaoAtiva: typeof aluno.CursosTurmasInscricoes[0] | undefined = 
+            aluno.CursosTurmasInscricoes.find((i) => i.status === 'EM_ANDAMENTO') ||
+            aluno.CursosTurmasInscricoes.find((i) => i.status === 'INSCRITO') ||
+            aluno.CursosTurmasInscricoes[0]; // Fallback para a primeira se não encontrou
 
-          // Se filtrou por curso, mas o último curso do aluno não é o filtrado, retorne null
-          if (
-            cursoIdParam &&
-            ultimaInscricao &&
-            ultimaInscricao.CursosTurmas.Cursos.id !== parseInt(cursoIdParam)
-          ) {
-            ultimaInscricao = undefined;
-          }
-
-          // Se filtrou por turma, mas a última inscrição do aluno não é da turma filtrada, retorne null
-          if (turmaIdParam && ultimaInscricao && ultimaInscricao.CursosTurmas.id !== turmaIdParam) {
-            ultimaInscricao = undefined;
-          }
-
-          // Calcular progresso se houver inscrição
+          // Calcular progresso se houver inscrição ativa
           let progresso = 0;
-          if (ultimaInscricao) {
+          if (inscricaoAtiva) {
             progresso = await calcularProgressoCurso(
-              ultimaInscricao.id,
-              ultimaInscricao.CursosTurmas.id,
-              ultimaInscricao.CursosTurmas.dataInicio,
-              ultimaInscricao.CursosTurmas.dataFim,
+              inscricaoAtiva.id,
+              inscricaoAtiva.CursosTurmas.id,
+              inscricaoAtiva.CursosTurmas.dataInicio,
+              inscricaoAtiva.CursosTurmas.dataFim,
             );
           }
 
@@ -605,23 +598,23 @@ export class CursosController {
           estado: (aluno as any).UsuariosEnderecos?.[0]?.estado || null,
           ultimoLogin: aluno.ultimoLogin,
           criadoEm: aluno.criadoEm,
-            // Dados da última inscrição (curso mais recente)
-            ultimoCurso: ultimaInscricao
+            // Dados da inscrição ATIVA (priorizando EM_ANDAMENTO > INSCRITO)
+            ultimoCurso: inscricaoAtiva
               ? {
-                  inscricaoId: ultimaInscricao.id,
-                  statusInscricao: ultimaInscricao.status,
-                  dataInscricao: ultimaInscricao.criadoEm,
+                  inscricaoId: inscricaoAtiva.id,
+                  statusInscricao: inscricaoAtiva.status,
+                  dataInscricao: inscricaoAtiva.criadoEm,
                   progresso, // Percentual de 0 a 100
-                  CursosTurmas: {
-                    id: ultimaInscricao.CursosTurmas.id,
-                    nome: ultimaInscricao.CursosTurmas.nome,
-                    codigo: ultimaInscricao.CursosTurmas.codigo,
-                    status: ultimaInscricao.CursosTurmas.status,
+                  turma: {
+                    id: inscricaoAtiva.CursosTurmas.id,
+                    nome: inscricaoAtiva.CursosTurmas.nome,
+                    codigo: inscricaoAtiva.CursosTurmas.codigo,
+                    status: inscricaoAtiva.CursosTurmas.status,
                   },
                   curso: {
-                    id: ultimaInscricao.CursosTurmas.Cursos.id,
-                    nome: ultimaInscricao.CursosTurmas.Cursos.nome,
-                    codigo: ultimaInscricao.CursosTurmas.Cursos.codigo,
+                    id: inscricaoAtiva.CursosTurmas.Cursos.id,
+                    nome: inscricaoAtiva.CursosTurmas.Cursos.nome,
+                    codigo: inscricaoAtiva.CursosTurmas.Cursos.codigo,
                   },
                 }
               : null,
@@ -639,6 +632,16 @@ export class CursosController {
         },
       });
     } catch (error: any) {
+      // Tratar erros de validação Zod
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros de consulta inválidos',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
       // Logging detalhado do erro
       logger.error('❌ Erro ao listar alunos:', {
         message: error?.message,
@@ -1246,6 +1249,36 @@ export class CursosController {
         success: false,
         code: 'ALUNO_UPDATE_ERROR',
         message: 'Erro ao atualizar informações do aluno',
+        error: error?.message,
+      });
+    }
+  };
+
+  /**
+   * Visão geral de cursos com métricas e faturamento
+   * Acesso restrito a ADMIN e MODERADOR
+   */
+  static visaogeral = async (req: Request, res: Response) => {
+    try {
+      const visaoGeral = await buscarVisaoGeralCursos();
+
+      res.json({
+        success: true,
+        data: visaoGeral,
+      });
+    } catch (error: any) {
+      logger.error(
+        {
+          error: error?.message,
+          stack: error?.stack,
+        },
+        'Erro ao buscar visão geral de cursos',
+      );
+
+      res.status(500).json({
+        success: false,
+        code: 'CURSOS_VISAOGERAL_ERROR',
+        message: 'Erro ao buscar visão geral de cursos',
         error: error?.message,
       });
     }

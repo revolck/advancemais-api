@@ -44,6 +44,122 @@ router.get('/meta', publicCache, CursosController.meta);
 
 /**
  * @openapi
+ * /api/v1/cursos/visaogeral:
+ *   get:
+ *     summary: 📊 Visão Geral de Cursos (Admin/Moderador)
+ *     description: |
+ *       **ACESSO RESTRITO:** Apenas ADMIN e MODERADOR podem acessar esta rota.
+ *       
+ *       Retorna métricas completas de cursos incluindo:
+ *       - Métricas gerais (total de cursos, turmas, alunos)
+ *       - Cursos próximos a começar (7, 15, 30 dias)
+ *       - Faturamento por curso (dados sensíveis)
+ *       - Performance e taxa de conclusão
+ *       
+ *       **⚠️ DADOS SENSÍVEIS:** Esta rota contém informações de faturamento e receita.
+ *     tags: [Cursos]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Visão geral completa de cursos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     metricasGerais:
+ *                       type: object
+ *                       properties:
+ *                         totalCursos:
+ *                           type: integer
+ *                           description: Total de cursos no sistema
+ *                         cursosPublicados:
+ *                           type: integer
+ *                         cursosRascunho:
+ *                           type: integer
+ *                         totalTurmas:
+ *                           type: integer
+ *                         turmasAtivas:
+ *                           type: integer
+ *                         turmasInscricoesAbertas:
+ *                           type: integer
+ *                         totalAlunosInscritos:
+ *                           type: integer
+ *                         totalAlunosAtivos:
+ *                           type: integer
+ *                         totalAlunosConcluidos:
+ *                           type: integer
+ *                     cursosProximosInicio:
+ *                       type: object
+ *                       properties:
+ *                         proximos7Dias:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                         proximos15Dias:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                         proximos30Dias:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                     faturamento:
+ *                       type: object
+ *                       properties:
+ *                         totalFaturamento:
+ *                           type: number
+ *                           description: Faturamento total de todos os cursos
+ *                         faturamentoMesAtual:
+ *                           type: number
+ *                         faturamentoMesAnterior:
+ *                           type: number
+ *                         cursoMaiorFaturamento:
+ *                           type: object
+ *                           nullable: true
+ *                         topCursosFaturamento:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                     performance:
+ *                       type: object
+ *                       properties:
+ *                         cursosMaisPopulares:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                         taxaConclusao:
+ *                           type: number
+ *                         cursosComMaiorTaxaConclusao:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *       401:
+ *         description: Não autenticado
+ *       403:
+ *         description: Acesso negado - apenas ADMIN e MODERADOR
+ *       500:
+ *         description: Erro ao buscar visão geral
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get(
+  '/visaogeral',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR]),
+  CursosController.visaogeral,
+);
+
+/**
+ * @openapi
  * /api/v1/cursos/categorias:
  *   get:
  *     summary: Listar categorias de cursos
@@ -463,7 +579,10 @@ router.delete(
  *                       ultimoCurso:
  *                         type: object
  *                         nullable: true
- *                         description: Dados da última inscrição do aluno
+ *                         description: |
+ *                           Dados da inscrição ATIVA do aluno (curso atual).
+ *                           Prioriza EM_ANDAMENTO > INSCRITO.
+ *                           Um aluno não pode estar em múltiplos cursos simultaneamente.
  *                         properties:
  *                           inscricaoId:
  *                             type: string

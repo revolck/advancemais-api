@@ -1,0 +1,214 @@
+═══════════════════════════════════════════════════════════════════════════════
+                    LISTA DE USUÁRIOS PARA TESTES - ADVANCE+
+═══════════════════════════════════════════════════════════════════════════════
+
+📋 RESUMO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Total de usuários: 15
+  • ADMIN: 2 usuários
+  • MODERADOR: 1 usuário
+  • SETOR_DE_VAGAS: 1 usuário
+  • RECRUTADOR: 1 usuário
+  • INSTRUTOR: 1 usuário
+  • PEDAGOGICO: 1 usuário
+  • FINANCEIRO: 1 usuário
+  • EMPRESA: 2 usuários
+  • ALUNO_CANDIDATO: 5 usuários
+
+═══════════════════════════════════════════════════════════════════════════════
+👑 ADMINISTRADORES
+═══════════════════════════════════════════════════════════════════════════════
+
+Nome: Admin Teste Sistema
+Email: admin.teste@advancemais.com.br
+Senha: AdminTeste@123
+Role: ADMIN
+CPF: 11111111111
+Telefone: 11999990000
+Cidade: São Paulo - SP
+Descrição: Administrador para testes do sistema
+
+═══════════════════════════════════════════════════════════════════════════════
+👥 FUNCIONÁRIOS/STAFF
+═══════════════════════════════════════════════════════════════════════════════
+
+━━ MODERADOR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Nome: Moderador Sistema
+Email: moderador@advancemais.com.br
+Senha: Moderador@123
+Role: MODERADOR
+CPF: 22222222222
+Telefone: 11999990002
+Cidade: São Paulo - SP
+Descrição: Moderador da plataforma
+
+━━ SETOR DE VAGAS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Nome: Ana Setor de Vagas
+Email: setor.vagas@advancemais.com.br
+Senha: SetorVagas@123
+Role: SETOR_DE_VAGAS
+CPF: 33333333333
+Telefone: 11999990003
+Cidade: São Paulo - SP
+Descrição: Especialista do setor de vagas
+
+━━ RECRUTADOR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Nome: Carlos Recrutador
+Email: recrutador@advancemais.com.br
+Senha: Recrutador@123
+Role: RECRUTADOR
+CPF: 44444444444
+Telefone: 11999990004
+Cidade: São Paulo - SP
+Descrição: Recrutador especializado em seleção
+
+━━ INSTRUTOR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Nome: Instrutor Maria Silva
+Email: instrutor@advancemais.com.br
+Senha: Instrutor@123
+Role: INSTRUTOR
+CPF: 55555555555
+Telefone: 11999990005
+Cidade: São Paulo - SP
+Descrição: Instrutora de Desenvolvimento Web
+
+━━ PEDAGÓGICO ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Nome: Pedagogo João
+Email: pedagogico@advancemais.com.br
+Senha: Pedagogico@123
+Role: PEDAGOGICO
+CPF: 66666666666
+Telefone: 11999990006
+Cidade: São Paulo - SP
+Descrição: Pedagogo responsável pela coordenação
+
+━━ FINANCEIRO ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Nome: Gerente Financeiro
+Email: financeiro@advancemais.com.br
+Senha: Financeiro@123
+Role: FINANCEIRO
+CPF: 77777777777
+Telefone: 11999990007
+Cidade: São Paulo - SP
+Descrição: Gerente financeiro
+
+═══════════════════════════════════════════════════════════════════════════════
+🏢 EMPRESAS
+═══════════════════════════════════════════════════════════════════════════════
+
+━━ EMPRESA 1 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Nome: Tech Innovations LTDA
+Email: empresa1@example.com
+Senha: Empresa@123
+Role: EMPRESA
+CNPJ: 12345678000190
+Telefone: 11987654321
+Cidade: São Paulo - SP
+Descrição: Empresa de tecnologia e inovação
+
+━━ EMPRESA 2 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Nome: Consultoria RH Plus
+Email: empresa2@example.com
+Senha: Empresa@123
+Role: EMPRESA
+CNPJ: 98765432000110
+Telefone: 11987654322
+Cidade: Rio de Janeiro - RJ
+Descrição: Consultoria em recursos humanos
+
+═══════════════════════════════════════════════════════════════════════════════
+🎓 ALUNOS/CANDIDATOS
+═══════════════════════════════════════════════════════════════════════════════
+
+━━ CANDIDATO 1 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Nome: João da Silva
+Email: joao.silva@example.com
+Senha: Candidato@123
+Role: ALUNO_CANDIDATO
+CPF: 12312312312
+Telefone: 11988881111
+Cidade: São Paulo - SP
+Data Nasc: 15/05/1995
+Descrição: Desenvolvedor Full Stack em busca de novas oportunidades
+
+━━ CANDIDATO 2 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Nome: Maria Santos
+Email: maria.santos@example.com
+Senha: Candidato@123
+Role: ALUNO_CANDIDATO
+CPF: 32132132132
+Telefone: 11988882222
+Cidade: São Paulo - SP
+Data Nasc: 20/08/1998
+Descrição: Designer UX/UI com experiência em produtos digitais
+
+━━ CANDIDATO 3 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Nome: Pedro Oliveira
+Email: pedro.oliveira@example.com
+Senha: Candidato@123
+Role: ALUNO_CANDIDATO
+CPF: 45645645645
+Telefone: 11988883333
+Cidade: Campinas - SP
+Data Nasc: 10/03/1997
+Descrição: Analista de dados especializado em BI
+
+━━ CANDIDATO 4 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Nome: Ana Costa
+Email: ana.costa@example.com
+Senha: Candidato@123
+Role: ALUNO_CANDIDATO
+CPF: 78978978978
+Telefone: 11988884444
+Cidade: São Paulo - SP
+Data Nasc: 25/11/1999
+Descrição: Gerente de projetos certificada PMP
+
+━━ CANDIDATO 5 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Nome: Lucas Ferreira
+Email: lucas.ferreira@example.com
+Senha: Candidato@123
+Role: ALUNO_CANDIDATO
+CPF: 15915915915
+Telefone: 11988885555
+Cidade: São Paulo - SP
+Data Nasc: 30/07/1996
+Descrição: DevOps Engineer com foco em AWS e Kubernetes
+
+═══════════════════════════════════════════════════════════════════════════════
+📝 FORMATO TABULAR (para planilhas)
+═══════════════════════════════════════════════════════════════════════════════
+
+Nome                    | Email                              | Senha            | Role            | CPF/CNPJ        | Telefone
+────────────────────────┼────────────────────────────────────┼──────────────────┼─────────────────┼─────────────────┼──────────────
+Admin Teste Sistema     | admin.teste@advancemais.com.br     | AdminTeste@123   | ADMIN           | 11111111111     | 11999990000
+Moderador Sistema        | moderador@advancemais.com.br      | Moderador@123    | MODERADOR       | 22222222222     | 11999990002
+Ana Setor de Vagas       | setor.vagas@advancemais.com.br    | SetorVagas@123   | SETOR_DE_VAGAS  | 33333333333     | 11999990003
+Carlos Recrutador        | recrutador@advancemais.com.br     | Recrutador@123   | RECRUTADOR      | 44444444444     | 11999990004
+Instrutor Maria Silva    | instrutor@advancemais.com.br      | Instrutor@123    | INSTRUTOR       | 55555555555     | 11999990005
+Pedagogo João            | pedagogico@advancemais.com.br     | Pedagogico@123   | PEDAGOGICO      | 66666666666     | 11999990006
+Gerente Financeiro       | financeiro@advancemais.com.br     | Financeiro@123   | FINANCEIRO      | 77777777777     | 11999990007
+Tech Innovations LTDA    | empresa1@example.com              | Empresa@123      | EMPRESA         | 12345678000190  | 11987654321
+Consultoria RH Plus      | empresa2@example.com              | Empresa@123      | EMPRESA         | 98765432000110  | 11987654322
+João da Silva            | joao.silva@example.com            | Candidato@123    | ALUNO_CANDIDATO | 12312312312     | 11988881111
+Maria Santos             | maria.santos@example.com          | Candidato@123    | ALUNO_CANDIDATO | 32132132132     | 11988882222
+Pedro Oliveira           | pedro.oliveira@example.com        | Candidato@123    | ALUNO_CANDIDATO | 45645645645     | 11988883333
+Ana Costa                | ana.costa@example.com              | Candidato@123    | ALUNO_CANDIDATO | 78978978978     | 11988884444
+Lucas Ferreira           | lucas.ferreira@example.com        | Candidato@123    | ALUNO_CANDIDATO | 15915915915     | 11988885555
+
+═══════════════════════════════════════════════════════════════════════════════
+⚠️  OBSERVAÇÕES IMPORTANTES
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Todos os emails estão automaticamente verificados no seed
+2. Todos os usuários estão com status ATIVO
+3. Os alunos/candidatos recebem código sequencial (MAT0001, MAT0002, etc.)
+4. CPFs e CNPJs são fictícios, criados apenas para testes
+5. As senhas seguem o padrão definido no seed
+6. Todos os usuários têm endereço cadastrado (cidade e estado)
+7. Todos os usuários têm informações complementares (telefone, descrição, etc.)
+
+═══════════════════════════════════════════════════════════════════════════════
+📅 Documento gerado para uso do time de testes
+═══════════════════════════════════════════════════════════════════════════════
+

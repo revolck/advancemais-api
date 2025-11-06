@@ -2,7 +2,7 @@
  * Seed de Cursos e Turmas
  */
 
-import { PrismaClient, Roles, CursosStatusPadrao, CursoStatus } from '@prisma/client';
+import { PrismaClient, Roles, CursosStatusPadrao, CursoStatus, StatusInscricao } from '@prisma/client';
 import { randomUUID } from 'crypto';
 
 export async function seedCursos(prisma?: PrismaClient) {
@@ -143,23 +143,36 @@ export async function seedCursos(prisma?: PrismaClient) {
         turmasCriadas.push(turma);
         console.log(`    🎓 Turma criada: ${codigoTurma}`);
 
-        // Buscar alunos para inscrever na turma
-        const alunos = await client.usuarios.findMany({
-          where: { role: 'ALUNO_CANDIDATO' },
+        // Buscar alunos que NÃO têm inscrição ativa (EM_ANDAMENTO ou INSCRITO)
+        // Um aluno não pode estar em múltiplos cursos simultaneamente
+        const alunosDisponiveis = await client.usuarios.findMany({
+          where: {
+            role: 'ALUNO_CANDIDATO',
+            NOT: {
+              CursosTurmasInscricoes: {
+                some: {
+                  status: {
+                    in: ['EM_ANDAMENTO', 'INSCRITO'],
+                  },
+                },
+              },
+            },
+          },
           take: 3, // Inscrever até 3 alunos por turma
         });
 
-        // Inscrever alunos na turma
-        for (const aluno of alunos) {
+        // Inscrever alunos na turma com status INSCRITO (padrão)
+        for (const aluno of alunosDisponiveis) {
           try {
             await client.cursosTurmasInscricoes.create({
               data: {
                 id: randomUUID(),
                 turmaId: turma.id,
                 alunoId: aluno.id,
+                status: StatusInscricao.INSCRITO, // Status padrão para novas inscrições
               },
             });
-            console.log(`      👤 Aluno inscrito: ${aluno.nomeCompleto}`);
+            console.log(`      👤 Aluno inscrito: ${aluno.nomeCompleto} (${StatusInscricao.INSCRITO})`);
           } catch (error: any) {
             if (!error.message.includes('Unique constraint')) {
               console.error(`      ❌ Erro ao inscrever aluno: ${error.message}`);

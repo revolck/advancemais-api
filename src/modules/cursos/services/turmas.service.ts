@@ -132,7 +132,7 @@ const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()(
   },
 });
 
-const ensureCursoExists = async (cursoId: number) => {
+const ensureCursoExists = async (cursoId: string) => {
   const curso = await prisma.cursos.findUnique({ where: { id: cursoId }, select: { id: true } });
   if (!curso) {
     const error = new Error('Curso não encontrado');
@@ -141,7 +141,7 @@ const ensureCursoExists = async (cursoId: number) => {
   }
 };
 
-const ensureTurmaBelongsToCurso = async (cursoId: number, turmaId: string) => {
+const ensureTurmaBelongsToCurso = async (cursoId: string, turmaId: string) => {
   const turma = await prisma.cursosTurmas.findUnique({
     where: { id: turmaId },
     select: { id: true, cursoId: true },
@@ -172,7 +172,7 @@ const fetchTurmaDetailed = async (client: PrismaClientOrTx, turmaId: string) => 
 };
 
 type TurmaListParams = {
-  cursoId: number;
+  cursoId: string; // UUID String
   page: number;
   pageSize: number;
   status?: CursoStatus;
@@ -273,7 +273,7 @@ export const turmasService = {
     };
   },
 
-  async get(cursoId: number, turmaId: string) {
+  async get(cursoId: string, turmaId: string) {
     await ensureTurmaBelongsToCurso(cursoId, turmaId);
 
     try {
@@ -306,7 +306,7 @@ export const turmasService = {
     }
   },
 
-  async listInscricoes(cursoId: number, turmaId: string) {
+  async listInscricoes(cursoId: string, turmaId: string) {
     await ensureTurmaBelongsToCurso(cursoId, turmaId);
 
     const inscricoes = await prisma.cursosTurmasInscricoes.findMany({
@@ -315,6 +315,7 @@ export const turmasService = {
         Usuarios: {
           select: {
             id: true,
+            codUsuario: true,
             nomeCompleto: true,
             email: true,
             UsuariosInformation: {
@@ -361,7 +362,8 @@ export const turmasService = {
             id: aluno.id,
             nome: aluno.nomeCompleto,
             email: aluno.email,
-            inscricao: aluno.UsuariosInformation?.inscricao ?? null,
+            codigo: aluno.codUsuario,
+            inscricao: aluno.UsuariosInformation?.inscricao ?? aluno.codUsuario ?? null,
             telefone: aluno.UsuariosInformation?.telefone ?? null,
             endereco: endereco
               ? {
@@ -381,7 +383,7 @@ export const turmasService = {
   },
 
   async create(
-    cursoId: number,
+    cursoId: string,
     data: {
       nome: string;
       turno?: CursosTurnos;
@@ -432,7 +434,7 @@ export const turmasService = {
   },
 
   async update(
-    cursoId: number,
+    cursoId: string,
     turmaId: string,
     data: Partial<{
       nome: string;
@@ -507,7 +509,7 @@ export const turmasService = {
   },
 
   async enroll(
-    cursoId: number,
+    cursoId: string,
     turmaId: string,
     alunoId: string,
     actor?: { id?: string | null; role?: Roles | null },
@@ -648,7 +650,7 @@ export const turmasService = {
   },
 
   async updateInscricaoStatus(
-    cursoId: number,
+    cursoId: string,
     turmaId: string,
     inscricaoId: string,
     status: StatusInscricao,
@@ -757,7 +759,7 @@ export const turmasService = {
     });
   },
 
-  async unenroll(cursoId: number, turmaId: string, alunoId: string) {
+  async unenroll(cursoId: string, turmaId: string, alunoId: string) {
     return prisma.$transaction(async (tx) => {
       const turma = await tx.cursosTurmas.findUnique({
         where: { id: turmaId },

@@ -134,7 +134,7 @@ model CuponsDesconto {
 model CuponsDescontoCursos {
   id             Int            @id @default(autoincrement())
   cupomId        String
-  cursoId        Int
+  cursoId        String
   CuponsDesconto CuponsDesconto @relation(fields: [cupomId], references: [id], onDelete: Cascade)
   Cursos         Cursos         @relation(fields: [cursoId], references: [id], onDelete: Cascade)
 
@@ -154,7 +154,7 @@ model CuponsDescontoPlanos {
 }
 
 model Cursos {
-  id                   Int                    @id @default(autoincrement())
+  id                   String                 @id @default(uuid())
   codigo               String                 @unique @db.VarChar(12)
   nome                 String                 @db.VarChar(255)
   descricao            String?
@@ -229,7 +229,7 @@ model CursosCertificadosLogs {
 
 model CursosEstagios {
   id                                                String                       @id @default(uuid())
-  cursoId                                           Int
+  cursoId                                           String
   turmaId                                           String
   inscricaoId                                       String
   alunoId                                           String
@@ -399,7 +399,7 @@ model CursosSubcategorias {
 model CursosTurmas {
   id                          String                       @id @default(uuid())
   codigo                      String                       @unique @db.VarChar(12)
-  cursoId                     Int
+  cursoId                     String
   instrutorId                 String?
   nome                        String                       @db.VarChar(255)
   turno                       CursosTurnos                 @default(INTEGRAL)

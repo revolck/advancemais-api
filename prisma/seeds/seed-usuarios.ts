@@ -36,6 +36,19 @@ const usuarios: UsuarioSeed[] = [
     cidade: 'São Paulo',
     estado: 'SP',
   },
+  // ADMIN TESTE
+  {
+    nomeCompleto: 'Admin Teste Sistema',
+    email: 'admin.teste@advancemais.com.br',
+    senha: 'AdminTeste@123',
+    role: Roles.ADMIN,
+    tipoUsuario: TiposDeUsuarios.PESSOA_FISICA,
+    cpf: '11111111111',
+    telefone: '11999990000',
+    descricao: 'Administrador para testes do sistema',
+    cidade: 'São Paulo',
+    estado: 'SP',
+  },
 
   // MODERADOR
   {

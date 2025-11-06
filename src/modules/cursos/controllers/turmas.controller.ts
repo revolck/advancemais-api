@@ -13,12 +13,18 @@ import {
 } from '../validators/turmas.schema';
 
 const parseCursoId = (raw: string) => {
-  const id = Number(raw);
-  if (!Number.isInteger(id) || id <= 0) {
+  if (!raw || typeof raw !== 'string') {
     return null;
   }
 
-  return id;
+  // Cursos.id agora é UUID (String), não mais Int
+  // Validar formato UUID
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(raw.trim())) {
+    return null;
+  }
+
+  return raw.trim();
 };
 
 const parseTurmaId = (raw: string) => {

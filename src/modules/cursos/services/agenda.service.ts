@@ -11,7 +11,7 @@ type PrismaClientOrTx = Prisma.TransactionClient | typeof prisma;
 
 const ensureTurmaBelongsToCurso = async (
   client: PrismaClientOrTx,
-  cursoId: number,
+  cursoId: string,
   turmaId: string,
 ) => {
   const turma = await client.cursosTurmas.findFirst({
@@ -62,7 +62,7 @@ const ensureProvaBelongsToTurma = async (
 
 const ensureAgendaBelongsToTurma = async (
   client: PrismaClientOrTx,
-  cursoId: number,
+  cursoId: string,
   turmaId: string,
   agendaId: string,
 ) => {
@@ -178,7 +178,7 @@ const applyDateFilters = (filters: {
 
 export const agendaService = {
   async list(
-    cursoId: number,
+    cursoId: string,
     turmaId: string,
     filters: {
       tipo?: CursosAgendaTipo;
@@ -203,18 +203,18 @@ export const agendaService = {
     const eventos = await prisma.cursosTurmasAgenda.findMany({
       where,
       orderBy: [{ inicio: 'asc' }, { criadoEm: 'asc' }],
-      ...agendaWithRelations,
+      include: agendaWithRelations.include,
     });
 
     return eventos.map(mapAgendaItem);
   },
 
-  async get(cursoId: number, turmaId: string, agendaId: string) {
+  async get(cursoId: string, turmaId: string, agendaId: string) {
     await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
 
     const evento = await prisma.cursosTurmasAgenda.findFirst({
       where: { id: agendaId, turmaId, CursosTurmas: { cursoId } },
-      ...agendaWithRelations,
+      include: agendaWithRelations.include,
     });
 
     if (!evento) {
@@ -227,7 +227,7 @@ export const agendaService = {
   },
 
   async create(
-    cursoId: number,
+    cursoId: string,
     turmaId: string,
     data: {
       tipo: CursosAgendaTipo;
@@ -269,7 +269,7 @@ export const agendaService = {
           aulaId: data.aulaId ?? null,
           provaId: data.provaId ?? null,
         },
-        ...agendaWithRelations,
+        include: agendaWithRelations.include,
       });
 
       agendaLogger.info({ turmaId, agendaId: evento.id }, 'Evento de agenda criado com sucesso');
@@ -279,7 +279,7 @@ export const agendaService = {
   },
 
   async update(
-    cursoId: number,
+    cursoId: string,
     turmaId: string,
     agendaId: string,
     data: {
@@ -328,7 +328,7 @@ export const agendaService = {
 
       const atualizado = await tx.cursosTurmasAgenda.findUnique({
         where: { id: agendaId },
-        ...agendaWithRelations,
+        include: agendaWithRelations.include,
       });
 
       if (!atualizado) {
@@ -343,7 +343,7 @@ export const agendaService = {
     });
   },
 
-  async delete(cursoId: number, turmaId: string, agendaId: string) {
+  async delete(cursoId: string, turmaId: string, agendaId: string) {
     return prisma.$transaction(async (tx) => {
       await ensureAgendaBelongsToTurma(tx, cursoId, turmaId, agendaId);
 
@@ -399,7 +399,7 @@ export const agendaService = {
     const eventos = await prisma.cursosTurmasAgenda.findMany({
       where,
       orderBy: [{ inicio: 'asc' }, { criadoEm: 'asc' }],
-      ...agendaWithRelations,
+      include: agendaWithRelations.include,
     });
 
     const inscricaoPorTurma = new Map(

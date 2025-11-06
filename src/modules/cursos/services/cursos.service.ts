@@ -139,6 +139,8 @@ type RawCourseBase = Prisma.CursosGetPayload<{
 type RawCourse = Omit<RawCourseBase, 'CursosTurmas' | '_count'> & {
   CursosTurmas?: (TurmaSummaryPayload | TurmaDetailedPayload)[];
   _count?: { CursosTurmas: number };
+  CursosCategorias?: RawCourseBase['CursosCategorias'];
+  CursosSubcategorias?: RawCourseBase['CursosSubcategorias'];
   categoria?: RawCourseBase['CursosCategorias'];
   subcategoria?: RawCourseBase['CursosSubcategorias'];
 };
@@ -555,14 +557,14 @@ export const cursosService = {
     let mappedCourses;
     if (includeTurmas && courses.length > 0) {
       // Se há turmas, calcular contagem em batch e mapear
-      const todasTurmas = courses.flatMap((curso) => curso.CursosTurmas || []);
+      const todasTurmas = courses.flatMap((curso) => (curso as any).CursosTurmas || []);
       const turmaIds = todasTurmas.map((t) => t.id);
       const inscricoesCountMap =
         turmaIds.length > 0 ? await countInscricoesAtivasPorTurma(turmaIds) : {};
 
       mappedCourses = courses.map((course) => {
-        const turmas = course.CursosTurmas || [];
-        const turmasComInscricoes = turmas.map((turma) => {
+        const turmas = (course as any).CursosTurmas || [];
+        const turmasComInscricoes = turmas.map((turma: any) => {
           const inscricoesCount = inscricoesCountMap[turma.id] || 0;
           return mapTurmaSummaryWithInscricoes(turma, inscricoesCount);
         });
@@ -675,7 +677,7 @@ export const cursosService = {
     };
   },
 
-  async getById(id: number) {
+  async getById(id: string) {
     const course = await prisma.cursos.findUnique({
       where: { id },
       include: {
@@ -764,7 +766,7 @@ export const cursosService = {
     });
 
     // ✅ Otimização: Calcular contagem de inscrições em batch para todas as turmas
-    const todasTurmas = cursos.flatMap((curso) => curso.CursosTurmas);
+    const todasTurmas = cursos.flatMap((curso) => (curso as any).CursosTurmas || []);
     const turmaIds = todasTurmas.map((t) => t.id);
     const inscricoesCountMap =
       turmaIds.length > 0 ? await countInscricoesAtivasPorTurma(turmaIds) : {};
@@ -798,7 +800,7 @@ export const cursosService = {
               descricao: subcategoria.descricao ?? null,
             }
           : null,
-        turmas: curso.CursosTurmas.map((turma) => {
+        turmas: ((curso as any).CursosTurmas || []).map((turma: any) => {
           const inscricoesCount = inscricoesCountMap[turma.id] || 0;
           return mapTurmaSummaryWithInscricoes(turma, inscricoesCount);
         }),
@@ -806,7 +808,7 @@ export const cursosService = {
     });
   },
 
-  async getPublicById(id: number) {
+  async getPublicById(id: string) {
     const referenceDate = new Date();
 
     const curso = await prisma.cursos.findFirst({
@@ -846,12 +848,13 @@ export const cursosService = {
 
     // ✅ Otimização: Adicionar contagem de inscrições nas turmas públicas
     const cursoComInscricoes = await (async () => {
-      if (curso.CursosTurmas && curso.CursosTurmas.length > 0) {
-        const turmaIds = curso.CursosTurmas.map((t) => t.id);
+      const turmas = (curso as any).CursosTurmas as any[];
+      if (turmas && turmas.length > 0) {
+        const turmaIds = turmas.map((t) => t.id);
         const inscricoesCountMap = await countInscricoesAtivasPorTurma(turmaIds);
         return {
           ...curso,
-          CursosTurmas: curso.CursosTurmas.map((turma) => ({
+          CursosTurmas: turmas.map((turma) => ({
             ...turma,
             inscricoesCount: inscricoesCountMap[turma.id] || 0,
             vagasOcupadas: inscricoesCountMap[turma.id] || 0,
@@ -912,6 +915,7 @@ export const cursosService = {
         include: {
           CursosCategorias: { select: categoriaSelect },
           CursosSubcategorias: { select: subcategoriaSelect },
+          CursosTurmas: { select: turmaSummarySelect },
           _count: { select: { CursosTurmas: true } },
         },
       });
@@ -921,7 +925,7 @@ export const cursosService = {
   },
 
   async update(
-    id: number,
+    id: string,
     data: Partial<{
       nome: string;
       descricao?: string | null;
@@ -950,6 +954,7 @@ export const cursosService = {
         include: {
           CursosCategorias: { select: categoriaSelect },
           CursosSubcategorias: { select: subcategoriaSelect },
+          CursosTurmas: { select: turmaSummarySelect },
           _count: { select: { CursosTurmas: true } },
         },
       });
@@ -958,7 +963,7 @@ export const cursosService = {
     });
   },
 
-  async archive(id: number) {
+  async archive(id: string) {
     // Verificar se o curso existe primeiro
     const existing = await prisma.cursos.findUnique({
       where: { id },
@@ -984,49 +989,7 @@ export const cursosService = {
       include: {
         CursosCategorias: { select: categoriaSelect },
         CursosSubcategorias: { select: subcategoriaSelect },
-        CursosTurmas: {
-          include: {
-            CursosTurmasInscricoes: {
-              include: {
-                Usuarios: {
-                  select: {
-                    id: true,
-                    nomeCompleto: true,
-                    email: true,
-                    UsuariosInformation: {
-                      select: { inscricao: true, telefone: true },
-                    },
-                    UsuariosEnderecos: {
-                      select: {
-                        logradouro: true,
-                        numero: true,
-                        bairro: true,
-                        cidade: true,
-                        estado: true,
-                        cep: true,
-                      },
-                      take: 1,
-                    },
-                  },
-                },
-              },
-            },
-            CursosTurmasAulas: {
-              orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
-              include: aulaWithMateriaisInclude.include,
-            },
-            CursosTurmasModulos: {
-              include: moduloDetailedInclude.include,
-              orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
-            },
-            CursosTurmasProvas: {
-              include: provaDefaultInclude.include,
-              orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
-            },
-            CursosTurmasRegrasAvaliacao: { select: regrasAvaliacaoSelect },
-          },
-          orderBy: { criadoEm: 'desc' },
-        },
+        CursosTurmas: { select: turmaSummarySelect },
         _count: { select: { CursosTurmas: true } },
       },
     });

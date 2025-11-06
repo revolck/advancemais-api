@@ -8,13 +8,16 @@ import {
   listarCertificadosQuerySchema,
 } from '../validators/certificados.schema';
 
-const parseCursoId = (raw: unknown) => {
-  const parsed = Number(raw);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
+const parseCursoId = (raw: unknown): string | null => {
+  if (typeof raw !== 'string' || !raw.trim()) {
     return null;
   }
-
-  return parsed;
+  // Cursos.id agora é UUID (String), não mais Int
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(raw.trim())) {
+    return null;
+  }
+  return raw.trim();
 };
 
 const parseTurmaId = (raw: unknown) => {

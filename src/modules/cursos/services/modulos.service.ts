@@ -11,7 +11,7 @@ const modulosLogger = logger.child({ module: 'CursosModulosService' });
 
 const ensureTurmaBelongsToCurso = async (
   client: PrismaClientOrTx,
-  cursoId: number,
+  cursoId: string,
   turmaId: string,
 ): Promise<void> => {
   const turma = await client.cursosTurmas.findFirst({
@@ -28,7 +28,7 @@ const ensureTurmaBelongsToCurso = async (
 
 const ensureModuloBelongsToTurma = async (
   client: PrismaClientOrTx,
-  cursoId: number,
+  cursoId: string,
   turmaId: string,
   moduloId: string,
 ): Promise<void> => {
@@ -60,7 +60,7 @@ const fetchModulo = async (client: PrismaClientOrTx, moduloId: string) => {
 };
 
 export const modulosService = {
-  async list(cursoId: number, turmaId: string) {
+  async list(cursoId: string, turmaId: string) {
     await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
 
     const modulos = await prisma.cursosTurmasModulos.findMany({
@@ -72,14 +72,14 @@ export const modulosService = {
     return modulos.map(mapModulo);
   },
 
-  async get(cursoId: number, turmaId: string, moduloId: string) {
+  async get(cursoId: string, turmaId: string, moduloId: string) {
     await ensureModuloBelongsToTurma(prisma, cursoId, turmaId, moduloId);
 
     return fetchModulo(prisma, moduloId);
   },
 
   async create(
-    cursoId: number,
+    cursoId: string,
     turmaId: string,
     data: {
       nome: string;
@@ -110,7 +110,7 @@ export const modulosService = {
   },
 
   async update(
-    cursoId: number,
+    cursoId: string,
     turmaId: string,
     moduloId: string,
     data: {
@@ -139,7 +139,7 @@ export const modulosService = {
     });
   },
 
-  async remove(cursoId: number, turmaId: string, moduloId: string) {
+  async remove(cursoId: string, turmaId: string, moduloId: string) {
     return prisma.$transaction(async (tx) => {
       await ensureModuloBelongsToTurma(tx, cursoId, turmaId, moduloId);
 

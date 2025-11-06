@@ -10,12 +10,16 @@ import {
   updateEstagioStatusSchema,
 } from '../validators/estagios.schema';
 
-const parseCursoId = (value: unknown) => {
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
+const parseCursoId = (value: unknown): string | null => {
+  if (typeof value !== 'string' || !value.trim()) {
     return null;
   }
-  return parsed;
+  // Cursos.id agora é UUID (String), não mais Int
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(value.trim())) {
+    return null;
+  }
+  return value.trim();
 };
 
 const parseUuid = (value: unknown) => {

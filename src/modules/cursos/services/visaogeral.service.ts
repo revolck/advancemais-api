@@ -269,9 +269,9 @@ async function buscarFaturamentoCursos(): Promise<{
   let faturamentoMesAtual = 0;
   let faturamentoMesAnterior = 0;
 
-  // Filtrar apenas transações aprovadas/concluídas para faturamento
+  // Filtrar apenas transações aprovadas para faturamento
   const transacoesAprovadas = transacoesComCurso.filter(
-    (t) => t.status === 'APROVADA' || t.status === 'CONCLUIDA',
+    (t) => t.status === 'APROVADA',
   );
 
   for (const transacao of transacoesAprovadas) {
@@ -344,7 +344,7 @@ async function buscarFaturamentoCursos(): Promise<{
     if (cursoId && typeof cursoId === 'string') {
       const faturamento = faturamentoPorCurso.get(cursoId);
       if (faturamento) {
-        if (transacao.status === 'APROVADA' || transacao.status === 'CONCLUIDA') {
+        if (transacao.status === 'APROVADA') {
           faturamento.transacoesAprovadas += 1;
         } else if (transacao.status === 'PENDENTE') {
           faturamento.transacoesPendentes += 1;

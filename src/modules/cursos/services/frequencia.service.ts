@@ -15,7 +15,7 @@ type PrismaClientOrTx = Prisma.TransactionClient | typeof prisma;
 
 const ensureTurmaBelongsToCurso = async (
   client: PrismaClientOrTx,
-  cursoId: number,
+  cursoId: string,
   turmaId: string,
 ) => {
   const turma = await client.cursosTurmas.findFirst({
@@ -66,7 +66,7 @@ const ensureAulaBelongsToTurma = async (
 
 const ensureFrequenciaBelongsToTurma = async (
   client: PrismaClientOrTx,
-  cursoId: number,
+  cursoId: string,
   turmaId: string,
   frequenciaId: string,
 ) => {
@@ -118,7 +118,7 @@ const ensureJustificativaWhenRequired = (
 
 export const frequenciaService = {
   async list(
-    cursoId: number,
+    cursoId: string,
     turmaId: string,
     filters: {
       inscricaoId?: string;
@@ -156,18 +156,18 @@ export const frequenciaService = {
     const frequencias = await prisma.cursosFrequenciaAlunos.findMany({
       where,
       orderBy: [{ dataReferencia: 'desc' }, { criadoEm: 'desc' }],
-      ...frequenciaWithRelations,
+      include: frequenciaWithRelations.include,
     });
 
     return frequencias.map(mapFrequencia);
   },
 
-  async get(cursoId: number, turmaId: string, frequenciaId: string) {
+  async get(cursoId: string, turmaId: string, frequenciaId: string) {
     await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
 
     const frequencia = await prisma.cursosFrequenciaAlunos.findFirst({
       where: { id: frequenciaId, turmaId, CursosTurmas: { cursoId } },
-      ...frequenciaWithRelations,
+      include: frequenciaWithRelations.include,
     });
 
     if (!frequencia) {
@@ -180,7 +180,7 @@ export const frequenciaService = {
   },
 
   async create(
-    cursoId: number,
+    cursoId: string,
     turmaId: string,
     data: {
       inscricaoId: string;
@@ -212,7 +212,7 @@ export const frequenciaService = {
             justificativa: normalizeNullable(data.justificativa),
             observacoes: normalizeNullable(data.observacoes),
           },
-          ...frequenciaWithRelations,
+          include: frequenciaWithRelations.include,
         })) as FrequenciaWithRelations;
 
         frequenciasLogger.info(
@@ -234,7 +234,7 @@ export const frequenciaService = {
   },
 
   async update(
-    cursoId: number,
+    cursoId: string,
     turmaId: string,
     frequenciaId: string,
     data: {
@@ -273,7 +273,7 @@ export const frequenciaService = {
           justificativa: normalizeNullable(data.justificativa),
           observacoes: normalizeNullable(data.observacoes),
         },
-        ...frequenciaWithRelations,
+        include: frequenciaWithRelations.include,
       })) as FrequenciaWithRelations;
 
       frequenciasLogger.info({ turmaId, frequenciaId }, 'Frequência atualizada');
@@ -282,7 +282,7 @@ export const frequenciaService = {
     });
   },
 
-  async remove(cursoId: number, turmaId: string, frequenciaId: string) {
+  async remove(cursoId: string, turmaId: string, frequenciaId: string) {
     return prisma.$transaction(async (tx) => {
       await ensureFrequenciaBelongsToTurma(tx, cursoId, turmaId, frequenciaId);
 
@@ -329,7 +329,7 @@ export const frequenciaService = {
     const frequencias = await prisma.cursosFrequenciaAlunos.findMany({
       where: { inscricaoId },
       orderBy: [{ dataReferencia: 'desc' }, { criadoEm: 'desc' }],
-      ...frequenciaWithRelations,
+      include: frequenciaWithRelations.include,
     });
 
     return {

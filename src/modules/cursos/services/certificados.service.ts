@@ -33,7 +33,7 @@ type ListCertificadosFilters = {
 
 const ensureTurmaBelongsToCurso = async (
   client: PrismaClientOrTx,
-  cursoId: number,
+  cursoId: string,
   turmaId: string,
 ) => {
   const turma = await client.cursosTurmas.findFirst({
@@ -67,7 +67,7 @@ const ensureInscricaoBelongsToTurma = async (
 
 export const certificadosService = {
   async emitir(
-    cursoId: number,
+    cursoId: string,
     turmaId: string,
     data: EmitirCertificadoData,
     emitidoPorId?: string,
@@ -159,6 +159,7 @@ export const certificadosService = {
             },
           },
         },
+        include: certificadoWithRelations.include,
       });
 
       certificadosLogger.info(
@@ -218,7 +219,7 @@ export const certificadosService = {
     });
   },
 
-  async listar(cursoId: number, turmaId: string, filtros: ListCertificadosFilters = {}) {
+  async listar(cursoId: string, turmaId: string, filtros: ListCertificadosFilters = {}) {
     await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
 
     const certificados = await prisma.cursosCertificadosEmitidos.findMany({
@@ -232,7 +233,7 @@ export const certificadosService = {
         ...(filtros.formato ? { formato: filtros.formato } : {}),
       },
       orderBy: { emitidoEm: 'desc' },
-      ...certificadoWithRelations,
+      include: certificadoWithRelations.include,
     });
 
     return certificados.map((item) => mapCertificado(item));
@@ -290,7 +291,7 @@ export const certificadosService = {
     const certificados = await prisma.cursosCertificadosEmitidos.findMany({
       where: { inscricaoId },
       orderBy: { emitidoEm: 'desc' },
-      ...certificadoWithRelations,
+      include: certificadoWithRelations.include,
     });
 
     return {
@@ -323,7 +324,7 @@ export const certificadosService = {
     const certificados = await prisma.cursosCertificadosEmitidos.findMany({
       where: { CursosTurmasInscricoes: { alunoId: usuarioId } },
       orderBy: { emitidoEm: 'desc' },
-      ...certificadoWithRelations,
+      include: certificadoWithRelations.include,
     });
 
     return certificados.map((item) => mapCertificado(item));
@@ -333,7 +334,7 @@ export const certificadosService = {
     return prisma.$transaction(async (tx) => {
       const certificado = await tx.cursosCertificadosEmitidos.findUnique({
         where: { codigo },
-        ...certificadoWithRelations,
+        include: certificadoWithRelations.include,
       });
 
       if (!certificado) {

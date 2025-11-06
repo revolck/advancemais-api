@@ -11,7 +11,7 @@ type PrismaClientOrTx = Prisma.TransactionClient | typeof prisma;
 
 const ensureTurmaBelongsToCurso = async (
   client: PrismaClientOrTx,
-  cursoId: number,
+  cursoId: string,
   turmaId: string,
 ) => {
   const turma = await client.cursosTurmas.findFirst({
@@ -45,7 +45,7 @@ const ensureInscricaoBelongsToTurma = async (
 
 const ensureProvaBelongsToTurma = async (
   client: PrismaClientOrTx,
-  cursoId: number,
+  cursoId: string,
   turmaId: string,
   provaId: string,
 ) => {
@@ -70,7 +70,7 @@ const ensureProvaBelongsToTurma = async (
 
 const ensureNotaBelongsToTurma = async (
   client: PrismaClientOrTx,
-  cursoId: number,
+  cursoId: string,
   turmaId: string,
   notaId: string,
 ) => {
@@ -107,7 +107,7 @@ const toDecimalOptional = (value: number | null | undefined) => {
 
 export const notasService = {
   async list(
-    cursoId: number,
+    cursoId: string,
     turmaId: string,
     filters: {
       inscricaoId?: string;
@@ -122,18 +122,18 @@ export const notasService = {
         inscricaoId: filters.inscricaoId ?? undefined,
       },
       orderBy: [{ dataReferencia: 'desc' }, { criadoEm: 'desc' }],
-      ...notaWithRelations,
+      include: notaWithRelations.include,
     });
 
     return notas.map(mapNota);
   },
 
-  async get(cursoId: number, turmaId: string, notaId: string) {
+  async get(cursoId: string, turmaId: string, notaId: string) {
     await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
 
     const nota = await prisma.cursosNotas.findFirst({
       where: { id: notaId, turmaId, CursosTurmas: { cursoId } },
-      ...notaWithRelations,
+      include: notaWithRelations.include,
     });
 
     if (!nota) {
@@ -146,7 +146,7 @@ export const notasService = {
   },
 
   async create(
-    cursoId: number,
+    cursoId: string,
     turmaId: string,
     data: {
       inscricaoId: string;
@@ -198,7 +198,7 @@ export const notasService = {
           dataReferencia: data.dataReferencia ?? new Date(),
           observacoes: data.observacoes ?? null,
         },
-        ...notaWithRelations,
+        include: notaWithRelations.include,
       });
 
       notasLogger.info({ turmaId, notaId: nota.id }, 'Nota criada para inscrição');
@@ -208,7 +208,7 @@ export const notasService = {
   },
 
   async update(
-    cursoId: number,
+    cursoId: string,
     turmaId: string,
     notaId: string,
     data: {
@@ -296,7 +296,7 @@ export const notasService = {
           dataReferencia: data.dataReferencia ?? undefined,
           observacoes: data.observacoes ?? undefined,
         },
-        ...notaWithRelations,
+        include: notaWithRelations.include,
       })) as NotaWithRelations;
 
       notasLogger.info({ turmaId, notaId }, 'Nota atualizada');
@@ -305,7 +305,7 @@ export const notasService = {
     });
   },
 
-  async remove(cursoId: number, turmaId: string, notaId: string) {
+  async remove(cursoId: string, turmaId: string, notaId: string) {
     return prisma.$transaction(async (tx) => {
       await ensureNotaBelongsToTurma(tx, cursoId, turmaId, notaId);
 
@@ -352,7 +352,7 @@ export const notasService = {
     const notas = await prisma.cursosNotas.findMany({
       where: { inscricaoId },
       orderBy: [{ dataReferencia: 'desc' }, { criadoEm: 'desc' }],
-      ...notaWithRelations,
+      include: notaWithRelations.include,
     });
 
     return {

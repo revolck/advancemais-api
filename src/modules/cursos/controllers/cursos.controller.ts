@@ -19,13 +19,13 @@ import {
 } from '@/modules/usuarios/utils/social-links';
 import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
 
-const parseCourseId = (raw: string) => {
-  const id = Number(raw);
-  if (!Number.isInteger(id) || id <= 0) {
+const parseCourseId = (raw: string): string | null => {
+  // Validar se é UUID válido
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(raw)) {
     return null;
   }
-
-  return id;
+  return raw;
 };
 
 const normalizeDescricao = (value: unknown) => {

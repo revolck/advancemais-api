@@ -102,7 +102,7 @@ const regrasSelect = {
 
 const ensureTurmaBelongsToCurso = async (
   client: PrismaClientOrTx,
-  cursoId: number,
+  cursoId: string,
   turmaId: string,
 ): Promise<void> => {
   const turma = await client.cursosTurmas.findFirst({
@@ -184,7 +184,7 @@ const buildRecuperacaoResponse = (
 };
 
 export const avaliacaoService = {
-  async obterRegras(cursoId: number, turmaId: string) {
+  async obterRegras(cursoId: string, turmaId: string) {
     await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
 
     const regras = await prisma.cursosTurmasRegrasAvaliacao.findUnique({
@@ -196,7 +196,7 @@ export const avaliacaoService = {
   },
 
   async atualizarRegras(
-    cursoId: number,
+    cursoId: string,
     turmaId: string,
     data: Partial<{
       mediaMinima: number | null;
@@ -268,7 +268,7 @@ export const avaliacaoService = {
   },
 
   async registrarRecuperacao(
-    cursoId: number,
+    cursoId: string,
     turmaId: string,
     data: {
       inscricaoId: string;
@@ -457,7 +457,7 @@ export const avaliacaoService = {
 
 const ensureProvaBelongsToTurma = async (
   client: PrismaClientOrTx,
-  cursoId: number,
+  cursoId: string,
   turmaId: string,
   provaId: string,
 ): Promise<void> => {

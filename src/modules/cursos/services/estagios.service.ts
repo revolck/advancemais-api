@@ -26,7 +26,7 @@ type CreateEstagioTxResult = {
     email: string;
   };
   curso: {
-    id: number;
+    id: string;
     nome: string;
     codigo: string;
   };
@@ -81,7 +81,7 @@ const formatHorario = (inicio?: string | null, fim?: string | null) => {
   return inicio ?? fim ?? null;
 };
 
-const normalizeCursoTurma = async (client: PrismaClientOrTx, cursoId: number, turmaId: string) => {
+const normalizeCursoTurma = async (client: PrismaClientOrTx, cursoId: string, turmaId: string) => {
   const turma = await client.cursosTurmas.findFirst({
     where: { id: turmaId, cursoId },
     select: {
@@ -168,7 +168,7 @@ const diferencaEmDias = (inicio: Date, fim: Date) => {
 
 export const estagiosService = {
   async create(
-    cursoId: number,
+    cursoId: string,
     turmaId: string,
     inscricaoId: string,
     data: EstagioCreateInput,
@@ -231,7 +231,7 @@ export const estagiosService = {
 
       const estagio = await tx.cursosEstagios.findUniqueOrThrow({
         where: { id: estagioCreated.id },
-        ...estagioWithRelations,
+        include: estagioWithRelations.include,
       });
 
       estagiosLogger.info({ estagioId: estagio.id, inscricaoId }, 'Estágio criado com sucesso');
@@ -279,14 +279,14 @@ export const estagiosService = {
     return mapEstagio(resultado.estagio);
   },
 
-  async listByInscricao(cursoId: number, turmaId: string, inscricaoId: string) {
+  async listByInscricao(cursoId: string, turmaId: string, inscricaoId: string) {
     await normalizeCursoTurma(prisma, cursoId, turmaId);
     await ensureInscricao(prisma, turmaId, inscricaoId);
 
     const estagios = await prisma.cursosEstagios.findMany({
       where: { cursoId, turmaId, inscricaoId },
       orderBy: { criadoEm: 'desc' },
-      ...estagioWithRelations,
+      include: estagioWithRelations.include,
     });
 
     return estagios.map((estagio) => mapEstagio(estagio));
@@ -307,7 +307,7 @@ export const estagiosService = {
     const estagios = await prisma.cursosEstagios.findMany({
       where: { inscricaoId },
       orderBy: { criadoEm: 'desc' },
-      ...estagioWithRelations,
+      include: estagioWithRelations.include,
     });
 
     return estagios.map((estagio) => mapEstagio(estagio));
@@ -316,7 +316,7 @@ export const estagiosService = {
   async getById(estagioId: string, requesterId?: string, { allowAdmin = false } = {}) {
     const estagio = await prisma.cursosEstagios.findUnique({
       where: { id: estagioId },
-      ...estagioWithRelations,
+      include: estagioWithRelations.include,
     });
 
     if (!estagio) {
@@ -419,7 +419,7 @@ export const estagiosService = {
       const estagio = await tx.cursosEstagios.update({
         where: { id: estagioId },
         data: updateData,
-        ...estagioWithRelations,
+        include: estagioWithRelations.include,
       });
 
       return mapEstagio(estagio);
@@ -473,7 +473,7 @@ export const estagiosService = {
       const estagio = await tx.cursosEstagios.update({
         where: { id: estagioId },
         data: updateData,
-        ...estagioWithRelations,
+        include: estagioWithRelations.include,
       });
 
       return mapEstagio(estagio);
@@ -489,7 +489,7 @@ export const estagiosService = {
         where: { token },
         include: {
           CursosEstagios: {
-            ...estagioWithRelations,
+            include: estagioWithRelations.include,
           },
         },
       });
@@ -532,7 +532,7 @@ export const estagiosService = {
               ? CursosEstagioStatus.EM_ANDAMENTO
               : confirmacao.CursosEstagios.status,
         },
-        ...estagioWithRelations,
+        include: estagioWithRelations.include,
       });
 
       return mapEstagio(estagioAtualizado);
@@ -546,7 +546,7 @@ export const estagiosService = {
   ) {
     const estagio = await prisma.cursosEstagios.findUnique({
       where: { id: estagioId },
-      ...estagioWithRelations,
+      include: estagioWithRelations.include,
     });
 
     if (!estagio || !estagio.CursosEstagiosConfirmacoes) {

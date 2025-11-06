@@ -222,7 +222,7 @@ export const cuponsService = {
         await tx.cuponsDescontoCursos.createMany({
           data: parsed.cursosIds!.map((cursoId) => ({
             cupomId: created.id,
-            cursoId,
+            cursoId: typeof cursoId === 'number' ? String(cursoId) : cursoId,
           })),
           skipDuplicates: true,
         });
@@ -372,7 +372,10 @@ export const cuponsService = {
 
       if (aplicarEmFinal === CuponsAplicarEm.APENAS_CURSOS && !aplicarEmTodosFinal) {
         await tx.cuponsDescontoCursos.createMany({
-          data: cursosIdsFinais.map((cursoId) => ({ cupomId: id, cursoId })),
+          data: cursosIdsFinais.map((cursoId) => ({
+            cupomId: id,
+            cursoId: typeof cursoId === 'number' ? String(cursoId) : cursoId,
+          })),
           skipDuplicates: true,
         });
       }

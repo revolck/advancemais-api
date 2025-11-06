@@ -11,7 +11,7 @@ const provasLogger = logger.child({ module: 'CursosProvasService' });
 
 const ensureTurmaBelongsToCurso = async (
   client: PrismaClientOrTx,
-  cursoId: number,
+  cursoId: string,
   turmaId: string,
 ): Promise<void> => {
   const turma = await client.cursosTurmas.findFirst({
@@ -45,7 +45,7 @@ const ensureModuloBelongsToTurma = async (
 
 const ensureProvaBelongsToTurma = async (
   client: PrismaClientOrTx,
-  cursoId: number,
+  cursoId: string,
   turmaId: string,
   provaId: string,
 ): Promise<void> => {
@@ -94,7 +94,7 @@ const toDecimalOptional = (value: number | null | undefined) => {
 };
 
 export const provasService = {
-  async list(cursoId: number, turmaId: string) {
+  async list(cursoId: string, turmaId: string) {
     await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
 
     const provas = await prisma.cursosTurmasProvas.findMany({
@@ -106,14 +106,14 @@ export const provasService = {
     return provas.map(mapProva);
   },
 
-  async get(cursoId: number, turmaId: string, provaId: string) {
+  async get(cursoId: string, turmaId: string, provaId: string) {
     await ensureProvaBelongsToTurma(prisma, cursoId, turmaId, provaId);
 
     return fetchProva(prisma, provaId);
   },
 
   async create(
-    cursoId: number,
+    cursoId: string,
     turmaId: string,
     data: {
       titulo: string;
@@ -156,7 +156,7 @@ export const provasService = {
   },
 
   async update(
-    cursoId: number,
+    cursoId: string,
     turmaId: string,
     provaId: string,
     data: {
@@ -201,7 +201,7 @@ export const provasService = {
     });
   },
 
-  async remove(cursoId: number, turmaId: string, provaId: string) {
+  async remove(cursoId: string, turmaId: string, provaId: string) {
     return prisma.$transaction(async (tx) => {
       await ensureProvaBelongsToTurma(tx, cursoId, turmaId, provaId);
 
@@ -214,7 +214,7 @@ export const provasService = {
   },
 
   async registrarNota(
-    cursoId: number,
+    cursoId: string,
     turmaId: string,
     provaId: string,
     data: {

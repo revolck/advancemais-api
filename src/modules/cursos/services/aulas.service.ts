@@ -34,7 +34,7 @@ type AulaInput = {
 
 const ensureTurmaBelongsToCurso = async (
   client: PrismaClientOrTx,
-  cursoId: number,
+  cursoId: string,
   turmaId: string,
 ): Promise<{ id: string; metodo: CursosMetodos }> => {
   const turma = await client.cursosTurmas.findFirst({
@@ -53,7 +53,7 @@ const ensureTurmaBelongsToCurso = async (
 
 const ensureAulaBelongsToTurma = async (
   client: PrismaClientOrTx,
-  cursoId: number,
+  cursoId: string,
   turmaId: string,
   aulaId: string,
 ): Promise<{ id: string; metodo: CursosMetodos }> => {
@@ -63,10 +63,15 @@ const ensureAulaBelongsToTurma = async (
       turmaId,
       CursosTurmas: { cursoId },
     },
-    select: { id: true, CursosTurmas: { select: { metodo: true } } },
+    select: { 
+      id: true, 
+      CursosTurmas: { 
+        select: { metodo: true } 
+      } 
+    },
   });
 
-  if (!aula) {
+  if (!aula || !aula.CursosTurmas) {
     const error = new Error('Aula não encontrada para a turma informada');
     (error as any).code = 'AULA_NOT_FOUND';
     throw error;
@@ -241,7 +246,7 @@ const resolveDeliveryFieldsOnUpdate = (
 };
 
 export const aulasService = {
-  async list(cursoId: number, turmaId: string) {
+  async list(cursoId: string, turmaId: string) {
     await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
 
     const aulas = await prisma.cursosTurmasAulas.findMany({
@@ -253,13 +258,13 @@ export const aulasService = {
     return (aulas as AulaWithMateriais[]).map(mapAula);
   },
 
-  async get(cursoId: number, turmaId: string, aulaId: string) {
+  async get(cursoId: string, turmaId: string, aulaId: string) {
     await ensureAulaBelongsToTurma(prisma, cursoId, turmaId, aulaId);
 
     return fetchAula(prisma, aulaId);
   },
 
-  async create(cursoId: number, turmaId: string, data: AulaInput & { nome: string }) {
+  async create(cursoId: string, turmaId: string, data: AulaInput & { nome: string }) {
     return prisma.$transaction(async (tx) => {
       const turma = await ensureTurmaBelongsToCurso(tx, cursoId, turmaId);
 
@@ -296,7 +301,7 @@ export const aulasService = {
     });
   },
 
-  async update(cursoId: number, turmaId: string, aulaId: string, data: AulaInput) {
+  async update(cursoId: string, turmaId: string, aulaId: string, data: AulaInput) {
     return prisma.$transaction(async (tx) => {
       const aulaInfo = await ensureAulaBelongsToTurma(tx, cursoId, turmaId, aulaId);
 
@@ -336,7 +341,7 @@ export const aulasService = {
     });
   },
 
-  async remove(cursoId: number, turmaId: string, aulaId: string) {
+  async remove(cursoId: string, turmaId: string, aulaId: string) {
     return prisma.$transaction(async (tx) => {
       await ensureAulaBelongsToTurma(tx, cursoId, turmaId, aulaId);
 

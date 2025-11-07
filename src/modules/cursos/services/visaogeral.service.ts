@@ -1,13 +1,26 @@
 /**
  * Service para visão geral e métricas de cursos
  * Acesso restrito a ADMIN e MODERADOR
+ * 
+ * ✅ OTIMIZAÇÕES IMPLEMENTADAS:
+ * - Eliminação de N+1 queries usando agregações SQL
+ * - Queries otimizadas com LIMITs apropriados
+ * - Cache Redis para dados que mudam pouco
+ * - Processamento paralelo de queries independentes
  */
 
 import { Prisma, CursoStatus, TransacaoTipo, TransacaoStatus } from '@prisma/client';
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
+import { getCache, setCache } from '@/utils/cache';
 
 const visaogeralLogger = logger.child({ module: 'CursosVisaoGeralService' });
+
+// TTLs de cache (em segundos)
+const CACHE_TTL_METRICAS = 300; // 5 minutos - métricas gerais mudam pouco
+const CACHE_TTL_FATURAMENTO = 120; // 2 minutos - faturamento muda mais frequentemente
+const CACHE_TTL_PERFORMANCE = 300; // 5 minutos - performance muda pouco
+const CACHE_TTL_PROXIMOS = 180; // 3 minutos - próximos cursos mudam pouco
 
 interface CursosProximosInicio {
   turmaId: string;
@@ -93,8 +106,38 @@ const calcularDiasParaData = (data: Date | null): number | null => {
 
 /**
  * Busca métricas gerais de cursos
+ * ✅ OTIMIZADO: Usa Promise.all para paralelizar queries
  */
-async function buscarMetricasGerais() {
+async function buscarMetricasGerais(): Promise<{
+  totalCursos: number;
+  cursosPublicados: number;
+  cursosRascunho: number;
+  totalTurmas: number;
+  turmasAtivas: number;
+  turmasInscricoesAbertas: number;
+  totalAlunosInscritos: number;
+  totalAlunosAtivos: number;
+  totalAlunosConcluidos: number;
+}> {
+  const cacheKey = 'visaogeral:metricas-gerais';
+  
+  // Tentar buscar do cache
+  const cached = await getCache<{
+    totalCursos: number;
+    cursosPublicados: number;
+    cursosRascunho: number;
+    totalTurmas: number;
+    turmasAtivas: number;
+    turmasInscricoesAbertas: number;
+    totalAlunosInscritos: number;
+    totalAlunosAtivos: number;
+    totalAlunosConcluidos: number;
+  }>(cacheKey);
+  if (cached) {
+    visaogeralLogger.debug('Métricas gerais retornadas do cache');
+    return cached;
+  }
+
   const [
     totalCursos,
     cursosPublicados,
@@ -128,7 +171,7 @@ async function buscarMetricasGerais() {
     prisma.cursosTurmasInscricoes.count({ where: { status: 'CONCLUIDO' } }),
   ]);
 
-  return {
+  const result = {
     totalCursos,
     cursosPublicados,
     cursosRascunho,
@@ -139,22 +182,38 @@ async function buscarMetricasGerais() {
     totalAlunosAtivos,
     totalAlunosConcluidos,
   };
+
+  // Cachear resultado
+  await setCache(cacheKey, result, CACHE_TTL_METRICAS);
+
+  return result;
 }
 
 /**
  * Busca cursos próximos a começar
+ * ✅ OTIMIZADO: Adicionado LIMIT e cache
  */
 async function buscarCursosProximosInicio(): Promise<{
   proximos7Dias: CursosProximosInicio[];
   proximos15Dias: CursosProximosInicio[];
   proximos30Dias: CursosProximosInicio[];
 }> {
+  const cacheKey = 'visaogeral:cursos-proximos';
+  
+  // Tentar buscar do cache
+  const cached = await getCache<ReturnType<typeof buscarCursosProximosInicio>>(cacheKey);
+  if (cached) {
+    visaogeralLogger.debug('Cursos próximos retornados do cache');
+    return cached;
+  }
+
   const agora = new Date();
   const data7Dias = new Date(agora.getTime() + 7 * 24 * 60 * 60 * 1000);
   const data15Dias = new Date(agora.getTime() + 15 * 24 * 60 * 60 * 1000);
   const data30Dias = new Date(agora.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-  // Buscar turmas que começam nos próximos 30 dias
+  // ✅ OTIMIZADO: Buscar apenas turmas dos próximos 30 dias com LIMIT
+  // Usar agregação SQL para contar inscrições ativas em uma única query
   const turmas = await prisma.cursosTurmas.findMany({
     where: {
       dataInicio: {
@@ -165,7 +224,14 @@ async function buscarCursosProximosInicio(): Promise<{
         in: ['INSCRICOES_ABERTAS', 'INSCRICOES_ENCERRADAS', 'PUBLICADO'],
       },
     },
-    include: {
+    select: {
+      id: true,
+      nome: true,
+      codigo: true,
+      dataInicio: true,
+      vagasTotais: true,
+      vagasDisponiveis: true,
+      status: true,
       Cursos: {
         select: {
           id: true,
@@ -188,6 +254,7 @@ async function buscarCursosProximosInicio(): Promise<{
     orderBy: {
       dataInicio: 'asc',
     },
+    take: 50, // ✅ LIMIT: Máximo 50 turmas (suficiente para 30 dias)
   });
 
   const turmasFormatadas: CursosProximosInicio[] = turmas.map((turma) => {
@@ -208,19 +275,29 @@ async function buscarCursosProximosInicio(): Promise<{
     };
   });
 
-  const proximos7Dias = turmasFormatadas.filter((t) => t.diasParaInicio !== null && t.diasParaInicio <= 7);
-  const proximos15Dias = turmasFormatadas.filter((t) => t.diasParaInicio !== null && t.diasParaInicio <= 15);
-  const proximos30Dias = turmasFormatadas;
+  const proximos7Dias = turmasFormatadas
+    .filter((t) => t.diasParaInicio !== null && t.diasParaInicio <= 7)
+    .slice(0, 10); // ✅ LIMIT: Máximo 10 para 7 dias
+  const proximos15Dias = turmasFormatadas
+    .filter((t) => t.diasParaInicio !== null && t.diasParaInicio <= 15)
+    .slice(0, 15); // ✅ LIMIT: Máximo 15 para 15 dias
+  const proximos30Dias = turmasFormatadas.slice(0, 30); // ✅ LIMIT: Máximo 30 para 30 dias
 
-  return {
+  const result = {
     proximos7Dias,
     proximos15Dias,
     proximos30Dias,
   };
+
+  // Cachear resultado
+  await setCache(cacheKey, result, CACHE_TTL_PROXIMOS);
+
+  return result;
 }
 
 /**
  * Busca faturamento relacionado a cursos
+ * ✅ OTIMIZADO: Query SQL direta ao invés de filtrar em memória
  */
 async function buscarFaturamentoCursos(): Promise<{
   totalFaturamento: number;
@@ -229,50 +306,55 @@ async function buscarFaturamentoCursos(): Promise<{
   cursoMaiorFaturamento: CursoFaturamento | null;
   topCursosFaturamento: CursoFaturamento[];
 }> {
+  const cacheKey = 'visaogeral:faturamento';
+  
+  // Tentar buscar do cache
+  const cached = await getCache<ReturnType<typeof buscarFaturamentoCursos>>(cacheKey);
+  if (cached) {
+    visaogeralLogger.debug('Faturamento retornado do cache');
+    return cached;
+  }
+
   const agora = new Date();
   const inicioMesAtual = new Date(agora.getFullYear(), agora.getMonth(), 1);
   const fimMesAtual = new Date(agora.getFullYear(), agora.getMonth() + 1, 0, 23, 59, 59);
   const inicioMesAnterior = new Date(agora.getFullYear(), agora.getMonth() - 1, 1);
   const fimMesAnterior = new Date(agora.getFullYear(), agora.getMonth(), 0, 23, 59, 59);
 
-  // Buscar transações relacionadas a cursos
-  // As transações de cursos podem ser do tipo PAGAMENTO com metadata indicando cursoId
-  // Buscar todas as transações de PAGAMENTO e ASSINATURA e filtrar depois
-  const transacoes = await prisma.auditoriaTransacoes.findMany({
-    where: {
-      tipo: { in: ['PAGAMENTO', 'ASSINATURA'] as TransacaoTipo[] },
-      OR: [
-        { referencia: { contains: 'curso', mode: 'insensitive' } },
-        { referencia: { contains: 'turma', mode: 'insensitive' } },
-      ],
-    },
-    select: {
-      id: true,
-      valor: true,
-      status: true,
-      metadata: true,
-      referencia: true,
-      criadoEm: true,
-    },
-  });
-
-  // Filtrar transações que têm cursoId no metadata (JSON)
-  const transacoesComCurso = transacoes.filter((t) => {
-    if (!t.metadata) return false;
-    const metadata = t.metadata as any;
-    return metadata?.cursoId || metadata?.curso?.id || metadata?.turmaId || metadata?.turma?.cursoId;
-  });
+  // ✅ OTIMIZADO: Usar query SQL direta para buscar apenas transações aprovadas
+  // que tenham cursoId no metadata, evitando trazer todas as transações
+  const transacoesAprovadas = await prisma.$queryRaw<Array<{
+    id: string;
+    valor: Prisma.Decimal;
+    status: TransacaoStatus;
+    metadata: Prisma.JsonValue;
+    criadoEm: Date;
+  }>>`
+    SELECT 
+      t.id,
+      t.valor,
+      t.status,
+      t.metadata,
+      t."criadoEm"
+    FROM "AuditoriaTransacoes" t
+    WHERE 
+      t.tipo IN ('PAGAMENTO', 'ASSINATURA')
+      AND t.status = 'APROVADA'
+      AND (
+        t.referencia ILIKE '%curso%' 
+        OR t.referencia ILIKE '%turma%'
+        OR (t.metadata::text LIKE '%cursoId%')
+        OR (t.metadata::text LIKE '%"curso"%')
+      )
+    ORDER BY t."criadoEm" DESC
+    LIMIT 10000
+  `;
 
   // Mapear faturamento por curso
   const faturamentoPorCurso = new Map<string, CursoFaturamento>();
   let totalFaturamento = 0;
   let faturamentoMesAtual = 0;
   let faturamentoMesAnterior = 0;
-
-  // Filtrar apenas transações aprovadas para faturamento
-  const transacoesAprovadas = transacoesComCurso.filter(
-    (t) => t.status === 'APROVADA',
-  );
 
   for (const transacao of transacoesAprovadas) {
     const valor = Number(transacao.valor);
@@ -288,7 +370,7 @@ async function buscarFaturamentoCursos(): Promise<{
       faturamentoMesAnterior += valor;
     }
 
-    // Extrair cursoId do metadata ou referencia
+    // Extrair cursoId do metadata
     const metadata = transacao.metadata as any;
     const cursoId = metadata?.cursoId || metadata?.curso?.id || null;
 
@@ -315,7 +397,7 @@ async function buscarFaturamentoCursos(): Promise<{
     }
   }
 
-  // Buscar informações dos cursos para completar os dados
+  // ✅ OTIMIZADO: Buscar informações dos cursos em batch (uma única query)
   const cursoIds = Array.from(faturamentoPorCurso.keys());
   if (cursoIds.length > 0) {
     const cursos = await prisma.cursos.findMany({
@@ -336,17 +418,31 @@ async function buscarFaturamentoCursos(): Promise<{
     }
   }
 
-  // Atualizar contagem de transações aprovadas e pendentes por curso
-  for (const transacao of transacoesComCurso) {
-    const metadata = transacao.metadata as any;
-    const cursoId = metadata?.cursoId || metadata?.curso?.id || null;
+  // ✅ OTIMIZADO: Buscar transações pendentes apenas para cursos que já temos
+  // ao invés de buscar todas as transações novamente
+  if (cursoIds.length > 0) {
+    const transacoesPendentes = await prisma.auditoriaTransacoes.findMany({
+      where: {
+        tipo: { in: ['PAGAMENTO', 'ASSINATURA'] },
+        status: 'PENDENTE',
+        OR: [
+          { referencia: { contains: 'curso', mode: 'insensitive' } },
+          { referencia: { contains: 'turma', mode: 'insensitive' } },
+        ],
+      },
+      select: {
+        metadata: true,
+      },
+      take: 5000, // ✅ LIMIT: Máximo 5000 transações pendentes
+    });
 
-    if (cursoId && typeof cursoId === 'string') {
-      const faturamento = faturamentoPorCurso.get(cursoId);
-      if (faturamento) {
-        if (transacao.status === 'APROVADA') {
-          faturamento.transacoesAprovadas += 1;
-        } else if (transacao.status === 'PENDENTE') {
+    for (const transacao of transacoesPendentes) {
+      const metadata = transacao.metadata as any;
+      const cursoId = metadata?.cursoId || metadata?.curso?.id || null;
+
+      if (cursoId && typeof cursoId === 'string' && faturamentoPorCurso.has(cursoId)) {
+        const faturamento = faturamentoPorCurso.get(cursoId);
+        if (faturamento) {
           faturamento.transacoesPendentes += 1;
         }
       }
@@ -356,21 +452,27 @@ async function buscarFaturamentoCursos(): Promise<{
   // Ordenar por faturamento e pegar top 10
   const topCursos = Array.from(faturamentoPorCurso.values())
     .sort((a, b) => b.totalFaturamento - a.totalFaturamento)
-    .slice(0, 10);
+    .slice(0, 10); // ✅ LIMIT: Top 10 cursos
 
   const cursoMaiorFaturamento = topCursos.length > 0 ? topCursos[0] : null;
 
-  return {
+  const result = {
     totalFaturamento,
     faturamentoMesAtual,
     faturamentoMesAnterior,
     cursoMaiorFaturamento,
     topCursosFaturamento: topCursos,
   };
+
+  // Cachear resultado
+  await setCache(cacheKey, result, CACHE_TTL_FATURAMENTO);
+
+  return result;
 }
 
 /**
  * Busca métricas de performance
+ * ✅ OTIMIZADO: Eliminado N+1 queries usando agregações SQL
  */
 async function buscarPerformanceCursos(): Promise<{
   cursosMaisPopulares: Array<{
@@ -390,105 +492,127 @@ async function buscarPerformanceCursos(): Promise<{
     totalConcluidos: number;
   }>;
 }> {
-  // Buscar cursos com mais inscrições
-  const cursosComInscricoes = await prisma.cursos.findMany({
-    include: {
-      CursosTurmas: {
-        include: {
-          _count: {
-            select: {
-              CursosTurmasInscricoes: true,
-            },
-          },
-        },
-      },
-      _count: {
-        select: {
-          CursosTurmas: true,
-        },
-      },
-    },
+  const cacheKey = 'visaogeral:performance';
+  
+  // Tentar buscar do cache
+  const cached = await getCache<ReturnType<typeof buscarPerformanceCursos>>(cacheKey);
+  if (cached) {
+    visaogeralLogger.debug('Performance retornada do cache');
+    return cached;
+  }
+
+  // ✅ OTIMIZADO: Usar agregação SQL para buscar cursos mais populares
+  // Uma única query ao invés de buscar todos os cursos e depois fazer N queries
+  const cursosPopularesRaw = await prisma.$queryRaw<Array<{
+    cursoId: string;
+    cursoNome: string;
+    cursoCodigo: string;
+    totalInscricoes: bigint;
+    totalTurmas: bigint;
+  }>>`
+    SELECT 
+      c.id as "cursoId",
+      c.nome as "cursoNome",
+      c.codigo as "cursoCodigo",
+      COUNT(DISTINCT ti.id)::bigint as "totalInscricoes",
+      COUNT(DISTINCT ct.id)::bigint as "totalTurmas"
+    FROM "Cursos" c
+    LEFT JOIN "CursosTurmas" ct ON ct."cursoId" = c.id
+    LEFT JOIN "CursosTurmasInscricoes" ti ON ti."turmaId" = ct.id
+    GROUP BY c.id, c.nome, c.codigo
+    ORDER BY "totalInscricoes" DESC
+    LIMIT 10
+  `;
+
+  const cursosMaisPopulares = cursosPopularesRaw.map((curso) => ({
+    cursoId: curso.cursoId,
+    cursoNome: curso.cursoNome,
+    cursoCodigo: curso.cursoCodigo,
+    totalInscricoes: Number(curso.totalInscricoes),
+    totalTurmas: Number(curso.totalTurmas),
+  }));
+
+  // ✅ OTIMIZADO: Calcular taxa de conclusão geral em uma única query
+  const taxaConclusaoRaw = await prisma.$queryRaw<Array<{
+    totalInscricoes: bigint;
+    totalConcluidos: bigint;
+  }>>`
+    SELECT 
+      COUNT(*)::bigint as "totalInscricoes",
+      COUNT(CASE WHEN status = 'CONCLUIDO' THEN 1 END)::bigint as "totalConcluidos"
+    FROM "CursosTurmasInscricoes"
+  `;
+
+  const taxaConclusao =
+    taxaConclusaoRaw[0] && Number(taxaConclusaoRaw[0].totalInscricoes) > 0
+      ? (Number(taxaConclusaoRaw[0].totalConcluidos) / Number(taxaConclusaoRaw[0].totalInscricoes)) * 100
+      : 0;
+
+  // ✅ OTIMIZADO: Usar agregação SQL para buscar cursos com maior taxa de conclusão
+  // Uma única query ao invés de N queries (uma por curso)
+  const cursosTaxaConclusaoRaw = await prisma.$queryRaw<Array<{
+    cursoId: string;
+    cursoNome: string;
+    cursoCodigo: string;
+    totalInscricoes: bigint;
+    totalConcluidos: bigint;
+  }>>`
+    SELECT 
+      c.id as "cursoId",
+      c.nome as "cursoNome",
+      c.codigo as "cursoCodigo",
+      COUNT(ti.id)::bigint as "totalInscricoes",
+      COUNT(CASE WHEN ti.status = 'CONCLUIDO' THEN 1 END)::bigint as "totalConcluidos"
+    FROM "Cursos" c
+    INNER JOIN "CursosTurmas" ct ON ct."cursoId" = c.id
+    INNER JOIN "CursosTurmasInscricoes" ti ON ti."turmaId" = ct.id
+    GROUP BY c.id, c.nome, c.codigo
+    HAVING COUNT(ti.id) > 0
+    ORDER BY 
+      CASE 
+        WHEN COUNT(ti.id) > 0 
+        THEN (COUNT(CASE WHEN ti.status = 'CONCLUIDO' THEN 1 END)::float / COUNT(ti.id)::float) * 100
+        ELSE 0
+      END DESC
+    LIMIT 10
+  `;
+
+  const cursosComMaiorTaxaConclusao = cursosTaxaConclusaoRaw.map((curso) => {
+    const totalInscricoes = Number(curso.totalInscricoes);
+    const totalConcluidos = Number(curso.totalConcluidos);
+    const taxaConclusaoCurso = totalInscricoes > 0 ? (totalConcluidos / totalInscricoes) * 100 : 0;
+
+    return {
+      cursoId: curso.cursoId,
+      cursoNome: curso.cursoNome,
+      cursoCodigo: curso.cursoCodigo,
+      taxaConclusao: Math.round(taxaConclusaoCurso * 100) / 100,
+      totalInscricoes,
+      totalConcluidos,
+    };
   });
 
-  const cursosPopulares = cursosComInscricoes
-    .map((curso) => {
-      const totalInscricoes = curso.CursosTurmas.reduce(
-        (sum, turma) => sum + turma._count.CursosTurmasInscricoes,
-        0,
-      );
-      return {
-        cursoId: curso.id,
-        cursoNome: curso.nome,
-        cursoCodigo: curso.codigo,
-        totalInscricoes,
-        totalTurmas: curso._count.CursosTurmas,
-      };
-    })
-    .sort((a, b) => b.totalInscricoes - a.totalInscricoes)
-    .slice(0, 10);
-
-  // Calcular taxa de conclusão geral
-  const [totalInscricoes, totalConcluidos] = await Promise.all([
-    prisma.cursosTurmasInscricoes.count(),
-    prisma.cursosTurmasInscricoes.count({ where: { status: 'CONCLUIDO' } }),
-  ]);
-
-  const taxaConclusao = totalInscricoes > 0 ? (totalConcluidos / totalInscricoes) * 100 : 0;
-
-  // Cursos com maior taxa de conclusão
-  const cursosComTaxaConclusao = await Promise.all(
-    cursosComInscricoes.map(async (curso) => {
-      const [totalInscricoesCurso, totalConcluidosCurso] = await Promise.all([
-        prisma.cursosTurmasInscricoes.count({
-          where: {
-            CursosTurmas: {
-              cursoId: curso.id,
-            },
-          },
-        }),
-        prisma.cursosTurmasInscricoes.count({
-          where: {
-            CursosTurmas: {
-              cursoId: curso.id,
-            },
-            status: 'CONCLUIDO',
-          },
-        }),
-      ]);
-
-      const taxaConclusaoCurso =
-        totalInscricoesCurso > 0 ? (totalConcluidosCurso / totalInscricoesCurso) * 100 : 0;
-
-      return {
-        cursoId: curso.id,
-        cursoNome: curso.nome,
-        cursoCodigo: curso.codigo,
-        taxaConclusao: taxaConclusaoCurso,
-        totalInscricoes: totalInscricoesCurso,
-        totalConcluidos: totalConcluidosCurso,
-      };
-    }),
-  );
-
-  const cursosComMaiorTaxa = cursosComTaxaConclusao
-    .filter((c) => c.totalInscricoes > 0)
-    .sort((a, b) => b.taxaConclusao - a.taxaConclusao)
-    .slice(0, 10);
-
-  return {
-    cursosMaisPopulares: cursosPopulares,
+  const result = {
+    cursosMaisPopulares,
     taxaConclusao: Math.round(taxaConclusao * 100) / 100,
-    cursosComMaiorTaxaConclusao: cursosComMaiorTaxa,
+    cursosComMaiorTaxaConclusao,
   };
+
+  // Cachear resultado
+  await setCache(cacheKey, result, CACHE_TTL_PERFORMANCE);
+
+  return result;
 }
 
 /**
  * Busca visão geral completa de cursos
+ * ✅ OTIMIZADO: Queries paralelas + cache
  */
 export async function buscarVisaoGeralCursos(): Promise<VisaoGeralCursos> {
   try {
     visaogeralLogger.info('Buscando visão geral de cursos');
 
+    // ✅ OTIMIZADO: Executar todas as queries em paralelo
     const [metricasGerais, cursosProximosInicio, faturamento, performance] = await Promise.all([
       buscarMetricasGerais(),
       buscarCursosProximosInicio(),
@@ -507,4 +631,3 @@ export async function buscarVisaoGeralCursos(): Promise<VisaoGeralCursos> {
     throw error;
   }
 }
-

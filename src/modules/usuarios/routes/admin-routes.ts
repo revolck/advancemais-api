@@ -14,7 +14,7 @@ import { Roles } from '../enums/Roles';
 
 const router = Router();
 const adminController = new AdminController();
-const adminRoles = [Roles.ADMIN, Roles.MODERADOR];
+const adminRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO];
 
 // =============================================
 // ROTAS COM ESCOPOS ESPECÍFICOS ANTES DO GUARD GLOBAL
@@ -25,7 +25,10 @@ const adminRoles = [Roles.ADMIN, Roles.MODERADOR];
  * /api/v1/usuarios/candidatos/dashboard:
  *   get:
  *     summary: Listar candidatos (visão de dashboard)
- *     description: "Retorna candidatos com role ALUNO_CANDIDATO e pelo menos um currículo ativo, limitado a 10 registros por página."
+ *     description: |
+ *       Retorna candidatos com role ALUNO_CANDIDATO e pelo menos um currículo ativo, limitado a 10 registros por página.
+ *       
+ *       **ACESSO:** ADMIN, MODERADOR, SETOR_DE_VAGAS e PEDAGOGICO podem acessar esta rota.
  *     tags: [Usuários]
  *     security:
  *       - bearerAuth: []
@@ -95,7 +98,7 @@ const adminRoles = [Roles.ADMIN, Roles.MODERADOR];
  */
 router.get(
   '/candidatos/dashboard',
-  supabaseAuthMiddleware(['ADMIN', 'MODERADOR', 'SETOR_DE_VAGAS']),
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR', 'SETOR_DE_VAGAS', 'PEDAGOGICO']),
   asyncHandler(adminController.listarCandidatosDashboard),
 );
 
@@ -104,9 +107,10 @@ router.get(
 // =============================================
 
 /**
- * Todas as demais rotas admin requerem pelo menos role MODERADOR
+ * Todas as demais rotas admin requerem pelo menos role MODERADOR ou PEDAGOGICO
+ * Nota: PEDAGOGICO terá validações específicas nos controllers/services
  */
-router.use(supabaseAuthMiddleware(['ADMIN', 'MODERADOR']));
+router.use(supabaseAuthMiddleware(['ADMIN', 'MODERADOR', 'PEDAGOGICO']));
 
 // =============================================
 // ROTAS DE LISTAGEM E CONSULTA
@@ -155,6 +159,14 @@ router.get('/', asyncHandler(adminController.getAdminInfo));
  * /api/v1/usuarios/usuarios:
  *   get:
  *     summary: Listar usuários
+ *     description: |
+ *       Lista usuários com filtros e paginação.
+ *       
+ *       **ACESSO:** ADMIN, MODERADOR e PEDAGOGICO podem acessar esta rota.
+ *       
+ *       **RESTRIÇÕES PARA PEDAGOGICO:**
+ *       - PEDAGOGICO só pode visualizar usuários com role ALUNO_CANDIDATO ou INSTRUTOR
+ *       - Tentativas de filtrar por outras roles retornarão lista vazia
  *     tags: [Usuários]
  *     security:
  *       - bearerAuth: []
@@ -179,6 +191,8 @@ router.get('/', asyncHandler(adminController.getAdminInfo));
  *         schema:
  *           type: string
  *           example: ADMIN
+ *         description: |
+ *           Filtrar por role. Para PEDAGOGICO, apenas ALUNO_CANDIDATO e INSTRUTOR são permitidos.
  *       - in: query
  *         name: tipoUsuario
  *         schema:
@@ -322,8 +336,15 @@ router.get('/usuarios', asyncHandler(adminController.listarUsuarios));
  * @openapi
  * /api/v1/usuarios/usuarios:
  *   post:
- *     summary: Criar usuário (admin/moderador)
- *     description: Cria um usuário de pessoa física ou jurídica já com email validado, sem exigir confirmação de token.
+ *     summary: Criar usuário (admin/moderador/pedagógico)
+ *     description: |
+ *       Cria um usuário de pessoa física ou jurídica já com email validado, sem exigir confirmação de token.
+ *       
+ *       **ACESSO:** ADMIN, MODERADOR e PEDAGOGICO podem acessar esta rota.
+ *       
+ *       **RESTRIÇÕES PARA PEDAGOGICO:**
+ *       - PEDAGOGICO só pode criar usuários com role ALUNO_CANDIDATO ou INSTRUTOR
+ *       - Tentativas de criar usuários com outras roles retornarão erro 403
  *     tags: [Usuários]
  *     security:
  *       - bearerAuth: []
@@ -353,7 +374,8 @@ router.get('/usuarios', asyncHandler(adminController.listarUsuarios));
  *             schema:
  *               $ref: '#/components/schemas/UnauthorizedResponse'
  *       403:
- *         description: Acesso negado por falta de permissões válidas
+ *         description: |
+ *           Acesso negado. Para PEDAGOGICO, indica tentativa de criar usuário com role diferente de ALUNO_CANDIDATO ou INSTRUTOR.
  *         content:
  *           application/json:
  *             schema:
@@ -486,6 +508,19 @@ router.get('/candidatos', asyncHandler(adminController.listarCandidatos));
  * /api/v1/usuarios/usuarios/{userId}:
  *   get:
  *     summary: Buscar usuário por ID
+ *     description: |
+ *       Busca um usuário específico por ID com relações específicas baseadas na role.
+ *       
+ *       **ACESSO:** ADMIN, MODERADOR e PEDAGOGICO podem acessar esta rota.
+ *       
+ *       **RESTRIÇÕES PARA PEDAGOGICO:**
+ *       - PEDAGOGICO só pode visualizar usuários com role ALUNO_CANDIDATO ou INSTRUTOR
+ *       - Tentativas de visualizar usuários com outras roles retornarão erro 403
+ *       
+ *       **Relações por role:**
+ *       - ALUNO_CANDIDATO: curriculos, candidaturas, cursosInscricoes
+ *       - EMPRESA: vagas
+ *       - Outras roles: dados básicos apenas
  *     tags: [Usuários]
  *     security:
  *       - bearerAuth: []
@@ -498,10 +533,7 @@ router.get('/candidatos', asyncHandler(adminController.listarCandidatos));
  *     responses:
  *       200:
  *         description: |
- *           Usuário encontrado com relações específicas baseadas na role:
- *           - ALUNO_CANDIDATO: curriculos, candidaturas, cursosInscricoes
- *           - EMPRESA: vagas
- *           - Outras roles: dados básicos apenas
+ *           Usuário encontrado com relações específicas baseadas na role
  *         content:
  *           application/json:
  *             schema:
@@ -513,6 +545,13 @@ router.get('/candidatos', asyncHandler(adminController.listarCandidatos));
  *                 usuario:
  *                   type: object
  *                   description: Usuário com todas as informações e relações conforme a role
+ *       403:
+ *         description: |
+ *           Para PEDAGOGICO, indica tentativa de visualizar usuário com role diferente de ALUNO_CANDIDATO ou INSTRUTOR.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
  *       404:
  *         description: Usuário não encontrado
  *         content:
@@ -540,8 +579,15 @@ router.get('/usuarios/:userId', asyncHandler(adminController.buscarUsuario));
  *   put:
  *     summary: Atualizar usuário
  *     description: |
- *       Atualiza informações completas de um usuário (qualquer role).
- *       Apenas ADMIN e MODERADOR podem atualizar.
+ *       Atualiza informações completas de um usuário.
+ *       
+ *       **ACESSO:** ADMIN, MODERADOR e PEDAGOGICO podem acessar esta rota.
+ *       
+ *       **RESTRIÇÕES PARA PEDAGOGICO:**
+ *       - PEDAGOGICO só pode editar usuários com role ALUNO_CANDIDATO ou INSTRUTOR
+ *       - PEDAGOGICO não pode alterar a role de um usuário
+ *       - Tentativas de editar usuários com outras roles retornarão erro 403
+ *       
  *       Campos opcionais: nomeCompleto, email, senha, confirmarSenha, telefone, genero, dataNasc, descricao, avatarUrl, endereco, redesSociais
  *     tags: [Usuários]
  *     security:
@@ -627,7 +673,8 @@ router.get('/usuarios/:userId', asyncHandler(adminController.buscarUsuario));
  *       401:
  *         description: Token inválido ou ausente
  *       403:
- *         description: Acesso negado
+ *         description: |
+ *           Acesso negado. Para PEDAGOGICO, indica tentativa de editar usuário com role diferente de ALUNO_CANDIDATO ou INSTRUTOR, ou tentativa de alterar role.
  *       404:
  *         description: Usuário não encontrado
  *       409:
@@ -1018,7 +1065,8 @@ router.post(
  *     summary: Listar instrutores
  *     description: |
  *       Retorna lista paginada de instrutores com filtros.
- *       Apenas ADMIN e MODERADOR podem acessar.
+ *       
+ *       **ACESSO:** ADMIN, MODERADOR e PEDAGOGICO podem acessar.
  *     tags: [Usuários]
  *     security:
  *       - bearerAuth: []

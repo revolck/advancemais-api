@@ -89,8 +89,13 @@ export class AdminService {
 
   /**
    * Lista usuários com filtros e paginação
+   * @param query - Parâmetros de consulta
+   * @param options - Opções adicionais (incluindo role do usuário logado)
    */
-  async listarUsuarios(query: unknown) {
+  async listarUsuarios(
+    query: unknown,
+    options?: { userRole?: string },
+  ) {
     const querySchema = z.object({
       page: z.coerce.number().int().min(1).default(1),
       limit: z.coerce.number().int().min(1).default(50),
@@ -110,10 +115,33 @@ export class AdminService {
     const statusFilter = this.getStatusFilter(status);
     const tipoUsuarioFilter = this.getTipoUsuarioFilter(tipoUsuario);
 
-    const roleFilter = this.getRoleFilter(role);
+    // Se o usuário for PEDAGOGICO, filtrar apenas ALUNO_CANDIDATO e INSTRUTOR
+    if (options?.userRole === Roles.PEDAGOGICO) {
+      // PEDAGOGICO só pode ver ALUNO_CANDIDATO e INSTRUTOR
+      // Se tentar filtrar por outra role, não retornar nada
+      if (role && role !== Roles.ALUNO_CANDIDATO && role !== Roles.INSTRUTOR) {
+        return {
+          message: 'Lista de usuários',
+          usuarios: [],
+          pagination: {
+            page,
+            limit: pageSize,
+            total: 0,
+            pages: 0,
+          },
+        };
+      }
+      // Forçar filtro para apenas ALUNO_CANDIDATO e INSTRUTOR
+      where.role = {
+        in: [Roles.ALUNO_CANDIDATO, Roles.INSTRUTOR],
+      };
+    } else {
+      // Para outros roles, usar filtro normal
+      const roleFilter = this.getRoleFilter(role);
+      if (roleFilter) where.role = roleFilter;
+    }
 
     if (statusFilter) where.status = statusFilter;
-    if (roleFilter) where.role = roleFilter;
     if (tipoUsuarioFilter) where.tipoUsuario = tipoUsuarioFilter;
 
     // Filtro por localização (cidade e/ou estado)
@@ -286,7 +314,7 @@ export class AdminService {
   /**
    * Busca usuário específico com detalhes
    */
-  async buscarUsuario(userId: string) {
+  async buscarUsuario(userId: string, options?: { userRole?: string }) {
     if (!userId || userId.trim() === '') {
       throw new Error('ID do usuário é obrigatório');
     }
@@ -338,6 +366,22 @@ export class AdminService {
 
     if (!usuario) {
       return null;
+    }
+
+    // Validação para PEDAGOGICO: só pode ver usuários com role ALUNO_CANDIDATO ou INSTRUTOR
+    if (options?.userRole === Roles.PEDAGOGICO) {
+      if (
+        usuario.role !== Roles.ALUNO_CANDIDATO &&
+        usuario.role !== Roles.INSTRUTOR
+      ) {
+        throw Object.assign(
+          new Error('PEDAGOGICO só pode visualizar usuários com role ALUNO_CANDIDATO ou INSTRUTOR'),
+          {
+            code: 'FORBIDDEN_USER_ROLE',
+            statusCode: 403,
+          },
+        );
+      }
     }
 
     const usuarioComInformacoes = mergeUsuarioInformacoes(usuario);
@@ -755,7 +799,7 @@ export class AdminService {
 
   async criarUsuario(
     dados: AdminCreateUserInput,
-    options?: { correlationId?: string; adminId?: string },
+    options?: { correlationId?: string; adminId?: string; userRole?: string },
   ) {
     const log = this.log.child({
       action: 'criarUsuarioAdmin',
@@ -771,12 +815,26 @@ export class AdminService {
 
     const aceitarTermos = dados.aceitarTermos ?? true;
     const supabaseId = dados.supabaseId?.trim() || randomUUID();
-    const normalizedRole =
+    let normalizedRole =
       dados.role && Object.values(Roles).includes(dados.role)
         ? dados.role
         : dados.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
           ? Roles.EMPRESA
           : Roles.ALUNO_CANDIDATO;
+
+    // Validação para PEDAGOGICO: só pode criar usuários com role ALUNO_CANDIDATO ou INSTRUTOR
+    if (options?.userRole === Roles.PEDAGOGICO) {
+      if (
+        normalizedRole !== Roles.ALUNO_CANDIDATO &&
+        normalizedRole !== Roles.INSTRUTOR
+      ) {
+        throw this.createServiceError(
+          'PEDAGOGICO só pode criar usuários com role ALUNO_CANDIDATO ou INSTRUTOR',
+          403,
+          'FORBIDDEN_ROLE',
+        );
+      }
+    }
 
     const helperLogger = log.child({ scope: 'createUserHelpers' });
 
@@ -870,7 +928,8 @@ export class AdminService {
   }
 
   /**
-   * Atualiza informações completas de um usuário (ADMIN/MODERADOR apenas)
+   * Atualiza informações completas de um usuário (ADMIN/MODERADOR/PEDAGOGICO)
+   * PEDAGOGICO só pode editar usuários com role ALUNO_CANDIDATO ou INSTRUTOR
    */
   async atualizarUsuario(
     userId: string,
@@ -900,7 +959,9 @@ export class AdminService {
       } | null;
       senha?: string;
       confirmarSenha?: string;
+      role?: string;
     },
+    options?: { userRole?: string },
   ) {
     // Validar senha se fornecida
     if (dados.senha !== undefined || dados.confirmarSenha !== undefined) {
@@ -953,6 +1014,44 @@ export class AdminService {
         throw Object.assign(new Error('Usuário não encontrado'), {
           code: 'USER_NOT_FOUND',
         });
+      }
+
+      // Validação para PEDAGOGICO: só pode editar usuários com role ALUNO_CANDIDATO ou INSTRUTOR
+      if (options?.userRole === Roles.PEDAGOGICO) {
+        if (
+          usuarioExistente.role !== Roles.ALUNO_CANDIDATO &&
+          usuarioExistente.role !== Roles.INSTRUTOR
+        ) {
+          throw Object.assign(
+            new Error('PEDAGOGICO só pode editar usuários com role ALUNO_CANDIDATO ou INSTRUTOR'),
+            {
+              code: 'FORBIDDEN_USER_ROLE',
+              statusCode: 403,
+            },
+          );
+        }
+
+        // PEDAGOGICO não pode alterar a role do usuário
+        if (dados.role !== undefined && dados.role !== usuarioExistente.role) {
+          throw Object.assign(
+            new Error('PEDAGOGICO não pode alterar a role de um usuário'),
+            {
+              code: 'FORBIDDEN_ROLE_CHANGE',
+              statusCode: 403,
+            },
+          );
+        }
+
+        // Se tentar definir role diferente de ALUNO_CANDIDATO ou INSTRUTOR, rejeitar
+        if (dados.role && dados.role !== Roles.ALUNO_CANDIDATO && dados.role !== Roles.INSTRUTOR) {
+          throw Object.assign(
+            new Error('PEDAGOGICO só pode definir role como ALUNO_CANDIDATO ou INSTRUTOR'),
+            {
+              code: 'FORBIDDEN_ROLE',
+              statusCode: 403,
+            },
+          );
+        }
       }
 
       // Verificar se email já existe

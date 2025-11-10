@@ -46,9 +46,9 @@ router.get('/meta', publicCache, CursosController.meta);
  * @openapi
  * /api/v1/cursos/visaogeral:
  *   get:
- *     summary: 📊 Visão Geral de Cursos (Admin/Moderador)
+ *     summary: 📊 Visão Geral de Cursos (Admin/Moderador/Pedagógico)
  *     description: |
- *       **ACESSO RESTRITO:** Apenas ADMIN e MODERADOR podem acessar esta rota.
+ *       **ACESSO RESTRITO:** Apenas ADMIN, MODERADOR e PEDAGOGICO podem acessar esta rota.
  *       
  *       Retorna métricas completas de cursos incluindo:
  *       - Métricas gerais (total de cursos, turmas, alunos)
@@ -144,7 +144,7 @@ router.get('/meta', publicCache, CursosController.meta);
  *       401:
  *         description: Não autenticado
  *       403:
- *         description: Acesso negado - apenas ADMIN e MODERADOR
+ *         description: Acesso negado - apenas ADMIN, MODERADOR e PEDAGOGICO
  *       500:
  *         description: Erro ao buscar visão geral
  *         content:
@@ -154,7 +154,7 @@ router.get('/meta', publicCache, CursosController.meta);
  */
 router.get(
   '/visaogeral',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
   CursosController.visaogeral,
 );
 

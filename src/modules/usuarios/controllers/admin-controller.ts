@@ -65,7 +65,8 @@ export class AdminController {
   public listarUsuarios = async (req: Request, res: Response, next: NextFunction) => {
     const log = this.getLogger(req);
     try {
-      const result = await this.adminService.listarUsuarios(req.query);
+      const userRole = req.user?.role;
+      const result = await this.adminService.listarUsuarios(req.query, { userRole });
       res.json(result);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
@@ -143,7 +144,8 @@ export class AdminController {
     const log = this.getLogger(req);
     try {
       const { userId } = req.params;
-      const result = await this.adminService.buscarUsuario(userId);
+      const userRole = req.user?.role;
+      const result = await this.adminService.buscarUsuario(userId, { userRole });
 
       if (!result) {
         return res.status(404).json({
@@ -157,6 +159,17 @@ export class AdminController {
       });
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
+      const statusCode = (error as any)?.statusCode;
+
+      if (typeof statusCode === 'number' && statusCode >= 400 && statusCode < 500) {
+        log.warn({ err }, 'Falha ao buscar usuário');
+        return res.status(statusCode).json({
+          success: false,
+          message: err.message,
+          code: (error as any)?.code ?? 'USER_ACCESS_ERROR',
+        });
+      }
+
       log.error({ err }, 'Erro ao buscar usuário');
       return next(err);
     }
@@ -275,9 +288,11 @@ export class AdminController {
         });
       }
 
+      const userRole = req.user?.role;
       const result = await this.adminService.criarUsuario(validation.data, {
         correlationId,
         adminId: req.user?.id,
+        userRole,
       });
 
       return res.status(201).json({ ...result, correlationId });
@@ -609,7 +624,8 @@ export class AdminController {
         });
       }
 
-      const result = await this.adminService.atualizarUsuario(userId, req.body);
+      const userRole = req.user?.role;
+      const result = await this.adminService.atualizarUsuario(userId, req.body, { userRole });
 
       res.json({
         success: true,
@@ -618,7 +634,16 @@ export class AdminController {
       });
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      log.error({ err }, 'Erro ao atualizar usuário');
+      const statusCode = (error as any)?.statusCode;
+
+      if (typeof statusCode === 'number' && statusCode >= 400 && statusCode < 500) {
+        log.warn({ err }, 'Falha ao atualizar usuário');
+        return res.status(statusCode).json({
+          success: false,
+          message: err.message,
+          code: (error as any)?.code ?? 'ADMIN_USER_UPDATE_ERROR',
+        });
+      }
 
       if ((error as any)?.code === 'USER_NOT_FOUND') {
         return res.status(404).json({
@@ -640,9 +665,12 @@ export class AdminController {
         (error as any)?.code === 'PASSWORD_CONFIRMATION_REQUIRED' ||
         (error as any)?.code === 'PASSWORD_MISMATCH' ||
         (error as any)?.code === 'PASSWORD_TOO_SHORT' ||
-        (error as any)?.code === 'INVALID_EMAIL'
+        (error as any)?.code === 'INVALID_EMAIL' ||
+        (error as any)?.code === 'FORBIDDEN_USER_ROLE' ||
+        (error as any)?.code === 'FORBIDDEN_ROLE_CHANGE' ||
+        (error as any)?.code === 'FORBIDDEN_ROLE'
       ) {
-        return res.status(400).json({
+        return res.status(statusCode || 400).json({
           success: false,
           code: (error as any)?.code,
           message: err.message,

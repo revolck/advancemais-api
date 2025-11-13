@@ -2,7 +2,14 @@ import dotenv from 'dotenv';
 import { logger } from '@/utils/logger';
 
 // Carrega as variáveis de ambiente o mais cedo possível
-dotenv.config();
+const envFiles = ['.env', '.env.local'] as const;
+
+for (const file of envFiles) {
+  dotenv.config({
+    path: file,
+    override: file === '.env.local',
+  });
+}
 
 /**
  * Configurações de ambiente centralizadas e validadas

@@ -926,6 +926,8 @@ model Usuarios {
   @@index([tipoUsuario])
   @@index([role, status, criadoEm], map: "usuarios_role_status_criadoem_idx")
   @@index([tipoUsuario, role, status, criadoEm], map: "usuarios_tipo_role_status_criadoem_idx")
+  // ✅ Índices adicionais para otimização de queries (índices parciais serão criados via migração SQL)
+  @@index([role, status, criadoEm(sort: Desc)], map: "usuarios_role_status_criadoem_desc_idx")
 }
 
 model UsuariosCandidatosLogs {
@@ -1014,6 +1016,13 @@ model UsuariosEnderecos {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @default(now())
   Usuarios     Usuarios @relation(fields: [usuarioId], references: [id])
+
+  // ✅ Índices para otimização de queries de listagem
+  // Nota: Índices parciais (WHERE cidade IS NOT NULL) são criados via migração SQL
+  @@index([cidade])
+  @@index([estado])
+  @@index([cidade, estado])
+  @@index([usuarioId, criadoEm(sort: Desc)])
 }
 
 model UsuariosInformation {

@@ -10,12 +10,18 @@ import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 
-import { prisma } from '@/config/prisma';
+import { prisma, retryOperation } from '@/config/prisma';
 import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
 import { logger } from '@/utils/logger';
-import { invalidateCacheByPrefix } from '@/utils/cache';
+import { invalidateCacheByPrefix, getCachedOrFetch, generateCacheKey } from '@/utils/cache';
 import { attachEnderecoResumo } from '../utils/address';
 import { mergeUsuarioInformacoes, usuarioInformacoesSelect } from '../utils/information';
+import {
+  getOptimizedUserSelect,
+  optimizeSearchFilter,
+  optimizeAddressFilter,
+  QueryProfiler,
+} from '../utils/query-optimizer';
 import {
   mapSocialLinks,
   usuarioRedesSociaisSelect,
@@ -144,54 +150,61 @@ export class AdminService {
     if (statusFilter) where.status = statusFilter;
     if (tipoUsuarioFilter) where.tipoUsuario = tipoUsuarioFilter;
 
-    // Filtro por localização (cidade e/ou estado)
-    if (cidade || estado) {
-      where.UsuariosEnderecos = {
-        some: {
-          ...(cidade ? { cidade: { contains: cidade.trim(), mode: 'insensitive' } } : {}),
-          ...(estado ? { estado: { contains: estado.trim(), mode: 'insensitive' } } : {}),
-        },
-      };
+    // ✅ OTIMIZAÇÃO: Usar filtros otimizados com índices
+    const addressFilter = optimizeAddressFilter(cidade, estado);
+    if (addressFilter) {
+      where.UsuariosEnderecos = addressFilter.UsuariosEnderecos;
     }
 
-    const [usuarios, total] = await Promise.all([
-      prisma.usuarios.findMany({
-        where,
-        select: {
-          id: true,
-          email: true,
-          nomeCompleto: true,
-          cpf: true,
-          cnpj: true,
-          codUsuario: true,
-          role: true,
-          status: true,
-          tipoUsuario: true,
-          criadoEm: true,
-          ultimoLogin: true,
-          UsuariosInformation: {
-            select: usuarioInformacoesSelect,
+    // ✅ OTIMIZAÇÃO: Seleção otimizada de campos (sem redes sociais para listagem geral)
+    const select = getOptimizedUserSelect({
+      includeRedesSociais: false, // Não incluir redes sociais em listagem geral
+      includeEnderecoCompleto: true, // Incluir endereço completo
+      includeInformacoesCompletas: true,
+    });
+
+    // ✅ OTIMIZAÇÃO: Cache para queries de listagem (TTL: 30s)
+    const cacheKey = generateCacheKey('users:list', {
+      page,
+      limit: pageSize,
+      status,
+      role,
+      tipoUsuario,
+      cidade,
+      estado,
+      userRole: options?.userRole,
+    });
+
+    const startTime = Date.now();
+    const [usuarios, total] = await getCachedOrFetch(
+      cacheKey,
+      async () => {
+        return await retryOperation(
+          async () => {
+            return await Promise.all([
+              prisma.usuarios.findMany({
+                where,
+                select,
+                // ✅ Usar índice composto para melhor performance
+                orderBy: { criadoEm: 'desc' },
+                skip,
+                take: pageSize,
+              }),
+              // ✅ Count em paralelo - usa índice para contar rapidamente
+              prisma.usuarios.count({ where }),
+            ]);
           },
-          UsuariosEnderecos: {
-            orderBy: { criadoEm: 'desc' },
-            select: {
-              id: true,
-              logradouro: true,
-              numero: true,
-              bairro: true,
-              cidade: true,
-              estado: true,
-              cep: true,
-            },
-            take: 1, // Pegar apenas o mais recente
-          },
-        },
-        orderBy: { criadoEm: 'desc' },
-        skip,
-        take: pageSize,
-      }),
-      prisma.usuarios.count({ where }),
-    ]);
+          2, // Reduzir tentativas para fail-fast
+          1000, // Delay menor
+          20000, // Timeout maior (20s) para queries complexas
+        );
+      },
+      30, // Cache de 30 segundos para listagens
+    );
+
+    // ✅ Profiler: Registrar query
+    const duration = Date.now() - startTime;
+    QueryProfiler.record('listarUsuarios', duration);
 
     const usuariosComEndereco = usuarios.map(
       (usuario) => attachEnderecoResumo(mergeUsuarioInformacoes(usuario))!,
@@ -207,6 +220,19 @@ export class AdminService {
         pages: Math.ceil(total / pageSize),
       },
     };
+  }
+
+  /**
+   * Invalida cache de listagens após criar/atualizar usuário
+   */
+  private async invalidateListCache(): Promise<void> {
+    try {
+      await invalidateCacheByPrefix('users:list:');
+      await invalidateCacheByPrefix('instrutores:list:');
+      await invalidateCacheByPrefix('candidatos:list:');
+    } catch (error) {
+      this.log.warn({ err: error }, 'Falha ao invalidar cache de listagens');
+    }
   }
 
   /**
@@ -925,6 +951,9 @@ export class AdminService {
         UsuariosVerificacaoEmailBypassed: true,
       },
     };
+
+    // ✅ OTIMIZAÇÃO: Invalidar cache de listagens após criar usuário
+    await this.invalidateListCache();
   }
 
   /**
@@ -1244,6 +1273,9 @@ export class AdminService {
 
     // Invalidar cache do usuário
     await invalidateUserCache(usuarioAtualizado);
+
+    // ✅ OTIMIZAÇÃO: Invalidar cache de listagens após atualizar usuário
+    await this.invalidateListCache();
 
     const usuarioComInformacoes = mergeUsuarioInformacoes(usuarioAtualizado);
     const usuarioNormalizado = attachEnderecoResumo(usuarioComInformacoes);

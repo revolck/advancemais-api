@@ -139,48 +139,50 @@ async function buscarMetricasGerais(): Promise<{
   }
 
   const [
-    totalCursos,
-    cursosPublicados,
-    cursosRascunho,
-    totalTurmas,
-    turmasAtivas,
-    turmasInscricoesAbertas,
-    totalAlunosInscritos,
-    totalAlunosAtivos,
-    totalAlunosConcluidos,
-  ] = await Promise.all([
-    // Total de cursos
-    prisma.cursos.count(),
-    // Cursos publicados
-    prisma.cursos.count({ where: { statusPadrao: 'PUBLICADO' } }),
-    // Cursos em rascunho
-    prisma.cursos.count({ where: { statusPadrao: 'RASCUNHO' } }),
-    // Total de turmas
-    prisma.cursosTurmas.count(),
-    // Turmas ativas (EM_ANDAMENTO)
-    prisma.cursosTurmas.count({ where: { status: 'EM_ANDAMENTO' } }),
-    // Turmas com inscrições abertas
-    prisma.cursosTurmas.count({ where: { status: 'INSCRICOES_ABERTAS' } }),
-    // Total de alunos inscritos
-    prisma.cursosTurmasInscricoes.count(),
-    // Alunos ativos (INSCRITO ou EM_ANDAMENTO)
-    prisma.cursosTurmasInscricoes.count({
-      where: { status: { in: ['INSCRITO', 'EM_ANDAMENTO'] } },
-    }),
-    // Alunos concluídos
-    prisma.cursosTurmasInscricoes.count({ where: { status: 'CONCLUIDO' } }),
-  ]);
+    {
+      totalCursos,
+      cursosPublicados,
+      cursosRascunho,
+      totalTurmas,
+      turmasAtivas,
+      turmasInscricoesAbertas,
+      totalAlunosInscritos,
+      totalAlunosAtivos,
+      totalAlunosConcluidos,
+    },
+  ] = await prisma.$queryRaw<Array<{
+    totalCursos: bigint;
+    cursosPublicados: bigint;
+    cursosRascunho: bigint;
+    totalTurmas: bigint;
+    turmasAtivas: bigint;
+    turmasInscricoesAbertas: bigint;
+    totalAlunosInscritos: bigint;
+    totalAlunosAtivos: bigint;
+    totalAlunosConcluidos: bigint;
+  }>>`
+    SELECT
+      (SELECT COUNT(*) FROM "Cursos")                               AS "totalCursos",
+      (SELECT COUNT(*) FROM "Cursos" WHERE "statusPadrao" = 'PUBLICADO') AS "cursosPublicados",
+      (SELECT COUNT(*) FROM "Cursos" WHERE "statusPadrao" = 'RASCUNHO')  AS "cursosRascunho",
+      (SELECT COUNT(*) FROM "CursosTurmas")                         AS "totalTurmas",
+      (SELECT COUNT(*) FROM "CursosTurmas" WHERE "status" = 'EM_ANDAMENTO') AS "turmasAtivas",
+      (SELECT COUNT(*) FROM "CursosTurmas" WHERE "status" = 'INSCRICOES_ABERTAS') AS "turmasInscricoesAbertas",
+      (SELECT COUNT(*) FROM "CursosTurmasInscricoes")               AS "totalAlunosInscritos",
+      (SELECT COUNT(*) FROM "CursosTurmasInscricoes" WHERE "status" IN ('INSCRITO', 'EM_ANDAMENTO')) AS "totalAlunosAtivos",
+      (SELECT COUNT(*) FROM "CursosTurmasInscricoes" WHERE "status" = 'CONCLUIDO') AS "totalAlunosConcluidos"
+  `;
 
   const result = {
-    totalCursos,
-    cursosPublicados,
-    cursosRascunho,
-    totalTurmas,
-    turmasAtivas,
-    turmasInscricoesAbertas,
-    totalAlunosInscritos,
-    totalAlunosAtivos,
-    totalAlunosConcluidos,
+    totalCursos: Number(totalCursos ?? 0n),
+    cursosPublicados: Number(cursosPublicados ?? 0n),
+    cursosRascunho: Number(cursosRascunho ?? 0n),
+    totalTurmas: Number(totalTurmas ?? 0n),
+    turmasAtivas: Number(turmasAtivas ?? 0n),
+    turmasInscricoesAbertas: Number(turmasInscricoesAbertas ?? 0n),
+    totalAlunosInscritos: Number(totalAlunosInscritos ?? 0n),
+    totalAlunosAtivos: Number(totalAlunosAtivos ?? 0n),
+    totalAlunosConcluidos: Number(totalAlunosConcluidos ?? 0n),
   };
 
   // Cachear resultado

@@ -227,3 +227,24 @@ export function setCacheHeaders<T>(res: Response, data: T, ttlSeconds: number): 
 
   return etag;
 }
+
+/**
+ * Gera chave de cache baseada nos parâmetros da query
+ * @param prefix - Prefixo da chave (ex: 'users:list')
+ * @param params - Parâmetros da query
+ * @param options - Opções (ex: excludeKeys para excluir parâmetros da chave)
+ * @returns Chave de cache gerada
+ */
+export function generateCacheKey(
+  prefix: string,
+  params: Record<string, any>,
+  options?: { excludeKeys?: string[] },
+): string {
+  const excludeKeys = options?.excludeKeys || ['page', 'limit'];
+  const filteredParams = Object.fromEntries(
+    Object.entries(params).filter(([key]) => !excludeKeys.includes(key)),
+  );
+  const paramsString = JSON.stringify(filteredParams, Object.keys(filteredParams).sort());
+  const paramsHash = Buffer.from(paramsString).toString('base64').slice(0, 16).replace(/[^a-zA-Z0-9]/g, '');
+  return `${prefix}:${paramsHash}`;
+}

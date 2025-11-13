@@ -18,6 +18,12 @@ import {
 } from '@/modules/usuarios/utils/social-links';
 import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
 import { mergeUsuarioInformacoes } from '@/modules/usuarios/utils/information';
+import {
+  getOptimizedInstrutorSelect,
+  optimizeSearchFilter,
+  QueryProfiler,
+} from '@/modules/usuarios/utils/query-optimizer';
+import { getCachedOrFetch, generateCacheKey } from '@/utils/cache';
 
 export class InstrutorController {
   /**
@@ -40,73 +46,57 @@ export class InstrutorController {
         where.status = status;
       }
 
-      // Filtro de busca (nome, email, CPF ou código)
+      // ✅ OTIMIZAÇÃO: Usar filtro de busca otimizado com índices
       if (search && typeof search === 'string' && search.trim().length >= 3) {
-        const searchTerm = search.trim();
-        where.OR = [
-          { nomeCompleto: { contains: searchTerm, mode: 'insensitive' } },
-          { email: { contains: searchTerm, mode: 'insensitive' } },
-          { cpf: { contains: searchTerm.replace(/\D/g, '') } },
-          { codUsuario: { contains: searchTerm, mode: 'insensitive' } },
-        ];
+        const searchFilter = optimizeSearchFilter(search);
+        if (searchFilter.OR) {
+          where.OR = searchFilter.OR;
+        }
       }
 
-      // Buscar instrutores
-      const [instrutores, total] = await retryOperation(
+      // ✅ OTIMIZAÇÃO: Seleção otimizada de campos (incluir redes sociais para instrutores)
+      const select = getOptimizedInstrutorSelect({
+        includeRedesSociais: true, // Instrutores precisam de redes sociais
+      });
+
+      // ✅ OTIMIZAÇÃO: Cache para queries de listagem (TTL: 30s)
+      const cacheKey = generateCacheKey('instrutores:list', {
+        page: pageNum,
+        limit: limitNum,
+        search,
+        status,
+      });
+
+      const startTime = Date.now();
+      const [instrutores, total] = await getCachedOrFetch(
+        cacheKey,
         async () => {
-          return await Promise.all([
-            prisma.usuarios.findMany({
-              where,
-              select: {
-                id: true,
-                codUsuario: true,
-                nomeCompleto: true,
-                email: true,
-                cpf: true,
-                status: true,
-                criadoEm: true,
-                atualizadoEm: true,
-                ultimoLogin: true,
-                UsuariosInformation: {
-                  select: {
-                    telefone: true,
-                    genero: true,
-                    dataNasc: true,
-                    descricao: true,
-                    avatarUrl: true,
-                  },
-                },
-                UsuariosRedesSociais: {
-                  select: {
-                    linkedin: true,
-                    instagram: true,
-                    facebook: true,
-                    youtube: true,
-                    twitter: true,
-                    tiktok: true,
-                  },
-                },
-                UsuariosEnderecos: {
-                  select: {
-                    cidade: true,
-                    estado: true,
-                  },
-                  take: 1,
-                  orderBy: {
-                    criadoEm: 'desc',
-                  },
-                },
-              },
-              orderBy: { criadoEm: 'desc' },
-              skip,
-              take: limitNum,
-            }),
-            prisma.usuarios.count({ where }),
-          ]);
+          return await retryOperation(
+            async () => {
+              return await Promise.all([
+                prisma.usuarios.findMany({
+                  where,
+                  select,
+                  // ✅ Usar índice composto para melhor performance
+                  orderBy: { criadoEm: 'desc' },
+                  skip,
+                  take: limitNum,
+                }),
+                // ✅ Count em paralelo - usa índice para contar rapidamente
+                prisma.usuarios.count({ where }),
+              ]);
+            },
+            2, // Reduzir tentativas para fail-fast
+            1000, // Delay menor
+            20000, // Timeout maior (20s) para queries complexas
+          );
         },
-        3,
-        1500,
+        30, // Cache de 30 segundos para listagens
       );
+
+      // ✅ Profiler: Registrar query
+      const duration = Date.now() - startTime;
+      QueryProfiler.record('listarInstrutores', duration);
 
       const data = instrutores.map((instrutor) => {
         const merged = mergeUsuarioInformacoes(instrutor);

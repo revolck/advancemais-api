@@ -4,24 +4,46 @@ import { logger } from '@/utils/logger';
 // Criar logger ANTES de qualquer função que o use
 const prismaLogger = logger.child({ module: 'PrismaClient' });
 
-// ✅ PRIORIDADE: Direct Connection para apps Node persistentes
-// Direct Connection evita problemas com prepared statements e transações longas
-// Pooler (Transaction Pooler) é recomendado apenas para serverless/ephemeral
-// Ordem de prioridade: DIRECT_URL > DATABASE_URL > DATABASE_POOL_URL
-const datasourceUrl = 
-  process.env.DIRECT_URL || 
-  process.env.DATABASE_URL || 
-  process.env.DATABASE_POOL_URL || 
-  '';
-
 console.log('🔧 [PRISMA CONFIG] Iniciando configuração...');
+
+// ✅ PRIORIDADE: Direct Connection para apps Node persistentes (Render, Railway, etc.)
+// Direct Connection evita problemas com prepared statements e transações longas
+// Pooler (Transaction Pooler) é recomendado apenas para serverless/ephemeral (Vercel, Lambda)
+// Ordem de prioridade: DIRECT_URL > DATABASE_URL > DATABASE_POOL_URL
+// ⚠️ IMPORTANTE: Para produção no Render, SEMPRE use DIRECT_URL (não pooler)
+const datasourceUrl =
+  process.env.DIRECT_URL || process.env.DATABASE_URL || process.env.DATABASE_POOL_URL || '';
+
 console.log('🔧 [PRISMA CONFIG] datasourceUrl length:', datasourceUrl?.length || 0);
+
+// Log para debug (sem expor senha)
+if (datasourceUrl) {
+  try {
+    const url = new URL(datasourceUrl);
+    const isPooler = url.hostname.includes('pooler.supabase.com');
+    prismaLogger.info(
+      {
+        mode: isPooler ? 'Pooler' : 'Direct',
+        hostname: url.hostname,
+        note: isPooler
+          ? '⚠️ Pooler detectado - considere usar DIRECT_URL para melhor performance'
+          : '✅ Direct connection - ideal para apps persistentes',
+      },
+      '🔧 Configuração de conexão',
+    );
+  } catch (error) {
+    prismaLogger.warn({ err: error }, '⚠️ Erro ao analisar URL de conexão');
+  }
+}
 
 // Configurações otimizadas de pool de conexões para Supabase
 // Documentação: https://www.prisma.io/docs/guides/performance-and-optimization/connection-management
-const DEFAULT_CONNECTION_LIMIT = process.env.DATABASE_CONNECTION_LIMIT || '10';
-const DEFAULT_POOL_TIMEOUT = process.env.DATABASE_POOL_TIMEOUT || '30';
-const DEFAULT_CONNECT_TIMEOUT = process.env.DATABASE_CONNECT_TIMEOUT || '10';
+// ⚠️ IMPORTANTE: Connection limit deve ser alto o suficiente para suportar requisições simultâneas
+// Para produção no Render, recomenda-se pelo menos 20-50 conexões
+const DEFAULT_CONNECTION_LIMIT = process.env.DATABASE_CONNECTION_LIMIT || '20';
+const DEFAULT_POOL_TIMEOUT = process.env.DATABASE_POOL_TIMEOUT || '60';
+const DEFAULT_CONNECT_TIMEOUT = process.env.DATABASE_CONNECT_TIMEOUT || '15';
+const DEFAULT_POOLER_CONNECTION_LIMIT = process.env.DATABASE_POOLER_CONNECTION_LIMIT || '20';
 
 function buildConnectionUrl(baseUrl: string): string {
   console.log('🔧 [BUILD URL] Função chamada');
@@ -31,8 +53,9 @@ function buildConnectionUrl(baseUrl: string): string {
   const url = new URL(baseUrl);
   const isSupabasePooler = url.hostname.includes('pooler.supabase.com');
 
-  // 🎯 SIMPLIFICAÇÃO: Remover TODOS os parâmetros de pool e deixar o Prisma gerenciar
-  // O problema pode estar nos parâmetros conflitantes com o pgBouncer do Supabase
+  // 🎯 OTIMIZAÇÃO: Remover TODOS os parâmetros de pool da URL
+  // O Prisma Client gerencia o pool internamente, não via parâmetros de URL
+  // Parâmetros na URL podem causar conflitos e limitar o pool incorretamente
   const paramsToRemove = [
     'pool_size',
     'pool_timeout',
@@ -41,40 +64,30 @@ function buildConnectionUrl(baseUrl: string): string {
     'pool',
     'application_name',
     'pgbouncer',
+    'connection_limit',
   ];
   paramsToRemove.forEach((param) => url.searchParams.delete(param));
 
+  // ✅ Para Supabase Pooler: apenas manter parâmetros essenciais
   if (isSupabasePooler) {
-    const connectionLimit = process.env.DATABASE_POOLER_CONNECTION_LIMIT || '1';
-    const poolTimeout = process.env.DATABASE_POOLER_TIMEOUT || DEFAULT_POOL_TIMEOUT;
-    const connectTimeout = process.env.DATABASE_POOLER_CONNECT_TIMEOUT || DEFAULT_CONNECT_TIMEOUT;
-
+    // Para pooler, apenas adicionar pgbouncer=true se necessário
+    // O Supabase gerencia o pool, não precisamos definir limites aqui
     url.searchParams.set('pgbouncer', 'true');
-    url.searchParams.set('connection_limit', connectionLimit);
-    url.searchParams.set('pool_timeout', poolTimeout);
-    url.searchParams.set('connect_timeout', connectTimeout);
 
     prismaLogger.info(
       {
         mode: 'Supabase Pooler',
-        connectionLimit,
-        poolTimeout: `${poolTimeout}s`,
-        connectTimeout: `${connectTimeout}s`,
+        note: 'Pool gerenciado pelo Supabase pgBouncer',
       },
-      '✅ Configuração aplicando recomendações do Supabase Pooler',
+      '✅ Configuração para Supabase Pooler',
     );
   } else {
-    // Conexão direta
-    url.searchParams.set('connection_limit', DEFAULT_CONNECTION_LIMIT);
-    url.searchParams.set('pool_timeout', DEFAULT_POOL_TIMEOUT);
-    url.searchParams.set('connect_timeout', DEFAULT_CONNECT_TIMEOUT);
-
+    // Conexão direta - Prisma gerencia o pool internamente
+    // Apenas garantir que a URL está limpa de parâmetros conflitantes
     prismaLogger.info(
       {
         mode: 'Direct Connection',
-        connectionLimit: DEFAULT_CONNECTION_LIMIT,
-        poolTimeout: `${DEFAULT_POOL_TIMEOUT}s`,
-        connectTimeout: `${DEFAULT_CONNECT_TIMEOUT}s`,
+        note: 'Pool gerenciado pelo Prisma Client internamente',
       },
       '✅ Configuração para conexão direta',
     );
@@ -146,8 +159,10 @@ async function retryOperation<T>(
   delayMs = 1000,
   timeoutMs?: number, // Opcional: timeout por tentativa (padrão: 5s para produção, sem timeout para testes)
 ): Promise<T> {
-  // Timeout padrão: 5s para produção, sem timeout para testes (para não quebrar testes lentos)
-  const finalTimeout = timeoutMs ?? (process.env.NODE_ENV === 'test' ? undefined : 5000);
+  // Timeout padrão: 15s para produção (queries complexas podem levar mais tempo)
+  // Sem timeout para testes (para não quebrar testes lentos)
+  // Para queries de listagem com muitos dados, aumentar timeout via parâmetro
+  const finalTimeout = timeoutMs ?? (process.env.NODE_ENV === 'test' ? undefined : 15000);
   let lastError: any;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -224,9 +239,13 @@ async function retryOperation<T>(
 }
 
 function createPrismaClient() {
-  // ✅ Usar a URL já otimizada (já tem connection_limit configurado)
+  // ✅ Usar a URL otimizada (sem parâmetros de pool conflitantes)
+  // O Prisma Client gerencia o pool internamente - não precisa de parâmetros na URL
   const finalDatasourceUrl = optimizedDatasourceUrl;
 
+  // ✅ Configurar Prisma Client
+  // O Prisma Client usa um pool interno otimizado que não precisa de configuração manual
+  // Para Supabase Direct Connection, o Prisma gerencia automaticamente o pool de conexões
   const client = new PrismaClient({
     datasourceUrl: finalDatasourceUrl,
     log: [
@@ -253,7 +272,7 @@ function createPrismaClient() {
     const isConnectionError =
       errorMessage.includes('tenant or user not found') ||
       errorMessage.includes('connection') ||
-      errorMessage.includes('can\'t reach database') ||
+      errorMessage.includes("can't reach database") ||
       errorMessage.includes('fatal') ||
       errorMessage.includes('timeout') ||
       errorMessage.includes('econnrefused');

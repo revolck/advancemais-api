@@ -140,15 +140,15 @@ async function buscarMetricasGerais(): Promise<{
 
   const [
     {
-      totalCursos,
-      cursosPublicados,
-      cursosRascunho,
-      totalTurmas,
-      turmasAtivas,
-      turmasInscricoesAbertas,
-      totalAlunosInscritos,
-      totalAlunosAtivos,
-      totalAlunosConcluidos,
+    totalCursos,
+    cursosPublicados,
+    cursosRascunho,
+    totalTurmas,
+    turmasAtivas,
+    turmasInscricoesAbertas,
+    totalAlunosInscritos,
+    totalAlunosAtivos,
+    totalAlunosConcluidos,
     },
   ] = await prisma.$queryRaw<Array<{
     totalCursos: bigint;

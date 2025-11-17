@@ -865,8 +865,8 @@ export class AdminService {
     if (userRole === Roles.PEDAGOGICO) {
       // PEDAGOGICO só pode criar INSTRUTOR ou ALUNO_CANDIDATO
       // Não pode criar: ADMIN, MODERADOR, PEDAGOGICO, EMPRESA
-      const allowedRoles = [Roles.ALUNO_CANDIDATO, Roles.INSTRUTOR];
-      if (!allowedRoles.includes(normalizedRole)) {
+      const allowedRoles: Roles[] = [Roles.ALUNO_CANDIDATO, Roles.INSTRUTOR];
+      if (!allowedRoles.includes(normalizedRole as Roles)) {
         throw this.createServiceError(
           'PEDAGOGICO só pode criar usuários com role ALUNO_CANDIDATO ou INSTRUTOR',
           403,

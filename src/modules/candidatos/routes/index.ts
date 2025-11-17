@@ -133,13 +133,19 @@ router.get('/vagas', publicCache, async (req, res) => {
 
   const page = Number(req.query.page || 1);
   const pageSize = Number(req.query.pageSize || 10);
+  
+  // Parse e validação de tipos enum
+  const modalidadeRaw = parseList<string>(req.query.modalidade);
+  const regimeRaw = parseList<string>(req.query.regime);
+  const senioridadeRaw = parseList<string>(req.query.senioridade);
+  
   const result = await vagasPublicasService.list({
     page,
     pageSize,
     q: (req.query.q as string) || undefined,
-    modalidade: parseList<string>(req.query.modalidade),
-    regime: parseList<string>(req.query.regime),
-    senioridade: parseList<string>(req.query.senioridade),
+    modalidade: modalidadeRaw as any,
+    regime: regimeRaw as any,
+    senioridade: senioridadeRaw as any,
     areaInteresseId: parseList<number>(req.query.CandidatosAreasInteresseId, (v) => Number(v)),
     subareaInteresseId: parseList<number>(req.query.CandidatosSubareasInteresseId, (v) => Number(v)),
     cidade: (req.query.cidade as string) || undefined,

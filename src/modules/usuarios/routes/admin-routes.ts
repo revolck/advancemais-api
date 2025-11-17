@@ -348,9 +348,20 @@ router.get('/usuarios', asyncHandler(adminController.listarUsuarios));
  *
  *       **ACESSO:** ADMIN, MODERADOR e PEDAGOGICO podem acessar esta rota.
  *
- *       **RESTRIÇÕES PARA PEDAGOGICO:**
- *       - PEDAGOGICO só pode criar usuários com role ALUNO_CANDIDATO ou INSTRUTOR
- *       - Tentativas de criar usuários com outras roles retornarão erro 403
+ *       **REGRAS DE PERMISSÃO POR ROLE:**
+ *
+ *       **ADMIN:**
+ *       - Pode criar usuários com QUALQUER role (sem restrições)
+ *
+ *       **MODERADOR:**
+ *       - Pode criar usuários com qualquer role EXCETO ADMIN e MODERADOR
+ *       - Pode criar: EMPRESA, ALUNO_CANDIDATO, INSTRUTOR, PEDAGOGICO, SETOR_DE_VAGAS, RECRUTADOR, FINANCEIRO
+ *       - Tentativas de criar ADMIN ou MODERADOR retornarão erro 403
+ *
+ *       **PEDAGOGICO:**
+ *       - Só pode criar usuários com role ALUNO_CANDIDATO ou INSTRUTOR
+ *       - NÃO pode criar: ADMIN, MODERADOR, PEDAGOGICO, EMPRESA ou outras roles
+ *       - Tentativas de criar outras roles retornarão erro 403
  *     tags: [Usuários]
  *     security:
  *       - bearerAuth: []
@@ -416,7 +427,7 @@ router.get('/usuarios', asyncHandler(adminController.listarUsuarios));
  *                 "role": "ALUNO_CANDIDATO"
  *               }'
  */
-router.post('/usuarios', asyncHandler(adminController.criarUsuario));
+router.post('/usuarios', supabaseAuthMiddleware(adminRoles), asyncHandler(adminController.criarUsuario));
 
 /**
  * Listar candidatos com filtros

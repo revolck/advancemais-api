@@ -848,12 +848,25 @@ export class AdminService {
           ? Roles.EMPRESA
           : Roles.ALUNO_CANDIDATO;
 
-    // Validação para PEDAGOGICO: só pode criar usuários com role ALUNO_CANDIDATO ou INSTRUTOR
-    if (options?.userRole === Roles.PEDAGOGICO) {
-      if (
-        normalizedRole !== Roles.ALUNO_CANDIDATO &&
-        normalizedRole !== Roles.INSTRUTOR
-      ) {
+    // Validação de permissões por role do criador
+    const userRole = options?.userRole;
+    
+    if (userRole === Roles.MODERADOR) {
+      // MODERADOR não pode criar ADMIN ou MODERADOR
+      if (normalizedRole === Roles.ADMIN || normalizedRole === Roles.MODERADOR) {
+        throw this.createServiceError(
+          'MODERADOR não pode criar usuários com role ADMIN ou MODERADOR',
+          403,
+          'FORBIDDEN_ROLE',
+        );
+      }
+    }
+    
+    if (userRole === Roles.PEDAGOGICO) {
+      // PEDAGOGICO só pode criar INSTRUTOR ou ALUNO_CANDIDATO
+      // Não pode criar: ADMIN, MODERADOR, PEDAGOGICO, EMPRESA
+      const allowedRoles = [Roles.ALUNO_CANDIDATO, Roles.INSTRUTOR];
+      if (!allowedRoles.includes(normalizedRole)) {
         throw this.createServiceError(
           'PEDAGOGICO só pode criar usuários com role ALUNO_CANDIDATO ou INSTRUTOR',
           403,
@@ -861,6 +874,8 @@ export class AdminService {
         );
       }
     }
+    
+    // ADMIN pode criar qualquer role (sem restrições)
 
     const helperLogger = log.child({ scope: 'createUserHelpers' });
 

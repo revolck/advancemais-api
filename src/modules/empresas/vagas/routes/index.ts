@@ -613,6 +613,46 @@ router.get('/', optionalSupabaseAuth(), publicCache, VagasController.list);
 
 /**
  * @openapi
+ * /api/v1/empresas/vagas/slug/{slug}:
+ *   get:
+ *     summary: Obter vaga por slug
+ *     description: Recupera detalhes de uma vaga PUBLICADA identificada pelo slug público.
+ *     tags: [Empresas]
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Vaga encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Vaga'
+ *       404:
+ *         description: Vaga não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/empresas/vagas/slug/{slug}"
+ */
+router.get('/slug/:slug', publicCache, VagasController.getBySlug);
+
+/**
+ * @openapi
  * /api/v1/empresas/vagas/{id}:
  *   get:
  *     summary: Obter vaga por ID
@@ -650,7 +690,6 @@ router.get('/', optionalSupabaseAuth(), publicCache, VagasController.list);
  *           curl -X GET "http://localhost:3000/api/v1/empresas/vagas/{id}"
  */
 router.use('/:vagaId/processos', supabaseAuthMiddleware(protectedRoles), vagasProcessosRoutes);
-
 router.get('/:id', publicCache, VagasController.get);
 
 /**

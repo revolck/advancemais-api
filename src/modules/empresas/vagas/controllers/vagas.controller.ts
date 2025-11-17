@@ -153,6 +153,30 @@ export class VagasController {
     }
   };
 
+  static getBySlug = async (req: Request, res: Response) => {
+    try {
+      const { slug } = req.params;
+      const vaga = await vagasService.getBySlug(slug);
+
+      if (!vaga) {
+        return res.status(404).json({
+          success: false,
+          code: 'VAGA_NOT_FOUND',
+          message: 'Vaga não encontrada',
+        });
+      }
+
+      res.json(vaga);
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        code: 'VAGAS_GET_ERROR',
+        message: 'Erro ao buscar vaga',
+        error: error?.message,
+      });
+    }
+  };
+
   static create = async (req: Request, res: Response) => {
     try {
       const data = createVagaSchema.parse(req.body);

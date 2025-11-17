@@ -120,19 +120,28 @@ router.use('/curriculos', curriculosRoutes);
  *                   $ref: '#/components/schemas/PaginationMeta'
  */
 router.get('/vagas', publicCache, async (req, res) => {
+  // Helper para aceitar valores simples, arrays (?param=A&param=B) ou CSV (?param=A,B)
+  const parseList = <T = string>(input: unknown, map?: (v: string) => T): T[] | undefined => {
+    if (!input) return undefined;
+    const raw = Array.isArray(input) ? input : String(input).split(',');
+    const list = raw
+      .map((v) => String(v).trim())
+      .filter(Boolean)
+      .map((v) => (map ? map(v) : (v as unknown as T)));
+    return list.length > 0 ? list : undefined;
+  };
+
   const page = Number(req.query.page || 1);
   const pageSize = Number(req.query.pageSize || 10);
   const result = await vagasPublicasService.list({
     page,
     pageSize,
     q: (req.query.q as string) || undefined,
-    modalidade: (req.query.modalidade as any) || undefined,
-    regime: (req.query.regime as any) || undefined,
-    senioridade: (req.query.senioridade as any) || undefined,
-    areaInteresseId: req.query.CandidatosAreasInteresseId ? Number(req.query.CandidatosAreasInteresseId) : undefined,
-    subareaInteresseId: req.query.CandidatosSubareasInteresseId
-      ? Number(req.query.CandidatosSubareasInteresseId)
-      : undefined,
+    modalidade: parseList<string>(req.query.modalidade),
+    regime: parseList<string>(req.query.regime),
+    senioridade: parseList<string>(req.query.senioridade),
+    areaInteresseId: parseList<number>(req.query.CandidatosAreasInteresseId, (v) => Number(v)),
+    subareaInteresseId: parseList<number>(req.query.CandidatosSubareasInteresseId, (v) => Number(v)),
     cidade: (req.query.cidade as string) || undefined,
     estado: (req.query.estado as string) || undefined,
     empresaId: (req.query.UsuariosId as string) || undefined,

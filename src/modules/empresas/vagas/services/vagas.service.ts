@@ -593,6 +593,20 @@ export const vagasService = {
     return vaga ? transformVaga(vaga) : null;
   },
 
+  getBySlug: async (slug: string) => {
+    if (!slug) return null;
+    const normalizedSlug = slug.trim().toLowerCase();
+    const vaga = await prisma.empresasVagas.findFirst({
+      where: {
+        status: StatusDeVagas.PUBLICADO,
+        slug: { equals: normalizedSlug, mode: 'insensitive' },
+      },
+      ...includeEmpresa,
+    });
+
+    return vaga ? transformVaga(vaga) : null;
+  },
+
   create: async (data: CreateVagaData) => {
     const { areaId, subareaId } = await ensureAreaAndSubarea({
       areaId: data.areaInteresseId,

@@ -11,11 +11,11 @@ type VagasPublicasFilters = {
   page?: number;
   pageSize?: number;
   q?: string;
-  modalidade?: ModalidadesDeVagas;
-  regime?: RegimesDeTrabalhos;
-  senioridade?: Senioridade;
-  areaInteresseId?: number;
-  subareaInteresseId?: number;
+  modalidade?: ModalidadesDeVagas | ModalidadesDeVagas[];
+  regime?: RegimesDeTrabalhos | RegimesDeTrabalhos[];
+  senioridade?: Senioridade | Senioridade[];
+  areaInteresseId?: number | number[];
+  subareaInteresseId?: number | number[];
   cidade?: string;
   estado?: string;
   empresaId?: string;
@@ -30,12 +30,31 @@ export const vagasPublicasService = {
     const skip = (page - 1) * pageSize;
 
     const where: Prisma.EmpresasVagasWhereInput = { status: StatusDeVagas.PUBLICADO };
-    if (params?.modalidade) where.modalidade = params.modalidade;
-    if (params?.regime) where.regimeDeTrabalho = params.regime;
-    if (params?.senioridade) where.senioridade = params.senioridade;
+    // Modalidade (1..N)
+    if (params?.modalidade) {
+      const modalidades = Array.isArray(params.modalidade) ? params.modalidade : [params.modalidade];
+      if (modalidades.length > 0) where.modalidade = { in: modalidades as any };
+    }
+    // Regime (1..N)
+    if (params?.regime) {
+      const regimes = Array.isArray(params.regime) ? params.regime : [params.regime];
+      if (regimes.length > 0) where.regimeDeTrabalho = { in: regimes as any };
+    }
+    // Senioridade (1..N)
+    if (params?.senioridade) {
+      const seniors = Array.isArray(params.senioridade) ? params.senioridade : [params.senioridade];
+      if (seniors.length > 0) where.senioridade = { in: seniors as any };
+    }
+    // Áreas/Subáreas (1..N)
     if (typeof params?.areaInteresseId === 'number') where.areaInteresseId = params.areaInteresseId;
+    if (Array.isArray(params?.areaInteresseId) && params.areaInteresseId.length > 0) {
+      where.areaInteresseId = { in: params.areaInteresseId };
+    }
     if (typeof params?.subareaInteresseId === 'number')
       where.subareaInteresseId = params.subareaInteresseId;
+    if (Array.isArray(params?.subareaInteresseId) && params.subareaInteresseId.length > 0) {
+      where.subareaInteresseId = { in: params.subareaInteresseId };
+    }
     if (params?.q && params.q.trim().length > 1) {
       const q = params.q.trim();
       where.OR = [
@@ -88,6 +107,7 @@ export const vagasPublicasService = {
           id: true,
           slug: true,
           titulo: true,
+          descricao: true,
           inseridaEm: true,
           modalidade: true,
           regimeDeTrabalho: true,
@@ -95,7 +115,13 @@ export const vagasPublicasService = {
           modoAnonimo: true,
           localizacao: true,
           usuarioId: true,
-          Usuarios: { select: { id: true, nomeCompleto: true } },
+          Usuarios: {
+            select: {
+              id: true,
+              nomeCompleto: true,
+              UsuariosInformation: { select: { avatarUrl: true } },
+            },
+          },
         },
       }),
     ]);
@@ -104,6 +130,7 @@ export const vagasPublicasService = {
       id: v.id,
       slug: v.slug,
       titulo: v.titulo,
+      descricao: v.descricao,
       inseridaEm: v.inseridaEm,
       modalidade: v.modalidade,
       regimeDeTrabalho: v.regimeDeTrabalho,
@@ -111,8 +138,12 @@ export const vagasPublicasService = {
       cidade: (v.localizacao as any)?.cidade ?? null,
       estado: (v.localizacao as any)?.estado ?? null,
       empresa: v.modoAnonimo
-        ? { id: null, nome: 'Oportunidade Confidencial' }
-        : { id: v.Usuarios?.id ?? null, nome: v.Usuarios?.nomeCompleto ?? null },
+        ? { id: null, nome: 'Oportunidade Confidencial', avatarUrl: null }
+        : {
+            id: v.Usuarios?.id ?? null,
+            nome: v.Usuarios?.nomeCompleto ?? null,
+            avatarUrl: v.Usuarios?.UsuariosInformation?.avatarUrl ?? null,
+          },
     }));
 
     return {

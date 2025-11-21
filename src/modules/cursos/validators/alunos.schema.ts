@@ -95,3 +95,77 @@ export const listAlunosComInscricoesQuerySchema = z.object({
     };
   });
 
+/**
+ * Schema de validação para histórico de inscrições de um aluno
+ * Segue o padrão do histórico de empresas
+ */
+const paginationQueryBaseSchema = z.object({
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(100).optional(),
+  status: z
+    .union([
+      z.nativeEnum(StatusInscricao, {
+        errorMap: () => ({
+          message: `Status inválido. Valores aceitos: ${Object.values(StatusInscricao).join(', ')}`,
+        }),
+      }),
+      z.string(),
+      z.array(z.nativeEnum(StatusInscricao)),
+    ])
+    .optional(),
+});
+
+const withDefaultPaginationValues = <T extends { page?: number; pageSize?: number }>(values: T) =>
+  ({
+    ...values,
+    page: values.page ?? 1,
+    pageSize: values.pageSize ?? 20,
+  }) as Omit<T, 'page' | 'pageSize'> & { page: number; pageSize: number };
+
+export const alunoHistoricoInscricoesQuerySchema = paginationQueryBaseSchema.transform(
+  (data: {
+    page?: number;
+    pageSize?: number;
+    status?: StatusInscricao | string | StatusInscricao[];
+  }) => {
+    // Normalizar paginação
+    const pagination = withDefaultPaginationValues(data);
+
+    // Normalizar status: converter string única, string com vírgulas ou array para array
+    let statusArray: StatusInscricao[] | undefined;
+    if (data.status !== undefined) {
+      if (Array.isArray(data.status)) {
+        statusArray = data.status;
+      } else if (typeof data.status === 'string') {
+        // Se contém vírgula, tratar como múltiplos status
+        if (data.status.includes(',')) {
+          const statuses = data.status.split(',').map((s: string) => s.trim());
+          statusArray = statuses
+            .map((s: string) => {
+              if (Object.values(StatusInscricao).includes(s as StatusInscricao)) {
+                return s as StatusInscricao;
+              }
+              return null;
+            })
+            .filter((s: StatusInscricao | null): s is StatusInscricao => s !== null);
+        } else {
+          // Status único
+          if (Object.values(StatusInscricao).includes(data.status as StatusInscricao)) {
+            statusArray = [data.status as StatusInscricao];
+          }
+        }
+      } else {
+        // Já é StatusInscricao enum
+        statusArray = [data.status];
+      }
+    }
+
+    return {
+      ...pagination,
+      status: statusArray,
+    };
+  },
+);
+
+export type AlunoHistoricoInscricoesQuery = z.infer<typeof alunoHistoricoInscricoesQuerySchema>;
+

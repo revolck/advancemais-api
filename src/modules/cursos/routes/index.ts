@@ -886,6 +886,234 @@ router.get(
 
 /**
  * @openapi
+ * /api/v1/cursos/alunos/{alunoId}/inscricoes:
+ *   get:
+ *     summary: 📚 Histórico de inscrições do aluno
+ *     description: |
+ *       Retorna o histórico paginado de inscrições do aluno em cursos, similar ao histórico de empresas.
+ *       Permite filtrar por status de inscrição e suporta paginação.
+ *       
+ *       **Status disponíveis:**
+ *       - `INSCRITO`: Aluno inscrito (status inicial)
+ *       - `EM_ANDAMENTO`: Curso em andamento
+ *       - `CONCLUIDO`: Curso concluído com sucesso
+ *       - `REPROVADO`: Aluno reprovado
+ *       - `EM_ESTAGIO`: Aluno em estágio obrigatório
+ *       - `CANCELADO`: Inscrição cancelada
+ *       - `TRANCADO`: Inscrição trancada
+ *     tags: [Cursos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: alunoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID do aluno (UUID)
+ *         example: "0b89ee94-f3ab-4682-999b-36574f81751a"
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Página atual da paginação
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Quantidade de registros por página
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *         description: |
+ *           Filtrar por status de inscrição. Pode ser um único status ou múltiplos separados por vírgula.
+ *           Exemplos: `?status=CONCLUIDO` ou `?status=CONCLUIDO,EM_ANDAMENTO`
+ *         example: "CONCLUIDO"
+ *     responses:
+ *       200:
+ *         description: Histórico de inscrições retornado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                         description: ID da inscrição
+ *                       statusInscricao:
+ *                         type: string
+ *                         enum: [INSCRITO, EM_ANDAMENTO, CONCLUIDO, REPROVADO, EM_ESTAGIO, CANCELADO, TRANCADO]
+ *                         description: Status da inscrição
+ *                       criadoEm:
+ *                         type: string
+ *                         format: date-time
+ *                         description: Data de criação da inscrição
+ *                       progresso:
+ *                         type: integer
+ *                         minimum: 0
+ *                         maximum: 100
+ *                         description: Percentual de progresso do curso (0-100)
+ *                       turma:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             format: uuid
+ *                           nome:
+ *                             type: string
+ *                           codigo:
+ *                             type: string
+ *                           status:
+ *                             type: string
+ *                           dataInicio:
+ *                             type: string
+ *                             format: date-time
+ *                             nullable: true
+ *                           dataFim:
+ *                             type: string
+ *                             format: date-time
+ *                             nullable: true
+ *                       curso:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             format: uuid
+ *                           nome:
+ *                             type: string
+ *                           codigo:
+ *                             type: string
+ *                           descricao:
+ *                             type: string
+ *                             nullable: true
+ *                           cargaHoraria:
+ *                             type: integer
+ *                           imagemUrl:
+ *                             type: string
+ *                             nullable: true
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     pageSize:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *             examples:
+ *               default:
+ *                 summary: Histórico paginado
+ *                 value:
+ *                   data:
+ *                     - id: "f8a6c3b5-1234-4d9c-9a1b-abcdef123456"
+ *                       statusInscricao: "CONCLUIDO"
+ *                       criadoEm: "2024-01-15T10:30:00Z"
+ *                       progresso: 100
+ *                       turma:
+ *                         id: "80288180-a09c-4a2a-bade-022c7268e395"
+ *                         nome: "Turma 1 - React Avançado e Next.js"
+ *                         codigo: "TUR0001"
+ *                         status: "CONCLUIDO"
+ *                         dataInicio: "2024-01-01T00:00:00Z"
+ *                         dataFim: "2024-03-31T23:59:59Z"
+ *                       curso:
+ *                         id: "550e8400-e29b-41d4-a716-446655440000"
+ *                         nome: "React Avançado e Next.js"
+ *                         codigo: "CUR0001"
+ *                         descricao: "Curso completo de React e Next.js"
+ *                         cargaHoraria: 120
+ *                         imagemUrl: "https://example.com/curso.jpg"
+ *                   pagination:
+ *                     page: 1
+ *                     pageSize: 20
+ *                     total: 1
+ *                     totalPages: 1
+ *       400:
+ *         description: Parâmetros inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: "VALIDATION_ERROR"
+ *                 message:
+ *                   type: string
+ *                   example: "Parâmetros inválidos"
+ *                 issues:
+ *                   type: object
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       404:
+ *         description: Aluno não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: "ALUNO_NOT_FOUND"
+ *                 message:
+ *                   type: string
+ *                   example: "Aluno não encontrado ou não possui role de ALUNO_CANDIDATO."
+ *       500:
+ *         description: Erro interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: "ALUNOS_HISTORICO_ERROR"
+ *                 message:
+ *                   type: string
+ *                   example: "Erro ao buscar histórico de inscrições do aluno"
+ */
+router.get(
+  '/alunos/:alunoId/inscricoes',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  CursosController.listHistoricoInscricoes,
+);
+
+/**
+ * @openapi
  * /api/v1/cursos/alunos/{alunoId}:
  *   put:
  *     summary: ✏️ Atualizar informações de um aluno
@@ -1502,6 +1730,511 @@ router.delete(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/inscricoes:
+ *   get:
+ *     summary: 📚 Histórico de inscrições do curso
+ *     description: |
+ *       Retorna o histórico paginado de inscrições de um curso específico.
+ *       Permite filtrar por status de inscrição e turma, com suporte a paginação.
+ *       
+ *       **Status disponíveis:**
+ *       - `INSCRITO`: Aluno inscrito (status inicial)
+ *       - `EM_ANDAMENTO`: Curso em andamento
+ *       - `CONCLUIDO`: Curso concluído com sucesso
+ *       - `REPROVADO`: Aluno reprovado
+ *       - `EM_ESTAGIO`: Aluno em estágio obrigatório
+ *       - `CANCELADO`: Inscrição cancelada
+ *       - `TRANCADO`: Inscrição trancada
+ *     tags: [Cursos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID do curso (UUID)
+ *         example: "550e8400-e29b-41d4-a716-446655440000"
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Página atual da paginação
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Quantidade de registros por página
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *         description: |
+ *           Filtrar por status de inscrição. Pode ser um único status ou múltiplos separados por vírgula.
+ *           Exemplos: `?status=CONCLUIDO` ou `?status=CONCLUIDO,EM_ANDAMENTO`
+ *         example: "CONCLUIDO"
+ *       - in: query
+ *         name: turmaId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filtrar por ID da turma (UUID)
+ *         example: "80288180-a09c-4a2a-bade-022c7268e395"
+ *     responses:
+ *       200:
+ *         description: Histórico de inscrições retornado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                         description: ID da inscrição
+ *                       statusInscricao:
+ *                         type: string
+ *                         enum: [INSCRITO, EM_ANDAMENTO, CONCLUIDO, REPROVADO, EM_ESTAGIO, CANCELADO, TRANCADO]
+ *                         description: Status da inscrição
+ *                       criadoEm:
+ *                         type: string
+ *                         format: date-time
+ *                         description: Data de criação da inscrição
+ *                       progresso:
+ *                         type: integer
+ *                         minimum: 0
+ *                         maximum: 100
+ *                         description: Percentual de progresso do curso (0-100)
+ *                       aluno:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             format: uuid
+ *                           nomeCompleto:
+ *                             type: string
+ *                           email:
+ *                             type: string
+ *                           codigo:
+ *                             type: string
+ *                           cpf:
+ *                             type: string
+ *                           status:
+ *                             type: string
+ *                           cidade:
+ *                             type: string
+ *                             nullable: true
+ *                           estado:
+ *                             type: string
+ *                             nullable: true
+ *                       turma:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             format: uuid
+ *                           nome:
+ *                             type: string
+ *                           codigo:
+ *                             type: string
+ *                           status:
+ *                             type: string
+ *                           dataInicio:
+ *                             type: string
+ *                             format: date-time
+ *                             nullable: true
+ *                           dataFim:
+ *                             type: string
+ *                             format: date-time
+ *                             nullable: true
+ *                       curso:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             format: uuid
+ *                           nome:
+ *                             type: string
+ *                           codigo:
+ *                             type: string
+ *                           descricao:
+ *                             type: string
+ *                             nullable: true
+ *                           cargaHoraria:
+ *                             type: integer
+ *                           imagemUrl:
+ *                             type: string
+ *                             nullable: true
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     pageSize:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *             examples:
+ *               default:
+ *                 summary: Histórico paginado
+ *                 value:
+ *                   data:
+ *                     - id: "f8a6c3b5-1234-4d9c-9a1b-abcdef123456"
+ *                       statusInscricao: "CONCLUIDO"
+ *                       criadoEm: "2024-01-15T10:30:00Z"
+ *                       progresso: 100
+ *                       aluno:
+ *                         id: "0b89ee94-f3ab-4682-999b-36574f81751a"
+ *                         nomeCompleto: "João da Silva"
+ *                         email: "joao.silva@example.com"
+ *                         codigo: "MAT0001"
+ *                         cpf: "123.123.123-12"
+ *                         status: "ATIVO"
+ *                         cidade: "São Paulo"
+ *                         estado: "SP"
+ *                       turma:
+ *                         id: "80288180-a09c-4a2a-bade-022c7268e395"
+ *                         nome: "Turma 1 - React Avançado e Next.js"
+ *                         codigo: "TUR0001"
+ *                         status: "CONCLUIDO"
+ *                         dataInicio: "2024-01-01T00:00:00Z"
+ *                         dataFim: "2024-03-31T23:59:59Z"
+ *                       curso:
+ *                         id: "550e8400-e29b-41d4-a716-446655440000"
+ *                         nome: "React Avançado e Next.js"
+ *                         codigo: "CUR0001"
+ *                         descricao: "Curso completo de React e Next.js"
+ *                         cargaHoraria: 120
+ *                         imagemUrl: "https://example.com/curso.jpg"
+ *                   pagination:
+ *                     page: 1
+ *                     pageSize: 20
+ *                     total: 1
+ *                     totalPages: 1
+ *       400:
+ *         description: Parâmetros inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: "VALIDATION_ERROR"
+ *                 message:
+ *                   type: string
+ *                   example: "Parâmetros inválidos"
+ *                 issues:
+ *                   type: object
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       404:
+ *         description: Curso não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: "CURSO_NOT_FOUND"
+ *                 message:
+ *                   type: string
+ *                   example: "Curso não encontrado."
+ *       500:
+ *         description: Erro interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: "CURSO_HISTORICO_ERROR"
+ *                 message:
+ *                   type: string
+ *                   example: "Erro ao buscar histórico de inscrições do curso"
+ */
+router.get(
+  '/:cursoId/inscricoes',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  CursosController.listHistoricoInscricoesPorCurso,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/auditoria:
+ *   get:
+ *     summary: 📋 Histórico de auditoria do curso
+ *     description: |
+ *       Retorna o histórico completo de alterações realizadas em um curso, incluindo:
+ *       - Quem editou (usuário e role)
+ *       - Quando foi editado (data e hora)
+ *       - O que foi alterado (campo específico)
+ *       - Valores anterior e novo
+ *       - Descrição da alteração
+ *       
+ *       **Campos rastreados:**
+ *       - Nome do curso
+ *       - Descrição
+ *       - Imagem do curso
+ *       - Carga horária
+ *       - Categoria
+ *       - Subcategoria
+ *       - Status padrão
+ *       - Estágio obrigatório
+ *       
+ *       **Ordenação:** Por data (mais recentes primeiro)
+ *     tags: [Cursos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID do curso (UUID)
+ *         example: "550e8400-e29b-41d4-a716-446655440000"
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Página atual da paginação
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Quantidade de registros por página
+ *     responses:
+ *       200:
+ *         description: Histórico de auditoria retornado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                         description: ID do registro de auditoria
+ *                       tipo:
+ *                         type: string
+ *                         example: "CURSO_ALTERACAO"
+ *                       acao:
+ *                         type: string
+ *                         example: "CURSO_ATUALIZADO"
+ *                       campo:
+ *                         type: string
+ *                         nullable: true
+ *                         example: "nome"
+ *                         description: Campo que foi alterado
+ *                       valorAnterior:
+ *                         type: string
+ *                         nullable: true
+ *                         example: "React Avançado"
+ *                         description: Valor anterior do campo
+ *                       valorNovo:
+ *                         type: string
+ *                         nullable: true
+ *                         example: "React Avançado e Next.js"
+ *                         description: Novo valor do campo
+ *                       descricao:
+ *                         type: string
+ *                         example: "Nome do curso alterado de \"React Avançado\" para \"React Avançado e Next.js\""
+ *                       metadata:
+ *                         type: object
+ *                         nullable: true
+ *                         description: Metadados adicionais da alteração
+ *                       criadoEm:
+ *                         type: string
+ *                         format: date-time
+ *                         description: Data e hora da alteração
+ *                       alteradoPor:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             format: uuid
+ *                           nomeCompleto:
+ *                             type: string
+ *                             example: "João Silva"
+ *                           email:
+ *                             type: string
+ *                             example: "joao.silva@example.com"
+ *                           role:
+ *                             type: string
+ *                             example: "ADMIN"
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     pageSize:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *             examples:
+ *               default:
+ *                 summary: Histórico paginado
+ *                 value:
+ *                   success: true
+ *                   data:
+ *                     - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+ *                       tipo: "CURSO_ALTERACAO"
+ *                       acao: "CURSO_ATUALIZADO"
+ *                       campo: "nome"
+ *                       valorAnterior: "React Avançado"
+ *                       valorNovo: "React Avançado e Next.js"
+ *                       descricao: "Nome do curso alterado de \"React Avançado\" para \"React Avançado e Next.js\""
+ *                       metadata:
+ *                         cursoId: "550e8400-e29b-41d4-a716-446655440000"
+ *                         campo: "nome"
+ *                       criadoEm: "2024-01-15T10:30:00Z"
+ *                       alteradoPor:
+ *                         id: "0b89ee94-f3ab-4682-999b-36574f81751a"
+ *                         nomeCompleto: "João Silva"
+ *                         email: "joao.silva@example.com"
+ *                         role: "ADMIN"
+ *                     - id: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+ *                       tipo: "CURSO_ALTERACAO"
+ *                       acao: "CURSO_ATUALIZADO"
+ *                       campo: "imagemUrl"
+ *                       valorAnterior: "https://old-image.jpg"
+ *                       valorNovo: "https://new-image.jpg"
+ *                       descricao: "Imagem do curso alterada"
+ *                       metadata:
+ *                         cursoId: "550e8400-e29b-41d4-a716-446655440000"
+ *                         campo: "imagemUrl"
+ *                       criadoEm: "2024-01-14T15:20:00Z"
+ *                       alteradoPor:
+ *                         id: "1c2d3e4f-5a6b-7890-cdef-123456789012"
+ *                         nomeCompleto: "Maria Santos"
+ *                         email: "maria.santos@example.com"
+ *                         role: "MODERADOR"
+ *                   pagination:
+ *                     page: 1
+ *                     pageSize: 20
+ *                     total: 2
+ *                     totalPages: 1
+ *       400:
+ *         description: ID do curso inválido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: "INVALID_CURSO_ID"
+ *                 message:
+ *                   type: string
+ *                   example: "ID do curso inválido. Deve ser um UUID válido."
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       404:
+ *         description: Curso não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: "CURSO_NOT_FOUND"
+ *                 message:
+ *                   type: string
+ *                   example: "Curso não encontrado."
+ *       500:
+ *         description: Erro interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: "CURSO_AUDITORIA_ERROR"
+ *                 message:
+ *                   type: string
+ *                   example: "Erro ao buscar histórico de auditoria do curso"
+ */
+router.get(
+  '/:cursoId/auditoria',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  CursosController.getHistoricoAuditoria,
+);
+
 router.get('/:cursoId/turmas', publicCache, TurmasController.list);
 
 /**

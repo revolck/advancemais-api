@@ -38,6 +38,61 @@ import {
   processUserTypeSpecificData,
 } from '../register/user-creation-helpers';
 import type { AdminCreateUserInput } from '../validators/auth.schema';
+
+type AdminEnderecoInput = {
+  logradouro?: string | null;
+  numero?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  cep?: string | null;
+};
+
+type AdminEnderecoData = Partial<AdminEnderecoInput> & { atualizadoEm: Date };
+
+const sanitizeAdminEnderecoInput = (endereco?: AdminEnderecoInput | null): AdminEnderecoData | null => {
+  if (!endereco || typeof endereco !== 'object') {
+    return null;
+  }
+
+  const sanitized: Partial<AdminEnderecoInput> = {};
+
+  const assign = (key: keyof AdminEnderecoInput, value?: string | null) => {
+    if (value === undefined) return;
+    if (value === null) {
+      sanitized[key] = null;
+      return;
+    }
+
+    const trimmed = value.trim();
+    sanitized[key] = trimmed.length > 0 ? trimmed : null;
+  };
+
+  assign('logradouro', endereco.logradouro ?? undefined);
+  assign('numero', endereco.numero ?? undefined);
+  assign('bairro', endereco.bairro ?? undefined);
+  assign('cidade', endereco.cidade ?? undefined);
+
+  if (endereco.estado !== undefined) {
+    const estadoTrimmed = (endereco.estado ?? '').trim();
+    sanitized.estado = estadoTrimmed.length > 0 ? estadoTrimmed.toUpperCase() : null;
+  }
+
+  if (endereco.cep !== undefined) {
+    const digitsOnly = (endereco.cep ?? '').replace(/\D/g, '');
+    sanitized.cep = digitsOnly.length > 0 ? digitsOnly : null;
+  }
+
+  if (Object.keys(sanitized).length === 0) {
+    return null;
+  }
+
+  return {
+    ...sanitized,
+    atualizadoEm: new Date(),
+  };
+};
+
 export class AdminService {
   private readonly log = logger.child({ module: 'AdminService' });
 
@@ -934,6 +989,17 @@ export class AdminService {
       markEmailVerified: true,
     });
 
+    const enderecoPayload = sanitizeAdminEnderecoInput(dados.endereco);
+    if (enderecoPayload) {
+      await prisma.usuariosEnderecos.create({
+        data: {
+          usuarioId: usuario.id,
+          ...enderecoPayload,
+          criadoEm: new Date(),
+        },
+      });
+    }
+
     await invalidateUserCache(usuario);
 
     try {
@@ -1186,47 +1252,26 @@ export class AdminService {
         }
       }
 
-      // Atualizar endereço se fornecido
-      if (dados.endereco && typeof dados.endereco === 'object') {
-        const dadosEndereco: any = {};
-        if (dados.endereco.logradouro !== undefined)
-          dadosEndereco.logradouro = dados.endereco.logradouro?.trim() || null;
-        if (dados.endereco.numero !== undefined)
-          dadosEndereco.numero = dados.endereco.numero?.trim() || null;
-        if (dados.endereco.bairro !== undefined)
-          dadosEndereco.bairro = dados.endereco.bairro?.trim() || null;
-        if (dados.endereco.cidade !== undefined)
-          dadosEndereco.cidade = dados.endereco.cidade?.trim() || null;
-        if (dados.endereco.estado !== undefined)
-          dadosEndereco.estado = dados.endereco.estado?.trim() || null;
-        if (dados.endereco.cep !== undefined)
-          dadosEndereco.cep = dados.endereco.cep?.replace(/\D/g, '') || null;
+      const enderecoAtualizado = sanitizeAdminEnderecoInput(dados.endereco);
+      if (enderecoAtualizado) {
+        const enderecoExistente = await tx.usuariosEnderecos.findFirst({
+          where: { usuarioId: userId },
+          orderBy: { criadoEm: 'desc' },
+        });
 
-        dadosEndereco.atualizadoEm = new Date();
-
-        // Se tem algum campo preenchido, atualizar endereço
-        if (Object.keys(dadosEndereco).length > 1) {
-          // Buscar endereço mais recente do usuário
-          const enderecoExistente = await tx.usuariosEnderecos.findFirst({
-            where: { usuarioId: userId },
-            orderBy: { criadoEm: 'desc' },
+        if (enderecoExistente) {
+          await tx.usuariosEnderecos.update({
+            where: { id: enderecoExistente.id },
+            data: enderecoAtualizado,
           });
-
-          if (enderecoExistente) {
-            // Atualizar endereço existente
-            await tx.usuariosEnderecos.update({
-              where: { id: enderecoExistente.id },
-              data: dadosEndereco,
-            });
-          } else {
-            // Criar novo endereço
-            await tx.usuariosEnderecos.create({
-              data: {
-                usuarioId: userId,
-                ...dadosEndereco,
-              },
-            });
-          }
+        } else {
+          await tx.usuariosEnderecos.create({
+            data: {
+              usuarioId: userId,
+              ...enderecoAtualizado,
+              criadoEm: new Date(),
+            },
+          });
         }
       }
 

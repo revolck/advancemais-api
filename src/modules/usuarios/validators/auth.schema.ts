@@ -13,6 +13,41 @@ export const loginSchema = z.object({
     .default(false),
 });
 
+const enderecoSchema = z
+  .object({
+    logradouro: z
+      .string({ invalid_type_error: 'Logradouro deve ser um texto' })
+      .trim()
+      .max(255, 'Logradouro deve ter no máximo 255 caracteres')
+      .optional(),
+    numero: z
+      .string({ invalid_type_error: 'Número deve ser um texto' })
+      .trim()
+      .max(50, 'Número deve ter no máximo 50 caracteres')
+      .optional(),
+    bairro: z
+      .string({ invalid_type_error: 'Bairro deve ser um texto' })
+      .trim()
+      .max(120, 'Bairro deve ter no máximo 120 caracteres')
+      .optional(),
+    cidade: z
+      .string({ invalid_type_error: 'Cidade deve ser um texto' })
+      .trim()
+      .max(120, 'Cidade deve ter no máximo 120 caracteres')
+      .optional(),
+    estado: z
+      .string({ invalid_type_error: 'Estado deve ser um texto' })
+      .trim()
+      .max(60, 'Estado deve ter no máximo 60 caracteres')
+      .optional(),
+    cep: z
+      .string({ invalid_type_error: 'CEP deve ser um texto' })
+      .trim()
+      .regex(/^\d{5}-?\d{3}$/, 'CEP deve estar no formato 00000000 ou 00000-000')
+      .optional(),
+  })
+  .partial();
+
 const baseRegisterSchema = z.object({
   nomeCompleto: z
     .string({ required_error: 'Nome completo é obrigatório' })
@@ -53,6 +88,7 @@ const adminBaseRegisterSchema = baseRegisterSchema.extend({
   aceitarTermos: baseRegisterSchema.shape.aceitarTermos.optional().default(true),
   supabaseId: baseRegisterSchema.shape.supabaseId.optional(),
   status: z.nativeEnum(Status).optional(),
+  endereco: enderecoSchema.optional(),
 });
 
 const adminPessoaFisicaSchema = adminBaseRegisterSchema.extend({

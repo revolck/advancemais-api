@@ -886,16 +886,21 @@ export const cursosService = {
     return mapTurmaPublic(turma);
   },
 
-  async create(data: {
-    nome: string;
-    descricao?: string | null;
-    imagemUrl?: string | null;
-    cargaHoraria: number;
-    categoriaId?: number | null;
-    subcategoriaId?: number | null;
-    statusPadrao?: CursosStatusPadrao;
-    estagioObrigatorio?: boolean;
-  }) {
+  async create(
+    data: {
+      nome: string;
+      descricao?: string | null;
+      imagemUrl?: string | null;
+      cargaHoraria: number;
+      categoriaId?: number | null;
+      subcategoriaId?: number | null;
+      statusPadrao?: CursosStatusPadrao;
+      estagioObrigatorio?: boolean;
+    },
+    criadoPor?: string,
+    ip?: string,
+    userAgent?: string,
+  ) {
     return prisma.$transaction(async (tx) => {
       const codigo = await generateUniqueCourseCode(tx, cursosLogger);
 
@@ -920,6 +925,24 @@ export const cursosService = {
         },
       });
 
+      // Registrar auditoria de criação (após a transação)
+      if (criadoPor) {
+        // Usar require para evitar dependência circular
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { cursosAuditoriaService } = require('./cursos-auditoria.service');
+        await cursosAuditoriaService.registrarCriacaoCurso(
+          created.id,
+          criadoPor,
+          {
+            nome: data.nome,
+            codigo,
+            cargaHoraria: data.cargaHoraria,
+          },
+          ip,
+          userAgent,
+        );
+      }
+
       return mapCourse(created);
     });
   },
@@ -936,8 +959,26 @@ export const cursosService = {
       statusPadrao?: CursosStatusPadrao;
       estagioObrigatorio?: boolean;
     }>,
+    alteradoPor?: string,
+    ip?: string,
+    userAgent?: string,
   ) {
     return prisma.$transaction(async (tx) => {
+      // Buscar dados anteriores para auditoria
+      const cursoAnterior = await tx.cursos.findUnique({
+        where: { id },
+        select: {
+          nome: true,
+          descricao: true,
+          imagemUrl: true,
+          cargaHoraria: true,
+          categoriaId: true,
+          subcategoriaId: true,
+          statusPadrao: true,
+          estagioObrigatorio: true,
+        },
+      });
+
       const updated = await tx.cursos.update({
         where: { id },
         data: {
@@ -958,6 +999,129 @@ export const cursosService = {
           _count: { select: { CursosTurmas: true } },
         },
       });
+
+      // Registrar auditoria para cada campo alterado (após a transação)
+      if (alteradoPor && cursoAnterior) {
+        // Usar require para evitar dependência circular
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { cursosAuditoriaService } = require('./cursos-auditoria.service');
+
+        // Registrar alteração de nome
+        if (data.nome !== undefined && cursoAnterior.nome !== data.nome) {
+          await cursosAuditoriaService.registrarAtualizacaoCurso(
+            id,
+            alteradoPor,
+            'nome',
+            cursoAnterior.nome,
+            data.nome,
+            `Nome do curso alterado de "${cursoAnterior.nome}" para "${data.nome}"`,
+            ip,
+            userAgent,
+          );
+        }
+
+        // Registrar alteração de descrição
+        if (data.descricao !== undefined && cursoAnterior.descricao !== data.descricao) {
+          await cursosAuditoriaService.registrarAtualizacaoCurso(
+            id,
+            alteradoPor,
+            'descricao',
+            cursoAnterior.descricao || '',
+            data.descricao || '',
+            `Descrição do curso alterada`,
+            ip,
+            userAgent,
+          );
+        }
+
+        // Registrar alteração de imagem
+        if (data.imagemUrl !== undefined && cursoAnterior.imagemUrl !== data.imagemUrl) {
+          const acao = data.imagemUrl ? 'alterada' : 'removida';
+          await cursosAuditoriaService.registrarAtualizacaoCurso(
+            id,
+            alteradoPor,
+            'imagemUrl',
+            cursoAnterior.imagemUrl || '',
+            data.imagemUrl || '',
+            `Imagem do curso ${acao}`,
+            ip,
+            userAgent,
+          );
+        }
+
+        // Registrar alteração de carga horária
+        if (data.cargaHoraria !== undefined && cursoAnterior.cargaHoraria !== data.cargaHoraria) {
+          await cursosAuditoriaService.registrarAtualizacaoCurso(
+            id,
+            alteradoPor,
+            'cargaHoraria',
+            cursoAnterior.cargaHoraria,
+            data.cargaHoraria,
+            `Carga horária alterada de ${cursoAnterior.cargaHoraria}h para ${data.cargaHoraria}h`,
+            ip,
+            userAgent,
+          );
+        }
+
+        // Registrar alteração de categoria
+        if (data.categoriaId !== undefined && cursoAnterior.categoriaId !== data.categoriaId) {
+          await cursosAuditoriaService.registrarAtualizacaoCurso(
+            id,
+            alteradoPor,
+            'categoriaId',
+            cursoAnterior.categoriaId || null,
+            data.categoriaId || null,
+            `Categoria do curso alterada`,
+            ip,
+            userAgent,
+          );
+        }
+
+        // Registrar alteração de subcategoria
+        if (data.subcategoriaId !== undefined && cursoAnterior.subcategoriaId !== data.subcategoriaId) {
+          await cursosAuditoriaService.registrarAtualizacaoCurso(
+            id,
+            alteradoPor,
+            'subcategoriaId',
+            cursoAnterior.subcategoriaId || null,
+            data.subcategoriaId || null,
+            `Subcategoria do curso alterada`,
+            ip,
+            userAgent,
+          );
+        }
+
+        // Registrar alteração de status padrão
+        if (data.statusPadrao !== undefined && cursoAnterior.statusPadrao !== data.statusPadrao) {
+          await cursosAuditoriaService.registrarAtualizacaoCurso(
+            id,
+            alteradoPor,
+            'statusPadrao',
+            cursoAnterior.statusPadrao || '',
+            data.statusPadrao || '',
+            `Status padrão alterado de "${cursoAnterior.statusPadrao || 'não definido'}" para "${data.statusPadrao || 'não definido'}"`,
+            ip,
+            userAgent,
+          );
+        }
+
+        // Registrar alteração de estágio obrigatório
+        if (
+          data.estagioObrigatorio !== undefined &&
+          cursoAnterior.estagioObrigatorio !== data.estagioObrigatorio
+        ) {
+          await cursosAuditoriaService.registrarAtualizacaoCurso(
+            id,
+            alteradoPor,
+            'estagioObrigatorio',
+            cursoAnterior.estagioObrigatorio,
+            data.estagioObrigatorio,
+            `Estágio obrigatório alterado de ${cursoAnterior.estagioObrigatorio ? 'obrigatório' : 'não obrigatório'} para ${data.estagioObrigatorio ? 'obrigatório' : 'não obrigatório'}`,
+            ip,
+            userAgent,
+          );
+        }
+      }
 
       return mapCourse(updated);
     });

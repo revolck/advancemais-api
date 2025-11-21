@@ -11,13 +11,19 @@ import {
   listCoursesQuerySchema,
   updateCourseSchema,
 } from '../validators/cursos.schema';
-import { listAlunosComInscricoesQuerySchema } from '../validators/alunos.schema';
+import {
+  listAlunosComInscricoesQuerySchema,
+  alunoHistoricoInscricoesQuerySchema,
+} from '../validators/alunos.schema';
+import { cursoHistoricoInscricoesQuerySchema } from '../validators/cursos.schema';
 import {
   sanitizeSocialLinks,
   buildSocialLinksUpdateData,
   mapSocialLinks,
 } from '@/modules/usuarios/utils/social-links';
 import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
+import { getCachedOrFetch, generateCacheKey } from '@/utils/cache';
+import { cursosAuditoriaService } from '../services/cursos-auditoria.service';
 
 const parseCourseId = (raw: string): string | null => {
   // Validar se é UUID válido
@@ -254,10 +260,19 @@ export class CursosController {
   static create = async (req: Request, res: Response) => {
     try {
       const data = createCourseSchema.parse(req.body);
-      const course = await cursosService.create({
-        ...data,
-        descricao: normalizeDescricao(data.descricao),
-      });
+      const userId = req.user?.id;
+      const ip = req.ip || req.socket.remoteAddress || undefined;
+      const userAgent = req.get('user-agent') || undefined;
+
+      const course = await cursosService.create(
+        {
+          ...data,
+          descricao: normalizeDescricao(data.descricao),
+        },
+        userId,
+        ip,
+        userAgent,
+      );
 
       res.status(201).json(course);
     } catch (error: any) {
@@ -316,10 +331,20 @@ export class CursosController {
         });
       }
 
-      const course = await cursosService.update(id, {
-        ...data,
-        descricao: normalizeDescricao(data.descricao),
-      });
+      const userId = req.user?.id;
+      const ip = req.ip || req.socket.remoteAddress || undefined;
+      const userAgent = req.get('user-agent') || undefined;
+
+      const course = await cursosService.update(
+        id,
+        {
+          ...data,
+          descricao: normalizeDescricao(data.descricao),
+        },
+        userId,
+        ip,
+        userAgent,
+      );
 
       res.json(course);
     } catch (error: any) {
@@ -398,8 +423,10 @@ export class CursosController {
 
   /**
    * Listar alunos com inscrições em cursos
+   * ✅ OTIMIZADO: Cache, remoção de N+1 queries, query otimizada
    */
   static listAlunosComInscricoes = async (req: Request, res: Response) => {
+    const startTime = Date.now();
     try {
       // Validar e parsear query params usando schema Zod
       const params = listAlunosComInscricoesQuerySchema.parse(req.query);
@@ -414,223 +441,243 @@ export class CursosController {
       const turmaIdParam = params.turmaId || params.turma;
       const search = params.search;
 
-      // Construir filtro dinamicamente
-      const where: any = {
+      // ✅ Gerar chave de cache baseada nos parâmetros
+      const cacheKey = generateCacheKey('cursos:alunos:list', {
+        page,
+        limit,
+        cidade: cidade?.join(',') || '',
+        status: statusInscricao?.join(',') || '',
+        cursoId: cursoIdParam || '',
+        turmaId: turmaIdParam || '',
+        search: search || '',
+      });
+
+      // Validar UUID do curso antes de buscar
+      if (cursoIdParam) {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(cursoIdParam)) {
+          return res.status(400).json({
+            success: false,
+            code: 'INVALID_CURSO_ID',
+            message: 'Curso ID deve ser um UUID válido',
+            error: `O ID "${cursoIdParam}" não é um UUID válido`,
+          });
+        }
+      }
+
+      // ✅ Buscar do cache ou executar query
+      const result = await getCachedOrFetch(
+        cacheKey,
+        async () => {
+          // Construir filtro dinamicamente
+          const where: any = {
             role: 'ALUNO_CANDIDATO',
             CursosTurmasInscricoes: {
               some: {},
             },
-      };
+          };
 
-      // Filtro por cidade (já normalizado como array pelo schema)
-      if (cidade && cidade.length > 0) {
-        where.UsuariosEnderecos = {
-          some: {
-            cidade: {
-              in: cidade,
-              mode: 'insensitive',
-            },
-          },
-        };
-      }
-
-      // Construir filtros de inscrições
-      // SEMPRE filtrar apenas inscrições ATIVAS (EM_ANDAMENTO ou INSCRITO)
-      // Um aluno não pode estar em múltiplos cursos simultaneamente
-      // statusInscricao já vem como array após transform do schema
-      const inscricaoFilter: any = {
-        status: {
-          in: statusInscricao && statusInscricao.length > 0
-            ? statusInscricao
-            : ['EM_ANDAMENTO', 'INSCRITO'], // Priorizar status ativos se não especificado
-        },
-      };
-
-      // Filtro por turma (e opcionalmente por curso)
-      if (cursoIdParam || turmaIdParam) {
-        // No Prisma, dentro de CursosTurmasInscricoes, usamos CursosTurmas (a relação), não "turma"
-        const turmaFilter: any = {};
-
-        if (cursoIdParam) {
-          // cursoId é String UUID após validação do schema
-          // Validar se é UUID válido antes de usar
-          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-          if (!uuidRegex.test(cursoIdParam)) {
-            return res.status(400).json({
-              success: false,
-              code: 'INVALID_CURSO_ID',
-              message: 'Curso ID deve ser um UUID válido',
-              error: `O ID "${cursoIdParam}" não é um UUID válido`,
-            });
+          // Filtro por cidade (já normalizado como array pelo schema)
+          if (cidade && cidade.length > 0) {
+            where.UsuariosEnderecos = {
+              some: {
+                cidade: {
+                  in: cidade,
+                  mode: 'insensitive',
+                },
+              },
+            };
           }
-          // CursosTurmas tem cursoId diretamente, não precisa fazer curso: { id }
-          turmaFilter.cursoId = cursoIdParam;
-        }
 
-        if (turmaIdParam) {
-          turmaFilter.id = turmaIdParam;
-        }
-
-        // Usar CursosTurmas (a relação) ao invés de "turma"
-        inscricaoFilter.CursosTurmas = turmaFilter;
-      }
-
-      // Aplicar filtro de inscrições no WHERE (valida que aluno TEM inscrição ATIVA)
-      where.CursosTurmasInscricoes = {
-        some: inscricaoFilter,
-      };
-
-      // Filtro por busca (nome, email ou CPF)
-      if (search) {
-        where.OR = [
-          { nomeCompleto: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
-          { cpf: { contains: search.replace(/\D/g, '') } },
-          { codUsuario: { contains: search, mode: 'insensitive' } },
-        ];
-      }
-
-      // Buscar alunos com retry logic (3 tentativas automáticas)
-      const [alunos, total] = await retryOperation(
-        async () => {
-          const [alunosResult, totalResult] = await Promise.all([
-            prisma.usuarios.findMany({
-              where,
-          select: {
-            id: true,
-            codUsuario: true,
-            nomeCompleto: true,
-            email: true,
-            cpf: true,
-            status: true,
-            criadoEm: true,
-            ultimoLogin: true,
-            UsuariosEnderecos: {
-              select: {
-                cidade: true,
-                estado: true,
-              },
-              take: 1,
-              orderBy: {
-                criadoEm: 'desc',
-              },
+          // Construir filtros de inscrições
+          // SEMPRE filtrar apenas inscrições ATIVAS (EM_ANDAMENTO ou INSCRITO)
+          const inscricaoFilter: any = {
+            status: {
+              in:
+                statusInscricao && statusInscricao.length > 0
+                  ? statusInscricao
+                  : ['EM_ANDAMENTO', 'INSCRITO'], // Priorizar status ativos se não especificado
             },
-            CursosTurmasInscricoes: {
-              // Aplicar filtro para pegar apenas inscrições ATIVAS
-              // Priorizar EM_ANDAMENTO sobre INSCRITO, depois por data mais recente
-              where: inscricaoFilter,
-              select: {
-                id: true,
-                status: true,
-                criadoEm: true,
-                CursosTurmas: {
+          };
+
+          // Filtro por turma (e opcionalmente por curso)
+          if (cursoIdParam || turmaIdParam) {
+            const turmaFilter: any = {};
+
+            if (cursoIdParam) {
+              turmaFilter.cursoId = cursoIdParam;
+            }
+
+            if (turmaIdParam) {
+              turmaFilter.id = turmaIdParam;
+            }
+
+            inscricaoFilter.CursosTurmas = turmaFilter;
+          }
+
+          // Aplicar filtro de inscrições no WHERE
+          where.CursosTurmasInscricoes = {
+            some: inscricaoFilter,
+          };
+
+          // ✅ Filtro por busca otimizado (usar startsWith quando possível)
+          if (search) {
+            const searchClean = search.trim();
+            const cpfClean = search.replace(/\D/g, '');
+
+            // Se busca parece ser CPF (apenas números), priorizar busca por CPF
+            if (cpfClean.length >= 3 && /^\d+$/.test(searchClean)) {
+              where.OR = [
+                { cpf: { contains: cpfClean } },
+                { codUsuario: { contains: searchClean, mode: 'insensitive' } },
+              ];
+            } else {
+              // Busca geral por nome, email ou código
+              where.OR = [
+                { nomeCompleto: { contains: searchClean, mode: 'insensitive' } },
+                { email: { contains: searchClean, mode: 'insensitive' } },
+                { codUsuario: { contains: searchClean, mode: 'insensitive' } },
+                ...(cpfClean.length >= 3 ? [{ cpf: { contains: cpfClean } }] : []),
+              ];
+            }
+          }
+
+          // ✅ Buscar alunos com retry logic
+          const [alunos, total] = await retryOperation(
+            async () => {
+              const [alunosResult, totalResult] = await Promise.all([
+                prisma.usuarios.findMany({
+                  where,
                   select: {
                     id: true,
-                    nome: true,
-                    codigo: true,
+                    codUsuario: true,
+                    nomeCompleto: true,
+                    email: true,
+                    cpf: true,
                     status: true,
-                    dataInicio: true,
-                    dataFim: true,
-                    Cursos: {
+                    criadoEm: true,
+                    ultimoLogin: true,
+                    UsuariosEnderecos: {
+                      select: {
+                        cidade: true,
+                        estado: true,
+                      },
+                      take: 1,
+                      orderBy: {
+                        criadoEm: 'desc',
+                      },
+                    },
+                    CursosTurmasInscricoes: {
+                      where: inscricaoFilter,
                       select: {
                         id: true,
-                        nome: true,
-                        codigo: true,
+                        status: true,
+                        criadoEm: true,
+                        CursosTurmas: {
+                          select: {
+                            id: true,
+                            nome: true,
+                            codigo: true,
+                            status: true,
+                            dataInicio: true,
+                            dataFim: true,
+                            Cursos: {
+                              select: {
+                                id: true,
+                                nome: true,
+                                codigo: true,
+                              },
+                            },
+                          },
+                        },
+                      },
+                      // ✅ Trazer apenas 1 inscrição (a mais recente)
+                      // A priorização por status será feita no processamento
+                      take: 1,
+                      orderBy: {
+                        criadoEm: 'desc',
                       },
                     },
                   },
-                },
-              },
-              // Trazer apenas a inscrição ATIVA mais recente
-              // Prioridade: EM_ANDAMENTO primeiro, depois INSCRITO, depois por data mais recente
-              take: 1,
-              orderBy: {
-                criadoEm: 'desc', // Mais recente primeiro
-              },
+                  skip,
+                  take: limit,
+                  // ✅ Usar índice composto para ordenação
+                  orderBy: {
+                    criadoEm: 'desc',
+                  },
+                }),
+                prisma.usuarios.count({ where }),
+              ]);
+
+              return [alunosResult, totalResult];
             },
-          },
-          skip,
-          take: limit,
-          orderBy: {
-            criadoEm: 'desc',
-          },
-        }),
-        prisma.usuarios.count({
-              where,
-        }),
-      ]);
+            3, // 3 tentativas
+            1500, // 1.5s entre tentativas
+          );
 
-          return [alunosResult, totalResult];
-        },
-        3, // 3 tentativas
-        1500, // 1.5s entre tentativas
-      );
+          // ✅ Processar dados SEM calcular progresso (evita N+1 queries)
+          // O progresso pode ser calculado no frontend ou em um endpoint separado se necessário
+          const data = alunos.map((aluno) => {
+            // Buscar inscrição ATIVA (priorizando EM_ANDAMENTO > INSCRITO)
+            const inscricaoAtiva =
+              aluno.CursosTurmasInscricoes.find((i) => i.status === 'EM_ANDAMENTO') ||
+              aluno.CursosTurmasInscricoes.find((i) => i.status === 'INSCRITO') ||
+              aluno.CursosTurmasInscricoes[0];
 
-      const data = await Promise.all(
-        alunos.map(async (aluno) => {
-          // Buscar inscrição ATIVA (priorizando EM_ANDAMENTO > INSCRITO)
-          // O filtro do Prisma já garante que só traz alunos com inscrição no curso/turma filtrado
-          // e status ativo, então pegar a primeira (mais recente)
-          let inscricaoAtiva: typeof aluno.CursosTurmasInscricoes[0] | undefined = 
-            aluno.CursosTurmasInscricoes.find((i) => i.status === 'EM_ANDAMENTO') ||
-            aluno.CursosTurmasInscricoes.find((i) => i.status === 'INSCRITO') ||
-            aluno.CursosTurmasInscricoes[0]; // Fallback para a primeira se não encontrou
+            return {
+              id: aluno.id,
+              codigo: aluno.codUsuario,
+              nomeCompleto: aluno.nomeCompleto,
+              email: aluno.email,
+              cpf: aluno.cpf,
+              status: aluno.status,
+              cidade: aluno.UsuariosEnderecos?.[0]?.cidade || null,
+              estado: aluno.UsuariosEnderecos?.[0]?.estado || null,
+              ultimoLogin: aluno.ultimoLogin,
+              criadoEm: aluno.criadoEm,
+              ultimoCurso: inscricaoAtiva
+                ? {
+                    inscricaoId: inscricaoAtiva.id,
+                    statusInscricao: inscricaoAtiva.status,
+                    dataInscricao: inscricaoAtiva.criadoEm,
+                    // ✅ Removido progresso para evitar N+1 queries
+                    // Progresso pode ser calculado em batch ou endpoint separado se necessário
+                    turma: {
+                      id: inscricaoAtiva.CursosTurmas.id,
+                      nome: inscricaoAtiva.CursosTurmas.nome,
+                      codigo: inscricaoAtiva.CursosTurmas.codigo,
+                      status: inscricaoAtiva.CursosTurmas.status,
+                    },
+                    curso: {
+                      id: inscricaoAtiva.CursosTurmas.Cursos.id,
+                      nome: inscricaoAtiva.CursosTurmas.Cursos.nome,
+                      codigo: inscricaoAtiva.CursosTurmas.Cursos.codigo,
+                    },
+                  }
+                : null,
+            };
+          });
 
-          // Calcular progresso se houver inscrição ativa
-          let progresso = 0;
-          if (inscricaoAtiva) {
-            progresso = await calcularProgressoCurso(
-              inscricaoAtiva.id,
-              inscricaoAtiva.CursosTurmas.id,
-              inscricaoAtiva.CursosTurmas.dataInicio,
-              inscricaoAtiva.CursosTurmas.dataFim,
-            );
-          }
-
-        return {
-          id: aluno.id,
-          codigo: aluno.codUsuario,
-          nomeCompleto: aluno.nomeCompleto,
-          email: aluno.email,
-          cpf: aluno.cpf,
-          status: aluno.status,
-          cidade: (aluno as any).UsuariosEnderecos?.[0]?.cidade || null,
-          estado: (aluno as any).UsuariosEnderecos?.[0]?.estado || null,
-          ultimoLogin: aluno.ultimoLogin,
-          criadoEm: aluno.criadoEm,
-            // Dados da inscrição ATIVA (priorizando EM_ANDAMENTO > INSCRITO)
-            ultimoCurso: inscricaoAtiva
-              ? {
-                  inscricaoId: inscricaoAtiva.id,
-                  statusInscricao: inscricaoAtiva.status,
-                  dataInscricao: inscricaoAtiva.criadoEm,
-                  progresso, // Percentual de 0 a 100
-                  turma: {
-                    id: inscricaoAtiva.CursosTurmas.id,
-                    nome: inscricaoAtiva.CursosTurmas.nome,
-                    codigo: inscricaoAtiva.CursosTurmas.codigo,
-                    status: inscricaoAtiva.CursosTurmas.status,
-                  },
-                  curso: {
-                    id: inscricaoAtiva.CursosTurmas.Cursos.id,
-                    nome: inscricaoAtiva.CursosTurmas.Cursos.nome,
-                    codigo: inscricaoAtiva.CursosTurmas.Cursos.codigo,
-                  },
-                }
-              : null,
+          return {
+            data,
+            pagination: {
+              page,
+              pageSize: limit,
+              total,
+              totalPages: Math.ceil(total / limit),
+            },
           };
-        }),
+        },
+        30, // ✅ Cache de 30 segundos
       );
 
-      res.json({
-        data,
-        pagination: {
-          page,
-          pageSize: limit,
-          total,
-          totalPages: Math.ceil(total / limit),
-        },
-      });
+      // Log de performance
+      const duration = Date.now() - startTime;
+      if (duration > 1000) {
+        logger.warn({ duration, params, cacheKey }, '⚠️ Busca de alunos demorou mais de 1s');
+      }
+
+      res.json(result);
     } catch (error: any) {
       // Tratar erros de validação Zod
       if (error instanceof ZodError) {
@@ -823,35 +870,36 @@ export class CursosController {
             );
 
             return {
-            id: inscricao.id,
-            statusInscricao: inscricao.status,
-            criadoEm: inscricao.criadoEm,
+              id: inscricao.id,
+              statusInscricao: inscricao.status,
+              criadoEm: inscricao.criadoEm,
               progresso, // Percentual de 0 a 100
-            turma: {
-              id: inscricao.CursosTurmas.id,
-              nome: inscricao.CursosTurmas.nome,
-              codigo: inscricao.CursosTurmas.codigo,
-              status: inscricao.CursosTurmas.status,
-              dataInicio: inscricao.CursosTurmas.dataInicio,
-              dataFim: inscricao.CursosTurmas.dataFim,
-            },
-            curso: {
-              id: inscricao.CursosTurmas.Cursos.id,
-              nome: inscricao.CursosTurmas.Cursos.nome,
-              codigo: inscricao.CursosTurmas.Cursos.codigo,
-              descricao: inscricao.CursosTurmas.Cursos.descricao,
-              cargaHoraria: inscricao.CursosTurmas.Cursos.cargaHoraria,
-              imagemUrl: inscricao.CursosTurmas.Cursos.imagemUrl,
-            },
+              turma: {
+                id: inscricao.CursosTurmas.id,
+                nome: inscricao.CursosTurmas.nome,
+                codigo: inscricao.CursosTurmas.codigo,
+                status: inscricao.CursosTurmas.status,
+                dataInicio: inscricao.CursosTurmas.dataInicio,
+                dataFim: inscricao.CursosTurmas.dataFim,
+              },
+              curso: {
+                id: inscricao.CursosTurmas.Cursos.id,
+                nome: inscricao.CursosTurmas.Cursos.nome,
+                codigo: inscricao.CursosTurmas.Cursos.codigo,
+                descricao: inscricao.CursosTurmas.Cursos.descricao,
+                cargaHoraria: inscricao.CursosTurmas.Cursos.cargaHoraria,
+                imagemUrl: inscricao.CursosTurmas.Cursos.imagemUrl,
+              },
             };
           }),
         ),
-          totalInscricoes: aluno.CursosTurmasInscricoes.length,
+        totalInscricoes: aluno.CursosTurmasInscricoes.length,
         estatisticas: {
           cursosAtivos: aluno.CursosTurmasInscricoes.filter((i) =>
             ['INSCRITO', 'EM_ANDAMENTO'].includes(i.status),
           ).length,
-          cursosConcluidos: aluno.CursosTurmasInscricoes.filter((i) => i.status === 'CONCLUIDO').length,
+          cursosConcluidos: aluno.CursosTurmasInscricoes.filter((i) => i.status === 'CONCLUIDO')
+            .length,
           cursosCancelados: aluno.CursosTurmasInscricoes.filter((i) =>
             ['CANCELADO', 'TRANCADO'].includes(i.status),
           ).length,
@@ -876,6 +924,357 @@ export class CursosController {
         success: false,
         code: 'ALUNO_FETCH_ERROR',
         message: 'Erro ao buscar detalhes do aluno',
+        error: error?.message,
+      });
+    }
+  };
+
+  /**
+   * Listar histórico de inscrições de um aluno
+   * Similar ao histórico de empresas (/api/v1/empresas/{id}/vagas)
+   */
+  static listHistoricoInscricoes = async (req: Request, res: Response) => {
+    try {
+      const { alunoId } = req.params;
+
+      // Validar UUID
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(alunoId)) {
+        return res.status(400).json({
+          success: false,
+          code: 'INVALID_ID',
+          message: 'ID do aluno inválido. Deve ser um UUID válido.',
+        });
+      }
+
+      // Validar e parsear query params
+      const query = alunoHistoricoInscricoesQuerySchema.parse(req.query);
+      const { page, pageSize, status } = query;
+      const skip = (page - 1) * pageSize;
+
+      // Verificar se aluno existe e é do tipo ALUNO_CANDIDATO
+      const alunoExiste = await prisma.usuarios.findUnique({
+        where: {
+          id: alunoId,
+          role: 'ALUNO_CANDIDATO',
+        },
+        select: { id: true },
+      });
+
+      if (!alunoExiste) {
+        return res.status(404).json({
+          success: false,
+          code: 'ALUNO_NOT_FOUND',
+          message: 'Aluno não encontrado ou não possui role de ALUNO_CANDIDATO.',
+        });
+      }
+
+      // Construir filtro
+      const where: any = {
+        alunoId,
+      };
+
+      // Filtro por status se fornecido
+      if (status && status.length > 0) {
+        where.status = { in: status };
+      }
+
+      // Buscar inscrições com paginação
+      const [total, inscricoes] = await Promise.all([
+        prisma.cursosTurmasInscricoes.count({ where }),
+        prisma.cursosTurmasInscricoes.findMany({
+          where,
+          skip,
+          take: pageSize,
+          orderBy: { criadoEm: 'desc' },
+          select: {
+            id: true,
+            status: true,
+            criadoEm: true,
+            CursosTurmas: {
+              select: {
+                id: true,
+                nome: true,
+                codigo: true,
+                status: true,
+                dataInicio: true,
+                dataFim: true,
+                Cursos: {
+                  select: {
+                    id: true,
+                    nome: true,
+                    codigo: true,
+                    descricao: true,
+                    cargaHoraria: true,
+                    imagemUrl: true,
+                  },
+                },
+              },
+            },
+          },
+        }),
+      ]);
+
+      // Calcular progresso para cada inscrição
+      const data = await Promise.all(
+        inscricoes.map(async (inscricao) => {
+          const progresso = await calcularProgressoCurso(
+            inscricao.id,
+            inscricao.CursosTurmas.id,
+            inscricao.CursosTurmas.dataInicio,
+            inscricao.CursosTurmas.dataFim,
+          );
+
+          return {
+            id: inscricao.id,
+            statusInscricao: inscricao.status,
+            criadoEm: inscricao.criadoEm,
+            progresso,
+            turma: {
+              id: inscricao.CursosTurmas.id,
+              nome: inscricao.CursosTurmas.nome,
+              codigo: inscricao.CursosTurmas.codigo,
+              status: inscricao.CursosTurmas.status,
+              dataInicio: inscricao.CursosTurmas.dataInicio,
+              dataFim: inscricao.CursosTurmas.dataFim,
+            },
+            curso: {
+              id: inscricao.CursosTurmas.Cursos.id,
+              nome: inscricao.CursosTurmas.Cursos.nome,
+              codigo: inscricao.CursosTurmas.Cursos.codigo,
+              descricao: inscricao.CursosTurmas.Cursos.descricao,
+              cargaHoraria: inscricao.CursosTurmas.Cursos.cargaHoraria,
+              imagemUrl: inscricao.CursosTurmas.Cursos.imagemUrl,
+            },
+          };
+        }),
+      );
+
+      res.json({
+        data,
+        pagination: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
+      });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      logger.error(
+        {
+          alunoId: req.params.alunoId,
+          error: error?.message,
+          code: error?.code,
+        },
+        '❌ Erro ao buscar histórico de inscrições do aluno',
+      );
+
+      res.status(500).json({
+        success: false,
+        code: 'ALUNOS_HISTORICO_ERROR',
+        message: 'Erro ao buscar histórico de inscrições do aluno',
+        error: error?.message,
+      });
+    }
+  };
+
+  /**
+   * Listar histórico de inscrições de um curso
+   * Similar ao histórico de alunos, mas filtrado por cursoId
+   */
+  static listHistoricoInscricoesPorCurso = async (req: Request, res: Response) => {
+    try {
+      const { cursoId } = req.params;
+
+      // Validar UUID do curso
+      const cursoIdValidado = parseCourseId(cursoId);
+      if (!cursoIdValidado) {
+        return res.status(400).json({
+          success: false,
+          code: 'INVALID_CURSO_ID',
+          message: 'ID do curso inválido. Deve ser um UUID válido.',
+        });
+      }
+
+      // Validar e parsear query params
+      const query = cursoHistoricoInscricoesQuerySchema.parse(req.query);
+      const { page, pageSize, status, turmaId } = query;
+      const skip = (page - 1) * pageSize;
+
+      // Verificar se curso existe
+      const cursoExiste = await prisma.cursos.findUnique({
+        where: { id: cursoIdValidado },
+        select: { id: true, nome: true },
+      });
+
+      if (!cursoExiste) {
+        return res.status(404).json({
+          success: false,
+          code: 'CURSO_NOT_FOUND',
+          message: 'Curso não encontrado.',
+        });
+      }
+
+      // Construir filtro
+      const where: any = {
+        CursosTurmas: {
+          cursoId: cursoIdValidado,
+        },
+      };
+
+      // Filtro por turma se fornecido
+      if (turmaId) {
+        where.turmaId = turmaId;
+      }
+
+      // Filtro por status se fornecido
+      if (status && status.length > 0) {
+        where.status = { in: status };
+      }
+
+      // Buscar inscrições com paginação
+      const [total, inscricoes] = await Promise.all([
+        prisma.cursosTurmasInscricoes.count({ where }),
+        prisma.cursosTurmasInscricoes.findMany({
+          where,
+          skip,
+          take: pageSize,
+          orderBy: { criadoEm: 'desc' },
+          select: {
+            id: true,
+            status: true,
+            criadoEm: true,
+            alunoId: true,
+            CursosTurmas: {
+              select: {
+                id: true,
+                nome: true,
+                codigo: true,
+                status: true,
+                dataInicio: true,
+                dataFim: true,
+                Cursos: {
+                  select: {
+                    id: true,
+                    nome: true,
+                    codigo: true,
+                    descricao: true,
+                    cargaHoraria: true,
+                    imagemUrl: true,
+                  },
+                },
+              },
+            },
+            Usuarios: {
+              select: {
+                id: true,
+                nomeCompleto: true,
+                email: true,
+                codUsuario: true,
+                cpf: true,
+                status: true,
+                UsuariosEnderecos: {
+                  select: {
+                    cidade: true,
+                    estado: true,
+                  },
+                  take: 1,
+                  orderBy: {
+                    criadoEm: 'desc',
+                  },
+                },
+              },
+            },
+          },
+        }),
+      ]);
+
+      // Calcular progresso e formatar dados
+      const data = await Promise.all(
+        inscricoes.map(async (inscricao) => {
+          const progresso = await calcularProgressoCurso(
+            inscricao.id,
+            inscricao.CursosTurmas.id,
+            inscricao.CursosTurmas.dataInicio,
+            inscricao.CursosTurmas.dataFim,
+          );
+
+          return {
+            id: inscricao.id,
+            statusInscricao: inscricao.status,
+            criadoEm: inscricao.criadoEm,
+            progresso,
+            aluno: {
+              id: inscricao.Usuarios.id,
+              nomeCompleto: inscricao.Usuarios.nomeCompleto,
+              email: inscricao.Usuarios.email,
+              codigo: inscricao.Usuarios.codUsuario,
+              cpf: inscricao.Usuarios.cpf,
+              status: inscricao.Usuarios.status,
+              cidade: inscricao.Usuarios.UsuariosEnderecos?.[0]?.cidade || null,
+              estado: inscricao.Usuarios.UsuariosEnderecos?.[0]?.estado || null,
+            },
+            turma: {
+              id: inscricao.CursosTurmas.id,
+              nome: inscricao.CursosTurmas.nome,
+              codigo: inscricao.CursosTurmas.codigo,
+              status: inscricao.CursosTurmas.status,
+              dataInicio: inscricao.CursosTurmas.dataInicio,
+              dataFim: inscricao.CursosTurmas.dataFim,
+            },
+            curso: {
+              id: inscricao.CursosTurmas.Cursos.id,
+              nome: inscricao.CursosTurmas.Cursos.nome,
+              codigo: inscricao.CursosTurmas.Cursos.codigo,
+              descricao: inscricao.CursosTurmas.Cursos.descricao,
+              cargaHoraria: inscricao.CursosTurmas.Cursos.cargaHoraria,
+              imagemUrl: inscricao.CursosTurmas.Cursos.imagemUrl,
+            },
+          };
+        }),
+      );
+
+      res.json({
+        data,
+        pagination: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
+      });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      logger.error(
+        {
+          cursoId: req.params.cursoId,
+          error: error?.message,
+          code: error?.code,
+        },
+        '❌ Erro ao buscar histórico de inscrições do curso',
+      );
+
+      res.status(500).json({
+        success: false,
+        code: 'CURSO_HISTORICO_ERROR',
+        message: 'Erro ao buscar histórico de inscrições do curso',
         error: error?.message,
       });
     }
@@ -1258,6 +1657,75 @@ export class CursosController {
    * Visão geral de cursos com métricas e faturamento
    * Acesso restrito a ADMIN e MODERADOR
    */
+  /**
+   * Obter histórico de auditoria de um curso
+   */
+  static getHistoricoAuditoria = async (req: Request, res: Response) => {
+    try {
+      const { cursoId } = req.params;
+      const page = Number(req.query.page) || 1;
+      const pageSize = Number(req.query.pageSize) || 20;
+
+      // Validar UUID do curso
+      const cursoIdValidado = parseCourseId(cursoId);
+      if (!cursoIdValidado) {
+        return res.status(400).json({
+          success: false,
+          code: 'INVALID_CURSO_ID',
+          message: 'ID do curso inválido. Deve ser um UUID válido.',
+        });
+      }
+
+      // Verificar se curso existe
+      const cursoExiste = await prisma.cursos.findUnique({
+        where: { id: cursoIdValidado },
+        select: { id: true, nome: true },
+      });
+
+      if (!cursoExiste) {
+        return res.status(404).json({
+          success: false,
+          code: 'CURSO_NOT_FOUND',
+          message: 'Curso não encontrado.',
+        });
+      }
+
+      // Buscar histórico de auditoria
+      const historico = await cursosAuditoriaService.obterHistoricoAlteracoes(
+        cursoIdValidado,
+        page,
+        pageSize,
+      );
+
+      res.json({
+        success: true,
+        data: historico.items,
+        pagination: {
+          page: historico.page,
+          pageSize: historico.pageSize,
+          total: historico.total,
+          totalPages: historico.totalPages,
+        },
+      });
+    } catch (error: any) {
+      logger.error(
+        {
+          cursoId: req.params.cursoId,
+          error: error?.message,
+          code: error?.code,
+        },
+        '❌ Erro ao buscar histórico de auditoria do curso',
+      );
+
+      res.status(500).json({
+        success: false,
+        code: 'CURSO_AUDITORIA_ERROR',
+        message: 'Erro ao buscar histórico de auditoria do curso',
+        error: error?.message,
+      });
+    }
+  };
+
   static visaogeral = async (req: Request, res: Response) => {
     try {
       const visaoGeral = await buscarVisaoGeralCursos();

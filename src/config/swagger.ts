@@ -6229,7 +6229,7 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
         },
         PlanosEmpresariaisCreateInput: {
           type: 'object',
-          required: ['icon', 'nome', 'descricao', 'valor', 'quantidadeVagas', 'vagaEmDestaque'],
+          required: ['icon', 'nome', 'valor', 'quantidadeVagas', 'vagaEmDestaque'],
           properties: {
             icon: {
               type: 'string',
@@ -6243,7 +6243,9 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
             },
             descricao: {
               type: 'string',
+              nullable: true,
               example: 'Soluções completas de RH e treinamento para empresas.',
+              description: 'Descrição opcional do plano',
             },
             valor: {
               type: 'string',

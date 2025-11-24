@@ -130,7 +130,7 @@ const planosEmpresariaisSchema = z
   .object({
     icon: z.string().trim().min(1, 'O ícone do plano é obrigatório'),
     nome: z.string().trim().min(1, 'O nome do plano é obrigatório'),
-    descricao: z.string().trim().min(1, 'A descrição do plano é obrigatória'),
+    descricao: z.string().trim().optional(),
     valor: valorPlanoSchema,
     desconto: percentualDescontoSchema,
     quantidadeVagas: quantidadeVagasSchema,

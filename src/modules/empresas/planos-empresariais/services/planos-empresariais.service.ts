@@ -14,7 +14,7 @@ export class PlanosEmpresariaisLimitError extends Error {
 type CreatePlanosEmpresariaisData = {
   icon: string;
   nome: string;
-  descricao: string;
+  descricao?: string;
   valor: string;
   desconto?: number | null;
   quantidadeVagas: number;
@@ -29,7 +29,7 @@ const sanitizeCreateData = (
 ): Prisma.PlanosEmpresariaisUncheckedCreateInput => ({
   icon: data.icon.trim(),
   nome: data.nome.trim(),
-  descricao: data.descricao.trim(),
+  descricao: data.descricao?.trim() ?? '',
   valor: data.valor,
   desconto: data.desconto ?? null,
   quantidadeVagas: data.quantidadeVagas,

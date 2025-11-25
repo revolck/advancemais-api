@@ -61,6 +61,13 @@ export const listCoursesQuerySchema = z.object({
 export const createCourseSchema = z.object({
   nome: z.string().trim().min(3).max(255),
   descricao: z.string().trim().max(2000).nullish(),
+  imagemUrl: z
+    .union([
+      z.string().trim().url('URL da imagem inválida'),
+      z.literal('').transform(() => null),
+      z.null(),
+    ])
+    .optional(),
   cargaHoraria: positiveInt,
   categoriaId: positiveInt.optional(),
   subcategoriaId: positiveInt.optional(),

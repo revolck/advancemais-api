@@ -979,19 +979,22 @@ export const cursosService = {
         },
       });
 
+      const updateData: Prisma.CursosUncheckedUpdateInput = {
+        atualizadoEm: new Date(),
+      };
+
+      if (data.nome !== undefined) updateData.nome = data.nome;
+      if (data.descricao !== undefined) updateData.descricao = data.descricao;
+      if (data.imagemUrl !== undefined) updateData.imagemUrl = data.imagemUrl;
+      if (data.cargaHoraria !== undefined) updateData.cargaHoraria = data.cargaHoraria;
+      if (data.categoriaId !== undefined) updateData.categoriaId = data.categoriaId;
+      if (data.subcategoriaId !== undefined) updateData.subcategoriaId = data.subcategoriaId;
+      if (data.statusPadrao !== undefined) updateData.statusPadrao = data.statusPadrao;
+      if (data.estagioObrigatorio !== undefined) updateData.estagioObrigatorio = data.estagioObrigatorio;
+
       const updated = await tx.cursos.update({
         where: { id },
-        data: {
-          nome: data.nome,
-          descricao: data.descricao,
-          imagemUrl: data.imagemUrl,
-          cargaHoraria: data.cargaHoraria,
-          categoriaId: data.categoriaId,
-          subcategoriaId: data.subcategoriaId,
-          statusPadrao: data.statusPadrao,
-          estagioObrigatorio: data.estagioObrigatorio,
-          atualizadoEm: new Date(),
-        },
+        data: updateData,
         include: {
           CursosCategorias: { select: categoriaSelect },
           CursosSubcategorias: { select: subcategoriaSelect },

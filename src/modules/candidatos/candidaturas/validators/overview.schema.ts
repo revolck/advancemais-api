@@ -39,18 +39,37 @@ const statusListPreprocessor = z.preprocess((value) => {
   return unique;
 }, z.array(z.string().uuid()).optional());
 
+// Validador para search que aceita UUID ou texto com mínimo de 3 caracteres
+const searchPreprocessor = z.preprocess(
+  (value) => {
+    if (!value || typeof value !== 'string') {
+      return undefined;
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+    // Se for UUID válido, aceitar mesmo que tenha menos de 3 caracteres (UUIDs têm 36)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(trimmed)) {
+      return trimmed;
+    }
+    // Caso contrário, validar mínimo de 3 caracteres
+    if (trimmed.length < 3) {
+      return undefined;
+    }
+    return trimmed;
+  },
+  z.string().max(180).optional(),
+);
+
 export const candidaturasOverviewQuerySchema = z
   .object({
     page: z.coerce.number().int().min(1).default(1),
     pageSize: z.coerce.number().int().min(1).max(100).default(20),
     vagaId: z.string().uuid().optional(),
     empresaUsuarioId: z.string().uuid().optional(),
-    search: z
-      .string()
-      .trim()
-      .min(3, 'A busca deve conter ao menos 3 caracteres')
-      .max(180)
-      .optional(),
+    search: searchPreprocessor,
     status: statusListPreprocessor,
     onlyWithCandidaturas: booleanPreprocessor,
   })

@@ -273,26 +273,39 @@ export const mapVaga = (vaga?: VagaRecord | null) => {
   };
 };
 
-export const mapCandidatura = (candidatura: CandidaturaRecord) => ({
-  id: candidatura.id,
-  vagaId: candidatura.vagaId,
-  candidatoId: candidatura.candidatoId,
-  curriculoId: candidatura.curriculoId ?? null,
-  empresaUsuarioId: candidatura.empresaUsuarioId,
-  status_processo: candidatura.status_processo,
-  origem: candidatura.origem,
-  aplicadaEm: candidatura.aplicadaEm,
-  atualizadaEm: candidatura.atualizadaEm,
-  consentimentos: candidatura.consentimentos ?? null,
-  UsuariosCurriculos: candidatura.UsuariosCurriculos ? mapCurriculo(candidatura.UsuariosCurriculos) : null,
-  EmpresasVagas: mapVaga(candidatura.EmpresasVagas ?? null),
-  empresa: mapUsuarioAdmin(candidatura.Usuarios_EmpresasCandidatos_empresaUsuarioIdToUsuarios ?? null),
-});
+export const mapCandidatura = (candidatura: CandidaturaRecord) => {
+  const vaga = mapVaga(candidatura.EmpresasVagas ?? null);
+  
+  // Se a vaga não existir, retornar null para filtrar depois
+  if (!vaga) {
+    return null;
+  }
 
-const countByStatus = (items: { status_processo: { nome: string } | string }[]) =>
+  return {
+    id: candidatura.id,
+    vagaId: candidatura.vagaId,
+    candidatoId: candidatura.candidatoId,
+    curriculoId: candidatura.curriculoId ?? null,
+    empresaUsuarioId: candidatura.empresaUsuarioId,
+    status: candidatura.status_processo?.nome ?? 'DESCONHECIDO',
+    status_processo: candidatura.status_processo,
+    origem: candidatura.origem,
+    aplicadaEm: candidatura.aplicadaEm.toISOString(),
+    atualizadaEm: candidatura.atualizadaEm.toISOString(),
+    consentimentos: candidatura.consentimentos ?? null,
+    UsuariosCurriculos: candidatura.UsuariosCurriculos ? mapCurriculo(candidatura.UsuariosCurriculos) : null,
+    vaga,
+    empresa: mapUsuarioAdmin(candidatura.Usuarios_EmpresasCandidatos_empresaUsuarioIdToUsuarios ?? null),
+  };
+};
+
+const countByStatus = (items: Array<{ status: string; status_processo?: { nome: string } | string }>) =>
   items.reduce<Record<string, number>>((acc, item) => {
-    const key =
-      typeof item.status_processo === 'string' ? item.status_processo : (item.status_processo?.nome ?? 'DESCONHECIDO');
+    // Priorizar o campo status se existir, caso contrário usar status_processo
+    const key = item.status ?? 
+      (typeof item.status_processo === 'string' 
+        ? item.status_processo 
+        : (item.status_processo?.nome ?? 'DESCONHECIDO'));
     acc[key] = (acc[key] ?? 0) + 1;
     return acc;
   }, {});
@@ -305,7 +318,9 @@ export const mapCandidatoDetalhe = (candidato: CandidatoRecord) => {
   }
 
   const curriculos = candidato.UsuariosCurriculos.map(mapCurriculo);
-  const candidaturas = candidato.EmpresasCandidatos_EmpresasCandidatos_candidatoIdToUsuarios.map(mapCandidatura);
+  const candidaturas = candidato.EmpresasCandidatos_EmpresasCandidatos_candidatoIdToUsuarios
+    .map(mapCandidatura)
+    .filter((candidatura): candidatura is NonNullable<ReturnType<typeof mapCandidatura>> => candidatura !== null);
   const vagasDistintas = new Set(candidaturas.map((candidatura) => candidatura.vagaId)).size;
 
   return {

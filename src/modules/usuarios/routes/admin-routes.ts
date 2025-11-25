@@ -15,6 +15,15 @@ import { Roles } from '../enums/Roles';
 const router = Router();
 const adminController = new AdminController();
 const adminRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO];
+const curriculoViewerRoles: Roles[] = [
+  Roles.ADMIN,
+  Roles.MODERADOR,
+  Roles.PEDAGOGICO,
+  Roles.EMPRESA,
+  Roles.SETOR_DE_VAGAS,
+  Roles.RECRUTADOR,
+  Roles.ALUNO_CANDIDATO,
+];
 
 // =============================================
 // ROTAS COM ESCOPOS ESPECÍFICOS ANTES DO GUARD GLOBAL
@@ -1506,8 +1515,10 @@ router.post(
  * @openapi
  * /api/v1/usuarios/curriculos/{curriculoId}:
  *   get:
- *     summary: Buscar currículo por ID (admin/moderador)
- *     description: Retorna um currículo específico com todos os campos
+ *     summary: Buscar currículo por ID (todos exceto Financeiro/Instrutor)
+ *     description: |
+ *       Retorna um currículo específico com todos os campos.
+ *       **ACESSO:** ADMIN, MODERADOR, PEDAGOGICO, EMPRESA, SETOR_DE_VAGAS, RECRUTADOR e ALUNO_CANDIDATO.
  *     tags: [Usuários]
  *     security:
  *       - bearerAuth: []
@@ -1586,7 +1597,7 @@ router.post(
  */
 router.get(
   '/curriculos/:curriculoId',
-  supabaseAuthMiddleware(adminRoles),
+  supabaseAuthMiddleware(curriculoViewerRoles),
   asyncHandler(adminController.buscarCurriculoPorId),
 );
 

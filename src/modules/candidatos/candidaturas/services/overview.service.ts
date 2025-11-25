@@ -15,17 +15,32 @@ const GLOBAL_ROLES = new Set<Roles>([
   Roles.RECRUTADOR,
 ]);
 
+const isValidUUID = (str: string): boolean => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str.trim());
+};
+
 const buildSearchWhere = (search?: string): Prisma.UsuariosWhereInput | undefined => {
   if (!search) {
     return undefined;
   }
 
+  const trimmedSearch = search.trim();
+
+  // Se for um UUID válido, buscar diretamente por ID
+  if (isValidUUID(trimmedSearch)) {
+    return {
+      id: trimmedSearch,
+    } satisfies Prisma.UsuariosWhereInput;
+  }
+
+  // Caso contrário, buscar por nome, email, CPF ou código
   return {
     OR: [
-      { nomeCompleto: { contains: search, mode: 'insensitive' } },
-      { email: { contains: search, mode: 'insensitive' } },
-      { cpf: { contains: search, mode: 'insensitive' } },
-      { codUsuario: { contains: search, mode: 'insensitive' } },
+      { nomeCompleto: { contains: trimmedSearch, mode: 'insensitive' } },
+      { email: { contains: trimmedSearch, mode: 'insensitive' } },
+      { cpf: { contains: trimmedSearch, mode: 'insensitive' } },
+      { codUsuario: { contains: trimmedSearch, mode: 'insensitive' } },
     ],
   } satisfies Prisma.UsuariosWhereInput;
 };
@@ -69,6 +84,7 @@ const buildFilters = ({
   const effectiveEmpresaUsuarioId = isGlobalViewer ? (empresaUsuarioId ?? null) : viewerId;
 
   const searchWhere = buildSearchWhere(search);
+  const isSearchingByUserId = search && isValidUUID(search.trim());
 
   const usuariosWhere: Prisma.UsuariosWhereInput = {
     role: Roles.ALUNO_CANDIDATO,
@@ -87,7 +103,9 @@ const buildFilters = ({
 
   const candidaturasWhereBase: Prisma.EmpresasCandidatosWhereInput = {};
 
-  if (effectiveEmpresaUsuarioId) {
+  // Se está buscando por userId específico, não filtrar por empresa
+  // para retornar todas as candidaturas desse candidato
+  if (!isSearchingByUserId && effectiveEmpresaUsuarioId) {
     candidaturasWhereBase.empresaUsuarioId = effectiveEmpresaUsuarioId;
   }
 
@@ -99,9 +117,14 @@ const buildFilters = ({
     candidaturasWhereBase.statusId = { in: status };
   }
 
+  // Se está buscando por userId, adicionar o filtro de candidatoId
+  if (isSearchingByUserId && searchWhere?.id) {
+    candidaturasWhereBase.candidatoId = searchWhere.id as string;
+  }
+
   const hasCandidaturaFilters = Object.keys(candidaturasWhereBase).length > 0;
   const shouldRequireCandidaturas =
-    !isGlobalViewer || Boolean(onlyWithCandidaturas) || hasCandidaturaFilters;
+    !isGlobalViewer || Boolean(onlyWithCandidaturas) || hasCandidaturaFilters || isSearchingByUserId;
 
   if (shouldRequireCandidaturas) {
     usuariosWhere.EmpresasCandidatos_EmpresasCandidatos_candidatoIdToUsuarios = {
@@ -109,7 +132,15 @@ const buildFilters = ({
     };
   }
 
-  const candidaturasSelectWhere = hasCandidaturaFilters ? candidaturasWhereBase : undefined;
+  // Quando busca por userId, sempre retornar todas as candidaturas desse candidato
+  // independente de filtros de empresa
+  const candidaturasSelectWhere = isSearchingByUserId
+    ? (searchWhere?.id
+        ? { candidatoId: searchWhere.id as string }
+        : undefined)
+    : hasCandidaturaFilters
+      ? candidaturasWhereBase
+      : undefined;
 
   const candidaturasMetricsWhere: Prisma.EmpresasCandidatosWhereInput | undefined = (() => {
     if (!hasCandidaturaFilters && !searchWhere) {

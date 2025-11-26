@@ -317,6 +317,28 @@ router.get('/', asyncHandler(adminController.getAdminInfo));
  *                         type: string
  *                         format: date-time
  *                         nullable: true
+ *                       curriculos:
+ *                         type: array
+ *                         description: Lista de IDs de currículos (apenas para ALUNO_CANDIDATO)
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                               format: uuid
+ *                               example: "curriculo-uuid"
+ *                         example: [{ id: "curriculo-1" }, { id: "curriculo-2" }]
+ *                       cursosInscricoes:
+ *                         type: array
+ *                         description: Lista de IDs de inscrições em cursos (apenas para ALUNO_CANDIDATO)
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                               format: uuid
+ *                               example: "inscricao-uuid"
+ *                         example: [{ id: "inscricao-1" }]
  *                 pagination:
  *                   type: object
  *                   properties:

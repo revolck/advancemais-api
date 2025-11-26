@@ -98,6 +98,85 @@ export class AdminService {
 
   constructor() {}
 
+  /**
+   * Calcula o progresso do curso baseado em aulas concluídas, provas realizadas e tempo decorrido
+   */
+  private async calcularProgressoInscricao(
+    inscricaoId: string,
+    turmaId: string,
+    dataInicio: Date | null,
+    dataFim: Date | null,
+  ): Promise<number> {
+    try {
+      // Buscar contagem de aulas e provas da turma
+      const [totalAulas, totalProvas, aulasComFrequencia, provasComEnvio] = await Promise.all([
+        prisma.cursosTurmasAulas.count({
+          where: { turmaId },
+        }),
+        prisma.cursosTurmasProvas.count({
+          where: { turmaId },
+        }),
+        prisma.cursosFrequenciaAlunos.count({
+          where: { inscricaoId, status: 'PRESENTE' },
+        }),
+        prisma.cursosTurmasProvasEnvios.count({
+          where: { inscricaoId },
+        }),
+      ]);
+
+      // Se não há aulas nem provas, calcular por tempo decorrido
+      if (totalAulas === 0 && totalProvas === 0) {
+        if (dataInicio && dataFim) {
+          const agora = new Date();
+          const inicio = new Date(dataInicio).getTime();
+          const fim = new Date(dataFim).getTime();
+          const atual = agora.getTime();
+
+          if (fim > inicio) {
+            const progressoPorTempo = Math.min(
+              100,
+              Math.max(0, ((atual - inicio) / (fim - inicio)) * 100),
+            );
+            return Math.round(progressoPorTempo);
+          }
+        }
+        return 0;
+      }
+
+      // Calcular progresso baseado em aulas e provas
+      let progressoAulas = 0;
+      let progressoProvas = 0;
+      let pesoAulas = 0.6; // Peso padrão para aulas
+      let pesoProvas = 0.4; // Peso padrão para provas
+
+      if (totalAulas > 0) {
+        progressoAulas = (aulasComFrequencia / totalAulas) * 100;
+      }
+
+      if (totalProvas > 0) {
+        progressoProvas = (provasComEnvio / totalProvas) * 100;
+      }
+
+      // Ajustar pesos se um dos componentes não existe
+      if (totalAulas === 0 && totalProvas > 0) {
+        pesoAulas = 0;
+        pesoProvas = 1;
+      } else if (totalAulas > 0 && totalProvas === 0) {
+        pesoAulas = 1;
+        pesoProvas = 0;
+      }
+
+      const progressoFinal = progressoAulas * pesoAulas + progressoProvas * pesoProvas;
+      return Math.round(Math.min(100, Math.max(0, progressoFinal)));
+    } catch (error) {
+      this.log.warn(
+        { err: error, inscricaoId, turmaId },
+        '❌ Erro ao calcular progresso do curso',
+      );
+      return 0;
+    }
+  }
+
   private createServiceError(
     message: string,
     statusCode: number,
@@ -265,9 +344,71 @@ export class AdminService {
       (usuario) => attachEnderecoResumo(mergeUsuarioInformacoes(usuario))!,
     );
 
+    // ✅ OTIMIZAÇÃO: Buscar currículos e inscrições apenas para ALUNO_CANDIDATO
+    const alunosIds = usuariosComEndereco
+      .filter((u) => u.role === Roles.ALUNO_CANDIDATO)
+      .map((u) => u.id);
+
+    let vinculosMap: Record<
+      string,
+      { curriculos: Array<{ id: string }>; cursosInscricoes: Array<{ id: string }> }
+    > = {};
+
+    if (alunosIds.length > 0) {
+      // Buscar currículos e inscrições em paralelo
+      const [curriculos, inscricoes] = await Promise.all([
+        prisma.usuariosCurriculos.findMany({
+          where: { usuarioId: { in: alunosIds } },
+          select: { id: true, usuarioId: true },
+        }),
+        prisma.cursosTurmasInscricoes.findMany({
+          where: { alunoId: { in: alunosIds } },
+          select: { id: true, alunoId: true },
+        }),
+      ]);
+
+      // Inicializar map com arrays vazios para todos os alunos
+      alunosIds.forEach((id) => {
+        vinculosMap[id] = {
+          curriculos: [],
+          cursosInscricoes: [],
+        };
+      });
+
+      // Agrupar currículos por usuarioId
+      curriculos.forEach((curriculo) => {
+        if (vinculosMap[curriculo.usuarioId]) {
+          vinculosMap[curriculo.usuarioId].curriculos.push({ id: curriculo.id });
+        }
+      });
+
+      // Agrupar inscrições por alunoId
+      inscricoes.forEach((inscricao) => {
+        if (vinculosMap[inscricao.alunoId]) {
+          vinculosMap[inscricao.alunoId].cursosInscricoes.push({ id: inscricao.id });
+        }
+      });
+    }
+
+    // Adicionar campos curriculos e cursosInscricoes apenas para ALUNO_CANDIDATO
+    const usuariosComVinculos = usuariosComEndereco.map((usuario) => {
+      if (usuario.role === Roles.ALUNO_CANDIDATO) {
+        const vinculos = vinculosMap[usuario.id] || {
+          curriculos: [],
+          cursosInscricoes: [],
+        };
+        return {
+          ...usuario,
+          curriculos: vinculos.curriculos,
+          cursosInscricoes: vinculos.cursosInscricoes,
+        };
+      }
+      return usuario;
+    });
+
     return {
       message: 'Lista de usuários',
-      usuarios: usuariosComEndereco,
+      usuarios: usuariosComVinculos,
       pagination: {
         page,
         limit: pageSize,
@@ -477,7 +618,7 @@ export class AdminService {
 
     if (usuario.role === Roles.ALUNO_CANDIDATO) {
       // Para ALUNO_CANDIDATO: incluir currículos, candidaturas e inscrições em cursos
-      const [curriculos, candidaturas, inscricoes] = await Promise.all([
+      const [curriculos, candidaturas, inscricoesRaw] = await Promise.all([
         prisma.usuariosCurriculos.findMany({
           where: { usuarioId: userId },
           select: {
@@ -545,12 +686,15 @@ export class AdminService {
                 codigo: true,
                 dataInicio: true,
                 dataFim: true,
+                status: true,
                 Cursos: {
                   select: {
                     id: true,
                     nome: true,
+                    codigo: true,
                     descricao: true,
-                    categoriaId: true,
+                    cargaHoraria: true,
+                    imagemUrl: true,
                   },
                 },
               },
@@ -560,10 +704,45 @@ export class AdminService {
         }),
       ]);
 
+      // Mapear inscrições no formato correto com cálculo de progresso
+      const cursosInscricoes = await Promise.all(
+        inscricoesRaw.map(async (inscricao) => {
+          const progresso = await this.calcularProgressoInscricao(
+            inscricao.id,
+            inscricao.CursosTurmas.id,
+            inscricao.CursosTurmas.dataInicio,
+            inscricao.CursosTurmas.dataFim,
+          );
+
+          return {
+            id: inscricao.id,
+            statusInscricao: inscricao.status,
+            progresso,
+            criadoEm: inscricao.criadoEm.toISOString(),
+            turma: {
+              id: inscricao.CursosTurmas.id,
+              nome: inscricao.CursosTurmas.nome,
+              codigo: inscricao.CursosTurmas.codigo,
+              dataInicio: inscricao.CursosTurmas.dataInicio?.toISOString() ?? null,
+              dataFim: inscricao.CursosTurmas.dataFim?.toISOString() ?? null,
+              status: inscricao.CursosTurmas.status,
+            },
+            curso: {
+              id: inscricao.CursosTurmas.Cursos.id,
+              nome: inscricao.CursosTurmas.Cursos.nome,
+              codigo: inscricao.CursosTurmas.Cursos.codigo,
+              descricao: inscricao.CursosTurmas.Cursos.descricao ?? null,
+              cargaHoraria: inscricao.CursosTurmas.Cursos.cargaHoraria,
+              imagemUrl: inscricao.CursosTurmas.Cursos.imagemUrl ?? null,
+            },
+          };
+        }),
+      );
+
       relacoesAdicionais = {
         curriculos,
         candidaturas,
-        cursosInscricoes: inscricoes,
+        cursosInscricoes,
       };
     } else if (usuario.role === Roles.EMPRESA) {
       // Para EMPRESA: incluir vagas da empresa

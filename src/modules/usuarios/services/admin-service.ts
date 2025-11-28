@@ -275,6 +275,42 @@ export class AdminService {
       where.role = {
         in: [Roles.ALUNO_CANDIDATO, Roles.INSTRUTOR],
       };
+    } else if (options?.userRole === Roles.SETOR_DE_VAGAS) {
+      // SETOR_DE_VAGAS só pode ver EMPRESA e ALUNO_CANDIDATO (com currículos)
+      // Se tentar filtrar por outra role, não retornar nada
+      if (role && role !== Roles.EMPRESA && role !== Roles.ALUNO_CANDIDATO) {
+        return {
+          message: 'Lista de usuários',
+          usuarios: [],
+          pagination: {
+            page,
+            limit: pageSize,
+            total: 0,
+            pages: 0,
+          },
+        };
+      }
+      // Se filtrar apenas por EMPRESA, retornar apenas empresas
+      if (role === Roles.EMPRESA) {
+        where.role = Roles.EMPRESA;
+      } else if (role === Roles.ALUNO_CANDIDATO) {
+        // Se filtrar apenas por ALUNO_CANDIDATO, retornar apenas alunos com currículos
+        where.role = Roles.ALUNO_CANDIDATO;
+        where.UsuariosCurriculos = {
+          some: {}, // Pelo menos um currículo
+        };
+      } else {
+        // Se não houver filtro de role, retornar EMPRESA OU ALUNO_CANDIDATO com currículos
+        where.OR = [
+          { role: Roles.EMPRESA },
+          {
+            role: Roles.ALUNO_CANDIDATO,
+            UsuariosCurriculos: {
+              some: {}, // Pelo menos um currículo
+            },
+          },
+        ];
+      }
     } else {
       // Para outros roles, usar filtro normal
       const roleFilter = this.getRoleFilter(role);

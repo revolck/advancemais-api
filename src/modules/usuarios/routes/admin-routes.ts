@@ -116,10 +116,10 @@ router.get(
 // =============================================
 
 /**
- * Todas as demais rotas admin requerem pelo menos role MODERADOR ou PEDAGOGICO
- * Nota: PEDAGOGICO terá validações específicas nos controllers/services
+ * Todas as demais rotas admin requerem pelo menos role MODERADOR, PEDAGOGICO ou SETOR_DE_VAGAS
+ * Nota: PEDAGOGICO e SETOR_DE_VAGAS terão validações específicas nos controllers/services
  */
-router.use(supabaseAuthMiddleware(['ADMIN', 'MODERADOR', 'PEDAGOGICO']));
+router.use(supabaseAuthMiddleware(['ADMIN', 'MODERADOR', 'PEDAGOGICO', 'SETOR_DE_VAGAS']));
 
 // =============================================
 // ROTAS DE LISTAGEM E CONSULTA
@@ -171,10 +171,15 @@ router.get('/', asyncHandler(adminController.getAdminInfo));
  *     description: |
  *       Lista usuários com filtros e paginação.
  *
- *       **ACESSO:** ADMIN, MODERADOR e PEDAGOGICO podem acessar esta rota.
+ *       **ACESSO:** ADMIN, MODERADOR, PEDAGOGICO e SETOR_DE_VAGAS podem acessar esta rota.
  *
  *       **RESTRIÇÕES PARA PEDAGOGICO:**
  *       - PEDAGOGICO só pode visualizar usuários com role ALUNO_CANDIDATO ou INSTRUTOR
+ *       - Tentativas de filtrar por outras roles retornarão lista vazia
+ *
+ *       **RESTRIÇÕES PARA SETOR_DE_VAGAS:**
+ *       - SETOR_DE_VAGAS só pode visualizar usuários com role EMPRESA ou ALUNO_CANDIDATO
+ *       - Para ALUNO_CANDIDATO, apenas usuários com currículos cadastrados são retornados
  *       - Tentativas de filtrar por outras roles retornarão lista vazia
  *
  *       **⚡ OTIMIZAÇÕES DE PERFORMANCE:**

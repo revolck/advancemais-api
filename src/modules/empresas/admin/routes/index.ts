@@ -9,6 +9,7 @@ import { AdminCandidatosController } from '@/modules/empresas/admin/controllers/
 const router = Router();
 const adminRoles = [Roles.ADMIN, Roles.MODERADOR];
 const dashboardRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.SETOR_DE_VAGAS];
+const empresasManagementRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.SETOR_DE_VAGAS];
 
 /**
  * @openapi
@@ -1367,8 +1368,8 @@ router.get(
  * @openapi
  * /api/v1/empresas:
  *   post:
- *     summary: (Admin) Criar empresa
- *     description: "Cria uma nova empresa (Pessoa Jurídica) e permite opcionalmente vincular um plano ativo no momento da criação. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     summary: (Admin/Moderador/Setor de Vagas) Criar empresa
+ *     description: "Cria uma nova empresa (Pessoa Jurídica) e permite opcionalmente vincular um plano ativo no momento da criação. Endpoint disponível para ADMIN, MODERADOR e SETOR_DE_VAGAS."
  *     operationId: adminEmpresasCreate
  *     tags: [Empresas]
  *     security:
@@ -1467,8 +1468,8 @@ router.get(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *   get:
- *     summary: (Admin) Listar empresas
- *     description: "Retorna empresas (Pessoa Jurídica) com dados resumidos do plano ativo. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     summary: (Admin/Moderador/Setor de Vagas) Listar empresas
+ *     description: "Retorna empresas (Pessoa Jurídica) com dados resumidos do plano ativo. Endpoint disponível para ADMIN, MODERADOR e SETOR_DE_VAGAS."
  *     operationId: adminEmpresasList
  *     tags: [Empresas]
  *     security:
@@ -1580,8 +1581,8 @@ router.get(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.create);
-router.get('/', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.list);
+router.post('/', supabaseAuthMiddleware(empresasManagementRoles), AdminEmpresasController.create);
+router.get('/', supabaseAuthMiddleware(empresasManagementRoles), AdminEmpresasController.list);
 
 /**
  * @openapi
@@ -1798,8 +1799,8 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  * @openapi
  * /api/v1/empresas/{id}:
  *   put:
- *     summary: (Admin) Atualizar empresa
- *     description: "Atualiza dados cadastrais da empresa, permite redefinir a senha e gerenciar o plano vinculado. Apenas os campos enviados no payload são atualizados e auditados. O sistema registra automaticamente na auditoria apenas as alterações reais dos campos fornecidos: endereço (CEP, logradouro, número, bairro, cidade, estado), telefone, redes sociais (Instagram, LinkedIn, Facebook, YouTube, Twitter, TikTok), descrição da empresa e planos empresariais. Endpoint restrito aos perfis ADMIN e MODERADOR."
+ *     summary: (Admin/Moderador/Setor de Vagas) Atualizar empresa
+ *     description: "Atualiza dados cadastrais da empresa, permite redefinir a senha e gerenciar o plano vinculado. Apenas os campos enviados no payload são atualizados e auditados. O sistema registra automaticamente na auditoria apenas as alterações reais dos campos fornecidos: endereço (CEP, logradouro, número, bairro, cidade, estado), telefone, redes sociais (Instagram, LinkedIn, Facebook, YouTube, Twitter, TikTok), descrição da empresa e planos empresariais. Endpoint disponível para ADMIN, MODERADOR e SETOR_DE_VAGAS."
  *     operationId: adminEmpresasUpdate
  *     tags: [Empresas]
  *     security:
@@ -1925,8 +1926,8 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *   get:
- *     summary: (Admin) Visão completa da empresa
- *     description: "Retorna uma visão consolidada da empresa (Pessoa Jurídica) incluindo plano atual e histórico, vagas, candidaturas, pagamentos, bloqueios ativos e histórico de auditoria. O sistema de auditoria registra automaticamente apenas as alterações reais dos campos modificados, incluindo descrições consolidadas para planos (com vínculo, método de pagamento, status e período de teste quando aplicável). Apenas perfis ADMIN e MODERADOR podem acessar."
+ *     summary: (Admin/Moderador/Setor de Vagas) Visão completa da empresa
+ *     description: "Retorna uma visão consolidada da empresa (Pessoa Jurídica) incluindo plano atual e histórico, vagas, candidaturas, pagamentos, bloqueios ativos e histórico de auditoria. O sistema de auditoria registra automaticamente apenas as alterações reais dos campos modificados, incluindo descrições consolidadas para planos (com vínculo, método de pagamento, status e período de teste quando aplicável). Endpoint disponível para ADMIN, MODERADOR e SETOR_DE_VAGAS."
  *     operationId: adminEmpresasGet
  *     tags: [Empresas]
  *     security:
@@ -2381,8 +2382,8 @@ router.put('/:id/plano', supabaseAuthMiddleware(adminRoles), AdminEmpresasContro
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.put('/:id', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.update);
-router.get('/:id', supabaseAuthMiddleware(adminRoles), AdminEmpresasController.get);
+router.put('/:id', supabaseAuthMiddleware(empresasManagementRoles), AdminEmpresasController.update);
+router.get('/:id', supabaseAuthMiddleware(empresasManagementRoles), AdminEmpresasController.get);
 
 /**
  * @openapi

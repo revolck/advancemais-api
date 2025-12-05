@@ -399,4 +399,142 @@ export const cuponsService = {
   remove: async (id: string) => {
     await prisma.cuponsDesconto.delete({ where: { id } });
   },
+
+  /**
+   * Valida um cupom de desconto para uso no checkout
+   * @param codigo - Código do cupom
+   * @param planosEmpresariaisId - ID do plano empresarial (opcional)
+   * @param usuarioId - ID do usuário (opcional, para validar limite por usuário)
+   * @returns Dados do cupom validado ou erro
+   */
+  validar: async (codigo: string, planosEmpresariaisId?: string, usuarioId?: string) => {
+    const codigoNormalizado = sanitizeCodigo(codigo);
+    
+    const cupom = await prisma.cuponsDesconto.findUnique({
+      where: { codigo: codigoNormalizado },
+      include: {
+        CuponsDescontoPlanos: true,
+        CuponsDescontoCursos: true,
+      },
+    });
+
+    if (!cupom) {
+      return {
+        valido: false,
+        erro: 'CUPOM_NAO_ENCONTRADO',
+        mensagem: 'Cupom não encontrado',
+      };
+    }
+
+    // Verificar se o cupom está ativo
+    if (cupom.status !== WebsiteStatus.PUBLICADO) {
+      return {
+        valido: false,
+        erro: 'CUPOM_INATIVO',
+        mensagem: 'Este cupom não está mais ativo',
+      };
+    }
+
+    // Verificar período de validade
+    const agora = new Date();
+    if (cupom.periodoTipo === CuponsPeriodo.PERIODO) {
+      if (cupom.periodoInicio && agora < cupom.periodoInicio) {
+        return {
+          valido: false,
+          erro: 'CUPOM_AINDA_NAO_VALIDO',
+          mensagem: 'Este cupom ainda não está válido',
+        };
+      }
+      if (cupom.periodoFim && agora > cupom.periodoFim) {
+        return {
+          valido: false,
+          erro: 'CUPOM_EXPIRADO',
+          mensagem: 'Este cupom já expirou',
+        };
+      }
+    }
+
+    // Verificar limite de uso total
+    if (cupom.limiteUsoTotalTipo === CuponsLimiteUso.LIMITADO) {
+      if (cupom.limiteUsoTotalQuantidade && cupom.usosTotais >= cupom.limiteUsoTotalQuantidade) {
+        return {
+          valido: false,
+          erro: 'CUPOM_ESGOTADO',
+          mensagem: 'Este cupom já atingiu o limite de uso',
+        };
+      }
+    }
+
+    // Verificar se o cupom se aplica a planos empresariais
+    if (cupom.aplicarEm === CuponsAplicarEm.APENAS_CURSOS) {
+      return {
+        valido: false,
+        erro: 'CUPOM_NAO_APLICAVEL',
+        mensagem: 'Este cupom é válido apenas para cursos',
+      };
+    }
+
+    // Verificar se o cupom se aplica ao plano específico
+    if (planosEmpresariaisId && 
+        cupom.aplicarEm === CuponsAplicarEm.APENAS_ASSINATURA && 
+        !cupom.aplicarEmTodosItens) {
+      const planoVinculado = cupom.CuponsDescontoPlanos.find(
+        (p) => p.planoId === planosEmpresariaisId
+      );
+      if (!planoVinculado) {
+        return {
+          valido: false,
+          erro: 'CUPOM_NAO_APLICAVEL_PLANO',
+          mensagem: 'Este cupom não é válido para o plano selecionado',
+        };
+      }
+    }
+
+    // Verificar limite por usuário (se usuarioId fornecido)
+    if (usuarioId && cupom.limitePorUsuarioTipo !== CuponsLimiteUsuario.ILIMITADO) {
+      // Contar quantas vezes o usuário já usou este cupom
+      const usosDoUsuario = await prisma.empresasPlano.count({
+        where: {
+          usuarioId,
+          // Aqui você pode adicionar lógica para verificar uso do cupom
+          // Por exemplo, se tiver um campo cupomId na tabela EmpresasPlano
+        },
+      });
+
+      if (cupom.limitePorUsuarioTipo === CuponsLimiteUsuario.PRIMEIRA_COMPRA) {
+        // Verificar se é a primeira compra do usuário
+        const comprasAnteriores = await prisma.empresasPlano.count({
+          where: {
+            usuarioId,
+            statusPagamento: 'APROVADO',
+          },
+        });
+        if (comprasAnteriores > 0) {
+          return {
+            valido: false,
+            erro: 'CUPOM_APENAS_PRIMEIRA_COMPRA',
+            mensagem: 'Este cupom é válido apenas para a primeira compra',
+          };
+        }
+      }
+    }
+
+    // Calcular valor do desconto
+    const tipoDesconto = cupom.tipoDesconto;
+    const valorPercentual = cupom.valorPorcentagem ? Number(cupom.valorPorcentagem) : null;
+    const valorFixo = cupom.valorFixo ? Number(cupom.valorFixo) : null;
+
+    return {
+      valido: true,
+      cupom: {
+        id: cupom.id,
+        codigo: cupom.codigo,
+        descricao: cupom.descricao,
+        tipoDesconto,
+        valorPercentual,
+        valorFixo,
+        aplicarEm: cupom.aplicarEm,
+      },
+    };
+  },
 };

@@ -21,11 +21,19 @@ export class AssinaturasController {
           .status(400)
           .json({ success: false, code: 'VALIDATION_ERROR', issues: error.flatten().fieldErrors });
       }
+      // Log detalhado do erro para debug
+      console.error('[CHECKOUT_ERROR]', {
+        message: error?.message,
+        stack: error?.stack,
+        cause: error?.cause,
+        response: error?.response?.data || error?.response,
+        status: error?.status || error?.response?.status,
+      });
       res.status(500).json({
         success: false,
-        code: 'CHECKOUT_ERROR',
-        message: 'Erro ao iniciar checkout',
-        error: error?.message,
+        code: error?.code || 'CHECKOUT_ERROR',
+        message: error?.message || 'Erro ao iniciar checkout',
+        details: error?.response?.data || error?.cause || undefined,
       });
     }
   };

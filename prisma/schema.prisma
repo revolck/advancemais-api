@@ -125,6 +125,7 @@ model CuponsDesconto {
   Usuarios                   Usuarios               @relation(fields: [criadoPorId], references: [id])
   CuponsDescontoCursos       CuponsDescontoCursos[]
   CuponsDescontoPlanos       CuponsDescontoPlanos[]
+  EmpresasPlano              EmpresasPlano[]
 
   @@index([aplicarEm, status])
   @@index([codigo])
@@ -656,6 +657,7 @@ model EmpresasCandidatos {
   Usuarios_EmpresasCandidatos_empresaUsuarioIdToUsuarios Usuarios            @relation("EmpresasCandidatos_empresaUsuarioIdToUsuarios", fields: [empresaUsuarioId], references: [id])
   status_processo                                        status_processo     @relation(fields: [statusId], references: [id])
   EmpresasVagas                                          EmpresasVagas       @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  Notificacoes                                           Notificacoes[]
 
   @@unique([vagaId, candidatoId, curriculoId])
   @@index([statusId])
@@ -682,12 +684,27 @@ model EmpresasPlano {
   mpPaymentId           String?
   proximaCobranca       DateTime?
   graceUntil            DateTime?
+  // Aceite de termos de contratação
+  aceitouTermos         Boolean                 @default(false)
+  aceitouTermosEm       DateTime?
+  aceitouTermosIp       String?                 @db.VarChar(45)
+  aceitouTermosUserAgent String?                @db.VarChar(500)
+  // Cupom de desconto aplicado
+  cupomDescontoId       String?
+  cupomDescontoCodigo   String?                 @db.VarChar(40)
+  valorOriginal         Decimal?                @db.Decimal(12, 2)
+  valorDesconto         Decimal?                @db.Decimal(12, 2)
+  valorFinal            Decimal?                @db.Decimal(12, 2)
   PlanosEmpresariais    PlanosEmpresariais      @relation(fields: [planosEmpresariaisId], references: [id])
   Usuarios              Usuarios                @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  CuponsDesconto        CuponsDesconto?         @relation(fields: [cupomDescontoId], references: [id])
   EmpresasVagasDestaque EmpresasVagasDestaque[]
+  Requerimentos         Requerimentos[]
+  Notificacoes          Notificacoes[]
 
   @@index([planosEmpresariaisId])
   @@index([usuarioId, status])
+  @@index([cupomDescontoId])
 }
 
 model EmpresasVagas {
@@ -729,6 +746,8 @@ model EmpresasVagas {
   Usuarios                    Usuarios                     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   EmpresasVagasDestaque       EmpresasVagasDestaque?
   EmpresasVagasProcesso       EmpresasVagasProcesso[]
+  Requerimentos               Requerimentos[]
+  Notificacoes                Notificacoes[]
 
   @@index([areaInteresseId])
   @@index([categoriaVagaId])
@@ -919,6 +938,12 @@ model Usuarios {
   UsuariosSessoes                                                  UsuariosSessoes[]
   UsuariosVerificacaoEmail                                         UsuariosVerificacaoEmail?
   status_processo                                                  status_processo[]
+  // Requerimentos
+  Requerimentos_usuarioId                                          Requerimentos[]          @relation("Requerimentos_usuarioId")
+  Requerimentos_atribuidoParaId                                    Requerimentos[]          @relation("Requerimentos_atribuidoParaId")
+  RequerimentosHistorico                                           RequerimentosHistorico[]
+  // Notificações
+  Notificacoes                                                     Notificacoes[]
 
   @@index([criadoEm])
   @@index([role])
@@ -940,6 +965,105 @@ model UsuariosCandidatosLogs {
   Usuarios  Usuarios         @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([usuarioId, criadoEm])
+}
+
+// =============================================================================
+// REQUERIMENTOS - Sistema de solicitações de usuários para administração
+// =============================================================================
+
+model Requerimentos {
+  id                    String                  @id @default(uuid())
+  codigo                String                  @unique @db.VarChar(20) // REQ-2025-00001
+  usuarioId             String                  // Quem abriu o requerimento
+  tipo                  RequerimentoTipo
+  prioridade            RequerimentoPrioridade  @default(MEDIA)
+  status                RequerimentoStatus      @default(ABERTO)
+  titulo                String                  @db.VarChar(200)
+  descricao             String                  @db.Text
+  // Referências opcionais (para vincular a entidades específicas)
+  empresasPlanoId       String?                 // Se for sobre um plano específico
+  empresasVagaId        String?                 // Se for sobre uma vaga específica
+  // Dados de reembolso (se aplicável)
+  valorReembolso        Decimal?                @db.Decimal(12, 2)
+  motivoReembolso       String?                 @db.VarChar(500)
+  // Administração
+  atribuidoParaId       String?                 // Admin responsável
+  respostaAdmin         String?                 @db.Text
+  resolvidoEm           DateTime?
+  // Metadados
+  anexos                Json?                   // Array de URLs de anexos
+  metadata              Json?                   // Dados adicionais
+  // Timestamps
+  criadoEm              DateTime                @default(now())
+  atualizadoEm          DateTime                @default(now())
+  // Relações
+  Usuario               Usuarios                @relation("Requerimentos_usuarioId", fields: [usuarioId], references: [id], onDelete: Cascade)
+  AtribuidoPara         Usuarios?               @relation("Requerimentos_atribuidoParaId", fields: [atribuidoParaId], references: [id])
+  EmpresasPlano         EmpresasPlano?          @relation(fields: [empresasPlanoId], references: [id])
+  EmpresasVaga          EmpresasVagas?          @relation(fields: [empresasVagaId], references: [id])
+  RequerimentosHistorico RequerimentosHistorico[]
+
+  @@index([usuarioId])
+  @@index([status])
+  @@index([tipo])
+  @@index([criadoEm])
+  @@index([atribuidoParaId])
+  @@index([empresasPlanoId])
+}
+
+model RequerimentosHistorico {
+  id              String             @id @default(uuid())
+  requerimentoId  String
+  usuarioId       String             // Quem fez a ação
+  statusAnterior  RequerimentoStatus?
+  statusNovo      RequerimentoStatus?
+  acao            String             @db.VarChar(100) // CRIADO, STATUS_ALTERADO, COMENTARIO, ATRIBUIDO, etc.
+  comentario      String?            @db.Text
+  metadata        Json?
+  criadoEm        DateTime           @default(now())
+  Requerimento    Requerimentos      @relation(fields: [requerimentoId], references: [id], onDelete: Cascade)
+  Usuario         Usuarios           @relation(fields: [usuarioId], references: [id])
+
+  @@index([requerimentoId, criadoEm])
+}
+
+// =============================================
+// MODELO DE NOTIFICAÇÕES
+// =============================================
+
+model Notificacoes {
+  id                String                @id @default(uuid())
+  usuarioId         String                // Usuário que receberá a notificação
+  tipo              NotificacaoTipo       // Tipo da notificação
+  status            NotificacaoStatus     @default(NAO_LIDA)
+  prioridade        NotificacaoPrioridade @default(NORMAL)
+  titulo            String                @db.VarChar(200)
+  mensagem          String                @db.Text
+  // Referências opcionais para entidades relacionadas
+  vagaId            String?               // Se for sobre uma vaga
+  candidaturaId     String?               // Se for sobre uma candidatura
+  empresasPlanoId   String?               // Se for sobre um plano
+  // Dados extras (ex: motivo de rejeição, detalhes do pagamento, etc.)
+  dados             Json?                 // Dados adicionais em formato JSON
+  // Link de ação (onde o usuário pode clicar para ver mais detalhes)
+  linkAcao          String?               @db.VarChar(500)
+  // Controle de leitura
+  lidaEm            DateTime?
+  // Timestamps
+  criadoEm          DateTime              @default(now())
+  expiraEm          DateTime?             // Algumas notificações podem expirar
+  // Relações
+  Usuario           Usuarios              @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  Vaga              EmpresasVagas?        @relation(fields: [vagaId], references: [id], onDelete: SetNull)
+  Candidatura       EmpresasCandidatos? @relation(fields: [candidaturaId], references: [id], onDelete: SetNull)
+  EmpresasPlano     EmpresasPlano?        @relation(fields: [empresasPlanoId], references: [id], onDelete: SetNull)
+
+  @@index([usuarioId, status])
+  @@index([usuarioId, criadoEm])
+  @@index([tipo])
+  @@index([status])
+  @@index([vagaId])
+  @@index([empresasPlanoId])
 }
 
 model UsuariosCurriculos {
@@ -1929,4 +2053,70 @@ enum WebsiteSlidersOrientations {
 enum WebsiteStatus {
   PUBLICADO
   RASCUNHO
+}
+
+// =============================================================================
+// REQUERIMENTOS (Solicitações de usuários para administração)
+// =============================================================================
+
+enum RequerimentoTipo {
+  CANCELAMENTO_PLANO       // Cancelamento de plano empresarial
+  REEMBOLSO                // Solicitação de reembolso (direito de arrependimento)
+  SUPORTE_TECNICO          // Suporte técnico geral
+  ALTERACAO_DADOS          // Alteração de dados cadastrais
+  DENUNCIA                 // Denúncia de vaga/empresa
+  RECLAMACAO               // Reclamação geral
+  OUTROS                   // Outros assuntos
+}
+
+enum RequerimentoStatus {
+  ABERTO                   // Requerimento aberto, aguardando análise
+  EM_ANALISE               // Em análise pelo administrador
+  AGUARDANDO_USUARIO       // Aguardando resposta do usuário
+  RESOLVIDO                // Resolvido/concluído
+  CANCELADO                // Cancelado pelo usuário
+  RECUSADO                 // Recusado pelo administrador
+}
+
+enum RequerimentoPrioridade {
+  BAIXA
+  MEDIA
+  ALTA
+  URGENTE
+}
+
+// =============================================
+// ENUMS DE NOTIFICAÇÕES
+// =============================================
+
+enum NotificacaoTipo {
+  // Notificações para EMPRESA
+  VAGA_REJEITADA               // Vaga foi rejeitada pelo Setor de Vagas
+  VAGA_APROVADA                // Vaga foi aprovada e publicada
+  NOVO_CANDIDATO               // Novo candidato se inscreveu na vaga
+  VAGA_PREENCHIDA              // Vaga atingiu limite de currículos desejados
+  PLANO_EXPIRANDO              // Plano irá expirar em breve (5, 3, 1 dia ou horas)
+  PLANO_EXPIRADO               // Plano expirou
+  ASSINATURA_RENOVADA          // Assinatura foi renovada automaticamente
+  PAGAMENTO_APROVADO           // Pagamento foi aprovado
+  PAGAMENTO_RECUSADO           // Pagamento foi recusado
+  // Notificações para CANDIDATO (futuro)
+  CANDIDATURA_VISUALIZADA      // Empresa visualizou o currículo
+  CANDIDATURA_APROVADA         // Empresa aprovou o candidato para próxima etapa
+  CANDIDATURA_REJEITADA        // Empresa rejeitou a candidatura
+  // Notificações gerais
+  SISTEMA                      // Notificação do sistema
+}
+
+enum NotificacaoStatus {
+  NAO_LIDA
+  LIDA
+  ARQUIVADA
+}
+
+enum NotificacaoPrioridade {
+  BAIXA
+  NORMAL
+  ALTA
+  URGENTE
 }

@@ -15,6 +15,10 @@ import { cursosRoutes } from '@/modules/cursos';
 import { cuponsRoutes } from '@/modules/cupons';
 import { auditoriaRoutes } from '@/modules/auditoria';
 import { statusProcessoRoutes } from '@/modules/status-processo/routes';
+import dashboardRoutes from '@/modules/dashboard/routes';
+import { vagasSolicitacoesRoutes } from '@/modules/empresas/vagas-solicitacoes/routes';
+import { requerimentosRoutes } from '@/modules/requerimentos/routes';
+import { notificacoesRoutes } from '@/modules/notificacoes/routes';
 import { setCacheHeaders, DEFAULT_TTL } from '@/utils/cache';
 import { logger } from '@/utils/logger';
 import { checkDatabaseHealth } from '@/utils/database-health';
@@ -1224,6 +1228,101 @@ if (statusProcessoRoutes) {
   routesLogger.error(
     { feature: 'StatusProcessoModule' },
     '❌ statusProcessoRoutes não está definido',
+  );
+}
+
+/**
+ * Módulo de Dashboard - COM VALIDAÇÃO
+ * /api/v1/dashboard
+ */
+if (dashboardRoutes) {
+  try {
+    router.use('/api/v1/dashboard', dashboardRoutes);
+    routesLogger.info({ feature: 'DashboardModule' }, '✅ Módulo Dashboard registrado com sucesso');
+  } catch (error) {
+    routesLogger.error(
+      { feature: 'DashboardModule', err: error },
+      '❌ ERRO - Módulo Dashboard',
+    );
+  }
+} else {
+  routesLogger.error(
+    { feature: 'DashboardModule' },
+    '❌ dashboardRoutes não está definido',
+  );
+}
+
+/**
+ * Módulo de Solicitações de Vagas - COM VALIDAÇÃO
+ * /api/v1/vagas/solicitacoes (alias para /api/v1/empresas/vagas/solicitacoes)
+ */
+if (vagasSolicitacoesRoutes) {
+  try {
+    router.use('/api/v1/vagas/solicitacoes', vagasSolicitacoesRoutes);
+    routesLogger.info(
+      { feature: 'VagasSolicitacoesModule' },
+      '✅ Módulo Solicitações de Vagas registrado com sucesso',
+    );
+  } catch (error) {
+    routesLogger.error(
+      { feature: 'VagasSolicitacoesModule', err: error },
+      '❌ ERRO - Módulo Solicitações de Vagas',
+    );
+  }
+} else {
+  routesLogger.error(
+    { feature: 'VagasSolicitacoesModule' },
+    '❌ vagasSolicitacoesRoutes não está definido',
+  );
+}
+
+/**
+ * Módulo de Requerimentos - COM VALIDAÇÃO
+ * /api/v1/requerimentos
+ * Sistema de solicitações de usuários (reembolso, cancelamento, suporte, etc.)
+ */
+if (requerimentosRoutes) {
+  try {
+    router.use('/api/v1/requerimentos', requerimentosRoutes);
+    routesLogger.info(
+      { feature: 'RequerimentosModule' },
+      '✅ Módulo Requerimentos registrado com sucesso',
+    );
+  } catch (error) {
+    routesLogger.error(
+      { feature: 'RequerimentosModule', err: error },
+      '❌ ERRO - Módulo Requerimentos',
+    );
+  }
+} else {
+  routesLogger.error(
+    { feature: 'RequerimentosModule' },
+    '❌ requerimentosRoutes não está definido',
+  );
+}
+
+/**
+ * Módulo de Notificações - COM VALIDAÇÃO
+ * /api/v1/notificacoes
+ * Sistema de notificações para usuários (empresas, candidatos, etc.)
+ */
+if (notificacoesRoutes) {
+  try {
+    router.use('/api/v1/notificacoes', notificacoesRoutes);
+    routesLogger.info(
+      { feature: 'NotificacoesModule' },
+      '✅ Módulo Notificações registrado com sucesso',
+    );
+  } catch (error) {
+    routesLogger.error(
+      { feature: 'NotificacoesModule', err: error },
+      '❌ ERRO - Módulo Notificações',
+    );
+  }
+} else {
+  routesLogger.error(
+    { feature: 'NotificacoesModule' },
+    '❌ notificacoesRoutes não está definido',
   );
 }
 

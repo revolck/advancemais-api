@@ -6,6 +6,7 @@ import { Roles } from '@/modules/usuarios/enums/Roles';
 import { VagasCategoriasController } from '@/modules/empresas/vagas/controllers/categorias.controller';
 import { VagasController } from '@/modules/empresas/vagas/controllers/vagas.controller';
 import { vagasProcessosRoutes } from '@/modules/empresas/vagas-processos';
+import { vagasSolicitacoesRoutes } from '@/modules/empresas/vagas-solicitacoes/routes';
 
 const router = Router();
 const protectedRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.EMPRESA, Roles.SETOR_DE_VAGAS];
@@ -689,6 +690,9 @@ router.get('/slug/:slug', publicCache, VagasController.getBySlug);
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/empresas/vagas/{id}"
  */
+// Rotas de solicitações de publicação
+router.use('/solicitacoes', vagasSolicitacoesRoutes);
+
 router.use('/:vagaId/processos', supabaseAuthMiddleware(protectedRoles), vagasProcessosRoutes);
 router.get('/:id', publicCache, VagasController.get);
 

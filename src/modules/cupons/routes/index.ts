@@ -287,4 +287,138 @@ router.put('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), CuponsControl
  */
 router.delete('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), CuponsController.remove);
 
+/**
+ * @openapi
+ * /api/v1/cupons/validar:
+ *   post:
+ *     summary: Validar um cupom de desconto para checkout
+ *     description: |
+ *       Valida se um cupom de desconto pode ser utilizado no checkout de planos empresariais.
+ *       Verifica:
+ *       - Se o cupom existe e está ativo
+ *       - Se está dentro do período de validade
+ *       - Se não atingiu o limite de uso
+ *       - Se é aplicável a planos empresariais (não apenas cursos)
+ *       - Se é válido para o plano específico selecionado
+ *       - Se o usuário pode usar (primeira compra, limite por usuário)
+ *       
+ *       Disponível para usuários com role EMPRESA.
+ *     tags: [Comercial]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - codigo
+ *             properties:
+ *               codigo:
+ *                 type: string
+ *                 minLength: 3
+ *                 maxLength: 40
+ *                 description: Código do cupom de desconto
+ *                 example: "ADVANCE50"
+ *               planosEmpresariaisId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: ID do plano empresarial para validar se o cupom é aplicável
+ *                 example: "11111111-1111-1111-1111-111111111111"
+ *     responses:
+ *       200:
+ *         description: Cupom válido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 valido:
+ *                   type: boolean
+ *                   example: true
+ *                 cupom:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                     codigo:
+ *                       type: string
+ *                       example: "ADVANCE50"
+ *                     descricao:
+ *                       type: string
+ *                       nullable: true
+ *                       example: "50% de desconto na primeira assinatura"
+ *                     tipoDesconto:
+ *                       type: string
+ *                       enum: [PORCENTAGEM, VALOR_FIXO]
+ *                       example: "PORCENTAGEM"
+ *                     valorPercentual:
+ *                       type: number
+ *                       nullable: true
+ *                       example: 50
+ *                     valorFixo:
+ *                       type: number
+ *                       nullable: true
+ *                       example: null
+ *                     aplicarEm:
+ *                       type: string
+ *                       enum: [TODA_PLATAFORMA, APENAS_ASSINATURA, APENAS_CURSOS]
+ *                       example: "APENAS_ASSINATURA"
+ *       400:
+ *         description: Cupom inválido ou não aplicável
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   enum:
+ *                     - VALIDATION_ERROR
+ *                     - CUPOM_NAO_ENCONTRADO
+ *                     - CUPOM_INATIVO
+ *                     - CUPOM_AINDA_NAO_VALIDO
+ *                     - CUPOM_EXPIRADO
+ *                     - CUPOM_ESGOTADO
+ *                     - CUPOM_NAO_APLICAVEL
+ *                     - CUPOM_NAO_APLICAVEL_PLANO
+ *                     - CUPOM_APENAS_PRIMEIRA_COMPRA
+ *                   example: "CUPOM_NAO_ENCONTRADO"
+ *                 message:
+ *                   type: string
+ *                   example: "Cupom não encontrado"
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X POST "http://localhost:3000/api/v1/cupons/validar" \
+ *            -H "Authorization: Bearer <TOKEN>" \
+ *            -H "Content-Type: application/json" \
+ *            -d '{
+ *                  "codigo": "ADVANCE50",
+ *                  "planosEmpresariaisId": "11111111-1111-1111-1111-111111111111"
+ *                }'
+ */
+router.post('/validar', supabaseAuthMiddleware(['EMPRESA']), CuponsController.validar);
+
 export { router as cuponsRoutes };

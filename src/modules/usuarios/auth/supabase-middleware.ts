@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import jwksRsa from 'jwks-rsa';
 import type { Prisma } from '@prisma/client';
-import { prisma } from '../../../config/prisma';
+import { prisma, retryOperation } from '../../../config/prisma';
 import { supabaseConfig, jwtConfig } from '../../../config/env';
 import { getCache, setCache } from '../../../utils/cache';
 import { logger } from '../../../utils/logger';
@@ -141,12 +141,28 @@ export const supabaseAuthMiddleware =
 
             if (!usuario) {
               try {
-                const usuarioDb = await prisma.usuarios.findFirst({
-                  where: {
-                    OR: [{ supabaseId: decoded.sub as string }, { id: decoded.sub as string }],
-                  },
+                // ✅ OTIMIZAÇÃO: Usar retryOperation com timeout curto (3s) para fail-fast
+                // Tentar buscar por supabaseId primeiro (mais comum e tem índice único)
+                const usuarioDb = await retryOperation(
+                  async () => {
+                    // Tentar por supabaseId primeiro (mais comum)
+                    const bySupabaseId = await prisma.usuarios.findUnique({
+                      where: { supabaseId: decoded.sub as string },
                   select: usuarioSelect,
                 });
+                    
+                    if (bySupabaseId) return bySupabaseId;
+                    
+                    // Fallback: tentar por id (caso o token use id ao invés de supabaseId)
+                    return await prisma.usuarios.findUnique({
+                      where: { id: decoded.sub as string },
+                      select: usuarioSelect,
+                    });
+                  },
+                  2, // 2 tentativas apenas (fail-fast)
+                  500, // 500ms delay entre tentativas
+                  3000, // 3s timeout por tentativa (fail-fast para não bloquear outras requisições)
+                );
 
                 if (usuarioDb) {
                   const { UsuariosInformation, ...rest } = usuarioDb;

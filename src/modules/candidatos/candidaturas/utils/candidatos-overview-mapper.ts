@@ -282,20 +282,20 @@ export const mapCandidatura = (candidatura: CandidaturaRecord) => {
   }
 
   return {
-    id: candidatura.id,
-    vagaId: candidatura.vagaId,
-    candidatoId: candidatura.candidatoId,
-    curriculoId: candidatura.curriculoId ?? null,
-    empresaUsuarioId: candidatura.empresaUsuarioId,
+  id: candidatura.id,
+  vagaId: candidatura.vagaId,
+  candidatoId: candidatura.candidatoId,
+  curriculoId: candidatura.curriculoId ?? null,
+  empresaUsuarioId: candidatura.empresaUsuarioId,
     status: candidatura.status_processo?.nome ?? 'DESCONHECIDO',
-    status_processo: candidatura.status_processo,
-    origem: candidatura.origem,
+  status_processo: candidatura.status_processo,
+  origem: candidatura.origem,
     aplicadaEm: candidatura.aplicadaEm.toISOString(),
     atualizadaEm: candidatura.atualizadaEm.toISOString(),
-    consentimentos: candidatura.consentimentos ?? null,
-    UsuariosCurriculos: candidatura.UsuariosCurriculos ? mapCurriculo(candidatura.UsuariosCurriculos) : null,
+  consentimentos: candidatura.consentimentos ?? null,
+  UsuariosCurriculos: candidatura.UsuariosCurriculos ? mapCurriculo(candidatura.UsuariosCurriculos) : null,
     vaga,
-    empresa: mapUsuarioAdmin(candidatura.Usuarios_EmpresasCandidatos_empresaUsuarioIdToUsuarios ?? null),
+  empresa: mapUsuarioAdmin(candidatura.Usuarios_EmpresasCandidatos_empresaUsuarioIdToUsuarios ?? null),
   };
 };
 

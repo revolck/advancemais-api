@@ -11,12 +11,158 @@ import {
   StatusDeVagas,
   EmpresasPlanoStatus,
   EmpresasPlanoModo,
+  CuponsAplicarEm,
+  CuponsLimiteUso,
+  CuponsPeriodo,
+  WebsiteStatus,
 } from '@prisma/client';
 import type { PlanosEmpresariais } from '@prisma/client';
 import { EmailService } from '@/modules/brevo/services/email-service';
 import { EmailTemplates } from '@/modules/brevo/templates/email-templates';
 import { logger } from '@/utils/logger';
 import type { StartCheckoutInput } from '@/modules/mercadopago/assinaturas/validators/assinaturas.schema';
+
+// Tipo para resultado da validação de cupom
+type CupomValidado = {
+  valido: boolean;
+  cupomId?: string;
+  tipoDesconto?: 'PORCENTAGEM' | 'VALOR_FIXO';
+  valorPercentual?: number;
+  valorFixo?: number;
+  erro?: string;
+  mensagem?: string;
+};
+
+// Função para validar e calcular desconto do cupom
+async function validarECalcularDesconto(
+  cupomCodigo: string | undefined,
+  planosEmpresariaisId: string,
+  usuarioId: string,
+  valorOriginal: number,
+): Promise<{ valorFinal: number; desconto: number; cupomId: string | null; cupomInfo: CupomValidado | null }> {
+  if (!cupomCodigo) {
+    return { valorFinal: valorOriginal, desconto: 0, cupomId: null, cupomInfo: null };
+  }
+
+  const codigoNormalizado = cupomCodigo.trim().toUpperCase();
+
+  const cupom = await prisma.cuponsDesconto.findUnique({
+    where: { codigo: codigoNormalizado },
+    include: {
+      CuponsDescontoPlanos: true,
+    },
+  });
+
+  if (!cupom) {
+    return {
+      valorFinal: valorOriginal,
+      desconto: 0,
+      cupomId: null,
+      cupomInfo: { valido: false, erro: 'CUPOM_NAO_ENCONTRADO', mensagem: 'Cupom não encontrado' },
+    };
+  }
+
+  // Verificar se o cupom está ativo
+  if (cupom.status !== WebsiteStatus.PUBLICADO) {
+    return {
+      valorFinal: valorOriginal,
+      desconto: 0,
+      cupomId: null,
+      cupomInfo: { valido: false, erro: 'CUPOM_INATIVO', mensagem: 'Este cupom não está mais ativo' },
+    };
+  }
+
+  // Verificar período de validade
+  const agora = new Date();
+  if (cupom.periodoTipo === CuponsPeriodo.PERIODO) {
+    if (cupom.periodoInicio && agora < cupom.periodoInicio) {
+      return {
+        valorFinal: valorOriginal,
+        desconto: 0,
+        cupomId: null,
+        cupomInfo: { valido: false, erro: 'CUPOM_AINDA_NAO_VALIDO', mensagem: 'Este cupom ainda não está válido' },
+      };
+    }
+    if (cupom.periodoFim && agora > cupom.periodoFim) {
+      return {
+        valorFinal: valorOriginal,
+        desconto: 0,
+        cupomId: null,
+        cupomInfo: { valido: false, erro: 'CUPOM_EXPIRADO', mensagem: 'Este cupom já expirou' },
+      };
+    }
+  }
+
+  // Verificar limite de uso total
+  if (cupom.limiteUsoTotalTipo === CuponsLimiteUso.LIMITADO) {
+    if (cupom.limiteUsoTotalQuantidade && cupom.usosTotais >= cupom.limiteUsoTotalQuantidade) {
+      return {
+        valorFinal: valorOriginal,
+        desconto: 0,
+        cupomId: null,
+        cupomInfo: { valido: false, erro: 'CUPOM_ESGOTADO', mensagem: 'Este cupom já atingiu o limite de uso' },
+      };
+    }
+  }
+
+  // Verificar se o cupom se aplica a planos empresariais
+  if (cupom.aplicarEm === CuponsAplicarEm.APENAS_CURSOS) {
+    return {
+      valorFinal: valorOriginal,
+      desconto: 0,
+      cupomId: null,
+      cupomInfo: { valido: false, erro: 'CUPOM_NAO_APLICAVEL', mensagem: 'Este cupom é válido apenas para cursos' },
+    };
+  }
+
+  // Verificar se o cupom se aplica ao plano específico
+  if (cupom.aplicarEm === CuponsAplicarEm.APENAS_ASSINATURA && !cupom.aplicarEmTodosItens) {
+    const planoVinculado = cupom.CuponsDescontoPlanos.find((p) => p.planoId === planosEmpresariaisId);
+    if (!planoVinculado) {
+      return {
+        valorFinal: valorOriginal,
+        desconto: 0,
+        cupomId: null,
+        cupomInfo: {
+          valido: false,
+          erro: 'CUPOM_NAO_APLICAVEL_PLANO',
+          mensagem: 'Este cupom não é válido para o plano selecionado',
+        },
+      };
+    }
+  }
+
+  // Calcular desconto
+  let desconto = 0;
+  const tipoDesconto = cupom.tipoDesconto;
+
+  if (tipoDesconto === 'PORCENTAGEM' && cupom.valorPorcentagem) {
+    const percentual = Number(cupom.valorPorcentagem);
+    desconto = valorOriginal * (percentual / 100);
+  } else if (tipoDesconto === 'VALOR_FIXO' && cupom.valorFixo) {
+    desconto = Number(cupom.valorFixo);
+  }
+
+  // Desconto não pode ser maior que o valor original
+  desconto = Math.min(desconto, valorOriginal);
+  // Arredondar para 2 casas decimais
+  desconto = Math.round(desconto * 100) / 100;
+
+  const valorFinal = Math.round((valorOriginal - desconto) * 100) / 100;
+
+  return {
+    valorFinal,
+    desconto,
+    cupomId: cupom.id,
+    cupomInfo: {
+      valido: true,
+      cupomId: cupom.id,
+      tipoDesconto: tipoDesconto as 'PORCENTAGEM' | 'VALOR_FIXO',
+      valorPercentual: cupom.valorPorcentagem ? Number(cupom.valorPorcentagem) : undefined,
+      valorFixo: cupom.valorFixo ? Number(cupom.valorFixo) : undefined,
+    },
+  };
+}
 
 type MercadoPagoResponse<T = any> = {
   body?: T;
@@ -114,6 +260,16 @@ async function createOrUpdateCheckoutEmpresasPlano(params: {
   mpSubscriptionId?: string | null;
   mpPayerId?: string | null;
   mpPaymentId?: string | null;
+  // Aceite de termos
+  aceitouTermos?: boolean;
+  aceitouTermosIp?: string | null;
+  aceitouTermosUserAgent?: string | null;
+  // Cupom de desconto
+  cupomDescontoId?: string | null;
+  cupomDescontoCodigo?: string | null;
+  valorOriginal?: number | null;
+  valorDesconto?: number | null;
+  valorFinal?: number | null;
 }) {
   const data = {
     usuarioId: params.usuarioId,
@@ -131,6 +287,17 @@ async function createOrUpdateCheckoutEmpresasPlano(params: {
     mpSubscriptionId: params.mpSubscriptionId ?? null,
     mpPayerId: params.mpPayerId ?? null,
     mpPaymentId: params.mpPaymentId ?? null,
+    // Aceite de termos
+    aceitouTermos: params.aceitouTermos ?? false,
+    aceitouTermosEm: params.aceitouTermos ? new Date() : null,
+    aceitouTermosIp: params.aceitouTermosIp ?? null,
+    aceitouTermosUserAgent: params.aceitouTermosUserAgent ?? null,
+    // Cupom de desconto
+    cupomDescontoId: params.cupomDescontoId ?? null,
+    cupomDescontoCodigo: params.cupomDescontoCodigo ?? null,
+    valorOriginal: params.valorOriginal ?? null,
+    valorDesconto: params.valorDesconto ?? null,
+    valorFinal: params.valorFinal ?? null,
   };
 
   return prisma.empresasPlano.upsert({
@@ -390,6 +557,20 @@ export const assinaturasService = {
       throw new Error('Usuário não encontrado');
     }
 
+    // Validar e calcular desconto do cupom
+    const valorOriginal = parseFloat(planoBase.valor);
+    const { valorFinal, desconto, cupomId, cupomInfo } = await validarECalcularDesconto(
+      params.cupomCodigo,
+      params.planosEmpresariaisId,
+      params.usuarioId,
+      valorOriginal,
+    );
+
+    // Se cupom foi informado mas é inválido, retornar erro
+    if (params.cupomCodigo && cupomInfo && !cupomInfo.valido) {
+      throw new Error(cupomInfo.mensagem || 'Cupom inválido');
+    }
+
     const checkoutId =
       typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID()
@@ -419,13 +600,21 @@ export const assinaturasService = {
         pagamento: pagamentoSelecionado,
         modeloPagamento,
         paymentMode,
+        cupomCodigo: params.cupomCodigo || null,
+        cupomId: cupomId || null,
+        valorOriginal,
+        desconto,
+        valorFinal,
         observacao: 'Aguardando confirmação de pagamento (Mercado Pago)',
       },
     });
 
     const mp = mpClient!;
-    const valor = parseFloat(planoBase.valor);
-    const titulo = planoBase.nome;
+    // Usar valor com desconto aplicado (se cupom válido)
+    const valor = valorFinal;
+    const titulo = desconto > 0 
+      ? `${planoBase.nome} (com desconto de R$ ${desconto.toFixed(2)})`
+      : planoBase.nome;
     const { success } = resolveCheckoutReturnUrls({
       successUrl: params.successUrl,
       failureUrl: params.failureUrl,
@@ -433,24 +622,118 @@ export const assinaturasService = {
     });
 
     const { firstName, lastName } = splitName(usuario.nomeCompleto);
+    
+    // Função para validar CPF
+    const isValidCPF = (cpf: string): boolean => {
+      if (cpf.length !== 11) return false;
+      if (/^(\d)\1+$/.test(cpf)) return false; // Todos dígitos iguais
+      
+      let sum = 0;
+      for (let i = 0; i < 9; i++) sum += parseInt(cpf[i]) * (10 - i);
+      let rest = (sum * 10) % 11;
+      if (rest === 10 || rest === 11) rest = 0;
+      if (rest !== parseInt(cpf[9])) return false;
+      
+      sum = 0;
+      for (let i = 0; i < 10; i++) sum += parseInt(cpf[i]) * (11 - i);
+      rest = (sum * 10) % 11;
+      if (rest === 10 || rest === 11) rest = 0;
+      return rest === parseInt(cpf[10]);
+    };
+    
+    // Função para validar CNPJ
+    const isValidCNPJ = (cnpj: string): boolean => {
+      if (cnpj.length !== 14) return false;
+      if (/^(\d)\1+$/.test(cnpj)) return false; // Todos dígitos iguais
+      
+      const weights1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+      const weights2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+      
+      let sum = 0;
+      for (let i = 0; i < 12; i++) sum += parseInt(cnpj[i]) * weights1[i];
+      let rest = sum % 11;
+      const digit1 = rest < 2 ? 0 : 11 - rest;
+      if (digit1 !== parseInt(cnpj[12])) return false;
+      
+      sum = 0;
+      for (let i = 0; i < 13; i++) sum += parseInt(cnpj[i]) * weights2[i];
+      rest = sum % 11;
+      const digit2 = rest < 2 ? 0 : 11 - rest;
+      return digit2 === parseInt(cnpj[13]);
+    };
+    
+    // Prioridade: 1) Dados do payer enviados pelo frontend, 2) Dados do usuário no banco
     const documento = (() => {
+      // Se o frontend enviou dados de identificação, usar eles
+      if (params.payer?.identification?.number) {
+        const docNumber = sanitizeDigits(params.payer.identification.number);
+        const docType = params.payer.identification.type;
+        
+        // Validar o documento enviado pelo frontend
+        if (docType === 'CPF') {
+          if (isValidCPF(docNumber)) {
+            return { type: 'CPF' as const, number: docNumber };
+          }
+          // CPF inválido - lançar erro claro para o frontend
+          throw Object.assign(
+            new Error(`CPF inválido: ${params.payer.identification.number}. Verifique se o CPF está correto (11 dígitos).`),
+            { code: 'INVALID_CPF' }
+          );
+        }
+        if (docType === 'CNPJ') {
+          if (isValidCNPJ(docNumber)) {
+            return { type: 'CNPJ' as const, number: docNumber };
+          }
+          // CNPJ inválido - lançar erro claro para o frontend
+          throw Object.assign(
+            new Error(`CNPJ inválido: ${params.payer.identification.number}. Verifique se o CNPJ está correto (14 dígitos).`),
+            { code: 'INVALID_CNPJ' }
+          );
+        }
+      }
+      
+      // Fallback: tentar usar dados do usuário no banco (apenas se frontend não enviou)
+      // Tentar CNPJ primeiro (empresas)
       const cnpj = sanitizeDigits(usuario.cnpj);
-      if (cnpj) return { type: 'CNPJ', number: cnpj };
+      if (cnpj && isValidCNPJ(cnpj)) {
+        return { type: 'CNPJ' as const, number: cnpj };
+      }
+      // Se CNPJ inválido ou não existe, tentar CPF
       const cpf = sanitizeDigits(usuario.cpf);
-      if (cpf) return { type: 'CPF', number: cpf };
+      if (cpf && isValidCPF(cpf)) {
+        return { type: 'CPF' as const, number: cpf };
+      }
+      
+      // Se nenhum documento válido disponível
+      logger.warn('[CHECKOUT] Nenhum documento válido encontrado no perfil do usuário', {
+        usuarioId: usuario.id,
+        cnpjLength: cnpj?.length,
+        cpfLength: cpf?.length,
+      });
       return undefined;
     })();
-    const endereco = usuario.UsuariosEnderecos?.[0];
-    const payerAddress = endereco
+    // Prioridade: 1) Endereço do frontend (params.payer.address), 2) Endereço do banco
+    const enderecoFrontend = params.payer?.address;
+    const enderecoBanco = usuario.UsuariosEnderecos?.[0];
+    const payerAddress = enderecoFrontend
       ? {
-          zip_code: sanitizeDigits(endereco.cep ?? ''),
-          street_name: endereco.logradouro ?? undefined,
-          street_number: endereco.numero ?? undefined,
-          neighborhood: endereco.bairro ?? undefined,
-          city: endereco.cidade ?? undefined,
-          federal_unit: endereco.estado ?? undefined,
+          zip_code: sanitizeDigits(enderecoFrontend.zip_code ?? ''),
+          street_name: enderecoFrontend.street_name ?? undefined,
+          street_number: enderecoFrontend.street_number ?? undefined,
+          neighborhood: enderecoFrontend.neighborhood ?? undefined,
+          city: enderecoFrontend.city ?? undefined,
+          federal_unit: enderecoFrontend.federal_unit ?? undefined,
         }
-      : undefined;
+      : enderecoBanco
+        ? {
+            zip_code: sanitizeDigits(enderecoBanco.cep ?? ''),
+            street_name: enderecoBanco.logradouro ?? undefined,
+            street_number: enderecoBanco.numero ?? undefined,
+            neighborhood: enderecoBanco.bairro ?? undefined,
+            city: enderecoBanco.cidade ?? undefined,
+            federal_unit: enderecoBanco.estado ?? undefined,
+          }
+        : undefined;
     const phoneDigits = sanitizeDigits((usuario as any).UsuariosInformation?.telefone ?? '');
     const payerPhone =
       phoneDigits.length >= 10
@@ -460,13 +743,14 @@ export const assinaturasService = {
           }
         : undefined;
 
+    // Priorizar dados do frontend (params.payer) sobre dados do banco
     const payerBase = {
-      email: usuario.email,
-      first_name: firstName,
-      last_name: lastName,
+      email: params.payer?.email || usuario.email,
+      first_name: params.payer?.first_name || firstName,
+      last_name: params.payer?.last_name || lastName,
       identification: documento && documento.number ? documento : undefined,
       address: payerAddress && payerAddress.zip_code ? payerAddress : undefined,
-      phone: payerPhone,
+      phone: params.payer?.phone || payerPhone,
     };
 
     const planoSnapshot: PlanosEmpresariaisSnapshot = {
@@ -536,6 +820,16 @@ export const assinaturasService = {
           mpPreapprovalId: subscriptionId,
           mpSubscriptionId: subscriptionId,
           mpPayerId,
+          // Aceite de termos
+          aceitouTermos: params.aceitouTermos,
+          aceitouTermosIp: params.aceitouTermosIp,
+          aceitouTermosUserAgent: params.aceitouTermosUserAgent,
+          // Cupom de desconto
+          cupomDescontoId: cupomId,
+          cupomDescontoCodigo: params.cupomCodigo,
+          valorOriginal,
+          valorDesconto: desconto,
+          valorFinal,
         });
 
         if (ativo) {
@@ -567,6 +861,14 @@ export const assinaturasService = {
           payload: body,
         });
 
+        // Incrementar uso do cupom se foi aplicado com sucesso
+        if (cupomId && ativo) {
+          await prisma.cuponsDesconto.update({
+            where: { id: cupomId },
+            data: { usosTotais: { increment: 1 } },
+          });
+        }
+
         return {
           checkoutId,
           plano: planoSnapshot,
@@ -576,20 +878,160 @@ export const assinaturasService = {
             initPoint: extractInitPoint(result),
             requiresRedirect: !params.card?.token,
           },
+          // Informações do desconto aplicado
+          desconto: desconto > 0 ? {
+            cupomCodigo: params.cupomCodigo,
+            cupomId,
+            valorOriginal,
+            valorDesconto: desconto,
+            valorFinal,
+          } : null,
+          // Aceite de termos registrado
+          termos: {
+            aceitouTermos: params.aceitouTermos,
+            aceitouTermosEm: new Date().toISOString(),
+          },
         };
       }
 
       const paymentApi = new Payment(mp);
       if (pagamentoSelecionado === 'pix') {
-        const payment = (await paymentApi.create({
-          body: {
-            transaction_amount: valor,
-            description: titulo,
-            payment_method_id: 'pix',
-            external_reference: checkoutId,
-            payer: payerBase,
+        // Validar dados mínimos para PIX
+        if (!payerBase.email) {
+          throw Object.assign(new Error('Email do pagador é obrigatório para PIX'), { code: 'PAYER_EMAIL_REQUIRED' });
+        }
+        
+        // PIX no Brasil EXIGE documento de identificação válido
+        if (!payerBase.identification?.number) {
+          throw Object.assign(
+            new Error('CPF ou CNPJ válido é obrigatório para pagamento via PIX. Por favor, informe o documento do pagador no campo payer.identification.'), 
+            { code: 'PAYER_IDENTIFICATION_REQUIRED' }
+          );
+        }
+        
+        logger.info('[PIX_CHECKOUT] Documento validado com sucesso', {
+          checkoutId,
+          docType: payerBase.identification.type,
+          docLength: payerBase.identification.number.length,
+        });
+        
+        // Log dos dados que serão enviados ao Mercado Pago
+        logger.info('[PIX_CHECKOUT] Criando pagamento PIX', {
+          checkoutId,
+          transaction_amount: valor,
+          payer_email: payerBase.email,
+          payer_identification: payerBase.identification,
+        });
+
+        const pixPaymentBody = {
+          transaction_amount: valor,
+          description: titulo,
+          payment_method_id: 'pix',
+          external_reference: checkoutId,
+          payer: {
+            email: payerBase.email,
+            first_name: payerBase.first_name || undefined,
+            last_name: payerBase.last_name || undefined,
+            identification: payerBase.identification,
           },
-        })) as MercadoPagoResponse;
+        };
+
+        let payment: MercadoPagoResponse;
+        try {
+          // Log do token sendo usado (últimos 8 caracteres apenas para debug)
+          const tokenUsado = mercadopagoConfig.getAccessToken();
+          const tokenTipo = mercadopagoConfig.prod.accessToken ? 'PRODUCAO' : 'TESTE';
+          logger.info('[PIX_CHECKOUT] Usando token MP', {
+            tipo: tokenTipo,
+            tokenFinal: tokenUsado ? `...${tokenUsado.slice(-8)}` : 'NAO_CONFIGURADO',
+          });
+          
+          payment = (await paymentApi.create({ body: pixPaymentBody })) as MercadoPagoResponse;
+        } catch (mpError: any) {
+          const errorMessage = mpError?.message || '';
+          const causeDescription = mpError?.cause?.[0]?.description || '';
+          
+          // Log COMPLETO do erro para debug
+          logger.error('[PIX_CHECKOUT] Erro Mercado Pago - DETALHES COMPLETOS', {
+            checkoutId,
+            errorMessage,
+            causeDescription,
+            cause: mpError?.cause,
+            apiResponse: mpError?.apiResponse,
+            response: mpError?.response,
+            responseData: mpError?.response?.data,
+            status: mpError?.status,
+            statusCode: mpError?.statusCode,
+            errorName: mpError?.name,
+            errorCode: mpError?.code,
+            // Tentar extrair todos os campos possíveis
+            allKeys: mpError ? Object.keys(mpError) : [],
+            stringified: JSON.stringify(mpError, Object.getOwnPropertyNames(mpError), 2),
+          });
+          
+          // Tratar erros específicos do Mercado Pago
+          
+          // ERRO: Conta sem chave PIX habilitada
+          if (errorMessage.includes('without key enabled for QR') || errorMessage.includes('Collector user without key')) {
+            throw Object.assign(
+              new Error(
+                'A conta do Mercado Pago não possui chave PIX cadastrada. ' +
+                'Para receber pagamentos via PIX, é necessário cadastrar uma chave PIX no painel do Mercado Pago. ' +
+                'Acesse: https://www.mercadopago.com.br/settings/account/security/pix'
+              ),
+              { 
+                code: 'PIX_KEY_NOT_CONFIGURED',
+                cause: mpError?.cause,
+                details: {
+                  message: 'Chave PIX não configurada na conta do Mercado Pago',
+                  hint: 'Cadastre uma chave PIX (CPF, CNPJ, email ou aleatória) no painel do Mercado Pago',
+                  url: 'https://www.mercadopago.com.br/settings/account/security/pix',
+                }
+              }
+            );
+          }
+          
+          // ERRO: Problema com identidade financeira (pode ser secundário ao erro de chave PIX)
+          if (errorMessage.includes('Financial Identity') || causeDescription.includes('Financial Identity')) {
+            throw Object.assign(
+              new Error(
+                'Erro na identidade financeira do Mercado Pago. ' +
+                'Verifique: 1) Se a conta possui chave PIX cadastrada; ' +
+                '2) Se os dados do pagador (CPF/CNPJ) são válidos; ' +
+                '3) Se a conta está habilitada para receber pagamentos.'
+              ),
+              { 
+                code: 'FINANCIAL_IDENTITY_ERROR',
+                cause: mpError?.cause,
+                details: {
+                  message: 'Erro de identidade financeira no Mercado Pago',
+                  hint: 'Verifique se a conta possui chave PIX e está habilitada para receber pagamentos',
+                }
+              }
+            );
+          }
+          
+          if (errorMessage.includes('Invalid user identification') || causeDescription.includes('identification')) {
+            throw Object.assign(
+              new Error(
+                'CPF/CNPJ inválido. Verifique se o documento está correto e tente novamente.'
+              ),
+              { 
+                code: 'INVALID_IDENTIFICATION',
+                cause: mpError?.cause,
+              }
+            );
+          }
+          
+          throw Object.assign(
+            new Error(causeDescription || errorMessage || 'Erro ao criar pagamento PIX'),
+            { 
+              code: 'MERCADOPAGO_ERROR',
+              cause: mpError?.cause,
+              details: mpError?.response?.data,
+            }
+          );
+        }
         const body = payment.body ?? payment;
         const mpPaymentId = body?.id ? String(body.id) : undefined;
         const statusPagamento = mapToStatusPagamento(body?.status);
@@ -607,6 +1049,16 @@ export const assinaturasService = {
           mpPaymentId: mpPaymentId ?? null,
           proximaCobranca: expiration,
           graceUntil: expiration,
+          // Aceite de termos
+          aceitouTermos: params.aceitouTermos,
+          aceitouTermosIp: params.aceitouTermosIp,
+          aceitouTermosUserAgent: params.aceitouTermosUserAgent,
+          // Cupom de desconto
+          cupomDescontoId: cupomId,
+          cupomDescontoCodigo: params.cupomCodigo,
+          valorOriginal,
+          valorDesconto: desconto,
+          valorFinal,
         });
 
         planoSnapshot.statusPagamento = statusPagamento;
@@ -626,6 +1078,15 @@ export const assinaturasService = {
         });
 
         const transactionData = body?.point_of_interaction?.transaction_data || {};
+        
+        // Incrementar uso do cupom se foi aplicado com sucesso
+        if (cupomId) {
+          await prisma.cuponsDesconto.update({
+            where: { id: cupomId },
+            data: { usosTotais: { increment: 1 } },
+          });
+        }
+
         return {
           checkoutId,
           plano: planoSnapshot,
@@ -636,6 +1097,19 @@ export const assinaturasService = {
             qrCode: transactionData.qr_code || null,
             qrCodeBase64: transactionData.qr_code_base64 || null,
             expiresAt: body?.date_of_expiration || null,
+          },
+          // Informações do desconto aplicado
+          desconto: desconto > 0 ? {
+            cupomCodigo: params.cupomCodigo,
+            cupomId,
+            valorOriginal,
+            valorDesconto: desconto,
+            valorFinal,
+          } : null,
+          // Aceite de termos registrado
+          termos: {
+            aceitouTermos: params.aceitouTermos,
+            aceitouTermosEm: new Date().toISOString(),
           },
         };
       }
@@ -671,6 +1145,16 @@ export const assinaturasService = {
           status: ativo ? EmpresasPlanoStatus.ATIVO : EmpresasPlanoStatus.SUSPENSO,
           inicio: ativo ? new Date() : null,
           mpPaymentId: mpPaymentId ?? null,
+          // Aceite de termos
+          aceitouTermos: params.aceitouTermos,
+          aceitouTermosIp: params.aceitouTermosIp,
+          aceitouTermosUserAgent: params.aceitouTermosUserAgent,
+          // Cupom de desconto
+          cupomDescontoId: cupomId,
+          cupomDescontoCodigo: params.cupomCodigo,
+          valorOriginal,
+          valorDesconto: desconto,
+          valorFinal,
         });
 
         if (ativo) {
@@ -699,6 +1183,14 @@ export const assinaturasService = {
           payload: body,
         });
 
+        // Incrementar uso do cupom se foi aplicado com sucesso
+        if (cupomId && ativo) {
+          await prisma.cuponsDesconto.update({
+            where: { id: cupomId },
+            data: { usosTotais: { increment: 1 } },
+          });
+        }
+
         return {
           checkoutId,
           plano: planoSnapshot,
@@ -708,8 +1200,47 @@ export const assinaturasService = {
             paymentId: mpPaymentId ?? null,
             installments,
           },
+          // Informações do desconto aplicado
+          desconto: desconto > 0 ? {
+            cupomCodigo: params.cupomCodigo,
+            cupomId,
+            valorOriginal,
+            valorDesconto: desconto,
+            valorFinal,
+          } : null,
+          // Aceite de termos registrado
+          termos: {
+            aceitouTermos: params.aceitouTermos,
+            aceitouTermosEm: new Date().toISOString(),
+          },
         };
       }
+
+      // Validar endereço completo para boleto (obrigatório pelo Mercado Pago)
+      if (!payerBase.address?.zip_code || !payerBase.address?.street_name || 
+          !payerBase.address?.street_number || !payerBase.address?.neighborhood || 
+          !payerBase.address?.city || !payerBase.address?.federal_unit) {
+        throw Object.assign(
+          new Error(
+            'Endereço completo é obrigatório para pagamento via Boleto. ' +
+            'Por favor, informe: CEP, logradouro, número, bairro, cidade e estado no campo payer.address.'
+          ),
+          { 
+            code: 'BOLETO_ADDRESS_REQUIRED',
+            details: {
+              required: ['zip_code', 'street_name', 'street_number', 'neighborhood', 'city', 'federal_unit'],
+              hint: 'Envie o endereço completo no campo payer.address do request',
+            }
+          }
+        );
+      }
+
+      logger.info('[BOLETO_CHECKOUT] Criando pagamento Boleto', {
+        checkoutId,
+        transaction_amount: valor,
+        payer_email: payerBase.email,
+        payer_address: payerBase.address,
+      });
 
       const payment = (await paymentApi.create({
         body: {
@@ -745,6 +1276,16 @@ export const assinaturasService = {
         mpPaymentId: mpPaymentId ?? null,
         proximaCobranca: expiration,
         graceUntil,
+        // Aceite de termos
+        aceitouTermos: params.aceitouTermos,
+        aceitouTermosIp: params.aceitouTermosIp,
+        aceitouTermosUserAgent: params.aceitouTermosUserAgent,
+        // Cupom de desconto
+        cupomDescontoId: cupomId,
+        cupomDescontoCodigo: params.cupomCodigo,
+        valorOriginal,
+        valorDesconto: desconto,
+        valorFinal,
       });
 
       planoSnapshot.statusPagamento = statusPagamento;
@@ -773,6 +1314,14 @@ export const assinaturasService = {
         body?.point_of_interaction?.transaction_data?.ticket_url ||
         null;
 
+      // Incrementar uso do cupom se foi aplicado com sucesso
+      if (cupomId) {
+        await prisma.cuponsDesconto.update({
+          where: { id: cupomId },
+          data: { usosTotais: { increment: 1 } },
+        });
+      }
+
       return {
         checkoutId,
         plano: planoSnapshot,
@@ -783,6 +1332,19 @@ export const assinaturasService = {
           barcode,
           boletoUrl,
           expiresAt: body?.date_of_expiration || null,
+        },
+        // Informações do desconto aplicado
+        desconto: desconto > 0 ? {
+          cupomCodigo: params.cupomCodigo,
+          cupomId,
+          valorOriginal,
+          valorDesconto: desconto,
+          valorFinal,
+        } : null,
+        // Aceite de termos registrado
+        termos: {
+          aceitouTermos: params.aceitouTermos,
+          aceitouTermosEm: new Date().toISOString(),
         },
       };
     } catch (e) {
@@ -1180,6 +1742,7 @@ export const assinaturasService = {
       planosEmpresariaisId: params.planosEmpresariaisId,
       metodo: 'pagamento',
       pagamento,
+      aceitouTermos: true, // Remissão administrativa assume aceite automático
       successUrl: params.successUrl,
       failureUrl: params.failureUrl,
       pendingUrl: params.pendingUrl,

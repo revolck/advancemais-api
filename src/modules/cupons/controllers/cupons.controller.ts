@@ -163,4 +163,48 @@ export class CuponsController {
       });
     }
   };
+
+  /**
+   * Valida um cupom de desconto para uso no checkout
+   * Endpoint público para empresas validarem cupons antes de finalizar a compra
+   */
+  static validar = async (req: Request, res: Response) => {
+    try {
+      const { codigo, planosEmpresariaisId } = req.body as {
+        codigo?: string;
+        planosEmpresariaisId?: string;
+      };
+
+      if (!codigo || typeof codigo !== 'string' || codigo.trim().length < 3) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Código do cupom é obrigatório e deve ter pelo menos 3 caracteres',
+        });
+      }
+
+      const usuarioId = req.user?.id;
+      const resultado = await cuponsService.validar(codigo, planosEmpresariaisId, usuarioId);
+
+      if (!resultado.valido) {
+        return res.status(400).json({
+          success: false,
+          code: resultado.erro,
+          message: resultado.mensagem,
+        });
+      }
+
+      res.json({
+        success: true,
+        ...resultado,
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        code: 'CUPOM_VALIDAR_ERROR',
+        message: 'Erro ao validar cupom de desconto',
+        error: error?.message,
+      });
+    }
+  };
 }

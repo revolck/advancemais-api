@@ -306,12 +306,13 @@ const resolveAreaSubareaUpdate = async (
     return null;
   }
 
-  const targetAreaId = areaProvided
-    ? (data.areaInteresseId ?? null)
-    : (vagaAtual.areaInteresseId ?? null);
-  const targetSubareaId = subareaProvided
-    ? (data.subareaInteresseId ?? null)
-    : (vagaAtual.subareaInteresseId ?? null);
+  // Garantir que apenas numbers sejam usados para areaInteresseId e subareaInteresseId
+  const dataAreaId = typeof data.areaInteresseId === 'number' ? data.areaInteresseId : null;
+  const dataSubareaId =
+    typeof data.subareaInteresseId === 'number' ? data.subareaInteresseId : null;
+
+  const targetAreaId = areaProvided ? dataAreaId : (vagaAtual.areaInteresseId ?? null);
+  const targetSubareaId = subareaProvided ? dataSubareaId : (vagaAtual.subareaInteresseId ?? null);
 
   if (targetSubareaId == null) {
     throw new VagaAreaSubareaError('SUBAREA_REQUIRED');
@@ -334,12 +335,17 @@ const sanitizeCreateData = (
 ): Prisma.EmpresasVagasUncheckedCreateInput => {
   const localizacao = sanitizeLocalizacao(data.localizacao ?? null);
 
+  // Garantir que areaInteresseId e subareaInteresseId sejam numbers ou null
+  const areaInteresseId = typeof data.areaInteresseId === 'number' ? data.areaInteresseId : null;
+  const subareaInteresseId =
+    typeof data.subareaInteresseId === 'number' ? data.subareaInteresseId : null;
+
   return {
     usuarioId: data.usuarioId,
     slug: data.slug.trim().toLowerCase(),
     codigo,
-    areaInteresseId: data.areaInteresseId,
-    subareaInteresseId: data.subareaInteresseId,
+    areaInteresseId,
+    subareaInteresseId,
     modoAnonimo: data.modoAnonimo ?? false,
     regimeDeTrabalho: data.regimeDeTrabalho,
     modalidade: data.modalidade,
@@ -443,10 +449,13 @@ const sanitizeUpdateData = (data: UpdateVagaData): Prisma.EmpresasVagasUnchecked
     update.salarioConfidencial = data.salarioConfidencial;
   }
   if (data.areaInteresseId !== undefined) {
-    update.areaInteresseId = data.areaInteresseId;
+    // Garantir que apenas numbers sejam passados (se for string/UUID, será null)
+    update.areaInteresseId = typeof data.areaInteresseId === 'number' ? data.areaInteresseId : null;
   }
   if (data.subareaInteresseId !== undefined) {
-    update.subareaInteresseId = data.subareaInteresseId;
+    // Garantir que apenas numbers sejam passados (se for string/UUID, será null)
+    update.subareaInteresseId =
+      typeof data.subareaInteresseId === 'number' ? data.subareaInteresseId : null;
   }
   if (data.status !== undefined) {
     update.status = data.status;

@@ -283,7 +283,7 @@ const ensureAreaAndSubarea = async ({
     throw new VagaAreaSubareaError('AREA_NOT_FOUND');
   }
 
-  const finalAreaId = areaId ?? (subarea.CandidatosAreasInteresse?.id ?? subarea.areaId);
+  const finalAreaId = areaId ?? subarea.CandidatosAreasInteresse?.id ?? subarea.areaId;
 
   if (subarea.areaId !== finalAreaId) {
     throw new VagaAreaSubareaError('MISMATCH');
@@ -461,7 +461,13 @@ const sanitizeUpdateData = (data: UpdateVagaData): Prisma.EmpresasVagasUnchecked
 const transformVaga = (vaga: VagaWithEmpresa) => {
   if (!vaga) return null;
 
-  const { destaque, EmpresasVagasDestaque: destaqueInfo, CandidatosAreasInteresse: areaInteresse, CandidatosSubareasInteresse: subareaInteresse, ...vagaSemMetadados } = vaga;
+  const {
+    destaque,
+    EmpresasVagasDestaque: destaqueInfo,
+    CandidatosAreasInteresse: areaInteresse,
+    CandidatosSubareasInteresse: subareaInteresse,
+    ...vagaSemMetadados
+  } = vaga;
 
   const empresaUsuarioRaw =
     vagaSemMetadados.Usuarios &&

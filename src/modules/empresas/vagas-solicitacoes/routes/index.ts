@@ -182,17 +182,9 @@ const allowedRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.SETOR_DE_VAGAS];
  *       500:
  *         description: Erro interno
  */
-router.get(
-  '/:id',
-  supabaseAuthMiddleware(allowedRoles),
-  asyncHandler(SolicitacoesController.get),
-);
+router.get('/:id', supabaseAuthMiddleware(allowedRoles), asyncHandler(SolicitacoesController.get));
 
-router.get(
-  '/',
-  supabaseAuthMiddleware(allowedRoles),
-  asyncHandler(SolicitacoesController.list),
-);
+router.get('/', supabaseAuthMiddleware(allowedRoles), asyncHandler(SolicitacoesController.list));
 
 /**
  * @openapi
@@ -246,11 +238,7 @@ router.get(
  *       500:
  *         description: Erro interno
  */
-router.put(
-  '/:id/aprovar',
-  supabaseAuthMiddleware(allowedRoles),
-  SolicitacoesController.aprovar,
-);
+router.put('/:id/aprovar', supabaseAuthMiddleware(allowedRoles), SolicitacoesController.aprovar);
 
 /**
  * @openapi
@@ -306,11 +294,6 @@ router.put(
  *       500:
  *         description: Erro interno
  */
-router.put(
-  '/:id/rejeitar',
-  supabaseAuthMiddleware(allowedRoles),
-  SolicitacoesController.rejeitar,
-);
+router.put('/:id/rejeitar', supabaseAuthMiddleware(allowedRoles), SolicitacoesController.rejeitar);
 
 export { router as vagasSolicitacoesRoutes };
-

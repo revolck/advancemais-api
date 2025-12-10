@@ -12,8 +12,3 @@ export function addRequiredFields<T extends Record<string, any>>(
     ...(data.atualizadoEm === undefined && { atualizadoEm: new Date() }),
   };
 }
-
-
-
-
-

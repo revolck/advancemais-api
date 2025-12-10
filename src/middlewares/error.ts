@@ -1,6 +1,9 @@
 import type { NextFunction, Request, Response } from 'express';
 import { ZodError } from 'zod';
-import { PrismaClientInitializationError, PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import {
+  PrismaClientInitializationError,
+  PrismaClientKnownRequestError,
+} from '@prisma/client/runtime/library';
 import { logger } from '../utils/logger';
 
 interface HttpError extends Error {
@@ -22,7 +25,7 @@ const isPrismaConnectionError = (error: unknown): boolean => {
     return (
       message.includes('tenant or user not found') ||
       message.includes('connection') ||
-      message.includes('can\'t reach database') ||
+      message.includes("can't reach database") ||
       message.includes('fatal')
     );
   }
@@ -38,7 +41,7 @@ export const errorMiddleware = (
   const correlationId = req.id;
   const isZodError = err instanceof ZodError;
   const isPrismaConnection = isPrismaConnectionError(err);
-  
+
   // Determinar status code
   let statusCode: number;
   if (typeof err.statusCode === 'number') {

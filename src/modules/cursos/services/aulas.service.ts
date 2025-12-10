@@ -63,11 +63,11 @@ const ensureAulaBelongsToTurma = async (
       turmaId,
       CursosTurmas: { cursoId },
     },
-    select: { 
-      id: true, 
-      CursosTurmas: { 
-        select: { metodo: true } 
-      } 
+    select: {
+      id: true,
+      CursosTurmas: {
+        select: { metodo: true },
+      },
     },
   });
 

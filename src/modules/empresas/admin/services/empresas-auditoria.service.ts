@@ -418,7 +418,8 @@ class EmpresasAuditoriaService {
     let descricao = '';
 
     if (acao === EmpresasAuditoriaAcao.PLANO_ASSIGNADO) {
-      const nomePlano = planoNovo?.PlanosEmpresariais?.nome || planoNovo?.nome || 'Plano não identificado';
+      const nomePlano =
+        planoNovo?.PlanosEmpresariais?.nome || planoNovo?.nome || 'Plano não identificado';
       const modo = modoTexto[planoNovo?.modo] || planoNovo?.modo || 'modo não definido';
 
       descricao = `Plano atribuído: ${nomePlano} - Vínculo: ${modo}`;
@@ -440,7 +441,8 @@ class EmpresasAuditoriaService {
         descricao += ` - Período de teste: ${planoNovo.duracaoEmDias} dias`;
       }
     } else if (acao === EmpresasAuditoriaAcao.PLANO_ATUALIZADO) {
-      const nomeAnterior = planoAnterior?.PlanosEmpresariais?.nome || planoAnterior?.nome || 'Plano anterior';
+      const nomeAnterior =
+        planoAnterior?.PlanosEmpresariais?.nome || planoAnterior?.nome || 'Plano anterior';
       const nomeNovo = planoNovo?.PlanosEmpresariais?.nome || planoNovo?.nome || 'Plano novo';
       const modoAnterior = modoTexto[planoAnterior?.modo] || planoAnterior?.modo || 'não definido';
       const modoNovo = modoTexto[planoNovo?.modo] || planoNovo?.modo || 'não definido';

@@ -2,7 +2,13 @@
  * Seed de Cursos e Turmas
  */
 
-import { PrismaClient, Roles, CursosStatusPadrao, CursoStatus, StatusInscricao } from '@prisma/client';
+import {
+  PrismaClient,
+  Roles,
+  CursosStatusPadrao,
+  CursoStatus,
+  StatusInscricao,
+} from '@prisma/client';
 import { randomUUID } from 'crypto';
 
 export async function seedCursos(prisma?: PrismaClient) {
@@ -172,7 +178,9 @@ export async function seedCursos(prisma?: PrismaClient) {
                 status: StatusInscricao.INSCRITO, // Status padrão para novas inscrições
               },
             });
-            console.log(`      👤 Aluno inscrito: ${aluno.nomeCompleto} (${StatusInscricao.INSCRITO})`);
+            console.log(
+              `      👤 Aluno inscrito: ${aluno.nomeCompleto} (${StatusInscricao.INSCRITO})`,
+            );
           } catch (error: any) {
             if (!error.message.includes('Unique constraint')) {
               console.error(`      ❌ Erro ao inscrever aluno: ${error.message}`);

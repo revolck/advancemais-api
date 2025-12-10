@@ -97,8 +97,11 @@ interface UsuarioPerfil {
 const USER_PROFILE_CACHE_TTL = 300;
 
 const reviveUsuario = (usuario: UsuarioPerfil): UsuarioPerfil => {
-  const UsuariosVerificacaoEmailSummary = usuario.UsuariosVerificacaoEmail ?? buildEmailVerificationSummary();
-  const enderecos = normalizeUsuarioEnderecos(usuario.UsuariosEnderecos ?? (usuario as any).UsuariosEnderecos);
+  const UsuariosVerificacaoEmailSummary =
+    usuario.UsuariosVerificacaoEmail ?? buildEmailVerificationSummary();
+  const enderecos = normalizeUsuarioEnderecos(
+    usuario.UsuariosEnderecos ?? (usuario as any).UsuariosEnderecos,
+  );
   const [principal] = enderecos;
   const informacoes = mapUsuarioInformacoes(usuario.UsuariosInformation);
   const dataNasc = informacoes.dataNasc ?? (usuario.dataNasc ? new Date(usuario.dataNasc) : null);
@@ -202,7 +205,10 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
     // ✅ Cache: Verificar se usuário está bloqueado (rate limiting)
     const isBlocked = await loginCache.getBlocked(documentoLimpo);
     if (isBlocked) {
-      log.warn({ documentoPrefix: documentoLimpo.substring(0, 3) }, '⚠️ Tentativa de login bloqueada (cache)');
+      log.warn(
+        { documentoPrefix: documentoLimpo.substring(0, 3) },
+        '⚠️ Tentativa de login bloqueada (cache)',
+      );
       return res.status(429).json({
         success: false,
         message: 'Muitas tentativas de login. Tente novamente mais tarde.',
@@ -300,7 +306,12 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
       });
     }
 
-    const { UsuariosVerificacaoEmail: UsuariosVerificacaoEmail, UsuariosRedesSociais, UsuariosEnderecos, ...UsuariosSemVerificacao } = usuarioRecord;
+    const {
+      UsuariosVerificacaoEmail: UsuariosVerificacaoEmail,
+      UsuariosRedesSociais,
+      UsuariosEnderecos,
+      ...UsuariosSemVerificacao
+    } = usuarioRecord;
     const verification = normalizeEmailVerification(UsuariosVerificacaoEmail);
     const usuarioComInformacoes = mergeUsuarioInformacoes({
       ...UsuariosSemVerificacao,
@@ -717,7 +728,12 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
     }
 
     const usuarioRecord = sessionRecord.Usuarios;
-    const { UsuariosVerificacaoEmail: UsuariosVerificacaoEmail, UsuariosRedesSociais, UsuariosEnderecos, ...UsuariosSemVerificacao } = usuarioRecord;
+    const {
+      UsuariosVerificacaoEmail: UsuariosVerificacaoEmail,
+      UsuariosRedesSociais,
+      UsuariosEnderecos,
+      ...UsuariosSemVerificacao
+    } = usuarioRecord;
     const verification = normalizeEmailVerification(UsuariosVerificacaoEmail);
     const usuarioComInformacoes = mergeUsuarioInformacoes({
       ...UsuariosSemVerificacao,
@@ -991,7 +1007,12 @@ export const obterPerfil = async (req: Request, res: Response, next: NextFunctio
       },
     });
 
-    const { UsuariosVerificacaoEmail: UsuariosVerificacaoEmail, UsuariosRedesSociais, UsuariosEnderecos, ...UsuariosSemVerificacao } = usuarioDb ?? {};
+    const {
+      UsuariosVerificacaoEmail: UsuariosVerificacaoEmail,
+      UsuariosRedesSociais,
+      UsuariosEnderecos,
+      ...UsuariosSemVerificacao
+    } = usuarioDb ?? {};
     const verification = normalizeEmailVerification(UsuariosVerificacaoEmail);
     const usuario = attachEnderecoResumo(
       usuarioDb

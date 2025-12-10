@@ -6,7 +6,11 @@
 import { prisma } from '../src/config/prisma';
 import { QueryProfiler } from '../src/modules/usuarios/utils/query-optimizer';
 import { getCachedOrFetch, generateCacheKey, getCache } from '../src/utils/cache';
-import { getOptimizedUserSelect, optimizeSearchFilter, optimizeAddressFilter } from '../src/modules/usuarios/utils/query-optimizer';
+import {
+  getOptimizedUserSelect,
+  optimizeSearchFilter,
+  optimizeAddressFilter,
+} from '../src/modules/usuarios/utils/query-optimizer';
 
 interface TestResult {
   testName: string;
@@ -166,14 +170,14 @@ class LoadTester {
 
   async testSearchUsers(concurrentCount: number = 10) {
     const searchTerms = ['silva', 'santos', 'oliveira', 'souza', 'costa'];
-    
+
     return await this.runConcurrentRequests(
       'Buscar Usuários por Nome (case-insensitive)',
       concurrentCount,
       async (index) => {
         const searchTerm = searchTerms[index % searchTerms.length];
         const searchFilter = optimizeSearchFilter(searchTerm);
-        
+
         await prisma.usuarios.findMany({
           where: searchFilter,
           take: 10,
@@ -189,14 +193,14 @@ class LoadTester {
 
   async testFilterByCity(concurrentCount: number = 10) {
     const cities = ['São Paulo', 'Rio de Janeiro', 'Belo Horizonte', 'Curitiba', 'Porto Alegre'];
-    
+
     return await this.runConcurrentRequests(
       'Filtrar Usuários por Cidade',
       concurrentCount,
       async (index) => {
         const city = cities[index % cities.length];
         const addressFilter = optimizeAddressFilter(city, undefined);
-        
+
         await prisma.usuarios.findMany({
           where: addressFilter || {},
           take: 10,
@@ -215,7 +219,7 @@ class LoadTester {
       concurrentCount,
       async (index) => {
         const testType = index % 4;
-        
+
         switch (testType) {
           case 0:
             // Listar usuários
@@ -266,8 +270,13 @@ class LoadTester {
       console.log(`  Tempo mínimo: ${result.minTime}ms`);
       console.log(`  Tempo máximo: ${result.maxTime}ms`);
       if (result.cacheHits > 0 || result.cacheMisses > 0) {
-        const cacheHitRate = ((result.cacheHits / (result.cacheHits + result.cacheMisses)) * 100).toFixed(1);
-        console.log(`  Cache: ${result.cacheHits} hits, ${result.cacheMisses} misses (${cacheHitRate}% hit rate)`);
+        const cacheHitRate = (
+          (result.cacheHits / (result.cacheHits + result.cacheMisses)) *
+          100
+        ).toFixed(1);
+        console.log(
+          `  Cache: ${result.cacheHits} hits, ${result.cacheMisses} misses (${cacheHitRate}% hit rate)`,
+        );
       }
       if (result.errors.length > 0) {
         console.log(`  Erros: ${result.errors.join(', ')}`);
@@ -285,14 +294,14 @@ class LoadTester {
     console.log('\n' + '='.repeat(80));
     console.log('✅ ANÁLISE DE PERFORMANCE');
     console.log('='.repeat(80));
-    
-    const avgTimes = this.results.map(r => r.avgTime);
+
+    const avgTimes = this.results.map((r) => r.avgTime);
     const overallAvg = avgTimes.reduce((a, b) => a + b, 0) / avgTimes.length;
-    const maxTime = Math.max(...this.results.map(r => r.maxTime));
-    
+    const maxTime = Math.max(...this.results.map((r) => r.maxTime));
+
     console.log(`Tempo médio geral: ${Math.round(overallAvg)}ms`);
     console.log(`Tempo máximo: ${maxTime}ms`);
-    
+
     if (overallAvg < 500) {
       console.log('✅ Performance EXCELENTE (< 500ms)');
     } else if (overallAvg < 1000) {
@@ -329,7 +338,6 @@ async function runLoadTests() {
     tester.printSummary();
 
     console.log('\n✅ Testes de carga concluídos!');
-
   } catch (error) {
     console.error('❌ Erro ao executar testes de carga:', error);
     throw error;
@@ -340,4 +348,3 @@ async function runLoadTests() {
 
 // Executar testes
 runLoadTests().catch(console.error);
-

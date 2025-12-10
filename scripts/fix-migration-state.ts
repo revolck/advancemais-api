@@ -1,9 +1,9 @@
 /**
  * Script para Corrigir Estado de Migrations
- * 
+ *
  * Remove migrations problemáticas do histórico do Prisma
  * e limpa objetos residuais (enums, tipos) que causam conflitos.
- * 
+ *
  * Use antes do deploy quando houver conflitos de migrations.
  */
 
@@ -26,13 +26,13 @@ async function fixMigrationState() {
 
     if (migrationsTable[0]?.exists) {
       console.log('📋 Removendo migrations problemáticas do histórico...');
-      
+
       // Remover migration específica que está causando problema
       await prisma.$executeRawUnsafe(`
         DELETE FROM "_prisma_migrations" 
         WHERE migration_name = '20251105140000_init';
       `);
-      
+
       console.log('  ✅ Migration removida do histórico');
     }
 
@@ -52,4 +52,3 @@ async function fixMigrationState() {
 }
 
 fixMigrationState();
-

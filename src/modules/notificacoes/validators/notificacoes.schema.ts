@@ -70,5 +70,3 @@ export const criarNotificacaoSchema = z.object({
 });
 
 export type CriarNotificacaoInput = z.infer<typeof criarNotificacaoSchema>;
-
-

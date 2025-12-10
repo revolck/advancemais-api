@@ -54,9 +54,7 @@ export const minhasVagasService = {
     `;
 
     // Criar mapa de vagaId -> último candidato
-    const candidatosMap = new Map(
-      ultimosCandidatos.map((uc) => [uc.vagaId, uc]),
-    );
+    const candidatosMap = new Map(ultimosCandidatos.map((uc) => [uc.vagaId, uc]));
 
     // Adicionar ultimoCandidato em cada vaga
     const vagasComCandidatos = vagas.map((vaga: any) => {
@@ -77,4 +75,3 @@ export const minhasVagasService = {
     return vagasComCandidatos;
   },
 };
-

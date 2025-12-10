@@ -30,53 +30,53 @@ export async function processExpiredBlocks() {
       select: { id: true, usuarioId: true },
     });
 
-  let processed = 0;
-  for (const bloqueio of expirados) {
-    try {
-      await prisma.$transaction(async (tx) => {
-        await tx.usuariosEmBloqueios.update({
-          where: { id: bloqueio.id },
-          data: {
-            status: StatusDeBloqueios.REVOGADO,
-            UsuariosEmBloqueiosLogs: {
-              create: {
-                acao: AcoesDeLogDeBloqueio.REVOGACAO,
-                criadoPorId: bloqueio.usuarioId, // auto, sem administrador explícito
-                descricao: 'Revogação automática por expiração da vigência do bloqueio.',
+    let processed = 0;
+    for (const bloqueio of expirados) {
+      try {
+        await prisma.$transaction(async (tx) => {
+          await tx.usuariosEmBloqueios.update({
+            where: { id: bloqueio.id },
+            data: {
+              status: StatusDeBloqueios.REVOGADO,
+              UsuariosEmBloqueiosLogs: {
+                create: {
+                  acao: AcoesDeLogDeBloqueio.REVOGACAO,
+                  criadoPorId: bloqueio.usuarioId, // auto, sem administrador explícito
+                  descricao: 'Revogação automática por expiração da vigência do bloqueio.',
+                },
               },
             },
-          },
+          });
+          await tx.usuarios.update({
+            where: { id: bloqueio.usuarioId },
+            data: { status: Status.ATIVO },
+          });
         });
-        await tx.usuarios.update({
-          where: { id: bloqueio.usuarioId },
-          data: { status: Status.ATIVO },
-        });
-      });
 
-      // Notificação por e-mail
-      const usuario = await prisma.usuarios.findUnique({
-        where: { id: bloqueio.usuarioId },
-        select: { email: true, nomeCompleto: true },
-      });
-      if (usuario?.email) {
-        const emailService = new EmailService();
-        const template = EmailTemplates.generateUserUnblockedEmail({
-          nomeCompleto: usuario.nomeCompleto,
+        // Notificação por e-mail
+        const usuario = await prisma.usuarios.findUnique({
+          where: { id: bloqueio.usuarioId },
+          select: { email: true, nomeCompleto: true },
         });
-        await emailService.sendAssinaturaNotificacao(
-          { id: bloqueio.usuarioId, email: usuario.email, nomeCompleto: usuario.nomeCompleto },
-          template,
+        if (usuario?.email) {
+          const emailService = new EmailService();
+          const template = EmailTemplates.generateUserUnblockedEmail({
+            nomeCompleto: usuario.nomeCompleto,
+          });
+          await emailService.sendAssinaturaNotificacao(
+            { id: bloqueio.usuarioId, email: usuario.email, nomeCompleto: usuario.nomeCompleto },
+            template,
+          );
+        }
+
+        processed += 1;
+      } catch (err) {
+        log.warn(
+          { err, bloqueioId: bloqueio.id, usuarioId: bloqueio.usuarioId },
+          'Falha ao revogar bloqueio expirado',
         );
       }
-
-      processed += 1;
-    } catch (err) {
-      log.warn(
-        { err, bloqueioId: bloqueio.id, usuarioId: bloqueio.usuarioId },
-        'Falha ao revogar bloqueio expirado',
-      );
     }
-  }
 
     metrics.totalProcessed += processed;
     metrics.processedLastRun = processed;

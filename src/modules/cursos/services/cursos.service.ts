@@ -210,9 +210,15 @@ const mapRegrasAvaliacao = (
 };
 
 const mapTurmaDetailed = (turma: TurmaDetailedPayload) => {
-  const modulos = (turma.CursosTurmasModulos || (turma as any).modulos || []) as unknown as ModuloWithRelations[];
-  const aulas = (turma.CursosTurmasAulas || (turma as any).aulas || []) as unknown as AulaWithMateriais[];
-  const provas = (turma.CursosTurmasProvas || (turma as any).provas || []) as unknown as ProvaWithRelations[];
+  const modulos = (turma.CursosTurmasModulos ||
+    (turma as any).modulos ||
+    []) as unknown as ModuloWithRelations[];
+  const aulas = (turma.CursosTurmasAulas ||
+    (turma as any).aulas ||
+    []) as unknown as AulaWithMateriais[];
+  const provas = (turma.CursosTurmasProvas ||
+    (turma as any).provas ||
+    []) as unknown as ProvaWithRelations[];
 
   return {
     id: turma.id,
@@ -227,39 +233,49 @@ const mapTurmaDetailed = (turma: TurmaDetailedPayload) => {
     dataFim: turma.dataFim?.toISOString() ?? null,
     dataInscricaoInicio: turma.dataInscricaoInicio?.toISOString() ?? null,
     dataInscricaoFim: turma.dataInscricaoFim?.toISOString() ?? null,
-    alunos: (turma.CursosTurmasInscricoes || (turma as any).inscricoes || []).map((inscricao: any) => {
-      const aluno = inscricao.Usuarios || inscricao.aluno;
-      const endereco = aluno?.UsuariosEnderecos?.[0];
+    alunos: (turma.CursosTurmasInscricoes || (turma as any).inscricoes || []).map(
+      (inscricao: any) => {
+        const aluno = inscricao.Usuarios || inscricao.aluno;
+        const endereco = aluno?.UsuariosEnderecos?.[0];
 
-      return {
-        id: aluno?.id,
-        nome: aluno?.nomeCompleto,
-        email: aluno?.email,
-        inscricao: aluno?.UsuariosInformation?.inscricao ?? null,
-        telefone: aluno?.UsuariosInformation?.telefone ?? null,
-        endereco: endereco
-          ? {
-              logradouro: endereco.logradouro ?? null,
-              numero: endereco.numero ?? null,
-              bairro: endereco.bairro ?? null,
-              cidade: endereco.cidade ?? null,
-              estado: endereco.estado ?? null,
-              cep: endereco.cep ?? null,
-            }
-          : null,
-      };
-    }),
+        return {
+          id: aluno?.id,
+          nome: aluno?.nomeCompleto,
+          email: aluno?.email,
+          inscricao: aluno?.UsuariosInformation?.inscricao ?? null,
+          telefone: aluno?.UsuariosInformation?.telefone ?? null,
+          endereco: endereco
+            ? {
+                logradouro: endereco.logradouro ?? null,
+                numero: endereco.numero ?? null,
+                bairro: endereco.bairro ?? null,
+                cidade: endereco.cidade ?? null,
+                estado: endereco.estado ?? null,
+                cep: endereco.cep ?? null,
+              }
+            : null,
+        };
+      },
+    ),
     modulos: modulos.map(mapModulo),
     aulas: aulas.filter((aula) => aula.moduloId === null).map(mapAula),
     provas: provas.filter((prova) => prova.moduloId === null).map(mapProva),
-    regrasAvaliacao: mapRegrasAvaliacao((turma as any).CursosTurmasRegrasAvaliacao || (turma as any).regrasAvaliacao || null),
+    regrasAvaliacao: mapRegrasAvaliacao(
+      (turma as any).CursosTurmasRegrasAvaliacao || (turma as any).regrasAvaliacao || null,
+    ),
   };
 };
 
 const mapTurmaPublic = (turma: TurmaPublicPayload) => {
-  const modulos = (turma.CursosTurmasModulos || (turma as any).modulos || []) as unknown as ModuloWithRelations[];
-  const aulas = (turma.CursosTurmasAulas || (turma as any).aulas || []) as unknown as AulaWithMateriais[];
-  const provas = (turma.CursosTurmasProvas || (turma as any).provas || []) as unknown as ProvaWithRelations[];
+  const modulos = (turma.CursosTurmasModulos ||
+    (turma as any).modulos ||
+    []) as unknown as ModuloWithRelations[];
+  const aulas = (turma.CursosTurmasAulas ||
+    (turma as any).aulas ||
+    []) as unknown as AulaWithMateriais[];
+  const provas = (turma.CursosTurmasProvas ||
+    (turma as any).provas ||
+    []) as unknown as ProvaWithRelations[];
 
   return {
     id: turma.id,
@@ -277,7 +293,9 @@ const mapTurmaPublic = (turma: TurmaPublicPayload) => {
     modulos: modulos.map(mapModulo),
     aulas: aulas.filter((aula) => aula.moduloId === null).map(mapAula),
     provas: provas.filter((prova) => prova.moduloId === null).map(mapProva),
-    regrasAvaliacao: mapRegrasAvaliacao((turma as any).CursosTurmasRegrasAvaliacao || (turma as any).regrasAvaliacao || null),
+    regrasAvaliacao: mapRegrasAvaliacao(
+      (turma as any).CursosTurmasRegrasAvaliacao || (turma as any).regrasAvaliacao || null,
+    ),
   };
 };
 
@@ -317,7 +335,10 @@ const mapCourse = async (course: RawCourse) => {
     } catch (error) {
       // Se falhar ao calcular inscrições, retornar turmas sem contagem
       cursosLogger.warn(
-        { error: error instanceof Error ? error.message : String(error), turmasCount: turmas.length },
+        {
+          error: error instanceof Error ? error.message : String(error),
+          turmasCount: turmas.length,
+        },
         '⚠️ Erro ao calcular contagem de inscrições, retornando turmas sem contagem',
       );
       turmasWithInscricoes = turmas.map((turma) => {
@@ -365,9 +386,7 @@ const mapCourse = async (course: RawCourse) => {
  * Conta inscrições ativas por turma usando agregação SQL eficiente
  * Reutiliza a mesma lógica do turmas.service.ts
  */
-async function countInscricoesAtivasPorTurma(
-  turmaIds: string[],
-): Promise<Record<string, number>> {
+async function countInscricoesAtivasPorTurma(turmaIds: string[]): Promise<Record<string, number>> {
   if (turmaIds.length === 0) {
     return {};
   }
@@ -990,7 +1009,8 @@ export const cursosService = {
       if (data.categoriaId !== undefined) updateData.categoriaId = data.categoriaId;
       if (data.subcategoriaId !== undefined) updateData.subcategoriaId = data.subcategoriaId;
       if (data.statusPadrao !== undefined) updateData.statusPadrao = data.statusPadrao;
-      if (data.estagioObrigatorio !== undefined) updateData.estagioObrigatorio = data.estagioObrigatorio;
+      if (data.estagioObrigatorio !== undefined)
+        updateData.estagioObrigatorio = data.estagioObrigatorio;
 
       const updated = await tx.cursos.update({
         where: { id },
@@ -1081,7 +1101,10 @@ export const cursosService = {
         }
 
         // Registrar alteração de subcategoria
-        if (data.subcategoriaId !== undefined && cursoAnterior.subcategoriaId !== data.subcategoriaId) {
+        if (
+          data.subcategoriaId !== undefined &&
+          cursoAnterior.subcategoriaId !== data.subcategoriaId
+        ) {
           await cursosAuditoriaService.registrarAtualizacaoCurso(
             id,
             alteradoPor,

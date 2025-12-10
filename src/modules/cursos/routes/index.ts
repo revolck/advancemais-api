@@ -49,13 +49,13 @@ router.get('/meta', publicCache, CursosController.meta);
  *     summary: 📊 Visão Geral de Cursos (Admin/Moderador/Pedagógico)
  *     description: |
  *       **ACESSO RESTRITO:** Apenas ADMIN, MODERADOR e PEDAGOGICO podem acessar esta rota.
- *       
+ *
  *       Retorna métricas completas de cursos incluindo:
  *       - Métricas gerais (total de cursos, turmas, alunos)
  *       - Cursos próximos a começar (7, 15, 30 dias)
  *       - Faturamento por curso (dados sensíveis)
  *       - Performance e taxa de conclusão
- *       
+ *
  *       **⚠️ DADOS SENSÍVEIS:** Esta rota contém informações de faturamento e receita.
  *     tags: [Cursos]
  *     security:
@@ -892,7 +892,7 @@ router.get(
  *     description: |
  *       Retorna o histórico paginado de inscrições do aluno em cursos, similar ao histórico de empresas.
  *       Permite filtrar por status de inscrição e suporta paginação.
- *       
+ *
  *       **Status disponíveis:**
  *       - `INSCRITO`: Aluno inscrito (status inicial)
  *       - `EM_ANDAMENTO`: Curso em andamento
@@ -1581,22 +1581,22 @@ router.delete(
  *     summary: Listar turmas de um curso (Paginado com filtros e contagem de inscrições)
  *     description: |
  *       **✅ OTIMIZAÇÃO DE PERFORMANCE:**
- *       
+ *
  *       Este endpoint retorna turmas paginadas com contagem automática de inscrições ativas,
  *       eliminando a necessidade de múltiplas requisições do frontend.
- *       
+ *
  *       **Campos adicionados:**
  *       - `inscricoesCount`: Número de inscrições ativas (calculado em tempo real)
  *       - `vagasOcupadas`: Vagas ocupadas (igual a inscricoesCount)
  *       - `vagasDisponiveisCalculadas`: Vagas disponíveis calculadas (vagasTotais - inscricoesCount)
  *       - `curso`: Objeto com informações do curso vinculado (id, nome, codigo)
- *       
+ *
  *       **Inscrição ativa:** Status não é CANCELADO/TRANCADO E aluno está ATIVO.
- *       
+ *
  *       **Performance:** Contagem é calculada em batch usando agregação SQL, garantindo eficiência mesmo com muitas turmas.
- *       
+ *
  *       **Paginação:** Padrão de 10 itens por página, máximo 100.
- *       
+ *
  *       **Filtros disponíveis:** status, turno, metodo, instrutorId
  *     tags: ['Cursos']
  *     parameters:
@@ -1738,7 +1738,7 @@ router.delete(
  *     description: |
  *       Retorna o histórico paginado de inscrições de um curso específico.
  *       Permite filtrar por status de inscrição e turma, com suporte a paginação.
- *       
+ *
  *       **Status disponíveis:**
  *       - `INSCRITO`: Aluno inscrito (status inicial)
  *       - `EM_ANDAMENTO`: Curso em andamento
@@ -2008,7 +2008,7 @@ router.get(
  *       - O que foi alterado (campo específico)
  *       - Valores anterior e novo
  *       - Descrição da alteração
- *       
+ *
  *       **Campos rastreados:**
  *       - Nome do curso
  *       - Descrição
@@ -2018,7 +2018,7 @@ router.get(
  *       - Subcategoria
  *       - Status padrão
  *       - Estágio obrigatório
- *       
+ *
  *       **Ordenação:** Por data (mais recentes primeiro)
  *     tags: [Cursos]
  *     security:
@@ -2244,19 +2244,19 @@ router.get('/:cursoId/turmas', publicCache, TurmasController.list);
  *     summary: Obter detalhes de uma turma específica (Otimizado com contagem de inscrições)
  *     description: |
  *       **✅ OTIMIZAÇÃO DE PERFORMANCE:**
- *       
+ *
  *       Este endpoint retorna dados completos da turma incluindo automaticamente a contagem de inscrições ativas,
  *       eliminando a necessidade de múltiplas requisições do frontend.
- *       
+ *
  *       **Campos adicionados:**
  *       - `inscricoesCount`: Número de inscrições ativas (calculado em tempo real)
  *       - `vagasOcupadas`: Vagas ocupadas (igual a inscricoesCount)
  *       - `vagasDisponiveisCalculadas`: Vagas disponíveis calculadas (vagasTotais - inscricoesCount)
- *       
+ *
  *       **Inscrição ativa:** Status não é CANCELADO/TRANCADO E aluno está ATIVO.
- *       
+ *
  *       **Performance:** Contagem é calculada usando agregação SQL eficiente, garantindo resposta rápida mesmo com muitas inscrições.
- *       
+ *
  *       **Tratamento de Erros:** Se o cálculo de inscrições falhar, os campos serão retornados como `null` e o endpoint não falhará.
  *     tags: ['Cursos']
  *     parameters:
@@ -2321,7 +2321,7 @@ router.get('/:cursoId/turmas/:turmaId', publicCache, TurmasController.get);
  *     summary: Listar inscrições de uma turma
  *     description: |
  *       Retorna a lista completa de inscrições de uma turma específica, incluindo dados dos alunos.
- *       
+ *
  *       **✅ OTIMIZAÇÃO:**
  *       - Este endpoint retorna dados completos das inscrições com informações dos alunos
  *       - Inclui dados de contato, endereço e informações adicionais dos alunos
@@ -2676,7 +2676,7 @@ router.post(
  *     summary: Atualizar status de uma inscrição
  *     description: |
  *       Atualiza o status de uma inscrição específica em uma turma.
- *       
+ *
  *       **Status disponíveis:**
  *       - `INSCRITO`: Aluno inscrito (status inicial)
  *       - `EM_ANDAMENTO`: Curso em andamento
@@ -2685,7 +2685,7 @@ router.post(
  *       - `EM_ESTAGIO`: Aluno em estágio obrigatório
  *       - `CANCELADO`: Inscrição cancelada
  *       - `TRANCADO`: Inscrição trancada
- *       
+ *
  *       **Permissões:** ADMIN, MODERADOR, PEDAGOGICO, INSTRUTOR
  *     tags: ['Cursos']
  *     security:

@@ -148,11 +148,11 @@ export const supabaseAuthMiddleware =
                     // Tentar por supabaseId primeiro (mais comum)
                     const bySupabaseId = await prisma.usuarios.findUnique({
                       where: { supabaseId: decoded.sub as string },
-                  select: usuarioSelect,
-                });
-                    
+                      select: usuarioSelect,
+                    });
+
                     if (bySupabaseId) return bySupabaseId;
-                    
+
                     // Fallback: tentar por id (caso o token use id ao invés de supabaseId)
                     return await prisma.usuarios.findUnique({
                       where: { id: decoded.sub as string },

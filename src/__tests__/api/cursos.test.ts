@@ -82,9 +82,7 @@ describe('API - Cursos', () => {
 
     it('deve listar cursos sem autenticação (rota pública)', async () => {
       // A rota GET /api/v1/cursos é pública (usa publicCache)
-      const response = await request(app)
-        .get('/api/v1/cursos?page=1&pageSize=10')
-        .expect(200);
+      const response = await request(app).get('/api/v1/cursos?page=1&pageSize=10').expect(200);
 
       expect(response.body).toHaveProperty('data');
       expect(Array.isArray(response.body.data)).toBe(true);

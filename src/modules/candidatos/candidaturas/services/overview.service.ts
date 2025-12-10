@@ -145,7 +145,10 @@ const buildFilters = ({
 
   const hasCandidaturaFilters = Object.keys(candidaturasWhereBase).length > 0;
   const shouldRequireCandidaturas =
-    !isGlobalViewer || Boolean(onlyWithCandidaturas) || hasCandidaturaFilters || isSearchingByUserId;
+    !isGlobalViewer ||
+    Boolean(onlyWithCandidaturas) ||
+    hasCandidaturaFilters ||
+    isSearchingByUserId;
 
   if (shouldRequireCandidaturas) {
     usuariosWhere.EmpresasCandidatos_EmpresasCandidatos_candidatoIdToUsuarios = {
@@ -156,9 +159,9 @@ const buildFilters = ({
   // Quando busca por userId, sempre retornar todas as candidaturas desse candidato
   // independente de filtros de empresa
   const candidaturasSelectWhere = isSearchingByUserId
-    ? (searchWhere?.id
-        ? { candidatoId: searchWhere.id as string }
-        : undefined)
+    ? searchWhere?.id
+      ? { candidatoId: searchWhere.id as string }
+      : undefined
     : hasCandidaturaFilters
       ? candidaturasWhereBase
       : undefined;

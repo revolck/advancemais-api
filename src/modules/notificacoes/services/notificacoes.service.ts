@@ -41,10 +41,7 @@ export const notificacoesService = {
     }
 
     // Não mostrar notificações expiradas
-    where.OR = [
-      { expiraEm: null },
-      { expiraEm: { gt: new Date() } },
-    ];
+    where.OR = [{ expiraEm: null }, { expiraEm: { gt: new Date() } }];
 
     const [notificacoes, total, naoLidas] = await Promise.all([
       prisma.notificacoes.findMany({
@@ -84,10 +81,7 @@ export const notificacoesService = {
         where: {
           usuarioId,
           status: NotificacaoStatus.NAO_LIDA,
-          OR: [
-            { expiraEm: null },
-            { expiraEm: { gt: new Date() } },
-          ],
+          OR: [{ expiraEm: null }, { expiraEm: { gt: new Date() } }],
         },
       }),
     ]);
@@ -105,11 +99,13 @@ export const notificacoesService = {
         lidaEm: n.lidaEm?.toISOString() || null,
         criadoEm: n.criadoEm.toISOString(),
         expiraEm: n.expiraEm?.toISOString() || null,
-        vaga: n.Vaga ? {
-          id: n.Vaga.id,
-          titulo: n.Vaga.titulo,
-          codigo: n.Vaga.codigo,
-        } : null,
+        vaga: n.Vaga
+          ? {
+              id: n.Vaga.id,
+              titulo: n.Vaga.titulo,
+              codigo: n.Vaga.codigo,
+            }
+          : null,
       })),
       pagination: {
         page,
@@ -132,10 +128,7 @@ export const notificacoesService = {
       where: {
         usuarioId,
         status: NotificacaoStatus.NAO_LIDA,
-        OR: [
-          { expiraEm: null },
-          { expiraEm: { gt: new Date() } },
-        ],
+        OR: [{ expiraEm: null }, { expiraEm: { gt: new Date() } }],
       },
     });
 
@@ -234,7 +227,7 @@ export const notificacoesService = {
 
     notificacoesLogger.info(
       { notificacaoId: notificacao.id, usuarioId: input.usuarioId, tipo: input.tipo },
-      'Notificação criada'
+      'Notificação criada',
     );
 
     return notificacao;
@@ -339,11 +332,12 @@ export const notificacoesService = {
     diasRestantes: number;
     dataExpiracao: Date;
   }) => {
-    const mensagem = params.diasRestantes === 0
-      ? `Seu plano "${params.planoNome}" expira hoje!`
-      : params.diasRestantes === 1
-        ? `Seu plano "${params.planoNome}" expira amanhã!`
-        : `Seu plano "${params.planoNome}" expira em ${params.diasRestantes} dias.`;
+    const mensagem =
+      params.diasRestantes === 0
+        ? `Seu plano "${params.planoNome}" expira hoje!`
+        : params.diasRestantes === 1
+          ? `Seu plano "${params.planoNome}" expira amanhã!`
+          : `Seu plano "${params.planoNome}" expira em ${params.diasRestantes} dias.`;
 
     return notificacoesService.criar({
       usuarioId: params.empresaId,
@@ -458,11 +452,9 @@ export const notificacoesService = {
 
     notificacoesLogger.info(
       { deletadas: result.count, diasParaManter },
-      'Notificações antigas limpas'
+      'Notificações antigas limpas',
     );
 
     return { deletadas: result.count };
   },
 };
-
-

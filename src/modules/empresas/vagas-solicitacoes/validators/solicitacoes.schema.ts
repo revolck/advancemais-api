@@ -47,6 +47,3 @@ export const solicitacaoParamSchema = z.object({
 });
 
 export type SolicitacaoParam = z.infer<typeof solicitacaoParamSchema>;
-
-
-

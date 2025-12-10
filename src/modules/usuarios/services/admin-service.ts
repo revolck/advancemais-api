@@ -50,7 +50,9 @@ type AdminEnderecoInput = {
 
 type AdminEnderecoData = Partial<AdminEnderecoInput> & { atualizadoEm: Date };
 
-const sanitizeAdminEnderecoInput = (endereco?: AdminEnderecoInput | null): AdminEnderecoData | null => {
+const sanitizeAdminEnderecoInput = (
+  endereco?: AdminEnderecoInput | null,
+): AdminEnderecoData | null => {
   if (!endereco || typeof endereco !== 'object') {
     return null;
   }
@@ -169,10 +171,7 @@ export class AdminService {
       const progressoFinal = progressoAulas * pesoAulas + progressoProvas * pesoProvas;
       return Math.round(Math.min(100, Math.max(0, progressoFinal)));
     } catch (error) {
-      this.log.warn(
-        { err: error, inscricaoId, turmaId },
-        '❌ Erro ao calcular progresso do curso',
-      );
+      this.log.warn({ err: error, inscricaoId, turmaId }, '❌ Erro ao calcular progresso do curso');
       return 0;
     }
   }
@@ -232,10 +231,7 @@ export class AdminService {
    * @param query - Parâmetros de consulta
    * @param options - Opções adicionais (incluindo role do usuário logado)
    */
-  async listarUsuarios(
-    query: unknown,
-    options?: { userRole?: string },
-  ) {
+  async listarUsuarios(query: unknown, options?: { userRole?: string }) {
     const querySchema = z.object({
       page: z.coerce.number().int().min(1).default(1),
       limit: z.coerce.number().int().min(1).default(50),
@@ -628,10 +624,7 @@ export class AdminService {
 
     // Validação para PEDAGOGICO: só pode ver usuários com role ALUNO_CANDIDATO ou INSTRUTOR
     if (options?.userRole === Roles.PEDAGOGICO) {
-      if (
-        usuario.role !== Roles.ALUNO_CANDIDATO &&
-        usuario.role !== Roles.INSTRUTOR
-      ) {
+      if (usuario.role !== Roles.ALUNO_CANDIDATO && usuario.role !== Roles.INSTRUTOR) {
         throw Object.assign(
           new Error('PEDAGOGICO só pode visualizar usuários com role ALUNO_CANDIDATO ou INSTRUTOR'),
           {
@@ -1120,7 +1113,7 @@ export class AdminService {
 
     // Validação de permissões por role do criador
     const userRole = options?.userRole;
-    
+
     if (userRole === Roles.MODERADOR) {
       // MODERADOR não pode criar ADMIN ou MODERADOR
       if (normalizedRole === Roles.ADMIN || normalizedRole === Roles.MODERADOR) {
@@ -1131,7 +1124,7 @@ export class AdminService {
         );
       }
     }
-    
+
     if (userRole === Roles.PEDAGOGICO) {
       // PEDAGOGICO só pode criar INSTRUTOR ou ALUNO_CANDIDATO
       // Não pode criar: ADMIN, MODERADOR, PEDAGOGICO, EMPRESA
@@ -1144,7 +1137,7 @@ export class AdminService {
         );
       }
     }
-    
+
     // ADMIN pode criar qualquer role (sem restrições)
 
     const helperLogger = log.child({ scope: 'createUserHelpers' });
@@ -1358,13 +1351,10 @@ export class AdminService {
 
         // PEDAGOGICO não pode alterar a role do usuário
         if (dados.role !== undefined && dados.role !== usuarioExistente.role) {
-          throw Object.assign(
-            new Error('PEDAGOGICO não pode alterar a role de um usuário'),
-            {
-              code: 'FORBIDDEN_ROLE_CHANGE',
-              statusCode: 403,
-            },
-          );
+          throw Object.assign(new Error('PEDAGOGICO não pode alterar a role de um usuário'), {
+            code: 'FORBIDDEN_ROLE_CHANGE',
+            statusCode: 403,
+          });
         }
 
         // Se tentar definir role diferente de ALUNO_CANDIDATO ou INSTRUTOR, rejeitar

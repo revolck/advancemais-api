@@ -261,11 +261,11 @@ const usuarioDetailSelect = {
   },
   _count: {
     select: {
-        EmpresasVagas: {
-          where: {
-            status: StatusDeVagas.PUBLICADO,
-          },
+      EmpresasVagas: {
+        where: {
+          status: StatusDeVagas.PUBLICADO,
         },
+      },
     },
   },
 } satisfies Prisma.UsuariosSelect;
@@ -1086,9 +1086,11 @@ const mapBloqueioResumo = (
   }
 
   const alvoTipo: AdminUsuariosBloqueioAlvo['tipo'] =
-    bloqueio.Usuarios_UsuariosEmBloqueios_usuarioIdToUsuarios.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
+    bloqueio.Usuarios_UsuariosEmBloqueios_usuarioIdToUsuarios.tipoUsuario ===
+    TiposDeUsuarios.PESSOA_JURIDICA
       ? 'EMPRESA'
-      : bloqueio.Usuarios_UsuariosEmBloqueios_usuarioIdToUsuarios.tipoUsuario === TiposDeUsuarios.PESSOA_FISICA
+      : bloqueio.Usuarios_UsuariosEmBloqueios_usuarioIdToUsuarios.tipoUsuario ===
+          TiposDeUsuarios.PESSOA_FISICA
         ? 'USUARIO'
         : 'ESTUDANTE';
 
@@ -1253,7 +1255,9 @@ const listPagamentos = async (id: string, { page, pageSize }: AdminEmpresasHisto
       })
     : [];
 
-  const planoMap = new Map(planosResumo.map((item) => [item.id, item.PlanosEmpresariais?.nome ?? null]));
+  const planoMap = new Map(
+    planosResumo.map((item) => [item.id, item.PlanosEmpresariais?.nome ?? null]),
+  );
 
   const data: AdminEmpresaPaymentLog[] = logs.map((log) => ({
     id: log.id,
@@ -2072,7 +2076,9 @@ export const adminEmpresasService = {
     const data: AdminEmpresasDashboardListItem[] = empresas.map((empresa) => {
       const planoAtual = empresa.EmpresasPlano[0];
       const plano = mapPlanoResumo(planoAtual, referenceDate);
-      const bloqueio = mapBloqueioResumo(empresa.UsuariosEmBloqueios_UsuariosEmBloqueios_usuarioIdToUsuarios?.[0] ?? null);
+      const bloqueio = mapBloqueioResumo(
+        empresa.UsuariosEmBloqueios_UsuariosEmBloqueios_usuarioIdToUsuarios?.[0] ?? null,
+      );
 
       return {
         id: empresa.id,
@@ -2127,7 +2133,9 @@ export const adminEmpresasService = {
         planoAtual && planoAtual.inicio && planoAtual.fim
           ? calculateDurationInDays(planoAtual.inicio, planoAtual.fim)
           : null;
-      const bloqueio = mapBloqueioResumo(empresa.UsuariosEmBloqueios_UsuariosEmBloqueios_usuarioIdToUsuarios?.[0] ?? null);
+      const bloqueio = mapBloqueioResumo(
+        empresa.UsuariosEmBloqueios_UsuariosEmBloqueios_usuarioIdToUsuarios?.[0] ?? null,
+      );
 
       return {
         id: empresa.id,
@@ -2232,7 +2240,7 @@ export const adminEmpresasService = {
       parceira: Boolean(planoAtual && planoAtual.modo === EmpresasPlanoModo.PARCEIRO),
       diasTesteDisponibilizados: diasTeste,
       plano,
-        vagas: {
+      vagas: {
         publicadas: empresa._count?.EmpresasVagas ?? 0,
         limitePlano: plano?.quantidadeVagas ?? null,
       },

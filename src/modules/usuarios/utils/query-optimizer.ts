@@ -1,15 +1,19 @@
 /**
  * Query Optimizer - Otimizações avançadas de queries Prisma
- * 
+ *
  * Este módulo fornece utilitários para otimizar queries do Prisma,
  * incluindo cache, seleção condicional de campos e profiler de queries.
- * 
+ *
  * @author Sistema Advance+
  * @version 1.0.0
  */
 
 import { Prisma } from '@prisma/client';
-import { getCachedOrFetch, setCache, generateCacheKey as generateCacheKeyUtil } from '@/utils/cache';
+import {
+  getCachedOrFetch,
+  setCache,
+  generateCacheKey as generateCacheKeyUtil,
+} from '@/utils/cache';
 import { logger } from '@/utils/logger';
 
 const queryLogger = logger.child({ module: 'QueryOptimizer' });
@@ -46,11 +50,7 @@ export async function optimizedQuery<T>(
   queryFn: () => Promise<T>,
   options: QueryOptimizerOptions = {},
 ): Promise<T> {
-  const {
-    enableCache = true,
-    cacheTTL = 60,
-    enableProfiler = false,
-  } = options;
+  const { enableCache = true, cacheTTL = 60, enableProfiler = false } = options;
 
   const startTime = enableProfiler ? Date.now() : undefined;
 
@@ -276,4 +276,3 @@ export class QueryProfiler {
     this.queries.clear();
   }
 }
-

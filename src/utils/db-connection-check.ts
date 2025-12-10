@@ -38,4 +38,3 @@ export async function ensureDatabaseConnection(): Promise<void> {
     throw new Error('Database connection not available');
   }
 }
-

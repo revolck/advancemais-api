@@ -358,14 +358,14 @@ router.post(
  *     description: |-
  *       Autentica o usuário, gera par de tokens JWT e define um cookie HTTP-only com o refresh token.
  *       Marque `rememberMe` para manter a sessão ativa por mais tempo no mesmo dispositivo/navegador.
- *       
+ *
  *       **⚡ Otimizações de Performance:**
  *       - ✅ **Timeout**: 3s por tentativa, máximo 6-9s total (fail-fast)
  *       - ✅ **Cache Redis**: Rate limiting e bloqueio automático (fallback in-memory)
  *       - ✅ **Rate Limit**: 5 tentativas por 15 minutos
  *       - ✅ **Bloqueio Automático**: Após 5 tentativas falhadas = 1 hora bloqueado
  *       - ✅ **Índices Otimizados**: CPF/CNPJ/Email com status para busca rápida
- *       
+ *
  *       **📊 Performance Esperada:**
  *       - Login bem-sucedido: 50-100ms (p50)
  *       - Com banco lento: 6-9s fail-fast (vs 30s+ antes)

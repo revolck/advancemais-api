@@ -1,4 +1,12 @@
-import { CursoStatus, CursosMetodos, CursosTurnos, Prisma, Roles, StatusInscricao, Status } from '@prisma/client';
+import {
+  CursoStatus,
+  CursosMetodos,
+  CursosTurnos,
+  Prisma,
+  Roles,
+  StatusInscricao,
+  Status,
+} from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
@@ -15,9 +23,7 @@ const turmasLogger = logger.child({ module: 'CursosTurmasService' });
  * Conta inscrições ativas por turma usando agregação SQL eficiente
  * Inscrição ativa = status não é CANCELADO/TRANCADO E aluno está ATIVO e não deletado
  */
-async function countInscricoesAtivasPorTurma(
-  turmaIds: string[],
-): Promise<Record<string, number>> {
+async function countInscricoesAtivasPorTurma(turmaIds: string[]): Promise<Record<string, number>> {
   if (turmaIds.length === 0) {
     return {};
   }
@@ -278,7 +284,7 @@ export const turmasService = {
 
     try {
       const turma = await fetchTurmaDetailed(prisma, turmaId);
-      
+
       // ✅ Otimização: Adicionar contagem de inscrições ativas com fallback seguro
       let inscricoesCount = 0;
       try {
@@ -341,7 +347,12 @@ export const turmasService = {
     // Log para debug (apenas em desenvolvimento)
     if (process.env.NODE_ENV === 'development') {
       turmasLogger.debug(
-        { cursoId, turmaId, totalInscricoes: inscricoes.length, comUsuario: inscricoes.filter((i) => i.Usuarios).length },
+        {
+          cursoId,
+          turmaId,
+          totalInscricoes: inscricoes.length,
+          comUsuario: inscricoes.filter((i) => i.Usuarios).length,
+        },
         '📋 Listando inscrições da turma',
       );
     }

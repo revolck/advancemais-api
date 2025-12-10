@@ -44,4 +44,3 @@ router.put('/lidas/todas', asyncHandler(NotificacoesController.marcarTodasComoLi
 router.put('/arquivar', asyncHandler(NotificacoesController.arquivar));
 
 export { router as notificacoesRoutes };
-

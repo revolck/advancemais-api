@@ -352,7 +352,9 @@ const mapVagaCandidatos = (candidaturas: CandidaturaRecord[]) => {
 
   candidaturas.forEach((candidatura) => {
     const candidatoId = candidatura.candidatoId;
-    const candidatoUsuario = mapUsuarioAdmin(candidatura.Usuarios_EmpresasCandidatos_candidatoIdToUsuarios ?? null);
+    const candidatoUsuario = mapUsuarioAdmin(
+      candidatura.Usuarios_EmpresasCandidatos_candidatoIdToUsuarios ?? null,
+    );
 
     if (!candidatoUsuario) {
       return;

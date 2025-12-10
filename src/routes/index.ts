@@ -1240,16 +1240,10 @@ if (dashboardRoutes) {
     router.use('/api/v1/dashboard', dashboardRoutes);
     routesLogger.info({ feature: 'DashboardModule' }, '✅ Módulo Dashboard registrado com sucesso');
   } catch (error) {
-    routesLogger.error(
-      { feature: 'DashboardModule', err: error },
-      '❌ ERRO - Módulo Dashboard',
-    );
+    routesLogger.error({ feature: 'DashboardModule', err: error }, '❌ ERRO - Módulo Dashboard');
   }
 } else {
-  routesLogger.error(
-    { feature: 'DashboardModule' },
-    '❌ dashboardRoutes não está definido',
-  );
+  routesLogger.error({ feature: 'DashboardModule' }, '❌ dashboardRoutes não está definido');
 }
 
 /**
@@ -1320,10 +1314,7 @@ if (notificacoesRoutes) {
     );
   }
 } else {
-  routesLogger.error(
-    { feature: 'NotificacoesModule' },
-    '❌ notificacoesRoutes não está definido',
-  );
+  routesLogger.error({ feature: 'NotificacoesModule' }, '❌ notificacoesRoutes não está definido');
 }
 
 /**

@@ -15,4 +15,3 @@ export const listarPagamentosSchema = z.object({
 });
 
 export type ListarPagamentosQuery = z.infer<typeof listarPagamentosSchema>;
-

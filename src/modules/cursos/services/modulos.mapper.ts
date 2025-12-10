@@ -21,8 +21,12 @@ export type ModuloWithRelations = Prisma.CursosTurmasModulosGetPayload<
 >;
 
 export const mapModulo = (modulo: ModuloWithRelations) => {
-  const aulas = ((modulo as any).CursosTurmasAulas || (modulo as any).aulas || []) as unknown as AulaWithMateriais[];
-  const provas = ((modulo as any).CursosTurmasProvas || (modulo as any).provas || []) as unknown as ProvaWithRelations[];
+  const aulas = ((modulo as any).CursosTurmasAulas ||
+    (modulo as any).aulas ||
+    []) as unknown as AulaWithMateriais[];
+  const provas = ((modulo as any).CursosTurmasProvas ||
+    (modulo as any).provas ||
+    []) as unknown as ProvaWithRelations[];
 
   return {
     id: modulo.id,

@@ -11,7 +11,7 @@ export function isPrismaConnectionError(error: unknown): boolean {
     return (
       message.includes('tenant or user not found') ||
       message.includes('connection') ||
-      message.includes('can\'t reach database') ||
+      message.includes("can't reach database") ||
       message.includes('fatal') ||
       message.includes('timeout') ||
       message.includes('econnrefused')
@@ -33,13 +33,8 @@ export function handlePrismaConnectionError(
   context?: string,
 ): boolean {
   if (isPrismaConnectionError(error)) {
-    logger.warn(
-      { err: error, context },
-      '⚠️ Banco de dados não disponível, pulando operação',
-    );
+    logger.warn({ err: error, context }, '⚠️ Banco de dados não disponível, pulando operação');
     return true;
   }
   return false;
 }
-
-

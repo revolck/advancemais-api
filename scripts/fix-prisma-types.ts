@@ -47,8 +47,3 @@ async function fixFiles() {
 // fixFiles().catch(console.error);
 
 console.log('Use o helper addRequiredFields() nos creates que faltam campos obrigatórios');
-
-
-
-
-

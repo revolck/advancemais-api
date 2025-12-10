@@ -1,7 +1,7 @@
 /**
  * Service para visão geral e métricas de cursos
  * Acesso restrito a ADMIN e MODERADOR
- * 
+ *
  * ✅ OTIMIZAÇÕES IMPLEMENTADAS:
  * - Eliminação de N+1 queries usando agregações SQL
  * - Queries otimizadas com LIMITs apropriados
@@ -120,7 +120,7 @@ async function buscarMetricasGerais(): Promise<{
   totalAlunosConcluidos: number;
 }> {
   const cacheKey = 'visaogeral:metricas-gerais';
-  
+
   // Tentar buscar do cache
   const cached = await getCache<{
     totalCursos: number;
@@ -140,27 +140,29 @@ async function buscarMetricasGerais(): Promise<{
 
   const [
     {
-    totalCursos,
-    cursosPublicados,
-    cursosRascunho,
-    totalTurmas,
-    turmasAtivas,
-    turmasInscricoesAbertas,
-    totalAlunosInscritos,
-    totalAlunosAtivos,
-    totalAlunosConcluidos,
+      totalCursos,
+      cursosPublicados,
+      cursosRascunho,
+      totalTurmas,
+      turmasAtivas,
+      turmasInscricoesAbertas,
+      totalAlunosInscritos,
+      totalAlunosAtivos,
+      totalAlunosConcluidos,
     },
-  ] = await prisma.$queryRaw<Array<{
-    totalCursos: bigint;
-    cursosPublicados: bigint;
-    cursosRascunho: bigint;
-    totalTurmas: bigint;
-    turmasAtivas: bigint;
-    turmasInscricoesAbertas: bigint;
-    totalAlunosInscritos: bigint;
-    totalAlunosAtivos: bigint;
-    totalAlunosConcluidos: bigint;
-  }>>`
+  ] = await prisma.$queryRaw<
+    Array<{
+      totalCursos: bigint;
+      cursosPublicados: bigint;
+      cursosRascunho: bigint;
+      totalTurmas: bigint;
+      turmasAtivas: bigint;
+      turmasInscricoesAbertas: bigint;
+      totalAlunosInscritos: bigint;
+      totalAlunosAtivos: bigint;
+      totalAlunosConcluidos: bigint;
+    }>
+  >`
     SELECT
       (SELECT COUNT(*) FROM "Cursos")                               AS "totalCursos",
       (SELECT COUNT(*) FROM "Cursos" WHERE "statusPadrao" = 'PUBLICADO') AS "cursosPublicados",
@@ -201,7 +203,7 @@ async function buscarCursosProximosInicio(): Promise<{
   proximos30Dias: CursosProximosInicio[];
 }> {
   const cacheKey = 'visaogeral:cursos-proximos';
-  
+
   // Tentar buscar do cache
   const cached = await getCache<ReturnType<typeof buscarCursosProximosInicio>>(cacheKey);
   if (cached) {
@@ -309,7 +311,7 @@ async function buscarFaturamentoCursos(): Promise<{
   topCursosFaturamento: CursoFaturamento[];
 }> {
   const cacheKey = 'visaogeral:faturamento';
-  
+
   // Tentar buscar do cache
   const cached = await getCache<ReturnType<typeof buscarFaturamentoCursos>>(cacheKey);
   if (cached) {
@@ -325,13 +327,15 @@ async function buscarFaturamentoCursos(): Promise<{
 
   // ✅ OTIMIZADO: Usar query SQL direta para buscar apenas transações aprovadas
   // que tenham cursoId no metadata, evitando trazer todas as transações
-  const transacoesAprovadas = await prisma.$queryRaw<Array<{
-    id: string;
-    valor: Prisma.Decimal;
-    status: TransacaoStatus;
-    metadata: Prisma.JsonValue;
-    criadoEm: Date;
-  }>>`
+  const transacoesAprovadas = await prisma.$queryRaw<
+    Array<{
+      id: string;
+      valor: Prisma.Decimal;
+      status: TransacaoStatus;
+      metadata: Prisma.JsonValue;
+      criadoEm: Date;
+    }>
+  >`
     SELECT 
       t.id,
       t.valor,
@@ -495,7 +499,7 @@ async function buscarPerformanceCursos(): Promise<{
   }>;
 }> {
   const cacheKey = 'visaogeral:performance';
-  
+
   // Tentar buscar do cache
   const cached = await getCache<ReturnType<typeof buscarPerformanceCursos>>(cacheKey);
   if (cached) {
@@ -505,13 +509,15 @@ async function buscarPerformanceCursos(): Promise<{
 
   // ✅ OTIMIZADO: Usar agregação SQL para buscar cursos mais populares
   // Uma única query ao invés de buscar todos os cursos e depois fazer N queries
-  const cursosPopularesRaw = await prisma.$queryRaw<Array<{
-    cursoId: string;
-    cursoNome: string;
-    cursoCodigo: string;
-    totalInscricoes: bigint;
-    totalTurmas: bigint;
-  }>>`
+  const cursosPopularesRaw = await prisma.$queryRaw<
+    Array<{
+      cursoId: string;
+      cursoNome: string;
+      cursoCodigo: string;
+      totalInscricoes: bigint;
+      totalTurmas: bigint;
+    }>
+  >`
     SELECT 
       c.id as "cursoId",
       c.nome as "cursoNome",
@@ -535,10 +541,12 @@ async function buscarPerformanceCursos(): Promise<{
   }));
 
   // ✅ OTIMIZADO: Calcular taxa de conclusão geral em uma única query
-  const taxaConclusaoRaw = await prisma.$queryRaw<Array<{
-    totalInscricoes: bigint;
-    totalConcluidos: bigint;
-  }>>`
+  const taxaConclusaoRaw = await prisma.$queryRaw<
+    Array<{
+      totalInscricoes: bigint;
+      totalConcluidos: bigint;
+    }>
+  >`
     SELECT 
       COUNT(*)::bigint as "totalInscricoes",
       COUNT(CASE WHEN status = 'CONCLUIDO' THEN 1 END)::bigint as "totalConcluidos"
@@ -547,18 +555,22 @@ async function buscarPerformanceCursos(): Promise<{
 
   const taxaConclusao =
     taxaConclusaoRaw[0] && Number(taxaConclusaoRaw[0].totalInscricoes) > 0
-      ? (Number(taxaConclusaoRaw[0].totalConcluidos) / Number(taxaConclusaoRaw[0].totalInscricoes)) * 100
+      ? (Number(taxaConclusaoRaw[0].totalConcluidos) /
+          Number(taxaConclusaoRaw[0].totalInscricoes)) *
+        100
       : 0;
 
   // ✅ OTIMIZADO: Usar agregação SQL para buscar cursos com maior taxa de conclusão
   // Uma única query ao invés de N queries (uma por curso)
-  const cursosTaxaConclusaoRaw = await prisma.$queryRaw<Array<{
-    cursoId: string;
-    cursoNome: string;
-    cursoCodigo: string;
-    totalInscricoes: bigint;
-    totalConcluidos: bigint;
-  }>>`
+  const cursosTaxaConclusaoRaw = await prisma.$queryRaw<
+    Array<{
+      cursoId: string;
+      cursoNome: string;
+      cursoCodigo: string;
+      totalInscricoes: bigint;
+      totalConcluidos: bigint;
+    }>
+  >`
     SELECT 
       c.id as "cursoId",
       c.nome as "cursoNome",

@@ -6,5 +6,3 @@ dotenv.config();
 
 // Garantir que NODE_ENV seja 'test' durante os testes
 process.env.NODE_ENV = 'test';
-
-

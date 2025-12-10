@@ -22,7 +22,10 @@ router.post('/', asyncHandler(RequerimentosController.criar));
 router.post('/reembolso', asyncHandler(RequerimentosController.solicitarReembolso));
 
 // Verificar elegibilidade para reembolso
-router.get('/elegibilidade-reembolso/:planoId', asyncHandler(RequerimentosController.verificarElegibilidadeReembolso));
+router.get(
+  '/elegibilidade-reembolso/:planoId',
+  asyncHandler(RequerimentosController.verificarElegibilidadeReembolso),
+);
 
 // Obter requerimento por ID
 router.get('/:id', asyncHandler(RequerimentosController.obterPorId));
@@ -47,4 +50,3 @@ router.get('/admin/metricas', asyncHandler(RequerimentosController.metricas));
 router.put('/:id/admin', asyncHandler(RequerimentosController.atualizarAdmin));
 
 export const requerimentosRoutes = router;
-

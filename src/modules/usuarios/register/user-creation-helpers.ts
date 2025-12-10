@@ -15,7 +15,10 @@ import {
   usuarioRedesSociaisSelect,
   type UsuarioSocialLinksInput,
 } from '../utils/social-links';
-import { UsuariosVerificacaoEmailSelect, normalizeEmailVerification } from '../utils/email-verification';
+import {
+  UsuariosVerificacaoEmailSelect,
+  normalizeEmailVerification,
+} from '../utils/email-verification';
 import { mergeUsuarioInformacoes, usuarioInformacoesSelect } from '../utils/information';
 import {
   type AdminCreateUserInput,

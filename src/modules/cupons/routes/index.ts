@@ -301,7 +301,7 @@ router.delete('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), CuponsCont
  *       - Se é aplicável a planos empresariais (não apenas cursos)
  *       - Se é válido para o plano específico selecionado
  *       - Se o usuário pode usar (primeira compra, limite por usuário)
- *       
+ *
  *       Disponível para usuários com role EMPRESA.
  *     tags: [Comercial]
  *     security:

@@ -18,7 +18,9 @@ export const candidaturasService = {
         curriculoId: true,
         empresaUsuarioId: true,
         statusId: true,
-        status_processo: { select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true } },
+        status_processo: {
+          select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true },
+        },
         origem: true,
         aplicadaEm: true,
         atualizadaEm: true,
@@ -69,7 +71,9 @@ export const candidaturasService = {
         curriculoId: true,
         empresaUsuarioId: true,
         statusId: true,
-        status_processo: { select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true } },
+        status_processo: {
+          select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true },
+        },
         origem: true,
         aplicadaEm: true,
         atualizadaEm: true,
@@ -113,7 +117,9 @@ export const candidaturasService = {
         curriculoId: true,
         empresaUsuarioId: true,
         statusId: true,
-        status_processo: { select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true } },
+        status_processo: {
+          select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true },
+        },
         origem: true,
         aplicadaEm: true,
         atualizadaEm: true,
@@ -248,7 +254,9 @@ export const candidaturasService = {
         consentimentos: params.consentimentos as Prisma.InputJsonValue,
       },
       include: {
-        status_processo: { select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true } },
+        status_processo: {
+          select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true },
+        },
         EmpresasVagas: {
           select: {
             id: true,
@@ -298,9 +306,11 @@ export const candidaturasService = {
 
     // Verificar se o usuário pode atualizar esta candidatura
     const isAdmin = params.role === Roles.ADMIN || params.role === Roles.MODERADOR;
-    const isEmpresaDonaVaga = params.role === Roles.EMPRESA && candidatura.empresaUsuarioId === params.usuarioId;
+    const isEmpresaDonaVaga =
+      params.role === Roles.EMPRESA && candidatura.empresaUsuarioId === params.usuarioId;
     const isSetorVagas = params.role === Roles.SETOR_DE_VAGAS || params.role === Roles.RECRUTADOR;
-    const isProprioCandidato = params.role === Roles.ALUNO_CANDIDATO && candidatura.candidatoId === params.usuarioId;
+    const isProprioCandidato =
+      params.role === Roles.ALUNO_CANDIDATO && candidatura.candidatoId === params.usuarioId;
 
     if (!isAdmin && !isEmpresaDonaVaga && !isSetorVagas && !isProprioCandidato) {
       throw new Error('Você não tem permissão para atualizar esta candidatura.');
@@ -324,7 +334,9 @@ export const candidaturasService = {
         // Adicionar observações se necessário
       },
       include: {
-        status_processo: { select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true } },
+        status_processo: {
+          select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true },
+        },
         EmpresasVagas: {
           select: {
             id: true,
@@ -382,7 +394,9 @@ export const candidaturasService = {
         statusId: desistenteStatus.id,
       },
       include: {
-        status_processo: { select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true } },
+        status_processo: {
+          select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true },
+        },
         EmpresasVagas: {
           select: {
             id: true,
@@ -466,7 +480,9 @@ export const candidaturasService = {
       select: {
         id: true,
         statusId: true,
-        status_processo: { select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true } },
+        status_processo: {
+          select: { id: true, nome: true, descricao: true, ativo: true, isDefault: true },
+        },
         EmpresasVagas: {
           select: {
             id: true,

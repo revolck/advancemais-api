@@ -14,30 +14,33 @@ const statusPadraoSingle = z
   .pipe(z.nativeEnum(CursosStatusPadrao));
 
 const statusPadraoFilterSchema = z
-  .preprocess((input) => {
-    if (Array.isArray(input)) {
+  .preprocess(
+    (input) => {
+      if (Array.isArray(input)) {
+        return input;
+      }
+
+      if (typeof input === 'string') {
+        const parts = input
+          .split(',')
+          .map((part) => part.trim())
+          .filter((part) => part.length > 0);
+
+        if (parts.length === 0) {
+          return undefined;
+        }
+
+        if (parts.length === 1) {
+          return parts[0];
+        }
+
+        return parts;
+      }
+
       return input;
-    }
-
-    if (typeof input === 'string') {
-      const parts = input
-        .split(',')
-        .map((part) => part.trim())
-        .filter((part) => part.length > 0);
-
-      if (parts.length === 0) {
-        return undefined;
-      }
-
-      if (parts.length === 1) {
-        return parts[0];
-      }
-
-      return parts;
-    }
-
-    return input;
-  }, z.union([statusPadraoSingle, z.array(statusPadraoSingle)]).optional())
+    },
+    z.union([statusPadraoSingle, z.array(statusPadraoSingle)]).optional(),
+  )
   .transform((value) => {
     if (!value) {
       return undefined;

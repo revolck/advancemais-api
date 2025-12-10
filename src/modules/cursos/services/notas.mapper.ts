@@ -1,28 +1,28 @@
 import { Prisma } from '@prisma/client';
 
 export const notaWithRelations = Prisma.validator<Prisma.CursosNotasDefaultArgs>()({
-    include: {
-      CursosTurmasInscricoes: {
-        select: {
-          id: true,
-          alunoId: true,
-          Usuarios: {
-            select: {
-              id: true,
-              nomeCompleto: true,
-              email: true,
-            },
+  include: {
+    CursosTurmasInscricoes: {
+      select: {
+        id: true,
+        alunoId: true,
+        Usuarios: {
+          select: {
+            id: true,
+            nomeCompleto: true,
+            email: true,
           },
         },
       },
-      CursosTurmasProvas: {
-        select: {
-          id: true,
-          titulo: true,
-          etiqueta: true,
-        },
+    },
+    CursosTurmasProvas: {
+      select: {
+        id: true,
+        titulo: true,
+        etiqueta: true,
       },
     },
+  },
 });
 
 export type NotaWithRelations = Prisma.CursosNotasGetPayload<typeof notaWithRelations>;

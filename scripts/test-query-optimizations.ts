@@ -14,7 +14,7 @@ async function testQueryOptimizations() {
     // Teste 1: Listar usuários (com cache)
     console.log('1️⃣ Testando listagem de usuários (com cache)...');
     const cacheKey1 = generateCacheKey('users:list', { page: 1, limit: 10 });
-    
+
     const start1 = Date.now();
     const usuarios = await getCachedOrFetch(
       cacheKey1,
@@ -56,7 +56,9 @@ async function testQueryOptimizations() {
     );
     const duration2 = Date.now() - start2;
     console.log(`   ✅ Listagem (cache): ${duration2}ms (${usuarios2.length} usuários)`);
-    console.log(`   📊 Melhoria de performance: ${((duration1 - duration2) / duration1 * 100).toFixed(1)}%`);
+    console.log(
+      `   📊 Melhoria de performance: ${(((duration1 - duration2) / duration1) * 100).toFixed(1)}%`,
+    );
 
     // Teste 3: Listar instrutores com filtro
     console.log('3️⃣ Testando listagem de instrutores (com filtro)...');
@@ -78,7 +80,9 @@ async function testQueryOptimizations() {
     });
     const duration3 = Date.now() - start3;
     QueryProfiler.record('listarInstrutores', duration3);
-    console.log(`   ✅ Listagem de instrutores: ${duration3}ms (${instrutores.length} instrutores)`);
+    console.log(
+      `   ✅ Listagem de instrutores: ${duration3}ms (${instrutores.length} instrutores)`,
+    );
 
     // Teste 4: Buscar usuários por cidade
     console.log('4️⃣ Testando busca por cidade...');
@@ -130,7 +134,6 @@ async function testQueryOptimizations() {
     console.log(JSON.stringify(stats, null, 2));
 
     console.log('\n✅ Todos os testes concluídos com sucesso!');
-
   } catch (error) {
     console.error('❌ Erro ao testar otimizações:', error);
     throw error;
@@ -141,4 +144,3 @@ async function testQueryOptimizations() {
 
 // Executar testes
 testQueryOptimizations().catch(console.error);
-

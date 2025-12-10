@@ -8,9 +8,27 @@ import { prisma } from '../../../config/prisma';
 describe('sliderService.reorder', () => {
   it('reorders when moving to an occupied position', async () => {
     const items = [
-      { id: '1', websiteSliderId: 's1', ordem: 1, orientacao: 'DESKTOP', WebsiteSlider: { id: 's1' } },
-      { id: '2', websiteSliderId: 's2', ordem: 2, orientacao: 'DESKTOP', WebsiteSlider: { id: 's2' } },
-      { id: '3', websiteSliderId: 's3', ordem: 3, orientacao: 'DESKTOP', WebsiteSlider: { id: 's3' } },
+      {
+        id: '1',
+        websiteSliderId: 's1',
+        ordem: 1,
+        orientacao: 'DESKTOP',
+        WebsiteSlider: { id: 's1' },
+      },
+      {
+        id: '2',
+        websiteSliderId: 's2',
+        ordem: 2,
+        orientacao: 'DESKTOP',
+        WebsiteSlider: { id: 's2' },
+      },
+      {
+        id: '3',
+        websiteSliderId: 's3',
+        ordem: 3,
+        orientacao: 'DESKTOP',
+        WebsiteSlider: { id: 's3' },
+      },
     ];
 
     (prisma.$transaction as jest.Mock).mockImplementation(async (fn) => {

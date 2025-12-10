@@ -617,7 +617,9 @@ export const estagiosService = {
         Usuarios_CursosEstagios_alunoIdToUsuarios: { select: { nomeCompleto: true } },
         Cursos: { select: { nome: true } },
         CursosTurmas: { select: { nome: true } },
-        Usuarios_CursosEstagios_criadoPorIdToUsuarios: { select: { nomeCompleto: true, email: true } },
+        Usuarios_CursosEstagios_criadoPorIdToUsuarios: {
+          select: { nomeCompleto: true, email: true },
+        },
       },
     });
 

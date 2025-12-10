@@ -150,66 +150,74 @@ export const CandidaturasController = {
       const vagaRaw = candidatura.EmpresasVagas;
       const curriculoRaw = candidatura.UsuariosCurriculos;
 
-      const candidato = candidatoRaw ? {
-        id: candidatoRaw.id,
-        nome: candidatoRaw.nomeCompleto,
-        nomeCompleto: candidatoRaw.nomeCompleto,
-        email: candidatoRaw.email,
-        cpf: candidatoRaw.cpf ?? null,
-        telefone: candidatoRaw.UsuariosInformation?.telefone ?? null,
-        genero: candidatoRaw.UsuariosInformation?.genero ?? null,
-        dataNasc: candidatoRaw.UsuariosInformation?.dataNasc ?? null,
-        avatarUrl: candidatoRaw.UsuariosInformation?.avatarUrl ?? null,
-        descricao: candidatoRaw.UsuariosInformation?.descricao ?? null,
-        cidade: candidatoRaw.UsuariosEnderecos?.[0]?.cidade ?? null,
-        estado: candidatoRaw.UsuariosEnderecos?.[0]?.estado ?? null,
-        status: candidatoRaw.status,
-        role: candidatoRaw.role,
-        tipoUsuario: candidatoRaw.tipoUsuario,
-        criadoEm: candidatoRaw.criadoEm,
-        atualizadoEm: candidatoRaw.atualizadoEm,
-      } : null;
+      const candidato = candidatoRaw
+        ? {
+            id: candidatoRaw.id,
+            nome: candidatoRaw.nomeCompleto,
+            nomeCompleto: candidatoRaw.nomeCompleto,
+            email: candidatoRaw.email,
+            cpf: candidatoRaw.cpf ?? null,
+            telefone: candidatoRaw.UsuariosInformation?.telefone ?? null,
+            genero: candidatoRaw.UsuariosInformation?.genero ?? null,
+            dataNasc: candidatoRaw.UsuariosInformation?.dataNasc ?? null,
+            avatarUrl: candidatoRaw.UsuariosInformation?.avatarUrl ?? null,
+            descricao: candidatoRaw.UsuariosInformation?.descricao ?? null,
+            cidade: candidatoRaw.UsuariosEnderecos?.[0]?.cidade ?? null,
+            estado: candidatoRaw.UsuariosEnderecos?.[0]?.estado ?? null,
+            status: candidatoRaw.status,
+            role: candidatoRaw.role,
+            tipoUsuario: candidatoRaw.tipoUsuario,
+            criadoEm: candidatoRaw.criadoEm,
+            atualizadoEm: candidatoRaw.atualizadoEm,
+          }
+        : null;
 
-      const vaga = vagaRaw ? {
-        id: vagaRaw.id,
-        codigo: vagaRaw.codigo,
-        titulo: vagaRaw.titulo,
-        slug: vagaRaw.slug,
-        status: vagaRaw.status,
-        descricao: vagaRaw.descricao ?? null,
-        localizacao: vagaRaw.localizacao ?? null,
-        modalidade: vagaRaw.modalidade ?? null,
-        regimeDeTrabalho: vagaRaw.regimeDeTrabalho ?? null,
-        senioridade: vagaRaw.senioridade ?? null,
-        inseridaEm: vagaRaw.inseridaEm,
-        empresa: vagaRaw.Usuarios ? {
-          id: vagaRaw.Usuarios.id,
-          nome: vagaRaw.Usuarios.nomeCompleto,
-          avatarUrl: vagaRaw.Usuarios.UsuariosInformation?.avatarUrl ?? null,
-        } : null,
-      } : null;
+      const vaga = vagaRaw
+        ? {
+            id: vagaRaw.id,
+            codigo: vagaRaw.codigo,
+            titulo: vagaRaw.titulo,
+            slug: vagaRaw.slug,
+            status: vagaRaw.status,
+            descricao: vagaRaw.descricao ?? null,
+            localizacao: vagaRaw.localizacao ?? null,
+            modalidade: vagaRaw.modalidade ?? null,
+            regimeDeTrabalho: vagaRaw.regimeDeTrabalho ?? null,
+            senioridade: vagaRaw.senioridade ?? null,
+            inseridaEm: vagaRaw.inseridaEm,
+            empresa: vagaRaw.Usuarios
+              ? {
+                  id: vagaRaw.Usuarios.id,
+                  nome: vagaRaw.Usuarios.nomeCompleto,
+                  avatarUrl: vagaRaw.Usuarios.UsuariosInformation?.avatarUrl ?? null,
+                }
+              : null,
+          }
+        : null;
 
-      const curriculo = curriculoRaw ? {
-        id: curriculoRaw.id,
-        usuarioId: curriculoRaw.usuarioId,
-        titulo: curriculoRaw.titulo ?? null,
-        resumo: curriculoRaw.resumo ?? null,
-        objetivo: curriculoRaw.objetivo ?? null,
-        principal: curriculoRaw.principal,
-        areasInteresse: curriculoRaw.areasInteresse ?? null,
-        preferencias: curriculoRaw.preferencias ?? null,
-        habilidades: curriculoRaw.habilidades ?? null,
-        idiomas: curriculoRaw.idiomas ?? null,
-        experiencias: curriculoRaw.experiencias ?? null,
-        formacao: curriculoRaw.formacao ?? null,
-        cursosCertificacoes: curriculoRaw.cursosCertificacoes ?? null,
-        premiosPublicacoes: curriculoRaw.premiosPublicacoes ?? null,
-        acessibilidade: curriculoRaw.acessibilidade ?? null,
-        consentimentos: curriculoRaw.consentimentos ?? null,
-        ultimaAtualizacao: curriculoRaw.ultimaAtualizacao,
-        criadoEm: curriculoRaw.criadoEm,
-        atualizadoEm: curriculoRaw.atualizadoEm,
-      } : null;
+      const curriculo = curriculoRaw
+        ? {
+            id: curriculoRaw.id,
+            usuarioId: curriculoRaw.usuarioId,
+            titulo: curriculoRaw.titulo ?? null,
+            resumo: curriculoRaw.resumo ?? null,
+            objetivo: curriculoRaw.objetivo ?? null,
+            principal: curriculoRaw.principal,
+            areasInteresse: curriculoRaw.areasInteresse ?? null,
+            preferencias: curriculoRaw.preferencias ?? null,
+            habilidades: curriculoRaw.habilidades ?? null,
+            idiomas: curriculoRaw.idiomas ?? null,
+            experiencias: curriculoRaw.experiencias ?? null,
+            formacao: curriculoRaw.formacao ?? null,
+            cursosCertificacoes: curriculoRaw.cursosCertificacoes ?? null,
+            premiosPublicacoes: curriculoRaw.premiosPublicacoes ?? null,
+            acessibilidade: curriculoRaw.acessibilidade ?? null,
+            consentimentos: curriculoRaw.consentimentos ?? null,
+            ultimaAtualizacao: curriculoRaw.ultimaAtualizacao,
+            criadoEm: curriculoRaw.criadoEm,
+            atualizadoEm: curriculoRaw.atualizadoEm,
+          }
+        : null;
 
       const response = {
         id: candidatura.id,

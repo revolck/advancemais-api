@@ -130,16 +130,15 @@ const optionalDateSchema = z.preprocess(
 
 const cursosIdsSchema = z
   .array(
-    z
-      .union([
-        z.string().uuid('IDs de cursos devem ser UUIDs válidos'),
-        z.string().min(1, 'ID de curso inválido'),
-        z
-          .number()
-          .int('IDs de cursos devem ser inteiros')
-          .positive('IDs de cursos devem ser positivos')
-          .transform((val) => String(val)), // Converter número para string (compatibilidade)
-      ]),
+    z.union([
+      z.string().uuid('IDs de cursos devem ser UUIDs válidos'),
+      z.string().min(1, 'ID de curso inválido'),
+      z
+        .number()
+        .int('IDs de cursos devem ser inteiros')
+        .positive('IDs de cursos devem ser positivos')
+        .transform((val) => String(val)), // Converter número para string (compatibilidade)
+    ]),
   )
   .nonempty('Selecione ao menos um curso para aplicar o desconto')
   .optional()

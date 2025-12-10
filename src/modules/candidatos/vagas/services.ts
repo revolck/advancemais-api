@@ -32,7 +32,9 @@ export const vagasPublicasService = {
     const where: Prisma.EmpresasVagasWhereInput = { status: StatusDeVagas.PUBLICADO };
     // Modalidade (1..N)
     if (params?.modalidade) {
-      const modalidades = Array.isArray(params.modalidade) ? params.modalidade : [params.modalidade];
+      const modalidades = Array.isArray(params.modalidade)
+        ? params.modalidade
+        : [params.modalidade];
       if (modalidades.length > 0) where.modalidade = { in: modalidades as any };
     }
     // Regime (1..N)

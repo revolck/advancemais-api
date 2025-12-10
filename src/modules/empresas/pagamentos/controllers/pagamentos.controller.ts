@@ -105,4 +105,3 @@ export const listarPlanos = asyncHandler(async (req: Request, res: Response) => 
     data: planos,
   });
 });
-

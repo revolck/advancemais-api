@@ -99,7 +99,7 @@ export class StatusProcessoService {
     const status = await this.prisma.status_processo.findUnique({
       where: { id },
       include: {
-          Usuarios: {
+        Usuarios: {
           select: {
             id: true,
             nomeCompleto: true,
@@ -132,7 +132,7 @@ export class StatusProcessoService {
         criadoPor,
       },
       include: {
-          Usuarios: {
+        Usuarios: {
           select: {
             id: true,
             nomeCompleto: true,
@@ -170,7 +170,7 @@ export class StatusProcessoService {
       where: { id },
       data,
       include: {
-          Usuarios: {
+        Usuarios: {
           select: {
             id: true,
             nomeCompleto: true,
@@ -220,7 +220,7 @@ export class StatusProcessoService {
     const status = await this.prisma.status_processo.findFirst({
       where: { isDefault: true, ativo: true },
       include: {
-          Usuarios: {
+        Usuarios: {
           select: {
             id: true,
             nomeCompleto: true,
@@ -242,7 +242,7 @@ export class StatusProcessoService {
       where: { ativo: true },
       orderBy: [{ nome: 'asc' }],
       include: {
-          Usuarios: {
+        Usuarios: {
           select: {
             id: true,
             nomeCompleto: true,

@@ -1,6 +1,6 @@
 /**
  * Service para métricas do Setor de Vagas
- * 
+ *
  * ✅ OTIMIZAÇÕES IMPLEMENTADAS:
  * - Query SQL agregada única (elimina N queries)
  * - Cache Redis (TTL: 2 minutos)
@@ -25,7 +25,7 @@ export const metricasService = {
    */
   getMetricas: async () => {
     const cacheKey = 'metricas:setor-vagas:gerais';
-    
+
     // Tentar buscar do cache primeiro
     const cached = await getCache<{
       metricasGerais: {
@@ -43,7 +43,7 @@ export const metricasService = {
         solicitacoesRejeitadasHoje: number;
       };
     }>(cacheKey);
-    
+
     if (cached) {
       metricasLogger.debug('Métricas retornadas do cache');
       return cached;
@@ -94,20 +94,22 @@ export const metricasService = {
             AND "atualizadoEm" < $2::timestamp) AS "solicitacoesRejeitadasHoje"
       `;
 
-      const [result] = await prisma.$queryRawUnsafe<Array<{
-        totalEmpresas: bigint;
-        empresasAtivas: bigint;
-        totalVagas: bigint;
-        vagasAbertas: bigint;
-        vagasPendentes: bigint;
-        vagasEncerradas: bigint;
-        totalCandidatos: bigint;
-        candidatosEmProcesso: bigint;
-        candidatosContratados: bigint;
-        solicitacoesPendentes: bigint;
-        solicitacoesAprovadasHoje: bigint;
-        solicitacoesRejeitadasHoje: bigint;
-      }>>(query, hojeISO, amanhaISO);
+      const [result] = await prisma.$queryRawUnsafe<
+        Array<{
+          totalEmpresas: bigint;
+          empresasAtivas: bigint;
+          totalVagas: bigint;
+          vagasAbertas: bigint;
+          vagasPendentes: bigint;
+          vagasEncerradas: bigint;
+          totalCandidatos: bigint;
+          candidatosEmProcesso: bigint;
+          candidatosContratados: bigint;
+          solicitacoesPendentes: bigint;
+          solicitacoesAprovadasHoje: bigint;
+          solicitacoesRejeitadasHoje: bigint;
+        }>
+      >(query, hojeISO, amanhaISO);
 
       // Converter bigint para number
       const metricasGerais = {
@@ -139,4 +141,3 @@ export const metricasService = {
     }
   },
 };
-

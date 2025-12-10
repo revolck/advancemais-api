@@ -182,4 +182,3 @@ export function generateAccessToken(userId: string, role: string): string {
   const tokens = generateTokenPair(userId, role);
   return tokens.accessToken;
 }
-

@@ -269,8 +269,10 @@ export const cuponsService = {
     const limitePorUsuarioTipoFinal = data.limitePorUsuarioTipo ?? existente.limitePorUsuarioTipo;
     const periodoTipoFinal = data.periodoTipo ?? existente.periodoTipo;
 
-    const cursosIdsFinais = data.cursosIds ?? existente.CuponsDescontoCursos.map((curso) => curso.cursoId);
-    const planosIdsFinais = data.planosIds ?? existente.CuponsDescontoPlanos.map((plano) => plano.planoId);
+    const cursosIdsFinais =
+      data.cursosIds ?? existente.CuponsDescontoCursos.map((curso) => curso.cursoId);
+    const planosIdsFinais =
+      data.planosIds ?? existente.CuponsDescontoPlanos.map((plano) => plano.planoId);
 
     const valorPercentualFinal =
       tipoDescontoFinal === CuponsTipoDesconto.PORCENTAGEM
@@ -409,7 +411,7 @@ export const cuponsService = {
    */
   validar: async (codigo: string, planosEmpresariaisId?: string, usuarioId?: string) => {
     const codigoNormalizado = sanitizeCodigo(codigo);
-    
+
     const cupom = await prisma.cuponsDesconto.findUnique({
       where: { codigo: codigoNormalizado },
       include: {
@@ -475,11 +477,13 @@ export const cuponsService = {
     }
 
     // Verificar se o cupom se aplica ao plano específico
-    if (planosEmpresariaisId && 
-        cupom.aplicarEm === CuponsAplicarEm.APENAS_ASSINATURA && 
-        !cupom.aplicarEmTodosItens) {
+    if (
+      planosEmpresariaisId &&
+      cupom.aplicarEm === CuponsAplicarEm.APENAS_ASSINATURA &&
+      !cupom.aplicarEmTodosItens
+    ) {
       const planoVinculado = cupom.CuponsDescontoPlanos.find(
-        (p) => p.planoId === planosEmpresariaisId
+        (p) => p.planoId === planosEmpresariaisId,
       );
       if (!planoVinculado) {
         return {

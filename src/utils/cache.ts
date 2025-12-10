@@ -192,7 +192,8 @@ export async function invalidateCacheByPrefix(prefix: string): Promise<void> {
  */
 export const userCache = {
   get: (userId: string) => getCache(`user:profile:${userId}`),
-  set: (userId: string, data: any, ttlSeconds = 300) => setCache(`user:profile:${userId}`, data, ttlSeconds),
+  set: (userId: string, data: any, ttlSeconds = 300) =>
+    setCache(`user:profile:${userId}`, data, ttlSeconds),
   delete: (userId: string) => deleteCache(`user:profile:${userId}`),
 };
 
@@ -245,6 +246,9 @@ export function generateCacheKey(
     Object.entries(params).filter(([key]) => !excludeKeys.includes(key)),
   );
   const paramsString = JSON.stringify(filteredParams, Object.keys(filteredParams).sort());
-  const paramsHash = Buffer.from(paramsString).toString('base64').slice(0, 16).replace(/[^a-zA-Z0-9]/g, '');
+  const paramsHash = Buffer.from(paramsString)
+    .toString('base64')
+    .slice(0, 16)
+    .replace(/[^a-zA-Z0-9]/g, '');
   return `${prefix}:${paramsHash}`;
 }

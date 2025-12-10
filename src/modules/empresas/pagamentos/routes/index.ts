@@ -222,4 +222,3 @@ router.get('/', supabaseAuthMiddleware(['EMPRESA', 'ADMIN', 'MODERADOR']), lista
 router.get('/planos', supabaseAuthMiddleware(['EMPRESA', 'ADMIN', 'MODERADOR']), listarPlanos);
 
 export { router as pagamentosRoutes };
-

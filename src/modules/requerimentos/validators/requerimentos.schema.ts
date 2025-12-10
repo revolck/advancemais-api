@@ -77,4 +77,3 @@ export type AtualizarRequerimentoAdminInput = z.infer<typeof atualizarRequerimen
 export type AdicionarComentarioInput = z.infer<typeof adicionarComentarioSchema>;
 export type ListarRequerimentosInput = z.infer<typeof listarRequerimentosSchema>;
 export type SolicitarReembolsoInput = z.infer<typeof solicitarReembolsoSchema>;
-

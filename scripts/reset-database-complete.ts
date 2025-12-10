@@ -1,6 +1,6 @@
 /**
  * Script de Reset Completo do Banco de Dados
- * 
+ *
  * Este script faz reset completo do banco, removendo TODOS os objetos:
  * - Tabelas
  * - Enums/Tipos
@@ -8,7 +8,7 @@
  * - Funções
  * - Views
  * - Etc.
- * 
+ *
  * Use para produção quando precisar resetar completamente sem usar migrations.
  */
 
@@ -96,4 +96,3 @@ async function resetDatabaseComplete() {
 }
 
 resetDatabaseComplete();
-

@@ -57,7 +57,7 @@ export const requerimentosService = {
       });
       if (plano) {
         const diasDesdeCompra = Math.floor(
-          (Date.now() - plano.criadoEm.getTime()) / (1000 * 60 * 60 * 24)
+          (Date.now() - plano.criadoEm.getTime()) / (1000 * 60 * 60 * 24),
         );
         if (diasDesdeCompra <= DIAS_DIREITO_ARREPENDIMENTO) {
           prioridade = RequerimentoPrioridade.URGENTE;
@@ -126,13 +126,13 @@ export const requerimentosService = {
 
     // Verificar se está dentro do prazo de 7 dias
     const diasDesdeCompra = Math.floor(
-      (Date.now() - plano.criadoEm.getTime()) / (1000 * 60 * 60 * 24)
+      (Date.now() - plano.criadoEm.getTime()) / (1000 * 60 * 60 * 24),
     );
 
     if (diasDesdeCompra > DIAS_DIREITO_ARREPENDIMENTO) {
       throw new Error(
         `O prazo de ${DIAS_DIREITO_ARREPENDIMENTO} dias para solicitar reembolso já expirou. ` +
-          `Sua compra foi realizada há ${diasDesdeCompra} dias.`
+          `Sua compra foi realizada há ${diasDesdeCompra} dias.`,
       );
     }
 
@@ -150,7 +150,7 @@ export const requerimentosService = {
 
     if (requerimentoExistente) {
       throw new Error(
-        `Já existe uma solicitação de reembolso em andamento para este plano (${requerimentoExistente.codigo})`
+        `Já existe uma solicitação de reembolso em andamento para este plano (${requerimentoExistente.codigo})`,
       );
     }
 
@@ -182,11 +182,15 @@ export const requerimentosService = {
     };
 
     if (status) {
-      where.status = Array.isArray(status) ? { in: status as RequerimentoStatus[] } : (status as RequerimentoStatus);
+      where.status = Array.isArray(status)
+        ? { in: status as RequerimentoStatus[] }
+        : (status as RequerimentoStatus);
     }
 
     if (tipo) {
-      where.tipo = Array.isArray(tipo) ? { in: tipo as RequerimentoTipo[] } : (tipo as RequerimentoTipo);
+      where.tipo = Array.isArray(tipo)
+        ? { in: tipo as RequerimentoTipo[] }
+        : (tipo as RequerimentoTipo);
     }
 
     if (search) {
@@ -238,17 +242,32 @@ export const requerimentosService = {
    * Listar todos os requerimentos (admin)
    */
   async listarAdmin(input: ListarRequerimentosInput) {
-    const { page, pageSize, status, tipo, prioridade, usuarioId, atribuidoParaId, search, criadoDe, criadoAte } = input;
+    const {
+      page,
+      pageSize,
+      status,
+      tipo,
+      prioridade,
+      usuarioId,
+      atribuidoParaId,
+      search,
+      criadoDe,
+      criadoAte,
+    } = input;
     const skip = (page - 1) * pageSize;
 
     const where: Prisma.RequerimentosWhereInput = {};
 
     if (status) {
-      where.status = Array.isArray(status) ? { in: status as RequerimentoStatus[] } : (status as RequerimentoStatus);
+      where.status = Array.isArray(status)
+        ? { in: status as RequerimentoStatus[] }
+        : (status as RequerimentoStatus);
     }
 
     if (tipo) {
-      where.tipo = Array.isArray(tipo) ? { in: tipo as RequerimentoTipo[] } : (tipo as RequerimentoTipo);
+      where.tipo = Array.isArray(tipo)
+        ? { in: tipo as RequerimentoTipo[] }
+        : (tipo as RequerimentoTipo);
     }
 
     if (prioridade) {
@@ -392,12 +411,15 @@ export const requerimentosService = {
       historicoAcoes.push(`Prioridade alterada para ${input.prioridade}`);
     }
 
-    if (input.atribuidoParaId !== undefined && input.atribuidoParaId !== requerimento.atribuidoParaId) {
-      data.AtribuidoPara = input.atribuidoParaId 
+    if (
+      input.atribuidoParaId !== undefined &&
+      input.atribuidoParaId !== requerimento.atribuidoParaId
+    ) {
+      data.AtribuidoPara = input.atribuidoParaId
         ? { connect: { id: input.atribuidoParaId } }
         : { disconnect: true };
       historicoAcoes.push(
-        input.atribuidoParaId ? `Atribuído para outro administrador` : `Atribuição removida`
+        input.atribuidoParaId ? `Atribuído para outro administrador` : `Atribuição removida`,
       );
     }
 
@@ -426,7 +448,8 @@ export const requerimentosService = {
           requerimentoId: id,
           usuarioId: adminId,
           statusAnterior: requerimento.status as RequerimentoStatus,
-          statusNovo: (input.status as RequerimentoStatus) || (requerimento.status as RequerimentoStatus),
+          statusNovo:
+            (input.status as RequerimentoStatus) || (requerimento.status as RequerimentoStatus),
           acao: 'ATUALIZADO',
           comentario: historicoAcoes.join('; '),
         },
@@ -562,14 +585,14 @@ export const requerimentosService = {
           acc[item.tipo] = item._count;
           return acc;
         },
-        {} as Record<string, number>
+        {} as Record<string, number>,
       ),
       porPrioridade: porPrioridade.reduce(
         (acc: Record<string, number>, item: { prioridade: string; _count: number }) => {
           acc[item.prioridade] = item._count;
           return acc;
         },
-        {} as Record<string, number>
+        {} as Record<string, number>,
       ),
     };
   },
@@ -593,7 +616,7 @@ export const requerimentosService = {
     }
 
     const diasDesdeCompra = Math.floor(
-      (Date.now() - plano.criadoEm.getTime()) / (1000 * 60 * 60 * 24)
+      (Date.now() - plano.criadoEm.getTime()) / (1000 * 60 * 60 * 24),
     );
 
     const diasRestantes = DIAS_DIREITO_ARREPENDIMENTO - diasDesdeCompra;
@@ -641,4 +664,3 @@ export const requerimentosService = {
     };
   },
 };
-

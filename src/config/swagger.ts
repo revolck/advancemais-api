@@ -10202,7 +10202,8 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
             empresaUsuarioId: { type: 'string', format: 'uuid', example: 'empresa-uuid' },
             status: {
               type: 'string',
-              description: 'Nome do status do processo seletivo (ex: EM_ANALISE, ENTREVISTA, CONTRATADO, RECUSADO)',
+              description:
+                'Nome do status do processo seletivo (ex: EM_ANALISE, ENTREVISTA, CONTRATADO, RECUSADO)',
               example: 'EM_ANALISE',
             },
             status_processo: {

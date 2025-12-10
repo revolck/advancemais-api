@@ -86,7 +86,10 @@ export class RequerimentosController {
     }
 
     try {
-      const resultado = await requerimentosService.verificarElegibilidadeReembolso(usuarioId, planoId);
+      const resultado = await requerimentosService.verificarElegibilidadeReembolso(
+        usuarioId,
+        planoId,
+      );
       return res.json({ success: true, data: resultado });
     } catch (error) {
       return res.status(400).json({
@@ -189,7 +192,10 @@ export class RequerimentosController {
 
     try {
       // Se não for admin, verificar se o requerimento pertence ao usuário
-      const requerimento = await requerimentosService.obterPorId(id, isAdmin ? undefined : usuarioId);
+      const requerimento = await requerimentosService.obterPorId(
+        id,
+        isAdmin ? undefined : usuarioId,
+      );
       return res.json({ success: true, data: requerimento });
     } catch (error) {
       return res.status(404).json({
@@ -293,4 +299,3 @@ export class RequerimentosController {
     }
   }
 }
-

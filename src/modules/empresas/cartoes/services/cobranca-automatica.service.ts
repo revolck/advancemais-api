@@ -151,7 +151,11 @@ export const cobrancaAutomaticaService = {
   /**
    * Tenta cobrar usando múltiplos cartões (fallback)
    */
-  async cobrarComFallback(planoId: string, valor: number, descricao: string): Promise<CobrancaResult> {
+  async cobrarComFallback(
+    planoId: string,
+    valor: number,
+    descricao: string,
+  ): Promise<CobrancaResult> {
     // 1. Buscar plano
     const plano = await prisma.empresasPlano.findUnique({
       where: { id: planoId },
@@ -252,7 +256,11 @@ export const cobrancaAutomaticaService = {
   /**
    * Processa pagamento aprovado
    */
-  async processarPagamentoAprovado(planoId: string, cartaoId: string, paymentId: string): Promise<void> {
+  async processarPagamentoAprovado(
+    planoId: string,
+    cartaoId: string,
+    paymentId: string,
+  ): Promise<void> {
     // Atualizar plano
     await prisma.empresasPlano.update({
       where: { id: planoId },
@@ -277,7 +285,11 @@ export const cobrancaAutomaticaService = {
   /**
    * Processa pagamento falhado
    */
-  async processarPagamentoFalhado(planoId: string, cartaoId: string, motivo: string): Promise<void> {
+  async processarPagamentoFalhado(
+    planoId: string,
+    cartaoId: string,
+    motivo: string,
+  ): Promise<void> {
     // Incrementar falhas do cartão
     await prisma.$executeRaw`
       UPDATE "EmpresasCartoes"
@@ -330,4 +342,3 @@ export const cobrancaAutomaticaService = {
     return planos;
   },
 };
-

@@ -117,5 +117,3 @@ export function startCobrancaAutomaticaJob() {
 
 // Exportar para testes manuais
 export { processarCobrancasAutomaticas };
-
-

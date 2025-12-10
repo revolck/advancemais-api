@@ -231,4 +231,3 @@ router.delete('/:id', empresaOnly, CartoesController.remover);
 router.post('/:id/pagar-pendente', empresaOnly, CartoesController.pagarPendente);
 
 export { router as cartoesRoutes };
-

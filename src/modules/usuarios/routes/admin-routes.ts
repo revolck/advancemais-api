@@ -463,7 +463,11 @@ router.get('/usuarios', asyncHandler(adminController.listarUsuarios));
  *                 "role": "ALUNO_CANDIDATO"
  *               }'
  */
-router.post('/usuarios', supabaseAuthMiddleware(adminRoles), asyncHandler(adminController.criarUsuario));
+router.post(
+  '/usuarios',
+  supabaseAuthMiddleware(adminRoles),
+  asyncHandler(adminController.criarUsuario),
+);
 
 /**
  * Listar candidatos com filtros

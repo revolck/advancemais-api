@@ -50,5 +50,3 @@ export const getVisaoGeral = asyncHandler(async (req: Request, res: Response) =>
     data,
   });
 });
-
-

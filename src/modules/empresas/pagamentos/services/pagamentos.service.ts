@@ -137,7 +137,7 @@ function formatarMoeda(valor: number | null): string | null {
  */
 function gerarDescricaoCompleta(tipo: string, status: string | null): string {
   const tipoDesc = TIPO_DESCRICOES[tipo] ?? tipo;
-  const statusDesc = status ? STATUS_DESCRICOES[status] ?? status : null;
+  const statusDesc = status ? (STATUS_DESCRICOES[status] ?? status) : null;
 
   // Casos onde tipo e status são redundantes - usar apenas status
   if (
@@ -371,8 +371,8 @@ export const pagamentosService = {
         valor,
         valorFormatado: formatarMoeda(valor),
         metodo,
-        metodoDescricao: metodo ? METODO_DESCRICOES[metodo] ?? metodo : null,
-        plano: log.empresasPlanoId ? planoMap.get(log.empresasPlanoId) ?? null : null,
+        metodoDescricao: metodo ? (METODO_DESCRICOES[metodo] ?? metodo) : null,
+        plano: log.empresasPlanoId ? (planoMap.get(log.empresasPlanoId) ?? null) : null,
         referencia: log.externalRef,
         transacaoId: log.mpResourceId,
         criadoEm: log.criadoEm,
@@ -433,4 +433,3 @@ export const pagamentosService = {
     }));
   },
 };
-

@@ -39,9 +39,7 @@ describe('API - Perfil do Usuário', () => {
     });
 
     it('deve retornar erro 401 sem token', async () => {
-      const response = await request(app)
-        .get('/api/v1/usuarios/perfil')
-        .expect(401);
+      const response = await request(app).get('/api/v1/usuarios/perfil').expect(401);
 
       expect(response.body).toHaveProperty('success', false);
       expect(response.body).toHaveProperty('code', 'MISSING_TOKEN');
@@ -61,4 +59,3 @@ describe('API - Perfil do Usuário', () => {
   // A atualização de perfil é feita através de rotas administrativas ou específicas
   // Os testes abaixo foram removidos até que a rota seja implementada
 });
-

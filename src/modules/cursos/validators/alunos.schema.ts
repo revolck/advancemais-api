@@ -10,53 +10,49 @@ const positiveInt = z.coerce
  * Schema de validação para query de listagem de alunos com inscrições
  * Segue o padrão dos outros endpoints (cursos, turmas)
  */
-export const listAlunosComInscricoesQuerySchema = z.object({
-  page: positiveInt.min(1).default(1),
-  limit: positiveInt.min(1).max(50).default(10),
-  search: z.string().trim().min(1).optional(),
-  // Aceitar status como string única ou array de strings
-  status: z
-    .union([
-      z.nativeEnum(StatusInscricao, {
-        errorMap: () => ({
-          message: `Status inválido. Valores aceitos: ${Object.values(StatusInscricao).join(', ')}`,
-        }),
-      }),
-      z.array(
+export const listAlunosComInscricoesQuerySchema = z
+  .object({
+    page: positiveInt.min(1).default(1),
+    limit: positiveInt.min(1).max(50).default(10),
+    search: z.string().trim().min(1).optional(),
+    // Aceitar status como string única ou array de strings
+    status: z
+      .union([
         z.nativeEnum(StatusInscricao, {
           errorMap: () => ({
             message: `Status inválido. Valores aceitos: ${Object.values(StatusInscricao).join(', ')}`,
           }),
         }),
-      ),
-    ])
-    .optional(),
-  // Aceitar cidade como string única ou array de strings
-  cidade: z
-    .union([
-      z.string().trim().min(1),
-      z.array(z.string().trim().min(1)),
-    ])
-    .optional(),
-  // Aceitar tanto UUID (string) quanto número (para compatibilidade)
-  // Cursos.id é String UUID, mas o frontend pode enviar número do código antigo
-  curso: z
-    .union([
-      z.string().uuid('Curso ID deve ser um UUID válido'),
-      z.string().min(1, 'Curso ID inválido'),
-      positiveInt,
-    ])
-    .optional(),
-  cursoId: z
-    .union([
-      z.string().uuid('Curso ID deve ser um UUID válido'),
-      z.string().min(1, 'Curso ID inválido'),
-      positiveInt,
-    ])
-    .optional(),
-  turma: z.string().uuid().optional(),
-  turmaId: z.string().uuid().optional(),
-})
+        z.array(
+          z.nativeEnum(StatusInscricao, {
+            errorMap: () => ({
+              message: `Status inválido. Valores aceitos: ${Object.values(StatusInscricao).join(', ')}`,
+            }),
+          }),
+        ),
+      ])
+      .optional(),
+    // Aceitar cidade como string única ou array de strings
+    cidade: z.union([z.string().trim().min(1), z.array(z.string().trim().min(1))]).optional(),
+    // Aceitar tanto UUID (string) quanto número (para compatibilidade)
+    // Cursos.id é String UUID, mas o frontend pode enviar número do código antigo
+    curso: z
+      .union([
+        z.string().uuid('Curso ID deve ser um UUID válido'),
+        z.string().min(1, 'Curso ID inválido'),
+        positiveInt,
+      ])
+      .optional(),
+    cursoId: z
+      .union([
+        z.string().uuid('Curso ID deve ser um UUID válido'),
+        z.string().min(1, 'Curso ID inválido'),
+        positiveInt,
+      ])
+      .optional(),
+    turma: z.string().uuid().optional(),
+    turmaId: z.string().uuid().optional(),
+  })
   .transform((data) => {
     // Normalizar cursoId: usar cursoId se fornecido, caso contrário usar curso
     // Cursos.id é String UUID, então manter como string se já for string, ou converter número
@@ -168,4 +164,3 @@ export const alunoHistoricoInscricoesQuerySchema = paginationQueryBaseSchema.tra
 );
 
 export type AlunoHistoricoInscricoesQuery = z.infer<typeof alunoHistoricoInscricoesQuerySchema>;
-

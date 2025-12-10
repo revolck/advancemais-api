@@ -75,11 +75,7 @@ export class VagasController {
 
       if (normalizedStatuses.length > 0) {
         // Verifica se é pedido para retornar todos os status
-        if (
-          normalizedStatuses.some(
-            (s) => s === 'ALL' || s === 'TODAS' || s === 'TODOS',
-          )
-        ) {
+        if (normalizedStatuses.some((s) => s === 'ALL' || s === 'TODAS' || s === 'TODOS')) {
           statusesFilter = [
             'RASCUNHO',
             'EM_ANALISE',

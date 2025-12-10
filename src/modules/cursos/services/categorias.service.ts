@@ -89,10 +89,7 @@ export const categoriasService = {
     return fetchCategoria(id);
   },
 
-  async listSubcategorias(
-    categoriaId: number,
-    options: { page: number; pageSize: number },
-  ) {
+  async listSubcategorias(categoriaId: number, options: { page: number; pageSize: number }) {
     const categoria = await prisma.cursosCategorias.findUnique({
       where: { id: categoriaId },
       select: { id: true },

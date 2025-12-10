@@ -138,7 +138,8 @@ const mapProvaToReferencia = (
   prova: Prisma.CursosTurmasProvasGetPayload<{ include: { CursosTurmasProvasEnvios: true } }>,
   inscricaoId: string,
 ): CursosReferenciasDeProvas => {
-  const envio = prova.CursosTurmasProvasEnvios.find((item) => item.inscricaoId === inscricaoId) ?? null;
+  const envio =
+    prova.CursosTurmasProvasEnvios.find((item) => item.inscricaoId === inscricaoId) ?? null;
   return {
     id: prova.id,
     etiqueta: prova.etiqueta,
@@ -396,8 +397,12 @@ export const avaliacaoService = {
       throw error;
     }
 
-    const regras = mapRegrasFromDb((inscricao.CursosTurmas.CursosTurmasRegrasAvaliacao as any) ?? {});
-    const provasAtivas = inscricao.CursosTurmas.CursosTurmasProvas.filter((prova) => prova.ativo !== false);
+    const regras = mapRegrasFromDb(
+      (inscricao.CursosTurmas.CursosTurmasRegrasAvaliacao as any) ?? {},
+    );
+    const provasAtivas = inscricao.CursosTurmas.CursosTurmasProvas.filter(
+      (prova) => prova.ativo !== false,
+    );
     const referencias: CursosReferenciasDeProvas[] = provasAtivas.map((prova) =>
       mapProvaToReferencia(prova as any, inscricaoId),
     );

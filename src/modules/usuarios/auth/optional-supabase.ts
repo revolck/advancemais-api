@@ -103,7 +103,7 @@ export const optionalSupabaseAuth =
 
             if (usuarioDb) {
               const merged = mergeUsuarioInformacoes(usuarioDb);
-            const { informacoes, ...rest } = merged;
+              const { informacoes, ...rest } = merged;
               usuario = {
                 ...rest,
                 telefone: informacoes?.telefone ?? null,

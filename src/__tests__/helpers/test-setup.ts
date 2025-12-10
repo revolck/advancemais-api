@@ -54,4 +54,3 @@ export async function teardownTestEnvironment(): Promise<void> {
   // Desconectar do banco
   await prisma.$disconnect();
 }
-

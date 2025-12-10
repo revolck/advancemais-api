@@ -305,7 +305,7 @@ export class PasswordRecoveryController {
 
       res.json({
         message: 'Token válido',
-          Usuarios: {
+        Usuarios: {
           email: recuperacao.Usuarios.email,
           nomeCompleto: recuperacao.Usuarios.nomeCompleto,
         },

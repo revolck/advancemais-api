@@ -66,9 +66,7 @@ export const cartoesService = {
     const total = Number(totalCartoes[0].count);
 
     if (total >= 5) {
-      throw new Error(
-        'Limite de 5 cartões atingido. Remova um cartão antes de adicionar outro.',
-      );
+      throw new Error('Limite de 5 cartões atingido. Remova um cartão antes de adicionar outro.');
     }
 
     // 1. Buscar dados da empresa
@@ -168,7 +166,9 @@ export const cartoesService = {
           cardId: card.id,
         });
 
-        throw new Error(`Cartão recusado na validação: ${validacao.status_detail || 'motivo desconhecido'}`);
+        throw new Error(
+          `Cartão recusado na validação: ${validacao.status_detail || 'motivo desconhecido'}`,
+        );
       }
     } catch (validacaoError: any) {
       // Se a validação falhar, remover o cartão
@@ -391,4 +391,3 @@ export const cartoesService = {
     return mapping[paymentMethodId.toLowerCase()] || paymentMethodId;
   },
 };
-

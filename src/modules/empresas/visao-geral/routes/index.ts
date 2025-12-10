@@ -26,4 +26,3 @@ const router = Router();
 router.get('/', supabaseAuthMiddleware(['EMPRESA', 'ADMIN', 'MODERADOR']), getVisaoGeral);
 
 export { router as visaoGeralRoutes };
-

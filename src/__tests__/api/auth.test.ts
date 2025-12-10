@@ -159,10 +159,7 @@ describe('API - Autenticação', () => {
     });
 
     it('deve retornar erro 400 sem refresh token', async () => {
-      const response = await request(app)
-        .post('/api/v1/usuarios/refresh')
-        .send({})
-        .expect(400);
+      const response = await request(app).post('/api/v1/usuarios/refresh').send({}).expect(400);
 
       expect(response.body).toHaveProperty('success', false);
       expect(response.body).toHaveProperty('message');
@@ -199,4 +196,3 @@ describe('API - Autenticação', () => {
     });
   });
 });
-

@@ -133,10 +133,12 @@ export class TurmasController {
 
     try {
       const inscricoes = await turmasService.listInscricoes(cursoId, turmaId);
-      
+
       // Log para depuração (apenas em desenvolvimento)
       if (process.env.NODE_ENV === 'development') {
-        console.log(`[listInscricoes] cursoId: ${cursoId}, turmaId: ${turmaId}, count: ${inscricoes.length}`);
+        console.log(
+          `[listInscricoes] cursoId: ${cursoId}, turmaId: ${turmaId}, count: ${inscricoes.length}`,
+        );
       }
 
       // Garantir que sempre retorna um array (mesmo que vazio)

@@ -21,4 +21,3 @@ export const adicionarCartaoSchema = z.object({
 });
 
 export type AdicionarCartaoInput = z.infer<typeof adicionarCartaoSchema>;
-

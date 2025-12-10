@@ -55,14 +55,16 @@ const atividadesSchema = z.object({
   extras: stringArrayField('Cada atividade extra').optional().default([]),
 });
 
-const beneficiosSchema = z.object({
-  lista: stringArrayField('Cada benefício').optional().default([]),
-  observacoes: z
-    .string({ invalid_type_error: 'As observações devem ser um texto' })
-    .trim()
-    .max(2000, 'As observações devem ter no máximo 2000 caracteres')
-    .optional(),
-}).optional();
+const beneficiosSchema = z
+  .object({
+    lista: stringArrayField('Cada benefício').optional().default([]),
+    observacoes: z
+      .string({ invalid_type_error: 'As observações devem ser um texto' })
+      .trim()
+      .max(2000, 'As observações devem ter no máximo 2000 caracteres')
+      .optional(),
+  })
+  .optional();
 
 const localizacaoSchema = z
   .object({
@@ -159,27 +161,11 @@ const baseVagaSchemaRaw = z.object({
     })
     .uuid('O ID do usuário deve ser um UUID válido'),
   // Aceitar UUID OU INT no areaInteresseId (frontend envia UUID de categorias aqui)
-  areaInteresseId: z
-    .union([
-      z.string().uuid(),
-      z.coerce.number().int().positive(),
-    ])
-    .optional(),
-  subareaInteresseId: z
-    .union([
-      z.string().uuid(),
-      z.coerce.number().int().positive(),
-    ])
-    .optional(),
+  areaInteresseId: z.union([z.string().uuid(), z.coerce.number().int().positive()]).optional(),
+  subareaInteresseId: z.union([z.string().uuid(), z.coerce.number().int().positive()]).optional(),
   // Categorias de vagas (UUID) - opcional
-  categoriaVagaId: z
-    .string()
-    .uuid()
-    .optional(),
-  subcategoriaVagaId: z
-    .string()
-    .uuid()
-    .optional(),
+  categoriaVagaId: z.string().uuid().optional(),
+  subcategoriaVagaId: z.string().uuid().optional(),
   slug: slugField,
   modoAnonimo: z
     .boolean({ invalid_type_error: 'modoAnonimo deve ser verdadeiro ou falso' })

@@ -43,7 +43,12 @@ const mapStatusSolicitacaoToVaga = (status: StatusSolicitacao): StatusDeVagas[] 
     case 'APROVADA':
       return [StatusDeVagas.PUBLICADO];
     case 'REJEITADA':
-      return [StatusDeVagas.DESPUBLICADA, StatusDeVagas.PAUSADA, StatusDeVagas.ENCERRADA, StatusDeVagas.EXPIRADO];
+      return [
+        StatusDeVagas.DESPUBLICADA,
+        StatusDeVagas.PAUSADA,
+        StatusDeVagas.ENCERRADA,
+        StatusDeVagas.EXPIRADO,
+      ];
     case 'CANCELADA':
       return [StatusDeVagas.RASCUNHO];
     default:
@@ -104,7 +109,7 @@ export const solicitacoesService = {
       const statusVagas: StatusDeVagas[] = [];
       const incluiRejeitada = status.includes('REJEITADA');
       const incluiCancelada = status.includes('CANCELADA');
-      
+
       status.forEach((s) => {
         if (s === 'REJEITADA' || s === 'CANCELADA') {
           // REJEITADA e CANCELADA são tratados especialmente abaixo
@@ -114,7 +119,7 @@ export const solicitacoesService = {
               StatusDeVagas.DESPUBLICADA,
               StatusDeVagas.PAUSADA,
               StatusDeVagas.ENCERRADA,
-              StatusDeVagas.EXPIRADO
+              StatusDeVagas.EXPIRADO,
             );
           }
         } else {
@@ -190,7 +195,10 @@ export const solicitacoesService = {
 
     // Log para debug (apenas em desenvolvimento)
     if (process.env.NODE_ENV === 'development') {
-      solicitacoesLogger.debug({ where, skip, take: pageSize }, 'Buscando solicitações com filtros');
+      solicitacoesLogger.debug(
+        { where, skip, take: pageSize },
+        'Buscando solicitações com filtros',
+      );
     }
 
     // Buscar vagas com dados da empresa
@@ -246,31 +254,32 @@ export const solicitacoesService = {
         nome: vaga.Usuarios.nomeCompleto,
       },
       // Status: RASCUNHO com observações = REJEITADA (vaga foi rejeitada e voltou para edição)
-      status: (vaga.status === StatusDeVagas.RASCUNHO && vaga.observacoes) 
-        ? 'REJEITADA' as StatusSolicitacao
-        : mapStatusVagaToSolicitacao(vaga.status) as StatusSolicitacao,
+      status:
+        vaga.status === StatusDeVagas.RASCUNHO && vaga.observacoes
+          ? ('REJEITADA' as StatusSolicitacao)
+          : (mapStatusVagaToSolicitacao(vaga.status) as StatusSolicitacao),
       dataSolicitacao: vaga.inseridaEm.toISOString(),
       // Data de resposta: quando a vaga foi aprovada/rejeitada
       // Inclui RASCUNHO com observações (foi rejeitada)
-      dataResposta: (vaga.status !== StatusDeVagas.EM_ANALISE && 
-        (vaga.status !== StatusDeVagas.RASCUNHO || vaga.observacoes))
-        ? vaga.atualizadoEm.toISOString()
-        : null,
+      dataResposta:
+        vaga.status !== StatusDeVagas.EM_ANALISE &&
+        (vaga.status !== StatusDeVagas.RASCUNHO || vaga.observacoes)
+          ? vaga.atualizadoEm.toISOString()
+          : null,
       // Motivo de rejeição: preenchido quando vaga foi rejeitada
       // RASCUNHO com observações = rejeitada, ou status DESPUBLICADA/PAUSADA/etc
-      motivoRejeicao: 
+      motivoRejeicao:
         ((vaga.status === StatusDeVagas.RASCUNHO && vaga.observacoes) ||
-         vaga.status === StatusDeVagas.DESPUBLICADA || 
-         vaga.status === StatusDeVagas.PAUSADA || 
-         vaga.status === StatusDeVagas.ENCERRADA || 
-         vaga.status === StatusDeVagas.EXPIRADO)
-        && vaga.observacoes
+          vaga.status === StatusDeVagas.DESPUBLICADA ||
+          vaga.status === StatusDeVagas.PAUSADA ||
+          vaga.status === StatusDeVagas.ENCERRADA ||
+          vaga.status === StatusDeVagas.EXPIRADO) &&
+        vaga.observacoes
           ? vaga.observacoes
           : null,
       // Observações: usado para observações de aprovação (quando status = PUBLICADO)
-      observacoes: vaga.status === StatusDeVagas.PUBLICADO && vaga.observacoes
-        ? vaga.observacoes
-        : null,
+      observacoes:
+        vaga.status === StatusDeVagas.PUBLICADO && vaga.observacoes ? vaga.observacoes : null,
     }));
 
     return {
@@ -344,7 +353,10 @@ export const solicitacoesService = {
       });
     } catch (error) {
       // Não falhar a operação se a notificação falhar
-      solicitacoesLogger.error({ error, vagaId: vaga.id }, 'Erro ao criar notificação de aprovação');
+      solicitacoesLogger.error(
+        { error, vagaId: vaga.id },
+        'Erro ao criar notificação de aprovação',
+      );
     }
 
     return {
@@ -356,7 +368,11 @@ export const solicitacoesService = {
   /**
    * Rejeita uma solicitação de publicação
    */
-  rejeitar: async (solicitacaoId: string, input: RejeitarSolicitacaoInput, rejeitadorId: string) => {
+  rejeitar: async (
+    solicitacaoId: string,
+    input: RejeitarSolicitacaoInput,
+    rejeitadorId: string,
+  ) => {
     // Buscar a vaga com título e usuarioId para notificação
     const vaga = await prisma.empresasVagas.findUnique({
       where: { id: solicitacaoId },
@@ -409,4 +425,3 @@ export const solicitacoesService = {
     };
   },
 };
-

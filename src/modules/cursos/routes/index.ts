@@ -16,8 +16,15 @@ import { FrequenciaController } from '../controllers/frequencia.controller';
 import { AgendaController } from '../controllers/agenda.controller';
 import { CertificadosController } from '../controllers/certificados.controller';
 import { EstagiosController } from '../controllers/estagios.controller';
+import cursosCheckoutRoutes from '../checkout/routes';
 
 const router = Router();
+
+// ========================================
+// ROTAS DE CHECKOUT DE CURSOS (Mercado Pago)
+// ========================================
+// Adicionar rotas de checkout de cursos (pagamento único via Mercado Pago)
+router.use('/', cursosCheckoutRoutes);
 
 /**
  * @openapi

@@ -1,0 +1,250 @@
+###############################################
+# TESTES DE CHECKOUT DE CURSOS
+# Mercado Pago - Pagamento Único
+###############################################
+
+### Variáveis
+@baseUrl = http://localhost:3000
+@apiUrl = {{baseUrl}}/api/v1
+
+# ⚠️ IMPORTANTE: Substitua pelos IDs reais após rodar o seed
+@cursoId = curso-id-aqui
+@turmaId = turma-id-aqui
+@usuarioId = usuario-id-aqui
+@authToken = Bearer seu-token-aqui
+
+###############################################
+# 1. VERIFICAR VAGAS NA TURMA
+###############################################
+
+GET {{apiUrl}}/cursos/{{cursoId}}/turmas/{{turmaId}}/vagas
+Accept: application/json
+
+###############################################
+# 2. CHECKOUT CURSO GRATUITO
+###############################################
+
+POST {{apiUrl}}/cursos/checkout
+Content-Type: application/json
+Authorization: {{authToken}}
+
+{
+  "usuarioId": "{{usuarioId}}",
+  "cursoId": "{{cursoId}}",
+  "turmaId": "{{turmaId}}",
+  "pagamento": "pix",
+  "aceitouTermos": true,
+  "aceitouTermosIp": "192.168.1.1",
+  "aceitouTermosUserAgent": "Mozilla/5.0 (Test)"
+}
+
+###############################################
+# 3. CHECKOUT COM PIX (Curso Pago)
+###############################################
+
+POST {{apiUrl}}/cursos/checkout
+Content-Type: application/json
+Authorization: {{authToken}}
+
+{
+  "usuarioId": "{{usuarioId}}",
+  "cursoId": "{{cursoId}}",
+  "turmaId": "{{turmaId}}",
+  "pagamento": "pix",
+  "payer": {
+    "email": "joao@test.com",
+    "first_name": "João",
+    "last_name": "Silva",
+    "identification": {
+      "type": "CPF",
+      "number": "12345678901"
+    }
+  },
+  "aceitouTermos": true,
+  "aceitouTermosIp": "192.168.1.1",
+  "aceitouTermosUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+}
+
+###############################################
+# 4. CHECKOUT COM BOLETO (Curso Pago)
+###############################################
+
+POST {{apiUrl}}/cursos/checkout
+Content-Type: application/json
+Authorization: {{authToken}}
+
+{
+  "usuarioId": "{{usuarioId}}",
+  "cursoId": "{{cursoId}}",
+  "turmaId": "{{turmaId}}",
+  "pagamento": "boleto",
+  "payer": {
+    "email": "joao@test.com",
+    "first_name": "João",
+    "last_name": "Silva",
+    "identification": {
+      "type": "CPF",
+      "number": "12345678901"
+    },
+    "address": {
+      "zip_code": "01310100",
+      "street_name": "Avenida Paulista",
+      "street_number": "1000",
+      "neighborhood": "Bela Vista",
+      "city": "São Paulo",
+      "federal_unit": "SP"
+    }
+  },
+  "aceitouTermos": true,
+  "aceitouTermosIp": "192.168.1.1",
+  "aceitouTermosUserAgent": "Mozilla/5.0"
+}
+
+###############################################
+# 5. CHECKOUT COM CARTÃO (Curso Pago)
+###############################################
+
+POST {{apiUrl}}/cursos/checkout
+Content-Type: application/json
+Authorization: {{authToken}}
+
+{
+  "usuarioId": "{{usuarioId}}",
+  "cursoId": "{{cursoId}}",
+  "turmaId": "{{turmaId}}",
+  "pagamento": "card",
+  "card": {
+    "token": "card-token-do-mercadopago",
+    "installments": 12
+  },
+  "payer": {
+    "email": "joao@test.com",
+    "first_name": "João",
+    "last_name": "Silva"
+  },
+  "aceitouTermos": true,
+  "aceitouTermosIp": "192.168.1.1",
+  "aceitouTermosUserAgent": "Mozilla/5.0"
+}
+
+###############################################
+# 6. CHECKOUT COM CUPOM DE DESCONTO
+###############################################
+
+POST {{apiUrl}}/cursos/checkout
+Content-Type: application/json
+Authorization: {{authToken}}
+
+{
+  "usuarioId": "{{usuarioId}}",
+  "cursoId": "{{cursoId}}",
+  "turmaId": "{{turmaId}}",
+  "pagamento": "pix",
+  "cupomCodigo": "TESTE10",
+  "payer": {
+    "email": "joao@test.com",
+    "identification": {
+      "type": "CPF",
+      "number": "12345678901"
+    }
+  },
+  "aceitouTermos": true
+}
+
+###############################################
+# 7. VALIDAR TOKEN DE ACESSO
+###############################################
+
+@tokenAcesso = token-jwt-retornado-pelo-checkout
+
+GET {{apiUrl}}/cursos/checkout/validar-token/{{tokenAcesso}}
+Accept: application/json
+
+###############################################
+# 8. CONSULTAR STATUS DO PAGAMENTO
+###############################################
+
+@paymentId = payment-id-do-mercadopago
+
+GET {{apiUrl}}/cursos/checkout/pagamento/{{paymentId}}
+Accept: application/json
+Authorization: {{authToken}}
+
+###############################################
+# 9. WEBHOOK DO MERCADO PAGO (Simulação)
+###############################################
+
+POST {{apiUrl}}/cursos/checkout/webhook
+Content-Type: application/json
+
+{
+  "type": "payment",
+  "action": "payment.updated",
+  "data": {
+    "id": "123456789",
+    "status": "approved",
+    "external_reference": "inscricao-id-aqui"
+  }
+}
+
+###############################################
+# TESTES DE ERRO
+###############################################
+
+### Erro: Curso não encontrado
+POST {{apiUrl}}/cursos/checkout
+Content-Type: application/json
+Authorization: {{authToken}}
+
+{
+  "usuarioId": "{{usuarioId}}",
+  "cursoId": "curso-invalido",
+  "turmaId": "{{turmaId}}",
+  "pagamento": "pix",
+  "aceitouTermos": true
+}
+
+### Erro: Sem aceite de termos
+POST {{apiUrl}}/cursos/checkout
+Content-Type: application/json
+Authorization: {{authToken}}
+
+{
+  "usuarioId": "{{usuarioId}}",
+  "cursoId": "{{cursoId}}",
+  "turmaId": "{{turmaId}}",
+  "pagamento": "pix"
+}
+
+### Erro: PIX sem CPF/CNPJ
+POST {{apiUrl}}/cursos/checkout
+Content-Type: application/json
+Authorization: {{authToken}}
+
+{
+  "usuarioId": "{{usuarioId}}",
+  "cursoId": "{{cursoId}}",
+  "turmaId": "{{turmaId}}",
+  "pagamento": "pix",
+  "aceitouTermos": true
+}
+
+### Erro: Boleto sem endereço
+POST {{apiUrl}}/cursos/checkout
+Content-Type: application/json
+Authorization: {{authToken}}
+
+{
+  "usuarioId": "{{usuarioId}}",
+  "cursoId": "{{cursoId}}",
+  "turmaId": "{{turmaId}}",
+  "pagamento": "boleto",
+  "payer": {
+    "identification": {
+      "type": "CPF",
+      "number": "12345678901"
+    }
+  },
+  "aceitouTermos": true
+}
+

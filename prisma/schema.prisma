@@ -102,30 +102,31 @@ model CandidatosSubareasInteresse {
 }
 
 model CuponsDesconto {
-  id                         String                 @id @default(uuid())
-  codigo                     String                 @unique
-  descricao                  String?                @db.VarChar(300)
+  id                         String                   @id @default(uuid())
+  codigo                     String                   @unique
+  descricao                  String?                  @db.VarChar(300)
   tipoDesconto               CuponsTipoDesconto
-  valorPorcentagem           Decimal?               @db.Decimal(5, 2)
-  valorFixo                  Decimal?               @db.Decimal(12, 2)
+  valorPorcentagem           Decimal?                 @db.Decimal(5, 2)
+  valorFixo                  Decimal?                 @db.Decimal(12, 2)
   aplicarEm                  CuponsAplicarEm
-  aplicarEmTodosItens        Boolean                @default(false)
-  limiteUsoTotalTipo         CuponsLimiteUso        @default(ILIMITADO)
+  aplicarEmTodosItens        Boolean                  @default(false)
+  limiteUsoTotalTipo         CuponsLimiteUso          @default(ILIMITADO)
   limiteUsoTotalQuantidade   Int?
-  limitePorUsuarioTipo       CuponsLimiteUsuario    @default(ILIMITADO)
+  limitePorUsuarioTipo       CuponsLimiteUsuario      @default(ILIMITADO)
   limitePorUsuarioQuantidade Int?
-  periodoTipo                CuponsPeriodo          @default(ILIMITADO)
+  periodoTipo                CuponsPeriodo            @default(ILIMITADO)
   periodoInicio              DateTime?
   periodoFim                 DateTime?
-  usosTotais                 Int                    @default(0)
-  status                     WebsiteStatus          @default(PUBLICADO)
+  usosTotais                 Int                      @default(0)
+  status                     WebsiteStatus            @default(PUBLICADO)
   criadoPorId                String
-  criadoEm                   DateTime               @default(now())
-  atualizadoEm               DateTime               @default(now())
-  Usuarios                   Usuarios               @relation(fields: [criadoPorId], references: [id])
+  criadoEm                   DateTime                 @default(now())
+  atualizadoEm               DateTime                 @default(now())
+  Usuarios                   Usuarios                 @relation(fields: [criadoPorId], references: [id])
   CuponsDescontoCursos       CuponsDescontoCursos[]
   CuponsDescontoPlanos       CuponsDescontoPlanos[]
   EmpresasPlano              EmpresasPlano[]
+  CursosTurmasInscricoes     CursosTurmasInscricoes[]
 
   @@index([aplicarEm, status])
   @@index([codigo])
@@ -165,6 +166,10 @@ model Cursos {
   categoriaId          Int?
   subcategoriaId       Int?
   estagioObrigatorio   Boolean                @default(false)
+  // Campos de precificação (apenas o essencial)
+  valor                Decimal                @default(0.00) @db.Decimal(10, 2)
+  valorPromocional     Decimal?               @db.Decimal(10, 2)
+  gratuito             Boolean                @default(false)
   criadoEm             DateTime               @default(now())
   atualizadoEm         DateTime               @default(now())
   CuponsDescontoCursos CuponsDescontoCursos[]
@@ -175,6 +180,8 @@ model Cursos {
 
   @@index([categoriaId])
   @@index([subcategoriaId])
+  @@index([statusPadrao])
+  @@index([gratuito])
 }
 
 model CursosCategorias {
@@ -502,6 +509,25 @@ model CursosTurmasInscricoes {
   alunoId                    String
   criadoEm                   DateTime                     @default(now())
   status                     StatusInscricao              @default(INSCRITO)
+  // Campos de pagamento e token de acesso
+  codigo                     String?                      @unique @db.VarChar(20)
+  statusPagamento            String                       @default("PENDENTE") @db.VarChar(50)
+  mpPaymentId                String?                      @db.VarChar(255)
+  tokenAcesso                String?                      @unique @db.VarChar(500)
+  tokenAcessoExpiraEm        DateTime?
+  valorPago                  Decimal?                     @db.Decimal(10, 2)
+  metodoPagamento            String?                      @db.VarChar(50)
+  // Aceite de termos
+  aceitouTermos              Boolean                      @default(false)
+  aceitouTermosIp            String?                      @db.VarChar(45)
+  aceitouTermosUserAgent     String?                      @db.VarChar(500)
+  aceitouTermosEm            DateTime?
+  // Cupom de desconto
+  cupomDescontoId            String?
+  cupomDescontoCodigo        String?                      @db.VarChar(40)
+  valorOriginal              Decimal?                     @db.Decimal(10, 2)
+  valorDesconto              Decimal?                     @db.Decimal(10, 2)
+  valorFinal                 Decimal?                     @db.Decimal(10, 2)
   CursosCertificadosEmitidos CursosCertificadosEmitidos[]
   CursosEstagios             CursosEstagios[]
   CursosFrequenciaAlunos     CursosFrequenciaAlunos[]
@@ -510,10 +536,15 @@ model CursosTurmasInscricoes {
   CursosTurmas               CursosTurmas                 @relation(fields: [turmaId], references: [id], onDelete: Cascade)
   CursosTurmasProvasEnvios   CursosTurmasProvasEnvios[]
   CursosTurmasRecuperacoes   CursosTurmasRecuperacoes[]
+  CuponsDesconto             CuponsDesconto?              @relation(fields: [cupomDescontoId], references: [id])
 
   @@unique([turmaId, alunoId])
   @@index([alunoId])
   @@index([status])
+  @@index([statusPagamento])
+  @@index([mpPaymentId])
+  @@index([tokenAcesso])
+  @@index([codigo])
 }
 
 model CursosTurmasModulos {
@@ -665,42 +696,42 @@ model EmpresasCandidatos {
 }
 
 model EmpresasPlano {
-  id                    String                  @id @default(uuid())
-  usuarioId             String
-  planosEmpresariaisId  String
-  modo                  EmpresasPlanoModo       @default(CLIENTE)
-  status                EmpresasPlanoStatus     @default(SUSPENSO)
-  origin                EmpresasPlanoOrigin     @default(CHECKOUT)
-  inicio                DateTime?
-  fim                   DateTime?
-  criadoEm              DateTime                @default(now())
-  atualizadoEm          DateTime                @default(now())
-  modeloPagamento       MODELO_PAGAMENTO?
-  metodoPagamento       METODO_PAGAMENTO?
-  statusPagamento       STATUS_PAGAMENTO?       @default(PENDENTE)
-  mpPreapprovalId       String?                 @unique
-  mpSubscriptionId      String?                 @unique
-  mpPayerId             String?
-  mpPaymentId           String?
-  proximaCobranca       DateTime?
-  graceUntil            DateTime?
+  id                     String                  @id @default(uuid())
+  usuarioId              String
+  planosEmpresariaisId   String
+  modo                   EmpresasPlanoModo       @default(CLIENTE)
+  status                 EmpresasPlanoStatus     @default(SUSPENSO)
+  origin                 EmpresasPlanoOrigin     @default(CHECKOUT)
+  inicio                 DateTime?
+  fim                    DateTime?
+  criadoEm               DateTime                @default(now())
+  atualizadoEm           DateTime                @default(now())
+  modeloPagamento        MODELO_PAGAMENTO?
+  metodoPagamento        METODO_PAGAMENTO?
+  statusPagamento        STATUS_PAGAMENTO?       @default(PENDENTE)
+  mpPreapprovalId        String?                 @unique
+  mpSubscriptionId       String?                 @unique
+  mpPayerId              String?
+  mpPaymentId            String?
+  proximaCobranca        DateTime?
+  graceUntil             DateTime?
   // Aceite de termos de contratação
-  aceitouTermos         Boolean                 @default(false)
-  aceitouTermosEm       DateTime?
-  aceitouTermosIp       String?                 @db.VarChar(45)
-  aceitouTermosUserAgent String?                @db.VarChar(500)
+  aceitouTermos          Boolean                 @default(false)
+  aceitouTermosEm        DateTime?
+  aceitouTermosIp        String?                 @db.VarChar(45)
+  aceitouTermosUserAgent String?                 @db.VarChar(500)
   // Cupom de desconto aplicado
-  cupomDescontoId       String?
-  cupomDescontoCodigo   String?                 @db.VarChar(40)
-  valorOriginal         Decimal?                @db.Decimal(12, 2)
-  valorDesconto         Decimal?                @db.Decimal(12, 2)
-  valorFinal            Decimal?                @db.Decimal(12, 2)
-  PlanosEmpresariais    PlanosEmpresariais      @relation(fields: [planosEmpresariaisId], references: [id])
-  Usuarios              Usuarios                @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  CuponsDesconto        CuponsDesconto?         @relation(fields: [cupomDescontoId], references: [id])
-  EmpresasVagasDestaque EmpresasVagasDestaque[]
-  Requerimentos         Requerimentos[]
-  Notificacoes          Notificacoes[]
+  cupomDescontoId        String?
+  cupomDescontoCodigo    String?                 @db.VarChar(40)
+  valorOriginal          Decimal?                @db.Decimal(12, 2)
+  valorDesconto          Decimal?                @db.Decimal(12, 2)
+  valorFinal             Decimal?                @db.Decimal(12, 2)
+  PlanosEmpresariais     PlanosEmpresariais      @relation(fields: [planosEmpresariaisId], references: [id])
+  Usuarios               Usuarios                @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  CuponsDesconto         CuponsDesconto?         @relation(fields: [cupomDescontoId], references: [id])
+  EmpresasVagasDestaque  EmpresasVagasDestaque[]
+  Requerimentos          Requerimentos[]
+  Notificacoes           Notificacoes[]
 
   @@index([planosEmpresariaisId])
   @@index([usuarioId, status])
@@ -939,8 +970,8 @@ model Usuarios {
   UsuariosVerificacaoEmail                                         UsuariosVerificacaoEmail?
   status_processo                                                  status_processo[]
   // Requerimentos
-  Requerimentos_usuarioId                                          Requerimentos[]          @relation("Requerimentos_usuarioId")
-  Requerimentos_atribuidoParaId                                    Requerimentos[]          @relation("Requerimentos_atribuidoParaId")
+  Requerimentos_usuarioId                                          Requerimentos[]              @relation("Requerimentos_usuarioId")
+  Requerimentos_atribuidoParaId                                    Requerimentos[]              @relation("Requerimentos_atribuidoParaId")
   RequerimentosHistorico                                           RequerimentosHistorico[]
   // Notificações
   Notificacoes                                                     Notificacoes[]
@@ -972,35 +1003,35 @@ model UsuariosCandidatosLogs {
 // =============================================================================
 
 model Requerimentos {
-  id                    String                  @id @default(uuid())
-  codigo                String                  @unique @db.VarChar(20) // REQ-2025-00001
-  usuarioId             String                  // Quem abriu o requerimento
-  tipo                  RequerimentoTipo
-  prioridade            RequerimentoPrioridade  @default(MEDIA)
-  status                RequerimentoStatus      @default(ABERTO)
-  titulo                String                  @db.VarChar(200)
-  descricao             String                  @db.Text
+  id                     String                   @id @default(uuid())
+  codigo                 String                   @unique @db.VarChar(20) // REQ-2025-00001
+  usuarioId              String // Quem abriu o requerimento
+  tipo                   RequerimentoTipo
+  prioridade             RequerimentoPrioridade   @default(MEDIA)
+  status                 RequerimentoStatus       @default(ABERTO)
+  titulo                 String                   @db.VarChar(200)
+  descricao              String                   @db.Text
   // Referências opcionais (para vincular a entidades específicas)
-  empresasPlanoId       String?                 // Se for sobre um plano específico
-  empresasVagaId        String?                 // Se for sobre uma vaga específica
+  empresasPlanoId        String? // Se for sobre um plano específico
+  empresasVagaId         String? // Se for sobre uma vaga específica
   // Dados de reembolso (se aplicável)
-  valorReembolso        Decimal?                @db.Decimal(12, 2)
-  motivoReembolso       String?                 @db.VarChar(500)
+  valorReembolso         Decimal?                 @db.Decimal(12, 2)
+  motivoReembolso        String?                  @db.VarChar(500)
   // Administração
-  atribuidoParaId       String?                 // Admin responsável
-  respostaAdmin         String?                 @db.Text
-  resolvidoEm           DateTime?
+  atribuidoParaId        String? // Admin responsável
+  respostaAdmin          String?                  @db.Text
+  resolvidoEm            DateTime?
   // Metadados
-  anexos                Json?                   // Array de URLs de anexos
-  metadata              Json?                   // Dados adicionais
+  anexos                 Json? // Array de URLs de anexos
+  metadata               Json? // Dados adicionais
   // Timestamps
-  criadoEm              DateTime                @default(now())
-  atualizadoEm          DateTime                @default(now())
+  criadoEm               DateTime                 @default(now())
+  atualizadoEm           DateTime                 @default(now())
   // Relações
-  Usuario               Usuarios                @relation("Requerimentos_usuarioId", fields: [usuarioId], references: [id], onDelete: Cascade)
-  AtribuidoPara         Usuarios?               @relation("Requerimentos_atribuidoParaId", fields: [atribuidoParaId], references: [id])
-  EmpresasPlano         EmpresasPlano?          @relation(fields: [empresasPlanoId], references: [id])
-  EmpresasVaga          EmpresasVagas?          @relation(fields: [empresasVagaId], references: [id])
+  Usuario                Usuarios                 @relation("Requerimentos_usuarioId", fields: [usuarioId], references: [id], onDelete: Cascade)
+  AtribuidoPara          Usuarios?                @relation("Requerimentos_atribuidoParaId", fields: [atribuidoParaId], references: [id])
+  EmpresasPlano          EmpresasPlano?           @relation(fields: [empresasPlanoId], references: [id])
+  EmpresasVaga           EmpresasVagas?           @relation(fields: [empresasVagaId], references: [id])
   RequerimentosHistorico RequerimentosHistorico[]
 
   @@index([usuarioId])
@@ -1012,17 +1043,17 @@ model Requerimentos {
 }
 
 model RequerimentosHistorico {
-  id              String             @id @default(uuid())
-  requerimentoId  String
-  usuarioId       String             // Quem fez a ação
-  statusAnterior  RequerimentoStatus?
-  statusNovo      RequerimentoStatus?
-  acao            String             @db.VarChar(100) // CRIADO, STATUS_ALTERADO, COMENTARIO, ATRIBUIDO, etc.
-  comentario      String?            @db.Text
-  metadata        Json?
-  criadoEm        DateTime           @default(now())
-  Requerimento    Requerimentos      @relation(fields: [requerimentoId], references: [id], onDelete: Cascade)
-  Usuario         Usuarios           @relation(fields: [usuarioId], references: [id])
+  id             String              @id @default(uuid())
+  requerimentoId String
+  usuarioId      String // Quem fez a ação
+  statusAnterior RequerimentoStatus?
+  statusNovo     RequerimentoStatus?
+  acao           String              @db.VarChar(100) // CRIADO, STATUS_ALTERADO, COMENTARIO, ATRIBUIDO, etc.
+  comentario     String?             @db.Text
+  metadata       Json?
+  criadoEm       DateTime            @default(now())
+  Requerimento   Requerimentos       @relation(fields: [requerimentoId], references: [id], onDelete: Cascade)
+  Usuario        Usuarios            @relation(fields: [usuarioId], references: [id])
 
   @@index([requerimentoId, criadoEm])
 }
@@ -1032,31 +1063,31 @@ model RequerimentosHistorico {
 // =============================================
 
 model Notificacoes {
-  id                String                @id @default(uuid())
-  usuarioId         String                // Usuário que receberá a notificação
-  tipo              NotificacaoTipo       // Tipo da notificação
-  status            NotificacaoStatus     @default(NAO_LIDA)
-  prioridade        NotificacaoPrioridade @default(NORMAL)
-  titulo            String                @db.VarChar(200)
-  mensagem          String                @db.Text
+  id              String                @id @default(uuid())
+  usuarioId       String // Usuário que receberá a notificação
+  tipo            NotificacaoTipo // Tipo da notificação
+  status          NotificacaoStatus     @default(NAO_LIDA)
+  prioridade      NotificacaoPrioridade @default(NORMAL)
+  titulo          String                @db.VarChar(200)
+  mensagem        String                @db.Text
   // Referências opcionais para entidades relacionadas
-  vagaId            String?               // Se for sobre uma vaga
-  candidaturaId     String?               // Se for sobre uma candidatura
-  empresasPlanoId   String?               // Se for sobre um plano
+  vagaId          String? // Se for sobre uma vaga
+  candidaturaId   String? // Se for sobre uma candidatura
+  empresasPlanoId String? // Se for sobre um plano
   // Dados extras (ex: motivo de rejeição, detalhes do pagamento, etc.)
-  dados             Json?                 // Dados adicionais em formato JSON
+  dados           Json? // Dados adicionais em formato JSON
   // Link de ação (onde o usuário pode clicar para ver mais detalhes)
-  linkAcao          String?               @db.VarChar(500)
+  linkAcao        String?               @db.VarChar(500)
   // Controle de leitura
-  lidaEm            DateTime?
+  lidaEm          DateTime?
   // Timestamps
-  criadoEm          DateTime              @default(now())
-  expiraEm          DateTime?             // Algumas notificações podem expirar
+  criadoEm        DateTime              @default(now())
+  expiraEm        DateTime? // Algumas notificações podem expirar
   // Relações
-  Usuario           Usuarios              @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  Vaga              EmpresasVagas?        @relation(fields: [vagaId], references: [id], onDelete: SetNull)
-  Candidatura       EmpresasCandidatos? @relation(fields: [candidaturaId], references: [id], onDelete: SetNull)
-  EmpresasPlano     EmpresasPlano?        @relation(fields: [empresasPlanoId], references: [id], onDelete: SetNull)
+  Usuario         Usuarios              @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  Vaga            EmpresasVagas?        @relation(fields: [vagaId], references: [id], onDelete: SetNull)
+  Candidatura     EmpresasCandidatos?   @relation(fields: [candidaturaId], references: [id], onDelete: SetNull)
+  EmpresasPlano   EmpresasPlano?        @relation(fields: [empresasPlanoId], references: [id], onDelete: SetNull)
 
   @@index([usuarioId, status])
   @@index([usuarioId, criadoEm])
@@ -1952,6 +1983,7 @@ enum StatusEmail {
 }
 
 enum StatusInscricao {
+  AGUARDANDO_PAGAMENTO
   INSCRITO
   EM_ANDAMENTO
   CONCLUIDO
@@ -2060,22 +2092,22 @@ enum WebsiteStatus {
 // =============================================================================
 
 enum RequerimentoTipo {
-  CANCELAMENTO_PLANO       // Cancelamento de plano empresarial
-  REEMBOLSO                // Solicitação de reembolso (direito de arrependimento)
-  SUPORTE_TECNICO          // Suporte técnico geral
-  ALTERACAO_DADOS          // Alteração de dados cadastrais
-  DENUNCIA                 // Denúncia de vaga/empresa
-  RECLAMACAO               // Reclamação geral
-  OUTROS                   // Outros assuntos
+  CANCELAMENTO_PLANO // Cancelamento de plano empresarial
+  REEMBOLSO // Solicitação de reembolso (direito de arrependimento)
+  SUPORTE_TECNICO // Suporte técnico geral
+  ALTERACAO_DADOS // Alteração de dados cadastrais
+  DENUNCIA // Denúncia de vaga/empresa
+  RECLAMACAO // Reclamação geral
+  OUTROS // Outros assuntos
 }
 
 enum RequerimentoStatus {
-  ABERTO                   // Requerimento aberto, aguardando análise
-  EM_ANALISE               // Em análise pelo administrador
-  AGUARDANDO_USUARIO       // Aguardando resposta do usuário
-  RESOLVIDO                // Resolvido/concluído
-  CANCELADO                // Cancelado pelo usuário
-  RECUSADO                 // Recusado pelo administrador
+  ABERTO // Requerimento aberto, aguardando análise
+  EM_ANALISE // Em análise pelo administrador
+  AGUARDANDO_USUARIO // Aguardando resposta do usuário
+  RESOLVIDO // Resolvido/concluído
+  CANCELADO // Cancelado pelo usuário
+  RECUSADO // Recusado pelo administrador
 }
 
 enum RequerimentoPrioridade {
@@ -2091,21 +2123,21 @@ enum RequerimentoPrioridade {
 
 enum NotificacaoTipo {
   // Notificações para EMPRESA
-  VAGA_REJEITADA               // Vaga foi rejeitada pelo Setor de Vagas
-  VAGA_APROVADA                // Vaga foi aprovada e publicada
-  NOVO_CANDIDATO               // Novo candidato se inscreveu na vaga
-  VAGA_PREENCHIDA              // Vaga atingiu limite de currículos desejados
-  PLANO_EXPIRANDO              // Plano irá expirar em breve (5, 3, 1 dia ou horas)
-  PLANO_EXPIRADO               // Plano expirou
-  ASSINATURA_RENOVADA          // Assinatura foi renovada automaticamente
-  PAGAMENTO_APROVADO           // Pagamento foi aprovado
-  PAGAMENTO_RECUSADO           // Pagamento foi recusado
+  VAGA_REJEITADA // Vaga foi rejeitada pelo Setor de Vagas
+  VAGA_APROVADA // Vaga foi aprovada e publicada
+  NOVO_CANDIDATO // Novo candidato se inscreveu na vaga
+  VAGA_PREENCHIDA // Vaga atingiu limite de currículos desejados
+  PLANO_EXPIRANDO // Plano irá expirar em breve (5, 3, 1 dia ou horas)
+  PLANO_EXPIRADO // Plano expirou
+  ASSINATURA_RENOVADA // Assinatura foi renovada automaticamente
+  PAGAMENTO_APROVADO // Pagamento foi aprovado
+  PAGAMENTO_RECUSADO // Pagamento foi recusado
   // Notificações para CANDIDATO (futuro)
-  CANDIDATURA_VISUALIZADA      // Empresa visualizou o currículo
-  CANDIDATURA_APROVADA         // Empresa aprovou o candidato para próxima etapa
-  CANDIDATURA_REJEITADA        // Empresa rejeitou a candidatura
+  CANDIDATURA_VISUALIZADA // Empresa visualizou o currículo
+  CANDIDATURA_APROVADA // Empresa aprovou o candidato para próxima etapa
+  CANDIDATURA_REJEITADA // Empresa rejeitou a candidatura
   // Notificações gerais
-  SISTEMA                      // Notificação do sistema
+  SISTEMA // Notificação do sistema
 }
 
 enum NotificacaoStatus {

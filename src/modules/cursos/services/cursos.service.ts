@@ -375,6 +375,10 @@ const mapCourse = async (course: RawCourse) => {
           descricao: subcategoria.descricao ?? null,
         }
       : null,
+    // 🆕 Campos de precificação (checkout de cursos)
+    valor: course.valor ? Number(course.valor) : 0,
+    valorPromocional: course.valorPromocional ? Number(course.valorPromocional) : null,
+    gratuito: course.gratuito ?? false,
     criadoEm: course.criadoEm.toISOString(),
     atualizadoEm: course.atualizadoEm.toISOString(),
     turmas: turmasWithInscricoes,
@@ -479,6 +483,10 @@ const mapPublicCourse = (
           descricao: subcategoria.descricao ?? null,
         }
       : null,
+    // 🆕 Campos de precificação (checkout de cursos)
+    valor: course.valor ? Number(course.valor) : 0,
+    valorPromocional: course.valorPromocional ? Number(course.valorPromocional) : null,
+    gratuito: course.gratuito ?? false,
     turmas: turmasMapeadas,
   };
 };
@@ -618,6 +626,10 @@ export const cursosService = {
                 descricao: subcategoria.descricao ?? null,
               }
             : null,
+          // 🆕 Campos de precificação (checkout de cursos)
+          valor: course.valor ? Number(course.valor) : 0,
+          valorPromocional: course.valorPromocional ? Number(course.valorPromocional) : null,
+          gratuito: course.gratuito ?? false,
           criadoEm: course.criadoEm.toISOString(),
           atualizadoEm: course.atualizadoEm.toISOString(),
           turmas: turmasComInscricoes,
@@ -657,6 +669,10 @@ export const cursosService = {
                 descricao: subcategoria.descricao ?? null,
               }
             : null,
+          // 🆕 Campos de precificação (checkout de cursos)
+          valor: course.valor ? Number(course.valor) : 0,
+          valorPromocional: course.valorPromocional ? Number(course.valorPromocional) : null,
+          gratuito: course.gratuito ?? false,
           criadoEm: course.criadoEm.toISOString(),
           atualizadoEm: course.atualizadoEm.toISOString(),
           turmas: undefined,
@@ -773,6 +789,10 @@ export const cursosService = {
         cargaHoraria: true,
         estagioObrigatorio: true,
         statusPadrao: true,
+        // 🆕 Campos de precificação
+        valor: true,
+        valorPromocional: true,
+        gratuito: true,
         CursosCategorias: { select: categoriaSelect },
         CursosSubcategorias: { select: subcategoriaSelect },
         CursosTurmas: {
@@ -819,6 +839,10 @@ export const cursosService = {
               descricao: subcategoria.descricao ?? null,
             }
           : null,
+        // 🆕 Campos de precificação (checkout de cursos)
+        valor: curso.valor ? Number(curso.valor) : 0,
+        valorPromocional: curso.valorPromocional ? Number(curso.valorPromocional) : null,
+        gratuito: curso.gratuito ?? false,
         turmas: ((curso as any).CursosTurmas || []).map((turma: any) => {
           const inscricoesCount = inscricoesCountMap[turma.id] || 0;
           return mapTurmaSummaryWithInscricoes(turma, inscricoesCount);

@@ -123,24 +123,79 @@ export const candidaturasService = {
             id: true,
             nomeCompleto: true,
             email: true,
+            cpf: true,
             status: true,
             role: true,
             tipoUsuario: true,
             criadoEm: true,
             atualizadoEm: true,
+            UsuariosInformation: {
+              select: {
+                telefone: true,
+                genero: true,
+                dataNasc: true,
+                avatarUrl: true,
+                descricao: true,
+              },
+            },
+            UsuariosEnderecos: {
+              orderBy: { criadoEm: 'asc' },
+              take: 1,
+              select: {
+                cidade: true,
+                estado: true,
+              },
+            },
           },
         },
         UsuariosCurriculos: {
-          select: { id: true, titulo: true, resumo: true, ultimaAtualizacao: true },
+          select: {
+            id: true,
+            usuarioId: true,
+            titulo: true,
+            resumo: true,
+            objetivo: true,
+            principal: true,
+            areasInteresse: true,
+            preferencias: true,
+            habilidades: true,
+            idiomas: true,
+            experiencias: true,
+            formacao: true,
+            cursosCertificacoes: true,
+            premiosPublicacoes: true,
+            acessibilidade: true,
+            consentimentos: true,
+            ultimaAtualizacao: true,
+            criadoEm: true,
+            atualizadoEm: true,
+          },
         },
         EmpresasVagas: {
           select: {
             id: true,
+            codigo: true,
             titulo: true,
             slug: true,
             status: true,
             usuarioId: true,
             inseridaEm: true,
+            descricao: true,
+            localizacao: true,
+            modalidade: true,
+            regimeDeTrabalho: true,
+            senioridade: true,
+            Usuarios: {
+              select: {
+                id: true,
+                nomeCompleto: true,
+                UsuariosInformation: {
+                  select: {
+                    avatarUrl: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -242,10 +297,13 @@ export const candidaturasService = {
     }
 
     // Verificar se o usuário pode atualizar esta candidatura
-    if (params.role !== Roles.ADMIN && params.role !== Roles.MODERADOR) {
-      if (candidatura.candidatoId !== params.usuarioId) {
-        throw new Error('Você não tem permissão para atualizar esta candidatura.');
-      }
+    const isAdmin = params.role === Roles.ADMIN || params.role === Roles.MODERADOR;
+    const isEmpresaDonaVaga = params.role === Roles.EMPRESA && candidatura.empresaUsuarioId === params.usuarioId;
+    const isSetorVagas = params.role === Roles.SETOR_DE_VAGAS || params.role === Roles.RECRUTADOR;
+    const isProprioCandidato = params.role === Roles.ALUNO_CANDIDATO && candidatura.candidatoId === params.usuarioId;
+
+    if (!isAdmin && !isEmpresaDonaVaga && !isSetorVagas && !isProprioCandidato) {
+      throw new Error('Você não tem permissão para atualizar esta candidatura.');
     }
 
     // Verificar se o status existe

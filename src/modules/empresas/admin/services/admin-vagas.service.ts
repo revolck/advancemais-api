@@ -200,6 +200,7 @@ const mapUsuarioAdmin = (usuario?: UsuarioAdminRecord | null) => {
   return {
     id: merged.id,
     codUsuario: merged.codUsuario,
+    nome: merged.nomeCompleto, // Alias para compatibilidade com frontend
     nomeCompleto: merged.nomeCompleto,
     email: merged.email,
     cpf: merged.cpf ?? null,

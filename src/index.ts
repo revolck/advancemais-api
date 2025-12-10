@@ -22,6 +22,7 @@ import { startAssinaturasReconJob } from '@/modules/mercadopago/assinaturas/cron
 import { startBoletoWatcherJob } from '@/modules/mercadopago/assinaturas/cron/boleto-watcher';
 import { startBloqueiosWatcherJob } from '@/modules/usuarios/bloqueios/cron/bloqueio-watcher';
 import { startEstagiosWatcherJob } from '@/modules/cursos/cron/estagios-watcher';
+import { startCobrancaAutomaticaJob } from '@/modules/empresas/cartoes/cron/cobranca-automatica';
 
 /**
  * Aplicação principal - Advance+ API
@@ -168,8 +169,9 @@ try {
     startBoletoWatcherJob();
     startBloqueiosWatcherJob();
     startEstagiosWatcherJob();
+    startCobrancaAutomaticaJob(); // Cobrança automática de cartões
   } catch (e) {
-    routerLogger.warn({ err: e }, '⚠️ Falha ao iniciar cron de assinaturas');
+    routerLogger.warn({ err: e }, '⚠️ Falha ao iniciar crons');
   }
 } catch (error) {
   routerLogger.error({ err: error }, '❌ Erro crítico ao carregar router principal');

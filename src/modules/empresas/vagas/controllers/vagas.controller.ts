@@ -21,7 +21,7 @@ export class VagasController {
   static list = async (_req: Request, res: Response) => {
     try {
       const { status, usuarioId, page, pageSize } = _req.query as {
-        status?: string;
+        status?: string | string[];
         usuarioId?: string;
         page?: string;
         pageSize?: string;
@@ -52,9 +52,34 @@ export class VagasController {
       ];
       let statusesFilter: StatusDeVagas[] | undefined = undefined;
 
-      if (typeof status === 'string' && status.trim() !== '') {
-        const normalized = status.trim().toUpperCase();
-        if (normalized === 'ALL' || normalized === 'TODAS' || normalized === 'TODOS') {
+      // Normaliza status para array (aceita string, string[] ou valores separados por vírgula)
+      const normalizeStatusInput = (input: string | string[] | undefined): string[] => {
+        if (!input) return [];
+        if (Array.isArray(input)) {
+          // Se for array, processa cada item (pode conter vírgulas também)
+          return input.flatMap((item) =>
+            item
+              .split(',')
+              .map((s) => s.trim().toUpperCase())
+              .filter(Boolean),
+          );
+        }
+        // Se for string, faz split por vírgula
+        return input
+          .split(',')
+          .map((s) => s.trim().toUpperCase())
+          .filter(Boolean);
+      };
+
+      const normalizedStatuses = normalizeStatusInput(status);
+
+      if (normalizedStatuses.length > 0) {
+        // Verifica se é pedido para retornar todos os status
+        if (
+          normalizedStatuses.some(
+            (s) => s === 'ALL' || s === 'TODAS' || s === 'TODOS',
+          )
+        ) {
           statusesFilter = [
             'RASCUNHO',
             'EM_ANALISE',
@@ -65,11 +90,7 @@ export class VagasController {
             'ENCERRADA',
           ];
         } else {
-          const parts = normalized
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean);
-          const chosen = parts.filter((s): s is StatusDeVagas =>
+          const chosen = normalizedStatuses.filter((s): s is StatusDeVagas =>
             validStatuses.has(s as StatusDeVagas),
           );
           if (chosen.length > 0) {

@@ -22,6 +22,30 @@ const booleanPreprocessor = z.preprocess((value) => {
   return undefined;
 }, z.boolean().optional());
 
+// Preprocessor para datas - aceita ISO string ou YYYY-MM-DD
+const datePreprocessor = z.preprocess((value) => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  // Tenta parsear a data
+  const date = new Date(trimmed);
+  if (isNaN(date.getTime())) {
+    return undefined;
+  }
+
+  return date;
+}, z.date().optional());
+
 const statusListPreprocessor = z.preprocess((value) => {
   if (value === undefined || value === null || value === '') {
     return undefined;
@@ -72,6 +96,9 @@ export const candidaturasOverviewQuerySchema = z
     search: searchPreprocessor,
     status: statusListPreprocessor,
     onlyWithCandidaturas: booleanPreprocessor,
+    // Filtros de data de candidatura (aplicadaEm)
+    aplicadaDe: datePreprocessor,
+    aplicadaAte: datePreprocessor,
   })
   .transform((value) => ({
     ...value,

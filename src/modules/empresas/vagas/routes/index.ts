@@ -5,6 +5,7 @@ import { supabaseAuthMiddleware, optionalSupabaseAuth } from '@/modules/usuarios
 import { Roles } from '@/modules/usuarios/enums/Roles';
 import { VagasCategoriasController } from '@/modules/empresas/vagas/controllers/categorias.controller';
 import { VagasController } from '@/modules/empresas/vagas/controllers/vagas.controller';
+import { MinhasVagasController } from '@/modules/empresas/vagas/controllers/minhas-vagas.controller';
 import { vagasProcessosRoutes } from '@/modules/empresas/vagas-processos';
 import { vagasSolicitacoesRoutes } from '@/modules/empresas/vagas-solicitacoes/routes';
 
@@ -41,6 +42,99 @@ const categoriaAdminRoles = [Roles.ADMIN, Roles.MODERADOR];
  *         source: |
  *           curl -X GET "http://localhost:3000/api/v1/empresas/vagas/categorias"
  */
+/**
+ * @openapi
+ * /api/v1/empresas/vagas/minhas:
+ *   get:
+ *     summary: Listar minhas vagas (empresa autenticada)
+ *     description: |
+ *       Retorna as vagas da empresa autenticada. O empresaId é extraído automaticamente do token JWT.
+ *       Por padrão, retorna vagas com todos os status (RASCUNHO, EM_ANALISE, PUBLICADO, etc).
+ *       Este endpoint é exclusivo para role EMPRESA - admins devem usar /api/v1/admin/empresas/{id}/vagas
+ *     tags: [Empresas - Vagas]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         required: false
+ *         schema:
+ *           type: string
+ *           example: PUBLICADO,RASCUNHO
+ *         description: "Filtra por um ou mais status separados por vírgula. Aceita RASCUNHO, EM_ANALISE, PUBLICADO, DESPUBLICADA, PAUSADA, ENCERRADA ou EXPIRADO. Use ALL/TODAS/TODOS para trazer todos os status."
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           example: 1
+ *         description: "Página de resultados (inicia em 1)"
+ *       - in: query
+ *         name: pageSize
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           example: 10
+ *         description: "Quantidade de itens por página (máx. 100)"
+ *     responses:
+ *       200:
+ *         description: Lista de vagas da empresa
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Vaga'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     pageSize:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *       401:
+ *         description: Token inválido ou ausente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Acesso negado (role não é EMPRESA)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForbiddenResponse'
+ *       500:
+ *         description: Erro interno do servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Listar todas as vagas
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/empresas/vagas/minhas" \
+ *            -H "Authorization: Bearer <TOKEN>"
+ *       - lang: cURL
+ *         label: Listar apenas publicadas
+ *         source: |
+ *           curl -X GET "http://localhost:3000/api/v1/empresas/vagas/minhas?status=PUBLICADO" \
+ *            -H "Authorization: Bearer <TOKEN>"
+ */
+router.get('/minhas', supabaseAuthMiddleware([Roles.EMPRESA]), MinhasVagasController.list);
+
 router.get('/categorias', publicCache, VagasCategoriasController.list);
 
 /**

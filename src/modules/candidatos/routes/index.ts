@@ -347,6 +347,7 @@ router.get(
     Roles.MODERADOR,
     Roles.EMPRESA,
     Roles.SETOR_DE_VAGAS,
+    Roles.RECRUTADOR,
   ]),
   CandidaturasController.get,
 );
@@ -388,6 +389,7 @@ router.put(
     Roles.MODERADOR,
     Roles.EMPRESA,
     Roles.SETOR_DE_VAGAS,
+    Roles.RECRUTADOR,
   ]),
   CandidaturasController.update,
 );
@@ -416,6 +418,58 @@ router.delete(
   '/candidaturas/:id',
   supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO, Roles.ADMIN, Roles.MODERADOR]),
   CandidaturasController.cancel,
+);
+
+/**
+ * @openapi
+ * /api/v1/candidatos/candidaturas/status-disponiveis:
+ *   get:
+ *     summary: Listar status de processo disponíveis
+ *     description: Retorna todos os status de processo ativos para uso em candidaturas
+ *     tags: [Candidatos]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de status disponíveis
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       nome:
+ *                         type: string
+ *                         example: "EM_ANALISE"
+ *                       descricao:
+ *                         type: string
+ *                         nullable: true
+ *                       ativo:
+ *                         type: boolean
+ *                       isDefault:
+ *                         type: boolean
+ */
+router.get(
+  '/candidaturas/status-disponiveis',
+  supabaseAuthMiddleware([
+    Roles.ALUNO_CANDIDATO,
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.EMPRESA,
+    Roles.SETOR_DE_VAGAS,
+    Roles.RECRUTADOR,
+  ]),
+  CandidaturasController.listStatusDisponiveis,
 );
 
 export { router as candidatosRoutes };

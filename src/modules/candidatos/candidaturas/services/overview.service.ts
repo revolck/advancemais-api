@@ -68,6 +68,8 @@ interface FiltersResult {
     status: string[];
     search: string | null;
     onlyWithCandidaturas: boolean;
+    aplicadaDe: string | null;
+    aplicadaAte: string | null;
   };
 }
 
@@ -79,6 +81,8 @@ const buildFilters = ({
   vagaId,
   empresaUsuarioId,
   search,
+  aplicadaDe,
+  aplicadaAte,
 }: OverviewParams): FiltersResult => {
   const isGlobalViewer = GLOBAL_ROLES.has(viewerRole);
   const effectiveEmpresaUsuarioId = isGlobalViewer ? (empresaUsuarioId ?? null) : viewerId;
@@ -115,6 +119,23 @@ const buildFilters = ({
 
   if (status && status.length > 0) {
     candidaturasWhereBase.statusId = { in: status };
+  }
+
+  // Filtros de data de candidatura (aplicadaEm)
+  if (aplicadaDe || aplicadaAte) {
+    candidaturasWhereBase.aplicadaEm = {};
+    if (aplicadaDe) {
+      // Início do dia
+      const startOfDay = new Date(aplicadaDe);
+      startOfDay.setHours(0, 0, 0, 0);
+      candidaturasWhereBase.aplicadaEm.gte = startOfDay;
+    }
+    if (aplicadaAte) {
+      // Fim do dia
+      const endOfDay = new Date(aplicadaAte);
+      endOfDay.setHours(23, 59, 59, 999);
+      candidaturasWhereBase.aplicadaEm.lte = endOfDay;
+    }
   }
 
   // Se está buscando por userId, adicionar o filtro de candidatoId
@@ -167,6 +188,8 @@ const buildFilters = ({
       status: status ?? [],
       search: search ?? null,
       onlyWithCandidaturas: Boolean(shouldRequireCandidaturas),
+      aplicadaDe: aplicadaDe?.toISOString() ?? null,
+      aplicadaAte: aplicadaAte?.toISOString() ?? null,
     },
   } satisfies FiltersResult;
 };

@@ -56,13 +56,13 @@ const atividadesSchema = z.object({
 });
 
 const beneficiosSchema = z.object({
-  lista: stringArrayField('Cada benefício').min(1, 'Informe pelo menos um benefício'),
+  lista: stringArrayField('Cada benefício').optional().default([]),
   observacoes: z
     .string({ invalid_type_error: 'As observações devem ser um texto' })
     .trim()
     .max(2000, 'As observações devem ter no máximo 2000 caracteres')
     .optional(),
-});
+}).optional();
 
 const localizacaoSchema = z
   .object({
@@ -158,20 +158,28 @@ const baseVagaSchemaRaw = z.object({
       invalid_type_error: 'O ID do usuário deve ser uma string',
     })
     .uuid('O ID do usuário deve ser um UUID válido'),
-  areaInteresseId: z.coerce
-    .number({
-      required_error: 'A área de interesse é obrigatória',
-      invalid_type_error: 'A área de interesse deve ser um número',
-    })
-    .int('A área de interesse deve ser um número inteiro')
-    .positive('A área de interesse deve ser maior que zero'),
-  subareaInteresseId: z.coerce
-    .number({
-      required_error: 'A subárea de interesse é obrigatória',
-      invalid_type_error: 'A subárea de interesse deve ser um número',
-    })
-    .int('A subárea de interesse deve ser um número inteiro')
-    .positive('A subárea de interesse deve ser maior que zero'),
+  // Aceitar UUID OU INT no areaInteresseId (frontend envia UUID de categorias aqui)
+  areaInteresseId: z
+    .union([
+      z.string().uuid(),
+      z.coerce.number().int().positive(),
+    ])
+    .optional(),
+  subareaInteresseId: z
+    .union([
+      z.string().uuid(),
+      z.coerce.number().int().positive(),
+    ])
+    .optional(),
+  // Categorias de vagas (UUID) - opcional
+  categoriaVagaId: z
+    .string()
+    .uuid()
+    .optional(),
+  subcategoriaVagaId: z
+    .string()
+    .uuid()
+    .optional(),
   slug: slugField,
   modoAnonimo: z
     .boolean({ invalid_type_error: 'modoAnonimo deve ser verdadeiro ou falso' })
@@ -211,10 +219,11 @@ const baseVagaSchemaRaw = z.object({
     required_error: 'A jornada é obrigatória',
     invalid_type_error: 'jornada inválida',
   }),
-  senioridade: z.nativeEnum(Senioridade, {
-    required_error: 'A senioridade da vaga é obrigatória',
-    invalid_type_error: 'senioridade inválida',
-  }),
+  senioridade: z
+    .nativeEnum(Senioridade, {
+      invalid_type_error: 'senioridade inválida',
+    })
+    .optional(),
   inscricoesAte: dateField('A data limite de inscrições').optional(),
   inseridaEm: dateField('A data de publicação da vaga').optional(),
   localizacao: localizacaoSchema,
@@ -226,6 +235,18 @@ const baseVagaSchemaRaw = z.object({
 });
 
 export const createVagaSchema = baseVagaSchemaRaw.superRefine((data, ctx) => {
+  // Validação: salarioMin é obrigatório se salarioConfidencial = false
+  if (data.salarioConfidencial === false) {
+    if (!data.salarioMin || Number(data.salarioMin) <= 0) {
+      ctx.addIssue({
+        path: ['salarioMin'],
+        code: z.ZodIssueCode.custom,
+        message: 'O salário mínimo é obrigatório quando o salário não é confidencial',
+      });
+    }
+  }
+
+  // Validação: salarioMax deve ser maior que salarioMin
   if (data.salarioMin && data.salarioMax) {
     const min = Number(data.salarioMin);
     const max = Number(data.salarioMax);
@@ -243,9 +264,9 @@ export const updateVagaSchema = baseVagaSchemaRaw
   .partial()
   .extend({
     descricao: descricaoOpcional.or(z.null()).optional(),
-    requisitos: z.union([requisitosSchema, z.null()]).optional(),
-    atividades: z.union([atividadesSchema, z.null()]).optional(),
-    beneficios: z.union([beneficiosSchema, z.null()]).optional(),
+    requisitos: requisitosSchema.or(z.null()).optional(),
+    atividades: atividadesSchema.or(z.null()).optional(),
+    beneficios: beneficiosSchema.or(z.null()).optional(),
     observacoes: optionalLongTextField('As observações da vaga').or(z.null()).optional(),
     inscricoesAte: z.union([dateField('A data limite de inscrições'), z.null()]).optional(),
     inseridaEm: dateField('A data de publicação da vaga').optional(),

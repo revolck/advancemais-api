@@ -433,6 +433,56 @@ export const assinaturasService = {
     mensagem?: string | null;
   }) {
     try {
+      // Verificar se já existe um log idêntico para evitar duplicatas
+      // Isso é importante porque webhooks podem ser chamados múltiplas vezes
+      const whereCondition: any = {
+        tipo: data.tipo,
+        status: data.status ?? null,
+      };
+
+      // Usar mpResourceId como chave primária de deduplicação se disponível
+      if (data.mpResourceId && data.empresasPlanoId) {
+        whereCondition.mpResourceId = data.mpResourceId;
+        whereCondition.empresasPlanoId = data.empresasPlanoId;
+      } else if (data.externalRef) {
+        // Para eventos sem mpResourceId (checkout start, errors)
+        whereCondition.externalRef = data.externalRef;
+        whereCondition.mpResourceId = null;
+      } else {
+        // Se não há identificadores únicos, criar sempre (logs genéricos)
+        await prisma.logsPagamentosDeAssinaturas.create({
+          data: {
+            usuarioId: data.usuarioId ?? null,
+            empresasPlanoId: data.empresasPlanoId ?? null,
+            tipo: data.tipo,
+            status: data.status ?? null,
+            externalRef: data.externalRef ?? null,
+            mpResourceId: data.mpResourceId ?? null,
+            payload: data.payload ?? undefined,
+            mensagem: data.mensagem ?? null,
+          },
+        });
+        return;
+      }
+
+      // Verificar se já existe
+      const existing = await prisma.logsPagamentosDeAssinaturas.findFirst({
+        where: whereCondition,
+        select: { id: true },
+      });
+
+      if (existing) {
+        // Já existe um log idêntico, apenas atualizar o payload se necessário
+        if (data.payload) {
+          await prisma.logsPagamentosDeAssinaturas.update({
+            where: { id: existing.id },
+            data: { payload: data.payload },
+          });
+        }
+        return; // Não criar duplicata
+      }
+
+      // Criar novo log se não existe
       await prisma.logsPagamentosDeAssinaturas.create({
         data: {
           usuarioId: data.usuarioId ?? null,
@@ -447,6 +497,8 @@ export const assinaturasService = {
       });
     } catch (error) {
       // Ignoramos falhas de logging para não interromper o fluxo principal
+      // Mas logamos o erro para debug
+      console.error('[logEvent] Erro ao criar log de pagamento:', error);
       void error;
     }
   },

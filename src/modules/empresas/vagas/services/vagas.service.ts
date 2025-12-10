@@ -33,6 +33,7 @@ const includeEmpresa = {
       select: {
         id: true,
         nomeCompleto: true,
+        cnpj: true, // Adicionado para retornar CNPJ da empresa
         UsuariosInformation: {
           select: usuarioInformacoesSelect,
         },
@@ -217,8 +218,8 @@ const sanitizeAtividades = (
 const sanitizeBeneficios = (
   value: CreateVagaData['beneficios'] | NonNullable<UpdateVagaData['beneficios']>,
 ): Prisma.JsonObject => ({
-  lista: sanitizeStringArray(value.lista),
-  observacoes: value.observacoes !== undefined ? nullableText(value.observacoes) : null,
+  lista: sanitizeStringArray(value?.lista ?? []),
+  observacoes: value?.observacoes !== undefined ? nullableText(value.observacoes) : null,
 });
 
 const sanitizeLocalizacao = (
@@ -486,6 +487,7 @@ const transformVaga = (vaga: VagaWithEmpresa) => {
     ? {
         id: empresaUsuario.id,
         nome: empresaUsuario.nomeCompleto,
+        cnpj: vagaSemMetadados.modoAnonimo ? null : ((empresaUsuario as any).cnpj ?? null), // CNPJ da empresa
         avatarUrl: vagaSemMetadados.modoAnonimo ? null : empresaUsuario.avatarUrl,
         cidade: empresaUsuario.cidade,
         estado: empresaUsuario.estado,
@@ -608,18 +610,45 @@ export const vagasService = {
   },
 
   create: async (data: CreateVagaData) => {
-    const { areaId, subareaId } = await ensureAreaAndSubarea({
-      areaId: data.areaInteresseId,
-      subareaId: data.subareaInteresseId,
+    // Se areaInteresseId é UUID, é na verdade a categoriaVagaId
+    let categoriaId = data.categoriaVagaId;
+    let subcategoriaId = data.subcategoriaVagaId;
+
+    if (data.areaInteresseId && typeof data.areaInteresseId === 'string') {
+      // Frontend enviou UUID em areaInteresseId - usar como categoriaVagaId
+      categoriaId = data.areaInteresseId as any;
+    }
+
+    if (data.subareaInteresseId && typeof data.subareaInteresseId === 'string') {
+      // Frontend enviou UUID em subareaInteresseId - usar como subcategoriaVagaId
+      subcategoriaId = data.subareaInteresseId as any;
+    }
+
+    // Validar categoria
+    if (!categoriaId) {
+      throw new Error('Categoria da vaga é obrigatória');
+    }
+
+    const categoria = await prisma.empresasVagasCategorias.findUnique({
+      where: { id: categoriaId },
     });
-    const dataComArea: CreateVagaData = {
-      ...data,
-      areaInteresseId: areaId,
-      subareaInteresseId: subareaId,
-    };
+
+    if (!categoria) {
+      throw new Error('Categoria de vaga não encontrada');
+    }
+
     const planoAtivo = await ensurePlanoAtivoParaUsuario(data.usuarioId);
     const codigo = await generateUniqueVagaCode();
     const shouldHighlight = data.vagaEmDestaque ?? false;
+
+    // Preparar dados com categoria correta
+    const dataComCategoria = {
+      ...data,
+      categoriaVagaId: categoriaId,
+      subcategoriaVagaId: subcategoriaId || null,
+      areaInteresseId: null,
+      subareaInteresseId: null,
+    };
 
     const vaga = await prisma.$transaction(async (tx) => {
       if (shouldHighlight) {
@@ -628,7 +657,7 @@ export const vagasService = {
       }
 
       const created = await tx.empresasVagas.create({
-        data: sanitizeCreateData(dataComArea, codigo),
+        data: sanitizeCreateData(dataComCategoria as any, codigo),
       });
 
       if (shouldHighlight) {

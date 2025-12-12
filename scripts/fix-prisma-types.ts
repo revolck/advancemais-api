@@ -27,8 +27,8 @@ async function fixFiles() {
   const files = await glob('src/**/*.ts', { ignore: ['**/*.test.ts', '**/node_modules/**'] });
 
   for (const file of files) {
-    let content = readFileSync(file, 'utf-8');
-    let modified = false;
+    const content = readFileSync(file, 'utf-8');
+    const modified = false;
 
     // Adicionar import do helper se usar prisma.create
     if (content.includes('prisma.') && content.includes('.create(')) {

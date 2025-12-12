@@ -12,10 +12,10 @@ import { randomUUID } from 'crypto';
 
 describe('API - Cursos', () => {
   let app: Express;
-  let testUsers: TestUser[] = [];
+  const testUsers: TestUser[] = [];
   let testAdmin: TestUser;
   let testCursoId: number | null = null;
-  let testTurmaId: string | null = null;
+  const testTurmaId: string | null = null;
   let testCategoriaId: number | null = null;
   let testSubcategoriaId: number | null = null;
 

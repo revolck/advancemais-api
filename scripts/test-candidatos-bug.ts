@@ -86,7 +86,7 @@ async function testCandidatosOverview() {
   console.log('═'.repeat(80));
 
   const sqlResult = await prisma.$queryRaw<
-    Array<{ id: string; nomeCompleto: string; email: string }>
+    { id: string; nomeCompleto: string; email: string }[]
   >`
     SELECT id, "nomeCompleto", email 
     FROM "Usuarios" 

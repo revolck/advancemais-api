@@ -236,8 +236,8 @@ export function optimizeAddressFilter(
  * Profiler de queries - registra queries lentas
  */
 export class QueryProfiler {
-  private static queries: Map<string, { count: number; totalTime: number; maxTime: number }> =
-    new Map();
+  private static queries =
+    new Map<string, { count: number; totalTime: number; maxTime: number }>();
 
   static record(key: string, duration: number): void {
     const existing = this.queries.get(key) || { count: 0, totalTime: 0, maxTime: 0 };

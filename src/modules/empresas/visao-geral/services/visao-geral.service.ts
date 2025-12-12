@@ -30,22 +30,22 @@ interface VisaoGeralResponse {
     encerradas: number;
     emAnalise: number;
   };
-  candidaturasRecentes: Array<{
+  candidaturasRecentes: {
     id: string;
     candidatoNome: string;
     vagaTitulo: string;
     vagaCodigo: string;
     status: string;
     aplicadaEm: Date;
-  }>;
-  notificacoesRecentes: Array<{
+  }[];
+  notificacoesRecentes: {
     id: string;
     tipo: string;
     titulo: string;
     mensagem: string;
     status: string;
     criadoEm: Date;
-  }>;
+  }[];
   estatisticas: {
     totalCandidaturas: number;
     candidaturasNovas: number;

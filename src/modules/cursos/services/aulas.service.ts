@@ -275,8 +275,24 @@ export const aulasService = {
       const ordem = data.ordem ?? (await tx.cursosTurmasAulas.count({ where: { turmaId } })) + 1;
       const deliveryFields = resolveDeliveryFieldsOnCreate(turma.metodo, data);
 
+      // Gerar código único para a aula
+      const ultimaAula = await tx.cursosTurmasAulas.findFirst({
+        where: { turmaId },
+        orderBy: { criadoEm: 'desc' },
+        select: { codigo: true },
+      });
+
+      let numero = 1;
+      if (ultimaAula?.codigo) {
+        const match = ultimaAula.codigo.match(/AUL-(\d+)/);
+        if (match) numero = parseInt(match[1], 10) + 1;
+      }
+
+      const codigo = `AUL-${numero.toString().padStart(6, '0')}`;
+
       const aula = await tx.cursosTurmasAulas.create({
         data: {
+          codigo,
           turmaId,
           moduloId: data.moduloId ?? null,
           nome: data.nome,

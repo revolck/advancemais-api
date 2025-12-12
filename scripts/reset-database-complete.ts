@@ -22,7 +22,7 @@ async function resetDatabaseComplete() {
 
     // 1. Remover todas as tabelas (isso também remove enums que são usados apenas por essas tabelas)
     console.log('📋 Passo 1/4: Removendo todas as tabelas...');
-    const tables = await prisma.$queryRaw<Array<{ tablename: string }>>`
+    const tables = await prisma.$queryRaw<{ tablename: string }[]>`
       SELECT tablename FROM pg_tables 
       WHERE schemaname = 'public' 
       AND tablename NOT LIKE '_prisma%'
@@ -40,7 +40,7 @@ async function resetDatabaseComplete() {
 
     // 2. Remover todos os tipos/enums customizados
     console.log('\n📋 Passo 2/4: Removendo todos os tipos/enums...');
-    const types = await prisma.$queryRaw<Array<{ typname: string }>>`
+    const types = await prisma.$queryRaw<{ typname: string }[]>`
       SELECT typname FROM pg_type 
       WHERE typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
       AND typtype = 'e'
@@ -59,7 +59,7 @@ async function resetDatabaseComplete() {
 
     // 3. Remover todas as sequences (exceto as do Prisma)
     console.log('\n📋 Passo 3/4: Removendo sequences...');
-    const sequences = await prisma.$queryRaw<Array<{ sequence_name: string }>>`
+    const sequences = await prisma.$queryRaw<{ sequence_name: string }[]>`
       SELECT sequence_name FROM information_schema.sequences 
       WHERE sequence_schema = 'public'
       AND sequence_name NOT LIKE '_prisma%'

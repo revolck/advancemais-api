@@ -6,3 +6,5 @@ dist/
 /generated/prisma
 *.map.env.backup
 .env.backup
+docs/
+.env_2

@@ -433,6 +433,7 @@ model CursosTurmas {
   CursosTurmasProvas          CursosTurmasProvas[]
   CursosTurmasRecuperacoes    CursosTurmasRecuperacoes[]
   CursosTurmasRegrasAvaliacao CursosTurmasRegrasAvaliacao?
+  cursosAulasProgressos       CursosAulasProgresso[]
 
   @@index([cursoId])
   @@index([instrutorId])
@@ -462,26 +463,85 @@ model CursosTurmasAgenda {
 }
 
 model CursosTurmasAulas {
-  id                         String                       @id @default(uuid())
-  turmaId                    String
-  moduloId                   String?
-  nome                       String                       @db.VarChar(255)
-  descricao                  String?
-  ordem                      Int                          @default(0)
-  urlVideo                   String?                      @db.VarChar(2048)
-  sala                       String?                      @db.VarChar(100)
-  urlMeet                    String?                      @db.VarChar(2048)
-  criadoEm                   DateTime                     @default(now())
-  atualizadoEm               DateTime                     @default(now())
-  CursosFrequenciaAlunos     CursosFrequenciaAlunos[]
-  CursosTurmasAgenda         CursosTurmasAgenda[]
-  CursosTurmasModulos        CursosTurmasModulos?         @relation(fields: [moduloId], references: [id])
-  CursosTurmas               CursosTurmas                 @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  CursosTurmasAulasMateriais CursosTurmasAulasMateriais[]
+  id                            String                       @id @default(uuid())
+  codigo                        String                       @unique @db.VarChar(12)
+  turmaId                       String?
+  instrutorId                   String?
+  moduloId                      String?
+  nome                          String                       @db.VarChar(255)
+  descricao                     String?
+  ordem                         Int                          @default(0)
+  urlVideo                      String?                      @db.VarChar(2048)
+  sala                          String?                      @db.VarChar(100)
+  urlMeet                       String?                      @db.VarChar(2048)
+  // Novos campos de modalidade e controle
+  modalidade                    CursosMetodos                @default(ONLINE)
+  tipoLink                      CursosTipoLink?
+  obrigatoria                   Boolean                      @default(true)
+  duracaoMinutos                Int?
+  status                        CursosAulaStatus             @default(PUBLICADA)
+  // Google Meet integração
+  meetEventId                   String?                      @db.VarChar(255)
+  // Configurações de gravação (apenas AO_VIVO)
+  gravarAula                    Boolean?                     @default(true)
+  linkGravacao                  String?                      @db.VarChar(2048)
+  duracaoGravacao               Int?
+  statusGravacao                String?                      @db.VarChar(50)
+  // Materiais complementares
+  apenasMateriaisComplementares Boolean                      @default(false)
+  // Controle de inserção
+  adicionadaAposCriacao         Boolean                      @default(false)
+  // Período específico
+  dataInicio                    DateTime?
+  dataFim                       DateTime?
+  horaInicio                    String?                      @db.VarChar(5)
+  horaFim                       String?                      @db.VarChar(5)
+  // Auditoria
+  criadoPorId                   String?
+  criadoPor                     Usuarios?                    @relation("AulasCriadas", fields: [criadoPorId], references: [id], onDelete: SetNull)
+  instrutor                     Usuarios?                    @relation("AulasInstrutor", fields: [instrutorId], references: [id], onDelete: SetNull)
+  deletedAt                     DateTime?
+  deletedBy                     String?
+  criadoEm                      DateTime                     @default(now())
+  atualizadoEm                  DateTime                     @default(now())
+  // Relacionamentos existentes
+  CursosFrequenciaAlunos        CursosFrequenciaAlunos[]
+  CursosTurmasAgenda            CursosTurmasAgenda[]
+  CursosTurmasModulos           CursosTurmasModulos?         @relation(fields: [moduloId], references: [id])
+  CursosTurmas                  CursosTurmas?                @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  CursosTurmasAulasMateriais    CursosTurmasAulasMateriais[]
+  // Novos relacionamentos
+  CursosAulasProgresso          CursosAulasProgresso[]
+  CursosAulasHistorico          CursosAulasHistorico[]
+  AulaInstrutorHistorico        AulaInstrutorHistorico[]
 
   @@index([moduloId])
+  @@index([codigo])
   @@index([turmaId])
+  @@index([instrutorId])
   @@index([turmaId, ordem])
+  @@index([status])
+  @@index([modalidade])
+  @@index([criadoPorId])
+  @@index([dataInicio, dataFim])
+  @@index([deletedAt])
+}
+
+model AulaInstrutorHistorico {
+  id                String            @id @default(uuid())
+  aulaId            String
+  instrutorId       String
+  vinculadoEm       DateTime
+  removidoEm        DateTime          @default(now())
+  removidoPorId     String
+  aulaJaAconteceu   Boolean           @default(false)
+  CursosTurmasAulas CursosTurmasAulas @relation(fields: [aulaId], references: [id], onDelete: Cascade)
+  Instrutor         Usuarios          @relation("HistoricoInstrutor", fields: [instrutorId], references: [id], onDelete: Cascade)
+  RemovidoPor       Usuarios          @relation("HistoricoRemovidoPor", fields: [removidoPorId], references: [id], onDelete: Cascade)
+
+  @@index([aulaId])
+  @@index([instrutorId])
+  @@index([removidoEm])
 }
 
 model CursosTurmasAulasMateriais {
@@ -501,6 +561,64 @@ model CursosTurmasAulasMateriais {
 
   @@index([aulaId])
   @@index([tipo])
+}
+
+model CursosAulasProgresso {
+  id                     String                 @id @default(uuid())
+  aulaId                 String
+  turmaId                String
+  inscricaoId            String
+  alunoId                String
+  percentualAssistido    Decimal                @default(0) @db.Decimal(5, 2)
+  tempoAssistidoSegundos Int                    @default(0)
+  concluida              Boolean                @default(false)
+  concluidaEm            DateTime?
+  ultimaPosicao          Int                    @default(0)
+  iniciadoEm             DateTime?
+  atualizadoEm           DateTime               @default(now())
+  CursosTurmasAulas      CursosTurmasAulas      @relation(fields: [aulaId], references: [id], onDelete: Cascade)
+  CursosTurmas           CursosTurmas           @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  CursosTurmasInscricoes CursosTurmasInscricoes @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
+  Usuarios               Usuarios               @relation("AulasProgresso", fields: [alunoId], references: [id], onDelete: Cascade)
+
+  @@unique([aulaId, inscricaoId])
+  @@index([alunoId])
+  @@index([inscricaoId])
+  @@index([turmaId, alunoId])
+  @@index([concluida])
+}
+
+model CursosAulasHistorico {
+  id                String              @id @default(uuid())
+  aulaId            String
+  usuarioId         String
+  acao              CursosAcaoHistorico
+  camposAlterados   Json?
+  turmaId           String?
+  ip                String?             @db.VarChar(45)
+  userAgent         String?             @db.VarChar(500)
+  criadoEm          DateTime            @default(now())
+  CursosTurmasAulas CursosTurmasAulas   @relation(fields: [aulaId], references: [id], onDelete: Cascade)
+  Usuarios          Usuarios            @relation("AulasHistorico", fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([aulaId])
+  @@index([usuarioId])
+  @@index([criadoEm])
+  @@index([acao])
+}
+
+model NotificacoesEnviadas {
+  id        String   @id @default(uuid())
+  tipo      String   @db.VarChar(50)
+  eventoId  String   @db.VarChar(36)
+  usuarioId String
+  enviadaEm DateTime @default(now())
+  Usuarios  Usuarios @relation("NotificacoesEnviadas", fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([tipo, eventoId, usuarioId])
+  @@index([eventoId])
+  @@index([tipo])
+  @@index([usuarioId])
 }
 
 model CursosTurmasInscricoes {
@@ -537,6 +655,7 @@ model CursosTurmasInscricoes {
   CursosTurmasProvasEnvios   CursosTurmasProvasEnvios[]
   CursosTurmasRecuperacoes   CursosTurmasRecuperacoes[]
   CuponsDesconto             CuponsDesconto?              @relation(fields: [cupomDescontoId], references: [id])
+  CursosAulasProgresso       CursosAulasProgresso[]
 
   @@unique([turmaId, alunoId])
   @@index([alunoId])
@@ -939,6 +1058,11 @@ model Usuarios {
   atualizadoEm                                                     DateTime                     @default(now())
   ultimoLogin                                                      DateTime?
   refreshToken                                                     String?
+  // Google OAuth campos
+  googleAccessToken                                                String?                      @db.Text
+  googleRefreshToken                                               String?                      @db.Text
+  googleCalendarId                                                 String?                      @db.VarChar(255)
+  googleTokenExpiraEm                                              DateTime?
   AuditoriaLogs                                                    AuditoriaLogs[]
   AuditoriaScripts                                                 AuditoriaScripts[]
   AuditoriaTransacoes_AuditoriaTransacoes_empresaIdToUsuarios      AuditoriaTransacoes[]        @relation("AuditoriaTransacoes_empresaIdToUsuarios")
@@ -975,6 +1099,15 @@ model Usuarios {
   RequerimentosHistorico                                           RequerimentosHistorico[]
   // Notificações
   Notificacoes                                                     Notificacoes[]
+  Requerimentos                                                    Requerimentos[]
+  // Novos relacionamentos de aulas
+  AulasCriadas                                                     CursosTurmasAulas[]          @relation("AulasCriadas")
+  AulasInstrutor                                                   CursosTurmasAulas[]          @relation("AulasInstrutor")
+  AulasProgresso                                                   CursosAulasProgresso[]       @relation("AulasProgresso")
+  AulasHistorico                                                   CursosAulasHistorico[]       @relation("AulasHistorico")
+  NotificacoesEnviadas                                             NotificacoesEnviadas[]       @relation("NotificacoesEnviadas")
+  HistoricoInstrutorAulas                                          AulaInstrutorHistorico[]     @relation("HistoricoInstrutor")
+  HistoricoRemocaoInstrutor                                        AulaInstrutorHistorico[]     @relation("HistoricoRemovidoPor")
 
   @@index([criadoEm])
   @@index([role])
@@ -984,6 +1117,7 @@ model Usuarios {
   @@index([tipoUsuario, role, status, criadoEm], map: "usuarios_tipo_role_status_criadoem_idx")
   // ✅ Índices adicionais para otimização de queries (índices parciais serão criados via migração SQL)
   @@index([role, status, criadoEm(sort: Desc)], map: "usuarios_role_status_criadoem_desc_idx")
+  @@index([googleCalendarId])
 }
 
 model UsuariosCandidatosLogs {
@@ -1033,6 +1167,8 @@ model Requerimentos {
   EmpresasPlano          EmpresasPlano?           @relation(fields: [empresasPlanoId], references: [id])
   EmpresasVaga           EmpresasVagas?           @relation(fields: [empresasVagaId], references: [id])
   RequerimentosHistorico RequerimentosHistorico[]
+  usuarios               Usuarios?                @relation(fields: [usuariosId], references: [id])
+  usuariosId             String?
 
   @@index([usuarioId])
   @@index([status])
@@ -1781,6 +1917,29 @@ enum CursosMetodos {
   SEMIPRESENCIAL
 }
 
+enum CursosTipoLink {
+  YOUTUBE
+  MEET
+}
+
+enum CursosAulaStatus {
+  RASCUNHO
+  PUBLICADA
+  EM_ANDAMENTO
+  CONCLUIDA
+  CANCELADA
+}
+
+enum CursosAcaoHistorico {
+  CRIADA
+  EDITADA
+  VINCULADA_TURMA
+  DESVINCULADA_TURMA
+  STATUS_ALTERADO
+  CANCELADA
+  RESTAURADA
+}
+
 enum CursosModelosRecuperacao {
   SUBSTITUI_MENOR
   MEDIA_MINIMA_DIRETA
@@ -2136,6 +2295,19 @@ enum NotificacaoTipo {
   CANDIDATURA_VISUALIZADA // Empresa visualizou o currículo
   CANDIDATURA_APROVADA // Empresa aprovou o candidato para próxima etapa
   CANDIDATURA_REJEITADA // Empresa rejeitou a candidatura
+  // Notificações de AULAS e CURSOS
+  NOVA_AULA // Nova aula adicionada
+  AULA_ATUALIZADA // Aula foi atualizada
+  AULA_CANCELADA // Aula foi cancelada
+  AULA_EM_2H // Aula ao vivo começa em 2h
+  AULA_INICIADA // Aula ao vivo iniciou
+  PROVA_EM_24H // Prova em 24 horas
+  PROVA_EM_8H // Prova em 8 horas
+  PROVA_EM_2H // Prova em 2 horas
+  INSTRUTOR_VINCULADO // Instrutor foi vinculado à turma
+  INSTRUTOR_DESVINCULADO // Instrutor foi desvinculado
+  TURMA_INICIOU // Turma iniciou
+  TURMA_FINALIZADA // Turma finalizou
   // Notificações gerais
   SISTEMA // Notificação do sistema
 }

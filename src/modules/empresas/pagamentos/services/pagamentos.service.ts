@@ -260,7 +260,7 @@ export const pagamentosService = {
     });
 
     // Aplicar filtros que dependem do payload (método e valor)
-    let filteredLogs = allLogs.filter((log) => {
+    const filteredLogs = allLogs.filter((log) => {
       const payload = log.payload as any;
 
       // Filtro por método

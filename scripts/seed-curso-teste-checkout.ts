@@ -1,6 +1,6 @@
 /**
  * Script para popular o banco com curso e turma de teste para checkout
- * 
+ *
  * Uso:
  *   npx tsx scripts/seed-curso-teste-checkout.ts
  */
@@ -46,8 +46,8 @@ async function main() {
         statusPadrao: 'PUBLICADO',
         estagioObrigatorio: false,
         // ✅ Campos de precificação (apenas o essencial)
-        valor: 299.90,
-        valorPromocional: 249.90,
+        valor: 299.9,
+        valorPromocional: 249.9,
         gratuito: false,
       },
     });
@@ -123,18 +123,17 @@ async function main() {
       },
     });
     logger.info(`✅ Turma GRATUITA criada: ${turmaGratuita.nome} (ID: ${turmaGratuita.id})`);
-    logger.info(`   📅 Acesso: Ilimitado até ${turmaGratuita.dataFim?.toLocaleDateString('pt-BR')}`);
+    logger.info(
+      `   📅 Acesso: Ilimitado até ${turmaGratuita.dataFim?.toLocaleDateString('pt-BR')}`,
+    );
 
     // 6. Criar cupom de desconto de teste
     logger.info('🎟️  Criando cupom de desconto de teste...');
-    
+
     // Buscar ou criar usuário admin para o cupom
-    let usuarioAdmin = await prisma.usuarios.findFirst({
+    const usuarioAdmin = await prisma.usuarios.findFirst({
       where: {
-        OR: [
-          { role: 'ADMINISTRADOR' },
-          { role: 'SUPER_ADMINISTRADOR' },
-        ],
+        OR: [{ role: 'ADMINISTRADOR' }, { role: 'SUPER_ADMINISTRADOR' }],
       },
     });
 
@@ -186,10 +185,14 @@ async function main() {
     logger.info(`   GET /api/v1/cursos/${cursoPago.id}/turmas/${turma1.id}/vagas\n`);
     logger.info('# 2. Checkout de curso GRATUITO:');
     logger.info(`   POST /api/v1/cursos/checkout`);
-    logger.info(`   Body: { "usuarioId": "<seu_usuario>", "cursoId": "${cursoGratuito.id}", "turmaId": "${turmaGratuita.id}", "pagamento": "pix", "aceitouTermos": true }\n`);
+    logger.info(
+      `   Body: { "usuarioId": "<seu_usuario>", "cursoId": "${cursoGratuito.id}", "turmaId": "${turmaGratuita.id}", "pagamento": "pix", "aceitouTermos": true }\n`,
+    );
     logger.info('# 3. Checkout de curso PAGO com PIX:');
     logger.info(`   POST /api/v1/cursos/checkout`);
-    logger.info(`   Body: { "usuarioId": "<seu_usuario>", "cursoId": "${cursoPago.id}", "turmaId": "${turma1.id}", "pagamento": "pix", "aceitouTermos": true, "payer": { "identification": { "type": "CPF", "number": "12345678901" } } }\n`);
+    logger.info(
+      `   Body: { "usuarioId": "<seu_usuario>", "cursoId": "${cursoPago.id}", "turmaId": "${turma1.id}", "pagamento": "pix", "aceitouTermos": true, "payer": { "identification": { "type": "CPF", "number": "12345678901" } } }\n`,
+    );
     logger.info('# 4. Checkout com CUPOM:');
     logger.info(`   Body: { ..., "cupomCodigo": "TESTE10" }\n`);
 
@@ -210,4 +213,3 @@ main()
     console.error(error);
     process.exit(1);
   });
-

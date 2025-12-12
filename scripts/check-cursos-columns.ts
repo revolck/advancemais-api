@@ -9,7 +9,7 @@ async function main() {
 
   try {
     // Buscar colunas da tabela Cursos
-    const columns = await prisma.$queryRaw<Array<{ column_name: string; data_type: string }>>`
+    const columns = await prisma.$queryRaw<{ column_name: string; data_type: string }[]>`
       SELECT column_name, data_type 
       FROM information_schema.columns 
       WHERE table_name = 'Cursos' 
@@ -58,7 +58,9 @@ async function main() {
         console.log('📚 Exemplo de curso:');
         console.log(`   Nome: ${curso.nome}`);
         console.log(`   Valor: R$ ${curso.valor}`);
-        console.log(`   Valor Promocional: ${curso.valorPromocional ? `R$ ${curso.valorPromocional}` : 'N/A'}`);
+        console.log(
+          `   Valor Promocional: ${curso.valorPromocional ? `R$ ${curso.valorPromocional}` : 'N/A'}`,
+        );
         console.log(`   Gratuito: ${curso.gratuito ? 'Sim' : 'Não'}\n`);
       }
     }
@@ -70,4 +72,3 @@ async function main() {
 }
 
 main();
-

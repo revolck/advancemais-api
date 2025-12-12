@@ -397,7 +397,7 @@ async function countInscricoesAtivasPorTurma(turmaIds: string[]): Promise<Record
 
   // Construir a query com IN ao invés de ANY para evitar problemas de tipo
   const placeholders = turmaIds.map((_, i) => `$${i + 1}`).join(', ');
-  const result = await prisma.$queryRawUnsafe<Array<{ turmaId: string; count: bigint }>>(
+  const result = await prisma.$queryRawUnsafe<{ turmaId: string; count: bigint }[]>(
     `SELECT 
       ti."turmaId"::text as "turmaId",
       COUNT(*)::int as count
@@ -971,7 +971,7 @@ export const cursosService = {
       // Registrar auditoria de criação (após a transação)
       if (criadoPor) {
         // Usar require para evitar dependência circular
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
+         
         const { cursosAuditoriaService } = require('./cursos-auditoria.service');
         await cursosAuditoriaService.registrarCriacaoCurso(
           created.id,
@@ -1050,7 +1050,7 @@ export const cursosService = {
       // Registrar auditoria para cada campo alterado (após a transação)
       if (alteradoPor && cursoAnterior) {
         // Usar require para evitar dependência circular
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
+         
         const { cursosAuditoriaService } = require('./cursos-auditoria.service');
 
         // Registrar alteração de nome

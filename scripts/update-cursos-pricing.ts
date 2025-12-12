@@ -13,8 +13,8 @@ async function main() {
     const nodejs = await prisma.cursos.updateMany({
       where: { codigo: 'NODEJS2025' },
       data: {
-        valor: 299.90,
-        valorPromocional: 249.90,
+        valor: 299.9,
+        valorPromocional: 249.9,
         gratuito: false,
       },
     });
@@ -43,7 +43,7 @@ async function main() {
         statusPadrao: 'PUBLICADO',
       },
       data: {
-        valor: 199.90,
+        valor: 199.9,
       },
     });
     logger.info(`✅ ${updated.count} cursos atualizados com valor padrão de R$ 199,90`);
@@ -89,4 +89,3 @@ main()
     console.error(error);
     process.exit(1);
   });
-

@@ -23,12 +23,12 @@ interface MetricasResponse {
       proximosEventos: number;
       taxaConversao: number;
     };
-    candidatosPorVaga: Array<any>;
-    candidaturasPorStatus: Array<any>;
-    candidaturasTimeline: Array<any>;
-    vagasPorStatus: Array<any>;
-    candidaturasPorOrigem: Array<any>;
-    topVagas: Array<any>;
+    candidatosPorVaga: any[];
+    candidaturasPorStatus: any[];
+    candidaturasTimeline: any[];
+    vagasPorStatus: any[];
+    candidaturasPorOrigem: any[];
+    topVagas: any[];
     periodo: {
       inicio: string;
       fim: string;

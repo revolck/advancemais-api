@@ -1,0 +1,216 @@
+###############################################
+# TESTES COMPLETOS - Sistema de Cursos e Aulas
+# Data: 11/12/2025
+###############################################
+
+### Variáveis
+@baseUrl = http://localhost:3000
+@apiUrl = {{baseUrl}}/api/v1
+@authToken = Bearer seu-token-aqui
+
+###############################################
+# 1. TESTAR CURSOS - LISTAGEM COM PREÇOS
+###############################################
+
+### 1.1. Listar cursos (verificar se retorna preços)
+GET {{apiUrl}}/cursos?pageSize=3
+Accept: application/json
+
+### Esperado:
+# {
+#   "data": [
+#     {
+#       "nome": "Node.js Avançado",
+#       "valor": 299.90,
+#       "valorPromocional": 249.90,
+#       "gratuito": false,
+#       "categoria": { "nome": "Tecnologia" }
+#     }
+#   ]
+# }
+
+###############################################
+# 2. TESTAR SISTEMA DE AULAS
+###############################################
+
+### 2.1. Listar aulas
+GET {{apiUrl}}/cursos/aulas?page=1&pageSize=10
+Authorization: {{authToken}}
+Accept: application/json
+
+### 2.2. Criar aula ONLINE (YouTube)
+POST {{apiUrl}}/cursos/aulas
+Authorization: {{authToken}}
+Content-Type: application/json
+
+{
+  "titulo": "Introdução ao Node.js",
+  "descricao": "Aula inicial sobre conceitos básicos",
+  "modalidade": "ONLINE",
+  "youtubeUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  "turmaId": "UUID_DA_TURMA",
+  "moduloId": "UUID_DO_MODULO",
+  "obrigatoria": true,
+  "duracaoMinutos": 60,
+  "status": "PUBLICADA"
+}
+
+### 2.3. Criar aula AO VIVO (Google Meet)
+POST {{apiUrl}}/cursos/aulas
+Authorization: {{authToken}}
+Content-Type: application/json
+
+{
+  "titulo": "Aula Ao Vivo - React Hooks",
+  "descricao": "Aula ao vivo sobre React Hooks",
+  "modalidade": "AO_VIVO",
+  "turmaId": "UUID_DA_TURMA",
+  "dataInicio": "2025-01-15T09:00:00Z",
+  "dataFim": "2025-01-15T11:00:00Z",
+  "obrigatoria": true
+}
+
+### Esperado:
+# {
+#   "success": true,
+#   "aula": {
+#     "meetUrl": "https://meet.google.com/xxx-yyyy-zzz",
+#     "meetEventId": "google-event-id"
+#   }
+# }
+
+### 2.4. Buscar aula por ID
+@aulaId = uuid-da-aula
+GET {{apiUrl}}/cursos/aulas/{{aulaId}}
+Authorization: {{authToken}}
+
+### 2.5. Atualizar progresso (YouTube)
+POST {{apiUrl}}/cursos/aulas/{{aulaId}}/progresso
+Authorization: {{authToken}}
+Content-Type: application/json
+
+{
+  "inscricaoId": "UUID_INSCRICAO",
+  "percentualAssistido": 75.5,
+  "tempoAssistidoSegundos": 2700,
+  "ultimaPosicao": 2700
+}
+
+### 2.6. Buscar progresso da aula
+GET {{apiUrl}}/cursos/aulas/{{aulaId}}/progresso
+Authorization: {{authToken}}
+
+### 2.7. Registrar presença (entrada)
+POST {{apiUrl}}/cursos/aulas/{{aulaId}}/presenca
+Authorization: {{authToken}}
+Content-Type: application/json
+
+{
+  "inscricaoId": "UUID_INSCRICAO",
+  "tipo": "entrada"
+}
+
+### 2.8. Listar presenças
+GET {{apiUrl}}/cursos/aulas/{{aulaId}}/presenca
+Authorization: {{authToken}}
+
+### 2.9. Buscar histórico
+GET {{apiUrl}}/cursos/aulas/{{aulaId}}/historico
+Authorization: {{authToken}}
+
+###############################################
+# 3. TESTAR GOOGLE OAUTH
+###############################################
+
+### 3.1. Verificar status da conexão
+GET {{apiUrl}}/auth/google/status
+Authorization: {{authToken}}
+
+### Esperado:
+# {
+#   "success": true,
+#   "conectado": false,
+#   "calendarId": null
+# }
+
+### 3.2. Iniciar conexão Google
+GET {{apiUrl}}/auth/google/connect
+Authorization: {{authToken}}
+
+### Esperado:
+# {
+#   "success": true,
+#   "authUrl": "https://accounts.google.com/o/oauth2/v2/auth?..."
+# }
+
+### 3.3. Desconectar Google
+POST {{apiUrl}}/auth/google/disconnect
+Authorization: {{authToken}}
+
+###############################################
+# 4. TESTAR AGENDA
+###############################################
+
+### 4.1. Buscar eventos da agenda
+GET {{apiUrl}}/cursos/agenda?dataInicio=2025-01-01&dataFim=2025-01-31&tipos=AULA,PROVA,ANIVERSARIO
+Authorization: {{authToken}}
+
+### Esperado:
+# {
+#   "success": true,
+#   "eventos": [
+#     {
+#       "tipo": "AULA",
+#       "titulo": "Aula de Node.js",
+#       "dataInicio": "2025-01-15T09:00:00Z",
+#       "meetUrl": "https://meet.google.com/...",
+#       "cor": "#3b82f6"
+#     },
+#     {
+#       "tipo": "ANIVERSARIO",
+#       "titulo": "🎂 Aniversário: João Silva",
+#       "data": "2025-01-18",
+#       "cor": "#10b981"
+#     }
+#   ]
+# }
+
+###############################################
+# 5. TESTAR CHECKOUT DE CURSOS
+###############################################
+
+### 5.1. Verificar vagas
+@cursoId = uuid-curso
+@turmaId = uuid-turma
+GET {{apiUrl}}/cursos/{{cursoId}}/turmas/{{turmaId}}/vagas
+
+### 5.2. Iniciar checkout (PIX)
+POST {{apiUrl}}/cursos/checkout
+Authorization: {{authToken}}
+Content-Type: application/json
+
+{
+  "usuarioId": "UUID_USUARIO",
+  "cursoId": "{{cursoId}}",
+  "turmaId": "{{turmaId}}",
+  "pagamento": "pix",
+  "payer": {
+    "identification": {
+      "type": "CPF",
+      "number": "12345678901"
+    }
+  },
+  "aceitouTermos": true
+}
+
+### 5.3. Validar token de acesso
+@tokenAcesso = token-jwt-aqui
+GET {{apiUrl}}/cursos/checkout/validar-token/{{tokenAcesso}}
+
+###############################################
+# 6. HEALTH CHECK
+###############################################
+
+### 6.1. Verificar saúde da API
+GET {{baseUrl}}/health
+

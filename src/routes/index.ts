@@ -7,6 +7,7 @@ import { getBloqueiosWatcherMetrics } from '@/modules/usuarios/bloqueios/cron/bl
 import { brevoRoutes } from '@/modules/brevo/routes';
 import { mercadopagoRoutes } from '@/modules/mercadopago';
 import { EmailVerificationController } from '@/modules/brevo/controllers/email-verification-controller';
+import googleAuthRoutes from '@/modules/auth/google/routes';
 import { usuarioRoutes } from '@/modules/usuarios';
 import { websiteRoutes } from '@/modules/website';
 import { empresasRoutes } from '@/modules/empresas';
@@ -1076,6 +1077,24 @@ if (usuarioRoutes) {
   }
 } else {
   routesLogger.error({ feature: 'UsuariosModule' }, '❌ usuarioRoutes não está definido');
+}
+
+/**
+ * Módulo de autenticação Google - COM VALIDAÇÃO
+ * /api/v1/auth/google/*
+ */
+if (googleAuthRoutes) {
+  try {
+    router.use('/api/v1/auth/google', googleAuthRoutes);
+    routesLogger.info(
+      { feature: 'GoogleAuthModule' },
+      '✅ Módulo Google Auth registrado com sucesso',
+    );
+  } catch (error) {
+    routesLogger.error({ feature: 'GoogleAuthModule', err: error }, '❌ ERRO - Módulo Google Auth');
+  }
+} else {
+  routesLogger.error({ feature: 'GoogleAuthModule' }, '❌ googleAuthRoutes não está definido');
 }
 
 /**

@@ -5,7 +5,7 @@ import { Roles } from '@prisma/client';
 
 describe('API - Autenticação', () => {
   let app: Express;
-  let testUsers: TestUser[] = [];
+  const testUsers: TestUser[] = [];
 
   beforeAll(async () => {
     app = await getTestApp();

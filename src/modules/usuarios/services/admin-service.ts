@@ -381,9 +381,9 @@ export class AdminService {
       .filter((u) => u.role === Roles.ALUNO_CANDIDATO)
       .map((u) => u.id);
 
-    let vinculosMap: Record<
+    const vinculosMap: Record<
       string,
-      { curriculos: Array<{ id: string }>; cursosInscricoes: Array<{ id: string }> }
+      { curriculos: { id: string }[]; cursosInscricoes: { id: string }[] }
     > = {};
 
     if (alunosIds.length > 0) {
@@ -1104,7 +1104,7 @@ export class AdminService {
 
     const aceitarTermos = dados.aceitarTermos ?? true;
     const supabaseId = dados.supabaseId?.trim() || randomUUID();
-    let normalizedRole =
+    const normalizedRole =
       dados.role && Object.values(Roles).includes(dados.role)
         ? dados.role
         : dados.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
@@ -1240,9 +1240,6 @@ export class AdminService {
         UsuariosVerificacaoEmailBypassed: true,
       },
     };
-
-    // ✅ OTIMIZAÇÃO: Invalidar cache de listagens após criar usuário
-    await this.invalidateListCache();
   }
 
   /**

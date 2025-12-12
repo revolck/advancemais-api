@@ -306,7 +306,7 @@ export const mapCandidatura = (candidatura: CandidaturaRecord) => {
 };
 
 const countByStatus = (
-  items: Array<{ status: string; status_processo?: { nome: string } | string }>,
+  items: { status: string; status_processo?: { nome: string } | string }[],
 ) =>
   items.reduce<Record<string, number>>((acc, item) => {
     // Priorizar o campo status se existir, caso contrário usar status_processo

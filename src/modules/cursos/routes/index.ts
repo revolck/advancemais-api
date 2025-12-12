@@ -17,6 +17,7 @@ import { AgendaController } from '../controllers/agenda.controller';
 import { CertificadosController } from '../controllers/certificados.controller';
 import { EstagiosController } from '../controllers/estagios.controller';
 import cursosCheckoutRoutes from '../checkout/routes';
+import aulasRoutes, { agendaRoutes } from '../aulas/routes';
 
 const router = Router();
 
@@ -25,6 +26,18 @@ const router = Router();
 // ========================================
 // Adicionar rotas de checkout de cursos (pagamento único via Mercado Pago)
 router.use('/', cursosCheckoutRoutes);
+
+// ========================================
+// ROTAS DE GESTÃO DE AULAS
+// ========================================
+// Sistema completo de aulas (Online, Presencial, Ao Vivo, Semipresencial)
+router.use('/aulas', aulasRoutes);
+
+// ========================================
+// ROTAS DE AGENDA
+// ========================================
+// Agenda unificada (aulas, provas, aniversários, turmas)
+router.use('/agenda', agendaRoutes);
 
 /**
  * @openapi

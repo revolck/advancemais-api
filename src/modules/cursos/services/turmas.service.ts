@@ -31,7 +31,7 @@ async function countInscricoesAtivasPorTurma(turmaIds: string[]): Promise<Record
   // Usar agregação SQL para melhor performance
   // Construir a query com IN ao invés de ANY para evitar problemas de tipo
   const placeholders = turmaIds.map((_, i) => `$${i + 1}`).join(', ');
-  const result = await prisma.$queryRawUnsafe<Array<{ turmaId: string; count: bigint }>>(
+  const result = await prisma.$queryRawUnsafe<{ turmaId: string; count: bigint }[]>(
     `SELECT 
       ti."turmaId"::text as "turmaId",
       COUNT(*)::int as count

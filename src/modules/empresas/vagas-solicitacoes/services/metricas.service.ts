@@ -95,7 +95,7 @@ export const metricasService = {
       `;
 
       const [result] = await prisma.$queryRawUnsafe<
-        Array<{
+        {
           totalEmpresas: bigint;
           empresasAtivas: bigint;
           totalVagas: bigint;
@@ -108,7 +108,7 @@ export const metricasService = {
           solicitacoesPendentes: bigint;
           solicitacoesAprovadasHoje: bigint;
           solicitacoesRejeitadasHoje: bigint;
-        }>
+        }[]
       >(query, hojeISO, amanhaISO);
 
       // Converter bigint para number

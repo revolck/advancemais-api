@@ -14,7 +14,7 @@ async function resetDatabase() {
     console.log('🔄 Iniciando reset manual do banco...\n');
 
     // Lista todas as tabelas (exceto as do Prisma)
-    const tables = await prisma.$queryRaw<Array<{ tablename: string }>>`
+    const tables = await prisma.$queryRaw<{ tablename: string }[]>`
       SELECT tablename FROM pg_tables 
       WHERE schemaname = 'public' 
       AND tablename NOT LIKE '_prisma%'

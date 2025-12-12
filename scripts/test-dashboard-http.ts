@@ -141,7 +141,7 @@ async function testDashboardHTTP() {
     // Verificar índices
     console.log(`\n🔍 Verificando índices importantes...`);
 
-    const indices = await prisma.$queryRaw<Array<{ tablename: string; indexname: string }>>`
+    const indices = await prisma.$queryRaw<{ tablename: string; indexname: string }[]>`
       SELECT tablename, indexname
       FROM pg_indexes
       WHERE schemaname = 'public'

@@ -35,12 +35,12 @@ export const minhasVagasService = {
 
     // Buscar último candidato de cada vaga (em uma única query otimizada)
     const ultimosCandidatos = await prisma.$queryRaw<
-      Array<{
+      {
         vagaId: string;
         candidatoId: string;
         candidatoNome: string;
         aplicadaEm: Date;
-      }>
+      }[]
     >`
       SELECT DISTINCT ON (c."vagaId")
         c."vagaId" as "vagaId",

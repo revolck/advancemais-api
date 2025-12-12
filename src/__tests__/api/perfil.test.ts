@@ -5,7 +5,7 @@ import { createTestUser, cleanupTestUsers, type TestUser } from '../helpers/auth
 
 describe('API - Perfil do Usuário', () => {
   let app: Express;
-  let testUsers: TestUser[] = [];
+  const testUsers: TestUser[] = [];
 
   beforeAll(async () => {
     app = await getTestApp();

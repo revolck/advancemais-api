@@ -16,7 +16,7 @@ async function fixMigrationState() {
     console.log('🔧 Corrigindo estado de migrations...\n');
 
     // 1. Verificar se existe a tabela de migrations
-    const migrationsTable = await prisma.$queryRaw<Array<{ exists: boolean }>>`
+    const migrationsTable = await prisma.$queryRaw<{ exists: boolean }[]>`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
         WHERE table_schema = 'public' 

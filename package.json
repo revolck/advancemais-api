@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only --ignore-watch node_modules --require tsconfig-paths/register src/index.ts",
     "start": "node -r tsconfig-paths/register dist/index.js",
-    "build": "tsc",
+    "build": "cross-env NODE_OPTIONS='--max-old-space-size=4096' tsc --project tsconfig.prod.json",
     "build:prod": "pnpm prisma db push --accept-data-loss && pnpm prisma generate && pnpm run build",
     "clean": "rm -rf dist",
     "prebuild": "pnpm run clean",

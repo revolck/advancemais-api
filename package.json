@@ -46,7 +46,7 @@
   "author": "Revolck",
   "license": "ISC",
   "engines": {
-    "node": ">=18.0.0",
+    "node": ">=22.0.0",
     "pnpm": ">=8.0.0"
   },
   "packageManager": "pnpm@10.14.0",

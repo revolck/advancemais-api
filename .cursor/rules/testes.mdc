@@ -1,0 +1,17 @@
+---
+alwaysApply: true
+---
+
+Testes garantem estabilidade.
+
+Diretrizes:
+
+- Services devem ter testes unitários.
+- Controllers devem ter testes de integração.
+- Cobrir fluxos críticos (auth, pagamentos).
+- Testes devem ser determinísticos.
+
+Nunca:
+
+- Testar implementação interna.
+- Criar testes frágeis.

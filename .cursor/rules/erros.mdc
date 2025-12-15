@@ -1,0 +1,19 @@
+---
+alwaysApply: true
+---
+
+Erros e logs são parte da arquitetura.
+
+Regras:
+
+- Usar erro padronizado (Error / AppError).
+- Nunca lançar erros genéricos.
+- Logs estruturados (pino).
+- Não logar dados sensíveis.
+- Diferenciar erro de negócio vs erro técnico.
+
+Observabilidade:
+
+- Logs devem permitir rastrear fluxos.
+- Pensar em métricas e alertas.
+- Facilitar debugging em produção.

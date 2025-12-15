@@ -1,7 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { Roles } from '@prisma/client';
 
-import { prisma } from '@/config/prisma';
+import { prisma, retryOperation } from '@/config/prisma';
 import {
   buildCandidatoSelect,
   mapCandidatoDetalhe,
@@ -45,16 +45,23 @@ export const adminCandidatosService = {
     const where = buildWhere(params);
     const skip = (page - 1) * pageSize;
 
-    const [total, candidatos] = await prisma.$transaction([
-      prisma.usuarios.count({ where }),
-      prisma.usuarios.findMany({
-        where,
-        orderBy: { criadoEm: 'desc' },
-        skip,
-        take: pageSize,
-        select: buildCandidatoSelect(),
-      }),
-    ]);
+    // ✅ Usar retryOperation para tratar erros de conexão automaticamente
+    const [total, candidatos] = await retryOperation(
+      () =>
+        prisma.$transaction([
+          prisma.usuarios.count({ where }),
+          prisma.usuarios.findMany({
+            where,
+            orderBy: { criadoEm: 'desc' },
+            skip,
+            take: pageSize,
+            select: buildCandidatoSelect(),
+          }),
+        ]),
+      3, // maxRetries
+      1000, // delayMs
+      20000, // timeoutMs - 20s para queries complexas com joins
+    );
 
     const data = candidatos
       .map((candidato) => mapCandidatoDetalhe(candidato))

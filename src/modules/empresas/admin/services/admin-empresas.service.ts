@@ -24,7 +24,7 @@ import {
 } from '@prisma/client';
 
 import { serverConfig } from '@/config/env';
-import { prisma } from '@/config/prisma';
+import { prisma, retryOperation } from '@/config/prisma';
 import { clientesService } from '@/modules/empresas/clientes/services/clientes.service';
 import { LimiteVagasPlanoAtingidoError } from '@/modules/empresas/vagas/services/errors';
 import { empresasAuditoriaService, type EmpresaAuditoriaItem } from './empresas-auditoria.service';
@@ -2053,6 +2053,9 @@ export const adminEmpresasService = {
   },
 
   listDashboard: async ({ page, pageSize, search }: AdminEmpresasDashboardListQuery) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-empresas.service.ts:2055',message:'listDashboard entry',data:{page,pageSize,search},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     const where: Prisma.UsuariosWhereInput = {
       tipoUsuario: TiposDeUsuarios.PESSOA_JURIDICA,
       role: Roles.EMPRESA,
@@ -2062,46 +2065,67 @@ export const adminEmpresasService = {
     const skip = (page - 1) * pageSize;
     const referenceDate = new Date();
 
-    const [total, empresas] = await prisma.$transaction([
-      prisma.usuarios.count({ where }),
-      prisma.usuarios.findMany({
-        where,
-        orderBy: { criadoEm: 'desc' },
-        skip,
-        take: pageSize,
-        select: createUsuarioDashboardSelect(),
-      }),
-    ]);
-
-    const data: AdminEmpresasDashboardListItem[] = empresas.map((empresa) => {
-      const planoAtual = empresa.EmpresasPlano[0];
-      const plano = mapPlanoResumo(planoAtual, referenceDate);
-      const bloqueio = mapBloqueioResumo(
-        empresa.UsuariosEmBloqueios_UsuariosEmBloqueios_usuarioIdToUsuarios?.[0] ?? null,
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-empresas.service.ts:2065',message:'before transaction with retry',data:{usingRetryOperation:true},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    // ✅ Usar retryOperation para tratar erros de conexão automaticamente
+    try {
+      const [total, empresas] = await retryOperation(
+        () =>
+          prisma.$transaction([
+            prisma.usuarios.count({ where }),
+            prisma.usuarios.findMany({
+              where,
+              orderBy: { criadoEm: 'desc' },
+              skip,
+              take: pageSize,
+              select: createUsuarioDashboardSelect(),
+            }),
+          ]),
+        3, // maxRetries
+        1000, // delayMs
+        20000, // timeoutMs - 20s para queries complexas com joins
       );
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-empresas.service.ts:2074',message:'transaction success',data:{total,empresasCount:empresas.length},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+
+      const data: AdminEmpresasDashboardListItem[] = empresas.map((empresa) => {
+        const planoAtual = empresa.EmpresasPlano[0];
+        const plano = mapPlanoResumo(planoAtual, referenceDate);
+        const bloqueio = mapBloqueioResumo(
+          empresa.UsuariosEmBloqueios_UsuariosEmBloqueios_usuarioIdToUsuarios?.[0] ?? null,
+        );
+
+        return {
+          id: empresa.id,
+          codUsuario: empresa.codUsuario,
+          nome: empresa.nomeCompleto,
+          email: empresa.email,
+          telefone: empresa.UsuariosInformation?.telefone ?? null,
+          avatarUrl: empresa.UsuariosInformation?.avatarUrl ?? null,
+          cnpj: empresa.cnpj ?? null,
+          status: empresa.status,
+          criadoEm: empresa.criadoEm,
+          vagasPublicadas: empresa._count?.EmpresasVagas ?? 0,
+          limiteVagasPlano: plano?.quantidadeVagas ?? null,
+          plano,
+          bloqueada: Boolean(bloqueio),
+          bloqueioAtivo: bloqueio,
+        } satisfies AdminEmpresasDashboardListItem;
+      });
 
       return {
-        id: empresa.id,
-        codUsuario: empresa.codUsuario,
-        nome: empresa.nomeCompleto,
-        email: empresa.email,
-        telefone: empresa.UsuariosInformation?.telefone ?? null,
-        avatarUrl: empresa.UsuariosInformation?.avatarUrl ?? null,
-        cnpj: empresa.cnpj ?? null,
-        status: empresa.status,
-        criadoEm: empresa.criadoEm,
-        vagasPublicadas: empresa._count?.EmpresasVagas ?? 0,
-        limiteVagasPlano: plano?.quantidadeVagas ?? null,
-        plano,
-        bloqueada: Boolean(bloqueio),
-        bloqueioAtivo: bloqueio,
-      } satisfies AdminEmpresasDashboardListItem;
-    });
-
-    return {
-      data,
-      pagination: buildPagination(page, pageSize, total),
-    };
+        data,
+        pagination: buildPagination(page, pageSize, total),
+      };
+    } catch (error: any) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-empresas.service.ts:2110',message:'retryOperation failed after all attempts',data:{errorCode:error?.code,errorMessage:error?.message?.substring(0,200),errorType:error?.constructor?.name},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      // Re-throw para que o controller possa tratar adequadamente
+      throw error;
+    }
   },
 
   list: async ({ page, pageSize, search }: AdminEmpresasListQuery) => {

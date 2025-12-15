@@ -7,6 +7,7 @@ import {
   arquivarNotificacoesSchema,
 } from '../validators/notificacoes.schema';
 import { ZodError } from 'zod';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 export class NotificacoesController {
   /**
@@ -31,13 +32,35 @@ export class NotificacoesController {
         success: true,
         ...result,
       });
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof ZodError) {
         return res.status(400).json({
           success: false,
           code: 'VALIDATION_ERROR',
           message: 'Erro de validação',
           issues: error.errors,
+        });
+      }
+
+      // ✅ Tratar erros de conexão do Prisma (P1001) como 503 Service Unavailable
+      const errorCode = (error as any)?.code;
+      const errorMessage = String((error as any)?.message || '').toLowerCase();
+      const isPrismaConnectionError =
+        (error instanceof PrismaClientKnownRequestError &&
+          (error.code === 'P1001' || error.code === 'P2024')) ||
+        errorCode === 'P1001' ||
+        errorCode === 'P2024' ||
+        errorMessage.includes("can't reach database") ||
+        errorMessage.includes('database server') ||
+        errorMessage.includes('connection') ||
+        errorMessage.includes("can't reach");
+
+      if (isPrismaConnectionError) {
+        console.error('⚠️ Erro de conexão ao listar notificações:', error);
+        return res.status(503).json({
+          success: false,
+          code: 'DATABASE_CONNECTION_ERROR',
+          message: 'Serviço temporariamente indisponível. Por favor, tente novamente mais tarde.',
         });
       }
 
@@ -71,7 +94,29 @@ export class NotificacoesController {
         success: true,
         ...result,
       });
-    } catch (error) {
+    } catch (error: any) {
+      // ✅ Tratar erros de conexão do Prisma (P1001) como 503 Service Unavailable
+      const errorCode = (error as any)?.code;
+      const errorMessage = String((error as any)?.message || '').toLowerCase();
+      const isPrismaConnectionError =
+        (error instanceof PrismaClientKnownRequestError &&
+          (error.code === 'P1001' || error.code === 'P2024')) ||
+        errorCode === 'P1001' ||
+        errorCode === 'P2024' ||
+        errorMessage.includes("can't reach database") ||
+        errorMessage.includes('database server') ||
+        errorMessage.includes('connection') ||
+        errorMessage.includes("can't reach");
+
+      if (isPrismaConnectionError) {
+        console.error('⚠️ Erro de conexão ao contar notificações:', error);
+        return res.status(503).json({
+          success: false,
+          code: 'DATABASE_CONNECTION_ERROR',
+          message: 'Serviço temporariamente indisponível. Por favor, tente novamente mais tarde.',
+        });
+      }
+
       console.error('Erro ao contar notificações:', error);
       return res.status(500).json({
         success: false,

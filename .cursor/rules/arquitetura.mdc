@@ -1,0 +1,27 @@
+---
+alwaysApply: true
+---
+
+Este é um backend em produção.
+
+Antes de propor qualquer solução, avalie:
+
+- Impacto em segurança
+- Impacto em performance
+- Facilidade de manutenção
+- Facilidade de testes
+- Impacto em times futuros
+
+Arquitetura:
+
+- Controllers apenas orquestram requisições.
+- Services concentram regras de negócio.
+- Repositories isolam acesso ao banco.
+- Integrações externas ficam em providers.
+
+Regras rígidas:
+
+- Nunca acessar Prisma fora de repositories.
+- Nunca colocar regra de negócio em controllers.
+- Nunca misturar HTTP com lógica de domínio.
+- Nunca confiar em dados externos sem validação (Zod).

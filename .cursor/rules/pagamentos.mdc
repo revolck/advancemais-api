@@ -1,0 +1,20 @@
+---
+alwaysApply: true
+---
+
+Pagamentos são um domínio crítico.
+
+Diretrizes:
+
+- Integrações externas devem ficar em providers.
+- Services orquestram fluxo de pagamento.
+- Estados de pagamento devem ser explícitos e persistidos.
+- Idempotência é obrigatória.
+- Webhooks devem ser validados e assinados.
+
+Regras:
+
+- Nunca confiar apenas no retorno do frontend.
+- Sempre validar status diretamente no MercadoPago.
+- Tratar cenários de retry e duplicidade.
+- Garantir consistência mesmo em falhas parciais.

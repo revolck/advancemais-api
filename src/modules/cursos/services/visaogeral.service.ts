@@ -10,7 +10,7 @@
  */
 
 import { Prisma, CursoStatus, TransacaoTipo, TransacaoStatus } from '@prisma/client';
-import { prisma } from '@/config/prisma';
+import { prisma, retryOperation } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import { getCache, setCache } from '@/utils/cache';
 
@@ -138,6 +138,7 @@ async function buscarMetricasGerais(): Promise<{
     return cached;
   }
 
+  // ✅ Usar retryOperation para tratar erros de conexão automaticamente
   const [
     {
       totalCursos,
@@ -150,30 +151,36 @@ async function buscarMetricasGerais(): Promise<{
       totalAlunosAtivos,
       totalAlunosConcluidos,
     },
-  ] = await prisma.$queryRaw<
-    {
-      totalCursos: bigint;
-      cursosPublicados: bigint;
-      cursosRascunho: bigint;
-      totalTurmas: bigint;
-      turmasAtivas: bigint;
-      turmasInscricoesAbertas: bigint;
-      totalAlunosInscritos: bigint;
-      totalAlunosAtivos: bigint;
-      totalAlunosConcluidos: bigint;
-    }[]
-  >`
-    SELECT
-      (SELECT COUNT(*) FROM "Cursos")                               AS "totalCursos",
-      (SELECT COUNT(*) FROM "Cursos" WHERE "statusPadrao" = 'PUBLICADO') AS "cursosPublicados",
-      (SELECT COUNT(*) FROM "Cursos" WHERE "statusPadrao" = 'RASCUNHO')  AS "cursosRascunho",
-      (SELECT COUNT(*) FROM "CursosTurmas")                         AS "totalTurmas",
-      (SELECT COUNT(*) FROM "CursosTurmas" WHERE "status" = 'EM_ANDAMENTO') AS "turmasAtivas",
-      (SELECT COUNT(*) FROM "CursosTurmas" WHERE "status" = 'INSCRICOES_ABERTAS') AS "turmasInscricoesAbertas",
-      (SELECT COUNT(*) FROM "CursosTurmasInscricoes")               AS "totalAlunosInscritos",
-      (SELECT COUNT(*) FROM "CursosTurmasInscricoes" WHERE "status" IN ('INSCRITO', 'EM_ANDAMENTO')) AS "totalAlunosAtivos",
-      (SELECT COUNT(*) FROM "CursosTurmasInscricoes" WHERE "status" = 'CONCLUIDO') AS "totalAlunosConcluidos"
-  `;
+  ] = await retryOperation(
+    () =>
+      prisma.$queryRaw<
+        {
+          totalCursos: bigint;
+          cursosPublicados: bigint;
+          cursosRascunho: bigint;
+          totalTurmas: bigint;
+          turmasAtivas: bigint;
+          turmasInscricoesAbertas: bigint;
+          totalAlunosInscritos: bigint;
+          totalAlunosAtivos: bigint;
+          totalAlunosConcluidos: bigint;
+        }[]
+      >`
+        SELECT
+          (SELECT COUNT(*) FROM "Cursos")                               AS "totalCursos",
+          (SELECT COUNT(*) FROM "Cursos" WHERE "statusPadrao" = 'PUBLICADO') AS "cursosPublicados",
+          (SELECT COUNT(*) FROM "Cursos" WHERE "statusPadrao" = 'RASCUNHO')  AS "cursosRascunho",
+          (SELECT COUNT(*) FROM "CursosTurmas")                         AS "totalTurmas",
+          (SELECT COUNT(*) FROM "CursosTurmas" WHERE "status" = 'EM_ANDAMENTO') AS "turmasAtivas",
+          (SELECT COUNT(*) FROM "CursosTurmas" WHERE "status" = 'INSCRICOES_ABERTAS') AS "turmasInscricoesAbertas",
+          (SELECT COUNT(*) FROM "CursosTurmasInscricoes")               AS "totalAlunosInscritos",
+          (SELECT COUNT(*) FROM "CursosTurmasInscricoes" WHERE "status" IN ('INSCRITO', 'EM_ANDAMENTO')) AS "totalAlunosAtivos",
+          (SELECT COUNT(*) FROM "CursosTurmasInscricoes" WHERE "status" = 'CONCLUIDO') AS "totalAlunosConcluidos"
+      `,
+    3, // maxRetries
+    1000, // delayMs
+    20000, // timeoutMs - 20s para queries complexas
+  );
 
   const result = {
     totalCursos: Number(totalCursos ?? 0n),
@@ -218,48 +225,55 @@ async function buscarCursosProximosInicio(): Promise<{
 
   // ✅ OTIMIZADO: Buscar apenas turmas dos próximos 30 dias com LIMIT
   // Usar agregação SQL para contar inscrições ativas em uma única query
-  const turmas = await prisma.cursosTurmas.findMany({
-    where: {
-      dataInicio: {
-        gte: agora,
-        lte: data30Dias,
-      },
-      status: {
-        in: ['INSCRICOES_ABERTAS', 'INSCRICOES_ENCERRADAS', 'PUBLICADO'],
-      },
-    },
-    select: {
-      id: true,
-      nome: true,
-      codigo: true,
-      dataInicio: true,
-      vagasTotais: true,
-      vagasDisponiveis: true,
-      status: true,
-      Cursos: {
+  // ✅ Usar retryOperation para tratar erros de conexão automaticamente
+  const turmas = await retryOperation(
+    () =>
+      prisma.cursosTurmas.findMany({
+        where: {
+          dataInicio: {
+            gte: agora,
+            lte: data30Dias,
+          },
+          status: {
+            in: ['INSCRICOES_ABERTAS', 'INSCRICOES_ENCERRADAS', 'PUBLICADO'],
+          },
+        },
         select: {
           id: true,
           nome: true,
           codigo: true,
-        },
-      },
-      _count: {
-        select: {
-          CursosTurmasInscricoes: {
-            where: {
-              status: {
-                in: ['INSCRITO', 'EM_ANDAMENTO'],
+          dataInicio: true,
+          vagasTotais: true,
+          vagasDisponiveis: true,
+          status: true,
+          Cursos: {
+            select: {
+              id: true,
+              nome: true,
+              codigo: true,
+            },
+          },
+          _count: {
+            select: {
+              CursosTurmasInscricoes: {
+                where: {
+                  status: {
+                    in: ['INSCRITO', 'EM_ANDAMENTO'],
+                  },
+                },
               },
             },
           },
         },
-      },
-    },
-    orderBy: {
-      dataInicio: 'asc',
-    },
-    take: 50, // ✅ LIMIT: Máximo 50 turmas (suficiente para 30 dias)
-  });
+        orderBy: {
+          dataInicio: 'asc',
+        },
+        take: 50, // ✅ LIMIT: Máximo 50 turmas (suficiente para 30 dias)
+      }),
+    3, // maxRetries
+    1000, // delayMs
+    20000, // timeoutMs - 20s para queries complexas
+  );
 
   const turmasFormatadas: CursosProximosInicio[] = turmas.map((turma) => {
     const diasParaInicio = calcularDiasParaData(turma.dataInicio);
@@ -327,34 +341,41 @@ async function buscarFaturamentoCursos(): Promise<{
 
   // ✅ OTIMIZADO: Usar query SQL direta para buscar apenas transações aprovadas
   // que tenham cursoId no metadata, evitando trazer todas as transações
-  const transacoesAprovadas = await prisma.$queryRaw<
-    {
-      id: string;
-      valor: Prisma.Decimal;
-      status: TransacaoStatus;
-      metadata: Prisma.JsonValue;
-      criadoEm: Date;
-    }[]
-  >`
-    SELECT 
-      t.id,
-      t.valor,
-      t.status,
-      t.metadata,
-      t."criadoEm"
-    FROM "AuditoriaTransacoes" t
-    WHERE 
-      t.tipo IN ('PAGAMENTO', 'ASSINATURA')
-      AND t.status = 'APROVADA'
-      AND (
-        t.referencia ILIKE '%curso%' 
-        OR t.referencia ILIKE '%turma%'
-        OR (t.metadata::text LIKE '%cursoId%')
-        OR (t.metadata::text LIKE '%"curso"%')
-      )
-    ORDER BY t."criadoEm" DESC
-    LIMIT 10000
-  `;
+  // ✅ Usar retryOperation para tratar erros de conexão automaticamente
+  const transacoesAprovadas = await retryOperation(
+    () =>
+      prisma.$queryRaw<
+        {
+          id: string;
+          valor: Prisma.Decimal;
+          status: TransacaoStatus;
+          metadata: Prisma.JsonValue;
+          criadoEm: Date;
+        }[]
+      >`
+        SELECT 
+          t.id,
+          t.valor,
+          t.status,
+          t.metadata,
+          t."criadoEm"
+        FROM "AuditoriaTransacoes" t
+        WHERE 
+          t.tipo IN ('PAGAMENTO', 'ASSINATURA')
+          AND t.status = 'APROVADA'
+          AND (
+            t.referencia ILIKE '%curso%' 
+            OR t.referencia ILIKE '%turma%'
+            OR (t.metadata::text LIKE '%cursoId%')
+            OR (t.metadata::text LIKE '%"curso"%')
+          )
+        ORDER BY t."criadoEm" DESC
+        LIMIT 10000
+      `,
+    3, // maxRetries
+    1000, // delayMs
+    20000, // timeoutMs - 20s para queries complexas
+  );
 
   // Mapear faturamento por curso
   const faturamentoPorCurso = new Map<string, CursoFaturamento>();
@@ -509,28 +530,35 @@ async function buscarPerformanceCursos(): Promise<{
 
   // ✅ OTIMIZADO: Usar agregação SQL para buscar cursos mais populares
   // Uma única query ao invés de buscar todos os cursos e depois fazer N queries
-  const cursosPopularesRaw = await prisma.$queryRaw<
-    {
-      cursoId: string;
-      cursoNome: string;
-      cursoCodigo: string;
-      totalInscricoes: bigint;
-      totalTurmas: bigint;
-    }[]
-  >`
-    SELECT 
-      c.id as "cursoId",
-      c.nome as "cursoNome",
-      c.codigo as "cursoCodigo",
-      COUNT(DISTINCT ti.id)::bigint as "totalInscricoes",
-      COUNT(DISTINCT ct.id)::bigint as "totalTurmas"
-    FROM "Cursos" c
-    LEFT JOIN "CursosTurmas" ct ON ct."cursoId" = c.id
-    LEFT JOIN "CursosTurmasInscricoes" ti ON ti."turmaId" = ct.id
-    GROUP BY c.id, c.nome, c.codigo
-    ORDER BY "totalInscricoes" DESC
-    LIMIT 10
-  `;
+  // ✅ Usar retryOperation para tratar erros de conexão automaticamente
+  const cursosPopularesRaw = await retryOperation(
+    () =>
+      prisma.$queryRaw<
+        {
+          cursoId: string;
+          cursoNome: string;
+          cursoCodigo: string;
+          totalInscricoes: bigint;
+          totalTurmas: bigint;
+        }[]
+      >`
+        SELECT 
+          c.id as "cursoId",
+          c.nome as "cursoNome",
+          c.codigo as "cursoCodigo",
+          COUNT(DISTINCT ti.id)::bigint as "totalInscricoes",
+          COUNT(DISTINCT ct.id)::bigint as "totalTurmas"
+        FROM "Cursos" c
+        LEFT JOIN "CursosTurmas" ct ON ct."cursoId" = c.id
+        LEFT JOIN "CursosTurmasInscricoes" ti ON ti."turmaId" = ct.id
+        GROUP BY c.id, c.nome, c.codigo
+        ORDER BY "totalInscricoes" DESC
+        LIMIT 10
+      `,
+    3, // maxRetries
+    1000, // delayMs
+    20000, // timeoutMs - 20s para queries complexas
+  );
 
   const cursosMaisPopulares = cursosPopularesRaw.map((curso) => ({
     cursoId: curso.cursoId,
@@ -541,17 +569,24 @@ async function buscarPerformanceCursos(): Promise<{
   }));
 
   // ✅ OTIMIZADO: Calcular taxa de conclusão geral em uma única query
-  const taxaConclusaoRaw = await prisma.$queryRaw<
-    {
-      totalInscricoes: bigint;
-      totalConcluidos: bigint;
-    }[]
-  >`
-    SELECT 
-      COUNT(*)::bigint as "totalInscricoes",
-      COUNT(CASE WHEN status = 'CONCLUIDO' THEN 1 END)::bigint as "totalConcluidos"
-    FROM "CursosTurmasInscricoes"
-  `;
+  // ✅ Usar retryOperation para tratar erros de conexão automaticamente
+  const taxaConclusaoRaw = await retryOperation(
+    () =>
+      prisma.$queryRaw<
+        {
+          totalInscricoes: bigint;
+          totalConcluidos: bigint;
+        }[]
+      >`
+        SELECT 
+          COUNT(*)::bigint as "totalInscricoes",
+          COUNT(CASE WHEN status = 'CONCLUIDO' THEN 1 END)::bigint as "totalConcluidos"
+        FROM "CursosTurmasInscricoes"
+      `,
+    3, // maxRetries
+    1000, // delayMs
+    20000, // timeoutMs - 20s para queries complexas
+  );
 
   const taxaConclusao =
     taxaConclusaoRaw[0] && Number(taxaConclusaoRaw[0].totalInscricoes) > 0
@@ -562,34 +597,41 @@ async function buscarPerformanceCursos(): Promise<{
 
   // ✅ OTIMIZADO: Usar agregação SQL para buscar cursos com maior taxa de conclusão
   // Uma única query ao invés de N queries (uma por curso)
-  const cursosTaxaConclusaoRaw = await prisma.$queryRaw<
-    {
-      cursoId: string;
-      cursoNome: string;
-      cursoCodigo: string;
-      totalInscricoes: bigint;
-      totalConcluidos: bigint;
-    }[]
-  >`
-    SELECT 
-      c.id as "cursoId",
-      c.nome as "cursoNome",
-      c.codigo as "cursoCodigo",
-      COUNT(ti.id)::bigint as "totalInscricoes",
-      COUNT(CASE WHEN ti.status = 'CONCLUIDO' THEN 1 END)::bigint as "totalConcluidos"
-    FROM "Cursos" c
-    INNER JOIN "CursosTurmas" ct ON ct."cursoId" = c.id
-    INNER JOIN "CursosTurmasInscricoes" ti ON ti."turmaId" = ct.id
-    GROUP BY c.id, c.nome, c.codigo
-    HAVING COUNT(ti.id) > 0
-    ORDER BY 
-      CASE 
-        WHEN COUNT(ti.id) > 0 
-        THEN (COUNT(CASE WHEN ti.status = 'CONCLUIDO' THEN 1 END)::float / COUNT(ti.id)::float) * 100
-        ELSE 0
-      END DESC
-    LIMIT 10
-  `;
+  // ✅ Usar retryOperation para tratar erros de conexão automaticamente
+  const cursosTaxaConclusaoRaw = await retryOperation(
+    () =>
+      prisma.$queryRaw<
+        {
+          cursoId: string;
+          cursoNome: string;
+          cursoCodigo: string;
+          totalInscricoes: bigint;
+          totalConcluidos: bigint;
+        }[]
+      >`
+        SELECT 
+          c.id as "cursoId",
+          c.nome as "cursoNome",
+          c.codigo as "cursoCodigo",
+          COUNT(ti.id)::bigint as "totalInscricoes",
+          COUNT(CASE WHEN ti.status = 'CONCLUIDO' THEN 1 END)::bigint as "totalConcluidos"
+        FROM "Cursos" c
+        INNER JOIN "CursosTurmas" ct ON ct."cursoId" = c.id
+        INNER JOIN "CursosTurmasInscricoes" ti ON ti."turmaId" = ct.id
+        GROUP BY c.id, c.nome, c.codigo
+        HAVING COUNT(ti.id) > 0
+        ORDER BY 
+          CASE 
+            WHEN COUNT(ti.id) > 0 
+            THEN (COUNT(CASE WHEN ti.status = 'CONCLUIDO' THEN 1 END)::float / COUNT(ti.id)::float) * 100
+            ELSE 0
+          END DESC
+        LIMIT 10
+      `,
+    3, // maxRetries
+    1000, // delayMs
+    20000, // timeoutMs - 20s para queries complexas
+  );
 
   const cursosComMaiorTaxaConclusao = cursosTaxaConclusaoRaw.map((curso) => {
     const totalInscricoes = Number(curso.totalInscricoes);

@@ -119,6 +119,28 @@ export class AdminController {
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       const statusCode = (error as any)?.statusCode;
+      
+      // ✅ Tratar erros de conexão do Prisma (P1001) como 503 Service Unavailable
+      // Verificar tanto PrismaClientKnownRequestError quanto erro genérico com code P1001
+      const errorCode = (error as any)?.code;
+      const errorMessage = String((error as any)?.message || '').toLowerCase();
+      const isPrismaConnectionError =
+        errorCode === 'P1001' ||
+        errorCode === 'P2024' ||
+        errorMessage.includes("can't reach database") ||
+        errorMessage.includes('database server') ||
+        errorMessage.includes('connection') ||
+        errorMessage.includes("can't reach");
+
+      if (isPrismaConnectionError) {
+        log.warn({ err, code: errorCode }, 'Erro de conexão ao listar candidatos para dashboard');
+        return res.status(503).json({
+          success: false,
+          code: 'DATABASE_CONNECTION_ERROR',
+          message: 'Serviço temporariamente indisponível. Por favor, tente novamente mais tarde.',
+        });
+      }
+
       if (typeof statusCode === 'number' && statusCode >= 400 && statusCode < 500) {
         log.warn({ err }, 'Erro de validação ao listar candidatos para dashboard');
         const errorCode = (error as any)?.code ?? 'VALIDATION_ERROR';

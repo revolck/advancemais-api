@@ -450,7 +450,7 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
 
     // ✅ Cache: Limpar tentativas de login e cache de bloqueio ao fazer login bem-sucedido
     await loginCache.deleteAttempts(documentoLimpo);
-    await loginCache.setBlocked(documentoLimpo, false, 0); // Remove bloqueio
+    await loginCache.deleteBlocked(documentoLimpo); // Remove bloqueio
     await invalidateUserCache(usuario);
 
     const duration = Date.now() - startTime;

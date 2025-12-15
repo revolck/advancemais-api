@@ -1,0 +1,23 @@
+---
+alwaysApply: true
+---
+
+A camada de dados deve ser previsível e segura.
+
+Prisma:
+
+- Prisma é acessado apenas via repositories.
+- Queries devem ser explícitas (evitar selects implícitos).
+- Evitar transações desnecessárias.
+- Sempre tratar casos de null / not found.
+
+Banco:
+
+- Nunca confiar em constraints implícitas.
+- Validar dados antes de persistir.
+- Pensar em índices e performance de query.
+
+Migrações:
+
+- Migrações devem ser claras e reversíveis.
+- Evitar mudanças destrutivas sem planejamento.

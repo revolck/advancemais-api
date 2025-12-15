@@ -114,6 +114,16 @@ export async function getCache<T>(key: string): Promise<T | null> {
  */
 export async function setCache<T>(key: string, value: T, ttlSeconds: number): Promise<void> {
   try {
+    // ✅ Validação: TTL deve ser um número inteiro positivo
+    // Redis SETEX não aceita valores <= 0 ou não numéricos
+    if (!Number.isInteger(ttlSeconds) || ttlSeconds <= 0) {
+      cacheLogger.warn(
+        { key, ttlSeconds, receivedType: typeof ttlSeconds },
+        '⚠️ TTL inválido para cache - deve ser número inteiro positivo. Use deleteCache() para remover.',
+      );
+      return;
+    }
+
     if (isRedisAvailable()) {
       await redis.setex(key, ttlSeconds, JSON.stringify(value));
     } else {
@@ -122,7 +132,7 @@ export async function setCache<T>(key: string, value: T, ttlSeconds: number): Pr
   } catch (error) {
     // Em ambiente de teste, não logar erros de cache (Redis pode não estar disponível)
     if (process.env.NODE_ENV !== 'test') {
-      cacheLogger.warn({ err: error, key }, 'Erro ao definir cache');
+      cacheLogger.warn({ err: error, key, ttlSeconds }, 'Erro ao definir cache');
     }
   }
 }
@@ -208,6 +218,7 @@ export const loginCache = {
   getBlocked: (documento: string) => getCache<boolean>(`login:blocked:${documento}`),
   setBlocked: (documento: string, blocked: boolean, ttlSeconds = 3600) =>
     setCache(`login:blocked:${documento}`, blocked, ttlSeconds),
+  deleteBlocked: (documento: string) => deleteCache(`login:blocked:${documento}`),
 };
 
 /**

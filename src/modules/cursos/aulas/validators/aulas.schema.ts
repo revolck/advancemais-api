@@ -25,13 +25,60 @@ export const createAulaSchema = z
     moduloId: z.string().uuid().optional(),
     sala: z.string().max(100).optional(),
     // Data e Hora (SEPARADOS - Arquitetura Ideal)
+    // Aceita múltiplos formatos e converte para YYYY-MM-DD
     dataInicio: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato: YYYY-MM-DD')
+      .preprocess(
+        (value) => {
+          if (!value || value === '') return undefined;
+          // Converte para string primeiro
+          let strValue: string;
+          if (value instanceof Date) {
+            strValue = value.toISOString();
+          } else {
+            strValue = String(value);
+          }
+          // Se já está no formato YYYY-MM-DD, retorna como está
+          if (/^\d{4}-\d{2}-\d{2}$/.test(strValue)) return strValue;
+          // Se é ISO string, extrai apenas a data (YYYY-MM-DD)
+          const dateMatch = strValue.match(/^(\d{4}-\d{2}-\d{2})/);
+          if (dateMatch) return dateMatch[1];
+          // Tenta parsear como Date e converter
+          const date = new Date(strValue);
+          if (!Number.isNaN(date.getTime())) {
+            return date.toISOString().split('T')[0];
+          }
+          // Se não conseguiu converter, retorna o valor original para o Zod mostrar erro
+          return strValue;
+        },
+        z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato: YYYY-MM-DD').optional(),
+      )
       .optional(),
     dataFim: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato: YYYY-MM-DD')
+      .preprocess(
+        (value) => {
+          if (!value || value === '') return undefined;
+          // Converte para string primeiro
+          let strValue: string;
+          if (value instanceof Date) {
+            strValue = value.toISOString();
+          } else {
+            strValue = String(value);
+          }
+          // Se já está no formato YYYY-MM-DD, retorna como está
+          if (/^\d{4}-\d{2}-\d{2}$/.test(strValue)) return strValue;
+          // Se é ISO string, extrai apenas a data (YYYY-MM-DD)
+          const dateMatch = strValue.match(/^(\d{4}-\d{2}-\d{2})/);
+          if (dateMatch) return dateMatch[1];
+          // Tenta parsear como Date e converter
+          const date = new Date(strValue);
+          if (!Number.isNaN(date.getTime())) {
+            return date.toISOString().split('T')[0];
+          }
+          // Se não conseguiu converter, retorna o valor original para o Zod mostrar erro
+          return strValue;
+        },
+        z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato: YYYY-MM-DD').optional(),
+      )
       .optional(),
     horaInicio: z
       .string()
@@ -55,24 +102,26 @@ export const createAulaSchema = z
       // ONLINE não usa período - será ignorado
     }
 
-    // Validar PRESENCIAL (precisa de período)
+    // Validar PRESENCIAL (precisa de dataInicio, dataFim é opcional)
     if (data.modalidade === 'PRESENCIAL') {
-      if (!data.dataInicio || !data.dataFim) {
+      if (!data.dataInicio) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['dataInicio'],
-          message: 'Período (dataInicio e dataFim) é obrigatório para aulas presenciais',
+          message: 'Data de início é obrigatória para aulas presenciais',
         });
       }
+      // dataFim é opcional - se não informado, aula acontece apenas no dataInicio
+      // Se informado, aula acontece de dataInicio a dataFim
     }
 
-    // Validar AO_VIVO (precisa de período no futuro)
+    // Validar AO_VIVO (precisa de dataInicio, dataFim é opcional)
     if (data.modalidade === 'AO_VIVO') {
-      if (!data.dataInicio || !data.dataFim) {
+      if (!data.dataInicio) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['dataInicio'],
-          message: 'Período (dataInicio e dataFim) é obrigatório para aulas ao vivo',
+          message: 'Data de início é obrigatória para aulas ao vivo',
         });
       }
       // Validar futuro
@@ -83,30 +132,32 @@ export const createAulaSchema = z
           message: 'Aula ao vivo deve ser agendada para o futuro',
         });
       }
+      // dataFim é opcional - será calculado automaticamente se não informado
     }
 
     // Validar SEMIPRESENCIAL (usa YouTube OU Meet)
     if (data.modalidade === 'SEMIPRESENCIAL') {
-      // Precisa ter YouTube URL OU período (para Meet)
+      // Precisa ter YouTube URL OU dataInicio (para Meet)
       const temYoutube = !!data.youtubeUrl;
-      const temPeriodo = !!(data.dataInicio && data.dataFim);
+      const temDataInicio = !!data.dataInicio;
 
-      if (!temYoutube && !temPeriodo) {
+      if (!temYoutube && !temDataInicio) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['youtubeUrl'],
-          message: 'Aula semipresencial requer YouTube URL ou período (para Meet)',
+          message: 'Aula semipresencial requer YouTube URL ou data de início (para Meet)',
         });
       }
 
-      // Se tem período, validar futuro
-      if (temPeriodo && data.dataInicio && new Date(data.dataInicio) < new Date()) {
+      // Se tem dataInicio (para Meet), validar futuro
+      if (temDataInicio && data.dataInicio && new Date(data.dataInicio) < new Date()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['dataInicio'],
-          message: 'Aula ao vivo deve ser agendada para o futuro',
+          message: 'Aula semipresencial com Meet deve ser agendada para o futuro',
         });
       }
+      // dataFim é opcional - será calculado automaticamente se não informado
     }
 
     // Validar YouTube URL
@@ -121,19 +172,19 @@ export const createAulaSchema = z
       }
     }
 
-    // Validar dataFim > dataInicio
+    // Validar dataFim > dataInicio (apenas se dataFim foi informado)
     if (data.dataInicio && data.dataFim) {
-      if (data.dataFim <= data.dataInicio) {
+      if (data.dataFim < data.dataInicio) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['dataFim'],
-          message: 'Horário de término deve ser após horário de início',
+          message: 'Data de término deve ser posterior ou igual à data de início',
         });
       }
 
-      // Validar MESMO DIA para PRESENCIAL e AO_VIVO
+      // Validar MESMO DIA apenas para AO_VIVO (aulas ao vivo devem ser no mesmo dia)
+      // PRESENCIAL pode ter período de X a Y (dias diferentes)
       if (
-        data.modalidade === 'PRESENCIAL' ||
         data.modalidade === 'AO_VIVO' ||
         (data.modalidade === 'SEMIPRESENCIAL' && data.tipoLink === 'MEET')
       ) {
@@ -144,10 +195,12 @@ export const createAulaSchema = z
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ['dataFim'],
-            message: `Aulas ${data.modalidade === 'PRESENCIAL' ? 'presenciais' : 'ao vivo'} devem acontecer no mesmo dia. Início: ${diaInicio}, Fim: ${diaFim}`,
+            message: `Aulas ${data.modalidade === 'AO_VIVO' ? 'ao vivo' : 'semipresenciais com Meet'} devem acontecer no mesmo dia. Início: ${diaInicio}, Fim: ${diaFim}`,
           });
         }
       }
+      // Para PRESENCIAL: permite período de X a Y (dias diferentes)
+      // Se dataFim não for informado, aula acontece apenas no dataInicio
     }
   });
 

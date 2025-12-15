@@ -1,4 +1,4 @@
-import { prisma } from '@/config/prisma';
+import { prisma, retryOperation } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import type {
   CreateAulaInput,
@@ -50,10 +50,12 @@ export const aulasService = {
 
     // Filtro por role: INSTRUTOR vê apenas suas turmas
     if (usuarioLogado.role === 'INSTRUTOR') {
-      const turmasDoInstrutor = await prisma.cursosTurmas.findMany({
-        where: { instrutorId: usuarioLogado.id },
-        select: { id: true },
-      });
+      const turmasDoInstrutor = await retryOperation(() =>
+        prisma.cursosTurmas.findMany({
+          where: { instrutorId: usuarioLogado.id },
+          select: { id: true },
+        }),
+      );
       where.turmaId = { in: turmasDoInstrutor.map((t) => t.id) };
     }
 
@@ -71,51 +73,53 @@ export const aulasService = {
     }
 
     const [total, aulas] = await Promise.all([
-      prisma.cursosTurmasAulas.count({ where }),
-      prisma.cursosTurmasAulas.findMany({
-        where,
-        include: {
-          CursosTurmas: {
-            select: {
-              id: true,
-              codigo: true,
-              nome: true,
-              turno: true,
-              metodo: true,
-              Cursos: {
-                select: {
-                  id: true,
-                  codigo: true,
-                  nome: true,
+      retryOperation(() => prisma.cursosTurmasAulas.count({ where })),
+      retryOperation(() =>
+        prisma.cursosTurmasAulas.findMany({
+          where,
+          include: {
+            CursosTurmas: {
+              select: {
+                id: true,
+                codigo: true,
+                nome: true,
+                turno: true,
+                metodo: true,
+                Cursos: {
+                  select: {
+                    id: true,
+                    codigo: true,
+                    nome: true,
+                  },
+                },
+              },
+            },
+            CursosTurmasModulos: {
+              select: { id: true, nome: true },
+            },
+            criadoPor: {
+              select: { id: true, nomeCompleto: true, cpf: true },
+            },
+            instrutor: {
+              select: {
+                id: true,
+                codUsuario: true,
+                nomeCompleto: true,
+                email: true,
+                cpf: true,
+                UsuariosInformation: {
+                  select: {
+                    avatarUrl: true,
+                  },
                 },
               },
             },
           },
-          CursosTurmasModulos: {
-            select: { id: true, nome: true },
-          },
-          criadoPor: {
-            select: { id: true, nomeCompleto: true, cpf: true },
-          },
-          instrutor: {
-            select: {
-              id: true,
-              codUsuario: true,
-              nomeCompleto: true,
-              email: true,
-              cpf: true,
-              UsuariosInformation: {
-                select: {
-                  avatarUrl: true,
-                },
-              },
-            },
-          },
-        },
-        orderBy: { [orderBy]: order },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
+          orderBy: { [orderBy]: order },
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+        }),
+      ),
     ]);
 
     return {
@@ -209,17 +213,37 @@ export const aulasService = {
       const [hours, minutes] = input.horaInicio.split(':');
       dataInicioCompleta = new Date(`${input.dataInicio}T${hours}:${minutes}:00.000Z`);
 
-      // Calcular horaFim se não fornecida
-      if (input.horaFim) {
-        horaFimCalculada = input.horaFim;
-        const [hoursF, minutesF] = input.horaFim.split(':');
-        dataFimCompleta = new Date(`${input.dataInicio}T${hoursF}:${minutesF}:00.000Z`);
-      } else if (input.duracaoMinutos) {
-        // Calcular automaticamente
-        dataFimCompleta = new Date(dataInicioCompleta.getTime() + input.duracaoMinutos * 60000);
-        const h = dataFimCompleta.getHours().toString().padStart(2, '0');
-        const m = dataFimCompleta.getMinutes().toString().padStart(2, '0');
-        horaFimCalculada = `${h}:${m}`;
+      // Calcular dataFimCompleta e horaFim
+      // Cenário 1: dataFim informado → aula acontece de dataInicio a dataFim
+      // Cenário 2: dataFim não informado → aula acontece apenas no dataInicio
+      if (input.dataFim) {
+        // Cenário 1: Período de X a Y
+        if (input.horaFim) {
+          horaFimCalculada = input.horaFim;
+          const [hoursF, minutesF] = input.horaFim.split(':');
+          dataFimCompleta = new Date(`${input.dataFim}T${hoursF}:${minutesF}:00.000Z`);
+        } else if (input.duracaoMinutos) {
+          // Calcular dataFimCompleta usando dataFim (não dataInicio)
+          const dataFimBase = new Date(`${input.dataFim}T${hours}:${minutes}:00.000Z`);
+          dataFimCompleta = new Date(dataFimBase.getTime() + input.duracaoMinutos * 60000);
+          const h = dataFimCompleta.getHours().toString().padStart(2, '0');
+          const m = dataFimCompleta.getMinutes().toString().padStart(2, '0');
+          horaFimCalculada = `${h}:${m}`;
+        }
+      } else {
+        // Cenário 2: Apenas dataInicio (aula única no dia)
+        if (input.horaFim) {
+          horaFimCalculada = input.horaFim;
+          const [hoursF, minutesF] = input.horaFim.split(':');
+          // Usar dataInicio mesmo (mesmo dia)
+          dataFimCompleta = new Date(`${input.dataInicio}T${hoursF}:${minutesF}:00.000Z`);
+        } else if (input.duracaoMinutos) {
+          // Calcular automaticamente usando dataInicio
+          dataFimCompleta = new Date(dataInicioCompleta.getTime() + input.duracaoMinutos * 60000);
+          const h = dataFimCompleta.getHours().toString().padStart(2, '0');
+          const m = dataFimCompleta.getMinutes().toString().padStart(2, '0');
+          horaFimCalculada = `${h}:${m}`;
+        }
       }
 
       // Validar futuro para AO_VIVO
@@ -326,11 +350,13 @@ export const aulasService = {
     });
 
     // 6. Se AO_VIVO ou SEMIPRESENCIAL com Meet, criar Google Meet
+    // ✅ Ajustado: Criar Meet mesmo se dataFim não for informado (usa dataInicio + duração)
     if (
       (input.modalidade === 'AO_VIVO' ||
         (input.modalidade === 'SEMIPRESENCIAL' && input.tipoLink === 'MEET')) &&
       input.dataInicio &&
-      input.dataFim
+      dataInicioCompleta &&
+      dataFimCompleta // Garantir que dataFimCompleta foi calculada (mesmo que não tenha dataFim)
     ) {
       try {
         // Buscar emails dos alunos da turma
@@ -344,8 +370,8 @@ export const aulasService = {
         const meetData = await googleCalendarService.createMeetEvent({
           titulo: input.titulo,
           descricao: input.descricao || '',
-          dataInicio: dataInicioCompleta!,
-          dataFim: dataFimCompleta!,
+          dataInicio: dataInicioCompleta,
+          dataFim: dataFimCompleta,
           instrutorId: usuarioLogado.id,
           alunoEmails,
         });

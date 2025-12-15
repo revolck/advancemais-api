@@ -193,3 +193,4 @@ testDashboardHTTP()
     console.error('\n❌ Teste falhou:', error);
     process.exit(1);
   });
+

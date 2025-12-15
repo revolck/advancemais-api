@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { ZodError } from 'zod';
 import bcrypt from 'bcrypt';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 import { prisma, retryOperation } from '@/config/prisma';
 import { logger } from '@/utils/logger';
@@ -1735,6 +1736,35 @@ export class CursosController {
         data: visaoGeral,
       });
     } catch (error: any) {
+      // ✅ Tratar erros de conexão do Prisma (P1001) como 503 Service Unavailable
+      const errorCode = (error as any)?.code;
+      const errorMessage = String((error as any)?.message || '').toLowerCase();
+      const isPrismaConnectionError =
+        (error instanceof PrismaClientKnownRequestError &&
+          (error.code === 'P1001' || error.code === 'P2024')) ||
+        errorCode === 'P1001' ||
+        errorCode === 'P2024' ||
+        errorMessage.includes("can't reach database") ||
+        errorMessage.includes('database server') ||
+        errorMessage.includes('connection') ||
+        errorMessage.includes("can't reach");
+
+      if (isPrismaConnectionError) {
+        logger.warn(
+          {
+            error: error?.message,
+            code: errorCode,
+          },
+          '⚠️ Erro de conexão ao buscar visão geral de cursos',
+        );
+
+        return res.status(503).json({
+          success: false,
+          code: 'DATABASE_CONNECTION_ERROR',
+          message: 'Serviço temporariamente indisponível. Por favor, tente novamente mais tarde.',
+        });
+      }
+
       logger.error(
         {
           error: error?.message,

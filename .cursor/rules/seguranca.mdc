@@ -1,0 +1,24 @@
+---
+alwaysApply: true
+---
+
+Segurança é responsabilidade do backend.
+
+Regras:
+
+- Autenticação obrigatória para rotas protegidas.
+- JWTs devem ter expiração e rotação.
+- Validar permissões e escopos.
+- Rate limit em endpoints sensíveis.
+- Nunca expor dados sensíveis em respostas ou logs.
+
+Headers e proteção:
+
+- Usar Helmet corretamente.
+- Proteger contra brute force e abuso.
+- Sanitizar entradas.
+
+Nunca:
+
+- Confiar em dados vindos do client.
+- Retornar mensagens de erro técnicas para o usuário.

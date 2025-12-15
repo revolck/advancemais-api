@@ -47,3 +47,4 @@ COMMENT ON COLUMN "EmpresasCartoes"."ultimaFalhaEm" IS 'Data da última falha de
 COMMENT ON COLUMN "EmpresasCartoes"."paymentMethodId" IS 'ID do método de pagamento no Mercado Pago (visa, master, etc)';
 
 
+

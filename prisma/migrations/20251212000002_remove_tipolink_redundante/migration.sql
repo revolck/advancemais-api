@@ -10,3 +10,4 @@ DROP COLUMN IF EXISTS "tipoLink";
 COMMENT ON COLUMN "CursosTurmasAulas"."urlVideo" IS 'YouTube URL. Se preenchido, tipo = YOUTUBE (derivado)';
 COMMENT ON COLUMN "CursosTurmasAulas"."urlMeet" IS 'Google Meet URL. Se preenchido, tipo = MEET (derivado)';
 
+

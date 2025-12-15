@@ -32,3 +32,4 @@ ON "LogsPagamentosDeAssinaturas" (tipo, "externalRef", status)
 WHERE "mpResourceId" IS NULL AND "externalRef" IS NOT NULL;
 
 
+

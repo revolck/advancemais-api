@@ -1,5 +1,5 @@
 import { Prisma, NotificacaoStatus, NotificacaoTipo, NotificacaoPrioridade } from '@prisma/client';
-import { prisma } from '@/config/prisma';
+import { prisma, retryOperation } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import type {
   ListNotificacoesQuery,
@@ -43,48 +43,55 @@ export const notificacoesService = {
     // Não mostrar notificações expiradas
     where.OR = [{ expiraEm: null }, { expiraEm: { gt: new Date() } }];
 
-    const [notificacoes, total, naoLidas] = await Promise.all([
-      prisma.notificacoes.findMany({
-        where,
-        skip,
-        take: pageSize,
-        orderBy: [
-          { prioridade: 'desc' }, // URGENTE > ALTA > NORMAL > BAIXA
-          { criadoEm: 'desc' },
-        ],
-        select: {
-          id: true,
-          tipo: true,
-          status: true,
-          prioridade: true,
-          titulo: true,
-          mensagem: true,
-          dados: true,
-          linkAcao: true,
-          lidaEm: true,
-          criadoEm: true,
-          expiraEm: true,
-          vagaId: true,
-          candidaturaId: true,
-          empresasPlanoId: true,
-          Vaga: {
+    // ✅ Usar retryOperation para tratar erros de conexão automaticamente
+    const [notificacoes, total, naoLidas] = await retryOperation(
+      () =>
+        Promise.all([
+          prisma.notificacoes.findMany({
+            where,
+            skip,
+            take: pageSize,
+            orderBy: [
+              { prioridade: 'desc' }, // URGENTE > ALTA > NORMAL > BAIXA
+              { criadoEm: 'desc' },
+            ],
             select: {
               id: true,
+              tipo: true,
+              status: true,
+              prioridade: true,
               titulo: true,
-              codigo: true,
+              mensagem: true,
+              dados: true,
+              linkAcao: true,
+              lidaEm: true,
+              criadoEm: true,
+              expiraEm: true,
+              vagaId: true,
+              candidaturaId: true,
+              empresasPlanoId: true,
+              Vaga: {
+                select: {
+                  id: true,
+                  titulo: true,
+                  codigo: true,
+                },
+              },
             },
-          },
-        },
-      }),
-      prisma.notificacoes.count({ where }),
-      prisma.notificacoes.count({
-        where: {
-          usuarioId,
-          status: NotificacaoStatus.NAO_LIDA,
-          OR: [{ expiraEm: null }, { expiraEm: { gt: new Date() } }],
-        },
-      }),
-    ]);
+          }),
+          prisma.notificacoes.count({ where }),
+          prisma.notificacoes.count({
+            where: {
+              usuarioId,
+              status: NotificacaoStatus.NAO_LIDA,
+              OR: [{ expiraEm: null }, { expiraEm: { gt: new Date() } }],
+            },
+          }),
+        ]),
+      3, // maxRetries
+      1000, // delayMs
+      20000, // timeoutMs - 20s para queries complexas
+    );
 
     return {
       data: notificacoes.map((n) => ({
@@ -124,13 +131,20 @@ export const notificacoesService = {
    * Conta notificações não lidas do usuário
    */
   contarNaoLidas: async (usuarioId: string) => {
-    const count = await prisma.notificacoes.count({
-      where: {
-        usuarioId,
-        status: NotificacaoStatus.NAO_LIDA,
-        OR: [{ expiraEm: null }, { expiraEm: { gt: new Date() } }],
-      },
-    });
+    // ✅ Usar retryOperation para tratar erros de conexão automaticamente
+    const count = await retryOperation(
+      () =>
+        prisma.notificacoes.count({
+          where: {
+            usuarioId,
+            status: NotificacaoStatus.NAO_LIDA,
+            OR: [{ expiraEm: null }, { expiraEm: { gt: new Date() } }],
+          },
+        }),
+      3, // maxRetries
+      1000, // delayMs
+      15000, // timeoutMs
+    );
 
     return { naoLidas: count };
   },

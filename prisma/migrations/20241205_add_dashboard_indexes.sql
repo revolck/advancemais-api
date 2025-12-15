@@ -31,3 +31,4 @@ COMMENT ON INDEX "EmpresasVagas_status_idx" IS 'Índice para filtrar vagas por s
 
 
 
+

@@ -516,38 +516,45 @@ export class AdminService {
       ];
     }
 
-    const [candidatos, total] = await prisma.$transaction([
-      prisma.usuarios.findMany({
-        where,
-        select: {
-          id: true,
-          nomeCompleto: true,
-          email: true,
-          role: true,
-          status: true,
-          tipoUsuario: true,
-          criadoEm: true,
-          ultimoLogin: true,
-          UsuariosInformation: { select: usuarioInformacoesSelect },
-          UsuariosEnderecos: {
-            orderBy: { criadoEm: 'asc' },
+    // ✅ Usar retryOperation para tratar erros de conexão automaticamente
+    const [candidatos, total] = await retryOperation(
+      () =>
+        prisma.$transaction([
+          prisma.usuarios.findMany({
+            where,
             select: {
               id: true,
-              logradouro: true,
-              numero: true,
-              bairro: true,
-              cidade: true,
-              estado: true,
-              cep: true,
+              nomeCompleto: true,
+              email: true,
+              role: true,
+              status: true,
+              tipoUsuario: true,
+              criadoEm: true,
+              ultimoLogin: true,
+              UsuariosInformation: { select: usuarioInformacoesSelect },
+              UsuariosEnderecos: {
+                orderBy: { criadoEm: 'asc' },
+                select: {
+                  id: true,
+                  logradouro: true,
+                  numero: true,
+                  bairro: true,
+                  cidade: true,
+                  estado: true,
+                  cep: true,
+                },
+              },
             },
-          },
-        },
-        orderBy: { criadoEm: 'desc' },
-        skip,
-        take: pageSize,
-      }),
-      prisma.usuarios.count({ where }),
-    ]);
+            orderBy: { criadoEm: 'desc' },
+            skip,
+            take: pageSize,
+          }),
+          prisma.usuarios.count({ where }),
+        ]),
+      3, // maxRetries
+      1000, // delayMs
+      20000, // timeoutMs - 20s para queries complexas com joins
+    );
 
     const candidatosComEndereco = candidatos.map(
       (candidato) => attachEnderecoResumo(mergeUsuarioInformacoes(candidato))!,

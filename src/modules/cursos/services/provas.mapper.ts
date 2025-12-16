@@ -39,6 +39,7 @@ export const mapProva = (prova: ProvaWithRelations | ProvaWithEnvios) => ({
   etiqueta: prova.etiqueta,
   descricao: prova.descricao ?? null,
   peso: normalizeDecimal(prova.peso) ?? 0,
+  valePonto: prova.valePonto ?? true,
   ativo: prova.ativo,
   localizacao: prova.localizacao,
   ordem: prova.ordem,

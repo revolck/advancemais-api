@@ -10,6 +10,7 @@ import { AulasController } from '../controllers/aulas.controller';
 import { TurmasController } from '../controllers/turmas.controller';
 import { ModulosController } from '../controllers/modulos.controller';
 import { ProvasController } from '../controllers/provas.controller';
+import { QuestoesController } from '../controllers/questoes.controller';
 import { AvaliacaoController } from '../controllers/avaliacao.controller';
 import { NotasController } from '../controllers/notas.controller';
 import { FrequenciaController } from '../controllers/frequencia.controller';
@@ -4061,6 +4062,296 @@ router.put(
   '/:cursoId/turmas/:turmaId/provas/:provaId/notas',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   ProvasController.registrarNota,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/provas/{provaId}/questoes:
+ *   get:
+ *     summary: Listar questões da prova
+ *     tags: ['Cursos']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: provaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Lista de questões da prova
+ */
+router.get(
+  '/:cursoId/turmas/:turmaId/provas/:provaId/questoes',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  QuestoesController.list,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/provas/{provaId}/questoes/{questaoId}:
+ *   get:
+ *     summary: Detalhar questão da prova
+ *     tags: ['Cursos']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: provaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: questaoId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Dados da questão
+ */
+router.get(
+  '/:cursoId/turmas/:turmaId/provas/:provaId/questoes/:questaoId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  QuestoesController.get,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/provas/{provaId}/questoes:
+ *   post:
+ *     summary: Criar questão para a prova
+ *     tags: ['Cursos']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: provaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               enunciado:
+ *                 type: string
+ *               tipo:
+ *                 type: string
+ *                 enum: [TEXTO, MULTIPLA_ESCOLHA, ANEXO]
+ *               alternativas:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *     responses:
+ *       201:
+ *         description: Questão criada
+ */
+router.post(
+  '/:cursoId/turmas/:turmaId/provas/:provaId/questoes',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  QuestoesController.create,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/provas/{provaId}/questoes/{questaoId}:
+ *   put:
+ *     summary: Atualizar questão da prova
+ *     tags: ['Cursos']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: provaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: questaoId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Questão atualizada
+ */
+router.put(
+  '/:cursoId/turmas/:turmaId/provas/:provaId/questoes/:questaoId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  QuestoesController.update,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/provas/{provaId}/questoes/{questaoId}:
+ *   delete:
+ *     summary: Remover questão da prova
+ *     tags: ['Cursos']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: provaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: questaoId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Questão removida
+ */
+router.delete(
+  '/:cursoId/turmas/:turmaId/provas/:provaId/questoes/:questaoId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  QuestoesController.delete,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/provas/{provaId}/questoes/{questaoId}/responder:
+ *   put:
+ *     summary: Responder questão da prova
+ *     tags: ['Cursos']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: provaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: questaoId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Resposta registrada
+ */
+router.put(
+  '/:cursoId/turmas/:turmaId/provas/:provaId/questoes/:questaoId/responder',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  QuestoesController.responder,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/provas/{provaId}/questoes/{questaoId}/corrigir:
+ *   put:
+ *     summary: Corrigir resposta de questão
+ *     tags: ['Cursos']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: provaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: questaoId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Resposta corrigida
+ */
+router.put(
+  '/:cursoId/turmas/:turmaId/provas/:provaId/questoes/:questaoId/corrigir',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  QuestoesController.corrigir,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/provas/{provaId}/respostas:
+ *   get:
+ *     summary: Listar respostas da prova
+ *     tags: ['Cursos']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: provaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: questaoId
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: inscricaoId
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Lista de respostas
+ */
+router.get(
+  '/:cursoId/turmas/:turmaId/provas/:provaId/respostas',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  QuestoesController.listarRespostas,
 );
 
 /**

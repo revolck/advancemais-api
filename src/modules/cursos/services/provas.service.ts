@@ -120,6 +120,7 @@ export const provasService = {
       etiqueta: string;
       descricao?: string | null;
       peso: number;
+      valePonto?: boolean;
       moduloId?: string | null;
       ativo?: boolean;
       ordem?: number | null;
@@ -142,6 +143,7 @@ export const provasService = {
           etiqueta: data.etiqueta,
           descricao: data.descricao ?? null,
           peso: new Prisma.Decimal(data.peso),
+          valePonto: data.valePonto ?? true,
           ativo: data.ativo ?? true,
           ordem,
           localizacao: data.moduloId ? CursosLocalProva.MODULO : CursosLocalProva.TURMA,
@@ -164,6 +166,7 @@ export const provasService = {
       etiqueta?: string;
       descricao?: string | null;
       peso?: number;
+      valePonto?: boolean;
       moduloId?: string | null;
       ativo?: boolean;
       ordem?: number | null;
@@ -183,6 +186,7 @@ export const provasService = {
           etiqueta: data.etiqueta ?? undefined,
           descricao: data.descricao ?? undefined,
           peso: data.peso !== undefined ? new Prisma.Decimal(data.peso) : undefined,
+          valePonto: data.valePonto ?? undefined,
           moduloId: data.moduloId ?? (data.moduloId === null ? null : undefined),
           ativo: data.ativo ?? undefined,
           ordem: data.ordem ?? undefined,

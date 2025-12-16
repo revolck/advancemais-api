@@ -654,6 +654,7 @@ model CursosTurmasInscricoes {
   CursosTurmas               CursosTurmas                 @relation(fields: [turmaId], references: [id], onDelete: Cascade)
   CursosTurmasProvasEnvios   CursosTurmasProvasEnvios[]
   CursosTurmasRecuperacoes   CursosTurmasRecuperacoes[]
+  CursosTurmasProvasRespostas CursosTurmasProvasRespostas[]
   CuponsDesconto             CuponsDesconto?              @relation(fields: [cupomDescontoId], references: [id])
   CursosAulasProgresso       CursosAulasProgresso[]
 
@@ -691,6 +692,7 @@ model CursosTurmasProvas {
   etiqueta                 String                     @db.VarChar(30)
   descricao                String?
   peso                     Decimal                    @db.Decimal(5, 2)
+  valePonto                Boolean                    @default(true)
   ativo                    Boolean                    @default(true)
   localizacao              CursosLocalProva           @default(TURMA)
   ordem                    Int                        @default(0)
@@ -702,6 +704,7 @@ model CursosTurmasProvas {
   CursosTurmas             CursosTurmas               @relation(fields: [turmaId], references: [id], onDelete: Cascade)
   CursosTurmasProvasEnvios CursosTurmasProvasEnvios[]
   CursosTurmasRecuperacoes CursosTurmasRecuperacoes[]
+  CursosTurmasProvasQuestoes CursosTurmasProvasQuestoes[]
 
   @@unique([turmaId, etiqueta])
   @@index([moduloId])
@@ -722,6 +725,7 @@ model CursosTurmasProvasEnvios {
   CursosTurmasInscricoes   CursosTurmasInscricoes     @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
   CursosTurmasProvas       CursosTurmasProvas         @relation(fields: [provaId], references: [id], onDelete: Cascade)
   CursosTurmasRecuperacoes CursosTurmasRecuperacoes[]
+  CursosTurmasProvasRespostas CursosTurmasProvasRespostas[]
 
   @@unique([provaId, inscricaoId])
   @@index([inscricaoId])
@@ -753,6 +757,64 @@ model CursosTurmasRecuperacoes {
   @@index([inscricaoId])
   @@index([statusFinal])
   @@index([turmaId])
+}
+
+model CursosTurmasProvasQuestoes {
+  id                          String                                    @id @default(uuid())
+  provaId                     String
+  enunciado                   String                                    @db.VarChar(2000)
+  tipo                        CursosTipoQuestao
+  ordem                       Int                                       @default(0)
+  peso                        Decimal?                                  @db.Decimal(5, 2)
+  obrigatoria                 Boolean                                   @default(true)
+  criadoEm                    DateTime                                  @default(now())
+  atualizadoEm                DateTime                                  @default(now())
+  CursosTurmasProvas          CursosTurmasProvas                       @relation(fields: [provaId], references: [id], onDelete: Cascade)
+  CursosTurmasProvasQuestoesAlternativas CursosTurmasProvasQuestoesAlternativas[]
+  CursosTurmasProvasRespostas CursosTurmasProvasRespostas[]
+
+  @@index([provaId])
+  @@index([provaId, ordem])
+}
+
+model CursosTurmasProvasQuestoesAlternativas {
+  id          String                      @id @default(uuid())
+  questaoId   String
+  texto       String                      @db.VarChar(1000)
+  ordem       Int                         @default(0)
+  correta     Boolean                     @default(false)
+  criadoEm    DateTime                    @default(now())
+  atualizadoEm DateTime                   @default(now())
+  CursosTurmasProvasQuestoes CursosTurmasProvasQuestoes @relation(fields: [questaoId], references: [id], onDelete: Cascade)
+  CursosTurmasProvasRespostas CursosTurmasProvasRespostas[]
+
+  @@index([questaoId])
+  @@index([questaoId, ordem])
+}
+
+model CursosTurmasProvasRespostas {
+  id                    String                      @id @default(uuid())
+  questaoId             String
+  inscricaoId           String
+  envioId                String?
+  respostaTexto          String?                     @db.Text
+  alternativaId         String?
+  anexoUrl              String?                      @db.VarChar(500)
+  anexoNome             String?                      @db.VarChar(255)
+  corrigida             Boolean                      @default(false)
+  nota                  Decimal?                     @db.Decimal(4, 1)
+  observacoes           String?                      @db.VarChar(1000)
+  criadoEm              DateTime                     @default(now())
+  atualizadoEm          DateTime                     @default(now())
+  CursosTurmasProvasQuestoes CursosTurmasProvasQuestoes @relation(fields: [questaoId], references: [id], onDelete: Cascade)
+  CursosTurmasProvasQuestoesAlternativas CursosTurmasProvasQuestoesAlternativas? @relation(fields: [alternativaId], references: [id], onDelete: SetNull)
+  CursosTurmasInscricoes CursosTurmasInscricoes     @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
+  CursosTurmasProvasEnvios CursosTurmasProvasEnvios? @relation(fields: [envioId], references: [id], onDelete: SetNull)
+
+  @@unique([questaoId, inscricaoId])
+  @@index([inscricaoId])
+  @@index([questaoId])
+  @@index([envioId])
 }
 
 model CursosTurmasRegrasAvaliacao {
@@ -1895,6 +1957,12 @@ enum CursosFrequenciaStatus {
 enum CursosLocalProva {
   TURMA
   MODULO
+}
+
+enum CursosTipoQuestao {
+  TEXTO
+  MULTIPLA_ESCOLHA
+  ANEXO
 }
 
 enum CursosMateriais {

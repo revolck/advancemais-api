@@ -35,6 +35,7 @@ const provaBaseSchema = z.object({
     .max(2000)
     .nullish(),
   peso: pesoSchema,
+  valePonto: z.boolean().optional().default(true),
   moduloId: z
     .string({ invalid_type_error: 'Identificador do módulo deve ser um texto' })
     .uuid('Identificador de módulo inválido')

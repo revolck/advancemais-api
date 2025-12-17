@@ -541,14 +541,13 @@ export const cursosService = {
     };
     delete (statusAggregationWhere as any).statusPadrao;
 
-    const [total, statusAggregation] = await Promise.all([
-      prisma.cursos.count({ where }),
-      prisma.cursos.groupBy({
-        by: ['statusPadrao'],
-        _count: { _all: true },
-        where: statusAggregationWhere,
-      }),
-    ]);
+    // ⚠️ SUPABASE FREE: Queries sequenciais para evitar saturação do pooler
+    const total = await prisma.cursos.count({ where });
+    const statusAggregation = await prisma.cursos.groupBy({
+      by: ['statusPadrao'],
+      _count: { _all: true },
+      where: statusAggregationWhere,
+    });
 
     const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
     const safePage = totalPages === 0 ? 1 : Math.min(page, totalPages);

@@ -7,4 +7,4 @@ dist/
 *.map.env.backup
 .env.backup
 docs/
-.env_2
+.env_2.env_deletar

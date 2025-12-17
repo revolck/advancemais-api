@@ -50,6 +50,7 @@ const normalizeDescricao = (value: unknown) => {
 
 /**
  * Calcula o progresso do curso baseado em aulas concluídas, provas realizadas e tempo decorrido
+ * ⚠️ OTIMIZADO PARA SUPABASE FREE: Queries sequenciais para evitar saturação do pooler
  */
 const calcularProgressoCurso = async (
   inscricaoId: string,
@@ -58,21 +59,20 @@ const calcularProgressoCurso = async (
   dataFim: Date | null,
 ): Promise<number> => {
   try {
-    // Buscar contagem de aulas e provas da turma
-    const [totalAulas, totalProvas, aulasComFrequencia, provasComEnvio] = await Promise.all([
-      prisma.cursosTurmasAulas.count({
-        where: { turmaId },
-      }),
-      prisma.cursosTurmasProvas.count({
-        where: { turmaId },
-      }),
-      prisma.cursosFrequenciaAlunos.count({
-        where: { inscricaoId, status: 'PRESENTE' },
-      }),
-      prisma.cursosTurmasProvasEnvios.count({
-        where: { inscricaoId },
-      }),
-    ]);
+    // ⚠️ SUPABASE FREE: Executar queries SEQUENCIALMENTE para não saturar o pooler
+    // Promise.all com múltiplas queries causa P1001 no plano Free
+    const totalAulas = await prisma.cursosTurmasAulas.count({
+      where: { turmaId },
+    });
+    const totalProvas = await prisma.cursosTurmasProvas.count({
+      where: { turmaId },
+    });
+    const aulasComFrequencia = await prisma.cursosFrequenciaAlunos.count({
+      where: { inscricaoId, status: 'PRESENTE' },
+    });
+    const provasComEnvio = await prisma.cursosTurmasProvasEnvios.count({
+      where: { inscricaoId },
+    });
 
     // Se não há aulas nem provas, calcular por tempo decorrido
     if (totalAulas === 0 && totalProvas === 0) {

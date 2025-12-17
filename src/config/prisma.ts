@@ -36,14 +36,19 @@ if (datasourceUrl) {
   }
 }
 
-// Configurações otimizadas de pool de conexões para Supabase
+// Configurações otimizadas de pool de conexões para Supabase FREE TIER
+// ⚠️ CRÍTICO: Supabase Free (Nano) tem limites MUITO baixos de conexões
+// O pooler (pgbouncer) do plano Free suporta poucas conexões simultâneas
 // Documentação: https://www.prisma.io/docs/guides/performance-and-optimization/connection-management
-// ⚠️ IMPORTANTE: Connection limit deve ser alto o suficiente para suportar requisições simultâneas
-// Para produção no Render, recomenda-se pelo menos 20-50 conexões
-const DEFAULT_CONNECTION_LIMIT = process.env.DATABASE_CONNECTION_LIMIT || '20';
-const DEFAULT_POOL_TIMEOUT = process.env.DATABASE_POOL_TIMEOUT || '60';
-const DEFAULT_CONNECT_TIMEOUT = process.env.DATABASE_CONNECT_TIMEOUT || '15';
-const DEFAULT_POOLER_CONNECTION_LIMIT = process.env.DATABASE_POOLER_CONNECTION_LIMIT || '20';
+// 
+// LIMITES RECOMENDADOS PARA SUPABASE FREE:
+// - connection_limit: 1-3 (MUITO BAIXO para evitar saturação)
+// - pool_timeout: 30s (tempo para aguardar conexão disponível)
+// - connect_timeout: 10s (tempo para estabelecer conexão)
+const DEFAULT_CONNECTION_LIMIT = process.env.DATABASE_CONNECTION_LIMIT || '2';
+const DEFAULT_POOL_TIMEOUT = process.env.DATABASE_POOL_TIMEOUT || '30';
+const DEFAULT_CONNECT_TIMEOUT = process.env.DATABASE_CONNECT_TIMEOUT || '10';
+const DEFAULT_POOLER_CONNECTION_LIMIT = process.env.DATABASE_POOLER_CONNECTION_LIMIT || '1';
 
 function buildConnectionUrl(baseUrl: string): string {
   console.log('🔧 [BUILD URL] Função chamada');
@@ -75,40 +80,27 @@ function buildConnectionUrl(baseUrl: string): string {
   url.searchParams.set('pool_timeout', DEFAULT_POOL_TIMEOUT);
   url.searchParams.set('connect_timeout', DEFAULT_CONNECT_TIMEOUT);
 
-  // ✅ Lógica correta para pgbouncer:
+  // ✅ Lógica correta para pgbouncer (OTIMIZADO PARA SUPABASE FREE):
   // - Porta 6543 = Transaction Pooler (sempre precisa pgbouncer=true)
-  // - Porta 5432 = Conexão direta (NÃO deve ter pgbouncer=true)
-  if (isPoolerPort) {
-    // Porta 6543 = Transaction Pooler
+  // - Porta 5432 = Conexão direta via pooler hostname
+  // ⚠️ CRÍTICO: Supabase Free tem limites MUITO baixos
+  if (isPoolerPort || isPoolerHostname) {
+    // Qualquer conexão via pooler hostname = usar pgbouncer=true e connection_limit=1
     url.searchParams.set('pgbouncer', 'true');
-    // Para pgbouncer, usar connection_limit menor (gerenciado pelo pooler)
+    // ⚠️ CRÍTICO para FREE: connection_limit=1 evita saturação do pooler
     url.searchParams.set('connection_limit', DEFAULT_POOLER_CONNECTION_LIMIT);
     prismaLogger.info(
       {
-        mode: 'Transaction Pooler',
+        mode: 'Transaction Pooler (Supabase Free)',
         port,
         connectionLimit: DEFAULT_POOLER_CONNECTION_LIMIT,
         poolTimeout: DEFAULT_POOL_TIMEOUT,
-        note: 'Pool gerenciado pelo Supabase pgBouncer (porta 6543)',
+        note: '⚠️ Supabase FREE - usando connection_limit mínimo para evitar saturação',
       },
-      '✅ Configuração para Transaction Pooler',
-    );
-  } else if (isPoolerHostname && port === 5432) {
-    // Hostname pooler mas porta 5432 = Conexão direta através do pooler
-    url.searchParams.delete('pgbouncer');
-    prismaLogger.info(
-      {
-        mode: 'Direct Connection',
-        port,
-        hostname: url.hostname,
-        connectionLimit: DEFAULT_CONNECTION_LIMIT,
-        poolTimeout: DEFAULT_POOL_TIMEOUT,
-        note: 'Conexão direta através de hostname pooler (porta 5432)',
-      },
-      '✅ Configuração para conexão direta',
+      '✅ Configuração para Supabase Free Tier',
     );
   } else {
-    // Conexão direta padrão
+    // Conexão direta padrão (não pooler)
     url.searchParams.delete('pgbouncer');
     prismaLogger.info(
       {

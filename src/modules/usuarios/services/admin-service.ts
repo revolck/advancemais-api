@@ -110,21 +110,19 @@ export class AdminService {
     dataFim: Date | null,
   ): Promise<number> {
     try {
-      // Buscar contagem de aulas e provas da turma
-      const [totalAulas, totalProvas, aulasComFrequencia, provasComEnvio] = await Promise.all([
-        prisma.cursosTurmasAulas.count({
-          where: { turmaId },
-        }),
-        prisma.cursosTurmasProvas.count({
-          where: { turmaId },
-        }),
-        prisma.cursosFrequenciaAlunos.count({
-          where: { inscricaoId, status: 'PRESENTE' },
-        }),
-        prisma.cursosTurmasProvasEnvios.count({
-          where: { inscricaoId },
-        }),
-      ]);
+      // Buscar contagem de aulas e provas da turma (sequencial para evitar saturar pool)
+      const totalAulas = await prisma.cursosTurmasAulas.count({
+        where: { turmaId },
+      });
+      const totalProvas = await prisma.cursosTurmasProvas.count({
+        where: { turmaId },
+      });
+      const aulasComFrequencia = await prisma.cursosFrequenciaAlunos.count({
+        where: { inscricaoId, status: 'PRESENTE' },
+      });
+      const provasComEnvio = await prisma.cursosTurmasProvasEnvios.count({
+        where: { inscricaoId },
+      });
 
       // Se não há aulas nem provas, calcular por tempo decorrido
       if (totalAulas === 0 && totalProvas === 0) {
@@ -347,18 +345,17 @@ export class AdminService {
       async () => {
         return await retryOperation(
           async () => {
-            return await Promise.all([
-              prisma.usuarios.findMany({
-                where,
-                select,
-                // ✅ Usar índice composto para melhor performance
-                orderBy: { criadoEm: 'desc' },
-                skip,
-                take: pageSize,
-              }),
-              // ✅ Count em paralelo - usa índice para contar rapidamente
-              prisma.usuarios.count({ where }),
-            ]);
+            // Queries sequenciais para evitar saturar pool no Supabase Free
+            const usuariosResult = await prisma.usuarios.findMany({
+              where,
+              select,
+              // ✅ Usar índice composto para melhor performance
+              orderBy: { criadoEm: 'desc' },
+              skip,
+              take: pageSize,
+            });
+            const totalResult = await prisma.usuarios.count({ where });
+            return [usuariosResult, totalResult] as const;
           },
           2, // Reduzir tentativas para fail-fast
           1000, // Delay menor
@@ -387,17 +384,15 @@ export class AdminService {
     > = {};
 
     if (alunosIds.length > 0) {
-      // Buscar currículos e inscrições em paralelo
-      const [curriculos, inscricoes] = await Promise.all([
-        prisma.usuariosCurriculos.findMany({
-          where: { usuarioId: { in: alunosIds } },
-          select: { id: true, usuarioId: true },
-        }),
-        prisma.cursosTurmasInscricoes.findMany({
-          where: { alunoId: { in: alunosIds } },
-          select: { id: true, alunoId: true },
-        }),
-      ]);
+      // Buscar currículos e inscrições sequencialmente para evitar saturar pool
+      const curriculos = await prisma.usuariosCurriculos.findMany({
+        where: { usuarioId: { in: alunosIds } },
+        select: { id: true, usuarioId: true },
+      });
+      const inscricoes = await prisma.cursosTurmasInscricoes.findMany({
+        where: { alunoId: { in: alunosIds } },
+        select: { id: true, alunoId: true },
+      });
 
       // Inicializar map com arrays vazios para todos os alunos
       alunosIds.forEach((id) => {
@@ -654,91 +649,90 @@ export class AdminService {
 
     if (usuario.role === Roles.ALUNO_CANDIDATO) {
       // Para ALUNO_CANDIDATO: incluir currículos, candidaturas e inscrições em cursos
-      const [curriculos, candidaturas, inscricoesRaw] = await Promise.all([
-        prisma.usuariosCurriculos.findMany({
-          where: { usuarioId: userId },
-          select: {
-            id: true,
-            titulo: true,
-            resumo: true,
-            objetivo: true,
-            principal: true,
-            areasInteresse: true,
-            preferencias: true,
-            habilidades: true,
-            idiomas: true,
-            experiencias: true,
-            formacao: true,
-            cursosCertificacoes: true,
-            premiosPublicacoes: true,
-            acessibilidade: true,
-            consentimentos: true,
-            criadoEm: true,
-            atualizadoEm: true,
-            ultimaAtualizacao: true,
-          },
-          orderBy: [{ principal: 'desc' }, { criadoEm: 'desc' }],
-        }),
-        prisma.empresasCandidatos.findMany({
-          where: { candidatoId: userId },
-          select: {
-            id: true,
-            vagaId: true,
-            curriculoId: true,
-            statusId: true,
-            origem: true,
-            aplicadaEm: true,
-            atualizadaEm: true,
-            status_processo: {
-              select: {
-                id: true,
-                nome: true,
-                descricao: true,
-                ativo: true,
-              },
-            },
-            EmpresasVagas: {
-              select: {
-                id: true,
-                titulo: true,
-                slug: true,
-                status: true,
-              },
+      // Queries sequenciais para evitar saturar pool no Supabase Free
+      const curriculos = await prisma.usuariosCurriculos.findMany({
+        where: { usuarioId: userId },
+        select: {
+          id: true,
+          titulo: true,
+          resumo: true,
+          objetivo: true,
+          principal: true,
+          areasInteresse: true,
+          preferencias: true,
+          habilidades: true,
+          idiomas: true,
+          experiencias: true,
+          formacao: true,
+          cursosCertificacoes: true,
+          premiosPublicacoes: true,
+          acessibilidade: true,
+          consentimentos: true,
+          criadoEm: true,
+          atualizadoEm: true,
+          ultimaAtualizacao: true,
+        },
+        orderBy: [{ principal: 'desc' }, { criadoEm: 'desc' }],
+      });
+      const candidaturas = await prisma.empresasCandidatos.findMany({
+        where: { candidatoId: userId },
+        select: {
+          id: true,
+          vagaId: true,
+          curriculoId: true,
+          statusId: true,
+          origem: true,
+          aplicadaEm: true,
+          atualizadaEm: true,
+          status_processo: {
+            select: {
+              id: true,
+              nome: true,
+              descricao: true,
+              ativo: true,
             },
           },
-          orderBy: { aplicadaEm: 'desc' },
-        }),
-        prisma.cursosTurmasInscricoes.findMany({
-          where: { alunoId: userId },
-          select: {
-            id: true,
-            turmaId: true,
-            status: true,
-            criadoEm: true,
-            CursosTurmas: {
-              select: {
-                id: true,
-                nome: true,
-                codigo: true,
-                dataInicio: true,
-                dataFim: true,
-                status: true,
-                Cursos: {
-                  select: {
-                    id: true,
-                    nome: true,
-                    codigo: true,
-                    descricao: true,
-                    cargaHoraria: true,
-                    imagemUrl: true,
-                  },
+          EmpresasVagas: {
+            select: {
+              id: true,
+              titulo: true,
+              slug: true,
+              status: true,
+            },
+          },
+        },
+        orderBy: { aplicadaEm: 'desc' },
+      });
+      const inscricoesRaw = await prisma.cursosTurmasInscricoes.findMany({
+        where: { alunoId: userId },
+        select: {
+          id: true,
+          turmaId: true,
+          status: true,
+          criadoEm: true,
+          CursosTurmas: {
+            select: {
+              id: true,
+              nome: true,
+              codigo: true,
+              dataInicio: true,
+              dataFim: true,
+              status: true,
+              Cursos: {
+                select: {
+                  id: true,
+                  nome: true,
+                  codigo: true,
+                  descricao: true,
+                  cargaHoraria: true,
+                  imagemUrl: true,
                 },
               },
             },
           },
-          orderBy: { criadoEm: 'desc' },
-        }),
-      ]);
+        },
+        orderBy: { criadoEm: 'desc' },
+      });
 
       // Mapear inscrições no formato correto com cálculo de progresso
       const cursosInscricoes = await Promise.all(

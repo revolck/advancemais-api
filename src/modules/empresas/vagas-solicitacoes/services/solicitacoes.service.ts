@@ -201,33 +201,31 @@ export const solicitacoesService = {
       );
     }
 
-    // Buscar vagas com dados da empresa
-    const [vagas, total] = await Promise.all([
-      prisma.empresasVagas.findMany({
-        where,
-        skip,
-        take: pageSize,
-        orderBy: { inseridaEm: 'desc' },
-        select: {
-          id: true,
-          codigo: true,
-          titulo: true,
-          status: true,
-          inseridaEm: true,
-          atualizadoEm: true,
-          observacoes: true, // Campo para observações de aprovação
-          Usuarios: {
-            select: {
-              id: true,
-              nomeCompleto: true,
-              codUsuario: true,
-              cnpj: true,
-            },
+    // Buscar vagas com dados da empresa (sequencial para evitar saturar pool)
+    const vagas = await prisma.empresasVagas.findMany({
+      where,
+      skip,
+      take: pageSize,
+      orderBy: { inseridaEm: 'desc' },
+      select: {
+        id: true,
+        codigo: true,
+        titulo: true,
+        status: true,
+        inseridaEm: true,
+        atualizadoEm: true,
+        observacoes: true, // Campo para observações de aprovação
+        Usuarios: {
+          select: {
+            id: true,
+            nomeCompleto: true,
+            codUsuario: true,
+            cnpj: true,
           },
         },
-      }),
-      prisma.empresasVagas.count({ where }),
-    ]);
+      },
+    });
+    const total = await prisma.empresasVagas.count({ where });
 
     // Log para debug
     if (process.env.NODE_ENV === 'development') {

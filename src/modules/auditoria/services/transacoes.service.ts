@@ -162,33 +162,32 @@ export class TransacoesService {
       const pageSize = filters.pageSize || 20;
       const skip = (page - 1) * pageSize;
 
-      const [transacoes, total] = await Promise.all([
-        prisma.auditoriaTransacoes.findMany({
-          where,
-          include: {
-            Usuarios_AuditoriaTransacoes_usuarioIdToUsuarios: {
-              select: {
-                id: true,
-                nomeCompleto: true,
-                email: true,
-                role: true,
-              },
-            },
-            Usuarios_AuditoriaTransacoes_empresaIdToUsuarios: {
-              select: {
-                id: true,
-                nomeCompleto: true,
-                email: true,
-                role: true,
-              },
+      // Queries sequenciais para evitar saturar pool no Supabase Free
+      const transacoes = await prisma.auditoriaTransacoes.findMany({
+        where,
+        include: {
+          Usuarios_AuditoriaTransacoes_usuarioIdToUsuarios: {
+            select: {
+              id: true,
+              nomeCompleto: true,
+              email: true,
+              role: true,
             },
           },
-          orderBy: { criadoEm: 'desc' },
-          skip,
-          take: pageSize,
-        }),
-        prisma.auditoriaTransacoes.count({ where }),
-      ]);
+          Usuarios_AuditoriaTransacoes_empresaIdToUsuarios: {
+            select: {
+              id: true,
+              nomeCompleto: true,
+              email: true,
+              role: true,
+            },
+          },
+        },
+        orderBy: { criadoEm: 'desc' },
+        skip,
+        take: pageSize,
+      });
+      const total = await prisma.auditoriaTransacoes.count({ where });
 
       const totalPages = Math.ceil(total / pageSize);
 
@@ -278,23 +277,14 @@ export class TransacoesService {
    */
   async obterEstatisticasTransacoes() {
     try {
-      const [
-        totalTransacoes,
-        transacoesPorTipo,
-        transacoesPorStatus,
-        transacoesPorGateway,
-        transacoesPorPeriodo,
-        valorTotal,
-        valorPorPeriodo,
-      ] = await Promise.all([
-        this.contarTransacoes(),
-        this.obterTransacoesPorTipo(),
-        this.obterTransacoesPorStatus(),
-        this.obterTransacoesPorGateway(),
-        this.obterTransacoesPorPeriodo(),
-        this.calcularValorTotal(),
-        this.calcularValorPorPeriodo(),
-      ]);
+      // Queries sequenciais para evitar saturar pool no Supabase Free
+      const totalTransacoes = await this.contarTransacoes();
+      const transacoesPorTipo = await this.obterTransacoesPorTipo();
+      const transacoesPorStatus = await this.obterTransacoesPorStatus();
+      const transacoesPorGateway = await this.obterTransacoesPorGateway();
+      const transacoesPorPeriodo = await this.obterTransacoesPorPeriodo();
+      const valorTotal = await this.calcularValorTotal();
+      const valorPorPeriodo = await this.calcularValorPorPeriodo();
 
       return {
         totalTransacoes,
@@ -321,25 +311,15 @@ export class TransacoesService {
       const semanaPassada = new Date(hoje.getTime() - 7 * 24 * 60 * 60 * 1000);
       const mesPassado = new Date(hoje.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-      const [
-        receitaHoje,
-        receitaOntem,
-        receitaSemana,
-        receitaMes,
-        transacoesHoje,
-        transacoesOntem,
-        transacoesSemana,
-        transacoesMes,
-      ] = await Promise.all([
-        this.calcularReceitaPeriodo(hoje),
-        this.calcularReceitaPeriodo(ontem, hoje),
-        this.calcularReceitaPeriodo(semanaPassada),
-        this.calcularReceitaPeriodo(mesPassado),
-        this.contarTransacoesPeriodo(hoje),
-        this.contarTransacoesPeriodo(ontem, hoje),
-        this.contarTransacoesPeriodo(semanaPassada),
-        this.contarTransacoesPeriodo(mesPassado),
-      ]);
+      // Queries sequenciais para evitar saturar pool no Supabase Free
+      const receitaHoje = await this.calcularReceitaPeriodo(hoje);
+      const receitaOntem = await this.calcularReceitaPeriodo(ontem, hoje);
+      const receitaSemana = await this.calcularReceitaPeriodo(semanaPassada);
+      const receitaMes = await this.calcularReceitaPeriodo(mesPassado);
+      const transacoesHoje = await this.contarTransacoesPeriodo(hoje);
+      const transacoesOntem = await this.contarTransacoesPeriodo(ontem, hoje);
+      const transacoesSemana = await this.contarTransacoesPeriodo(semanaPassada);
+      const transacoesMes = await this.contarTransacoesPeriodo(mesPassado);
 
       return {
         receitaHoje,

@@ -65,25 +65,24 @@ export class AssinaturasService {
       const pageSize = filters.pageSize || 20;
       const skip = (page - 1) * pageSize;
 
-      const [logs, total] = await Promise.all([
-        prisma.auditoriaLogs.findMany({
-          where,
-          include: {
-            Usuarios: {
-              select: {
-                id: true,
-                nomeCompleto: true,
-                email: true,
-                role: true,
-              },
+      // Queries sequenciais para evitar saturar pool no Supabase Free
+      const logs = await prisma.auditoriaLogs.findMany({
+        where,
+        include: {
+          Usuarios: {
+            select: {
+              id: true,
+              nomeCompleto: true,
+              email: true,
+              role: true,
             },
           },
-          orderBy: { criadoEm: 'desc' },
-          skip,
-          take: pageSize,
-        }),
-        prisma.auditoriaLogs.count({ where }),
-      ]);
+        },
+        orderBy: { criadoEm: 'desc' },
+        skip,
+        take: pageSize,
+      });
+      const total = await prisma.auditoriaLogs.count({ where });
 
       const totalPages = Math.ceil(total / pageSize);
 
@@ -148,15 +147,14 @@ export class AssinaturasService {
       const pageSize = filters.pageSize || 20;
       const skip = (page - 1) * pageSize;
 
-      const [logs, total] = await Promise.all([
-        prisma.logsPagamentosDeAssinaturas.findMany({
-          where,
-          orderBy: { criadoEm: 'desc' },
-          skip,
-          take: pageSize,
-        }),
-        prisma.logsPagamentosDeAssinaturas.count({ where }),
-      ]);
+      // Queries sequenciais para evitar saturar pool no Supabase Free
+      const logs = await prisma.logsPagamentosDeAssinaturas.findMany({
+        where,
+        orderBy: { criadoEm: 'desc' },
+        skip,
+        take: pageSize,
+      });
+      const total = await prisma.logsPagamentosDeAssinaturas.count({ where });
 
       const totalPages = Math.ceil(total / pageSize);
 
@@ -216,33 +214,32 @@ export class AssinaturasService {
       const pageSize = filters.pageSize || 20;
       const skip = (page - 1) * pageSize;
 
-      const [planos, total] = await Promise.all([
-        prisma.empresasPlano.findMany({
-          where,
-          include: {
-            Usuarios: {
-              select: {
-                id: true,
-                nomeCompleto: true,
-                email: true,
-                role: true,
-              },
-            },
-            PlanosEmpresariais: {
-              select: {
-                id: true,
-                nome: true,
-                descricao: true,
-                valor: true,
-              },
+      // Queries sequenciais para evitar saturar pool no Supabase Free
+      const planos = await prisma.empresasPlano.findMany({
+        where,
+        include: {
+          Usuarios: {
+            select: {
+              id: true,
+              nomeCompleto: true,
+              email: true,
+              role: true,
             },
           },
-          orderBy: { criadoEm: 'desc' },
-          skip,
-          take: pageSize,
-        }),
-        prisma.empresasPlano.count({ where }),
-      ]);
+          PlanosEmpresariais: {
+            select: {
+              id: true,
+              nome: true,
+              descricao: true,
+              valor: true,
+            },
+          },
+        },
+        orderBy: { criadoEm: 'desc' },
+        skip,
+        take: pageSize,
+      });
+      const total = await prisma.empresasPlano.count({ where });
 
       const totalPages = Math.ceil(total / pageSize);
 
@@ -264,21 +261,13 @@ export class AssinaturasService {
    */
   async obterEstatisticasAssinaturas() {
     try {
-      const [
-        totalAssinaturas,
-        assinaturasPorStatus,
-        assinaturasPorTipo,
-        assinaturasPorPeriodo,
-        receitaTotal,
-        receitaPorPeriodo,
-      ] = await Promise.all([
-        this.contarAssinaturas(),
-        this.obterAssinaturasPorStatus(),
-        this.obterAssinaturasPorTipo(),
-        this.obterAssinaturasPorPeriodo(),
-        this.calcularReceitaTotal(),
-        this.calcularReceitaPorPeriodo(),
-      ]);
+      // Queries sequenciais para evitar saturar pool no Supabase Free
+      const totalAssinaturas = await this.contarAssinaturas();
+      const assinaturasPorStatus = await this.obterAssinaturasPorStatus();
+      const assinaturasPorTipo = await this.obterAssinaturasPorTipo();
+      const assinaturasPorPeriodo = await this.obterAssinaturasPorPeriodo();
+      const receitaTotal = await this.calcularReceitaTotal();
+      const receitaPorPeriodo = await this.calcularReceitaPorPeriodo();
 
       return {
         totalAssinaturas,
@@ -302,14 +291,12 @@ export class AssinaturasService {
       const hoje = new Date();
       const mesPassado = new Date(hoje.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-      const [totalAtivas, novasEsteMes, canceladasEsteMes, renovacoesEsteMes, receitaEsteMes] =
-        await Promise.all([
-          this.contarAssinaturasAtivas(),
-          this.contarNovasAssinaturas(mesPassado),
-          this.contarCancelamentos(mesPassado),
-          this.contarRenovacoes(mesPassado),
-          this.calcularReceitaPeriodo(mesPassado),
-        ]);
+      // Queries sequenciais para evitar saturar pool no Supabase Free
+      const totalAtivas = await this.contarAssinaturasAtivas();
+      const novasEsteMes = await this.contarNovasAssinaturas(mesPassado);
+      const canceladasEsteMes = await this.contarCancelamentos(mesPassado);
+      const renovacoesEsteMes = await this.contarRenovacoes(mesPassado);
+      const receitaEsteMes = await this.calcularReceitaPeriodo(mesPassado);
 
       return {
         totalAtivas,

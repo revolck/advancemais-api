@@ -8,3 +8,4 @@ dist/
 .env.backup
 docs/
 .env_2.env_deletar
+.env_2

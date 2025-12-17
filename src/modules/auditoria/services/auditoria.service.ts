@@ -109,25 +109,24 @@ export class AuditoriaService {
       const pageSize = filters.pageSize || 20;
       const skip = (page - 1) * pageSize;
 
-      const [logs, total] = await Promise.all([
-        prisma.auditoriaLogs.findMany({
-          where,
-          include: {
-            Usuarios: {
-              select: {
-                id: true,
-                nomeCompleto: true,
-                email: true,
-                role: true,
-              },
+      // Queries sequenciais para evitar saturar pool no Supabase Free
+      const logs = await prisma.auditoriaLogs.findMany({
+        where,
+        include: {
+          Usuarios: {
+            select: {
+              id: true,
+              nomeCompleto: true,
+              email: true,
+              role: true,
             },
           },
-          orderBy: { criadoEm: 'desc' },
-          skip,
-          take: pageSize,
-        }),
-        prisma.auditoriaLogs.count({ where }),
-      ]);
+        },
+        orderBy: { criadoEm: 'desc' },
+        skip,
+        take: pageSize,
+      });
+      const total = await prisma.auditoriaLogs.count({ where });
 
       const totalPages = Math.ceil(total / pageSize);
 
@@ -169,14 +168,12 @@ export class AuditoriaService {
         where.usuarioId = filters.usuarioId;
       }
 
-      const [totalLogs, logsPorCategoria, logsPorTipo, logsPorUsuario, logsPorPeriodo] =
-        await Promise.all([
-          prisma.auditoriaLogs.count({ where }),
-          this.obterLogsPorCategoria(where),
-          this.obterLogsPorTipo(where),
-          this.obterLogsPorUsuario(where),
-          this.obterLogsPorPeriodo(where),
-        ]);
+      // Queries sequenciais para evitar saturar pool no Supabase Free
+      const totalLogs = await prisma.auditoriaLogs.count({ where });
+      const logsPorCategoria = await this.obterLogsPorCategoria(where);
+      const logsPorTipo = await this.obterLogsPorTipo(where);
+      const logsPorUsuario = await this.obterLogsPorUsuario(where);
+      const logsPorPeriodo = await this.obterLogsPorPeriodo(where);
 
       return {
         totalLogs,

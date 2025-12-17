@@ -207,25 +207,24 @@ export const requerimentosService = {
       if (criadoAte) where.criadoEm.lte = criadoAte;
     }
 
-    const [requerimentos, total] = await Promise.all([
-      prisma.requerimentos.findMany({
-        where,
-        skip,
-        take: pageSize,
-        orderBy: { criadoEm: 'desc' },
-        include: {
-          EmpresasPlano: {
-            include: {
-              PlanosEmpresariais: { select: { nome: true } },
-            },
-          },
-          AtribuidoPara: {
-            select: { id: true, nomeCompleto: true },
+    // Queries sequenciais para evitar saturar pool no Supabase Free
+    const requerimentos = await prisma.requerimentos.findMany({
+      where,
+      skip,
+      take: pageSize,
+      orderBy: { criadoEm: 'desc' },
+      include: {
+        EmpresasPlano: {
+          include: {
+            PlanosEmpresariais: { select: { nome: true } },
           },
         },
-      }),
-      prisma.requerimentos.count({ where }),
-    ]);
+        AtribuidoPara: {
+          select: { id: true, nomeCompleto: true },
+        },
+      },
+    });
+    const total = await prisma.requerimentos.count({ where });
 
     return {
       data: requerimentos,
@@ -298,28 +297,27 @@ export const requerimentosService = {
       if (criadoAte) where.criadoEm.lte = criadoAte;
     }
 
-    const [requerimentos, total] = await Promise.all([
-      prisma.requerimentos.findMany({
-        where,
-        skip,
-        take: pageSize,
-        orderBy: [{ prioridade: 'desc' }, { criadoEm: 'desc' }],
-        include: {
-          Usuario: {
-            select: { id: true, nomeCompleto: true, email: true, tipoUsuario: true },
-          },
-          EmpresasPlano: {
-            include: {
-              PlanosEmpresariais: { select: { nome: true, valor: true } },
-            },
-          },
-          AtribuidoPara: {
-            select: { id: true, nomeCompleto: true },
+    // Queries sequenciais para evitar saturar pool no Supabase Free
+    const requerimentos = await prisma.requerimentos.findMany({
+      where,
+      skip,
+      take: pageSize,
+      orderBy: [{ prioridade: 'desc' }, { criadoEm: 'desc' }],
+      include: {
+        Usuario: {
+          select: { id: true, nomeCompleto: true, email: true, tipoUsuario: true },
+        },
+        EmpresasPlano: {
+          include: {
+            PlanosEmpresariais: { select: { nome: true, valor: true } },
           },
         },
-      }),
-      prisma.requerimentos.count({ where }),
-    ]);
+        AtribuidoPara: {
+          select: { id: true, nomeCompleto: true },
+        },
+      },
+    });
+    const total = await prisma.requerimentos.count({ where });
 
     return {
       data: requerimentos,
@@ -544,33 +542,24 @@ export const requerimentosService = {
    * Métricas de requerimentos (admin)
    */
   async metricas() {
-    const [
-      totalAbertos,
-      totalEmAnalise,
-      totalAguardandoUsuario,
-      totalResolvidos,
-      totalReembolsoPendente,
-      porTipo,
-      porPrioridade,
-    ] = await Promise.all([
-      prisma.requerimentos.count({ where: { status: 'ABERTO' } }),
-      prisma.requerimentos.count({ where: { status: 'EM_ANALISE' } }),
-      prisma.requerimentos.count({ where: { status: 'AGUARDANDO_USUARIO' } }),
-      prisma.requerimentos.count({ where: { status: 'RESOLVIDO' } }),
-      prisma.requerimentos.count({
-        where: { tipo: 'REEMBOLSO', status: { in: ['ABERTO', 'EM_ANALISE'] } },
-      }),
-      prisma.requerimentos.groupBy({
-        by: ['tipo'],
-        _count: true,
-        where: { status: { notIn: ['CANCELADO', 'RECUSADO'] } },
-      }),
-      prisma.requerimentos.groupBy({
-        by: ['prioridade'],
-        _count: true,
-        where: { status: { notIn: ['RESOLVIDO', 'CANCELADO', 'RECUSADO'] } },
-      }),
-    ]);
+    // Queries sequenciais para evitar saturar pool no Supabase Free
+    const totalAbertos = await prisma.requerimentos.count({ where: { status: 'ABERTO' } });
+    const totalEmAnalise = await prisma.requerimentos.count({ where: { status: 'EM_ANALISE' } });
+    const totalAguardandoUsuario = await prisma.requerimentos.count({ where: { status: 'AGUARDANDO_USUARIO' } });
+    const totalResolvidos = await prisma.requerimentos.count({ where: { status: 'RESOLVIDO' } });
+    const totalReembolsoPendente = await prisma.requerimentos.count({
+      where: { tipo: 'REEMBOLSO', status: { in: ['ABERTO', 'EM_ANALISE'] } },
+    });
+    const porTipo = await prisma.requerimentos.groupBy({
+      by: ['tipo'],
+      _count: true,
+      where: { status: { notIn: ['CANCELADO', 'RECUSADO'] } },
+    });
+    const porPrioridade = await prisma.requerimentos.groupBy({
+      by: ['prioridade'],
+      _count: true,
+      where: { status: { notIn: ['RESOLVIDO', 'CANCELADO', 'RECUSADO'] } },
+    });
 
     return {
       totais: {

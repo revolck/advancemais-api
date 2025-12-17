@@ -73,18 +73,17 @@ export class InstrutorController {
         async () => {
           return await retryOperation(
             async () => {
-              return await Promise.all([
-                prisma.usuarios.findMany({
-                  where,
-                  select,
-                  // ✅ Usar índice composto para melhor performance
-                  orderBy: { criadoEm: 'desc' },
-                  skip,
-                  take: limitNum,
-                }),
-                // ✅ Count em paralelo - usa índice para contar rapidamente
-                prisma.usuarios.count({ where }),
-              ]);
+              // Queries sequenciais para evitar saturar pool no Supabase Free
+              const instrutoresResult = await prisma.usuarios.findMany({
+                where,
+                select,
+                // ✅ Usar índice composto para melhor performance
+                orderBy: { criadoEm: 'desc' },
+                skip,
+                take: limitNum,
+              });
+              const totalResult = await prisma.usuarios.count({ where });
+              return [instrutoresResult, totalResult] as const;
             },
             2, // Reduzir tentativas para fail-fast
             1000, // Delay menor

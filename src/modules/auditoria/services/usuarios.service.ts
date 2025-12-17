@@ -144,12 +144,11 @@ export class UsuariosService {
    */
   async obterEstatisticasUsuario(usuarioId: string) {
     try {
-      const [totalAcoes, acoesPorTipo, acoesPorPeriodo, ultimaAtividade] = await Promise.all([
-        this.contarAcoesUsuario(usuarioId),
-        this.obterAcoesPorTipo(usuarioId),
-        this.obterAcoesPorPeriodo(usuarioId),
-        this.obterUltimaAtividade(usuarioId),
-      ]);
+      // Queries sequenciais para evitar saturar pool no Supabase Free
+      const totalAcoes = await this.contarAcoesUsuario(usuarioId);
+      const acoesPorTipo = await this.obterAcoesPorTipo(usuarioId);
+      const acoesPorPeriodo = await this.obterAcoesPorPeriodo(usuarioId);
+      const ultimaAtividade = await this.obterUltimaAtividade(usuarioId);
 
       return {
         totalAcoes,
@@ -173,12 +172,11 @@ export class UsuariosService {
       const semanaPassada = new Date(hoje.getTime() - 7 * 24 * 60 * 60 * 1000);
       const mesPassado = new Date(hoje.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-      const [acoesHoje, acoesOntem, acoesSemana, acoesMes] = await Promise.all([
-        this.contarAcoesUsuario(usuarioId, hoje.toISOString()),
-        this.contarAcoesUsuario(usuarioId, ontem.toISOString(), hoje.toISOString()),
-        this.contarAcoesUsuario(usuarioId, semanaPassada.toISOString()),
-        this.contarAcoesUsuario(usuarioId, mesPassado.toISOString()),
-      ]);
+      // Queries sequenciais para evitar saturar pool no Supabase Free
+      const acoesHoje = await this.contarAcoesUsuario(usuarioId, hoje.toISOString());
+      const acoesOntem = await this.contarAcoesUsuario(usuarioId, ontem.toISOString(), hoje.toISOString());
+      const acoesSemana = await this.contarAcoesUsuario(usuarioId, semanaPassada.toISOString());
+      const acoesMes = await this.contarAcoesUsuario(usuarioId, mesPassado.toISOString());
 
       return {
         acoesHoje,

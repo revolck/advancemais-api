@@ -192,25 +192,24 @@ export class ScriptsService {
       const pageSize = filters.pageSize || 20;
       const skip = (page - 1) * pageSize;
 
-      const [scripts, total] = await Promise.all([
-        prisma.auditoriaScripts.findMany({
-          where,
-          include: {
-            Usuarios: {
-              select: {
-                id: true,
-                nomeCompleto: true,
-                email: true,
-                role: true,
-              },
+      // Queries sequenciais para evitar saturar pool no Supabase Free
+      const scripts = await prisma.auditoriaScripts.findMany({
+        where,
+        include: {
+          Usuarios: {
+            select: {
+              id: true,
+              nomeCompleto: true,
+              email: true,
+              role: true,
             },
           },
-          orderBy: { criadoEm: 'desc' },
-          skip,
-          take: pageSize,
-        }),
-        prisma.auditoriaScripts.count({ where }),
-      ]);
+        },
+        orderBy: { criadoEm: 'desc' },
+        skip,
+        take: pageSize,
+      });
+      const total = await prisma.auditoriaScripts.count({ where });
 
       const totalPages = Math.ceil(total / pageSize);
 
@@ -336,14 +335,12 @@ export class ScriptsService {
    */
   async obterEstatisticas() {
     try {
-      const [totalScripts, scriptsPorTipo, scriptsPorStatus, scriptsPorUsuario, scriptsPorPeriodo] =
-        await Promise.all([
-          prisma.auditoriaScripts.count(),
-          this.obterScriptsPorTipo(),
-          this.obterScriptsPorStatus(),
-          this.obterScriptsPorUsuario(),
-          this.obterScriptsPorPeriodo(),
-        ]);
+      // Queries sequenciais para evitar saturar pool no Supabase Free
+      const totalScripts = await prisma.auditoriaScripts.count();
+      const scriptsPorTipo = await this.obterScriptsPorTipo();
+      const scriptsPorStatus = await this.obterScriptsPorStatus();
+      const scriptsPorUsuario = await this.obterScriptsPorUsuario();
+      const scriptsPorPeriodo = await this.obterScriptsPorPeriodo();
 
       return {
         totalScripts,

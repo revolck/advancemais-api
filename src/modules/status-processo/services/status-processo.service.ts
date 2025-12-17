@@ -65,24 +65,23 @@ export class StatusProcessoService {
       orderBy.push({ nome: 'asc' });
     }
 
-    const [status, total] = await Promise.all([
-      this.prisma.status_processo.findMany({
-        where,
-        skip,
-        take: pageSize,
-        orderBy,
-        include: {
-          Usuarios: {
-            select: {
-              id: true,
-              nomeCompleto: true,
-              email: true,
-            },
+    // Queries sequenciais para evitar saturar pool no Supabase Free
+    const status = await this.prisma.status_processo.findMany({
+      where,
+      skip,
+      take: pageSize,
+      orderBy,
+      include: {
+        Usuarios: {
+          select: {
+            id: true,
+            nomeCompleto: true,
+            email: true,
           },
         },
-      }),
-      this.prisma.status_processo.count({ where }),
-    ]);
+      },
+    });
+    const total = await this.prisma.status_processo.count({ where });
 
     return {
       data: status,
@@ -195,15 +194,13 @@ export class StatusProcessoService {
       throw new Error('Status não encontrado.');
     }
 
-    // Verificar se o status está sendo usado em candidaturas
-    const [candidaturasCount, processosCount] = await Promise.all([
-      this.prisma.empresasCandidatos.count({
-        where: { statusId: id },
-      }),
-      this.prisma.empresasVagasProcesso.count({
-        where: { statusId: id },
-      }),
-    ]);
+    // Verificar se o status está sendo usado em candidaturas (sequencial)
+    const candidaturasCount = await this.prisma.empresasCandidatos.count({
+      where: { statusId: id },
+    });
+    const processosCount = await this.prisma.empresasVagasProcesso.count({
+      where: { statusId: id },
+    });
 
     if (candidaturasCount > 0 || processosCount > 0) {
       throw new Error(

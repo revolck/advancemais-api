@@ -148,6 +148,41 @@ export class AulasController {
         });
       }
 
+      // Tratar erros específicos de publicação
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para editar esta aula',
+        });
+      }
+
+      if (error?.code === 'CAMPOS_OBRIGATORIOS_FALTANDO') {
+        return res.status(400).json({
+          success: false,
+          code: 'CAMPOS_OBRIGATORIOS_FALTANDO',
+          message: error?.message || 'Campos obrigatórios faltando',
+          camposFaltando: error?.camposFaltando || [],
+          modalidade: error?.modalidade,
+        });
+      }
+
+      if (error?.code === 'DATA_INVALIDA') {
+        return res.status(400).json({
+          success: false,
+          code: 'DATA_INVALIDA',
+          message: error?.message || 'Data inválida',
+        });
+      }
+
+      if (error?.code === 'STATUS_INVALIDO' || error?.code === 'NAO_PODE_DESPUBLICAR') {
+        return res.status(400).json({
+          success: false,
+          code: error?.code || 'STATUS_INVALIDO',
+          message: error?.message || 'Não é possível alterar o status desta aula',
+        });
+      }
+
       res.status(500).json({
         success: false,
         code: 'AULAS_UPDATE_ERROR',
@@ -169,10 +204,160 @@ export class AulasController {
 
       res.json(result);
     } catch (error: any) {
+      // Tratar erros específicos
+      if (error?.code === 'AULA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'AULA_NOT_FOUND',
+          message: error?.message || 'Aula não encontrada',
+        });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para excluir esta aula',
+        });
+      }
+
+      if (error?.code === 'AULA_JA_REALIZADA') {
+        return res.status(400).json({
+          success: false,
+          code: 'AULA_JA_REALIZADA',
+          message: error?.message || 'Não é possível excluir aulas que já foram realizadas',
+        });
+      }
+
+      if (error?.code === 'PRAZO_INSUFICIENTE') {
+        return res.status(400).json({
+          success: false,
+          code: 'PRAZO_INSUFICIENTE',
+          message: error?.message || 'Prazo insuficiente para exclusão',
+          diasRestantes: error?.diasRestantes,
+          dataAula: error?.dataAula,
+        });
+      }
+
+      if (error?.code === 'AULA_EM_ANDAMENTO') {
+        return res.status(400).json({
+          success: false,
+          code: 'AULA_EM_ANDAMENTO',
+          message: error?.message || 'Não é possível excluir uma aula em andamento',
+        });
+      }
+
       res.status(500).json({
         success: false,
         code: 'AULAS_DELETE_ERROR',
         message: error?.message || 'Erro ao remover aula',
+      });
+    }
+  };
+
+  /**
+   * PATCH /api/v1/cursos/aulas/:id/publicar
+   * Publicar ou despublicar aula
+   */
+  static publicar = async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { publicar } = req.body; // true = publicar, false = despublicar
+      const usuarioLogado = req.user!;
+
+      if (typeof publicar !== 'boolean') {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Campo "publicar" deve ser um booleano',
+        });
+      }
+
+      // Buscar aula atual
+      const aulaAtual = await aulasService.getById(id, usuarioLogado);
+      const statusAtual = aulaAtual.status;
+      const statusNovo = publicar ? 'PUBLICADA' : 'RASCUNHO';
+
+      // Se já está no status desejado, retornar sucesso
+      if (statusAtual === statusNovo) {
+        return res.json({
+          success: true,
+          message: `Aula já está ${publicar ? 'publicada' : 'em rascunho'}`,
+          aula: aulaAtual,
+        });
+      }
+
+      // Atualizar status
+      const aulaAtualizada = await aulasService.update(
+        id,
+        { status: statusNovo },
+        usuarioLogado,
+      );
+
+      // Buscar aula atualizada completa
+      const aulaCompleta = await aulasService.getById(id, usuarioLogado);
+
+      res.json({
+        success: true,
+        message: `Aula ${publicar ? 'publicada' : 'despublicada'} com sucesso`,
+        aula: aulaCompleta,
+        acoesRealizadas: {
+          eventoCalendarCriado: !!aulaCompleta.meetEventId,
+          meetEventId: aulaCompleta.meetEventId || null,
+          notificacoesEnviadas: aulaAtual.turmaId ? 'sim' : 'não',
+        },
+      });
+    } catch (error: any) {
+      // Tratar erros específicos
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Você não tem permissão para publicar/despublicar esta aula',
+        });
+      }
+
+      if (error?.code === 'CAMPOS_OBRIGATORIOS_FALTANDO') {
+        return res.status(400).json({
+          success: false,
+          code: 'CAMPOS_OBRIGATORIOS_FALTANDO',
+          message: error?.message || 'Campos obrigatórios faltando',
+          camposFaltando: error?.camposFaltando || [],
+          modalidade: error?.modalidade,
+        });
+      }
+
+      if (error?.code === 'DATA_INVALIDA') {
+        return res.status(400).json({
+          success: false,
+          code: 'DATA_INVALIDA',
+          message: error?.message || 'Data inválida',
+          dataInicio: error?.dataInicio,
+          hoje: new Date().toISOString(),
+        });
+      }
+
+      if (error?.code === 'STATUS_INVALIDO' || error?.code === 'NAO_PODE_DESPUBLICAR') {
+        return res.status(400).json({
+          success: false,
+          code: error?.code || 'STATUS_INVALIDO',
+          message: error?.message || 'Não é possível alterar o status desta aula',
+          statusAtual: error?.statusAtual,
+        });
+      }
+
+      if (error?.code === 'AULA_JA_REALIZADA') {
+        return res.status(400).json({
+          success: false,
+          code: 'AULA_JA_REALIZADA',
+          message: error?.message || 'Não é possível despublicar uma aula que já foi realizada',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'AULAS_PUBLICAR_ERROR',
+        message: error?.message || 'Erro ao publicar/despublicar aula',
       });
     }
   };
@@ -264,10 +449,30 @@ export class AulasController {
         historico,
       });
     } catch (error: any) {
-      res.status(403).json({
+      // Verificar se é erro de permissão
+      if (error?.message?.includes('permissão') || error?.message?.includes('Sem permissão')) {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Você não tem permissão para acessar o histórico desta aula',
+        });
+      }
+
+      // Verificar se é erro de aula não encontrada
+      if (error?.message?.includes('não encontrada') || error?.message?.includes('não encontrado')) {
+        return res.status(404).json({
+          success: false,
+          code: 'AULA_NOT_FOUND',
+          message: error?.message || 'Aula não encontrada',
+        });
+      }
+
+      // Erro genérico
+      logger.error('[AULAS_HISTORICO_ERROR]', { error: error?.message, aulaId: req.params.id });
+      res.status(500).json({
         success: false,
-        code: 'HISTORICO_ERROR',
-        message: error?.message || 'Erro ao buscar histórico',
+        code: 'INTERNAL_ERROR',
+        message: error?.message || 'Erro ao buscar histórico da aula',
       });
     }
   };

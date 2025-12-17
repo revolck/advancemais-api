@@ -33,6 +33,7 @@ router.get('/', AulasController.list);
 router.get('/:id', AulasController.get);
 router.post('/', AulasController.create);
 router.put('/:id', AulasController.update);
+router.patch('/:id/publicar', AulasController.publicar); // Publicar/despublicar (antes de :id para evitar conflito)
 router.delete('/:id', AulasController.delete);
 
 // Histórico de alterações

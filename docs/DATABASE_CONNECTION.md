@@ -13,11 +13,13 @@ Este erro ocorre quando o Prisma não consegue conectar ao banco de dados Supaba
 ### 1. Obter Connection String Direta
 
 No Dashboard do Supabase:
+
 1. Vá em **Settings** → **Database**
 2. Em **Connection string**, selecione **URI** (não Transaction Pooler)
 3. Copie a string que começa com `postgres://...` (sem `pooler.supabase.com`)
 
 Exemplo:
+
 ```
 postgres://postgres:[PASSWORD]@aws-1-sa-east-1.connect.psql.cloud:5432/postgres?sslmode=require
 ```
@@ -38,6 +40,7 @@ DATABASE_POOL_URL="postgres://postgres:[PASSWORD]@aws-1-sa-east-1.pooler.supabas
 ```
 
 **Ordem de prioridade no código:**
+
 1. `DIRECT_URL` (usado primeiro)
 2. `DATABASE_URL` (fallback)
 3. `DATABASE_POOL_URL` (último recurso)
@@ -98,18 +101,21 @@ A aplicação loga automaticamente qual tipo de conexão está sendo usada:
 ### Problema: Ainda recebe "Can't reach database"
 
 1. **Verifique se `DIRECT_URL` está configurado**:
+
    ```bash
    echo $DIRECT_URL
    ```
 
 2. **Verifique logs de inicialização**:
    Procure por:
+
    ```
    🔧 [PRISMA CONFIG] datasourceUrl length: [número]
    ✅ Configuração para conexão direta
    ```
 
 3. **Teste conexão manual**:
+
    ```bash
    psql "$DIRECT_URL"
    ```
@@ -159,5 +165,3 @@ PRISMA_EAGER_CONNECT=true
 - [Supabase Connection Pooling](https://supabase.com/docs/guides/database/connecting-to-postgres#connection-pooler)
 - [Prisma Connection Management](https://www.prisma.io/docs/guides/performance-and-optimization/connection-management)
 - [PostgreSQL Connection String](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING)
-
-

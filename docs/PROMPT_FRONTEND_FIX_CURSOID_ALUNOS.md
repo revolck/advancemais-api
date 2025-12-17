@@ -15,6 +15,7 @@ Ao filtrar alunos por curso na tela de listagem, a API está retornando erro `40
 ### Evidências
 
 1. **Erro no Console:**
+
    ```
    API Error 400 (/api/v1/cursos/alunos?page=1&limit=10&cursold=5)
    ```
@@ -32,15 +33,17 @@ Ao filtrar alunos por curso na tela de listagem, a API está retornando erro `40
 O campo `id` do modelo `Cursos` foi alterado de `Int` (número inteiro) para `String @default(uuid())` (UUID).
 
 **Antes:**
+
 ```typescript
 // Cursos.id era um número
 cursoId: 1, 2, 3, ...
 ```
 
 **Agora:**
+
 ```typescript
 // Cursos.id é um UUID (string)
-cursoId: "550e8400-e29b-41d4-a716-446655440000"
+cursoId: '550e8400-e29b-41d4-a716-446655440000';
 ```
 
 ### API Endpoint
@@ -48,6 +51,7 @@ cursoId: "550e8400-e29b-41d4-a716-446655440000"
 **Endpoint:** `GET /api/v1/cursos/alunos`
 
 **Parâmetros aceitos:**
+
 - `cursoId` (string UUID) - **OU** `curso` (string UUID)
 - `turmaId` (string UUID) - **OU** `turma` (string UUID)
 - `status` (enum: INSCRITO, EM_ANDAMENTO, CONCLUIDO, etc.)
@@ -57,6 +61,7 @@ cursoId: "550e8400-e29b-41d4-a716-446655440000"
 - `limit` (number)
 
 **Exemplo de requisição correta:**
+
 ```
 GET /api/v1/cursos/alunos?page=1&limit=10&cursoId=550e8400-e29b-41d4-a716-446655440000
 ```
@@ -70,6 +75,7 @@ GET /api/v1/cursos/alunos?page=1&limit=10&cursoId=550e8400-e29b-41d4-a716-446655
 **Arquivo:** `src/api/cursos/core.ts` (aproximadamente linha 577)
 
 **Antes:**
+
 ```typescript
 // ❌ ERRADO - Typo: "cursold"
 const params = {
@@ -80,6 +86,7 @@ const params = {
 ```
 
 **Depois:**
+
 ```typescript
 // ✅ CORRETO
 const params = {
@@ -100,6 +107,7 @@ const params = {
    - O `id` do curso vem da API `GET /api/v1/cursos` e é um UUID string
 
 2. **Exemplo de estrutura esperada:**
+
    ```typescript
    // Resposta da API /api/v1/cursos
    {
@@ -111,14 +119,15 @@ const params = {
    ```
 
 3. **Ao selecionar um curso no dropdown:**
+
    ```typescript
    // ✅ CORRETO - Usar o UUID
    const cursoSelecionado = {
-     id: "550e8400-e29b-41d4-a716-446655440000", // UUID
-     codigo: "123",
-     nome: "Desenvolvimento Full Stack Completo"
+     id: '550e8400-e29b-41d4-a716-446655440000', // UUID
+     codigo: '123',
+     nome: 'Desenvolvimento Full Stack Completo',
    };
-   
+
    // Enviar o UUID para a API
    setCursoId(cursoSelecionado.id); // UUID string
    ```
@@ -143,7 +152,7 @@ Certifique-se de que a API está retornando o campo `id` como UUID:
       {
         "id": "550e8400-e29b-41d4-a716-446655440000", // ← UUID (string)
         "codigo": "123",
-        "nome": "Desenvolvimento Full Stack Completo",
+        "nome": "Desenvolvimento Full Stack Completo"
         // ...
       }
     ]
@@ -186,6 +195,7 @@ Após as correções, testar:
 ## 💡 Dúvidas?
 
 Se houver alguma dúvida sobre:
+
 - O formato UUID esperado
 - A estrutura da resposta da API de cursos
 - Como obter o UUID correto do curso
@@ -195,5 +205,3 @@ Por favor, consultar a documentação da API no Swagger ou entrar em contato com
 ---
 
 **Agradeço a colaboração!** 🚀
-
-

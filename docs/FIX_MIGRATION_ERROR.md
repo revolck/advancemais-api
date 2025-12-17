@@ -3,11 +3,13 @@
 ## ❌ Problema
 
 O erro ocorre quando:
+
 1. O tipo enum `AcoesDeLogDeBloqueio` (ou outros) já existe no banco
 2. A migration `20251105140000_init` tenta criá-lo novamente
 3. O histórico de migrations do Prisma está dessincronizado
 
 **Erro no Render:**
+
 ```
 ERROR: type "AcoesDeLogDeBloqueio" already exists
 Migration name: 20251105140000_init
@@ -24,6 +26,7 @@ pnpm run prisma:reset:prod
 ```
 
 Este comando:
+
 1. Remove todas as tabelas, enums, tipos e sequences
 2. Aplica o schema usando `prisma db push` (sem criar migrations)
 3. Gera o cliente Prisma
@@ -53,6 +56,7 @@ pnpm run prisma:generate
 ### Problema no Build
 
 O comando de build no Render está usando:
+
 ```bash
 pnpm prisma migrate deploy
 ```
@@ -62,11 +66,13 @@ Isso tenta aplicar migrations que podem estar conflitando.
 ### Solução 1: Alterar Build Command no Render
 
 No dashboard do Render, altere o build command para:
+
 ```bash
 pnpm install --frozen-lockfile && pnpm run prisma:fix:migration && pnpm prisma db push && pnpm prisma generate && pnpm run build
 ```
 
 Ou se preferir reset completo (⚠️ CUIDADO: apaga todos os dados):
+
 ```bash
 pnpm install --frozen-lockfile && pnpm run prisma:reset:complete && pnpm prisma db push && pnpm prisma generate && pnpm run build
 ```
@@ -74,6 +80,7 @@ pnpm install --frozen-lockfile && pnpm run prisma:reset:complete && pnpm prisma 
 ### Solução 2: Usar db push ao invés de migrate deploy
 
 Altere o build command para:
+
 ```bash
 pnpm install --frozen-lockfile && pnpm prisma db push && pnpm prisma generate && pnpm run build
 ```
@@ -93,4 +100,3 @@ pnpm install --frozen-lockfile && pnpm prisma db push && pnpm prisma generate &&
 1. **Reset completo apaga TODOS os dados** - Use apenas em desenvolvimento ou quando necessário
 2. **db push não cria migrations** - Use apenas quando não precisar de histórico de migrations
 3. **Sempre faça backup** antes de executar resets em produção
-

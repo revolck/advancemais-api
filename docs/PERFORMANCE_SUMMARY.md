@@ -3,38 +3,50 @@
 ## ✅ Implementações Críticas (Concluídas)
 
 ### 1. PrismaClient Singleton Global
+
 **Status**: ✅ Implementado e testado
+
 - Instância única compartilhada entre todas as requisições
 - Evita overhead de criação e esgota conexões do banco
 - Funciona em todos os ambientes (dev, test, production)
 
 ### 2. Direct Connection (Prioridade)
+
 **Status**: ✅ Implementado
+
 - Prioriza `DIRECT_URL` sobre pooler
 - Elimina problemas com prepared statements e transações longas
 - Configuração documentada em `docs/DATABASE_CONNECTION.md`
 
 ### 3. Índices Otimizados para Login
+
 **Status**: ✅ Migração criada
+
 - Índices compostos para CPF/CNPJ/Email com status
 - Índice parcial para usuários ativos
 - **AÇÃO NECESSÁRIA**: Aplicar migração com `pnpm prisma migrate dev`
 
 ### 4. Cache Redis para Login e Rate Limiting
+
 **Status**: ✅ Implementado e testado
+
 - Cache de tentativas de login (TTL: 15 min)
 - Bloqueio automático após 5 tentativas (TTL: 1 hora)
 - Fallback para in-memory cache quando Redis não está disponível
 - Funciona em ambiente de teste (sem Redis)
 
 ### 5. Timeout e Fail-Fast
+
 **Status**: ✅ Implementado
+
 - Timeout de 3s por tentativa no login
 - Máximo 6-9s de espera (antes ~30s)
 - Retorna erro 503 quando banco não está disponível
 
 ### 6. Pool de Conexões Otimizado
+
 **Status**: ✅ Configurado
+
 - `connection_limit=10` por padrão
 - Ajustável via `DATABASE_CONNECTION_LIMIT`
 - Fórmula: `total = N instâncias × connection_limit < db_max_connections`
@@ -42,16 +54,19 @@
 ## 📊 Resultados Esperados
 
 ### Login
+
 - **Antes**: 100-200ms (com DB lento: 30s+)
 - **Depois**: 50-100ms (com DB lento: 6-9s fail-fast)
 - **Melhoria**: 50-90% mais rápido
 
 ### Queries de Listagem
+
 - **Antes**: 200-500ms
 - **Depois**: 100-200ms (com cache)
 - **Melhoria**: 50-60% mais rápido
 
 ### Conexão com Banco
+
 - **Antes**: Falhas frequentes com pooler
 - **Depois**: Estável com Direct Connection
 - **Melhoria**: 100% menos erros de conexão
@@ -59,12 +74,15 @@
 ## 🚀 Próximos Passos (Prioridade)
 
 ### Imediato (Alto Impacto)
+
 1. **Aplicar migração de índices**:
+
    ```bash
    pnpm prisma migrate dev --name add_login_performance_indexes
    ```
 
 2. **Configurar DIRECT_URL no `.env`**:
+
    ```env
    DIRECT_URL="postgres://postgres:[PASSWORD]@aws-1-sa-east-1.connect.psql.cloud:5432/postgres?sslmode=require"
    ```
@@ -75,11 +93,13 @@
    - Verificar bloqueio automático
 
 ### Curto Prazo (Médio Impacto)
+
 - [ ] Implementar jobs assíncronos para auditoria (BullMQ)
 - [ ] Adicionar cache para cursos públicos
 - [ ] Otimizar queries N+1 (verificar includes)
 
 ### Médio Prazo (Baixo Impacto)
+
 - [ ] Implementar cursor-based pagination
 - [ ] Adicionar monitoring avançado
 - [ ] Testes de carga (k6/artillery)
@@ -127,5 +147,3 @@ DATABASE_POOL_TIMEOUT=30
 - Cache funciona em ambiente de teste (fallback in-memory)
 - Timeout desabilitado em testes (não quebra testes lentos)
 - Timeout habilitado em produção (fail-fast)
-
-

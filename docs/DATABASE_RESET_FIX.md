@@ -12,12 +12,14 @@ O erro `FATAL: Tenant or user not found` ocorre quando você tenta executar `pri
 Ajuste a `DIRECT_URL` no seu `.env` para usar a **conexão direta** (sem pooler):
 
 ### Configuração Atual (INCORRETA):
+
 ```env
 DATABASE_URL="postgresql://postgres:***@db.bofgfwsqjphyanggirzs.supabase.co:5432/postgres?sslmode=require"
 DIRECT_URL="postgresql://postgres:***@aws-1-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=require&connect_timeout=30&pool_timeout=20&pool_size=10"
 ```
 
 ### Configuração Correta:
+
 ```env
 # Para queries normais (com pooler para melhor performance)
 DATABASE_URL="postgresql://postgres:***@aws-1-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=require&pgbouncer=true"
@@ -51,5 +53,3 @@ Ou executar o script diretamente que limpou todas as tabelas via SQL.
 
 - [Prisma + Supabase Documentation](https://www.prisma.io/docs/orm/overview/databases/supabase)
 - [Supabase Connection Pooling](https://supabase.com/docs/guides/database/connecting-to-postgres#connection-pooler)
-
-

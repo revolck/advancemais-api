@@ -17,7 +17,9 @@ export const createAulaSchema = z
     youtubeUrl: z.string().url('URL do YouTube inválida').optional(),
     obrigatoria: z.boolean().optional().default(true),
     duracaoMinutos: z.number().int().positive('Duração deve ser maior que 0'),
-    status: z.enum(['RASCUNHO', 'PUBLICADA']).optional().default('RASCUNHO'),
+    // ✅ IMPORTANTE: Aulas devem ser criadas sempre como RASCUNHO
+    // Publicação deve ser feita via endpoint específico PATCH /api/v1/cursos/aulas/{id}/publicar
+    status: z.enum(['RASCUNHO']).optional().default('RASCUNHO'), // ✅ Apenas RASCUNHO permitido na criação
     gravarAula: z.boolean().optional().default(true),
     // Vinculação (TODOS OPCIONAIS)
     turmaId: z.string().uuid('turmaId deve ser um UUID válido').optional(),
@@ -227,6 +229,10 @@ export const updateAulaSchema = z
       .string()
       .regex(/^\d{2}:\d{2}$/)
       .optional(),
+    // ✅ Vinculação (TODOS OPCIONAIS - podem ser enviados para atualizar ou null para remover)
+    turmaId: z.string().uuid('turmaId deve ser um UUID válido').nullable().optional(),
+    instrutorId: z.string().uuid('instrutorId deve ser um UUID válido').nullable().optional(),
+    moduloId: z.string().uuid('moduloId deve ser um UUID válido').nullable().optional(),
   })
   .partial();
 

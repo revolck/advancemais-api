@@ -446,4 +446,3 @@ Após implementação básica, considerar:
 ---
 
 **Qualquer dúvida sobre a API, consultar a documentação Swagger em `/api/docs`**
-

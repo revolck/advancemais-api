@@ -12,7 +12,7 @@ import { notificacoesHelper } from './notificacoes-helper.service';
 
 const aulasLogger = logger.child({ module: 'AulasService' });
 
-// Mapear modalidade do input para enum do banco
+// Mapear modalidade do input para enum do banco (API → Banco)
 function mapModalidade(modalidade: string): any {
   const map: Record<string, string> = {
     ONLINE: 'ONLINE',
@@ -21,6 +21,178 @@ function mapModalidade(modalidade: string): any {
     SEMIPRESENCIAL: 'SEMIPRESENCIAL',
   };
   return map[modalidade] || modalidade;
+}
+
+// Mapear modalidade do banco para API (Banco → API)
+function mapModalidadeFromDB(modalidade: string): string {
+  const map: Record<string, string> = {
+    ONLINE: 'ONLINE',
+    PRESENCIAL: 'PRESENCIAL',
+    LIVE: 'AO_VIVO', // ✅ Converter LIVE → AO_VIVO
+    SEMIPRESENCIAL: 'SEMIPRESENCIAL',
+  };
+  return map[modalidade] || modalidade;
+}
+
+// Mapear método da turma para modalidade da aula (Turma → Aula)
+function mapMetodoTurmaToModalidadeAula(metodo: string): string {
+  const map: Record<string, string> = {
+    ONLINE: 'ONLINE',
+    PRESENCIAL: 'PRESENCIAL',
+    LIVE: 'AO_VIVO', // ✅ Converter LIVE → AO_VIVO
+    SEMIPRESENCIAL: 'SEMIPRESENCIAL',
+  };
+  return map[metodo] || metodo;
+}
+
+/**
+ * Validar campos obrigatórios para publicação por modalidade
+ */
+function validarCamposPublicacao(aula: any): { valido: boolean; camposFaltando: string[]; erro?: string } {
+  const camposFaltando: string[] = [];
+
+  // Campos básicos sempre obrigatórios
+  if (!aula.titulo || aula.titulo.trim() === '') {
+    camposFaltando.push('titulo');
+  }
+  if (!aula.descricao || aula.descricao.trim() === '') {
+    camposFaltando.push('descricao');
+  }
+
+  const modalidade = aula.modalidade;
+
+  if (modalidade === 'PRESENCIAL') {
+    if (!aula.dataInicio) camposFaltando.push('dataInicio');
+    if (!aula.turmaId) camposFaltando.push('turmaId');
+    // ✅ instrutorId não é obrigatório - pode ser adicionado depois
+  } else if (modalidade === 'AO_VIVO' || modalidade === 'LIVE') {
+    if (!aula.dataInicio) camposFaltando.push('dataInicio');
+    if (!aula.turmaId) camposFaltando.push('turmaId');
+    // ✅ instrutorId não é obrigatório - pode ser adicionado depois
+    // Validar data no futuro
+    if (aula.dataInicio && new Date(aula.dataInicio) <= new Date()) {
+      return {
+        valido: false,
+        camposFaltando,
+        erro: 'A data de início deve ser no futuro para aulas AO_VIVO',
+      };
+    }
+  } else if (modalidade === 'SEMIPRESENCIAL') {
+    const temYoutube = !!aula.urlVideo;
+    const temDataInicio = !!aula.dataInicio;
+    if (!temYoutube && !temDataInicio) {
+      camposFaltando.push('youtubeUrl ou dataInicio');
+    }
+    // Se tem dataInicio, precisa apenas turma para criar Meet (instrutor pode ser adicionado depois)
+    if (temDataInicio) {
+      if (!aula.turmaId) camposFaltando.push('turmaId');
+      // ✅ instrutorId não é obrigatório - pode ser adicionado depois
+      // Validar data no futuro
+      if (new Date(aula.dataInicio) <= new Date()) {
+        return {
+          valido: false,
+          camposFaltando,
+          erro: 'A data de início deve ser no futuro para aulas SEMIPRESENCIAL com Meet',
+        };
+      }
+    }
+  } else if (modalidade === 'ONLINE') {
+    if (!aula.urlVideo) camposFaltando.push('youtubeUrl');
+  }
+
+  return {
+    valido: camposFaltando.length === 0 && !aula.erro,
+    camposFaltando,
+    erro: aula.erro,
+  };
+}
+
+/**
+ * Validar exclusão de aula
+ */
+function validarExclusaoAula(
+  aula: any,
+  usuarioLogado: any,
+): { valido: boolean; erro?: string; codigo?: string; diasRestantes?: number } {
+  // 1. Validar role
+  if (!['ADMIN', 'MODERADOR', 'PEDAGOGICO'].includes(usuarioLogado.role)) {
+    return {
+      valido: false,
+      erro: 'Apenas administradores, moderadores e equipe pedagógica podem excluir aulas',
+      codigo: 'FORBIDDEN',
+    };
+  }
+
+  // 2. Validar se aula já foi realizada
+  if (aula.dataInicio && new Date(aula.dataInicio) < new Date()) {
+    return {
+      valido: false,
+      erro: 'Não é possível excluir aulas que já foram realizadas',
+      codigo: 'AULA_JA_REALIZADA',
+    };
+  }
+
+  // 3. Validar prazo mínimo (5 dias) - apenas se tiver dataInicio
+  if (aula.dataInicio && aula.modalidade !== 'ONLINE') {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const dataAula = new Date(aula.dataInicio);
+    dataAula.setHours(0, 0, 0, 0);
+    const diffTime = dataAula.getTime() - hoje.getTime();
+    const diasRestantes = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diasRestantes < 5 && diasRestantes >= 0) {
+      return {
+        valido: false,
+        erro: `A exclusão deve ser feita com no mínimo 5 dias de antecedência. A aula acontece em ${diasRestantes} dia(s).`,
+        codigo: 'PRAZO_INSUFICIENTE',
+        diasRestantes,
+      };
+    }
+  }
+
+  // 4. Validar status
+  if (aula.status === 'EM_ANDAMENTO') {
+    return {
+      valido: false,
+      erro: 'Não é possível excluir uma aula em andamento',
+      codigo: 'AULA_EM_ANDAMENTO',
+    };
+  }
+
+  return { valido: true };
+}
+
+/**
+ * Validar despublicação
+ */
+function validarDespublicacao(aula: any): { valido: boolean; erro?: string; codigo?: string } {
+  if (aula.status === 'EM_ANDAMENTO') {
+    return {
+      valido: false,
+      erro: 'Não é possível despublicar uma aula em andamento',
+      codigo: 'STATUS_INVALIDO',
+    };
+  }
+
+  if (aula.status === 'CONCLUIDA') {
+    return {
+      valido: false,
+      erro: 'Não é possível despublicar uma aula concluída',
+      codigo: 'STATUS_INVALIDO',
+    };
+  }
+
+  // Validar se aula já aconteceu
+  if (aula.dataInicio && new Date(aula.dataInicio) < new Date()) {
+    return {
+      valido: false,
+      erro: 'Não é possível despublicar uma aula que já foi realizada',
+      codigo: 'AULA_JA_REALIZADA',
+    };
+  }
+
+  return { valido: true };
 }
 
 /**
@@ -49,27 +221,64 @@ export const aulasService = {
     };
 
     // Filtro por role: INSTRUTOR vê apenas suas turmas
-    if (usuarioLogado.role === 'INSTRUTOR') {
+    // IMPORTANTE: Aplicar ANTES dos filtros da query para não sobrescrever
+    if (usuarioLogado.role === 'INSTRUTOR' && !turmaId) {
+      // Apenas aplicar filtro de INSTRUTOR se não houver filtro explícito de turmaId
       const turmasDoInstrutor = await retryOperation(() =>
         prisma.cursosTurmas.findMany({
           where: { instrutorId: usuarioLogado.id },
           select: { id: true },
         }),
       );
-      where.turmaId = { in: turmasDoInstrutor.map((t) => t.id) };
+      const turmasIds = turmasDoInstrutor.map((t) => t.id);
+      if (turmasIds.length > 0) {
+        // Incluir aulas das turmas do instrutor OU aulas sem turma mas do instrutor
+        where.OR = [
+          { turmaId: { in: turmasIds } },
+          { turmaId: null, instrutorId: usuarioLogado.id },
+        ];
+      } else {
+        // Se não tiver turmas, apenas aulas sem turma mas do instrutor
+        where.turmaId = null;
+        where.instrutorId = usuarioLogado.id;
+      }
     }
 
-    // Filtros da query
-    if (turmaId) where.turmaId = turmaId;
+    // Filtros da query (aplicar após filtro de role)
+    if (turmaId) {
+      // Se já existe OR (do filtro de INSTRUTOR), não sobrescrever
+      if (where.OR) {
+        // Manter OR mas adicionar filtro de turmaId
+        where.AND = [
+          { OR: where.OR },
+          { turmaId },
+        ];
+        delete where.OR;
+      } else {
+        where.turmaId = turmaId;
+      }
+    }
     if (moduloId) where.moduloId = moduloId;
     if (modalidade) where.modalidade = { in: modalidade.split(',') as any };
     if (status) where.status = { in: status.split(',') as any };
     if (obrigatoria !== undefined) where.obrigatoria = obrigatoria;
     if (search) {
-      where.OR = [
-        { nome: { contains: search, mode: 'insensitive' } },
-        { descricao: { contains: search, mode: 'insensitive' } },
-      ];
+      // Combinar search com filtros existentes usando AND
+      const searchFilter: Prisma.CursosTurmasAulasWhereInput = {
+        OR: [
+          { nome: { contains: search, mode: 'insensitive' } },
+          { descricao: { contains: search, mode: 'insensitive' } },
+        ],
+      };
+      if (where.AND && Array.isArray(where.AND)) {
+        where.AND.push(searchFilter);
+      } else if (where.OR) {
+        // Se já tem OR (do filtro de INSTRUTOR), combinar com AND
+        where.AND = [{ OR: where.OR }, searchFilter];
+        delete where.OR;
+      } else {
+        where.OR = searchFilter.OR;
+      }
     }
 
     const [total, aulas] = await Promise.all([
@@ -122,69 +331,84 @@ export const aulasService = {
       ),
     ]);
 
+
     return {
-      data: aulas.map((a) => ({
-        id: a.id,
-        codigo: a.codigo,
-        titulo: a.nome,
-        descricao: a.descricao || null,
-        duracaoMinutos: a.duracaoMinutos || null,
-        modalidade: a.modalidade,
-        youtubeUrl: a.urlVideo || null,
-        meetUrl: a.urlMeet || null,
-        // tipoLink calculado (não vem do banco)
-        tipoLink: a.urlVideo ? 'YOUTUBE' : a.urlMeet ? 'MEET' : null,
-        sala: a.sala || null,
-        status: a.status,
-        obrigatoria: a.obrigatoria,
-        ordem: a.ordem,
-        dataInicio: a.dataInicio?.toISOString() || null,
-        dataFim: a.dataFim?.toISOString() || null,
-        gravarAula: a.gravarAula || null,
-        linkGravacao: a.linkGravacao || null,
-        statusGravacao: a.statusGravacao || null,
-        turma: a.CursosTurmas
-          ? {
-              id: a.CursosTurmas.id,
-              codigo: a.CursosTurmas.codigo,
-              nome: a.CursosTurmas.nome,
-              turno: a.CursosTurmas.turno,
-              metodo: a.CursosTurmas.metodo,
-              curso: a.CursosTurmas.Cursos
-                ? {
-                    id: a.CursosTurmas.Cursos.id,
-                    codigo: a.CursosTurmas.Cursos.codigo,
-                    nome: a.CursosTurmas.Cursos.nome,
-                  }
-                : null,
-            }
-          : null,
-        modulo: a.CursosTurmasModulos
-          ? {
-              id: a.CursosTurmasModulos.id,
-              nome: a.CursosTurmasModulos.nome,
-            }
-          : null,
-        instrutor: a.instrutor
-          ? {
-              id: a.instrutor.id,
-              codigo: a.instrutor.codUsuario,
-              nome: a.instrutor.nomeCompleto,
-              email: a.instrutor.email,
-              cpf: a.instrutor.cpf,
-              avatarUrl: a.instrutor.UsuariosInformation?.avatarUrl || null,
-            }
-          : null,
-        criadoPor: a.criadoPor
-          ? {
-              id: a.criadoPor.id,
-              nome: a.criadoPor.nomeCompleto,
-              cpf: a.criadoPor.cpf,
-            }
-          : null,
-        criadoEm: a.criadoEm.toISOString(),
-        atualizadoEm: a.atualizadoEm.toISOString(),
-      })),
+      data: aulas.map((a) => {
+        // ✅ Converter modalidade do banco para API (LIVE → AO_VIVO)
+        let modalidadeAula = mapModalidadeFromDB(a.modalidade);
+        
+        // ✅ Se há turma vinculada, a modalidade deve corresponder ao método da turma
+        if (a.CursosTurmas?.metodo) {
+          const modalidadeEsperada = mapMetodoTurmaToModalidadeAula(a.CursosTurmas.metodo);
+          // Se a modalidade não corresponde, usar a da turma
+          if (modalidadeAula !== modalidadeEsperada) {
+            modalidadeAula = modalidadeEsperada;
+          }
+        }
+
+        return {
+          id: a.id,
+          codigo: a.codigo,
+          titulo: a.nome,
+          descricao: a.descricao || null,
+          duracaoMinutos: a.duracaoMinutos || null,
+          modalidade: modalidadeAula,
+          youtubeUrl: a.urlVideo || null,
+          meetUrl: a.urlMeet || null,
+          // tipoLink calculado (não vem do banco)
+          tipoLink: a.urlVideo ? 'YOUTUBE' : a.urlMeet ? 'MEET' : null,
+          sala: a.sala || null,
+          status: a.status,
+          obrigatoria: a.obrigatoria,
+          ordem: a.ordem,
+          dataInicio: a.dataInicio?.toISOString() || null,
+          dataFim: a.dataFim?.toISOString() || null,
+          gravarAula: a.gravarAula || null,
+          linkGravacao: a.linkGravacao || null,
+          statusGravacao: a.statusGravacao || null,
+          turma: a.CursosTurmas
+            ? {
+                id: a.CursosTurmas.id,
+                codigo: a.CursosTurmas.codigo,
+                nome: a.CursosTurmas.nome,
+                turno: a.CursosTurmas.turno,
+                metodo: a.CursosTurmas.metodo,
+                curso: a.CursosTurmas.Cursos
+                  ? {
+                      id: a.CursosTurmas.Cursos.id,
+                      codigo: a.CursosTurmas.Cursos.codigo,
+                      nome: a.CursosTurmas.Cursos.nome,
+                    }
+                  : null,
+              }
+            : null,
+          modulo: a.CursosTurmasModulos
+            ? {
+                id: a.CursosTurmasModulos.id,
+                nome: a.CursosTurmasModulos.nome,
+              }
+            : null,
+          instrutor: a.instrutor
+            ? {
+                id: a.instrutor.id,
+                codigo: a.instrutor.codUsuario,
+                nome: a.instrutor.nomeCompleto,
+                email: a.instrutor.email,
+                cpf: a.instrutor.cpf,
+                avatarUrl: a.instrutor.UsuariosInformation?.avatarUrl || null,
+              }
+            : null,
+          criadoPor: a.criadoPor
+            ? {
+                id: a.criadoPor.id,
+                nome: a.criadoPor.nomeCompleto,
+                cpf: a.criadoPor.cpf,
+              }
+            : null,
+          criadoEm: a.criadoEm.toISOString(),
+          atualizadoEm: a.atualizadoEm.toISOString(),
+        };
+      }),
       pagination: {
         page,
         pageSize,
@@ -268,7 +492,7 @@ export const aulasService = {
     if (precisaPeriodo && input.dataInicio && input.dataFim && input.turmaId) {
       const turma = await prisma.cursosTurmas.findUnique({
         where: { id: input.turmaId },
-        select: { dataInicio: true, dataFim: true, status: true },
+        select: { dataInicio: true, dataFim: true, status: true, metodo: true },
       });
 
       if (!turma) throw new Error('Turma não encontrada');
@@ -295,6 +519,18 @@ export const aulasService = {
 
         (input as any).ordem = (ultimaAula?.ordem || 0) + 1;
         (input as any).adicionadaAposCriacao = true;
+      }
+
+      // ✅ Forçar modalidade baseada no método da turma
+      if (turma.metodo) {
+        const modalidadeEsperada = mapMetodoTurmaToModalidadeAula(turma.metodo);
+        // Se modalidade fornecida não corresponde à turma, usar a da turma
+        if (input.modalidade && mapModalidadeFromDB(mapModalidade(input.modalidade)) !== modalidadeEsperada) {
+          (input as any).modalidade = modalidadeEsperada;
+        } else if (!input.modalidade) {
+          // Se modalidade não foi fornecida, usar a da turma
+          (input as any).modalidade = modalidadeEsperada;
+        }
       }
     }
 
@@ -327,11 +563,13 @@ export const aulasService = {
         sala: input.sala || null,
         obrigatoria: input.obrigatoria ?? true,
         duracaoMinutos: input.duracaoMinutos,
-        status: input.status ?? 'RASCUNHO',
+        // ✅ IMPORTANTE: Aulas devem ser criadas sempre como RASCUNHO
+        // Se frontend enviar PUBLICADA, forçar RASCUNHO (publicação via endpoint específico)
+        status: (input.status ?? 'RASCUNHO') as any,
         dataInicio: dataInicioCompleta,
         dataFim: dataFimCompleta,
         horaInicio: input.horaInicio || null,
-        horaFim: horaFimCalculada,
+        horaFim: horaFimCalculada || null, // ✅ Garantir que sempre seja string ou null
         gravarAula: input.gravarAula ?? true,
         criadoPorId: usuarioLogado.id,
         ordem: (input as any).ordem || 0,
@@ -414,40 +652,145 @@ export const aulasService = {
    * Buscar aula por ID
    */
   async getById(aulaId: string, usuarioLogado: any) {
-    const aula = await prisma.cursosTurmasAulas.findUnique({
-      where: { id: aulaId, deletedAt: null },
-      include: {
-        CursosTurmas: {
-          select: {
-            id: true,
-            nome: true,
-            Cursos: { select: { nome: true } },
+    const aula = await retryOperation(() =>
+      prisma.cursosTurmasAulas.findUnique({
+        where: { id: aulaId, deletedAt: null },
+        include: {
+          CursosTurmas: {
+            select: {
+              id: true,
+              codigo: true,
+              nome: true,
+              turno: true,
+              metodo: true,
+              Cursos: {
+                select: {
+                  id: true,
+                  codigo: true,
+                  nome: true,
+                },
+              },
+            },
+          },
+          CursosTurmasModulos: {
+            select: { id: true, nome: true },
+          },
+          criadoPor: {
+            select: { id: true, nomeCompleto: true, cpf: true },
+          },
+          instrutor: {
+            select: {
+              id: true,
+              codUsuario: true,
+              nomeCompleto: true,
+              email: true,
+              cpf: true,
+              UsuariosInformation: {
+                select: {
+                  avatarUrl: true,
+                },
+              },
+            },
           },
         },
-        CursosTurmasModulos: {
-          select: { id: true, nome: true },
-        },
-        criadoPor: {
-          select: { id: true, nomeCompleto: true },
-        },
-      },
-    });
+      }),
+    );
 
     if (!aula) throw new Error('Aula não encontrada');
 
     // Validar permissão do instrutor
     if (usuarioLogado.role === 'INSTRUTOR') {
-      const turma = await prisma.cursosTurmas.findUnique({
-        where: { id: aula.turmaId || undefined },
-        select: { instrutorId: true },
-      });
+      const turma = await retryOperation(() =>
+        prisma.cursosTurmas.findUnique({
+          where: { id: aula.turmaId || undefined },
+          select: { instrutorId: true },
+        }),
+      );
 
       if (turma?.instrutorId !== usuarioLogado.id) {
         throw new Error('Instrutor só pode acessar aulas de suas turmas');
       }
     }
 
-    return aula;
+    // ✅ Converter modalidade do banco para API (LIVE → AO_VIVO)
+    let modalidadeAula = mapModalidadeFromDB(aula.modalidade);
+    
+    // ✅ Se há turma vinculada, a modalidade deve corresponder ao método da turma
+    if (aula.CursosTurmas?.metodo) {
+      const modalidadeEsperada = mapMetodoTurmaToModalidadeAula(aula.CursosTurmas.metodo);
+      // Se a modalidade não corresponde, usar a da turma
+      if (modalidadeAula !== modalidadeEsperada) {
+        modalidadeAula = modalidadeEsperada;
+      }
+    }
+
+    // Transformar para o mesmo formato do list
+    return {
+      id: aula.id,
+      codigo: aula.codigo,
+      titulo: aula.nome,
+      descricao: aula.descricao || null,
+      duracaoMinutos: aula.duracaoMinutos || null,
+      modalidade: modalidadeAula,
+      youtubeUrl: aula.urlVideo || null,
+      meetUrl: aula.urlMeet || null,
+      // tipoLink calculado (não vem do banco)
+      tipoLink: aula.urlVideo ? 'YOUTUBE' : aula.urlMeet ? 'MEET' : null,
+      sala: aula.sala || null,
+      status: aula.status,
+      obrigatoria: aula.obrigatoria,
+      ordem: aula.ordem,
+      dataInicio: aula.dataInicio?.toISOString() || null,
+      dataFim: aula.dataFim?.toISOString() || null,
+      horaInicio: aula.horaInicio || null,
+      horaFim: aula.horaFim || null,
+      gravarAula: aula.gravarAula || null,
+      linkGravacao: aula.linkGravacao || null,
+      statusGravacao: aula.statusGravacao || null,
+      meetEventId: aula.meetEventId || null,
+      turmaId: aula.turmaId || null,
+      turma: aula.CursosTurmas
+        ? {
+            id: aula.CursosTurmas.id,
+            codigo: aula.CursosTurmas.codigo,
+            nome: aula.CursosTurmas.nome,
+            turno: aula.CursosTurmas.turno,
+            metodo: aula.CursosTurmas.metodo,
+            curso: aula.CursosTurmas.Cursos
+              ? {
+                  id: aula.CursosTurmas.Cursos.id,
+                  codigo: aula.CursosTurmas.Cursos.codigo,
+                  nome: aula.CursosTurmas.Cursos.nome,
+                }
+              : null,
+          }
+        : null,
+      modulo: aula.CursosTurmasModulos
+        ? {
+            id: aula.CursosTurmasModulos.id,
+            nome: aula.CursosTurmasModulos.nome,
+          }
+        : null,
+      instrutor: aula.instrutor
+        ? {
+            id: aula.instrutor.id,
+            codigo: aula.instrutor.codUsuario,
+            nome: aula.instrutor.nomeCompleto,
+            email: aula.instrutor.email,
+            cpf: aula.instrutor.cpf,
+            avatarUrl: aula.instrutor.UsuariosInformation?.avatarUrl || null,
+          }
+        : null,
+      criadoPor: aula.criadoPor
+        ? {
+            id: aula.criadoPor.id,
+            nome: aula.criadoPor.nomeCompleto,
+            cpf: aula.criadoPor.cpf,
+          }
+        : null,
+      criadoEm: aula.criadoEm.toISOString(),
+      atualizadoEm: aula.atualizadoEm.toISOString(),
+    };
   },
 
   /**
@@ -459,56 +802,480 @@ export const aulasService = {
     // Validar permissão
     const podeEditar =
       ['ADMIN', 'MODERADOR', 'PEDAGOGICO'].includes(usuarioLogado.role) ||
-      (usuarioLogado.role === 'INSTRUTOR' && aulaAnterior.criadoPorId === usuarioLogado.id);
+      (usuarioLogado.role === 'INSTRUTOR' && aulaAnterior.criadoPor?.id === usuarioLogado.id);
 
     if (!podeEditar) {
-      throw new Error('Sem permissão para editar esta aula');
+      const error: any = new Error('Sem permissão para editar esta aula');
+      error.code = 'FORBIDDEN';
+      throw error;
     }
 
     // Aula concluída só Admin
     if (aulaAnterior.status === 'CONCLUIDA' && usuarioLogado.role !== 'ADMIN') {
-      throw new Error('Apenas administradores podem editar aulas concluídas');
+      const error: any = new Error('Apenas administradores podem editar aulas concluídas');
+      error.code = 'FORBIDDEN';
+      throw error;
     }
 
     // Aula em andamento não pode editar
     if (aulaAnterior.status === 'EM_ANDAMENTO') {
-      throw new Error('Não é possível editar uma aula em andamento');
+      const error: any = new Error('Não é possível editar uma aula em andamento');
+      error.code = 'STATUS_INVALIDO';
+      throw error;
+    }
+
+    // Validar publicação se status está mudando para PUBLICADA
+    const statusAnterior = aulaAnterior.status;
+    const statusNovo = input.status || statusAnterior;
+    const estaPublicando = statusAnterior !== 'PUBLICADA' && statusNovo === 'PUBLICADA';
+    const estaDespublicando = statusAnterior === 'PUBLICADA' && statusNovo === 'RASCUNHO';
+
+    if (estaPublicando) {
+      // Buscar dados completos da aula para validação
+      const aulaCompleta = await retryOperation(() =>
+        prisma.cursosTurmasAulas.findUnique({
+          where: { id: aulaId },
+          select: {
+            nome: true,
+            descricao: true,
+            modalidade: true,
+            dataInicio: true,
+            dataFim: true,
+            turmaId: true,
+            instrutorId: true,
+            urlVideo: true,
+          },
+        }),
+      );
+
+      const aulaParaValidar = {
+        titulo: input.titulo || aulaCompleta?.nome || '',
+        descricao: input.descricao || aulaCompleta?.descricao || '',
+        modalidade: input.modalidade || aulaCompleta?.modalidade || '',
+        dataInicio: input.dataInicio || aulaCompleta?.dataInicio,
+        dataFim: input.dataFim || aulaCompleta?.dataFim,
+        // @ts-ignore - turmaId e instrutorId estão no select mas TypeScript não infere corretamente
+        turmaId: input.turmaId || (aulaCompleta as any)?.turmaId || null,
+        // @ts-ignore
+        instrutorId: input.instrutorId || (aulaCompleta as any)?.instrutorId || null,
+        urlVideo: input.youtubeUrl || aulaCompleta?.urlVideo,
+      };
+
+      const validacao = validarCamposPublicacao(aulaParaValidar);
+      if (!validacao.valido) {
+        const error: any = new Error(
+          validacao.erro ||
+            `Não é possível publicar a aula. Campos obrigatórios faltando: ${validacao.camposFaltando.join(', ')}`,
+        );
+        error.code = validacao.erro ? 'DATA_INVALIDA' : 'CAMPOS_OBRIGATORIOS_FALTANDO';
+        error.camposFaltando = validacao.camposFaltando;
+        error.modalidade = aulaParaValidar.modalidade;
+        throw error;
+      }
+    }
+
+    if (estaDespublicando) {
+      const validacao = validarDespublicacao(aulaAnterior);
+      if (!validacao.valido) {
+        const error: any = new Error(validacao.erro || 'Não é possível despublicar esta aula');
+        error.code = validacao.codigo || 'NAO_PODE_DESPUBLICAR';
+        throw error;
+      }
+    }
+
+    // ✅ Tratar remoção de vínculos (turmaId, instrutorId, moduloId)
+    // Se campo não foi enviado mas existia antes, remover vínculo (setar null)
+    // Se campo foi enviado, atualizar (pode ser null para remover explicitamente)
+    const aulaAnteriorTyped = aulaAnterior as any;
+    // @ts-ignore - turmaId, instrutorId, moduloId podem estar nos relacionamentos ou diretamente
+    const turmaIdAnterior = aulaAnterior.turma?.id || aulaAnteriorTyped?.turmaId || null;
+    // @ts-ignore
+    const instrutorIdAnterior = aulaAnterior.instrutor?.id || aulaAnteriorTyped?.instrutorId || null;
+    // @ts-ignore
+    const moduloIdAnterior = aulaAnterior.modulo?.id || aulaAnteriorTyped?.moduloId || null;
+
+    // Determinar valores finais para turmaId, instrutorId e moduloId
+    let turmaIdParaSalvar: string | null | undefined;
+    let instrutorIdParaSalvar: string | null | undefined;
+    let moduloIdParaSalvar: string | null | undefined;
+
+    // ✅ Processar turmaId
+    if (input.turmaId !== undefined) {
+      // Campo foi enviado explicitamente (pode ser null para remover)
+      turmaIdParaSalvar = input.turmaId || null;
+    } else if (turmaIdAnterior) {
+      // Campo não foi enviado mas existia antes → remover vínculo
+      turmaIdParaSalvar = null;
+    }
+    // Se não foi enviado e não existia antes, não incluir no update (mantém null)
+
+    // ✅ Processar instrutorId
+    if (input.instrutorId !== undefined) {
+      // Campo foi enviado explicitamente (pode ser null para remover)
+      instrutorIdParaSalvar = input.instrutorId || null;
+    } else if (instrutorIdAnterior) {
+      // Campo não foi enviado mas existia antes → remover vínculo
+      instrutorIdParaSalvar = null;
+    }
+
+    // ✅ Processar moduloId
+    if (input.moduloId !== undefined) {
+      // Campo foi enviado explicitamente (pode ser null para remover)
+      moduloIdParaSalvar = input.moduloId || null;
+    } else if (moduloIdAnterior) {
+      // Campo não foi enviado mas existia antes → remover vínculo
+      moduloIdParaSalvar = null;
+    }
+
+    // ✅ Validar e forçar modalidade baseada na turma quando turmaId é fornecido
+    let modalidadeParaSalvar = input.modalidade ? mapModalidade(input.modalidade) : undefined;
+
+    // Se turmaId foi fornecido (não null), validar modalidade
+    if (turmaIdParaSalvar) {
+      // Buscar método da turma
+      const turma = await retryOperation(() =>
+        prisma.cursosTurmas.findUnique({
+          where: { id: turmaIdParaSalvar },
+          select: { metodo: true },
+        }),
+      );
+
+      if (turma?.metodo) {
+        // Converter método da turma para modalidade da aula
+        const modalidadeEsperada = mapMetodoTurmaToModalidadeAula(turma.metodo);
+        
+        // Se modalidade foi fornecida e não corresponde à turma, usar a da turma
+        if (modalidadeParaSalvar && mapModalidadeFromDB(modalidadeParaSalvar) !== modalidadeEsperada) {
+          // Converter modalidade esperada para formato do banco
+          modalidadeParaSalvar = mapModalidade(modalidadeEsperada);
+        } else if (!modalidadeParaSalvar) {
+          // Se modalidade não foi fornecida, usar a da turma
+          modalidadeParaSalvar = mapModalidade(modalidadeEsperada);
+        }
+      }
+    } else if (turmaIdAnterior && !turmaIdParaSalvar) {
+      // Turma foi removida, modalidade pode ser independente
+      // Se modalidade foi fornecida, usar ela (já convertida acima)
+      // Se não foi fornecida, manter a atual (não incluir no update)
+    }
+
+    // Preparar objeto de atualização
+    const updateData: any = {
+      nome: input.titulo,
+      descricao: input.descricao,
+      tipoLink: null,
+      urlVideo: input.youtubeUrl,
+      obrigatoria: input.obrigatoria,
+      duracaoMinutos: input.duracaoMinutos,
+      status: input.status,
+      dataInicio: input.dataInicio,
+      dataFim: input.dataFim,
+      horaInicio: input.horaInicio,
+      horaFim: input.horaFim,
+    };
+
+    // Incluir modalidade apenas se foi fornecida ou calculada
+    if (modalidadeParaSalvar !== undefined) {
+      updateData.modalidade = modalidadeParaSalvar;
+    }
+
+    // Incluir turmaId apenas se foi explicitamente definido (incluindo null para remover)
+    if (turmaIdParaSalvar !== undefined) {
+      updateData.turmaId = turmaIdParaSalvar;
+    }
+
+    // Incluir instrutorId apenas se foi explicitamente definido (incluindo null para remover)
+    if (instrutorIdParaSalvar !== undefined) {
+      updateData.instrutorId = instrutorIdParaSalvar;
+    }
+
+    // Incluir moduloId apenas se foi explicitamente definido (incluindo null para remover)
+    if (moduloIdParaSalvar !== undefined) {
+      updateData.moduloId = moduloIdParaSalvar;
     }
 
     // Atualizar
     const aulaAtualizada = await prisma.cursosTurmasAulas.update({
       where: { id: aulaId },
-      data: {
-        nome: input.titulo,
-        descricao: input.descricao,
-        modalidade: input.modalidade ? mapModalidade(input.modalidade) : undefined,
-        tipoLink: null,
-        urlVideo: input.youtubeUrl,
-        obrigatoria: input.obrigatoria,
-        duracaoMinutos: input.duracaoMinutos,
-        status: input.status,
-        dataInicio: input.dataInicio,
-        dataFim: input.dataFim,
-        horaInicio: input.horaInicio,
-        horaFim: input.horaFim,
-      },
+      data: updateData,
     });
 
+    // Ações automáticas ao publicar
+    // ✅ Apenas turmaId é necessário - instrutorId pode ser adicionado depois
+    if (estaPublicando && aulaAtualizada.turmaId) {
+      try {
+        // Criar evento no Google Calendar se tiver data e hora
+        if (aulaAtualizada.dataInicio && aulaAtualizada.horaInicio) {
+          const dataInicioCompleta = new Date(aulaAtualizada.dataInicio);
+          const [hora, minuto] = aulaAtualizada.horaInicio.split(':');
+          dataInicioCompleta.setHours(parseInt(hora), parseInt(minuto), 0, 0);
+
+          const dataFimCompleta = aulaAtualizada.dataFim
+            ? new Date(aulaAtualizada.dataFim)
+            : new Date(dataInicioCompleta);
+          if (aulaAtualizada.horaFim) {
+            const [horaFim, minutoFim] = aulaAtualizada.horaFim.split(':');
+            dataFimCompleta.setHours(parseInt(horaFim), parseInt(minutoFim), 0, 0);
+          } else {
+            dataFimCompleta.setHours(dataInicioCompleta.getHours() + 2, 0, 0, 0);
+          }
+
+          // ✅ Criar Google Meet apenas se tiver instrutorId (pode ser adicionado depois)
+          if (aulaAtualizada.instrutorId) {
+            // Buscar emails dos alunos
+            const inscricoes = await prisma.cursosTurmasInscricoes.findMany({
+              where: { turmaId: aulaAtualizada.turmaId, status: 'INSCRITO' },
+              include: { Usuarios: { select: { email: true } } },
+            });
+
+            const alunoEmails = inscricoes.map((i) => i.Usuarios.email).filter(Boolean);
+
+            const meetEvent = await googleCalendarService.createMeetEvent({
+              titulo: aulaAtualizada.nome,
+              descricao: aulaAtualizada.descricao || '',
+              dataInicio: dataInicioCompleta,
+              dataFim: dataFimCompleta,
+              instrutorId: aulaAtualizada.instrutorId,
+              alunoEmails,
+            });
+
+            // Atualizar aula com meetEventId e meetUrl
+            await prisma.cursosTurmasAulas.update({
+              where: { id: aulaId },
+              data: {
+                meetEventId: meetEvent.eventId,
+                urlMeet: meetEvent.meetUrl,
+              },
+            });
+
+            aulaAtualizada.meetEventId = meetEvent.eventId;
+            aulaAtualizada.urlMeet = meetEvent.meetUrl;
+          }
+
+          // ✅ Criar evento na agenda interna sempre (com ou sem instrutor)
+          await prisma.cursosTurmasAgenda.create({
+            data: {
+              turmaId: aulaAtualizada.turmaId,
+              tipo: 'AULA',
+              titulo: aulaAtualizada.nome,
+              descricao: aulaAtualizada.descricao || null,
+              inicio: dataInicioCompleta,
+              fim: dataFimCompleta,
+              aulaId: aulaId,
+            },
+          });
+
+          // ✅ Notificar alunos sempre (com ou sem instrutor)
+          await notificacoesHelper.notificarAlunosDaTurma(aulaAtualizada.turmaId, {
+            tipo: 'NOVA_AULA' as any, // TODO: Adicionar AULA_PUBLICADA ao enum NotificacaoTipo
+            titulo: `Nova aula: ${aulaAtualizada.nome}`,
+            mensagem: aulaAtualizada.instrutorId
+              ? `Uma nova aula foi publicada para sua turma.`
+              : `Uma nova aula foi publicada para sua turma. O instrutor será definido em breve.`,
+            prioridade: 'NORMAL',
+            linkAcao: `/turmas/${aulaAtualizada.turmaId}`,
+            eventoId: aulaId,
+          });
+
+          if (!aulaAtualizada.instrutorId) {
+            aulasLogger.info('[AULA_PUBLICADA_SEM_INSTRUTOR]', {
+              aulaId,
+              turmaId: aulaAtualizada.turmaId,
+              message: 'Aula publicada sem instrutor. Meet será criado quando instrutor for adicionado.',
+            });
+          }
+        }
+      } catch (error: any) {
+        aulasLogger.error('[PUBLICACAO_ERRO]', { error: error?.message, aulaId });
+        // Não falha a atualização se ações automáticas falharem
+      }
+    }
+
+    // Ações automáticas ao despublicar
+    if (estaDespublicando) {
+      try {
+        // Remover evento do Google Calendar
+        if (aulaAnterior.meetEventId && aulaAnterior.turmaId) {
+          const turma = await prisma.cursosTurmas.findUnique({
+            where: { id: aulaAnterior.turmaId },
+            select: { instrutorId: true },
+          });
+
+          if (turma?.instrutorId) {
+            await googleCalendarService.deleteEvent(aulaAnterior.meetEventId, turma.instrutorId);
+          }
+        }
+
+        // Remover eventos da agenda interna
+        await prisma.cursosTurmasAgenda.deleteMany({
+          where: { aulaId },
+        });
+
+        // Notificar alunos
+        if (aulaAnterior.turmaId) {
+          const nomeAula = aulaAnterior.titulo || (aulaAnterior as any).nome || 'Aula';
+          await notificacoesHelper.notificarAlunosDaTurma(aulaAnterior.turmaId, {
+            tipo: 'AULA_CANCELADA' as any, // TODO: Adicionar AULA_DESPUBLICADA ao enum NotificacaoTipo
+            titulo: `Aula despublicada: ${nomeAula}`,
+            mensagem: 'Esta aula foi despublicada e não está mais disponível.',
+            prioridade: 'NORMAL',
+            linkAcao: `/turmas/${aulaAnterior.turmaId}`,
+            eventoId: aulaId,
+          });
+        }
+      } catch (error: any) {
+        aulasLogger.error('[DESPUBLICACAO_ERRO]', { error: error?.message, aulaId });
+        // Não falha a atualização se ações automáticas falharem
+      }
+    }
+
     // Registrar histórico
+    const camposAlterados: any = {};
+    if (statusAnterior !== statusNovo) {
+      camposAlterados.status = { de: statusAnterior, para: statusNovo };
+    }
+
     await prisma.cursosAulasHistorico.create({
       data: {
         aulaId,
         usuarioId: usuarioLogado.id,
-        acao: 'EDITADA',
+        acao: estaPublicando || estaDespublicando ? 'STATUS_ALTERADO' : 'EDITADA',
         turmaId: aulaAnterior.turmaId,
+        camposAlterados: Object.keys(camposAlterados).length > 0 ? camposAlterados : null,
       },
     });
 
-    return aulaAtualizada;
+    // ✅ Buscar aula atualizada com relacionamentos para retornar formato completo
+    const aulaRetornada = await retryOperation(() =>
+      prisma.cursosTurmasAulas.findUnique({
+        where: { id: aulaId },
+        include: {
+          CursosTurmas: {
+            select: {
+              id: true,
+              codigo: true,
+              nome: true,
+              turno: true,
+              metodo: true,
+              Cursos: {
+                select: {
+                  id: true,
+                  codigo: true,
+                  nome: true,
+                },
+              },
+            },
+          },
+          CursosTurmasModulos: {
+            select: { id: true, nome: true },
+          },
+          criadoPor: {
+            select: { id: true, nomeCompleto: true, cpf: true },
+          },
+          instrutor: {
+            select: {
+              id: true,
+              codUsuario: true,
+              nomeCompleto: true,
+              email: true,
+              cpf: true,
+              UsuariosInformation: {
+                select: {
+                  avatarUrl: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+    );
+
+    if (!aulaRetornada) {
+      throw new Error('Aula não encontrada após atualização');
+    }
+
+    // ✅ Converter modalidade do banco para API (LIVE → AO_VIVO)
+    let modalidadeAula = mapModalidadeFromDB(aulaRetornada.modalidade);
+    
+    // ✅ Se há turma vinculada, a modalidade deve corresponder ao método da turma
+    if (aulaRetornada.CursosTurmas?.metodo) {
+      const modalidadeEsperada = mapMetodoTurmaToModalidadeAula(aulaRetornada.CursosTurmas.metodo);
+      // Se a modalidade não corresponde, usar a da turma
+      if (modalidadeAula !== modalidadeEsperada) {
+        modalidadeAula = modalidadeEsperada;
+      }
+    }
+
+    // Transformar para o mesmo formato do getById
+    return {
+      id: aulaRetornada.id,
+      codigo: aulaRetornada.codigo,
+      titulo: aulaRetornada.nome,
+      descricao: aulaRetornada.descricao || null,
+      duracaoMinutos: aulaRetornada.duracaoMinutos || null,
+      modalidade: modalidadeAula,
+      youtubeUrl: aulaRetornada.urlVideo || null,
+      meetUrl: aulaRetornada.urlMeet || null,
+      tipoLink: aulaRetornada.urlVideo ? 'YOUTUBE' : aulaRetornada.urlMeet ? 'MEET' : null,
+      sala: aulaRetornada.sala || null,
+      status: aulaRetornada.status,
+      obrigatoria: aulaRetornada.obrigatoria,
+      ordem: aulaRetornada.ordem,
+      dataInicio: aulaRetornada.dataInicio?.toISOString() || null,
+      dataFim: aulaRetornada.dataFim?.toISOString() || null,
+      horaInicio: aulaRetornada.horaInicio || null,
+      horaFim: aulaRetornada.horaFim || null,
+      gravarAula: aulaRetornada.gravarAula || null,
+      linkGravacao: aulaRetornada.linkGravacao || null,
+      statusGravacao: aulaRetornada.statusGravacao || null,
+      meetEventId: aulaRetornada.meetEventId || null,
+      turmaId: aulaRetornada.turmaId || null,
+      turma: aulaRetornada.CursosTurmas
+        ? {
+            id: aulaRetornada.CursosTurmas.id,
+            codigo: aulaRetornada.CursosTurmas.codigo,
+            nome: aulaRetornada.CursosTurmas.nome,
+            turno: aulaRetornada.CursosTurmas.turno,
+            metodo: aulaRetornada.CursosTurmas.metodo,
+            curso: aulaRetornada.CursosTurmas.Cursos
+              ? {
+                  id: aulaRetornada.CursosTurmas.Cursos.id,
+                  codigo: aulaRetornada.CursosTurmas.Cursos.codigo,
+                  nome: aulaRetornada.CursosTurmas.Cursos.nome,
+                }
+              : null,
+          }
+        : null,
+      modulo: aulaRetornada.CursosTurmasModulos
+        ? {
+            id: aulaRetornada.CursosTurmasModulos.id,
+            nome: aulaRetornada.CursosTurmasModulos.nome,
+          }
+        : null,
+      instrutor: aulaRetornada.instrutor
+        ? {
+            id: aulaRetornada.instrutor.id,
+            codigo: aulaRetornada.instrutor.codUsuario,
+            nome: aulaRetornada.instrutor.nomeCompleto,
+            email: aulaRetornada.instrutor.email,
+            cpf: aulaRetornada.instrutor.cpf,
+            avatarUrl: aulaRetornada.instrutor.UsuariosInformation?.avatarUrl || null,
+          }
+        : null,
+      criadoPor: aulaRetornada.criadoPor
+        ? {
+            id: aulaRetornada.criadoPor.id,
+            nome: aulaRetornada.criadoPor.nomeCompleto,
+            cpf: aulaRetornada.criadoPor.cpf,
+          }
+        : null,
+      criadoEm: aulaRetornada.criadoEm.toISOString(),
+      atualizadoEm: aulaRetornada.atualizadoEm.toISOString(),
+    };
   },
 
   /**
-   * Soft delete de aula (com proteção)
+   * Soft delete de aula (com proteção e limpeza completa)
    */
   async delete(aulaId: string, usuarioLogado: any) {
     const aula = await prisma.cursosTurmasAulas.findUnique({
@@ -521,43 +1288,113 @@ export const aulasService = {
         CursosTurmas: {
           select: { status: true },
         },
+        CursosTurmasAulasMateriais: {
+          select: { id: true },
+        },
       },
     });
 
-    if (!aula) throw new Error('Aula não encontrada');
+    if (!aula) {
+      const error: any = new Error('Aula não encontrada');
+      error.code = 'AULA_NOT_FOUND';
+      throw error;
+    }
 
-    // Bloquear se EM_ANDAMENTO
-    if (aula.status === 'EM_ANDAMENTO') {
-      throw new Error('Não é possível remover uma aula em andamento');
+    // Validar exclusão
+    const validacao = validarExclusaoAula(aula, usuarioLogado);
+    if (!validacao.valido) {
+      const error: any = new Error(validacao.erro || 'Não é possível excluir esta aula');
+      error.code = validacao.codigo || 'VALIDATION_ERROR';
+      if (validacao.diasRestantes !== undefined) {
+        error.diasRestantes = validacao.diasRestantes;
+        error.dataAula = aula.dataInicio;
+      }
+      throw error;
     }
 
     // Aula obrigatória com progresso: só Admin/Moderador
     if (aula.obrigatoria && aula.CursosAulasProgresso.length > 0) {
       if (!['ADMIN', 'MODERADOR'].includes(usuarioLogado.role)) {
-        throw new Error(
+        const error: any = new Error(
           `Esta aula obrigatória já foi concluída por ${aula.CursosAulasProgresso.length} aluno(s). ` +
             `Apenas administradores podem cancelá-la.`,
         );
+        error.code = 'FORBIDDEN';
+        throw error;
       }
     }
 
-    // Soft delete
-    await prisma.cursosTurmasAulas.update({
-      where: { id: aulaId },
-      data: {
-        status: 'CANCELADA',
-        deletedAt: new Date(),
-        deletedBy: usuarioLogado.id,
-      },
-    });
-
-    // Registrar histórico
+    // Registrar histórico ANTES de excluir
     await prisma.cursosAulasHistorico.create({
       data: {
         aulaId,
         usuarioId: usuarioLogado.id,
         acao: 'CANCELADA',
         turmaId: aula.turmaId || undefined,
+        camposAlterados: {
+          status: { de: aula.status, para: 'CANCELADA' },
+        },
+      },
+    });
+
+    // Limpeza completa de dados relacionados
+    const dadosRemovidos = {
+      materiais: 0,
+      linksMeet: 0,
+      eventosAgenda: 0,
+      eventosCalendar: 0,
+    };
+
+    try {
+      // 1. Remover materiais complementares
+      const materiaisRemovidos = await prisma.cursosTurmasAulasMateriais.deleteMany({
+        where: { aulaId },
+      });
+      dadosRemovidos.materiais = materiaisRemovidos.count;
+
+      // 2. Remover eventos da agenda interna
+      const eventosAgendaRemovidos = await prisma.cursosTurmasAgenda.deleteMany({
+        where: { aulaId },
+      });
+      dadosRemovidos.eventosAgenda = eventosAgendaRemovidos.count;
+
+      // 3. Cancelar evento Google Calendar e remover links
+      if (aula.meetEventId) {
+        try {
+          const turma = await prisma.cursosTurmas.findUnique({
+            where: { id: aula.turmaId || undefined },
+            select: { instrutorId: true },
+          });
+
+          if (turma?.instrutorId) {
+            await googleCalendarService.deleteEvent(aula.meetEventId, turma.instrutorId);
+            dadosRemovidos.eventosCalendar = 1;
+          }
+        } catch (error: any) {
+          aulasLogger.error('[GOOGLE_DELETE_ERRO]', { error: error?.message });
+        }
+      }
+
+      if (aula.urlMeet) {
+        dadosRemovidos.linksMeet = 1;
+      }
+    } catch (error: any) {
+      aulasLogger.error('[LIMPEZA_ERRO]', { error: error?.message, aulaId });
+      // Continuar mesmo se limpeza parcial falhar
+    }
+
+    // Soft delete da aula
+    await prisma.cursosTurmasAulas.update({
+      where: { id: aulaId },
+      data: {
+        status: 'CANCELADA',
+        deletedAt: new Date(),
+        deletedBy: usuarioLogado.id,
+        // Limpar links
+        urlMeet: null,
+        urlVideo: null,
+        meetEventId: null,
+        tipoLink: null,
       },
     });
 
@@ -579,25 +1416,18 @@ export const aulasService = {
       }
     }
 
-    // Cancelar evento Google Calendar
-    if (aula.meetEventId) {
-      try {
-        const turma = await prisma.cursosTurmas.findUnique({
-          where: { id: aula.turmaId || undefined },
-          select: { instrutorId: true },
-        });
+    aulasLogger.info('[AULA_EXCLUIDA]', {
+      aulaId,
+      usuarioId: usuarioLogado.id,
+      dadosRemovidos,
+    });
 
-        if (turma?.instrutorId) {
-          await googleCalendarService.deleteEvent(aula.meetEventId, turma.instrutorId);
-        }
-      } catch (error: any) {
-        aulasLogger.error('[GOOGLE_DELETE_ERRO]', { error: error?.message });
-      }
-    }
-
-    aulasLogger.info('[AULA_CANCELADA]', { aulaId, usuarioId: usuarioLogado.id });
-
-    return { success: true, mensagem: 'Aula cancelada com sucesso' };
+    return {
+      success: true,
+      message: 'Aula excluída com sucesso',
+      aulaId,
+      dadosRemovidos,
+    };
   },
 
   /**
@@ -724,23 +1554,53 @@ export const aulasService = {
       throw new Error('Sem permissão para ver histórico');
     }
 
-    const historico = await prisma.cursosAulasHistorico.findMany({
-      where: { aulaId },
-      include: {
-        Usuarios: {
-          select: { id: true, nomeCompleto: true, role: true },
-        },
-      },
-      orderBy: { criadoEm: 'desc' },
-    });
+    // Verificar se a aula existe
+    const aulaExiste = await retryOperation(() =>
+      prisma.cursosTurmasAulas.findUnique({
+        where: { id: aulaId, deletedAt: null },
+        select: { id: true },
+      }),
+    );
 
+    if (!aulaExiste) {
+      throw new Error('Aula não encontrada');
+    }
+
+    const historico = await retryOperation(() =>
+      prisma.cursosAulasHistorico.findMany({
+        where: { aulaId },
+        include: {
+          Usuarios: {
+            select: {
+              id: true,
+              nomeCompleto: true,
+              role: true,
+              email: true,
+            },
+          },
+        },
+        orderBy: { criadoEm: 'desc' },
+      }),
+    );
+
+    // Transformar para o formato esperado pelo frontend
     return historico.map((h) => ({
       id: h.id,
+      aulaId: h.aulaId,
+      usuarioId: h.usuarioId,
+      usuario: {
+        id: h.Usuarios.id,
+        nome: h.Usuarios.nomeCompleto,
+        // Campos opcionais para futuras melhorias
+        role: h.Usuarios.role || undefined,
+        email: h.Usuarios.email || undefined,
+      },
       acao: h.acao,
-      camposAlterados: h.camposAlterados,
-      usuario: h.Usuarios,
-      ip: h.ip,
+      camposAlterados: h.camposAlterados || null, // Garantir null ao invés de undefined
       criadoEm: h.criadoEm.toISOString(),
+      // Campos adicionais (opcionais, não usados pelo frontend mas úteis para debug)
+      ip: h.ip || undefined,
+      userAgent: h.userAgent || undefined,
     }));
   },
 

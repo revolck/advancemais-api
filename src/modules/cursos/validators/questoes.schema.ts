@@ -35,30 +35,31 @@ const questaoBaseSchema = z.object({
   obrigatoria: z.boolean().optional().default(true),
 });
 
-export const createQuestaoSchema = questaoBaseSchema.extend({
-  alternativas: z
-    .array(alternativaSchema)
-    .optional()
-    .refine(
-      (alternativas, ctx) => {
-        const tipo = (ctx.parent as any).tipo;
-        if (tipo === CursosTipoQuestao.MULTIPLA_ESCOLHA) {
-          if (!alternativas || alternativas.length < 2) {
-            return false;
-          }
-          const corretas = alternativas.filter((alt) => alt.correta).length;
-          if (corretas !== 1) {
-            return false;
-          }
-        }
-        return true;
-      },
-      {
-        message:
-          'Questões de múltipla escolha devem ter pelo menos 2 alternativas e exatamente 1 alternativa correta',
-      },
-    ),
-});
+export const createQuestaoSchema = questaoBaseSchema
+  .extend({
+    alternativas: z.array(alternativaSchema).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.tipo === CursosTipoQuestao.MULTIPLA_ESCOLHA) {
+      if (!data.alternativas || data.alternativas.length < 2) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            'Questões de múltipla escolha devem ter pelo menos 2 alternativas',
+          path: ['alternativas'],
+        });
+        return;
+      }
+      const corretas = data.alternativas.filter((alt) => alt.correta).length;
+      if (corretas !== 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Questões de múltipla escolha devem ter exatamente 1 alternativa correta',
+          path: ['alternativas'],
+        });
+      }
+    }
+  });
 
 export const updateQuestaoSchema = questaoBaseSchema.partial().extend({
   alternativas: z

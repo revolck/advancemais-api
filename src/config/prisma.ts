@@ -55,13 +55,9 @@ function buildConnectionUrl(baseUrl: string): string {
   const isPoolerPort = port === 6543;
   const isPoolerHostname = url.hostname.includes('pooler.supabase.com');
 
-  // 🎯 OTIMIZAÇÃO: Remover apenas parâmetros conflitantes de pool
-  // O Prisma Client gerencia o pool internamente, não via parâmetros de URL
-  // Mas preservar parâmetros essenciais como sslmode
+  // 🎯 OTIMIZAÇÃO: Remover parâmetros que serão reconfigurados
   const paramsToRemove = [
     'pool_size',
-    'pool_timeout',
-    'connection_limit', // Prisma gerencia internamente
     'application_name', // Opcional, pode causar conflitos
     'pgbouncer', // Remover primeiro - será adicionado depois se necessário
   ];
@@ -72,29 +68,41 @@ function buildConnectionUrl(baseUrl: string): string {
     url.searchParams.set('sslmode', 'require');
   }
 
+  // ✅ CRÍTICO: Configurar parâmetros de pool do Prisma
+  // Esses parâmetros são essenciais para evitar esgotamento de conexões
+  // Documentação: https://www.prisma.io/docs/orm/prisma-client/setup-and-configuration/databases-connections#connection-pool
+  url.searchParams.set('connection_limit', DEFAULT_CONNECTION_LIMIT);
+  url.searchParams.set('pool_timeout', DEFAULT_POOL_TIMEOUT);
+  url.searchParams.set('connect_timeout', DEFAULT_CONNECT_TIMEOUT);
+
   // ✅ Lógica correta para pgbouncer:
   // - Porta 6543 = Transaction Pooler (sempre precisa pgbouncer=true)
   // - Porta 5432 = Conexão direta (NÃO deve ter pgbouncer=true)
   if (isPoolerPort) {
     // Porta 6543 = Transaction Pooler
     url.searchParams.set('pgbouncer', 'true');
+    // Para pgbouncer, usar connection_limit menor (gerenciado pelo pooler)
+    url.searchParams.set('connection_limit', DEFAULT_POOLER_CONNECTION_LIMIT);
     prismaLogger.info(
       {
         mode: 'Transaction Pooler',
         port,
+        connectionLimit: DEFAULT_POOLER_CONNECTION_LIMIT,
+        poolTimeout: DEFAULT_POOL_TIMEOUT,
         note: 'Pool gerenciado pelo Supabase pgBouncer (porta 6543)',
       },
       '✅ Configuração para Transaction Pooler',
     );
   } else if (isPoolerHostname && port === 5432) {
     // Hostname pooler mas porta 5432 = Conexão direta através do pooler
-    // Remover pgbouncer se existir (não é pooler, é conexão direta)
     url.searchParams.delete('pgbouncer');
     prismaLogger.info(
       {
         mode: 'Direct Connection',
         port,
         hostname: url.hostname,
+        connectionLimit: DEFAULT_CONNECTION_LIMIT,
+        poolTimeout: DEFAULT_POOL_TIMEOUT,
         note: 'Conexão direta através de hostname pooler (porta 5432)',
       },
       '✅ Configuração para conexão direta',
@@ -106,6 +114,8 @@ function buildConnectionUrl(baseUrl: string): string {
       {
         mode: 'Direct Connection',
         port,
+        connectionLimit: DEFAULT_CONNECTION_LIMIT,
+        poolTimeout: DEFAULT_POOL_TIMEOUT,
         note: 'Pool gerenciado pelo Prisma Client internamente',
       },
       '✅ Configuração para conexão direta',
@@ -185,9 +195,6 @@ async function retryOperation<T>(
   let lastError: any;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'prisma.ts:169',message:'starting retry attempt',data:{attempt,maxRetries,hasTimeout:!!finalTimeout,timeoutMs:finalTimeout},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     try {
       // Implementar timeout para fail-fast (apenas se configurado)
       if (finalTimeout) {
@@ -198,23 +205,14 @@ async function retryOperation<T>(
         });
 
         const result = await Promise.race([operation(), timeoutPromise]);
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'prisma.ts:179',message:'operation succeeded',data:{attempt},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
         return result;
       } else {
         // Sem timeout (útil para testes)
         const result = await operation();
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'prisma.ts:183',message:'operation succeeded (no timeout)',data:{attempt},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
         return result;
       }
     } catch (error: any) {
       lastError = error;
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'prisma.ts:184',message:'retryOperation error caught',data:{attempt,errorCode:error?.code,errorMessage:error?.message?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
 
       // Se for timeout ou erro de conexão, tenta reconectar
       const isConnectionError =
@@ -225,15 +223,8 @@ async function retryOperation<T>(
         error?.message?.includes('connection') ||
         error?.message?.includes("can't reach") ||
         error?.message?.includes('tenant or user not found');
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'prisma.ts:197',message:'connection error check',data:{isConnectionError,errorCode:error?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
 
       if (isConnectionError) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'prisma.ts:203',message:'isConnectionError=true, checking retry logic',data:{attempt,maxRetries,willRetry:attempt < maxRetries},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
-        
         prismaLogger.warn(
           {
             attempt,
@@ -248,17 +239,11 @@ async function retryOperation<T>(
         if (attempt < maxRetries) {
           // Exponential backoff com delay máximo de 5s
           const delay = Math.min(delayMs * Math.pow(2, attempt - 1), 5000);
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'prisma.ts:217',message:'waiting before retry',data:{attempt,delay,maxRetries},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
-          // #endregion
           await new Promise((resolve) => setTimeout(resolve, delay));
 
           // Tenta reconectar apenas na primeira tentativa
           if (attempt === 1) {
             try {
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'prisma.ts:222',message:'attempting reconnect',data:{attempt},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
-              // #endregion
               await Promise.race([
                 prisma.$connect(),
                 new Promise<never>((_, reject) =>
@@ -266,32 +251,16 @@ async function retryOperation<T>(
                 ),
               ]);
               prismaLogger.info('✅ Reconectado com sucesso');
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'prisma.ts:230',message:'reconnect successful',data:{attempt},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
-              // #endregion
             } catch (connectError) {
               prismaLogger.warn('⚠️ Erro ao reconectar, continuando tentativa...');
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'prisma.ts:233',message:'reconnect failed, continuing',data:{attempt},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
-              // #endregion
             }
           }
 
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'prisma.ts:238',message:'continuing to next retry attempt',data:{attempt,nextAttempt:attempt+1,maxRetries},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
-          // #endregion
           continue; // Tenta novamente
         }
         // Se for última tentativa e erro de conexão, o erro será lançado no final do loop
-        // (não faz continue, então vai para o final do loop e lança lastError)
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'prisma.ts:242',message:'last attempt failed, will exit loop and throw',data:{attempt,maxRetries},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
       } else {
         // Se não for erro de conexão, lança imediatamente
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'prisma.ts:246',message:'not connection error, throwing immediately',data:{attempt,errorCode:error?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
         throw error;
       }
     }
@@ -308,47 +277,45 @@ async function retryOperation<T>(
     },
     `❌ Todas as tentativas falharam após ${maxRetries} tentativas`,
   );
-  
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'prisma.ts:252',message:'throwing lastError after all retries failed',data:{errorCode:lastError?.code,errorType:lastError?.constructor?.name,errorMessage:lastError?.message?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
-  
+
   // Preservar o erro original para que o controller possa detectá-lo corretamente
   throw lastError;
 }
 
 function createPrismaClient() {
-  // ✅ IMPORTANTE: Não passar datasourceUrl explicitamente
-  // O Prisma Client lê automaticamente de DATABASE_URL e DIRECT_URL definidos no schema.prisma
-  // Passar datasourceUrl pode causar conflitos e ignorar as configurações do schema
+  // ✅ CRÍTICO: Passar datasourceUrl com parâmetros de pool otimizados
+  // O Prisma Client usa os parâmetros de URL para configurar o connection pool
+  // Sem esses parâmetros, o Prisma usa defaults muito baixos (connection_limit: 9, pool_timeout: 10)
+  // que causam erros de timeout em produção
   
   // Log da configuração que será usada (para debug)
-  if (datasourceUrl) {
+  if (optimizedDatasourceUrl) {
     try {
-      const url = new URL(datasourceUrl);
+      const url = new URL(optimizedDatasourceUrl);
       prismaLogger.info(
         {
           hostname: url.hostname,
           port: url.port || '5432',
+          connectionLimit: url.searchParams.get('connection_limit'),
+          poolTimeout: url.searchParams.get('pool_timeout'),
+          connectTimeout: url.searchParams.get('connect_timeout'),
           hasSslMode: url.searchParams.has('sslmode'),
           hasPgbouncer: url.searchParams.has('pgbouncer'),
           usingDirectUrl: !!process.env.DIRECT_URL,
           usingDatabaseUrl: !!process.env.DATABASE_URL,
-          note: 'Prisma lerá DATABASE_URL e DIRECT_URL do schema.prisma (não via datasourceUrl)',
         },
-        '🔧 Configuração do PrismaClient',
+        '🔧 Configuração do PrismaClient com pool otimizado',
       );
     } catch (error) {
       prismaLogger.warn({ err: error }, '⚠️ Erro ao analisar URL');
     }
   }
 
-  // ✅ Configurar Prisma Client
-  // O Prisma Client lê DATABASE_URL e DIRECT_URL automaticamente do schema.prisma
-  // NÃO passar datasourceUrl - deixa o Prisma usar as variáveis de ambiente diretamente
-  // Isso evita conflitos e garante que o schema.prisma seja respeitado
+  // ✅ Configurar Prisma Client com URL otimizada
+  // IMPORTANTE: Passar datasourceUrl para aplicar os parâmetros de pool
+  // connection_limit, pool_timeout e connect_timeout são configurados na URL
   const client = new PrismaClient({
-    // ⚠️ NÃO passar datasourceUrl aqui - Prisma lê de schema.prisma via env vars
+    datasourceUrl: optimizedDatasourceUrl,
     log: [
       { emit: 'event', level: 'error' },
       { emit: 'event', level: 'warn' },

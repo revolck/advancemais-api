@@ -116,3 +116,4 @@ print_status "$COLOR_GREEN" "✅ TESTE DE INTEGRAÇÃO CONCLUÍDO"
 print_status "$COLOR_BLUE" "======================================"
 echo ""
 
+

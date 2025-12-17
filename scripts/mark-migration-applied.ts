@@ -67,3 +67,4 @@ markMigrationApplied()
     process.exit(1);
   });
 
+

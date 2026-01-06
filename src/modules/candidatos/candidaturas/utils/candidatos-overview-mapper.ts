@@ -290,7 +290,7 @@ export const mapCandidatura = (candidatura: CandidaturaRecord) => {
     curriculoId: candidatura.curriculoId ?? null,
     empresaUsuarioId: candidatura.empresaUsuarioId,
     status: candidatura.status_processo?.nome ?? 'DESCONHECIDO',
-    status_processo: candidatura.status_processo,
+    statusProcessosCandidatos: candidatura.status_processo, // Campo renomeado para compatibilidade com frontend
     origem: candidatura.origem,
     aplicadaEm: candidatura.aplicadaEm.toISOString(),
     atualizadaEm: candidatura.atualizadaEm.toISOString(),
@@ -306,15 +306,15 @@ export const mapCandidatura = (candidatura: CandidaturaRecord) => {
 };
 
 const countByStatus = (
-  items: { status: string; status_processo?: { nome: string } | string }[],
+  items: { status: string; statusProcessosCandidatos?: { nome: string } | string }[],
 ) =>
   items.reduce<Record<string, number>>((acc, item) => {
-    // Priorizar o campo status se existir, caso contrário usar status_processo
+    // Priorizar o campo status se existir, caso contrário usar statusProcessosCandidatos
     const key =
       item.status ??
-      (typeof item.status_processo === 'string'
-        ? item.status_processo
-        : (item.status_processo?.nome ?? 'DESCONHECIDO'));
+      (typeof item.statusProcessosCandidatos === 'string'
+        ? item.statusProcessosCandidatos
+        : (item.statusProcessosCandidatos?.nome ?? 'DESCONHECIDO'));
     acc[key] = (acc[key] ?? 0) + 1;
     return acc;
   }, {});

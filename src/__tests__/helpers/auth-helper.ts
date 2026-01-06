@@ -18,7 +18,8 @@ export interface TestUser {
   role: Roles;
   token: string;
   refreshToken: string;
-  cpf: string; // CPF para login
+  cpf: string | null; // CPF para login (PESSOA_FISICA)
+  cnpj?: string | null;
 }
 
 /**
@@ -41,6 +42,8 @@ export async function createTestUser(
     role: Roles;
     emailVerificado: boolean;
     cpf: string;
+    cnpj: string;
+    tipoUsuario: TiposDeUsuarios;
   }> = {},
 ): Promise<TestUser> {
   const email = overrides.email || `test-${randomUUID()}@test.com`;
@@ -48,12 +51,19 @@ export async function createTestUser(
   const nomeCompleto = overrides.nomeCompleto || 'Test User';
   const role = overrides.role || Roles.ALUNO_CANDIDATO;
   const emailVerificado = overrides.emailVerificado !== false;
-  const cpf = overrides.cpf || generateTestCPF();
-  const cpfLimpo = limparDocumento(cpf);
+  const tipoUsuario = overrides.tipoUsuario || TiposDeUsuarios.PESSOA_FISICA;
+
+  const cpf =
+    tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA ? null : overrides.cpf || generateTestCPF();
+  const cpfLimpo = cpf ? limparDocumento(cpf) : null;
+  const cnpj =
+    tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
+      ? overrides.cnpj || String(Date.now()).padStart(14, '0').slice(0, 14)
+      : null;
 
   const hashedPassword = await bcrypt.hash(password, 10);
   const userId = randomUUID();
-  const supabaseId = randomUUID();
+  const authId = randomUUID();
 
   // Criar usuário usando transação para garantir consistência
   const usuario = await prisma.$transaction(async (tx) => {
@@ -65,10 +75,11 @@ export async function createTestUser(
         nomeCompleto,
         role,
         codUsuario: `TEST${Date.now()}`,
-        supabaseId,
+        authId,
         status: 'ATIVO',
-        tipoUsuario: TiposDeUsuarios.PESSOA_FISICA,
+        tipoUsuario,
         cpf: cpfLimpo,
+        cnpj,
         atualizadoEm: new Date(),
         UsuariosInformation: {
           create: {
@@ -131,6 +142,7 @@ export async function createTestUser(
     token: tokens.accessToken,
     refreshToken: tokens.refreshToken,
     cpf: cpfLimpo,
+    cnpj,
   };
 }
 

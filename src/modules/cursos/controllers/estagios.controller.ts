@@ -5,6 +5,7 @@ import { estagiosService } from '../services/estagios.service';
 import {
   confirmarEstagioSchema,
   createEstagioSchema,
+  listEstagiosQuerySchema,
   reenviarConfirmacaoSchema,
   updateEstagioSchema,
   updateEstagioStatusSchema,
@@ -30,6 +31,38 @@ const parseUuid = (value: unknown) => {
 };
 
 export class EstagiosController {
+  static async list(req: Request, res: Response) {
+    try {
+      const query = listEstagiosQuerySchema.parse(req.query);
+      const result = await estagiosService.list(query);
+      return res.json(result);
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos para listagem de estágios',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'CURSO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'CURSO_NOT_FOUND',
+          message: 'Curso não encontrado',
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        code: 'ESTAGIOS_LIST_ERROR',
+        message: 'Erro ao listar estágios',
+        error: error?.message,
+      });
+    }
+  }
+
   static async create(req: Request, res: Response) {
     const cursoId = parseCursoId(req.params.cursoId);
     const turmaId = parseUuid(req.params.turmaId);

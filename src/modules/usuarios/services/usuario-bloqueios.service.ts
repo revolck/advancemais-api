@@ -16,6 +16,8 @@ import {
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import type { AdminAlunoBloqueioInput } from '../validators/auth.schema';
+import { EmailService } from '@/modules/brevo/services/email-service';
+import { EmailTemplates } from '@/modules/brevo/templates/email-templates';
 
 const bloqueioLogger = logger.child({ module: 'UsuarioBloqueiosService' });
 
@@ -206,6 +208,32 @@ export async function aplicarBloqueioUsuario(
     '✅ Bloqueio aplicado ao usuário',
   );
 
+  // Envia email de notificação de bloqueio
+  try {
+    const usuario = await prisma.usuarios.findUnique({
+      where: { id: userId },
+      select: { email: true, nomeCompleto: true },
+    });
+    if (usuario?.email) {
+      const emailService = new EmailService();
+      const template = EmailTemplates.generateUserBlockedEmail({
+        nomeCompleto: usuario.nomeCompleto,
+        motivo: input.motivo,
+        fim: input.tipo === TiposDeBloqueios.TEMPORARIO ? fim : null,
+        descricao: input.observacoes ?? null,
+        tipo: input.tipo,
+      });
+      await emailService.sendAssinaturaNotificacao(
+        { id: userId, email: usuario.email, nomeCompleto: usuario.nomeCompleto },
+        template,
+      );
+      bloqueioLogger.info({ userId, email: usuario.email }, '📧 Email de bloqueio enviado');
+    }
+  } catch (error) {
+    bloqueioLogger.warn({ err: error, userId }, '⚠️ Erro ao enviar email de bloqueio');
+    // Não falha o bloqueio se o email falhar
+  }
+
   return mapBloqueioResumo(bloqueio);
 }
 
@@ -257,6 +285,28 @@ export async function revogarBloqueioUsuario(
     },
     '✅ Bloqueio revogado do usuário',
   );
+
+  // Envia email de notificação de desbloqueio
+  try {
+    const usuario = await prisma.usuarios.findUnique({
+      where: { id: userId },
+      select: { email: true, nomeCompleto: true },
+    });
+    if (usuario?.email) {
+      const emailService = new EmailService();
+      const template = EmailTemplates.generateUserUnblockedEmail({
+        nomeCompleto: usuario.nomeCompleto,
+      });
+      await emailService.sendAssinaturaNotificacao(
+        { id: userId, email: usuario.email, nomeCompleto: usuario.nomeCompleto },
+        template,
+      );
+      bloqueioLogger.info({ userId, email: usuario.email }, '📧 Email de desbloqueio enviado');
+    }
+  } catch (error) {
+    bloqueioLogger.warn({ err: error, userId }, '⚠️ Erro ao enviar email de desbloqueio');
+    // Não falha a revogação se o email falhar
+  }
 }
 
 /**

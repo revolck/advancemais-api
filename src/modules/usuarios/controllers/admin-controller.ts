@@ -119,7 +119,7 @@ export class AdminController {
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       const statusCode = (error as any)?.statusCode;
-      
+
       // ✅ Tratar erros de conexão do Prisma (P1001) como 503 Service Unavailable
       // Verificar tanto PrismaClientKnownRequestError quanto erro genérico com code P1001
       const errorCode = (error as any)?.code;

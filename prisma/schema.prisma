@@ -176,7 +176,9 @@ model Cursos {
   CursosCategorias     CursosCategorias?      @relation(fields: [categoriaId], references: [id])
   CursosSubcategorias  CursosSubcategorias?   @relation(fields: [subcategoriaId], references: [id])
   CursosEstagios       CursosEstagios[]
+  CursosTurmasAulas    CursosTurmasAulas[]
   CursosTurmas         CursosTurmas[]
+  CursosTurmasProvas   CursosTurmasProvas[]
 
   @@index([categoriaId])
   @@index([subcategoriaId])
@@ -465,6 +467,7 @@ model CursosTurmasAgenda {
 model CursosTurmasAulas {
   id                            String                       @id @default(uuid())
   codigo                        String                       @unique @db.VarChar(12)
+  cursoId                       String?
   turmaId                       String?
   instrutorId                   String?
   moduloId                      String?
@@ -507,6 +510,7 @@ model CursosTurmasAulas {
   // Relacionamentos existentes
   CursosFrequenciaAlunos        CursosFrequenciaAlunos[]
   CursosTurmasAgenda            CursosTurmasAgenda[]
+  Cursos                        Cursos?                      @relation(fields: [cursoId], references: [id], onDelete: Cascade)
   CursosTurmasModulos           CursosTurmasModulos?         @relation(fields: [moduloId], references: [id])
   CursosTurmas                  CursosTurmas?                @relation(fields: [turmaId], references: [id], onDelete: Cascade)
   CursosTurmasAulasMateriais    CursosTurmasAulasMateriais[]
@@ -517,6 +521,7 @@ model CursosTurmasAulas {
 
   @@index([moduloId])
   @@index([codigo])
+  @@index([cursoId])
   @@index([turmaId])
   @@index([instrutorId])
   @@index([turmaId, ordem])
@@ -622,41 +627,41 @@ model NotificacoesEnviadas {
 }
 
 model CursosTurmasInscricoes {
-  id                         String                       @id @default(uuid())
-  turmaId                    String
-  alunoId                    String
-  criadoEm                   DateTime                     @default(now())
-  status                     StatusInscricao              @default(INSCRITO)
+  id                          String                        @id @default(uuid())
+  turmaId                     String
+  alunoId                     String
+  criadoEm                    DateTime                      @default(now())
+  status                      StatusInscricao               @default(INSCRITO)
   // Campos de pagamento e token de acesso
-  codigo                     String?                      @unique @db.VarChar(20)
-  statusPagamento            String                       @default("PENDENTE") @db.VarChar(50)
-  mpPaymentId                String?                      @db.VarChar(255)
-  tokenAcesso                String?                      @unique @db.VarChar(500)
-  tokenAcessoExpiraEm        DateTime?
-  valorPago                  Decimal?                     @db.Decimal(10, 2)
-  metodoPagamento            String?                      @db.VarChar(50)
+  codigo                      String?                       @unique @db.VarChar(20)
+  statusPagamento             String                        @default("PENDENTE") @db.VarChar(50)
+  mpPaymentId                 String?                       @db.VarChar(255)
+  tokenAcesso                 String?                       @unique @db.VarChar(500)
+  tokenAcessoExpiraEm         DateTime?
+  valorPago                   Decimal?                      @db.Decimal(10, 2)
+  metodoPagamento             String?                       @db.VarChar(50)
   // Aceite de termos
-  aceitouTermos              Boolean                      @default(false)
-  aceitouTermosIp            String?                      @db.VarChar(45)
-  aceitouTermosUserAgent     String?                      @db.VarChar(500)
-  aceitouTermosEm            DateTime?
+  aceitouTermos               Boolean                       @default(false)
+  aceitouTermosIp             String?                       @db.VarChar(45)
+  aceitouTermosUserAgent      String?                       @db.VarChar(500)
+  aceitouTermosEm             DateTime?
   // Cupom de desconto
-  cupomDescontoId            String?
-  cupomDescontoCodigo        String?                      @db.VarChar(40)
-  valorOriginal              Decimal?                     @db.Decimal(10, 2)
-  valorDesconto              Decimal?                     @db.Decimal(10, 2)
-  valorFinal                 Decimal?                     @db.Decimal(10, 2)
-  CursosCertificadosEmitidos CursosCertificadosEmitidos[]
-  CursosEstagios             CursosEstagios[]
-  CursosFrequenciaAlunos     CursosFrequenciaAlunos[]
-  CursosNotas                CursosNotas[]
-  Usuarios                   Usuarios                     @relation(fields: [alunoId], references: [id], onDelete: Cascade)
-  CursosTurmas               CursosTurmas                 @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  CursosTurmasProvasEnvios   CursosTurmasProvasEnvios[]
-  CursosTurmasRecuperacoes   CursosTurmasRecuperacoes[]
+  cupomDescontoId             String?
+  cupomDescontoCodigo         String?                       @db.VarChar(40)
+  valorOriginal               Decimal?                      @db.Decimal(10, 2)
+  valorDesconto               Decimal?                      @db.Decimal(10, 2)
+  valorFinal                  Decimal?                      @db.Decimal(10, 2)
+  CursosCertificadosEmitidos  CursosCertificadosEmitidos[]
+  CursosEstagios              CursosEstagios[]
+  CursosFrequenciaAlunos      CursosFrequenciaAlunos[]
+  CursosNotas                 CursosNotas[]
+  Usuarios                    Usuarios                      @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+  CursosTurmas                CursosTurmas                  @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  CursosTurmasProvasEnvios    CursosTurmasProvasEnvios[]
+  CursosTurmasRecuperacoes    CursosTurmasRecuperacoes[]
   CursosTurmasProvasRespostas CursosTurmasProvasRespostas[]
-  CuponsDesconto             CuponsDesconto?              @relation(fields: [cupomDescontoId], references: [id])
-  CursosAulasProgresso       CursosAulasProgresso[]
+  CuponsDesconto              CuponsDesconto?               @relation(fields: [cupomDescontoId], references: [id])
+  CursosAulasProgresso        CursosAulasProgresso[]
 
   @@unique([turmaId, alunoId])
   @@index([alunoId])
@@ -685,46 +690,63 @@ model CursosTurmasModulos {
 }
 
 model CursosTurmasProvas {
-  id                       String                     @id @default(uuid())
-  turmaId                  String
-  moduloId                 String?
-  titulo                   String                     @db.VarChar(255)
-  etiqueta                 String                     @db.VarChar(30)
-  descricao                String?
-  peso                     Decimal                    @db.Decimal(5, 2)
-  valePonto                Boolean                    @default(true)
-  ativo                    Boolean                    @default(true)
-  localizacao              CursosLocalProva           @default(TURMA)
-  ordem                    Int                        @default(0)
-  criadoEm                 DateTime                   @default(now())
-  atualizadoEm             DateTime                   @default(now())
-  CursosNotas              CursosNotas[]
-  CursosTurmasAgenda       CursosTurmasAgenda[]
-  CursosTurmasModulos      CursosTurmasModulos?       @relation(fields: [moduloId], references: [id])
-  CursosTurmas             CursosTurmas               @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  CursosTurmasProvasEnvios CursosTurmasProvasEnvios[]
-  CursosTurmasRecuperacoes CursosTurmasRecuperacoes[]
+  id                         String                       @id @default(uuid())
+  cursoId                    String?
+  turmaId                    String?
+  moduloId                   String?
+  instrutorId                String?
+  tipo                       CursosAvaliacaoTipo          @default(PROVA)
+  tipoAtividade              CursosAtividadeTipo?
+  recuperacaoFinal           Boolean                      @default(false)
+  titulo                     String                       @db.VarChar(255)
+  etiqueta                   String                       @db.VarChar(30)
+  descricao                  String?
+  peso                       Decimal                      @db.Decimal(5, 2)
+  valePonto                  Boolean                      @default(true)
+  ativo                      Boolean                      @default(true)
+  status                     CursosAulaStatus             @default(RASCUNHO)
+  modalidade                 CursosMetodos                @default(ONLINE)
+  obrigatoria                Boolean                      @default(true)
+  dataInicio                 DateTime?
+  dataFim                    DateTime?
+  horaInicio                 String?                      @db.VarChar(5)
+  horaTermino                String?                      @db.VarChar(5)
+  localizacao                CursosLocalProva             @default(TURMA)
+  ordem                      Int                          @default(0)
+  criadoEm                   DateTime                     @default(now())
+  atualizadoEm               DateTime                     @default(now())
+  CursosNotas                CursosNotas[]
+  CursosTurmasAgenda         CursosTurmasAgenda[]
+  CursosTurmas               CursosTurmas?                @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  Cursos                     Cursos?                      @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+  CursosTurmasModulos        CursosTurmasModulos?         @relation(fields: [moduloId], references: [id])
+  Usuarios                   Usuarios?                    @relation(fields: [instrutorId], references: [id])
+  CursosTurmasProvasEnvios   CursosTurmasProvasEnvios[]
+  CursosTurmasRecuperacoes   CursosTurmasRecuperacoes[]
   CursosTurmasProvasQuestoes CursosTurmasProvasQuestoes[]
 
   @@unique([turmaId, etiqueta])
+  @@index([cursoId])
   @@index([moduloId])
   @@index([turmaId, ativo])
   @@index([turmaId])
+  @@index([instrutorId])
+  @@index([status])
 }
 
 model CursosTurmasProvasEnvios {
-  id                       String                     @id @default(uuid())
-  provaId                  String
-  inscricaoId              String
-  nota                     Decimal?                   @db.Decimal(4, 1)
-  pesoTotal                Decimal?                   @db.Decimal(5, 2)
-  realizadoEm              DateTime?
-  observacoes              String?
-  criadoEm                 DateTime                   @default(now())
-  atualizadoEm             DateTime                   @default(now())
-  CursosTurmasInscricoes   CursosTurmasInscricoes     @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
-  CursosTurmasProvas       CursosTurmasProvas         @relation(fields: [provaId], references: [id], onDelete: Cascade)
-  CursosTurmasRecuperacoes CursosTurmasRecuperacoes[]
+  id                          String                        @id @default(uuid())
+  provaId                     String
+  inscricaoId                 String
+  nota                        Decimal?                      @db.Decimal(4, 1)
+  pesoTotal                   Decimal?                      @db.Decimal(5, 2)
+  realizadoEm                 DateTime?
+  observacoes                 String?
+  criadoEm                    DateTime                      @default(now())
+  atualizadoEm                DateTime                      @default(now())
+  CursosTurmasInscricoes      CursosTurmasInscricoes        @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
+  CursosTurmasProvas          CursosTurmasProvas            @relation(fields: [provaId], references: [id], onDelete: Cascade)
+  CursosTurmasRecuperacoes    CursosTurmasRecuperacoes[]
   CursosTurmasProvasRespostas CursosTurmasProvasRespostas[]
 
   @@unique([provaId, inscricaoId])
@@ -760,32 +782,32 @@ model CursosTurmasRecuperacoes {
 }
 
 model CursosTurmasProvasQuestoes {
-  id                          String                                    @id @default(uuid())
-  provaId                     String
-  enunciado                   String                                    @db.VarChar(2000)
-  tipo                        CursosTipoQuestao
-  ordem                       Int                                       @default(0)
-  peso                        Decimal?                                  @db.Decimal(5, 2)
-  obrigatoria                 Boolean                                   @default(true)
-  criadoEm                    DateTime                                  @default(now())
-  atualizadoEm                DateTime                                  @default(now())
-  CursosTurmasProvas          CursosTurmasProvas                       @relation(fields: [provaId], references: [id], onDelete: Cascade)
+  id                                     String                                   @id @default(uuid())
+  provaId                                String
+  enunciado                              String                                   @db.VarChar(2000)
+  tipo                                   CursosTipoQuestao
+  ordem                                  Int                                      @default(0)
+  peso                                   Decimal?                                 @db.Decimal(5, 2)
+  obrigatoria                            Boolean                                  @default(true)
+  criadoEm                               DateTime                                 @default(now())
+  atualizadoEm                           DateTime                                 @default(now())
+  CursosTurmasProvas                     CursosTurmasProvas                       @relation(fields: [provaId], references: [id], onDelete: Cascade)
   CursosTurmasProvasQuestoesAlternativas CursosTurmasProvasQuestoesAlternativas[]
-  CursosTurmasProvasRespostas CursosTurmasProvasRespostas[]
+  CursosTurmasProvasRespostas            CursosTurmasProvasRespostas[]
 
   @@index([provaId])
   @@index([provaId, ordem])
 }
 
 model CursosTurmasProvasQuestoesAlternativas {
-  id          String                      @id @default(uuid())
-  questaoId   String
-  texto       String                      @db.VarChar(1000)
-  ordem       Int                         @default(0)
-  correta     Boolean                     @default(false)
-  criadoEm    DateTime                    @default(now())
-  atualizadoEm DateTime                   @default(now())
-  CursosTurmasProvasQuestoes CursosTurmasProvasQuestoes @relation(fields: [questaoId], references: [id], onDelete: Cascade)
+  id                          String                        @id @default(uuid())
+  questaoId                   String
+  texto                       String                        @db.VarChar(1000)
+  ordem                       Int                           @default(0)
+  correta                     Boolean                       @default(false)
+  criadoEm                    DateTime                      @default(now())
+  atualizadoEm                DateTime                      @default(now())
+  CursosTurmasProvasQuestoes  CursosTurmasProvasQuestoes    @relation(fields: [questaoId], references: [id], onDelete: Cascade)
   CursosTurmasProvasRespostas CursosTurmasProvasRespostas[]
 
   @@index([questaoId])
@@ -793,23 +815,23 @@ model CursosTurmasProvasQuestoesAlternativas {
 }
 
 model CursosTurmasProvasRespostas {
-  id                    String                      @id @default(uuid())
-  questaoId             String
-  inscricaoId           String
-  envioId                String?
-  respostaTexto          String?                     @db.Text
-  alternativaId         String?
-  anexoUrl              String?                      @db.VarChar(500)
-  anexoNome             String?                      @db.VarChar(255)
-  corrigida             Boolean                      @default(false)
-  nota                  Decimal?                     @db.Decimal(4, 1)
-  observacoes           String?                      @db.VarChar(1000)
-  criadoEm              DateTime                     @default(now())
-  atualizadoEm          DateTime                     @default(now())
-  CursosTurmasProvasQuestoes CursosTurmasProvasQuestoes @relation(fields: [questaoId], references: [id], onDelete: Cascade)
+  id                                     String                                  @id @default(uuid())
+  questaoId                              String
+  inscricaoId                            String
+  envioId                                String?
+  respostaTexto                          String?                                 @db.Text
+  alternativaId                          String?
+  anexoUrl                               String?                                 @db.VarChar(500)
+  anexoNome                              String?                                 @db.VarChar(255)
+  corrigida                              Boolean                                 @default(false)
+  nota                                   Decimal?                                @db.Decimal(4, 1)
+  observacoes                            String?                                 @db.VarChar(1000)
+  criadoEm                               DateTime                                @default(now())
+  atualizadoEm                           DateTime                                @default(now())
+  CursosTurmasProvasQuestoes             CursosTurmasProvasQuestoes              @relation(fields: [questaoId], references: [id], onDelete: Cascade)
   CursosTurmasProvasQuestoesAlternativas CursosTurmasProvasQuestoesAlternativas? @relation(fields: [alternativaId], references: [id], onDelete: SetNull)
-  CursosTurmasInscricoes CursosTurmasInscricoes     @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
-  CursosTurmasProvasEnvios CursosTurmasProvasEnvios? @relation(fields: [envioId], references: [id], onDelete: SetNull)
+  CursosTurmasInscricoes                 CursosTurmasInscricoes                  @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
+  CursosTurmasProvasEnvios               CursosTurmasProvasEnvios?               @relation(fields: [envioId], references: [id], onDelete: SetNull)
 
   @@unique([questaoId, inscricaoId])
   @@index([inscricaoId])
@@ -854,21 +876,21 @@ model EmpresasAuditoria {
 }
 
 model EmpresasCandidatos {
-  id                                                     String              @id @default(uuid())
+  id                                                     String                    @id @default(uuid())
   vagaId                                                 String
   candidatoId                                            String
   curriculoId                                            String?
   empresaUsuarioId                                       String
   statusId                                               String
-  origem                                                 OrigemVagas         @default(SITE)
-  aplicadaEm                                             DateTime            @default(now())
-  atualizadaEm                                           DateTime            @default(now())
+  origem                                                 OrigemVagas               @default(SITE)
+  aplicadaEm                                             DateTime                  @default(now())
+  atualizadaEm                                           DateTime                  @default(now())
   consentimentos                                         Json?
-  Usuarios_EmpresasCandidatos_candidatoIdToUsuarios      Usuarios            @relation("EmpresasCandidatos_candidatoIdToUsuarios", fields: [candidatoId], references: [id], onDelete: Cascade)
-  UsuariosCurriculos                                     UsuariosCurriculos? @relation(fields: [curriculoId], references: [id])
-  Usuarios_EmpresasCandidatos_empresaUsuarioIdToUsuarios Usuarios            @relation("EmpresasCandidatos_empresaUsuarioIdToUsuarios", fields: [empresaUsuarioId], references: [id])
-  status_processo                                        status_processo     @relation(fields: [statusId], references: [id])
-  EmpresasVagas                                          EmpresasVagas       @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  Usuarios_EmpresasCandidatos_candidatoIdToUsuarios      Usuarios                  @relation("EmpresasCandidatos_candidatoIdToUsuarios", fields: [candidatoId], references: [id], onDelete: Cascade)
+  UsuariosCurriculos                                     UsuariosCurriculos?       @relation(fields: [curriculoId], references: [id])
+  Usuarios_EmpresasCandidatos_empresaUsuarioIdToUsuarios Usuarios                  @relation("EmpresasCandidatos_empresaUsuarioIdToUsuarios", fields: [empresaUsuarioId], references: [id])
+  status_processo                                        StatusProcessosCandidatos @relation(fields: [statusId], references: [id])
+  EmpresasVagas                                          EmpresasVagas             @relation(fields: [vagaId], references: [id], onDelete: Cascade)
   Notificacoes                                           Notificacoes[]
 
   @@unique([vagaId, candidatoId, curriculoId])
@@ -958,6 +980,8 @@ model EmpresasVagas {
   Usuarios                    Usuarios                     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   EmpresasVagasDestaque       EmpresasVagasDestaque?
   EmpresasVagasProcesso       EmpresasVagasProcesso[]
+  EmpresasVagasEntrevistas    EmpresasVagasEntrevistas[]
+  UsuariosVagasVinculos       UsuariosVagasVinculos[]
   Requerimentos               Requerimentos[]
   Notificacoes                Notificacoes[]
 
@@ -998,24 +1022,57 @@ model EmpresasVagasDestaque {
 }
 
 model EmpresasVagasProcesso {
-  id              String          @id @default(uuid())
+  id              String                    @id @default(uuid())
   vagaId          String
   candidatoId     String
   statusId        String
-  origem          OrigemVagas     @default(SITE)
-  observacoes     String?         @db.VarChar(1000)
+  origem          OrigemVagas               @default(SITE)
+  observacoes     String?                   @db.VarChar(1000)
   agendadoEm      DateTime?
-  criadoEm        DateTime        @default(now())
-  atualizadoEm    DateTime        @default(now())
-  Usuarios        Usuarios        @relation(fields: [candidatoId], references: [id], onDelete: Cascade)
-  status_processo status_processo @relation(fields: [statusId], references: [id])
-  EmpresasVagas   EmpresasVagas   @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  criadoEm        DateTime                  @default(now())
+  atualizadoEm    DateTime                  @default(now())
+  Usuarios        Usuarios                  @relation(fields: [candidatoId], references: [id], onDelete: Cascade)
+  status_processo StatusProcessosCandidatos @relation(fields: [statusId], references: [id])
+  EmpresasVagas   EmpresasVagas             @relation(fields: [vagaId], references: [id], onDelete: Cascade)
 
   @@unique([vagaId, candidatoId])
   @@index([candidatoId])
   @@index([origem])
   @@index([statusId])
   @@index([vagaId])
+}
+
+enum EntrevistaStatus {
+  AGENDADA
+  CANCELADA
+}
+
+model EmpresasVagasEntrevistas {
+  id                String           @id @default(uuid())
+  vagaId            String
+  candidatoId       String
+  empresaUsuarioId  String
+  recrutadorId      String
+  titulo            String           @db.VarChar(255)
+  descricao         String?          @db.Text
+  dataInicio        DateTime
+  dataFim           DateTime
+  meetUrl           String           @db.Text
+  meetEventId       String?          @db.VarChar(255)
+  status            EntrevistaStatus @default(AGENDADA)
+  criadoEm          DateTime         @default(now())
+  atualizadoEm      DateTime         @default(now())
+
+  EmpresasVagas     EmpresasVagas    @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  candidato         Usuarios         @relation("EmpresasVagasEntrevistas_candidatoIdToUsuarios", fields: [candidatoId], references: [id], onDelete: Cascade)
+  empresa           Usuarios         @relation("EmpresasVagasEntrevistas_empresaUsuarioIdToUsuarios", fields: [empresaUsuarioId], references: [id], onDelete: Cascade)
+  recrutador        Usuarios         @relation("EmpresasVagasEntrevistas_recrutadorIdToUsuarios", fields: [recrutadorId], references: [id], onDelete: Cascade)
+
+  @@index([candidatoId])
+  @@index([empresaUsuarioId])
+  @@index([recrutadorId])
+  @@index([vagaId])
+  @@index([status, dataInicio])
 }
 
 model EmpresasVagasSubcategorias {
@@ -1107,7 +1164,7 @@ model PlanosEmpresariais {
 model Usuarios {
   id                                                               String                       @id @default(uuid())
   nomeCompleto                                                     String
-  supabaseId                                                       String                       @unique
+  authId                                                           String                       @unique
   cpf                                                              String?                      @unique
   cnpj                                                             String?                      @unique
   email                                                            String                       @unique
@@ -1154,7 +1211,7 @@ model Usuarios {
   UsuariosRedesSociais                                             UsuariosRedesSociais?
   UsuariosSessoes                                                  UsuariosSessoes[]
   UsuariosVerificacaoEmail                                         UsuariosVerificacaoEmail?
-  status_processo                                                  status_processo[]
+  status_processo                                                  StatusProcessosCandidatos[]
   // Requerimentos
   Requerimentos_usuarioId                                          Requerimentos[]              @relation("Requerimentos_usuarioId")
   Requerimentos_atribuidoParaId                                    Requerimentos[]              @relation("Requerimentos_atribuidoParaId")
@@ -1170,6 +1227,15 @@ model Usuarios {
   NotificacoesEnviadas                                             NotificacoesEnviadas[]       @relation("NotificacoesEnviadas")
   HistoricoInstrutorAulas                                          AulaInstrutorHistorico[]     @relation("HistoricoInstrutor")
   HistoricoRemocaoInstrutor                                        AulaInstrutorHistorico[]     @relation("HistoricoRemovidoPor")
+  EmpresasVagasEntrevistas_EmpresasVagasEntrevistas_candidatoIdToUsuarios EmpresasVagasEntrevistas[] @relation("EmpresasVagasEntrevistas_candidatoIdToUsuarios")
+  EmpresasVagasEntrevistas_EmpresasVagasEntrevistas_empresaUsuarioIdToUsuarios EmpresasVagasEntrevistas[] @relation("EmpresasVagasEntrevistas_empresaUsuarioIdToUsuarios")
+  EmpresasVagasEntrevistas_EmpresasVagasEntrevistas_recrutadorIdToUsuarios EmpresasVagasEntrevistas[] @relation("EmpresasVagasEntrevistas_recrutadorIdToUsuarios")
+  // Vínculos RECRUTADOR -> EMPRESA (controle de acesso)
+  UsuariosEmpresasVinculos_UsuariosEmpresasVinculos_recrutadorIdToUsuarios UsuariosEmpresasVinculos[] @relation("UsuariosEmpresasVinculos_recrutadorIdToUsuarios")
+  UsuariosEmpresasVinculos_UsuariosEmpresasVinculos_empresaUsuarioIdToUsuarios UsuariosEmpresasVinculos[] @relation("UsuariosEmpresasVinculos_empresaUsuarioIdToUsuarios")
+  UsuariosVagasVinculos_UsuariosVagasVinculos_recrutadorIdToUsuarios UsuariosVagasVinculos[] @relation("UsuariosVagasVinculos_recrutadorIdToUsuarios")
+  // Provas e Atividades como instrutor
+  CursosTurmasProvas                                                   CursosTurmasProvas[]
 
   @@index([criadoEm])
   @@index([role])
@@ -1180,6 +1246,34 @@ model Usuarios {
   // ✅ Índices adicionais para otimização de queries (índices parciais serão criados via migração SQL)
   @@index([role, status, criadoEm(sort: Desc)], map: "usuarios_role_status_criadoem_desc_idx")
   @@index([googleCalendarId])
+}
+
+model UsuariosEmpresasVinculos {
+  id                                                          String   @id @default(uuid())
+  recrutadorId                                                 String
+  empresaUsuarioId                                             String
+  criadoEm                                                     DateTime @default(now())
+  atualizadoEm                                                 DateTime @default(now())
+  Usuarios_UsuariosEmpresasVinculos_recrutadorIdToUsuarios      Usuarios @relation("UsuariosEmpresasVinculos_recrutadorIdToUsuarios", fields: [recrutadorId], references: [id], onDelete: Cascade)
+  Usuarios_UsuariosEmpresasVinculos_empresaUsuarioIdToUsuarios  Usuarios @relation("UsuariosEmpresasVinculos_empresaUsuarioIdToUsuarios", fields: [empresaUsuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([recrutadorId, empresaUsuarioId])
+  @@index([empresaUsuarioId])
+  @@index([recrutadorId])
+}
+
+model UsuariosVagasVinculos {
+  id                                                     String       @id @default(uuid())
+  recrutadorId                                           String
+  vagaId                                                 String
+  criadoEm                                               DateTime     @default(now())
+  atualizadoEm                                           DateTime     @default(now())
+  Usuarios_UsuariosVagasVinculos_recrutadorIdToUsuarios   Usuarios     @relation("UsuariosVagasVinculos_recrutadorIdToUsuarios", fields: [recrutadorId], references: [id], onDelete: Cascade)
+  EmpresasVagas                                          EmpresasVagas @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+
+  @@unique([recrutadorId, vagaId])
+  @@index([recrutadorId])
+  @@index([vagaId])
 }
 
 model UsuariosCandidatosLogs {
@@ -1807,7 +1901,7 @@ model WebsiteTreinamentosInCompany {
   atualizadoEm DateTime @default(now())
 }
 
-model status_processo {
+model StatusProcessosCandidatos {
   id                    String                  @id @default(uuid())
   nome                  String                  @db.VarChar(100)
   descricao             String?                 @db.VarChar(500)
@@ -1957,6 +2051,16 @@ enum CursosFrequenciaStatus {
 enum CursosLocalProva {
   TURMA
   MODULO
+}
+
+enum CursosAvaliacaoTipo {
+  PROVA
+  ATIVIDADE
+}
+
+enum CursosAtividadeTipo {
+  QUESTOES
+  PERGUNTA_RESPOSTA
 }
 
 enum CursosTipoQuestao {
@@ -2372,6 +2476,9 @@ enum NotificacaoTipo {
   PROVA_EM_24H // Prova em 24 horas
   PROVA_EM_8H // Prova em 8 horas
   PROVA_EM_2H // Prova em 2 horas
+  RECUPERACAO_FINAL_PAGAMENTO_PENDENTE // Recuperação final aguardando pagamento
+  RECUPERACAO_FINAL_PAGAMENTO_APROVADO // Pagamento da recuperação final aprovado
+  RECUPERACAO_FINAL_PAGAMENTO_RECUSADO // Pagamento da recuperação final recusado
   INSTRUTOR_VINCULADO // Instrutor foi vinculado à turma
   INSTRUTOR_DESVINCULADO // Instrutor foi desvinculado
   TURMA_INICIOU // Turma iniciou

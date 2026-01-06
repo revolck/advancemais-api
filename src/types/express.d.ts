@@ -8,7 +8,7 @@ declare namespace Express {
       id: string;
       email: string;
       role: string;
-      supabaseId?: string;
+      authId?: string;
       [key: string]: any;
     };
   }

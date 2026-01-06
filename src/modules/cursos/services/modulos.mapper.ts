@@ -28,6 +28,26 @@ export const mapModulo = (modulo: ModuloWithRelations) => {
     (modulo as any).provas ||
     []) as unknown as ProvaWithRelations[];
 
+  const itens = [
+    ...aulas.map((aula) => ({
+      tipo: 'AULA',
+      ordem: aula.ordem,
+      aulaId: aula.id,
+      avaliacaoId: null,
+      aula: mapAula(aula),
+    })),
+    ...provas.map((prova) => ({
+      tipo: (prova as any).tipo ?? 'PROVA',
+      ordem: prova.ordem,
+      aulaId: null,
+      avaliacaoId: prova.id,
+      avaliacao: mapProva(prova),
+    })),
+  ].sort((a, b) => {
+    const diff = (a.ordem ?? 0) - (b.ordem ?? 0);
+    return diff !== 0 ? diff : String(a.tipo).localeCompare(String(b.tipo));
+  });
+
   return {
     id: modulo.id,
     turmaId: modulo.turmaId,
@@ -38,6 +58,7 @@ export const mapModulo = (modulo: ModuloWithRelations) => {
     criadoEm: modulo.criadoEm.toISOString(),
     atualizadoEm: modulo.atualizadoEm.toISOString(),
     aulas: aulas.map(mapAula),
-    provas: provas.map(mapProva),
+    provas: provas.map((prova) => mapProva(prova, null)),
+    itens,
   };
 };

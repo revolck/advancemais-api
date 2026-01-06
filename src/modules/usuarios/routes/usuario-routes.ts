@@ -1,6 +1,12 @@
 import { Router } from 'express';
 import { criarUsuario } from '../register';
-import { loginUsuario, logoutUsuario, refreshToken, obterPerfil } from '../controllers';
+import {
+  loginUsuario,
+  logoutUsuario,
+  refreshToken,
+  obterPerfil,
+  atualizarPerfil,
+} from '../controllers';
 import { supabaseAuthMiddleware } from '../auth';
 import { WelcomeEmailMiddleware } from '../../brevo/middlewares/welcome-email-middleware';
 import passwordRecoveryRoutes from './password-recovery';
@@ -194,7 +200,7 @@ router.get('/', (req, res) => {
       },
       profile: {
         get: 'GET /perfil',
-        update: 'PUT /perfil',
+        update: 'PUT /perfil', // ✅ Implementado
       },
       recovery: {
         request: 'POST /recuperar-senha',
@@ -306,7 +312,7 @@ router.get('/', (req, res) => {
  *         source: |
  *           curl -X POST "http://localhost:3000/api/v1/usuarios/registrar" \
  *            -H "Content-Type: application/json" \
- *            -d '{"nomeCompleto":"João da Silva","documento":"12345678900","telefone":"11999999999","email":"joao@example.com","senha":"senha123","confirmarSenha":"senha123","aceitarTermos":true,"supabaseId":"uuid","tipoUsuario":"PESSOA_FISICA"}'
+ *            -d '{"nomeCompleto":"João da Silva","documento":"12345678900","telefone":"11999999999","email":"joao@example.com","senha":"senha123","confirmarSenha":"senha123","aceitarTermos":true,"authId":"uuid","tipoUsuario":"PESSOA_FISICA"}'
  */
 router.post(
   '/registrar',
@@ -325,8 +331,8 @@ router.post(
     const log = usuarioRoutesLogger.child({ correlationId, route: 'registrar' });
     log.info('🔍 Verificando dados para middleware de email');
 
-    if (res.locals?.UsuariosCriado?.Usuarios) {
-      const user = res.locals.UsuariosCriado.Usuarios;
+    if (res.locals?.UsuariosCriado?.usuario) {
+      const user = res.locals.UsuariosCriado.usuario;
       log.info(
         {
           id: user.id,
@@ -392,7 +398,7 @@ router.post(
  *                 nomeCompleto: "João da Silva"
  *                 role: "ALUNO_CANDIDATO"
  *                 tipoUsuario: "PESSOA_FISICA"
- *                 supabaseId: "uuid-supabase"
+ *                 authId: "uuid-auth"
  *                 emailVerificado: true
  *                 ultimoLogin: "2024-03-12T10:15:00.000Z"
  *                 socialLinks: {}
@@ -784,7 +790,7 @@ router.post(
  *                 nomeCompleto: "João da Silva"
  *                 role: "ALUNO_CANDIDATO"
  *                 tipoUsuario: "PESSOA_FISICA"
- *                 supabaseId: "uuid-supabase"
+ *                 authId: "uuid-auth"
  *                 emailVerificado: true
  *                 emailVerificadoEm: "2024-01-01T12:00:00Z"
  *                 ultimoLogin: "2024-03-12T09:40:00.000Z"
@@ -851,6 +857,246 @@ router.get(
     next();
   },
   asyncHandler(obterPerfil),
+);
+
+/**
+ * Atualizar perfil do usuário autenticado
+ * PUT /perfil
+ */
+/**
+ * @openapi
+ * /api/v1/usuarios/perfil:
+ *   put:
+ *     summary: Atualizar perfil do usuário autenticado
+ *     description: |
+ *       Atualiza informações do perfil do próprio usuário autenticado.
+ *
+ *       **REGRAS:**
+ *       - Email só pode ser alterado se já estiver verificado
+ *       - Se email for alterado, será necessário verificar o novo email
+ *       - CPF/CNPJ não podem ser alterados
+ *       - Role e Status não podem ser alterados pelo próprio usuário
+ *
+ *       **CAMPOS EDITÁVEIS:**
+ *       - nomeCompleto
+ *       - telefone
+ *       - dataNasc
+ *       - genero
+ *       - descricao
+ *       - avatarUrl
+ *       - endereco (objeto completo)
+ *       - redesSociais (objeto completo)
+ *       - email (apenas se emailVerificado === true)
+ *     tags: [Usuários]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nomeCompleto:
+ *                 type: string
+ *                 example: "João da Silva"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "joao.novo@example.com"
+ *                 description: "Só pode ser alterado se email atual estiver verificado"
+ *               telefone:
+ *                 type: string
+ *                 nullable: true
+ *                 example: "11999999999"
+ *               dataNasc:
+ *                 type: string
+ *                 format: date
+ *                 nullable: true
+ *                 example: "1990-01-15"
+ *               genero:
+ *                 type: string
+ *                 enum: [MASCULINO, FEMININO, OUTRO, NAO_INFORMAR]
+ *                 nullable: true
+ *                 example: "MASCULINO"
+ *               descricao:
+ *                 type: string
+ *                 maxLength: 500
+ *                 nullable: true
+ *                 example: "Desenvolvedor Full Stack"
+ *               avatarUrl:
+ *                 type: string
+ *                 format: uri
+ *                 nullable: true
+ *                 example: "https://example.com/avatar.jpg"
+ *               endereco:
+ *                 type: object
+ *                 nullable: true
+ *                 properties:
+ *                   logradouro:
+ *                     type: string
+ *                     nullable: true
+ *                   numero:
+ *                     type: string
+ *                     nullable: true
+ *                   bairro:
+ *                     type: string
+ *                     nullable: true
+ *                   cidade:
+ *                     type: string
+ *                     nullable: true
+ *                   estado:
+ *                     type: string
+ *                     nullable: true
+ *                   cep:
+ *                     type: string
+ *                     nullable: true
+ *               redesSociais:
+ *                 type: object
+ *                 nullable: true
+ *                 properties:
+ *                   linkedin:
+ *                     type: string
+ *                     format: uri
+ *                     nullable: true
+ *                   instagram:
+ *                     type: string
+ *                     format: uri
+ *                     nullable: true
+ *                   facebook:
+ *                     type: string
+ *                     format: uri
+ *                     nullable: true
+ *                   youtube:
+ *                     type: string
+ *                     format: uri
+ *                     nullable: true
+ *                   twitter:
+ *                     type: string
+ *                     format: uri
+ *                     nullable: true
+ *                   tiktok:
+ *                     type: string
+ *                     format: uri
+ *                     nullable: true
+ *     responses:
+ *       200:
+ *         description: Perfil atualizado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Perfil atualizado com sucesso"
+ *                 usuario:
+ *                   $ref: '#/components/schemas/UserProfileResponse'
+ *                 stats:
+ *                   type: object
+ *                 correlationId:
+ *                   type: string
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *       400:
+ *         description: Dados inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Não autenticado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Email não verificado - não pode alterar email
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Email só pode ser alterado após verificação. Verifique seu email atual primeiro."
+ *                 code:
+ *                   type: string
+ *                   example: "EMAIL_NOT_VERIFIED"
+ *       404:
+ *         description: Usuário não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: Email já está em uso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Este e-mail já está em uso por outro usuário"
+ *                 code:
+ *                   type: string
+ *                   example: "EMAIL_ALREADY_EXISTS"
+ *       500:
+ *         description: Erro interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X PUT "http://localhost:3000/api/v1/usuarios/perfil" \\
+ *            -H "Authorization: Bearer <TOKEN>" \\
+ *            -H "Content-Type: application/json" \\
+ *            -d '{
+ *              "nomeCompleto": "João da Silva",
+ *              "telefone": "11999999999",
+ *              "dataNasc": "1990-01-15",
+ *              "genero": "MASCULINO",
+ *              "descricao": "Desenvolvedor Full Stack",
+ *              "avatarUrl": "https://example.com/avatar.jpg",
+ *              "endereco": {
+ *                "logradouro": "Rua Exemplo",
+ *                "numero": "123",
+ *                "bairro": "Centro",
+ *                "cidade": "São Paulo",
+ *                "estado": "SP",
+ *                "cep": "01234567"
+ *              },
+ *              "redesSociais": {
+ *                "linkedin": "https://linkedin.com/in/joao",
+ *                "instagram": "https://instagram.com/joao"
+ *              }
+ *            }'
+ */
+router.put(
+  '/perfil',
+  supabaseAuthMiddleware(),
+  async (req, res, next) => {
+    const correlationId = req.headers['x-correlation-id'];
+    usuarioRoutesLogger
+      .child({ correlationId, route: 'perfil' })
+      .info({ userId: req.user?.id ?? 'ID não disponível' }, '✏️ Atualização de perfil');
+    next();
+  },
+  asyncHandler(atualizarPerfil),
 );
 
 // ===========================

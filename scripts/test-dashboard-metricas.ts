@@ -193,4 +193,3 @@ testDashboardMetricas()
     console.error('\n❌ Script falhou:', error);
     process.exit(1);
   });
-

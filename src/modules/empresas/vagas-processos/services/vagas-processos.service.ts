@@ -4,7 +4,7 @@ import { prisma } from '@/config/prisma';
 
 // Função auxiliar para buscar status padrão
 const getStatusPadrao = async () => {
-  const statusPadrao = await prisma.status_processo.findFirst({
+  const statusPadrao = await prisma.statusProcessosCandidatos.findFirst({
     where: { isDefault: true, ativo: true },
   });
 

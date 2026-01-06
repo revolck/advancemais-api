@@ -22,7 +22,7 @@ async function main() {
         email: true,
         nomeCompleto: true,
         role: true,
-        supabaseId: true,
+        authId: true,
       },
     });
 
@@ -44,7 +44,7 @@ async function main() {
         id: admin.id,
         email: admin.email,
         role: admin.role,
-        supabaseId: admin.supabaseId,
+        authId: admin.authId,
       },
       JWT_SECRET,
       { expiresIn: '7d' },

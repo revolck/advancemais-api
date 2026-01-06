@@ -7,16 +7,18 @@ dotenv.config({ path: '.env' });
 
 async function markMigrationApplied() {
   let connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
-  
+
   if (connectionString && !connectionString.includes('sslmode=')) {
     connectionString += (connectionString.includes('?') ? '&' : '?') + 'sslmode=require';
   }
-  
+
   const client = new Client({
     connectionString,
-    ssl: connectionString?.includes('supabase') ? {
-      rejectUnauthorized: false,
-    } : undefined,
+    ssl: connectionString?.includes('supabase')
+      ? {
+          rejectUnauthorized: false,
+        }
+      : undefined,
   });
 
   try {
@@ -32,7 +34,7 @@ async function markMigrationApplied() {
     // Verificar se a migração já está registrada
     const checkResult = await client.query(
       `SELECT * FROM "_prisma_migrations" WHERE migration_name = $1`,
-      [migrationName]
+      [migrationName],
     );
 
     if (checkResult.rows.length > 0) {
@@ -44,7 +46,7 @@ async function markMigrationApplied() {
     await client.query(
       `INSERT INTO "_prisma_migrations" (migration_name, checksum, finished_at, started_at, applied_steps_count)
        VALUES ($1, $2, $3, $4, $5)`,
-      [migrationName, checksum, finishedAt, startedAt, 1]
+      [migrationName, checksum, finishedAt, startedAt, 1],
     );
 
     console.log(`✅ Migração ${migrationName} marcada como aplicada!`);
@@ -66,5 +68,3 @@ markMigrationApplied()
     console.error('💥 Falha crítica:', error);
     process.exit(1);
   });
-
-

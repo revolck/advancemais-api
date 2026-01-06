@@ -73,7 +73,7 @@ export const criarUsuario = async (req: Request, res: Response, next: NextFuncti
     const dadosUsuario: RegisterInput = parseResult.data;
 
     // Extrai dados validados
-    const { nomeCompleto, telefone, email, senha, aceitarTermos, supabaseId, tipoUsuario, role } =
+    const { nomeCompleto, telefone, email, senha, aceitarTermos, authId, tipoUsuario, role } =
       dadosUsuario;
 
     // Normaliza role: se inválida ou não fornecida, define padrão
@@ -101,7 +101,7 @@ export const criarUsuario = async (req: Request, res: Response, next: NextFuncti
     const duplicateCheck = await checkForDuplicates(
       {
         email,
-        supabaseId,
+        authId,
         cpf: processedData.cpfLimpo,
         cnpj: processedData.cnpjLimpo,
       },
@@ -136,7 +136,7 @@ export const criarUsuario = async (req: Request, res: Response, next: NextFuncti
       tipoUsuario,
       role: normalizedRole,
       aceitarTermos,
-      supabaseId,
+      authId,
       cpfLimpo: processedData.cpfLimpo,
       cnpjLimpo: processedData.cnpjLimpo,
       dataNascimento: processedData.dataNascimento,

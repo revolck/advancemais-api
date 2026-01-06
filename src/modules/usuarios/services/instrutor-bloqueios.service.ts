@@ -17,6 +17,8 @@ import {
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import type { AdminAlunoBloqueioInput } from '../validators/auth.schema';
+import { EmailService } from '@/modules/brevo/services/email-service';
+import { EmailTemplates } from '@/modules/brevo/templates/email-templates';
 
 const bloqueioLogger = logger.child({ module: 'InstrutorBloqueiosService' });
 
@@ -213,6 +215,32 @@ export async function aplicarBloqueioInstrutor(
     '✅ Bloqueio aplicado ao instrutor',
   );
 
+  // Envia email de notificação de bloqueio
+  try {
+    const instrutor = await prisma.usuarios.findUnique({
+      where: { id: instrutorId },
+      select: { email: true, nomeCompleto: true },
+    });
+    if (instrutor?.email) {
+      const emailService = new EmailService();
+      const template = EmailTemplates.generateUserBlockedEmail({
+        nomeCompleto: instrutor.nomeCompleto,
+        motivo: input.motivo,
+        fim: input.tipo === TiposDeBloqueios.TEMPORARIO ? fim : null,
+        descricao: input.observacoes ?? null,
+        tipo: input.tipo,
+      });
+      await emailService.sendAssinaturaNotificacao(
+        { id: instrutorId, email: instrutor.email, nomeCompleto: instrutor.nomeCompleto },
+        template,
+      );
+      bloqueioLogger.info({ instrutorId, email: instrutor.email }, '📧 Email de bloqueio enviado');
+    }
+  } catch (error) {
+    bloqueioLogger.warn({ err: error, instrutorId }, '⚠️ Erro ao enviar email de bloqueio');
+    // Não falha o bloqueio se o email falhar
+  }
+
   return mapBloqueioResumo(bloqueio);
 }
 
@@ -264,6 +292,31 @@ export async function revogarBloqueioInstrutor(
     },
     '✅ Bloqueio revogado do instrutor',
   );
+
+  // Envia email de notificação de desbloqueio
+  try {
+    const instrutor = await prisma.usuarios.findUnique({
+      where: { id: instrutorId },
+      select: { email: true, nomeCompleto: true },
+    });
+    if (instrutor?.email) {
+      const emailService = new EmailService();
+      const template = EmailTemplates.generateUserUnblockedEmail({
+        nomeCompleto: instrutor.nomeCompleto,
+      });
+      await emailService.sendAssinaturaNotificacao(
+        { id: instrutorId, email: instrutor.email, nomeCompleto: instrutor.nomeCompleto },
+        template,
+      );
+      bloqueioLogger.info(
+        { instrutorId, email: instrutor.email },
+        '📧 Email de desbloqueio enviado',
+      );
+    }
+  } catch (error) {
+    bloqueioLogger.warn({ err: error, instrutorId }, '⚠️ Erro ao enviar email de desbloqueio');
+    // Não falha a revogação se o email falhar
+  }
 }
 
 /**

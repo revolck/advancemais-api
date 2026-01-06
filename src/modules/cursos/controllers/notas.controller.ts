@@ -3,7 +3,12 @@ import { CursosNotasTipo } from '@prisma/client';
 import { ZodError } from 'zod';
 
 import { notasService } from '../services/notas.service';
-import { createNotaSchema, updateNotaSchema } from '../validators/notas.schema';
+import {
+  clearNotasManuaisSchema,
+  createNotaV2Schema,
+  listCursoNotasQuerySchema,
+  updateNotaSchema,
+} from '../validators/notas.schema';
 
 const parseCursoId = (raw: string): string | null => {
   if (!raw || typeof raw !== 'string') {
@@ -39,6 +44,47 @@ const parseInscricaoId = (raw: unknown) => {
 };
 
 export class NotasController {
+  static listCurso = async (req: Request, res: Response) => {
+    const cursoId = parseCursoId(req.params.cursoId);
+    if (!cursoId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificador de curso inválido',
+      });
+    }
+
+    try {
+      const query = listCursoNotasQuerySchema.parse(req.query);
+      const result = await notasService.listCursoNotas(cursoId, query);
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos para listagem de notas do curso',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'TURMA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'TURMA_NOT_FOUND',
+          message: 'Uma ou mais turmas não foram encontradas para o curso informado',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'NOTAS_CURSO_LIST_ERROR',
+        message: 'Erro ao listar notas do curso',
+        error: error?.message,
+      });
+    }
+  };
+
   static list = async (req: Request, res: Response) => {
     const cursoId = parseCursoId(req.params.cursoId);
     const turmaId = parseTurmaId(req.params.turmaId);
@@ -123,10 +169,28 @@ export class NotasController {
     }
 
     try {
-      const data = createNotaSchema.parse(req.body);
+      const parsed = createNotaV2Schema.parse(req.body);
+
+      // Novo contrato: lançamento manual por alunoId
+      if ('alunoId' in parsed) {
+        const nota = await notasService.createManualLancamento(
+          cursoId,
+          turmaId,
+          {
+            alunoId: parsed.alunoId,
+            nota: parsed.nota,
+            motivo: parsed.motivo,
+            origem: parsed.origem ?? null,
+          },
+          req.user?.id,
+        );
+        return res.status(201).json(nota);
+      }
+
+      // Contrato legado: criação direta de nota (por inscrição)
       const nota = await notasService.create(cursoId, turmaId, {
-        ...data,
-        tipo: data.tipo as CursosNotasTipo,
+        ...parsed,
+        tipo: parsed.tipo as CursosNotasTipo,
       });
       res.status(201).json(nota);
     } catch (error: any) {
@@ -175,6 +239,59 @@ export class NotasController {
         success: false,
         code: 'NOTA_CREATE_ERROR',
         message: 'Erro ao criar nota para a turma',
+        error: error?.message,
+      });
+    }
+  };
+
+  static clearManuais = async (req: Request, res: Response) => {
+    const cursoId = parseCursoId(req.params.cursoId);
+    const turmaId = parseTurmaId(req.params.turmaId);
+
+    if (!cursoId || !turmaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificadores de curso ou turma inválidos',
+      });
+    }
+
+    try {
+      const alunoIdRaw = (req.body?.alunoId ?? req.query?.alunoId) as unknown;
+      const { alunoId } = clearNotasManuaisSchema.parse({ alunoId: alunoIdRaw });
+
+      const result = await notasService.clearLancamentosManuais(cursoId, turmaId, alunoId);
+      res.json(result);
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos para remoção de lançamentos',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'TURMA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'TURMA_NOT_FOUND',
+          message: 'Turma não encontrada para o curso informado',
+        });
+      }
+
+      if (error?.code === 'INSCRICAO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'INSCRICAO_NOT_FOUND',
+          message: 'Aluno não possui inscrição nesta turma',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'NOTAS_CLEAR_ERROR',
+        message: 'Erro ao remover lançamentos manuais',
         error: error?.message,
       });
     }

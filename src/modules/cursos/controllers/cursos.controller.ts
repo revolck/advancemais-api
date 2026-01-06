@@ -7,6 +7,7 @@ import { prisma, retryOperation } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import { cursosService } from '../services/cursos.service';
 import { buscarVisaoGeralCursos } from '../services/visaogeral.service';
+import { buscarFaturamentoTendenciasCursos } from '../services/faturamento-tendencias.service';
 import {
   createCourseSchema,
   listCoursesQuerySchema,
@@ -146,6 +147,37 @@ export class CursosController {
       },
       status: 'operational',
     });
+  };
+
+  static metaCurso = async (req: Request, res: Response) => {
+    const cursoId = parseCourseId(req.params.cursoId);
+    if (!cursoId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificador de curso inválido',
+      });
+    }
+
+    try {
+      const meta = await cursosService.metaCurso(cursoId);
+      res.json({ success: true, data: meta });
+    } catch (error: any) {
+      if (error?.code === 'CURSO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'CURSO_NOT_FOUND',
+          message: 'Curso não encontrado',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'CURSO_META_ERROR',
+        message: 'Erro ao buscar metadados do curso',
+        error: error?.message,
+      });
+    }
   };
 
   static list = async (req: Request, res: Response) => {
@@ -558,6 +590,11 @@ export class CursosController {
                     status: true,
                     criadoEm: true,
                     ultimoLogin: true,
+                    UsuariosInformation: {
+                      select: {
+                        avatarUrl: true,
+                      },
+                    },
                     UsuariosEnderecos: {
                       select: {
                         cidade: true,
@@ -634,6 +671,7 @@ export class CursosController {
               status: aluno.status,
               cidade: aluno.UsuariosEnderecos?.[0]?.cidade || null,
               estado: aluno.UsuariosEnderecos?.[0]?.estado || null,
+              avatarUrl: aluno.UsuariosInformation?.avatarUrl || null,
               ultimoLogin: aluno.ultimoLogin,
               criadoEm: aluno.criadoEm,
               ultimoCurso: inscricaoAtiva
@@ -1777,6 +1815,82 @@ export class CursosController {
         success: false,
         code: 'CURSOS_VISAOGERAL_ERROR',
         message: 'Erro ao buscar visão geral de cursos',
+        error: error?.message,
+      });
+    }
+  };
+
+  static visaogeralFaturamento = async (req: Request, res: Response) => {
+    try {
+      const pickFirst = (value: unknown) => (Array.isArray(value) ? value[0] : value);
+
+      const period = String(pickFirst(req.query.period) ?? 'month');
+      const startDate = pickFirst(req.query.startDate);
+      const endDate = pickFirst(req.query.endDate);
+      const tz = pickFirst(req.query.tz);
+      const top = pickFirst(req.query.top);
+
+      const result = await buscarFaturamentoTendenciasCursos({
+        period: period as any,
+        startDate: typeof startDate === 'string' ? startDate : undefined,
+        endDate: typeof endDate === 'string' ? endDate : undefined,
+        tz: typeof tz === 'string' ? tz : undefined,
+        top: typeof top === 'string' ? Number(top) : typeof top === 'number' ? top : undefined,
+      });
+
+      res.json(result);
+    } catch (error: any) {
+      const status = typeof error?.status === 'number' ? error.status : 500;
+
+      if (status === 400) {
+        return res.status(400).json({
+          success: false,
+          code: error?.code ?? 'VALIDATION_ERROR',
+          message: error?.message ?? 'Parâmetros inválidos',
+        });
+      }
+
+      // ✅ Tratar erros de conexão do Prisma (P1001) como 503 Service Unavailable
+      const errorCode = (error as any)?.code;
+      const errorMessage = String((error as any)?.message || '').toLowerCase();
+      const isPrismaConnectionError =
+        (error instanceof PrismaClientKnownRequestError &&
+          (error.code === 'P1001' || error.code === 'P2024')) ||
+        errorCode === 'P1001' ||
+        errorCode === 'P2024' ||
+        errorMessage.includes("can't reach database") ||
+        errorMessage.includes('database server') ||
+        errorMessage.includes('connection') ||
+        errorMessage.includes("can't reach");
+
+      if (isPrismaConnectionError) {
+        logger.warn(
+          {
+            error: error?.message,
+            code: errorCode,
+          },
+          '⚠️ Erro de conexão ao buscar faturamento de cursos (tendências)',
+        );
+
+        return res.status(503).json({
+          success: false,
+          code: 'DATABASE_CONNECTION_ERROR',
+          message: 'Serviço temporariamente indisponível. Por favor, tente novamente mais tarde.',
+        });
+      }
+
+      logger.error(
+        {
+          error: error?.message,
+          stack: error?.stack,
+        },
+        'Erro ao buscar faturamento de cursos (tendências)',
+      );
+
+      res.status(500).json({
+        success: false,
+        code: 'CURSOS_VISAOGERAL_FATURAMENTO_ERROR',
+        message: 'Erro ao buscar faturamento de cursos',
         error: error?.message,
       });
     }

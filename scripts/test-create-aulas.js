@@ -39,11 +39,11 @@ async function apiRequest(endpoint, method = 'GET', body = null) {
 async function getTurma() {
   console.log('🔍 Buscando turma disponível...');
   const result = await apiRequest('/api/v1/cursos/turmas?page=1&pageSize=1');
-  
+
   if (result.status === 200 && result.data.data && result.data.data.length > 0) {
     return result.data.data[0];
   }
-  
+
   throw new Error('Nenhuma turma encontrada. Crie uma turma primeiro.');
 }
 
@@ -51,11 +51,11 @@ async function getTurma() {
 async function getInstrutor() {
   console.log('🔍 Buscando instrutor disponível...');
   const result = await apiRequest('/api/v1/usuarios?role=INSTRUTOR&page=1&pageSize=1');
-  
+
   if (result.status === 200 && result.data.data && result.data.data.length > 0) {
     return result.data.data[0];
   }
-  
+
   throw new Error('Nenhum instrutor encontrado.');
 }
 
@@ -63,7 +63,7 @@ async function getInstrutor() {
 async function testPresencialUnicoDia() {
   console.log('\n📚 TESTE 1: Aula PRESENCIAL (único dia)');
   const turma = await getTurma();
-  
+
   const payload = {
     titulo: 'Teste Aula Presencial - Único Dia',
     descricao: 'Aula presencial que acontece apenas em um dia',
@@ -79,7 +79,7 @@ async function testPresencialUnicoDia() {
   };
 
   const result = await apiRequest('/api/v1/cursos/aulas', 'POST', payload);
-  
+
   if (result.status === 201) {
     console.log('✅ Aula PRESENCIAL criada com sucesso!');
     console.log(`   ID: ${result.data.aula.id}`);
@@ -96,7 +96,7 @@ async function testPresencialUnicoDia() {
 async function testPresencialPeriodo() {
   console.log('\n📚 TESTE 2: Aula PRESENCIAL (período de X a Y)');
   const turma = await getTurma();
-  
+
   const payload = {
     titulo: 'Teste Aula Presencial - Período',
     descricao: 'Aula presencial que acontece de 20/12 a 22/12',
@@ -113,7 +113,7 @@ async function testPresencialPeriodo() {
   };
 
   const result = await apiRequest('/api/v1/cursos/aulas', 'POST', payload);
-  
+
   if (result.status === 201) {
     console.log('✅ Aula PRESENCIAL (período) criada com sucesso!');
     console.log(`   ID: ${result.data.aula.id}`);
@@ -130,7 +130,7 @@ async function testPresencialPeriodo() {
 async function testOnline() {
   console.log('\n📚 TESTE 3: Aula ONLINE');
   const turma = await getTurma();
-  
+
   const payload = {
     titulo: 'Teste Aula Online',
     descricao: 'Aula online com vídeo do YouTube',
@@ -143,7 +143,7 @@ async function testOnline() {
   };
 
   const result = await apiRequest('/api/v1/cursos/aulas', 'POST', payload);
-  
+
   if (result.status === 201) {
     console.log('✅ Aula ONLINE criada com sucesso!');
     console.log(`   ID: ${result.data.aula.id}`);
@@ -160,7 +160,7 @@ async function testAoVivo() {
   console.log('\n📚 TESTE 4: Aula AO_VIVO (com Google Meet)');
   const turma = await getTurma();
   const instrutor = await getInstrutor();
-  
+
   const payload = {
     titulo: 'Teste Aula Ao Vivo',
     descricao: 'Aula ao vivo com Google Meet',
@@ -177,7 +177,7 @@ async function testAoVivo() {
   };
 
   const result = await apiRequest('/api/v1/cursos/aulas', 'POST', payload);
-  
+
   if (result.status === 201) {
     console.log('✅ Aula AO_VIVO criada com sucesso!');
     console.log(`   ID: ${result.data.aula.id}`);
@@ -199,7 +199,7 @@ async function testAoVivo() {
 async function testSemipresencialYoutube() {
   console.log('\n📚 TESTE 5: Aula SEMIPRESENCIAL (com YouTube)');
   const turma = await getTurma();
-  
+
   const payload = {
     titulo: 'Teste Aula Semipresencial - YouTube',
     descricao: 'Aula semipresencial com vídeo do YouTube',
@@ -213,7 +213,7 @@ async function testSemipresencialYoutube() {
   };
 
   const result = await apiRequest('/api/v1/cursos/aulas', 'POST', payload);
-  
+
   if (result.status === 201) {
     console.log('✅ Aula SEMIPRESENCIAL (YouTube) criada com sucesso!');
     console.log(`   ID: ${result.data.aula.id}`);
@@ -230,7 +230,7 @@ async function testSemipresencialMeet() {
   console.log('\n📚 TESTE 6: Aula SEMIPRESENCIAL (com Google Meet)');
   const turma = await getTurma();
   const instrutor = await getInstrutor();
-  
+
   const payload = {
     titulo: 'Teste Aula Semipresencial - Meet',
     descricao: 'Aula semipresencial com Google Meet',
@@ -247,7 +247,7 @@ async function testSemipresencialMeet() {
   };
 
   const result = await apiRequest('/api/v1/cursos/aulas', 'POST', payload);
-  
+
   if (result.status === 201) {
     console.log('✅ Aula SEMIPRESENCIAL (Meet) criada com sucesso!');
     console.log(`   ID: ${result.data.aula.id}`);
@@ -324,7 +324,6 @@ async function runAllTests() {
     } catch (error) {
       results.failed.push({ test: 'SEMIPRESENCIAL (Meet)', error: error.message });
     }
-
   } catch (error) {
     console.error('\n❌ Erro fatal durante os testes:', error);
   }
@@ -352,4 +351,3 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 }
 
 export { runAllTests };
-

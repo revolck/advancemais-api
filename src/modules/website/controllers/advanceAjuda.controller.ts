@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import path from 'path';
 
-import { supabase } from '@/config/supabase';
+import { uploadImage } from '@/config/storage';
 import { advanceAjudaService } from '@/modules/website/services/advanceAjuda.service';
 import { respondWithCache } from '@/modules/website/utils/cache-response';
 
@@ -14,17 +14,8 @@ function generateImageTitle(url: string): string {
   }
 }
 
-async function uploadImage(file: Express.Multer.File): Promise<string> {
-  const fileExt = path.extname(file.originalname);
-  const fileName = `advance-ajuda-${Date.now()}${fileExt}`;
-  const { error } = await supabase.storage
-    .from('website')
-    .upload(`advance-ajuda/${fileName}`, file.buffer, {
-      contentType: file.mimetype,
-    });
-  if (error) throw error;
-  const { data } = supabase.storage.from('website').getPublicUrl(`advance-ajuda/${fileName}`);
-  return data.publicUrl;
+async function uploadAdvanceAjudaImage(file: Express.Multer.File): Promise<string> {
+  return uploadImage('website', 'advance-ajuda', file);
 }
 
 export class AdvanceAjudaController {
@@ -59,7 +50,7 @@ export class AdvanceAjudaController {
         req.body;
       let imagemUrl = '';
       if (req.file) {
-        imagemUrl = await uploadImage(req.file);
+        imagemUrl = await uploadAdvanceAjudaImage(req.file);
       } else if (req.body.imagemUrl) {
         imagemUrl = req.body.imagemUrl;
       }
@@ -92,7 +83,7 @@ export class AdvanceAjudaController {
         req.body;
       let imagemUrl = req.body.imagemUrl as string | undefined;
       if (req.file) {
-        imagemUrl = await uploadImage(req.file);
+        imagemUrl = await uploadAdvanceAjudaImage(req.file);
       }
       const data: any = {
         titulo,

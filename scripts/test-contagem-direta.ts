@@ -54,7 +54,9 @@ async function testContagemDireta() {
         },
       },
     });
-    console.log(`\n⚠️  Total com relacionamento CursosTurmas (sem filtro): ${totalComRelacionamento}`);
+    console.log(
+      `\n⚠️  Total com relacionamento CursosTurmas (sem filtro): ${totalComRelacionamento}`,
+    );
 
     // 6. Testar com relacionamento IS NOT NULL (pode estar filtrando)
     const totalComTurmaNotNull = await prisma.cursosTurmasAulas.count({
@@ -70,10 +72,14 @@ async function testContagemDireta() {
     // 7. Verificar se há algum problema com o relacionamento
     console.log('\n🔍 Análise:');
     if (totalComRelacionamento !== totalSemFiltros) {
-      console.log(`   ❌ PROBLEMA: Relacionamento está filtrando ${totalSemFiltros - totalComRelacionamento} aulas`);
+      console.log(
+        `   ❌ PROBLEMA: Relacionamento está filtrando ${totalSemFiltros - totalComRelacionamento} aulas`,
+      );
     }
     if (totalComTurmaNotNull !== aulasComTurma) {
-      console.log(`   ⚠️  CursosTurmas IS NOT NULL retorna ${totalComTurmaNotNull}, mas aulas com turma são ${aulasComTurma}`);
+      console.log(
+        `   ⚠️  CursosTurmas IS NOT NULL retorna ${totalComTurmaNotNull}, mas aulas com turma são ${aulasComTurma}`,
+      );
     }
 
     // 8. Verificar se o problema está no count vs findMany
@@ -92,7 +98,9 @@ async function testContagemDireta() {
     console.log(`\n📊 Total usando findMany com include: ${aulasFindMany.length}`);
 
     if (aulasFindMany.length !== totalSemFiltros) {
-      console.log(`   ❌ PROBLEMA: findMany retorna ${aulasFindMany.length}, mas count retorna ${totalSemFiltros}`);
+      console.log(
+        `   ❌ PROBLEMA: findMany retorna ${aulasFindMany.length}, mas count retorna ${totalSemFiltros}`,
+      );
     }
 
     console.log('\n✅ Teste concluído!');
@@ -104,5 +112,3 @@ async function testContagemDireta() {
 }
 
 testContagemDireta();
-
-

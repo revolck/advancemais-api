@@ -1388,7 +1388,7 @@ router.get(
  *                 email: contato@advancetech.com.br
  *                 telefone: '11987654321'
  *                 senha: SenhaForte123!
- *                 supabaseId: supabase-user-id
+ *                 authId: auth-user-id
  *                 cnpj: '12345678000190'
  *                 cidade: São Paulo
  *                 estado: SP

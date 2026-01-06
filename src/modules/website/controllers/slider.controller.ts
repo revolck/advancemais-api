@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
-import path from 'path';
 
-import { supabase } from '@/config/supabase';
+import { uploadImage } from '@/config/storage';
 import { sliderService } from '@/modules/website/services/slider.service';
 import { respondWithCache } from '@/modules/website/utils/cache-response';
 
@@ -27,17 +26,8 @@ function mapSlider(ordem: any) {
   };
 }
 
-async function uploadImage(file: Express.Multer.File): Promise<string> {
-  const fileExt = path.extname(file.originalname);
-  const fileName = `slide-${Date.now()}${fileExt}`;
-  const { error } = await supabase.storage
-    .from('website')
-    .upload(`slides/${fileName}`, file.buffer, {
-      contentType: file.mimetype,
-    });
-  if (error) throw error;
-  const { data } = supabase.storage.from('website').getPublicUrl(`slides/${fileName}`);
-  return data.publicUrl;
+async function uploadSlideImage(file: Express.Multer.File): Promise<string> {
+  return uploadImage('website', 'slide', file);
 }
 
 export class SliderController {
@@ -77,7 +67,7 @@ export class SliderController {
       }
       let imagemUrl = '';
       if (req.file) {
-        imagemUrl = await uploadImage(req.file);
+        imagemUrl = await uploadSlideImage(req.file);
       } else if (req.body.imagemUrl) {
         imagemUrl = req.body.imagemUrl;
       }
@@ -109,7 +99,7 @@ export class SliderController {
       }
       let imagemUrl = req.body.imagemUrl as string | undefined;
       if (req.file) {
-        imagemUrl = await uploadImage(req.file);
+        imagemUrl = await uploadSlideImage(req.file);
       }
       const data: any = {};
       if (sliderName !== undefined) data.WebsiteSliderName = sliderName;

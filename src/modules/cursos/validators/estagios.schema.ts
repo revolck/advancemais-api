@@ -149,8 +149,18 @@ export const reenviarConfirmacaoSchema = z.object({
   destinatarioAlternativo: optionalString(255),
 });
 
+export const listEstagiosQuerySchema = z.object({
+  cursoId: z.string().uuid('cursoId deve ser um UUID válido'),
+  turmaId: z.string().uuid('turmaId deve ser um UUID válido').optional(),
+  status: z.nativeEnum(CursosEstagioStatus).optional(),
+  search: z.string().trim().optional(),
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().positive().max(100).default(10),
+});
+
 export type EstagioCreateInput = z.infer<typeof createEstagioSchema>;
 export type EstagioUpdateInput = z.infer<typeof updateEstagioSchema>;
 export type EstagioStatusInput = z.infer<typeof updateEstagioStatusSchema>;
 export type EstagioConfirmacaoInput = z.infer<typeof confirmarEstagioSchema>;
 export type EstagioLocalInput = z.infer<typeof estagioLocalSchema>;
+export type ListEstagiosQuery = z.infer<typeof listEstagiosQuerySchema>;

@@ -113,5 +113,3 @@ async function testListAulas() {
 }
 
 testListAulas();
-
-

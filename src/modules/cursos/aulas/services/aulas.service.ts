@@ -48,7 +48,11 @@ function mapMetodoTurmaToModalidadeAula(metodo: string): string {
 /**
  * Validar campos obrigatórios para publicação por modalidade
  */
-function validarCamposPublicacao(aula: any): { valido: boolean; camposFaltando: string[]; erro?: string } {
+function validarCamposPublicacao(aula: any): {
+  valido: boolean;
+  camposFaltando: string[];
+  erro?: string;
+} {
   const camposFaltando: string[] = [];
 
   // Campos básicos sempre obrigatórios
@@ -206,11 +210,16 @@ export const aulasService = {
     const {
       page,
       pageSize,
+      cursoId,
+      semTurma,
       turmaId,
       moduloId,
+      instrutorId,
       modalidade,
       status,
       obrigatoria,
+      dataInicio,
+      dataFim,
       search,
       orderBy,
       order,
@@ -218,6 +227,21 @@ export const aulasService = {
 
     const where: Prisma.CursosTurmasAulasWhereInput = {
       deletedAt: null, // Não mostrar deletadas
+    };
+
+    const applyAndFilter = (filter: Prisma.CursosTurmasAulasWhereInput) => {
+      if (where.AND && Array.isArray(where.AND)) {
+        where.AND.push(filter);
+        return;
+      }
+
+      if (where.OR) {
+        where.AND = [{ OR: where.OR }, filter];
+        delete where.OR;
+        return;
+      }
+
+      where.AND = [filter];
     };
 
     // Filtro por role: INSTRUTOR vê apenas suas turmas
@@ -244,24 +268,46 @@ export const aulasService = {
       }
     }
 
+    if (semTurma === true) {
+      applyAndFilter({ turmaId: null });
+    }
+
+    if (cursoId) {
+      if (turmaId) {
+        applyAndFilter({ CursosTurmas: { cursoId } });
+      } else if (semTurma === true) {
+        applyAndFilter({ cursoId });
+      } else if (semTurma === false) {
+        applyAndFilter({ turmaId: { not: null }, CursosTurmas: { cursoId } });
+      } else {
+        applyAndFilter({ OR: [{ turmaId: null, cursoId }, { CursosTurmas: { cursoId } }] });
+      }
+    }
+
     // Filtros da query (aplicar após filtro de role)
     if (turmaId) {
       // Se já existe OR (do filtro de INSTRUTOR), não sobrescrever
       if (where.OR) {
         // Manter OR mas adicionar filtro de turmaId
-        where.AND = [
-          { OR: where.OR },
-          { turmaId },
-        ];
+        where.AND = [{ OR: where.OR }, { turmaId }];
         delete where.OR;
       } else {
         where.turmaId = turmaId;
       }
     }
     if (moduloId) where.moduloId = moduloId;
+    if (instrutorId) applyAndFilter({ instrutorId });
     if (modalidade) where.modalidade = { in: modalidade.split(',') as any };
     if (status) where.status = { in: status.split(',') as any };
     if (obrigatoria !== undefined) where.obrigatoria = obrigatoria;
+    if (dataInicio || dataFim) {
+      applyAndFilter({
+        dataInicio: {
+          gte: dataInicio ?? undefined,
+          lte: dataFim ?? undefined,
+        },
+      });
+    }
     if (search) {
       // Combinar search com filtros existentes usando AND
       const searchFilter: Prisma.CursosTurmasAulasWhereInput = {
@@ -287,6 +333,13 @@ export const aulasService = {
         prisma.cursosTurmasAulas.findMany({
           where,
           include: {
+            Cursos: {
+              select: {
+                id: true,
+                codigo: true,
+                nome: true,
+              },
+            },
             CursosTurmas: {
               select: {
                 id: true,
@@ -331,12 +384,12 @@ export const aulasService = {
       ),
     ]);
 
-
     return {
       data: aulas.map((a) => {
         // ✅ Converter modalidade do banco para API (LIVE → AO_VIVO)
         let modalidadeAula = mapModalidadeFromDB(a.modalidade);
-        
+        const cursoRelacionado = a.CursosTurmas?.Cursos ?? a.Cursos ?? null;
+
         // ✅ Se há turma vinculada, a modalidade deve corresponder ao método da turma
         if (a.CursosTurmas?.metodo) {
           const modalidadeEsperada = mapMetodoTurmaToModalidadeAula(a.CursosTurmas.metodo);
@@ -349,6 +402,8 @@ export const aulasService = {
         return {
           id: a.id,
           codigo: a.codigo,
+          cursoId: cursoRelacionado?.id || null,
+          turmaId: a.turmaId || null,
           titulo: a.nome,
           descricao: a.descricao || null,
           duracaoMinutos: a.duracaoMinutos || null,
@@ -366,6 +421,13 @@ export const aulasService = {
           gravarAula: a.gravarAula || null,
           linkGravacao: a.linkGravacao || null,
           statusGravacao: a.statusGravacao || null,
+          curso: cursoRelacionado
+            ? {
+                id: cursoRelacionado.id,
+                codigo: cursoRelacionado.codigo,
+                nome: cursoRelacionado.nome,
+              }
+            : null,
           turma: a.CursosTurmas
             ? {
                 id: a.CursosTurmas.id,
@@ -488,21 +550,39 @@ export const aulasService = {
       }
     }
 
-    // 3. Validar período dentro da turma (se aplicável e se turma foi fornecida)
-    if (precisaPeriodo && input.dataInicio && input.dataFim && input.turmaId) {
+    // 3. Resolver cursoId e validar vínculo (turma ou template)
+    let cursoIdFinal: string | null = input.cursoId ?? null;
+
+    if (input.turmaId) {
       const turma = await prisma.cursosTurmas.findUnique({
         where: { id: input.turmaId },
-        select: { dataInicio: true, dataFim: true, status: true, metodo: true },
+        select: { cursoId: true, dataInicio: true, dataFim: true, status: true, metodo: true },
       });
 
-      if (!turma) throw new Error('Turma não encontrada');
-
-      if (turma.dataInicio && input.dataInicio && new Date(input.dataInicio) < turma.dataInicio) {
-        throw new Error('Aula não pode começar antes do início da turma');
+      if (!turma) {
+        const error: any = new Error('Turma não encontrada');
+        error.code = 'TURMA_NOT_FOUND';
+        throw error;
       }
 
-      if (turma.dataFim && input.dataFim && new Date(input.dataFim) > turma.dataFim) {
-        throw new Error('Aula não pode terminar após o fim da turma');
+      if (cursoIdFinal && cursoIdFinal !== turma.cursoId) {
+        const error: any = new Error('cursoId não corresponde à turma informada');
+        error.code = 'VALIDATION_ERROR';
+        throw error;
+      }
+
+      cursoIdFinal = turma.cursoId;
+
+      if (dataInicioCompleta && turma.dataInicio && dataInicioCompleta < turma.dataInicio) {
+        const error: any = new Error('Aula não pode começar antes do início da turma');
+        error.code = 'DATA_INVALIDA';
+        throw error;
+      }
+
+      if (dataFimCompleta && turma.dataFim && dataFimCompleta > turma.dataFim) {
+        const error: any = new Error('Aula não pode terminar após o fim da turma');
+        error.code = 'DATA_INVALIDA';
+        throw error;
       }
 
       // Calcular ordem se turma já iniciou
@@ -524,13 +604,29 @@ export const aulasService = {
       // ✅ Forçar modalidade baseada no método da turma
       if (turma.metodo) {
         const modalidadeEsperada = mapMetodoTurmaToModalidadeAula(turma.metodo);
-        // Se modalidade fornecida não corresponde à turma, usar a da turma
-        if (input.modalidade && mapModalidadeFromDB(mapModalidade(input.modalidade)) !== modalidadeEsperada) {
-          (input as any).modalidade = modalidadeEsperada;
-        } else if (!input.modalidade) {
-          // Se modalidade não foi fornecida, usar a da turma
+        if (
+          input.modalidade &&
+          mapModalidadeFromDB(mapModalidade(input.modalidade)) !== modalidadeEsperada
+        ) {
           (input as any).modalidade = modalidadeEsperada;
         }
+      }
+    } else {
+      if (!cursoIdFinal) {
+        const error: any = new Error('cursoId é obrigatório quando turmaId não for informado');
+        error.code = 'VALIDATION_ERROR';
+        throw error;
+      }
+
+      const curso = await prisma.cursos.findUnique({
+        where: { id: cursoIdFinal },
+        select: { id: true },
+      });
+
+      if (!curso) {
+        const error: any = new Error('Curso não encontrado');
+        error.code = 'CURSO_NOT_FOUND';
+        throw error;
       }
     }
 
@@ -553,6 +649,7 @@ export const aulasService = {
     const aula = await prisma.cursosTurmasAulas.create({
       data: {
         codigo,
+        cursoId: cursoIdFinal,
         nome: input.titulo,
         descricao: input.descricao,
         turmaId: input.turmaId || null,
@@ -592,6 +689,7 @@ export const aulasService = {
     if (
       (input.modalidade === 'AO_VIVO' ||
         (input.modalidade === 'SEMIPRESENCIAL' && input.tipoLink === 'MEET')) &&
+      input.turmaId &&
       input.dataInicio &&
       dataInicioCompleta &&
       dataFimCompleta // Garantir que dataFimCompleta foi calculada (mesmo que não tenha dataFim)
@@ -714,7 +812,7 @@ export const aulasService = {
 
     // ✅ Converter modalidade do banco para API (LIVE → AO_VIVO)
     let modalidadeAula = mapModalidadeFromDB(aula.modalidade);
-    
+
     // ✅ Se há turma vinculada, a modalidade deve corresponder ao método da turma
     if (aula.CursosTurmas?.metodo) {
       const modalidadeEsperada = mapMetodoTurmaToModalidadeAula(aula.CursosTurmas.metodo);
@@ -890,7 +988,8 @@ export const aulasService = {
     // @ts-ignore - turmaId, instrutorId, moduloId podem estar nos relacionamentos ou diretamente
     const turmaIdAnterior = aulaAnterior.turma?.id || aulaAnteriorTyped?.turmaId || null;
     // @ts-ignore
-    const instrutorIdAnterior = aulaAnterior.instrutor?.id || aulaAnteriorTyped?.instrutorId || null;
+    const instrutorIdAnterior =
+      aulaAnterior.instrutor?.id || aulaAnteriorTyped?.instrutorId || null;
     // @ts-ignore
     const moduloIdAnterior = aulaAnterior.modulo?.id || aulaAnteriorTyped?.moduloId || null;
 
@@ -943,9 +1042,12 @@ export const aulasService = {
       if (turma?.metodo) {
         // Converter método da turma para modalidade da aula
         const modalidadeEsperada = mapMetodoTurmaToModalidadeAula(turma.metodo);
-        
+
         // Se modalidade foi fornecida e não corresponde à turma, usar a da turma
-        if (modalidadeParaSalvar && mapModalidadeFromDB(modalidadeParaSalvar) !== modalidadeEsperada) {
+        if (
+          modalidadeParaSalvar &&
+          mapModalidadeFromDB(modalidadeParaSalvar) !== modalidadeEsperada
+        ) {
           // Converter modalidade esperada para formato do banco
           modalidadeParaSalvar = mapModalidade(modalidadeEsperada);
         } else if (!modalidadeParaSalvar) {
@@ -1081,7 +1183,8 @@ export const aulasService = {
             aulasLogger.info('[AULA_PUBLICADA_SEM_INSTRUTOR]', {
               aulaId,
               turmaId: aulaAtualizada.turmaId,
-              message: 'Aula publicada sem instrutor. Meet será criado quando instrutor for adicionado.',
+              message:
+                'Aula publicada sem instrutor. Meet será criado quando instrutor for adicionado.',
             });
           }
         }
@@ -1196,7 +1299,7 @@ export const aulasService = {
 
     // ✅ Converter modalidade do banco para API (LIVE → AO_VIVO)
     let modalidadeAula = mapModalidadeFromDB(aulaRetornada.modalidade);
-    
+
     // ✅ Se há turma vinculada, a modalidade deve corresponder ao método da turma
     if (aulaRetornada.CursosTurmas?.metodo) {
       const modalidadeEsperada = mapMetodoTurmaToModalidadeAula(aulaRetornada.CursosTurmas.metodo);
@@ -1508,7 +1611,7 @@ export const aulasService = {
       if (!aula.turmaId) {
         throw new Error('Aula sem turma vinculada - não é possível registrar presença');
       }
-      
+
       await prisma.cursosFrequenciaAlunos.create({
         data: {
           turmaId: aula.turmaId,

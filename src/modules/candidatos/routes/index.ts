@@ -227,7 +227,7 @@ router.get(
  * /api/v1/candidatos/candidaturas/overview:
  *   get:
  *     summary: Visão consolidada de candidatos e vagas
- *     description: "Retorna candidatos únicos com seus currículos e candidaturas agrupadas por vaga. Empresas visualizam apenas suas vagas; administradores, moderadores, setor de vagas e recrutadores podem consultar todo o sistema."
+ *     description: "Retorna candidatos únicos com seus currículos e candidaturas agrupadas por vaga. Empresas visualizam apenas suas vagas; administradores, moderadores e setor de vagas podem consultar todo o sistema; recrutadores visualizam apenas vagas vinculadas."
  *     tags: [Candidatos]
  *     security:
  *       - bearerAuth: []
@@ -241,7 +241,7 @@ router.get(
  *       - in: query
  *         name: empresaUsuarioId
  *         schema: { type: string, format: uuid }
- *         description: "Filtra por empresa específica (apenas para ADMIN, MODERADOR, SETOR_DE_VAGAS e RECRUTADOR)."
+ *         description: "Filtra por empresa específica. ADMIN/MODERADOR/SETOR_DE_VAGAS podem filtrar qualquer empresa; RECRUTADOR apenas empresas com vagas vinculadas."
  *       - in: query
  *         name: vagaId
  *         schema: { type: string, format: uuid }

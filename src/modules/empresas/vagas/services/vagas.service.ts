@@ -577,14 +577,21 @@ export const vagasService = {
   list: async (params?: {
     status?: StatusDeVagas[];
     usuarioId?: string;
+    usuarioIds?: string[];
+    ids?: string[];
     page?: number;
     pageSize?: number;
   }) => {
     const where: Prisma.EmpresasVagasWhereInput = {
+      ...(params?.ids && params.ids.length > 0 ? { id: { in: params.ids } } : {}),
       ...(params?.status && params.status.length > 0
         ? { status: { in: params.status } }
         : { status: StatusDeVagas.PUBLICADO }),
-      ...(params?.usuarioId ? { usuarioId: params.usuarioId } : {}),
+      ...(params?.usuarioIds && params.usuarioIds.length > 0
+        ? { usuarioId: { in: params.usuarioIds } }
+        : params?.usuarioId
+          ? { usuarioId: params.usuarioId }
+          : {}),
     };
 
     const take = params?.pageSize && params.pageSize > 0 ? params.pageSize : undefined;
@@ -599,6 +606,25 @@ export const vagasService = {
     });
 
     return vagas.map((vaga) => transformVaga(vaga));
+  },
+
+  getForInternalViewer: async (params: {
+    id: string;
+    usuarioIds?: string[];
+    status?: StatusDeVagas[];
+  }) => {
+    const vaga = await prisma.empresasVagas.findFirst({
+      where: {
+        id: params.id,
+        ...(params.status && params.status.length > 0 ? { status: { in: params.status } } : {}),
+        ...(params.usuarioIds && params.usuarioIds.length > 0
+          ? { usuarioId: { in: params.usuarioIds } }
+          : {}),
+      },
+      ...includeEmpresa,
+    });
+
+    return vaga ? transformVaga(vaga) : null;
   },
 
   get: async (id: string) => {

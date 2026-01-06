@@ -61,17 +61,19 @@ const normalizarPeso = (provas: CursosReferenciasDeProvas[]) => {
 };
 
 export const computeInitialAverage = (provas: CursosReferenciasDeProvas[]): number | null => {
-  const provasValidas = provas.filter((prova) => prova.nota !== null && prova.peso > 0);
-  if (provasValidas.length === 0) {
-    return null;
+  // Regra: avaliações sem nota/correção contam como 0 (não devem ser ignoradas).
+  // Regra: se não houver pesos válidos, a média base é 0.
+  const provasComPeso = provas.filter((prova) => prova.peso > 0);
+  if (provasComPeso.length === 0) {
+    return 0;
   }
 
-  const somaPesos = provasValidas.reduce((acc, prova) => acc + prova.peso, 0);
+  const somaPesos = provasComPeso.reduce((acc, prova) => acc + prova.peso, 0);
   if (somaPesos === 0) {
-    return null;
+    return 0;
   }
 
-  const somaNotas = provasValidas.reduce((acc, prova) => acc + (prova.nota ?? 0) * prova.peso, 0);
+  const somaNotas = provasComPeso.reduce((acc, prova) => acc + (prova.nota ?? 0) * prova.peso, 0);
   return round(somaNotas / somaPesos, 2);
 };
 

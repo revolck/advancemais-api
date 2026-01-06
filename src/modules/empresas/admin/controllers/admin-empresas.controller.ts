@@ -210,18 +210,60 @@ export class AdminEmpresasController {
 
   static listDashboard = async (req: Request, res: Response) => {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-empresas.controller.ts:210',message:'listDashboard controller entry',data:{query:req.query},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'admin-empresas.controller.ts:210',
+        message: 'listDashboard controller entry',
+        data: { query: req.query },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'C',
+      }),
+    }).catch(() => {});
     // #endregion
     try {
       const filters = adminEmpresasDashboardListQuerySchema.parse(req.query);
       const result = await adminEmpresasService.listDashboard(filters);
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-empresas.controller.ts:214',message:'service call success',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'admin-empresas.controller.ts:214',
+          message: 'service call success',
+          data: {},
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'C',
+        }),
+      }).catch(() => {});
       // #endregion
       res.json(result);
     } catch (error: any) {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-empresas.controller.ts:216',message:'error caught in controller',data:{errorType:error?.constructor?.name,errorCode:error?.code,errorMessage:error?.message?.substring(0,200),isZodError:error instanceof ZodError,isPrismaError:error?.code?.startsWith('P')},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'admin-empresas.controller.ts:216',
+          message: 'error caught in controller',
+          data: {
+            errorType: error?.constructor?.name,
+            errorCode: error?.code,
+            errorMessage: error?.message?.substring(0, 200),
+            isZodError: error instanceof ZodError,
+            isPrismaError: error?.code?.startsWith('P'),
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'post-fix',
+          hypothesisId: 'C',
+        }),
+      }).catch(() => {});
       // #endregion
       if (error instanceof ZodError) {
         return res.status(400).json({
@@ -247,12 +289,41 @@ export class AdminEmpresasController {
         errorMessage.includes("can't reach");
 
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-empresas.controller.ts:235',message:'checking connection error',data:{errorCode,isPrismaConnectionError,isPrismaClientKnownRequestError:error instanceof PrismaClientKnownRequestError,errorMessage:error?.message?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'admin-empresas.controller.ts:235',
+          message: 'checking connection error',
+          data: {
+            errorCode,
+            isPrismaConnectionError,
+            isPrismaClientKnownRequestError: error instanceof PrismaClientKnownRequestError,
+            errorMessage: error?.message?.substring(0, 200),
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'post-fix',
+          hypothesisId: 'C',
+        }),
+      }).catch(() => {});
       // #endregion
 
       if (isPrismaConnectionError) {
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-empresas.controller.ts:242',message:'returning 503 for connection error',data:{errorCode},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'admin-empresas.controller.ts:242',
+            message: 'returning 503 for connection error',
+            data: { errorCode },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'post-fix',
+            hypothesisId: 'C',
+          }),
+        }).catch(() => {});
         // #endregion
         return res.status(503).json({
           success: false,
@@ -262,7 +333,19 @@ export class AdminEmpresasController {
       }
 
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-empresas.controller.ts:242',message:'returning 500 error',data:{errorCode:error?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'admin-empresas.controller.ts:242',
+          message: 'returning 500 error',
+          data: { errorCode: error?.code },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'post-fix',
+          hypothesisId: 'C',
+        }),
+      }).catch(() => {});
       // #endregion
       res.status(500).json({
         success: false,

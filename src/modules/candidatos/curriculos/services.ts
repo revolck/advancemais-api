@@ -8,18 +8,82 @@ const MAX_CURRICULOS = 5;
 
 export const curriculosService = {
   listOwn: async (usuarioId: string) => {
-    return prisma.usuariosCurriculos.findMany({
+    const curriculos = await prisma.usuariosCurriculos.findMany({
       where: { usuarioId },
+      include: {
+        Usuarios: {
+          select: {
+            UsuariosInformation: {
+              select: {
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+      },
       orderBy: [{ principal: 'desc' }, { atualizadoEm: 'desc' }],
+    });
+
+    // Mapear para incluir avatarUrl no nível raiz
+    return curriculos.map((curriculo) => {
+      const { Usuarios, ...rest } = curriculo;
+      return {
+        ...rest,
+        avatarUrl: Usuarios?.UsuariosInformation?.avatarUrl || null,
+      };
     });
   },
 
   getOwn: async (usuarioId: string, id: string) => {
-    return prisma.usuariosCurriculos.findFirst({ where: { id, usuarioId } });
+    const curriculo = await prisma.usuariosCurriculos.findFirst({
+      where: { id, usuarioId },
+      include: {
+        Usuarios: {
+          select: {
+            UsuariosInformation: {
+              select: {
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!curriculo) return null;
+
+    // Mapear para incluir avatarUrl no nível raiz
+    const { Usuarios, ...rest } = curriculo;
+    return {
+      ...rest,
+      avatarUrl: Usuarios?.UsuariosInformation?.avatarUrl || null,
+    };
   },
 
   findById: async (id: string) => {
-    return prisma.usuariosCurriculos.findUnique({ where: { id } });
+    const curriculo = await prisma.usuariosCurriculos.findUnique({
+      where: { id },
+      include: {
+        Usuarios: {
+          select: {
+            UsuariosInformation: {
+              select: {
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!curriculo) return null;
+
+    // Mapear para incluir avatarUrl no nível raiz
+    const { Usuarios, ...rest } = curriculo;
+    return {
+      ...rest,
+      avatarUrl: Usuarios?.UsuariosInformation?.avatarUrl || null,
+    };
   },
 
   create: async (usuarioId: string, role: Roles, data: CurriculoCreateInput) => {

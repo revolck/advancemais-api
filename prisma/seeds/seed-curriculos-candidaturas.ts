@@ -131,7 +131,7 @@ export async function seedCurriculosCandidaturas(prisma?: PrismaClient) {
       for (const vaga of vagasSelecionadas) {
         try {
           // Buscar um status padrão para usar nas candidaturas
-          const statusPadrao = await client.status_processo.findFirst({
+          const statusPadrao = await client.statusProcessosCandidatos.findFirst({
             where: { isDefault: true, ativo: true },
           });
 

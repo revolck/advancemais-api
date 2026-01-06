@@ -81,13 +81,13 @@ export class WelcomeEmailMiddleware {
 
       const usuarioCriado = res.locals.UsuariosCriado;
 
-      // Verifica se dados do usuário existem
-      if (!usuarioCriado.Usuarios) {
-        log.warn('⚠️ res.locals.UsuariosCriado.Usuarios não existe');
+      // Verifica se dados do usuário existem (controller salva como "usuario" não "Usuarios")
+      if (!usuarioCriado.usuario) {
+        log.warn('⚠️ res.locals.UsuariosCriado.usuario não existe');
         return null;
       }
 
-      const userData = usuarioCriado.Usuarios;
+      const userData = usuarioCriado.usuario;
 
       // Validação dos campos obrigatórios
       const requiredFields = ['id', 'email', 'nomeCompleto', 'tipoUsuario'];

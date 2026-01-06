@@ -174,7 +174,11 @@ export class UsuariosService {
 
       // Queries sequenciais para evitar saturar pool no Supabase Free
       const acoesHoje = await this.contarAcoesUsuario(usuarioId, hoje.toISOString());
-      const acoesOntem = await this.contarAcoesUsuario(usuarioId, ontem.toISOString(), hoje.toISOString());
+      const acoesOntem = await this.contarAcoesUsuario(
+        usuarioId,
+        ontem.toISOString(),
+        hoje.toISOString(),
+      );
       const acoesSemana = await this.contarAcoesUsuario(usuarioId, semanaPassada.toISOString());
       const acoesMes = await this.contarAcoesUsuario(usuarioId, mesPassado.toISOString());
 

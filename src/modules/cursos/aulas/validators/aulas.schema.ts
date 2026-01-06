@@ -10,6 +10,7 @@ const statusEnum = z.enum(['RASCUNHO', 'PUBLICADA', 'EM_ANDAMENTO', 'CONCLUIDA',
  */
 export const createAulaSchema = z
   .object({
+    cursoId: z.string().uuid('cursoId deve ser um UUID válido').optional(),
     titulo: z.string().min(3, 'Título deve ter no mínimo 3 caracteres').max(255),
     descricao: z.string().min(10, 'Descrição deve ter no mínimo 10 caracteres'),
     modalidade: modalidadeEnum,
@@ -52,7 +53,10 @@ export const createAulaSchema = z
           // Se não conseguiu converter, retorna o valor original para o Zod mostrar erro
           return strValue;
         },
-        z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato: YYYY-MM-DD').optional(),
+        z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato: YYYY-MM-DD')
+          .optional(),
       )
       .optional(),
     dataFim: z
@@ -79,7 +83,10 @@ export const createAulaSchema = z
           // Se não conseguiu converter, retorna o valor original para o Zod mostrar erro
           return strValue;
         },
-        z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato: YYYY-MM-DD').optional(),
+        z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato: YYYY-MM-DD')
+          .optional(),
       )
       .optional(),
     horaInicio: z
@@ -92,6 +99,14 @@ export const createAulaSchema = z
       .optional(),
   })
   .superRefine((data, ctx) => {
+    if (!data.turmaId && !data.cursoId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['cursoId'],
+        message: 'cursoId é obrigatório quando turmaId não for informado (aula template)',
+      });
+    }
+
     // Validar ONLINE (não precisa de período)
     if (data.modalidade === 'ONLINE') {
       if (!data.youtubeUrl) {
@@ -239,21 +254,50 @@ export const updateAulaSchema = z
 /**
  * Schema para listar aulas
  */
-export const listAulasQuerySchema = z.object({
-  page: z.coerce.number().int().positive().default(1),
-  pageSize: z.coerce.number().int().positive().max(100).default(10),
-  turmaId: z.string().uuid().optional(),
-  moduloId: z.string().uuid().optional(),
-  instrutorId: z.string().uuid().optional(),
-  modalidade: z.string().optional(), // ONLINE,AO_VIVO (CSV)
-  status: z.string().optional(), // PUBLICADA,CONCLUIDA (CSV)
-  obrigatoria: z.coerce.boolean().optional(),
-  dataInicio: z.coerce.date().optional(),
-  dataFim: z.coerce.date().optional(),
-  search: z.string().optional(),
-  orderBy: z.enum(['criadoEm', 'titulo', 'ordem', 'dataInicio']).optional().default('ordem'),
-  order: z.enum(['asc', 'desc']).optional().default('asc'),
-});
+export const listAulasQuerySchema = z
+  .object({
+    page: z.coerce.number().int().positive().default(1),
+    pageSize: z.coerce.number().int().positive().max(100).default(10),
+    cursoId: z.string().uuid().optional(),
+    semTurma: z.preprocess((value) => {
+      if (value === undefined || value === null || value === '') return undefined;
+      if (typeof value === 'boolean') return value;
+      if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        if (normalized === 'true') return true;
+        if (normalized === 'false') return false;
+      }
+      return value;
+    }, z.boolean().optional()),
+    turmaId: z.string().uuid().optional(),
+    moduloId: z.string().uuid().optional(),
+    instrutorId: z.string().uuid().optional(),
+    modalidade: z.string().optional(), // ONLINE,AO_VIVO (CSV)
+    status: z.string().optional(), // PUBLICADA,CONCLUIDA (CSV)
+    obrigatoria: z.coerce.boolean().optional(),
+    dataInicio: z.coerce.date().optional(),
+    dataFim: z.coerce.date().optional(),
+    search: z.string().optional(),
+    orderBy: z.enum(['criadoEm', 'titulo', 'ordem', 'dataInicio']).optional().default('ordem'),
+    order: z.enum(['asc', 'desc']).optional().default('asc'),
+  })
+  .superRefine((query, ctx) => {
+    if (query.semTurma === true && !query.cursoId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['cursoId'],
+        message: 'cursoId é obrigatório quando semTurma=true',
+      });
+    }
+
+    if (query.semTurma === true && query.turmaId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['turmaId'],
+        message: 'Não informe turmaId quando semTurma=true',
+      });
+    }
+  });
 
 /**
  * Schema para atualizar progresso

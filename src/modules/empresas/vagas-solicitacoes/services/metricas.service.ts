@@ -12,6 +12,7 @@ import { Prisma, StatusDeVagas, Roles } from '@prisma/client';
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import { getCache, setCache } from '@/utils/cache';
+import crypto from 'crypto';
 
 const metricasLogger = logger.child({ module: 'MetricasSetorVagasService' });
 
@@ -23,8 +24,26 @@ export const metricasService = {
    * Retorna métricas consolidadas para o dashboard do Setor de Vagas
    * ✅ OTIMIZADO: Query SQL agregada única + Cache Redis
    */
-  getMetricas: async () => {
-    const cacheKey = 'metricas:setor-vagas:gerais';
+  getMetricas: async (params?: { empresaUsuarioIds?: string[]; vagaIds?: string[] }) => {
+    const empresaUsuarioIds =
+      params?.empresaUsuarioIds?.map((id) => id.trim()).filter(Boolean) ?? [];
+    const vagaIds = params?.vagaIds?.map((id) => id.trim()).filter(Boolean) ?? [];
+    const scopeHash =
+      empresaUsuarioIds.length > 0 || vagaIds.length > 0
+        ? crypto
+            .createHash('md5')
+            .update(
+              JSON.stringify({
+                empresas: empresaUsuarioIds.slice().sort(),
+                vagas: vagaIds.slice().sort(),
+              }),
+            )
+            .digest('hex')
+        : null;
+
+    const cacheKey = scopeHash
+      ? `metricas:setor-vagas:empresas:${scopeHash}`
+      : 'metricas:setor-vagas:gerais';
 
     // Tentar buscar do cache primeiro
     const cached = await getCache<{
@@ -64,34 +83,105 @@ export const metricasService = {
       const query = `
         SELECT
           -- Empresas
-          (SELECT COUNT(*) FROM "Usuarios" WHERE "role" = 'EMPRESA' AND "tipoUsuario" = 'PESSOA_JURIDICA') AS "totalEmpresas",
-          (SELECT COUNT(*) FROM "Usuarios" WHERE "role" = 'EMPRESA' AND "tipoUsuario" = 'PESSOA_JURIDICA' AND "status" = 'ATIVO') AS "empresasAtivas",
+          (SELECT COUNT(*) FROM "Usuarios" 
+            WHERE "role" = 'EMPRESA' 
+            AND "tipoUsuario" = 'PESSOA_JURIDICA'
+            AND ($3::uuid[] IS NULL OR "id" = ANY($3::uuid[]))
+          ) AS "totalEmpresas",
+          (SELECT COUNT(*) FROM "Usuarios" 
+            WHERE "role" = 'EMPRESA' 
+            AND "tipoUsuario" = 'PESSOA_JURIDICA' 
+            AND "status" = 'ATIVO'
+            AND ($3::uuid[] IS NULL OR "id" = ANY($3::uuid[]))
+          ) AS "empresasAtivas",
           
           -- Vagas
-          (SELECT COUNT(*) FROM "EmpresasVagas") AS "totalVagas",
-          (SELECT COUNT(*) FROM "EmpresasVagas" WHERE "status" = 'PUBLICADO') AS "vagasAbertas",
-          (SELECT COUNT(*) FROM "EmpresasVagas" WHERE "status" = 'EM_ANALISE') AS "vagasPendentes",
-          (SELECT COUNT(*) FROM "EmpresasVagas" WHERE "status" IN ('ENCERRADA', 'EXPIRADO', 'DESPUBLICADA')) AS "vagasEncerradas",
+          (SELECT COUNT(*) FROM "EmpresasVagas"
+            WHERE (
+              $4::uuid[] IS NOT NULL AND "id" = ANY($4::uuid[])
+            ) OR (
+              $4::uuid[] IS NULL AND ($3::uuid[] IS NULL OR "usuarioId" = ANY($3::uuid[]))
+            )
+          ) AS "totalVagas",
+          (SELECT COUNT(*) FROM "EmpresasVagas" 
+            WHERE "status" = 'PUBLICADO'
+            AND ((
+              $4::uuid[] IS NOT NULL AND "id" = ANY($4::uuid[])
+            ) OR (
+              $4::uuid[] IS NULL AND ($3::uuid[] IS NULL OR "usuarioId" = ANY($3::uuid[]))
+            ))
+          ) AS "vagasAbertas",
+          (SELECT COUNT(*) FROM "EmpresasVagas" 
+            WHERE "status" = 'EM_ANALISE'
+            AND ((
+              $4::uuid[] IS NOT NULL AND "id" = ANY($4::uuid[])
+            ) OR (
+              $4::uuid[] IS NULL AND ($3::uuid[] IS NULL OR "usuarioId" = ANY($3::uuid[]))
+            ))
+          ) AS "vagasPendentes",
+          (SELECT COUNT(*) FROM "EmpresasVagas" 
+            WHERE "status" IN ('ENCERRADA', 'EXPIRADO', 'DESPUBLICADA')
+            AND ((
+              $4::uuid[] IS NOT NULL AND "id" = ANY($4::uuid[])
+            ) OR (
+              $4::uuid[] IS NULL AND ($3::uuid[] IS NULL OR "usuarioId" = ANY($3::uuid[]))
+            ))
+          ) AS "vagasEncerradas",
           
           -- Candidatos
-          (SELECT COUNT(*) FROM "Usuarios" WHERE "role" = 'ALUNO_CANDIDATO') AS "totalCandidatos",
+          (CASE 
+            WHEN $4::uuid[] IS NOT NULL THEN (SELECT COUNT(DISTINCT "candidatoId") FROM "EmpresasCandidatos" WHERE "vagaId" = ANY($4::uuid[]))
+            WHEN $3::uuid[] IS NOT NULL THEN (SELECT COUNT(DISTINCT "candidatoId") FROM "EmpresasCandidatos" WHERE "empresaUsuarioId" = ANY($3::uuid[]))
+            ELSE (SELECT COUNT(*) FROM "Usuarios" WHERE "role" = 'ALUNO_CANDIDATO')
+          END) AS "totalCandidatos",
           (SELECT COUNT(*) FROM "EmpresasCandidatos" ec
-            INNER JOIN "status_processo" sp ON ec."statusId" = sp."id"
-            WHERE sp."nome" IN ('EM_ANALISE', 'ENTREVISTA', 'DESAFIO', 'DOCUMENTACAO')) AS "candidatosEmProcesso",
+            INNER JOIN "StatusProcessosCandidatos" sp ON ec."statusId" = sp."id"
+            WHERE sp."nome" IN ('EM_ANALISE', 'ENTREVISTA', 'DESAFIO', 'DOCUMENTACAO')
+            AND ((
+              $4::uuid[] IS NOT NULL AND ec."vagaId" = ANY($4::uuid[])
+            ) OR (
+              $4::uuid[] IS NULL AND ($3::uuid[] IS NULL OR ec."empresaUsuarioId" = ANY($3::uuid[]))
+            ))
+          ) AS "candidatosEmProcesso",
           (SELECT COUNT(*) FROM "EmpresasCandidatos" ec
-            INNER JOIN "status_processo" sp ON ec."statusId" = sp."id"
-            WHERE sp."nome" = 'CONTRATADO') AS "candidatosContratados",
+            INNER JOIN "StatusProcessosCandidatos" sp ON ec."statusId" = sp."id"
+            WHERE sp."nome" = 'CONTRATADO'
+            AND ((
+              $4::uuid[] IS NOT NULL AND ec."vagaId" = ANY($4::uuid[])
+            ) OR (
+              $4::uuid[] IS NULL AND ($3::uuid[] IS NULL OR ec."empresaUsuarioId" = ANY($3::uuid[]))
+            ))
+          ) AS "candidatosContratados",
           
           -- Solicitações
-          (SELECT COUNT(*) FROM "EmpresasVagas" WHERE "status" = 'EM_ANALISE') AS "solicitacoesPendentes",
+          (SELECT COUNT(*) FROM "EmpresasVagas" 
+            WHERE "status" = 'EM_ANALISE'
+            AND ((
+              $4::uuid[] IS NOT NULL AND "id" = ANY($4::uuid[])
+            ) OR (
+              $4::uuid[] IS NULL AND ($3::uuid[] IS NULL OR "usuarioId" = ANY($3::uuid[]))
+            ))
+          ) AS "solicitacoesPendentes",
           (SELECT COUNT(*) FROM "EmpresasVagas" 
             WHERE "status" = 'PUBLICADO' 
             AND "atualizadoEm" >= $1::timestamp 
-            AND "atualizadoEm" < $2::timestamp) AS "solicitacoesAprovadasHoje",
+            AND "atualizadoEm" < $2::timestamp
+            AND ((
+              $4::uuid[] IS NOT NULL AND "id" = ANY($4::uuid[])
+            ) OR (
+              $4::uuid[] IS NULL AND ($3::uuid[] IS NULL OR "usuarioId" = ANY($3::uuid[]))
+            ))
+          ) AS "solicitacoesAprovadasHoje",
           (SELECT COUNT(*) FROM "EmpresasVagas" 
             WHERE "status" = 'DESPUBLICADA' 
             AND "atualizadoEm" >= $1::timestamp 
-            AND "atualizadoEm" < $2::timestamp) AS "solicitacoesRejeitadasHoje"
+            AND "atualizadoEm" < $2::timestamp
+            AND ((
+              $4::uuid[] IS NOT NULL AND "id" = ANY($4::uuid[])
+            ) OR (
+              $4::uuid[] IS NULL AND ($3::uuid[] IS NULL OR "usuarioId" = ANY($3::uuid[]))
+            ))
+          ) AS "solicitacoesRejeitadasHoje"
       `;
 
       const [result] = await prisma.$queryRawUnsafe<
@@ -109,7 +199,13 @@ export const metricasService = {
           solicitacoesAprovadasHoje: bigint;
           solicitacoesRejeitadasHoje: bigint;
         }[]
-      >(query, hojeISO, amanhaISO);
+      >(
+        query,
+        hojeISO,
+        amanhaISO,
+        empresaUsuarioIds.length > 0 ? empresaUsuarioIds : null,
+        vagaIds.length > 0 ? vagaIds : null,
+      );
 
       // Converter bigint para number
       const metricasGerais = {

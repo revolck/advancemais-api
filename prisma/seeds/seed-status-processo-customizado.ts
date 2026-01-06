@@ -25,7 +25,7 @@ async function seedStatusProcessoCustomizado() {
     console.log(`👤 Usando usuário admin: ${adminUser.nomeCompleto} (${adminUser.email})`);
 
     // Status padrão para cada categoria
-    // Nota: Campos customizados (codigo, cor, icone, ordem, categoria) não existem no modelo status_processo
+    // Nota: Campos customizados (codigo, cor, icone, ordem, categoria) não existem no modelo statusProcessosCandidatos
     // Apenas usando campos disponíveis: nome, descricao, ativo, isDefault, criadoPor
     const statusPadrao = [
       // PENDENTE
@@ -128,8 +128,8 @@ async function seedStatusProcessoCustomizado() {
       },
     ];
 
-    // Verificar se já existem status (usando o modelo status_processo)
-    const existingStatus = await prisma.status_processo.count();
+    // Verificar se já existem status (usando o modelo statusProcessosCandidatos)
+    const existingStatus = await prisma.statusProcessosCandidatos.count();
 
     if (existingStatus > 0) {
       console.log(`⚠️  Já existem ${existingStatus} status. Pulando seed.`);
@@ -141,7 +141,7 @@ async function seedStatusProcessoCustomizado() {
 
     for (const status of statusPadrao) {
       try {
-        await prisma.status_processo.create({
+        await prisma.statusProcessosCandidatos.create({
           data: {
             id: randomUUID(),
             ...status,
@@ -157,7 +157,7 @@ async function seedStatusProcessoCustomizado() {
     console.log('🎉 Seed de status concluído com sucesso!');
 
     // Mostrar resumo
-    const totalStatus = await prisma.status_processo.count();
+    const totalStatus = await prisma.statusProcessosCandidatos.count();
     console.log(`📊 Total de status criados: ${totalStatus}`);
   } catch (error) {
     console.error('❌ Erro durante o seed de status customizados:', error);

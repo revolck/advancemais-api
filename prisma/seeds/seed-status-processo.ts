@@ -6,7 +6,7 @@ export async function seedStatusProcesso(prisma?: PrismaClient) {
   console.log('🌱 Iniciando seed de Status Processo...');
 
   // Verificar se já existem status
-  const existingStatus = await client.status_processo.findFirst();
+  const existingStatus = await client.statusProcessosCandidatos.findFirst();
   if (existingStatus) {
     console.log('✅ Status Processo já existem, pulando seed...');
     return;
@@ -75,7 +75,7 @@ export async function seedStatusProcesso(prisma?: PrismaClient) {
 
   // Criar os status
   for (const status of statusPadrao) {
-    await client.status_processo.create({
+    await client.statusProcessosCandidatos.create({
       data: {
         id: randomUUID(),
         ...status,

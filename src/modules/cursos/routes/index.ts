@@ -12,6 +12,7 @@ import { ModulosController } from '../controllers/modulos.controller';
 import { ProvasController } from '../controllers/provas.controller';
 import { QuestoesController } from '../controllers/questoes.controller';
 import { AvaliacaoController } from '../controllers/avaliacao.controller';
+import { AvaliacoesController } from '../controllers/avaliacoes.controller';
 import { NotasController } from '../controllers/notas.controller';
 import { FrequenciaController } from '../controllers/frequencia.controller';
 import { AgendaController } from '../controllers/agenda.controller';
@@ -62,6 +63,51 @@ router.use('/agenda', agendaRoutes);
  *                   additionalProperties: { type: string }
  */
 router.get('/meta', publicCache, CursosController.meta);
+
+// ========================================
+// BIBLIOTECA GLOBAL DE AVALIAÇÕES (TEMPLATES)
+// ========================================
+router.get(
+  '/avaliacoes',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  AvaliacoesController.list,
+);
+// Rotas auxiliares para formulário de criação (ANTES do POST)
+router.get(
+  '/avaliacoes/turmas',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  AvaliacoesController.listTurmas,
+);
+router.get(
+  '/avaliacoes/instrutores',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  AvaliacoesController.listInstrutores,
+);
+router.post(
+  '/avaliacoes',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  AvaliacoesController.create,
+);
+router.get(
+  '/avaliacoes/:id',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  AvaliacoesController.get,
+);
+router.put(
+  '/avaliacoes/:id',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  AvaliacoesController.update,
+);
+router.delete(
+  '/avaliacoes/:id',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  AvaliacoesController.delete,
+);
+router.post(
+  '/:cursoId/turmas/:turmaId/avaliacoes/clone',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  AvaliacoesController.clonarParaTurma,
+);
 
 /**
  * @openapi
@@ -177,6 +223,149 @@ router.get(
   '/visaogeral',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
   CursosController.visaogeral,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/visaogeral/faturamento:
+ *   get:
+ *     summary: 📈 Tendências de Faturamento (Cursos)
+ *     description: |
+ *       Retorna tendências e agregações de faturamento de cursos para o dashboard.
+ *
+ *       **ACESSO RESTRITO:** Apenas ADMIN, MODERADOR e PEDAGOGICO podem acessar esta rota.
+ *
+ *       Fonte de dados: `AuditoriaTransacoes` com registros associados a cursos (via `metadata.cursoId` ou `metadata.curso.id`).
+ *     tags: [Cursos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: period
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [day, week, month, year, custom]
+ *           default: month
+ *         description: Período de agregação.
+ *       - in: query
+ *         name: startDate
+ *         required: false
+ *         schema:
+ *           type: string
+ *           example: '2026-01-01'
+ *         description: Obrigatório quando `period=custom` (YYYY-MM-DD).
+ *       - in: query
+ *         name: endDate
+ *         required: false
+ *         schema:
+ *           type: string
+ *           example: '2026-01-31'
+ *         description: Obrigatório quando `period=custom` (YYYY-MM-DD).
+ *       - in: query
+ *         name: tz
+ *         required: false
+ *         schema:
+ *           type: string
+ *           default: America/Sao_Paulo
+ *         description: Timezone IANA para cálculo e agrupamento.
+ *       - in: query
+ *         name: top
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           minimum: 1
+ *           maximum: 50
+ *         description: Quantidade máxima de cursos no ranking de faturamento.
+ *     responses:
+ *       200:
+ *         description: Tendências de faturamento
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     period:
+ *                       type: string
+ *                       example: month
+ *                     startDate:
+ *                       type: string
+ *                       example: '2026-01-01'
+ *                     endDate:
+ *                       type: string
+ *                       example: '2026-01-31'
+ *                     faturamentoMesAtual:
+ *                       type: number
+ *                       example: 123456.78
+ *                     faturamentoMesAnterior:
+ *                       type: number
+ *                       example: 100000.0
+ *                     totalTransacoes:
+ *                       type: number
+ *                       example: 320
+ *                     transacoesAprovadas:
+ *                       type: number
+ *                       example: 287
+ *                     cursosAtivos:
+ *                       type: number
+ *                       example: 42
+ *                     historicalData:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           date:
+ *                             type: string
+ *                             example: '2026-01-01'
+ *                           faturamento:
+ *                             type: number
+ *                             example: 1234.56
+ *                           transacoes:
+ *                             type: number
+ *                             example: 10
+ *                           transacoesAprovadas:
+ *                             type: number
+ *                             example: 9
+ *                           cursos:
+ *                             type: number
+ *                             example: 8
+ *                     topCursosFaturamento:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           cursoId: { type: string }
+ *                           cursoNome: { type: string }
+ *                           cursoCodigo: { type: string }
+ *                           totalFaturamento: { type: number }
+ *                           totalTransacoes: { type: number }
+ *                           transacoesAprovadas: { type: number }
+ *                           transacoesPendentes: { type: number }
+ *                           ultimaTransacao:
+ *                             type: string
+ *                             nullable: true
+ *                     cursoMaiorFaturamento:
+ *                       nullable: true
+ *       400:
+ *         description: Parâmetros inválidos
+ *       401:
+ *         description: Não autenticado
+ *       403:
+ *         description: Acesso negado - apenas ADMIN, MODERADOR e PEDAGOGICO
+ *       500:
+ *         description: Erro ao buscar faturamento
+ */
+router.get(
+  '/visaogeral/faturamento',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  CursosController.visaogeralFaturamento,
 );
 
 /**
@@ -1389,6 +1578,32 @@ router.get('/', publicCache, CursosController.list);
  *               message: "Curso não encontrado"
  *               statusCode: 404
  */
+// Rotas específicas de estágios (devem vir ANTES das rotas parametrizadas /:cursoId para evitar conflito)
+/**
+ * Listar estágios (dashboard)
+ * GET /api/v1/cursos/estagios?cursoId=...&turmaId?&status?&search?&page&pageSize
+ */
+router.get(
+  '/estagios',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  EstagiosController.list,
+);
+
+/**
+ * Atualizar status de um estágio
+ * PATCH /api/v1/cursos/estagios/:estagioId/status
+ */
+router.patch(
+  '/estagios/:estagioId/status',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  EstagiosController.updateStatus,
+);
+
+router.get(
+  '/:cursoId/meta',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  CursosController.metaCurso,
+);
 router.get('/:cursoId', publicCache, CursosController.get);
 
 /**
@@ -2498,7 +2713,7 @@ router.get('/:cursoId/turmas/:turmaId/inscricoes', TurmasController.listInscrico
  */
 router.post(
   '/:cursoId/turmas',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
   TurmasController.create,
 );
 
@@ -3436,6 +3651,85 @@ router.post(
 
 /**
  * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/frequencias/resumo:
+ *   get:
+ *     summary: Resumo de frequência por aluno da turma
+ *     description: |
+ *       Retorna resumo agregado de frequência por aluno.
+ *       Permite filtrar por período (TOTAL, DIA, SEMANA, MES) e data âncora.
+ *     tags: ['Cursos']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: periodo
+ *         schema: { type: string, enum: [TOTAL, DIA, SEMANA, MES] }
+ *         description: Período para filtrar frequências
+ *       - in: query
+ *         name: anchorDate
+ *         schema: { type: string, format: date }
+ *         description: Data âncora para o período (YYYY-MM-DD)
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *         description: Busca por nome ou email do aluno
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, minimum: 1, default: 1 }
+ *       - in: query
+ *         name: pageSize
+ *         schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+ *     responses:
+ *       200:
+ *         description: Resumo de frequência por aluno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     totalAulasNoPeriodo: { type: integer }
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           alunoId: { type: string }
+ *                           alunoNome: { type: string }
+ *                           alunoCodigo: { type: string }
+ *                           totalAulas: { type: integer }
+ *                           presencas: { type: integer }
+ *                           ausencias: { type: integer }
+ *                           atrasados: { type: integer }
+ *                           justificadas: { type: integer }
+ *                           taxaPresencaPct: { type: integer }
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         page: { type: integer }
+ *                         pageSize: { type: integer }
+ *                         total: { type: integer }
+ *                         totalPages: { type: integer }
+ */
+router.get(
+  '/:cursoId/turmas/:turmaId/frequencias/resumo',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  FrequenciaController.resumo,
+);
+
+/**
+ * @openapi
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/frequencias/{frequenciaId}:
  *   get:
  *     summary: Detalhar registro de frequência
@@ -3548,6 +3842,16 @@ router.delete(
 );
 
 /**
+ * Listagem consolidada de notas (curso + múltiplas turmas)
+ * GET /api/v1/cursos/:cursoId/notas?turmaIds=uuid,uuid
+ */
+router.get(
+  '/:cursoId/notas',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  NotasController.listCurso,
+);
+
+/**
  * @openapi
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/notas:
  *   get:
@@ -3623,6 +3927,16 @@ router.post(
   '/:cursoId/turmas/:turmaId/notas',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   NotasController.create,
+);
+
+/**
+ * Limpar lançamentos manuais (nota extra) por aluno na turma
+ * DELETE /api/v1/cursos/:cursoId/turmas/:turmaId/notas?alunoId=uuid
+ */
+router.delete(
+  '/:cursoId/turmas/:turmaId/notas',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  NotasController.clearManuais,
 );
 
 /**
@@ -4840,167 +5154,6 @@ router.get(
   supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
   CertificadosController.listarMe,
 );
-
-/**
- * @openapi
- * /api/v1/cursos/estagios/{estagioId}:
- *   get:
- *     summary: Consultar detalhes de um estágio
- *     tags: ['Cursos']
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: estagioId
- *         required: true
- *         schema: { type: string, format: uuid }
- *     responses:
- *       200:
- *         description: Dados completos do estágio
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/CursoEstagio'
- *       404:
- *         description: Estágio não encontrado
- */
-router.get(
-  '/estagios/:estagioId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
-  EstagiosController.get,
-);
-
-/**
- * @openapi
- * /api/v1/cursos/estagios/{estagioId}:
- *   put:
- *     summary: Atualizar dados cadastrais do estágio
- *     tags: ['Cursos']
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: estagioId
- *         required: true
- *         schema: { type: string, format: uuid }
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/CursoEstagioUpdateInput'
- *     responses:
- *       200:
- *         description: Estágio atualizado com sucesso
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/CursoEstagio'
- *       404:
- *         description: Estágio não encontrado
- */
-router.put(
-  '/estagios/:estagioId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
-  EstagiosController.update,
-);
-
-/**
- * @openapi
- * /api/v1/cursos/estagios/{estagioId}/status:
- *   patch:
- *     summary: Atualizar status de andamento do estágio
- *     tags: ['Cursos']
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: estagioId
- *         required: true
- *         schema: { type: string, format: uuid }
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/CursoEstagioStatusInput'
- *     responses:
- *       200:
- *         description: Estágio com status atualizado
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/CursoEstagio'
- *       404:
- *         description: Estágio não encontrado
- */
-router.patch(
-  '/estagios/:estagioId/status',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
-  EstagiosController.updateStatus,
-);
-
-/**
- * @openapi
- * /api/v1/cursos/estagios/{estagioId}/reenviar-confirmacao:
- *   post:
- *     summary: Reenviar email de confirmação do estágio ao aluno
- *     tags: ['Cursos']
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: estagioId
- *         required: true
- *         schema: { type: string, format: uuid }
- *     requestBody:
- *       required: false
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/CursoEstagioReenviarInput'
- *     responses:
- *       200:
- *         description: Estágio retornado após reenvio do email
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/CursoEstagio'
- */
-router.post(
-  '/estagios/:estagioId/reenviar-confirmacao',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
-  EstagiosController.reenviarConfirmacao,
-);
-
-/**
- * @openapi
- * /api/v1/cursos/estagios/confirmacoes/{token}:
- *   post:
- *     summary: Confirmar ciência do estágio pelo aluno
- *     tags: ['Cursos']
- *     requestBody:
- *       required: false
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/CursoEstagioConfirmacaoInput'
- *     parameters:
- *       - in: path
- *         name: token
- *         required: true
- *         schema: { type: string, format: uuid }
- *     responses:
- *       200:
- *         description: Estágio atualizado após confirmação do aluno
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/CursoEstagio'
- *       404:
- *         description: Confirmação inválida ou expirada
- */
-router.post('/estagios/confirmacoes/:token', EstagiosController.confirmar);
 
 /**
  * @openapi

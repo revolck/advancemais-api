@@ -1,6 +1,7 @@
 import { prisma } from '@/config/prisma';
 import { CandidatoLogTipo, Roles, OrigemVagas, Prisma } from '@prisma/client';
 import { candidatoLogsService } from '@/modules/candidatos/logs/service';
+import { recrutadorVagasService } from '@/modules/usuarios/services/recrutador-vagas.service';
 
 export const candidaturasService = {
   listMine: async (params: { usuarioId: string; vagaId?: string; statusIds?: string[] }) => {
@@ -53,7 +54,7 @@ export const candidaturasService = {
       where.statusId = { in: params.statusIds };
     } else {
       // Excluir status de desistente (por nome, case-insensitive)
-      const desistenteStatus = await prisma.status_processo.findFirst({
+      const desistenteStatus = await prisma.statusProcessosCandidatos.findFirst({
         where: { nome: { equals: 'Desistente', mode: 'insensitive' } },
       });
       if (desistenteStatus) {
@@ -229,7 +230,7 @@ export const candidaturasService = {
     }
 
     // Buscar status padrão
-    const statusPadrao = await prisma.status_processo.findFirst({
+    const statusPadrao = await prisma.statusProcessosCandidatos.findFirst({
       where: { isDefault: true, ativo: true },
     });
 
@@ -301,29 +302,46 @@ export const candidaturasService = {
     });
 
     if (!candidatura) {
-      throw new Error('Candidatura não encontrada.');
+      throw Object.assign(new Error('Candidatura não encontrada.'), {
+        code: 'CANDIDATURA_NOT_FOUND',
+      });
     }
 
     // Verificar se o usuário pode atualizar esta candidatura
     const isAdmin = params.role === Roles.ADMIN || params.role === Roles.MODERADOR;
     const isEmpresaDonaVaga =
       params.role === Roles.EMPRESA && candidatura.empresaUsuarioId === params.usuarioId;
-    const isSetorVagas = params.role === Roles.SETOR_DE_VAGAS || params.role === Roles.RECRUTADOR;
+    const isSetorVagas = params.role === Roles.SETOR_DE_VAGAS;
+    const isRecruiter = params.role === Roles.RECRUTADOR;
     const isProprioCandidato =
       params.role === Roles.ALUNO_CANDIDATO && candidatura.candidatoId === params.usuarioId;
 
-    if (!isAdmin && !isEmpresaDonaVaga && !isSetorVagas && !isProprioCandidato) {
-      throw new Error('Você não tem permissão para atualizar esta candidatura.');
+    const isRecruiterAllowed = isRecruiter
+      ? await recrutadorVagasService
+          .listVagaIds(params.usuarioId)
+          .then((ids) => ids.includes(candidatura.vagaId))
+      : false;
+
+    if (
+      !isAdmin &&
+      !isEmpresaDonaVaga &&
+      !isSetorVagas &&
+      !isRecruiterAllowed &&
+      !isProprioCandidato
+    ) {
+      throw Object.assign(new Error('Você não tem permissão para atualizar esta candidatura.'), {
+        code: 'FORBIDDEN',
+      });
     }
 
     // Verificar se o status existe
     if (params.statusId) {
-      const status = await prisma.status_processo.findUnique({
+      const status = await prisma.statusProcessosCandidatos.findUnique({
         where: { id: params.statusId },
       });
 
       if (!status) {
-        throw new Error('Status não encontrado.');
+        throw Object.assign(new Error('Status não encontrado.'), { code: 'STATUS_NOT_FOUND' });
       }
     }
 
@@ -375,7 +393,7 @@ export const candidaturasService = {
     }
 
     // Buscar status de desistente
-    const desistenteStatus = await prisma.status_processo.findFirst({
+    const desistenteStatus = await prisma.statusProcessosCandidatos.findFirst({
       where: { nome: { equals: 'Desistente', mode: 'insensitive' }, ativo: true },
     });
 
@@ -436,7 +454,7 @@ export const candidaturasService = {
   }) => {
     const client = params.tx ?? prisma;
 
-    const desistenteStatus = await client.status_processo.findFirst({
+    const desistenteStatus = await client.statusProcessosCandidatos.findFirst({
       where: { nome: { equals: 'Desistente', mode: 'insensitive' }, ativo: true },
     });
 
@@ -502,7 +520,7 @@ export const candidaturasService = {
     // Agrupar por status
     const porStatus = candidaturas.reduce(
       (acc, candidatura) => {
-        const statusNome = candidatura.status_processo.nome;
+        const statusNome = candidatura.status_processo?.nome ?? 'DESCONHECIDO';
         if (!acc[statusNome]) {
           acc[statusNome] = [];
         }

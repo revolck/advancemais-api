@@ -68,12 +68,12 @@ export class EmailVerificationMiddleware {
     try {
       log.info('🔍 Extraindo dados do res.locals para verificação');
 
-      if (!res.locals?.UsuariosCriado?.Usuarios) {
-        log.warn('⚠️ res.locals.UsuariosCriado.Usuarios não existe');
+      if (!res.locals?.UsuariosCriado?.usuario) {
+        log.warn('⚠️ res.locals.UsuariosCriado.usuario não existe');
         return null;
       }
 
-      const userData = res.locals.UsuariosCriado.Usuarios;
+      const userData = res.locals.UsuariosCriado.usuario;
 
       // Validação rigorosa
       const requiredFields = ['id', 'email', 'nomeCompleto', 'tipoUsuario'];

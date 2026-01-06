@@ -1,7 +1,8 @@
-import { Prisma, CursosLocalProva, CursosNotasTipo } from '@prisma/client';
+import { Prisma, CursosLocalProva, CursosNotasTipo, AuditoriaCategoria } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
+import { auditoriaService } from '@/modules/auditoria/services/auditoria.service';
 
 import { mapProva, provaDefaultInclude, provaWithEnviosInclude } from './provas.mapper';
 
@@ -61,6 +62,54 @@ const ensureProvaBelongsToTurma = async (
   }
 };
 
+const fetchCriadorInfo = async (provaId: string) => {
+  try {
+    const auditoriaLog = await prisma.auditoriaLogs.findFirst({
+      where: {
+        entidadeId: provaId,
+        entidadeTipo: 'PROVA',
+        OR: [
+          { acao: 'PROVA_CRIADA' },
+          { acao: 'ATIVIDADE_CRIADA' },
+          { acao: 'CRIACAO' },
+          { tipo: 'PROVA_CRIACAO' },
+          { tipo: 'ATIVIDADE_CRIACAO' },
+        ],
+      },
+      orderBy: { criadoEm: 'asc' },
+      include: {
+        Usuarios: {
+          include: {
+            UsuariosInformation: {
+              select: {
+                avatarUrl: true,
+              },
+            },
+          },
+          select: {
+            id: true,
+            nomeCompleto: true,
+            cpf: true,
+            UsuariosInformation: true,
+          },
+        },
+      },
+    });
+
+    if (auditoriaLog?.Usuarios) {
+      return {
+        nome: auditoriaLog.Usuarios.nomeCompleto,
+        avatarUrl: auditoriaLog.Usuarios.UsuariosInformation?.avatarUrl ?? null,
+        cpf: auditoriaLog.Usuarios.cpf ?? null,
+      };
+    }
+  } catch (error) {
+    provasLogger.warn({ err: error, provaId }, 'Erro ao buscar informações do criador');
+  }
+
+  return null;
+};
+
 const fetchProva = async (client: PrismaClientOrTx, provaId: string) => {
   const prova = await client.cursosTurmasProvas.findUnique({
     where: { id: provaId },
@@ -73,7 +122,10 @@ const fetchProva = async (client: PrismaClientOrTx, provaId: string) => {
     throw error;
   }
 
-  return mapProva(prova);
+  // Buscar informações do criador (apenas se não estiver em transação)
+  const criadoPor = client === prisma ? await fetchCriadorInfo(provaId) : null;
+
+  return mapProva(prova, criadoPor);
 };
 
 const toDecimal = (value: number | null | undefined) => {
@@ -94,16 +146,101 @@ const toDecimalOptional = (value: number | null | undefined) => {
 };
 
 export const provasService = {
-  async list(cursoId: string, turmaId: string) {
+  async list(
+    cursoId: string,
+    turmaId: string,
+    filters?: {
+      search?: string;
+      turmaId?: string;
+      status?: 'ATIVO' | 'INATIVO';
+      tipo?: 'PROVA' | 'ATIVIDADE';
+    },
+  ) {
     await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
 
+    // Construir where clause com filtros
+    const where: Prisma.CursosTurmasProvasWhereInput = {
+      turmaId: filters?.turmaId || turmaId,
+    };
+
+    // Filtro de busca por título
+    if (filters?.search) {
+      where.titulo = {
+        contains: filters.search,
+        mode: 'insensitive',
+      };
+    }
+
+    // Filtro de status
+    if (filters?.status) {
+      where.ativo = filters.status === 'ATIVO';
+    }
+
+    // Filtro de tipo (PROVA ou ATIVIDADE)
+    if (filters?.tipo) {
+      where.tipo = filters.tipo as any;
+    }
+
     const provas = await prisma.cursosTurmasProvas.findMany({
-      where: { turmaId },
+      where,
       orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
       ...provaWithEnviosInclude,
     });
 
-    return provas.map(mapProva);
+    // Buscar informações dos criadores em lote
+    const provaIds = provas.map((p) => p.id);
+    const auditoriaLogs = await prisma.auditoriaLogs.findMany({
+      where: {
+        entidadeId: { in: provaIds },
+        entidadeTipo: 'PROVA',
+        OR: [
+          { acao: 'PROVA_CRIADA' },
+          { acao: 'ATIVIDADE_CRIADA' },
+          { acao: 'CRIACAO' },
+          { tipo: 'PROVA_CRIACAO' },
+          { tipo: 'ATIVIDADE_CRIACAO' },
+        ],
+      },
+      include: {
+        Usuarios: {
+          include: {
+            UsuariosInformation: {
+              select: {
+                avatarUrl: true,
+              },
+            },
+          },
+          select: {
+            id: true,
+            nomeCompleto: true,
+            cpf: true,
+            UsuariosInformation: true,
+          },
+        },
+      },
+      orderBy: { criadoEm: 'asc' },
+    });
+
+    // Criar mapa de criadores por provaId
+    const criadoresMap = new Map<
+      string,
+      { nome: string | null; avatarUrl: string | null; cpf: string | null }
+    >();
+
+    auditoriaLogs.forEach((log) => {
+      if (log.Usuarios && !criadoresMap.has(log.entidadeId ?? '')) {
+        criadoresMap.set(log.entidadeId ?? '', {
+          nome: log.Usuarios.nomeCompleto,
+          avatarUrl: log.Usuarios.UsuariosInformation?.avatarUrl ?? null,
+          cpf: log.Usuarios.cpf ?? null,
+        });
+      }
+    });
+
+    return provas.map((prova) => {
+      const criadoPor = criadoresMap.get(prova.id) ?? null;
+      return mapProva(prova, criadoPor);
+    });
   },
 
   async get(cursoId: string, turmaId: string, provaId: string) {
@@ -124,7 +261,11 @@ export const provasService = {
       moduloId?: string | null;
       ativo?: boolean;
       ordem?: number | null;
+      tipo?: 'PROVA' | 'ATIVIDADE';
     },
+    criadoPor?: string,
+    ip?: string,
+    userAgent?: string,
   ) {
     return prisma.$transaction(async (tx) => {
       await ensureTurmaBelongsToCurso(tx, cursoId, turmaId);
@@ -134,11 +275,14 @@ export const provasService = {
       }
 
       const ordem = data.ordem ?? (await tx.cursosTurmasProvas.count({ where: { turmaId } })) + 1;
+      const tipo = data.tipo ?? 'PROVA';
 
       const prova = await tx.cursosTurmasProvas.create({
         data: {
+          cursoId,
           turmaId,
           moduloId: data.moduloId ?? null,
+          tipo: tipo as any,
           titulo: data.titulo,
           etiqueta: data.etiqueta,
           descricao: data.descricao ?? null,
@@ -153,7 +297,45 @@ export const provasService = {
 
       provasLogger.info({ turmaId, provaId: prova.id }, 'Prova criada com sucesso');
 
-      return mapProva(prova);
+      // Registrar auditoria se houver usuário
+      if (criadoPor) {
+        try {
+          await auditoriaService.registrarLog({
+            categoria: AuditoriaCategoria.CURSO,
+            tipo: tipo === 'ATIVIDADE' ? 'ATIVIDADE_CRIACAO' : 'PROVA_CRIACAO',
+            acao: tipo === 'ATIVIDADE' ? 'ATIVIDADE_CRIADA' : 'PROVA_CRIADA',
+            usuarioId: criadoPor,
+            entidadeId: prova.id,
+            entidadeTipo: 'PROVA',
+            descricao: `${tipo === 'ATIVIDADE' ? 'Atividade' : 'Prova'} criada: ${data.titulo}`,
+            dadosNovos: {
+              titulo: data.titulo,
+              etiqueta: data.etiqueta,
+              tipo,
+              peso: data.peso,
+              valePonto: data.valePonto,
+            },
+            metadata: {
+              cursoId,
+              turmaId,
+              provaId: prova.id,
+              moduloId: data.moduloId,
+            },
+            ip,
+            userAgent,
+          });
+        } catch (error) {
+          provasLogger.warn(
+            { err: error, provaId: prova.id },
+            'Erro ao registrar auditoria de criação',
+          );
+        }
+      }
+
+      // Buscar informações do criador para retornar
+      const criadoPorInfo = criadoPor ? await fetchCriadorInfo(prova.id) : null;
+
+      return mapProva(prova, criadoPorInfo);
     });
   },
 

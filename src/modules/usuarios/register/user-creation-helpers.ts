@@ -209,7 +209,7 @@ export const processUserTypeSpecificData = async (
 };
 
 export const checkForDuplicates = async (
-  data: { email: string; supabaseId?: string; cpf?: string; cnpj?: string },
+  data: { email: string; authId?: string; cpf?: string; cnpj?: string },
   options?: { logger?: AppLogger },
 ): Promise<{ found: boolean; reason?: string }> => {
   const scopedLogger = createScopedLogger(options?.logger, 'checkForDuplicates');
@@ -218,13 +218,13 @@ export const checkForDuplicates = async (
 
     type WhereCondition =
       | { email: string }
-      | { supabaseId: string }
+      | { authId: string }
       | { cpf: string }
       | { cnpj: string };
 
     const orConditions: WhereCondition[] = [{ email: data.email }];
-    if (data.supabaseId) {
-      orConditions.push({ supabaseId: data.supabaseId });
+    if (data.authId) {
+      orConditions.push({ authId: data.authId });
     }
     if (data.cpf) {
       orConditions.push({ cpf: data.cpf });
@@ -240,7 +240,7 @@ export const checkForDuplicates = async (
         email: true,
         cpf: true,
         cnpj: true,
-        supabaseId: true,
+        authId: true,
         UsuariosVerificacaoEmail: {
           select: UsuariosVerificacaoEmailSelect,
         },
@@ -270,8 +270,8 @@ export const checkForDuplicates = async (
         reason += 'este CPF';
       } else if (data.cnpj && usuarioExistente.cnpj === data.cnpj) {
         reason += 'este CNPJ';
-      } else if (data.supabaseId && usuarioExistente.supabaseId === data.supabaseId) {
-        reason += 'este ID do Supabase';
+      } else if (data.authId && usuarioExistente.authId === data.authId) {
+        reason += 'este ID de autenticação';
       } else {
         reason += 'estes dados';
       }
@@ -296,7 +296,7 @@ export interface BuildUserDataForDatabaseParams {
   tipoUsuario: TiposDeUsuarios | PrismaTiposDeUsuarios;
   role: Roles | PrismaRoles;
   aceitarTermos: boolean;
-  supabaseId: string;
+  authId: string;
   cpfLimpo?: string;
   cnpjLimpo?: string;
   dataNascimento?: Date;
@@ -314,7 +314,7 @@ export const buildUserDataForDatabase = (params: BuildUserDataForDatabaseParams)
     senha: params.senha,
     tipoUsuario: params.tipoUsuario as PrismaTiposDeUsuarios,
     role: params.role as PrismaRoles,
-    supabaseId: params.supabaseId,
+    authId: params.authId,
     ...(params.status ? { status: params.status } : {}),
     ...(params.cpfLimpo ? { cpf: params.cpfLimpo } : {}),
     ...(params.cnpjLimpo ? { cnpj: params.cnpjLimpo } : {}),
@@ -375,7 +375,7 @@ export const createUserWithTransaction = async (
         tipoUsuario: true,
         role: true,
         status: true,
-        supabaseId: true,
+        authId: true,
         criadoEm: true,
         ...usuarioRedesSociaisSelect,
         codUsuario: true,

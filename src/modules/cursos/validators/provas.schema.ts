@@ -5,6 +5,31 @@ const ordemSchema = z
   .int('Ordem deve ser inteiro')
   .min(0, 'Ordem deve ser maior ou igual a zero');
 
+/**
+ * Schema de validação para query de listagem de provas/atividades
+ */
+export const listProvasQuerySchema = z.object({
+  search: z
+    .string({ invalid_type_error: 'Busca deve ser um texto' })
+    .trim()
+    .min(1, 'Busca deve ter pelo menos 1 caractere')
+    .optional(),
+  turmaId: z
+    .string({ invalid_type_error: 'ID da turma deve ser um texto' })
+    .uuid('ID da turma deve ser um UUID válido')
+    .optional(),
+  status: z
+    .enum(['ATIVO', 'INATIVO'], {
+      errorMap: () => ({ message: 'Status deve ser ATIVO ou INATIVO' }),
+    })
+    .optional(),
+  tipo: z
+    .enum(['PROVA', 'ATIVIDADE'], {
+      errorMap: () => ({ message: 'Tipo deve ser PROVA ou ATIVIDADE' }),
+    })
+    .optional(),
+});
+
 const pesoSchema = z
   .number({ invalid_type_error: 'Peso deve ser um número' })
   .gt(0, 'Peso deve ser maior que zero')

@@ -295,7 +295,7 @@ export async function seedUsuarios(prisma?: PrismaClient) {
         codUsuario = `${usuario.role.substring(0, 3).toUpperCase()}-${shortCode}`;
       }
 
-      const supabaseId = `seed-${usuario.role.toLowerCase()}-${Date.now()}`;
+      const authId = `seed-${usuario.role.toLowerCase()}-${Date.now()}`;
 
       // Hash da senha usando bcrypt
       const senhaHash = await bcrypt.hash(usuario.senha, 10);
@@ -305,7 +305,7 @@ export async function seedUsuarios(prisma?: PrismaClient) {
       const dbUser = await client.usuarios.create({
         data: {
           id: userId,
-          supabaseId,
+          authId,
           nomeCompleto: usuario.nomeCompleto,
           email: usuario.email,
           senha: senhaHash,

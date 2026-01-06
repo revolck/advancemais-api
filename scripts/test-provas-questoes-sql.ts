@@ -13,16 +13,18 @@ dotenv.config({ path: '.env' });
 
 async function testMigrationSQL() {
   let connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
-  
+
   if (connectionString && !connectionString.includes('sslmode=')) {
     connectionString += (connectionString.includes('?') ? '&' : '?') + 'sslmode=require';
   }
-  
+
   const client = new Client({
     connectionString,
-    ssl: connectionString?.includes('supabase') ? {
-      rejectUnauthorized: false,
-    } : undefined,
+    ssl: connectionString?.includes('supabase')
+      ? {
+          rejectUnauthorized: false,
+        }
+      : undefined,
   });
 
   try {
@@ -39,7 +41,7 @@ async function testMigrationSQL() {
       FROM information_schema.columns
       WHERE table_name = 'CursosTurmasProvas' AND column_name = 'valePonto'
     `);
-    
+
     if (valePontoCheck.rows.length > 0) {
       console.log('   ✅ Campo valePonto existe:', valePontoCheck.rows[0]);
     } else {
@@ -53,10 +55,10 @@ async function testMigrationSQL() {
       FROM pg_type
       WHERE typname = 'CursosTipoQuestao'
     `);
-    
+
     if (enumCheck.rows.length > 0) {
       console.log('   ✅ Enum CursosTipoQuestao existe:', enumCheck.rows[0]);
-      
+
       // Verificar valores do enum
       const enumValues = await client.query(`
         SELECT enumlabel
@@ -64,7 +66,7 @@ async function testMigrationSQL() {
         WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'CursosTipoQuestao')
         ORDER BY enumsortorder
       `);
-      console.log('   ✅ Valores do enum:', enumValues.rows.map(r => r.enumlabel).join(', '));
+      console.log('   ✅ Valores do enum:', enumValues.rows.map((r) => r.enumlabel).join(', '));
     } else {
       throw new Error('Enum CursosTipoQuestao não encontrado');
     }
@@ -78,23 +80,32 @@ async function testMigrationSQL() {
     ];
 
     for (const tableName of tables) {
-      const tableCheck = await client.query(`
+      const tableCheck = await client.query(
+        `
         SELECT table_name
         FROM information_schema.tables
         WHERE table_schema = 'public' AND table_name = $1
-      `, [tableName]);
-      
+      `,
+        [tableName],
+      );
+
       if (tableCheck.rows.length > 0) {
         console.log(`   ✅ Tabela ${tableName} existe`);
-        
+
         // Verificar colunas
-        const columns = await client.query(`
+        const columns = await client.query(
+          `
           SELECT column_name, data_type, is_nullable
           FROM information_schema.columns
           WHERE table_name = $1
           ORDER BY ordinal_position
-        `, [tableName]);
-        console.log(`      Colunas (${columns.rows.length}):`, columns.rows.map(r => r.column_name).join(', '));
+        `,
+          [tableName],
+        );
+        console.log(
+          `      Colunas (${columns.rows.length}):`,
+          columns.rows.map((r) => r.column_name).join(', '),
+        );
       } else {
         throw new Error(`Tabela ${tableName} não encontrada`);
       }
@@ -119,10 +130,12 @@ async function testMigrationSQL() {
              OR ccu.table_name IN ('CursosTurmasProvas', 'CursosTurmasProvasQuestoes', 'CursosTurmasProvasQuestoesAlternativas', 'CursosTurmasInscricoes', 'CursosTurmasProvasEnvios'))
       ORDER BY tc.table_name, kcu.column_name
     `);
-    
+
     console.log(`   ✅ ${fkCheck.rows.length} foreign keys encontradas:`);
-    fkCheck.rows.forEach(fk => {
-      console.log(`      ${fk.table_name}.${fk.column_name} -> ${fk.foreign_table_name}.${fk.foreign_column_name}`);
+    fkCheck.rows.forEach((fk) => {
+      console.log(
+        `      ${fk.table_name}.${fk.column_name} -> ${fk.foreign_table_name}.${fk.foreign_column_name}`,
+      );
     });
 
     // 5. Verificar índices
@@ -137,9 +150,9 @@ async function testMigrationSQL() {
         AND tablename IN ('CursosTurmasProvasQuestoes', 'CursosTurmasProvasQuestoesAlternativas', 'CursosTurmasProvasRespostas')
       ORDER BY tablename, indexname
     `);
-    
+
     console.log(`   ✅ ${indexCheck.rows.length} índices encontrados:`);
-    indexCheck.rows.forEach(idx => {
+    indexCheck.rows.forEach((idx) => {
       console.log(`      ${idx.tablename}.${idx.indexname}`);
     });
 
@@ -157,7 +170,7 @@ async function testMigrationSQL() {
         AND tc.table_name = 'CursosTurmasProvasRespostas'
         AND tc.constraint_name = 'CursosTurmasProvasRespostas_questaoId_inscricaoId_key'
     `);
-    
+
     if (uniqueCheck.rows.length > 0) {
       console.log('   ✅ Constraint única encontrada:', uniqueCheck.rows[0].constraint_name);
     } else {
@@ -166,63 +179,76 @@ async function testMigrationSQL() {
 
     // 7. Testar inserção de dados (se houver turma e inscrição)
     console.log('\n7️⃣ Testando inserção de dados...');
-    
+
     // Buscar uma turma
     const turmaResult = await client.query(`
       SELECT id, codigo, nome
       FROM "CursosTurmas"
       LIMIT 1
     `);
-    
+
     if (turmaResult.rows.length === 0) {
       console.log('   ⚠️  Nenhuma turma encontrada. Pulando teste de inserção.');
     } else {
       const turma = turmaResult.rows[0];
       console.log(`   📚 Turma encontrada: ${turma.nome} (${turma.codigo})`);
-      
+
       // Buscar uma inscrição
-      const inscricaoResult = await client.query(`
+      const inscricaoResult = await client.query(
+        `
         SELECT id
         FROM "CursosTurmasInscricoes"
         WHERE "turmaId" = $1
         LIMIT 1
-      `, [turma.id]);
-      
+      `,
+        [turma.id],
+      );
+
       if (inscricaoResult.rows.length === 0) {
         console.log('   ⚠️  Nenhuma inscrição encontrada. Pulando teste de inserção.');
       } else {
         const inscricao = inscricaoResult.rows[0];
         console.log(`   👤 Inscrição encontrada: ${inscricao.id}`);
-        
+
         // Criar uma prova de teste
         const provaId = randomUUID();
-        await client.query(`
+        await client.query(
+          `
           INSERT INTO "CursosTurmasProvas" (id, "turmaId", titulo, etiqueta, peso, "valePonto", ativo, ordem)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
           ON CONFLICT DO NOTHING
-        `, [provaId, turma.id, 'Prova de Teste SQL', 'TESTE-SQL', 10.0, true, true, 0]);
+        `,
+          [provaId, turma.id, 'Prova de Teste SQL', 'TESTE-SQL', 10.0, true, true, 0],
+        );
         console.log(`   ✅ Prova criada: ${provaId}`);
-        
+
         // Criar uma questão de teste
         const questaoId = randomUUID();
-        await client.query(`
+        await client.query(
+          `
           INSERT INTO "CursosTurmasProvasQuestoes" (id, "provaId", enunciado, tipo, ordem, peso, obrigatoria)
           VALUES ($1, $2, $3, $4, $5, $6, $7)
           ON CONFLICT DO NOTHING
-        `, [questaoId, provaId, 'Esta é uma questão de teste criada via SQL', 'TEXTO', 1, 5.0, true]);
+        `,
+          [questaoId, provaId, 'Esta é uma questão de teste criada via SQL', 'TEXTO', 1, 5.0, true],
+        );
         console.log(`   ✅ Questão criada: ${questaoId}`);
-        
+
         // Criar uma resposta de teste
         const respostaId = randomUUID();
-        await client.query(`
+        await client.query(
+          `
           INSERT INTO "CursosTurmasProvasRespostas" (id, "questaoId", "inscricaoId", "respostaTexto", corrigida)
           VALUES ($1, $2, $3, $4, $5)
           ON CONFLICT ("questaoId", "inscricaoId") DO UPDATE SET "respostaTexto" = EXCLUDED."respostaTexto"
-        `, [respostaId, questaoId, inscricao.id, 'Esta é uma resposta de teste', false]);
+        `,
+          [respostaId, questaoId, inscricao.id, 'Esta é uma resposta de teste', false],
+        );
         console.log(`   ✅ Resposta criada: ${respostaId}`);
-        
+
         // Verificar se os dados foram inseridos corretamente
-        const verifyResult = await client.query(`
+        const verifyResult = await client.query(
+          `
           SELECT 
             p.id as prova_id,
             p.titulo,
@@ -236,12 +262,18 @@ async function testMigrationSQL() {
           JOIN "CursosTurmasProvasQuestoes" q ON q."provaId" = p.id
           JOIN "CursosTurmasProvasRespostas" r ON r."questaoId" = q.id
           WHERE p.id = $1
-        `, [provaId]);
-        
+        `,
+          [provaId],
+        );
+
         if (verifyResult.rows.length > 0) {
-          console.log(`   ✅ Dados verificados: ${verifyResult.rows.length} registro(s) encontrado(s)`);
-          verifyResult.rows.forEach(row => {
-            console.log(`      Prova: ${row.titulo}, Questão: ${row.enunciado.substring(0, 30)}..., Resposta: ${row.respostaTexto?.substring(0, 30)}...`);
+          console.log(
+            `   ✅ Dados verificados: ${verifyResult.rows.length} registro(s) encontrado(s)`,
+          );
+          verifyResult.rows.forEach((row) => {
+            console.log(
+              `      Prova: ${row.titulo}, Questão: ${row.enunciado.substring(0, 30)}..., Resposta: ${row.respostaTexto?.substring(0, 30)}...`,
+            );
           });
         }
       }
@@ -255,7 +287,6 @@ async function testMigrationSQL() {
     console.log('   ✅ Foreign keys configuradas');
     console.log('   ✅ Índices criados');
     console.log('   ✅ Teste de inserção funcionou');
-    
   } catch (error: any) {
     console.error('\n❌ Erro durante validação:', error.message);
     console.error('Stack:', error.stack);
@@ -276,5 +307,3 @@ testMigrationSQL()
     console.error('\n💥 Falha crítica na validação:', error);
     process.exit(1);
   });
-
-

@@ -7,6 +7,7 @@ import {
   StatusInscricao,
   Status,
 } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
@@ -18,6 +19,32 @@ import { provaDefaultInclude } from './provas.mapper';
 import { cursosTurmasMapper, mapTurmaSummaryWithInscricoes } from './cursos.service';
 
 const turmasLogger = logger.child({ module: 'CursosTurmasService' });
+
+type TurmaEstruturaItemInput = {
+  type: 'AULA' | 'PROVA' | 'ATIVIDADE';
+  title: string;
+  templateId: string;
+  strategy?: 'CLONE' | 'REFERENCE';
+  startDate?: Date;
+  endDate?: Date;
+  instructorId?: string;
+  instructorIds?: string[];
+  ordem?: number;
+};
+
+type TurmaEstruturaModuleInput = {
+  title: string;
+  items: TurmaEstruturaItemInput[];
+  startDate?: Date;
+  endDate?: Date;
+  instructorId?: string;
+  instructorIds?: string[];
+};
+
+type TurmaEstruturaInput = {
+  modules: TurmaEstruturaModuleInput[];
+  standaloneItems: TurmaEstruturaItemInput[];
+};
 
 /**
  * Conta inscrições ativas por turma usando agregação SQL eficiente
@@ -105,7 +132,7 @@ const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()(
             nomeCompleto: true,
             email: true,
             UsuariosInformation: {
-              select: { inscricao: true, telefone: true },
+              select: { inscricao: true, telefone: true, avatarUrl: true },
             },
             UsuariosEnderecos: {
               select: {
@@ -175,6 +202,300 @@ const fetchTurmaDetailed = async (client: PrismaClientOrTx, turmaId: string) => 
   }
 
   return cursosTurmasMapper.detailed(turma);
+};
+
+const countTemplatesForCurso = async (client: PrismaClientOrTx, cursoId: string) => {
+  const [templatesAulasCount, templatesAvaliacoesCount] = await Promise.all([
+    client.cursosTurmasAulas.count({
+      where: {
+        cursoId,
+        turmaId: null,
+        deletedAt: null,
+      },
+    }),
+    client.cursosTurmasProvas.count({
+      where: {
+        cursoId,
+        turmaId: null,
+      },
+    }),
+  ]);
+
+  return { templatesAulasCount, templatesAvaliacoesCount };
+};
+
+const ensureTemplatesExistForTurmaCreate = async (client: PrismaClientOrTx, cursoId: string) => {
+  const { templatesAulasCount, templatesAvaliacoesCount } = await countTemplatesForCurso(
+    client,
+    cursoId,
+  );
+
+  if (templatesAulasCount < 1 || templatesAvaliacoesCount < 1) {
+    const error: any = new Error(
+      'Para cadastrar uma turma é necessário ter pelo menos 1 aula e 1 avaliação cadastradas.',
+    );
+    error.code = 'TURMA_PREREQUISITOS_NAO_ATENDIDOS';
+    error.details = {
+      templatesAulasCount,
+      templatesAvaliacoesCount,
+    };
+    throw error;
+  }
+};
+
+const buildItemsFromEstrutura = (estrutura: TurmaEstruturaInput) => {
+  const modules = Array.isArray(estrutura?.modules) ? estrutura.modules : [];
+  const standaloneItems = Array.isArray(estrutura?.standaloneItems)
+    ? estrutura.standaloneItems
+    : [];
+  return {
+    moduleItems: modules.map((module, moduleIndex) => ({
+      moduleIndex,
+      module,
+      items: Array.isArray(module.items) ? module.items : [],
+    })),
+    standaloneItems,
+  };
+};
+
+const generateNextAulaCodigo = async (tx: Prisma.TransactionClient) => {
+  const ultimaAula = await tx.cursosTurmasAulas.findFirst({
+    where: { codigo: { startsWith: 'AUL-' } },
+    orderBy: { codigo: 'desc' },
+    select: { codigo: true },
+  });
+
+  let numero = 1;
+  if (ultimaAula?.codigo) {
+    const match = ultimaAula.codigo.match(/AUL-(\d+)/);
+    if (match) {
+      numero = parseInt(match[1], 10) + 1;
+    }
+  }
+
+  return `AUL-${numero.toString().padStart(6, '0')}`;
+};
+
+const makeUniqueEtiqueta = async (
+  tx: Prisma.TransactionClient,
+  turmaId: string,
+  baseEtiqueta: string,
+) => {
+  const normalizedBase = (baseEtiqueta ?? '').trim().slice(0, 30);
+  const safeBase = normalizedBase.length > 0 ? normalizedBase : 'AV';
+
+  let candidate = safeBase;
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const existing = await tx.cursosTurmasProvas.findFirst({
+      where: { turmaId, etiqueta: candidate },
+      select: { id: true },
+    });
+    if (!existing) {
+      return candidate;
+    }
+
+    const suffix = `-${attempt + 2}`;
+    const trimmed = safeBase.slice(0, Math.max(1, 30 - suffix.length));
+    candidate = `${trimmed}${suffix}`;
+  }
+
+  const randomSuffix = `-${Math.floor(Math.random() * 9999)
+    .toString()
+    .padStart(4, '0')}`;
+  return `${safeBase.slice(0, Math.max(1, 30 - randomSuffix.length))}${randomSuffix}`;
+};
+
+const cloneAulaTemplateToTurma = async (
+  tx: Prisma.TransactionClient,
+  params: {
+    cursoId: string;
+    turmaId: string;
+    moduloId: string | null;
+    ordem: number;
+    templateId: string;
+    title?: string;
+    dataInicio?: Date;
+    dataFim?: Date;
+    instrutorId?: string | null;
+    criadoPorId?: string | null;
+  },
+) => {
+  const template = await tx.cursosTurmasAulas.findFirst({
+    where: {
+      id: params.templateId,
+      cursoId: params.cursoId,
+      turmaId: null,
+      deletedAt: null,
+    },
+    include: {
+      CursosTurmasAulasMateriais: {
+        orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
+      },
+    },
+  });
+
+  if (!template) {
+    const error: any = new Error('Aula template não encontrada para o curso informado');
+    error.code = 'AULA_TEMPLATE_NOT_FOUND';
+    error.details = { templateId: params.templateId };
+    throw error;
+  }
+
+  // Gerar código único com retry em caso de concorrência
+  let aulaCreated: { id: string } | null = null;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const codigo = await generateNextAulaCodigo(tx);
+    try {
+      aulaCreated = await tx.cursosTurmasAulas.create({
+        data: {
+          codigo,
+          cursoId: params.cursoId,
+          turmaId: params.turmaId,
+          moduloId: params.moduloId,
+          instrutorId: params.instrutorId ?? template.instrutorId ?? null,
+          nome: params.title?.trim().length ? params.title.trim() : template.nome,
+          descricao: template.descricao ?? null,
+          ordem: params.ordem,
+          urlVideo: template.urlVideo ?? null,
+          sala: template.sala ?? null,
+          // Não clonar Meet/Event IDs: são específicos da turma/agenda
+          urlMeet: null,
+          meetEventId: null,
+          modalidade: template.modalidade,
+          tipoLink: template.tipoLink ?? null,
+          obrigatoria: template.obrigatoria,
+          duracaoMinutos: template.duracaoMinutos ?? null,
+          // Instância sempre nasce como rascunho (publicação via fluxo próprio)
+          status: 'RASCUNHO' as any,
+          gravarAula: template.gravarAula ?? true,
+          apenasMateriaisComplementares: template.apenasMateriaisComplementares ?? false,
+          adicionadaAposCriacao: false,
+          dataInicio: params.dataInicio ?? template.dataInicio ?? null,
+          dataFim: params.dataFim ?? template.dataFim ?? null,
+          horaInicio: template.horaInicio ?? null,
+          horaFim: template.horaFim ?? null,
+          criadoPorId: params.criadoPorId ?? null,
+        },
+        select: { id: true },
+      });
+      break;
+    } catch (error: any) {
+      if (error instanceof PrismaClientKnownRequestError && error.code === 'P2002') {
+        // codigo duplicado, tentar novamente
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  if (!aulaCreated) {
+    const error: any = new Error('Falha ao gerar código único para aula');
+    error.code = 'AULA_CODIGO_GENERATION_FAILED';
+    throw error;
+  }
+
+  if (template.CursosTurmasAulasMateriais?.length) {
+    await tx.cursosTurmasAulasMateriais.createMany({
+      data: template.CursosTurmasAulasMateriais.map((material) => ({
+        aulaId: aulaCreated!.id,
+        titulo: material.titulo,
+        descricao: material.descricao ?? null,
+        tipo: material.tipo,
+        tipoArquivo: material.tipoArquivo ?? null,
+        url: material.url ?? null,
+        duracaoEmSegundos: material.duracaoEmSegundos ?? null,
+        tamanhoEmBytes: material.tamanhoEmBytes ?? null,
+        ordem: material.ordem,
+      })),
+    });
+  }
+
+  return aulaCreated.id;
+};
+
+const cloneAvaliacaoTemplateToTurma = async (
+  tx: Prisma.TransactionClient,
+  params: {
+    cursoId: string;
+    turmaId: string;
+    moduloId: string | null;
+    ordem: number;
+    templateId: string;
+    title?: string;
+  },
+) => {
+  const template = await tx.cursosTurmasProvas.findFirst({
+    where: {
+      id: params.templateId,
+      cursoId: params.cursoId,
+      turmaId: null,
+    },
+    include: {
+      CursosTurmasProvasQuestoes: {
+        orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
+        include: {
+          CursosTurmasProvasQuestoesAlternativas: {
+            orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
+          },
+        },
+      },
+    },
+  });
+
+  if (!template) {
+    const error: any = new Error('Avaliação template não encontrada para o curso informado');
+    error.code = 'AVALIACAO_TEMPLATE_NOT_FOUND';
+    error.details = { templateId: params.templateId };
+    throw error;
+  }
+
+  const etiqueta = await makeUniqueEtiqueta(tx, params.turmaId, template.etiqueta);
+
+  const nova = await tx.cursosTurmasProvas.create({
+    data: {
+      turmaId: params.turmaId,
+      cursoId: params.cursoId,
+      moduloId: params.moduloId,
+      tipo: template.tipo,
+      recuperacaoFinal: template.recuperacaoFinal ?? false,
+      titulo: params.title?.trim().length ? params.title.trim() : template.titulo,
+      etiqueta,
+      descricao: template.descricao ?? null,
+      peso: template.peso,
+      valePonto: template.valePonto ?? true,
+      ativo: template.ativo ?? true,
+      ordem: params.ordem,
+      localizacao: params.moduloId ? 'MODULO' : 'TURMA',
+    },
+    select: { id: true },
+  });
+
+  for (const questao of template.CursosTurmasProvasQuestoes) {
+    const novaQuestao = await tx.cursosTurmasProvasQuestoes.create({
+      data: {
+        provaId: nova.id,
+        enunciado: questao.enunciado,
+        tipo: questao.tipo,
+        ordem: questao.ordem,
+        peso: questao.peso,
+        obrigatoria: questao.obrigatoria,
+      },
+      select: { id: true },
+    });
+
+    if (questao.CursosTurmasProvasQuestoesAlternativas?.length) {
+      await tx.cursosTurmasProvasQuestoesAlternativas.createMany({
+        data: questao.CursosTurmasProvasQuestoesAlternativas.map((alt) => ({
+          questaoId: novaQuestao.id,
+          texto: alt.texto,
+          ordem: alt.ordem,
+          correta: alt.correta,
+        })),
+      });
+    }
+  }
+
+  return nova.id;
 };
 
 type TurmaListParams = {
@@ -325,7 +646,7 @@ export const turmasService = {
             nomeCompleto: true,
             email: true,
             UsuariosInformation: {
-              select: { inscricao: true, telefone: true },
+              select: { inscricao: true, telefone: true, avatarUrl: true },
             },
             UsuariosEnderecos: {
               select: {
@@ -376,6 +697,7 @@ export const turmasService = {
             codigo: aluno.codUsuario,
             inscricao: aluno.UsuariosInformation?.inscricao ?? aluno.codUsuario ?? null,
             telefone: aluno.UsuariosInformation?.telefone ?? null,
+            avatarUrl: aluno.UsuariosInformation?.avatarUrl ?? null,
             endereco: endereco
               ? {
                   logradouro: endereco.logradouro ?? null,
@@ -397,6 +719,7 @@ export const turmasService = {
     cursoId: string,
     data: {
       nome: string;
+      instrutorId?: string;
       turno?: CursosTurnos;
       metodo?: CursosMetodos;
       dataInicio?: Date | null;
@@ -406,7 +729,9 @@ export const turmasService = {
       vagasTotais: number;
       vagasDisponiveis?: number;
       status?: CursoStatus;
+      estrutura: TurmaEstruturaInput;
     },
+    actor?: { id?: string | null },
   ) {
     return prisma.$transaction(async (tx) => {
       const curso = await tx.cursos.findUnique({ where: { id: cursoId }, select: { id: true } });
@@ -415,6 +740,8 @@ export const turmasService = {
         (error as any).code = 'CURSO_NOT_FOUND';
         throw error;
       }
+
+      await ensureTemplatesExistForTurmaCreate(tx, cursoId);
 
       const vagasDisponiveis =
         data.vagasDisponiveis !== undefined
@@ -426,6 +753,7 @@ export const turmasService = {
       const created = await tx.cursosTurmas.create({
         data: {
           cursoId,
+          instrutorId: data.instrutorId ?? null,
           nome: data.nome,
           codigo,
           turno: data.turno ?? CursosTurnos.INTEGRAL,
@@ -436,11 +764,121 @@ export const turmasService = {
           dataInscricaoFim: data.dataInscricaoFim ?? null,
           vagasTotais: data.vagasTotais,
           vagasDisponiveis,
-          status: data.status ?? CursoStatus.PUBLICADO,
+          status: data.status ?? CursoStatus.RASCUNHO,
         },
       });
 
-      return fetchTurmaDetailed(tx, created.id);
+      const mapping: {
+        templateId: string;
+        instanceId: string;
+        tipo: 'AULA' | 'PROVA' | 'ATIVIDADE';
+        moduloId: string | null;
+        strategy: 'CLONE';
+      }[] = [];
+
+      const { moduleItems, standaloneItems } = buildItemsFromEstrutura(data.estrutura);
+
+      for (const entry of moduleItems) {
+        const module = entry.module;
+        const modulo = await tx.cursosTurmasModulos.create({
+          data: {
+            turmaId: created.id,
+            nome: module.title,
+            descricao: null,
+            obrigatorio: true,
+            ordem: entry.moduleIndex + 1,
+          },
+          select: { id: true },
+        });
+
+        for (const [index, item] of entry.items.entries()) {
+          const ordem = item.ordem ?? index + 1;
+          if (item.type === 'AULA') {
+            const instanceId = await cloneAulaTemplateToTurma(tx, {
+              cursoId,
+              turmaId: created.id,
+              moduloId: modulo.id,
+              ordem,
+              templateId: item.templateId,
+              title: item.title,
+              dataInicio: item.startDate,
+              dataFim: item.endDate,
+              instrutorId: item.instructorId ?? data.instrutorId ?? null,
+              criadoPorId: actor?.id ?? null,
+            });
+            mapping.push({
+              templateId: item.templateId,
+              instanceId,
+              tipo: 'AULA',
+              moduloId: modulo.id,
+              strategy: 'CLONE',
+            });
+          } else {
+            const instanceId = await cloneAvaliacaoTemplateToTurma(tx, {
+              cursoId,
+              turmaId: created.id,
+              moduloId: modulo.id,
+              ordem,
+              templateId: item.templateId,
+              title: item.title,
+            });
+            mapping.push({
+              templateId: item.templateId,
+              instanceId,
+              tipo: item.type,
+              moduloId: modulo.id,
+              strategy: 'CLONE',
+            });
+          }
+        }
+      }
+
+      for (const [index, item] of standaloneItems.entries()) {
+        const ordem = item.ordem ?? index + 1;
+        if (item.type === 'AULA') {
+          const instanceId = await cloneAulaTemplateToTurma(tx, {
+            cursoId,
+            turmaId: created.id,
+            moduloId: null,
+            ordem,
+            templateId: item.templateId,
+            title: item.title,
+            dataInicio: item.startDate,
+            dataFim: item.endDate,
+            instrutorId: item.instructorId ?? data.instrutorId ?? null,
+            criadoPorId: actor?.id ?? null,
+          });
+          mapping.push({
+            templateId: item.templateId,
+            instanceId,
+            tipo: 'AULA',
+            moduloId: null,
+            strategy: 'CLONE',
+          });
+        } else {
+          const instanceId = await cloneAvaliacaoTemplateToTurma(tx, {
+            cursoId,
+            turmaId: created.id,
+            moduloId: null,
+            ordem,
+            templateId: item.templateId,
+            title: item.title,
+          });
+          mapping.push({
+            templateId: item.templateId,
+            instanceId,
+            tipo: item.type,
+            moduloId: null,
+            strategy: 'CLONE',
+          });
+        }
+      }
+
+      const turmaDetailed = await fetchTurmaDetailed(tx, created.id);
+      return {
+        ...turmaDetailed,
+        mapping,
+      };
     });
   },
 
@@ -449,6 +887,7 @@ export const turmasService = {
     turmaId: string,
     data: Partial<{
       nome: string;
+      instrutorId?: string;
       turno?: CursosTurnos;
       metodo?: CursosMetodos;
       dataInicio?: Date | null;
@@ -466,6 +905,7 @@ export const turmasService = {
         select: {
           id: true,
           cursoId: true,
+          status: true,
           vagasTotais: true,
           vagasDisponiveis: true,
           CursosTurmasInscricoes: { select: { id: true } },
@@ -499,10 +939,48 @@ export const turmasService = {
         vagasDisponiveis = minimoDisponiveis;
       }
 
+      const statusNovo = data.status;
+      const statusAnterior = turma.status;
+
+      const estaPublicandoOuAbrindoInscricoes =
+        statusNovo !== undefined &&
+        statusNovo !== statusAnterior &&
+        (statusNovo === CursoStatus.PUBLICADO || statusNovo === CursoStatus.INSCRICOES_ABERTAS);
+
+      if (estaPublicandoOuAbrindoInscricoes) {
+        const [aulasCount, avaliacoesCount] = await Promise.all([
+          tx.cursosTurmasAulas.count({
+            where: {
+              turmaId,
+              deletedAt: null,
+            },
+          }),
+          tx.cursosTurmasProvas.count({
+            where: {
+              turmaId,
+              ativo: true,
+            },
+          }),
+        ]);
+
+        if (aulasCount < 1 || avaliacoesCount < 1) {
+          const error: any = new Error(
+            'Para publicar/abrir inscrições de uma turma é necessário ter pelo menos 1 aula e 1 avaliação cadastradas.',
+          );
+          error.code = 'TURMA_PREREQUISITOS_NAO_ATENDIDOS';
+          error.details = {
+            aulasCount,
+            avaliacoesCount,
+          };
+          throw error;
+        }
+      }
+
       await tx.cursosTurmas.update({
         where: { id: turmaId },
         data: {
           nome: data.nome,
+          instrutorId: data.instrutorId ?? undefined,
           turno: data.turno,
           metodo: data.metodo,
           dataInicio: data.dataInicio,

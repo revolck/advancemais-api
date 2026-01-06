@@ -179,19 +179,18 @@ export const questoesService = {
       ordem?: number | null;
       peso?: number | null;
       obrigatoria?: boolean;
-      alternativas?: Array<{
+      alternativas?: {
         texto: string;
         ordem?: number | null;
         correta?: boolean;
-      }>;
+      }[];
     },
   ) {
     return prisma.$transaction(async (tx) => {
       await ensureProvaBelongsToTurma(tx, cursoId, turmaId, provaId);
 
       const ordem =
-        data.ordem ??
-        (await tx.cursosTurmasProvasQuestoes.count({ where: { provaId } })) + 1;
+        data.ordem ?? (await tx.cursosTurmasProvasQuestoes.count({ where: { provaId } })) + 1;
 
       const questao = await tx.cursosTurmasProvasQuestoes.create({
         data: {
@@ -235,12 +234,12 @@ export const questoesService = {
       ordem?: number | null;
       peso?: number | null;
       obrigatoria?: boolean;
-      alternativas?: Array<{
+      alternativas?: {
         id?: string;
         texto: string;
         ordem?: number | null;
         correta?: boolean;
-      }>;
+      }[];
     },
   ) {
     return prisma.$transaction(async (tx) => {
@@ -480,10 +479,7 @@ export const questoesService = {
         },
       });
 
-      questoesLogger.info(
-        { turmaId, provaId, questaoId, inscricaoId },
-        'Resposta corrigida',
-      );
+      questoesLogger.info({ turmaId, provaId, questaoId, inscricaoId }, 'Resposta corrigida');
 
       return {
         id: respostaAtualizada.id,
@@ -565,4 +561,3 @@ export const questoesService = {
     }));
   },
 };
-

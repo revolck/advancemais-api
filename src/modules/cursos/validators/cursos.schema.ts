@@ -52,7 +52,7 @@ const statusPadraoFilterSchema = z
 
 export const listCoursesQuerySchema = z.object({
   page: positiveInt.min(1).default(1),
-  pageSize: positiveInt.min(1).max(100).default(10),
+  pageSize: positiveInt.min(1).max(1000).default(10), // Aumentado para 1000 (suporte a selects)
   search: z.string().trim().min(1).optional(),
   statusPadrao: statusPadraoFilterSchema,
   categoriaId: positiveInt.optional(),
@@ -76,6 +76,18 @@ export const createCourseSchema = z.object({
   subcategoriaId: positiveInt.optional(),
   statusPadrao: z.nativeEnum(CursosStatusPadrao).optional(),
   estagioObrigatorio: z.coerce.boolean().optional(),
+  // Campos de precificação
+  valor: z.coerce
+    .number({ invalid_type_error: 'Valor deve ser um número' })
+    .min(0, 'Valor não pode ser negativo')
+    .optional()
+    .default(0),
+  valorPromocional: z.coerce
+    .number({ invalid_type_error: 'Valor promocional deve ser um número' })
+    .min(0, 'Valor promocional não pode ser negativo')
+    .nullable()
+    .optional(),
+  gratuito: z.coerce.boolean().optional().default(false),
 });
 
 export const updateCourseSchema = createCourseSchema.partial();

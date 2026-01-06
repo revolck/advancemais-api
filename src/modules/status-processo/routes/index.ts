@@ -7,7 +7,7 @@ import {
   updateStatusProcessoSchema,
   statusProcessoIdSchema,
 } from '../validators/status-processo.schema';
-import { supabaseAuthMiddleware } from '@/modules/usuarios/auth/supabase-middleware';
+import { supabaseAuthMiddleware } from '@/modules/usuarios/auth';
 
 const router = Router();
 const statusProcessoController = new StatusProcessoController();

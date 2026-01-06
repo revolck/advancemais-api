@@ -32,15 +32,15 @@ async function testDashboardHTTP() {
     console.log(`   Email: ${empresa.email}`);
     console.log(`   ID: ${empresa.id}\n`);
 
-    // 2. Buscar o supabaseId da empresa
+    // 2. Buscar o authId da empresa
     const usuarioCompleto = await prisma.usuarios.findUnique({
       where: { id: empresa.id },
       select: {
-        supabaseId: true,
+        authId: true,
       },
     });
 
-    console.log(`🔑 Supabase ID: ${usuarioCompleto?.supabaseId || 'Não encontrado'}\n`);
+    console.log(`🔑 Auth ID: ${usuarioCompleto?.authId || 'Não encontrado'}\n`);
 
     // 3. Fazer requisição direta ao serviço (sem HTTP)
     console.log('📊 Testando serviço diretamente (sem HTTP)...');
@@ -193,4 +193,3 @@ testDashboardHTTP()
     console.error('\n❌ Teste falhou:', error);
     process.exit(1);
   });
-

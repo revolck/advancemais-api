@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import path from 'path';
 
-import { supabase } from '@/config/supabase';
+import { uploadImage } from '@/config/storage';
 import { imagemLoginService } from '@/modules/website/services/imagem-login.service';
 import { respondWithCache } from '@/modules/website/utils/cache-response';
 
@@ -14,17 +14,8 @@ function generateImageTitle(url: string): string {
   }
 }
 
-async function uploadImage(file: Express.Multer.File): Promise<string> {
-  const fileExt = path.extname(file.originalname);
-  const fileName = `login-${Date.now()}${fileExt}`;
-  const { error } = await supabase.storage
-    .from('website')
-    .upload(`login/${fileName}`, file.buffer, {
-      contentType: file.mimetype,
-    });
-  if (error) throw error;
-  const { data } = supabase.storage.from('website').getPublicUrl(`login/${fileName}`);
-  return data.publicUrl;
+async function uploadLoginImage(file: Express.Multer.File): Promise<string> {
+  return uploadImage('website', 'login', file);
 }
 
 export class ImagemLoginController {
@@ -58,7 +49,7 @@ export class ImagemLoginController {
       const { link } = req.body;
       let imagemUrl = '';
       if (req.file) {
-        imagemUrl = await uploadImage(req.file);
+        imagemUrl = await uploadLoginImage(req.file);
       } else if (req.body.imagemUrl) {
         imagemUrl = req.body.imagemUrl;
       }
@@ -83,7 +74,7 @@ export class ImagemLoginController {
       const { link } = req.body;
       let imagemUrl: string | undefined = req.body.imagemUrl;
       if (req.file) {
-        imagemUrl = await uploadImage(req.file);
+        imagemUrl = await uploadLoginImage(req.file);
       }
       const data: any = { link };
       if (imagemUrl !== undefined) {

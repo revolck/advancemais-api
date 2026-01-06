@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import path from 'path';
 
-import { supabase } from '@/config/supabase';
+import { uploadImage } from '@/config/storage';
 import { conexaoForteService } from '@/modules/website/services/conexaoForte.service';
 import { respondWithCache } from '@/modules/website/utils/cache-response';
 
@@ -14,17 +14,18 @@ function generateImageTitle(url: string): string {
   }
 }
 
-async function uploadImage(file: Express.Multer.File, index: number): Promise<string> {
-  const fileExt = path.extname(file.originalname);
-  const fileName = `conexao-forte-${index}-${Date.now()}${fileExt}`;
-  const { error } = await supabase.storage
-    .from('website')
-    .upload(`conexao-forte/${fileName}`, file.buffer, {
-      contentType: file.mimetype,
-    });
-  if (error) throw error;
-  const { data } = supabase.storage.from('website').getPublicUrl(`conexao-forte/${fileName}`);
-  return data.publicUrl;
+async function uploadConexaoForteImage(file: Express.Multer.File, index: number): Promise<string> {
+  // Para manter o index no nome do arquivo, precisamos customizar um pouco
+  const fileExt = file.originalname.split('.').pop() || '';
+  const fileName = `conexao-forte-${index}-${Date.now()}.${fileExt}`;
+  const path = `conexao-forte/${fileName}`;
+
+  const { storage } = require('@/config/storage');
+  await storage.upload('website', path, file.buffer, {
+    contentType: file.mimetype,
+  });
+
+  return storage.getPublicUrl('website', path);
 }
 
 export class ConexaoForteController {
@@ -63,7 +64,7 @@ export class ConexaoForteController {
         const file = files?.[`imagem${i}`]?.[0];
         let url = req.body[`imagemUrl${i}`];
         if (file) {
-          url = await uploadImage(file, i);
+          url = await uploadConexaoForteImage(file, i);
         }
         if (url) {
           data[`imagemUrl${i}`] = url;
@@ -92,7 +93,7 @@ export class ConexaoForteController {
         const file = files?.[`imagem${i}`]?.[0];
         let url = req.body[`imagemUrl${i}`];
         if (file) {
-          url = await uploadImage(file, i);
+          url = await uploadConexaoForteImage(file, i);
         }
         if (url) {
           data[`imagemUrl${i}`] = url;

@@ -447,4 +447,3 @@ describe('API - Aulas: Publicação e Exclusão', () => {
     });
   });
 });
-

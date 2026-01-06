@@ -9,18 +9,20 @@ dotenv.config({ path: '.env' });
 
 async function runMigration() {
   let connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
-  
+
   // Garantir que a URL tenha sslmode=require
   if (connectionString && !connectionString.includes('sslmode=')) {
     connectionString += (connectionString.includes('?') ? '&' : '?') + 'sslmode=require';
   }
-  
+
   // Configurar SSL para Supabase
   const client = new Client({
     connectionString,
-    ssl: connectionString?.includes('supabase') ? {
-      rejectUnauthorized: false, // Aceitar certificados self-signed do Supabase
-    } : undefined,
+    ssl: connectionString?.includes('supabase')
+      ? {
+          rejectUnauthorized: false, // Aceitar certificados self-signed do Supabase
+        }
+      : undefined,
   });
 
   try {
@@ -49,10 +51,12 @@ async function runMigration() {
         error.code === '42710' || // duplicate_object
         error.message?.includes('already exists') ||
         error.message?.includes('duplicate') ||
-        error.message?.includes('relation') && error.message?.includes('already exists');
+        (error.message?.includes('relation') && error.message?.includes('already exists'));
 
       if (isAlreadyExistsError) {
-        console.log('⚠️  Alguns objetos já existem, mas isso é esperado se a migração foi parcialmente aplicada.');
+        console.log(
+          '⚠️  Alguns objetos já existem, mas isso é esperado se a migração foi parcialmente aplicada.',
+        );
         console.log('✅ Migração concluída (objetos existentes foram ignorados)');
       } else {
         // Se for outro tipo de erro, relançar
@@ -81,4 +85,3 @@ runMigration()
     console.error('💥 Falha crítica:', error);
     process.exit(1);
   });
-

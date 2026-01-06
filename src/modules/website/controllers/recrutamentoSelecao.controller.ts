@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import path from 'path';
 
-import { supabase } from '@/config/supabase';
+import { uploadImage } from '@/config/storage';
 import { recrutamentoSelecaoService } from '@/modules/website/services/recrutamentoSelecao.service';
 import { respondWithCache } from '@/modules/website/utils/cache-response';
 
@@ -14,19 +14,8 @@ function generateImageTitle(url: string): string {
   }
 }
 
-async function uploadImage(file: Express.Multer.File): Promise<string> {
-  const fileExt = path.extname(file.originalname);
-  const fileName = `recrutamento-selecao-${Date.now()}${fileExt}`;
-  const { error } = await supabase.storage
-    .from('website')
-    .upload(`recrutamento-selecao/${fileName}`, file.buffer, {
-      contentType: file.mimetype,
-    });
-  if (error) throw error;
-  const { data } = supabase.storage
-    .from('website')
-    .getPublicUrl(`recrutamento-selecao/${fileName}`);
-  return data.publicUrl;
+async function uploadRecrutamentoSelecaoImage(file: Express.Multer.File): Promise<string> {
+  return uploadImage('website', 'recrutamento-selecao', file);
 }
 
 export class RecrutamentoSelecaoController {
@@ -60,7 +49,7 @@ export class RecrutamentoSelecaoController {
       const { titulo, descricao, titulo1, titulo2, titulo3, titulo4 } = req.body;
       let imagemUrl = '';
       if (req.file) {
-        imagemUrl = await uploadImage(req.file);
+        imagemUrl = await uploadRecrutamentoSelecaoImage(req.file);
       } else if (req.body.imagemUrl) {
         imagemUrl = req.body.imagemUrl;
       }
@@ -90,7 +79,7 @@ export class RecrutamentoSelecaoController {
       const { titulo, descricao, titulo1, titulo2, titulo3, titulo4 } = req.body;
       let imagemUrl = req.body.imagemUrl as string | undefined;
       if (req.file) {
-        imagemUrl = await uploadImage(req.file);
+        imagemUrl = await uploadRecrutamentoSelecaoImage(req.file);
       }
       const data: any = {
         titulo,

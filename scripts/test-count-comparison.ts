@@ -42,7 +42,7 @@ async function testCountComparison() {
 
     // 2. Fazer requisição de listagem com diferentes pageSize para forçar todas as páginas
     console.log('2️⃣ Fazendo requisições para contar todas as aulas...');
-    
+
     let totalAulas = 0;
     let page = 1;
     const pageSize = 100; // Grande para pegar todas de uma vez
@@ -86,8 +86,12 @@ async function testCountComparison() {
     }
 
     console.log(`\n📊 Resultado:`);
-    console.log(`   Total de aulas retornadas pela API (soma de todas as páginas): ${todasAulas.length}`);
-    console.log(`   Total reportado pela API (pagination.total): ${todasAulas[0] ? 'Verificar na primeira resposta' : 'N/A'}`);
+    console.log(
+      `   Total de aulas retornadas pela API (soma de todas as páginas): ${todasAulas.length}`,
+    );
+    console.log(
+      `   Total reportado pela API (pagination.total): ${todasAulas[0] ? 'Verificar na primeira resposta' : 'N/A'}`,
+    );
 
     // 3. Verificar padrão nas aulas
     const aulasComTurma = todasAulas.filter((a) => a.turma?.id).length;
@@ -103,7 +107,7 @@ async function testCountComparison() {
       console.log(`\n⚠️  PROBLEMA CONFIRMADO: Apenas 23 aulas estão sendo retornadas`);
       console.log(`   Esperado: 46 aulas`);
       console.log(`   Diferença: ${46 - todasAulas.length} aulas não estão sendo retornadas`);
-      
+
       console.log(`\n🔍 Possíveis causas:`);
       console.log(`   1. Filtro implícito no relacionamento CursosTurmas`);
       console.log(`   2. Filtro de role sendo aplicado incorretamente`);
@@ -118,4 +122,3 @@ async function testCountComparison() {
 }
 
 testCountComparison();
-

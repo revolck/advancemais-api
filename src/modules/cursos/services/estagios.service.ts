@@ -11,6 +11,7 @@ import type {
   EstagioLocalInput,
   EstagioStatusInput,
   EstagioUpdateInput,
+  ListEstagiosQuery,
 } from '../validators/estagios.schema';
 
 const estagiosLogger = logger.child({ module: 'CursosEstagiosService' });
@@ -167,6 +168,79 @@ const diferencaEmDias = (inicio: Date, fim: Date) => {
 };
 
 export const estagiosService = {
+  async list(query: ListEstagiosQuery) {
+    const { cursoId, turmaId, status, search, page, pageSize } = query;
+
+    // Validar se o curso existe
+    const curso = await prisma.cursos.findUnique({
+      where: { id: cursoId },
+      select: { id: true },
+    });
+
+    if (!curso) {
+      const error = new Error('Curso não encontrado');
+      (error as any).code = 'CURSO_NOT_FOUND';
+      throw error;
+    }
+
+    const where: Prisma.CursosEstagiosWhereInput = {
+      cursoId,
+      turmaId: turmaId ?? undefined,
+      status: status ?? undefined,
+    };
+
+    if (search && search.trim().length > 0) {
+      const term = search.trim();
+      where.OR = [
+        { nome: { contains: term, mode: 'insensitive' } },
+        { empresaPrincipal: { contains: term, mode: 'insensitive' } },
+        { CursosTurmas: { nome: { contains: term, mode: 'insensitive' } } },
+        {
+          Usuarios_CursosEstagios_alunoIdToUsuarios: {
+            nomeCompleto: { contains: term, mode: 'insensitive' },
+          },
+        },
+        {
+          Usuarios_CursosEstagios_alunoIdToUsuarios: {
+            email: { contains: term, mode: 'insensitive' },
+          },
+        },
+      ];
+    }
+
+    const total = await prisma.cursosEstagios.count({ where });
+    const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
+    const safePage = totalPages === 0 ? 1 : Math.min(page, totalPages);
+    const skip = (safePage - 1) * pageSize;
+
+    const estagios = await prisma.cursosEstagios.findMany({
+      where,
+      orderBy: { criadoEm: 'desc' },
+      skip,
+      take: pageSize,
+      include: estagioWithRelations.include,
+    });
+
+    return {
+      success: true,
+      data: {
+        items: estagios.map((item) =>
+          mapEstagio(item, { includeToken: false, includeNotificacoes: false }),
+        ),
+        pagination: {
+          page: safePage,
+          requestedPage: page,
+          pageSize,
+          total,
+          totalPages: totalPages || 1,
+          hasNext: totalPages > 0 && safePage < totalPages,
+          hasPrevious: safePage > 1,
+          isPageAdjusted: safePage !== page,
+        },
+      },
+    };
+  },
+
   async create(
     cursoId: string,
     turmaId: string,

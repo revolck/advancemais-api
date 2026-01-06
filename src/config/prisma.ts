@@ -20,7 +20,7 @@ console.log('🔧 [PRISMA CONFIG] datasourceUrl length:', datasourceUrl?.length 
 if (datasourceUrl) {
   try {
     const url = new URL(datasourceUrl);
-    const isPooler = url.hostname.includes('pooler.supabase.com');
+    const isPooler = url.hostname.includes('pooler.');
     prismaLogger.info(
       {
         mode: isPooler ? 'Pooler' : 'Direct',
@@ -36,13 +36,11 @@ if (datasourceUrl) {
   }
 }
 
-// Configurações otimizadas de pool de conexões para Supabase FREE TIER
-// ⚠️ CRÍTICO: Supabase Free (Nano) tem limites MUITO baixos de conexões
-// O pooler (pgbouncer) do plano Free suporta poucas conexões simultâneas
+// Configurações otimizadas de pool de conexões
 // Documentação: https://www.prisma.io/docs/guides/performance-and-optimization/connection-management
-// 
-// LIMITES RECOMENDADOS PARA SUPABASE FREE:
-// - connection_limit: 1-3 (MUITO BAIXO para evitar saturação)
+//
+// LIMITES RECOMENDADOS:
+// - connection_limit: 2-50 (ajustar conforme necessidade)
 // - pool_timeout: 30s (tempo para aguardar conexão disponível)
 // - connect_timeout: 10s (tempo para estabelecer conexão)
 const DEFAULT_CONNECTION_LIMIT = process.env.DATABASE_CONNECTION_LIMIT || '2';
@@ -58,7 +56,7 @@ function buildConnectionUrl(baseUrl: string): string {
   const url = new URL(baseUrl);
   const port = parseInt(url.port || '5432');
   const isPoolerPort = port === 6543;
-  const isPoolerHostname = url.hostname.includes('pooler.supabase.com');
+  const isPoolerHostname = url.hostname.includes('pooler.');
 
   // 🎯 OTIMIZAÇÃO: Remover parâmetros que serão reconfigurados
   const paramsToRemove = [
@@ -68,7 +66,7 @@ function buildConnectionUrl(baseUrl: string): string {
   ];
   paramsToRemove.forEach((param) => url.searchParams.delete(param));
 
-  // ✅ Sempre garantir sslmode=require para Supabase
+  // ✅ Sempre garantir sslmode=require para conexões seguras
   if (!url.searchParams.has('sslmode')) {
     url.searchParams.set('sslmode', 'require');
   }
@@ -80,24 +78,21 @@ function buildConnectionUrl(baseUrl: string): string {
   url.searchParams.set('pool_timeout', DEFAULT_POOL_TIMEOUT);
   url.searchParams.set('connect_timeout', DEFAULT_CONNECT_TIMEOUT);
 
-  // ✅ Lógica correta para pgbouncer (OTIMIZADO PARA SUPABASE FREE):
+  // ✅ Lógica para pgbouncer (Transaction Pooler):
   // - Porta 6543 = Transaction Pooler (sempre precisa pgbouncer=true)
-  // - Porta 5432 = Conexão direta via pooler hostname
-  // ⚠️ CRÍTICO: Supabase Free tem limites MUITO baixos
+  // - Hostname com 'pooler.' = usar pgbouncer mode
   if (isPoolerPort || isPoolerHostname) {
-    // Qualquer conexão via pooler hostname = usar pgbouncer=true e connection_limit=1
+    // Conexão via pooler = usar pgbouncer=true
     url.searchParams.set('pgbouncer', 'true');
-    // ⚠️ CRÍTICO para FREE: connection_limit=1 evita saturação do pooler
     url.searchParams.set('connection_limit', DEFAULT_POOLER_CONNECTION_LIMIT);
     prismaLogger.info(
       {
-        mode: 'Transaction Pooler (Supabase Free)',
+        mode: 'Transaction Pooler',
         port,
         connectionLimit: DEFAULT_POOLER_CONNECTION_LIMIT,
         poolTimeout: DEFAULT_POOL_TIMEOUT,
-        note: '⚠️ Supabase FREE - usando connection_limit mínimo para evitar saturação',
       },
-      '✅ Configuração para Supabase Free Tier',
+      '✅ Configuração para Transaction Pooler',
     );
   } else {
     // Conexão direta padrão (não pooler)
@@ -139,7 +134,7 @@ async function connectWithRetry(client: PrismaClient, maxRetries = 5): Promise<v
       const connInfo = {
         poolSize: url.searchParams.get('connection_limit') || url.searchParams.get('pool_size'),
         poolTimeout: url.searchParams.get('pool_timeout'),
-        poolerDetected: optimizedDatasourceUrl.includes('pooler.supabase.com'),
+        poolerDetected: optimizedDatasourceUrl.includes('pooler.'),
         pgbouncer: url.searchParams.get('pgbouncer') === 'true',
         attempt,
       };
@@ -279,7 +274,7 @@ function createPrismaClient() {
   // O Prisma Client usa os parâmetros de URL para configurar o connection pool
   // Sem esses parâmetros, o Prisma usa defaults muito baixos (connection_limit: 9, pool_timeout: 10)
   // que causam erros de timeout em produção
-  
+
   // Log da configuração que será usada (para debug)
   if (optimizedDatasourceUrl) {
     try {

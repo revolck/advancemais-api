@@ -142,8 +142,8 @@ export const adminEmpresasCreateSchema = z.object({
     .min(10, 'Informe um telefone válido')
     .max(20, 'Telefone muito longo'),
   senha: optionalSecurePassword,
-  supabaseId: z
-    .string({ required_error: 'Supabase ID é obrigatório' })
+  authId: z
+    .string({ required_error: 'Auth ID é obrigatório' })
     .trim()
     .min(1, 'Supabase ID é obrigatório')
     .max(255, 'Supabase ID muito longo'),

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import path from 'path';
 
-import { supabase } from '@/config/supabase';
+import { uploadImage } from '@/config/storage';
 import { treinamentoCompanyService } from '@/modules/website/services/treinamentoCompany.service';
 import { respondWithCache } from '@/modules/website/utils/cache-response';
 
@@ -14,17 +14,8 @@ function generateImageTitle(url: string): string {
   }
 }
 
-async function uploadImage(file: Express.Multer.File): Promise<string> {
-  const fileExt = path.extname(file.originalname);
-  const fileName = `treinamento-company-${Date.now()}${fileExt}`;
-  const { error } = await supabase.storage
-    .from('website')
-    .upload(`treinamento-company/${fileName}`, file.buffer, {
-      contentType: file.mimetype,
-    });
-  if (error) throw error;
-  const { data } = supabase.storage.from('website').getPublicUrl(`treinamento-company/${fileName}`);
-  return data.publicUrl;
+async function uploadTreinamentoImage(file: Express.Multer.File): Promise<string> {
+  return uploadImage('website', 'treinamento-company', file);
 }
 
 export class TreinamentoCompanyController {
@@ -58,7 +49,7 @@ export class TreinamentoCompanyController {
       const { titulo, descricao, titulo1, titulo2, titulo3, titulo4 } = req.body;
       let imagemUrl = '';
       if (req.file) {
-        imagemUrl = await uploadImage(req.file);
+        imagemUrl = await uploadTreinamentoImage(req.file);
       } else if (req.body.imagemUrl) {
         imagemUrl = req.body.imagemUrl;
       }
@@ -88,7 +79,7 @@ export class TreinamentoCompanyController {
       const { titulo, descricao, titulo1, titulo2, titulo3, titulo4 } = req.body;
       let imagemUrl = req.body.imagemUrl as string | undefined;
       if (req.file) {
-        imagemUrl = await uploadImage(req.file);
+        imagemUrl = await uploadTreinamentoImage(req.file);
       }
       const data: any = {
         titulo,

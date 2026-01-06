@@ -44,8 +44,7 @@ export const createQuestaoSchema = questaoBaseSchema
       if (!data.alternativas || data.alternativas.length < 2) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message:
-            'Questões de múltipla escolha devem ter pelo menos 2 alternativas',
+          message: 'Questões de múltipla escolha devem ter pelo menos 2 alternativas',
           path: ['alternativas'],
         });
         return;
@@ -62,9 +61,7 @@ export const createQuestaoSchema = questaoBaseSchema
   });
 
 export const updateQuestaoSchema = questaoBaseSchema.partial().extend({
-  alternativas: z
-    .array(alternativaSchema.extend({ id: z.string().uuid().optional() }))
-    .optional(),
+  alternativas: z.array(alternativaSchema.extend({ id: z.string().uuid().optional() })).optional(),
 });
 
 export const createAlternativaSchema = z.object({
@@ -111,4 +108,3 @@ export const corrigirRespostaSchema = z.object({
     .optional(),
   corrigida: z.boolean().optional(),
 });
-

@@ -288,11 +288,7 @@ export class AulasController {
       }
 
       // Atualizar status
-      const aulaAtualizada = await aulasService.update(
-        id,
-        { status: statusNovo },
-        usuarioLogado,
-      );
+      const aulaAtualizada = await aulasService.update(id, { status: statusNovo }, usuarioLogado);
 
       // Buscar aula atualizada completa
       const aulaCompleta = await aulasService.getById(id, usuarioLogado);
@@ -459,7 +455,10 @@ export class AulasController {
       }
 
       // Verificar se é erro de aula não encontrada
-      if (error?.message?.includes('não encontrada') || error?.message?.includes('não encontrado')) {
+      if (
+        error?.message?.includes('não encontrada') ||
+        error?.message?.includes('não encontrado')
+      ) {
         return res.status(404).json({
           success: false,
           code: 'AULA_NOT_FOUND',

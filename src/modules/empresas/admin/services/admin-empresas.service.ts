@@ -612,7 +612,7 @@ const sanitizeOptionalValue = (value?: string | null) => {
 const sanitizeEmail = (email: string) => email.trim().toLowerCase();
 const sanitizeNome = (nome: string) => nome.trim();
 const sanitizeTelefone = (telefone: string) => telefone.trim();
-const sanitizeSupabaseId = (supabaseId: string) => supabaseId.trim();
+const sanitizeAuthId = (authId: string) => authId.trim();
 const sanitizeSenha = async (senha: string) => bcrypt.hash(senha, 12);
 const normalizeDocumento = (value: string) => value.replace(/\D/g, '');
 const formatCnpj = (value: string) =>
@@ -1463,7 +1463,7 @@ export const adminEmpresasService = {
           nomeCompleto: sanitizeNome(input.nome),
           email: sanitizeEmail(input.email),
           senha: senhaHash,
-          supabaseId: sanitizeSupabaseId(input.supabaseId),
+          authId: sanitizeAuthId(input.authId),
           tipoUsuario: TiposDeUsuarios.PESSOA_JURIDICA,
           role: Roles.EMPRESA,
           status,
@@ -2054,7 +2054,19 @@ export const adminEmpresasService = {
 
   listDashboard: async ({ page, pageSize, search }: AdminEmpresasDashboardListQuery) => {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-empresas.service.ts:2055',message:'listDashboard entry',data:{page,pageSize,search},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'admin-empresas.service.ts:2055',
+        message: 'listDashboard entry',
+        data: { page, pageSize, search },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'A',
+      }),
+    }).catch(() => {});
     // #endregion
     const where: Prisma.UsuariosWhereInput = {
       tipoUsuario: TiposDeUsuarios.PESSOA_JURIDICA,
@@ -2066,7 +2078,19 @@ export const adminEmpresasService = {
     const referenceDate = new Date();
 
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-empresas.service.ts:2065',message:'before transaction with retry',data:{usingRetryOperation:true},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'admin-empresas.service.ts:2065',
+        message: 'before transaction with retry',
+        data: { usingRetryOperation: true },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'post-fix',
+        hypothesisId: 'A',
+      }),
+    }).catch(() => {});
     // #endregion
     // ✅ Usar retryOperation para tratar erros de conexão automaticamente
     try {
@@ -2087,7 +2111,19 @@ export const adminEmpresasService = {
         20000, // timeoutMs - 20s para queries complexas com joins
       );
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-empresas.service.ts:2074',message:'transaction success',data:{total,empresasCount:empresas.length},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'admin-empresas.service.ts:2074',
+          message: 'transaction success',
+          data: { total, empresasCount: empresas.length },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'post-fix',
+          hypothesisId: 'A',
+        }),
+      }).catch(() => {});
       // #endregion
 
       const data: AdminEmpresasDashboardListItem[] = empresas.map((empresa) => {
@@ -2121,7 +2157,23 @@ export const adminEmpresasService = {
       };
     } catch (error: any) {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin-empresas.service.ts:2110',message:'retryOperation failed after all attempts',data:{errorCode:error?.code,errorMessage:error?.message?.substring(0,200),errorType:error?.constructor?.name},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/34a77828-9b1a-462e-8307-874a549a1cd3', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'admin-empresas.service.ts:2110',
+          message: 'retryOperation failed after all attempts',
+          data: {
+            errorCode: error?.code,
+            errorMessage: error?.message?.substring(0, 200),
+            errorType: error?.constructor?.name,
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'post-fix',
+          hypothesisId: 'A',
+        }),
+      }).catch(() => {});
       // #endregion
       // Re-throw para que o controller possa tratar adequadamente
       throw error;

@@ -472,4 +472,79 @@ export class FrequenciaController {
       });
     }
   };
+
+  /**
+   * Retorna resumo de frequência por aluno para uma turma
+   * GET /api/v1/cursos/:cursoId/turmas/:turmaId/frequencias/resumo
+   * Query params: periodo (TOTAL|DIA|SEMANA|MES), anchorDate (YYYY-MM-DD), search, page, pageSize
+   */
+  static resumo = async (req: Request, res: Response) => {
+    const cursoId = parseCursoId(req.params.cursoId);
+    const turmaId = parseTurmaId(req.params.turmaId);
+
+    if (!cursoId || !turmaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificadores de curso ou turma inválidos',
+      });
+    }
+
+    // Parse query params
+    const periodo = req.query.periodo as 'TOTAL' | 'DIA' | 'SEMANA' | 'MES' | undefined;
+    if (periodo && !['TOTAL', 'DIA', 'SEMANA', 'MES'].includes(periodo)) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Período inválido. Use: TOTAL, DIA, SEMANA ou MES',
+      });
+    }
+
+    const anchorDate = parseDateQuery(req.query.anchorDate);
+    if (anchorDate === null) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Data âncora inválida',
+      });
+    }
+
+    const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+    const page = parseInt(String(req.query.page || '1'), 10);
+    const pageSize = parseInt(String(req.query.pageSize || '10'), 10);
+
+    if (isNaN(page) || page < 1 || isNaN(pageSize) || pageSize < 1 || pageSize > 100) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Parâmetros de paginação inválidos',
+      });
+    }
+
+    try {
+      const resultado = await frequenciaService.resumo(cursoId, turmaId, {
+        periodo,
+        anchorDate,
+        search,
+        page,
+        pageSize,
+      });
+      res.json({ success: true, data: resultado });
+    } catch (error: any) {
+      if (error?.code === 'TURMA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'TURMA_NOT_FOUND',
+          message: 'Turma não encontrada para o curso informado',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'FREQUENCIA_RESUMO_ERROR',
+        message: 'Erro ao gerar resumo de frequência da turma',
+        error: error?.message,
+      });
+    }
+  };
 }

@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 // Enum de tipos de notificação (espelhando o Prisma)
 export const NotificacaoTipoEnum = z.enum([
+  // Notificações para EMPRESA
   'VAGA_REJEITADA',
   'VAGA_APROVADA',
   'NOVO_CANDIDATO',
@@ -11,9 +12,29 @@ export const NotificacaoTipoEnum = z.enum([
   'ASSINATURA_RENOVADA',
   'PAGAMENTO_APROVADO',
   'PAGAMENTO_RECUSADO',
+  // Notificações para CANDIDATO
   'CANDIDATURA_VISUALIZADA',
   'CANDIDATURA_APROVADA',
   'CANDIDATURA_REJEITADA',
+  // Notificações de AULAS e CURSOS
+  'NOVA_AULA',
+  'AULA_ATUALIZADA',
+  'AULA_CANCELADA',
+  'AULA_EM_2H',
+  'AULA_INICIADA',
+  'PROVA_EM_24H',
+  'PROVA_EM_8H',
+  'PROVA_EM_2H',
+  // Notificações de RECUPERAÇÃO FINAL
+  'RECUPERACAO_FINAL_PAGAMENTO_PENDENTE',
+  'RECUPERACAO_FINAL_PAGAMENTO_APROVADO',
+  'RECUPERACAO_FINAL_PAGAMENTO_RECUSADO',
+  // Notificações de TURMA/INSTRUTOR
+  'INSTRUTOR_VINCULADO',
+  'INSTRUTOR_DESVINCULADO',
+  'TURMA_INICIOU',
+  'TURMA_FINALIZADA',
+  // Sistema
   'SISTEMA',
 ]);
 

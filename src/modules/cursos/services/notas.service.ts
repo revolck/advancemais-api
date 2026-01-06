@@ -4,6 +4,7 @@ import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 
 import { mapNota, NotaWithRelations, notaWithRelations } from './notas.mapper';
+import type { CreateNotaManualInput, ListCursoNotasQuery } from '../validators/notas.schema';
 
 const notasLogger = logger.child({ module: 'CursosNotasService' });
 
@@ -374,6 +375,314 @@ export const notasService = {
         codigo: inscricao.CursosTurmas.codigo,
       },
       notas: notas.map(mapNota),
+    };
+  },
+
+  async createManualLancamento(
+    cursoId: string,
+    turmaId: string,
+    data: CreateNotaManualInput,
+    criadoPorId?: string,
+  ) {
+    return prisma.$transaction(async (tx) => {
+      await ensureTurmaBelongsToCurso(tx, cursoId, turmaId);
+
+      const inscricao = await tx.cursosTurmasInscricoes.findFirst({
+        where: { turmaId, alunoId: data.alunoId },
+        select: { id: true },
+      });
+
+      if (!inscricao) {
+        const error: any = new Error('Aluno não possui inscrição nesta turma');
+        error.code = 'INSCRICAO_NOT_FOUND';
+        throw error;
+      }
+
+      const referenciaExterna =
+        data.origem && data.origem.tipo
+          ? `${data.origem.tipo}${data.origem.id ? `:${data.origem.id}` : ''}`
+          : null;
+
+      const nota = await tx.cursosNotas.create({
+        data: {
+          turmaId,
+          inscricaoId: inscricao.id,
+          tipo: CursosNotasTipo.BONUS,
+          provaId: null,
+          referenciaExterna,
+          titulo: data.motivo,
+          descricao: data.origem?.titulo ?? null,
+          nota: new Prisma.Decimal(data.nota),
+          peso: null,
+          valorMaximo: null,
+          dataReferencia: new Date(),
+          observacoes: null,
+        },
+        include: notaWithRelations.include,
+      });
+
+      if (criadoPorId) {
+        try {
+          await tx.cursosNotas.update({
+            where: { id: nota.id },
+            data: { observacoes: `criadoPor:${criadoPorId}` },
+          });
+        } catch {
+          // best-effort (campo observacoes é opcional)
+        }
+      }
+
+      notasLogger.info({ turmaId, notaId: nota.id }, 'Lançamento manual de nota criado');
+      return mapNota(nota);
+    });
+  },
+
+  async clearLancamentosManuais(cursoId: string, turmaId: string, alunoId: string) {
+    return prisma.$transaction(async (tx) => {
+      await ensureTurmaBelongsToCurso(tx, cursoId, turmaId);
+
+      const inscricao = await tx.cursosTurmasInscricoes.findFirst({
+        where: { turmaId, alunoId },
+        select: { id: true },
+      });
+
+      if (!inscricao) {
+        const error: any = new Error('Aluno não possui inscrição nesta turma');
+        error.code = 'INSCRICAO_NOT_FOUND';
+        throw error;
+      }
+
+      const deleted = await tx.cursosNotas.deleteMany({
+        where: {
+          turmaId,
+          inscricaoId: inscricao.id,
+          provaId: null,
+        },
+      });
+
+      return { success: true, deletedCount: deleted.count } as const;
+    });
+  },
+
+  async listCursoNotas(cursoId: string, query: ListCursoNotasQuery) {
+    const { turmaIds, search, page, pageSize, orderBy, order } = query;
+
+    const turmas = await prisma.cursosTurmas.findMany({
+      where: { id: { in: turmaIds }, cursoId },
+      select: { id: true },
+    });
+
+    if (turmas.length !== turmaIds.length) {
+      const error: any = new Error(
+        'Uma ou mais turmas não foram encontradas para o curso informado',
+      );
+      error.code = 'TURMA_NOT_FOUND';
+      throw error;
+    }
+
+    const turmaPlaceholders = turmaIds.map((_, index) => `$${index + 2}`).join(', ');
+    const baseParams: any[] = [cursoId, ...turmaIds];
+
+    const searchParamIndex = baseParams.length + 1;
+    const hasSearch = !!(search && search.trim().length);
+    if (hasSearch) {
+      baseParams.push(`%${search!.trim()}%`);
+    }
+
+    const searchClause = hasSearch
+      ? ` AND (
+          u."nomeCompleto" ILIKE $${searchParamIndex}
+          OR u.email ILIKE $${searchParamIndex}
+          OR COALESCE(u.cpf, '') ILIKE $${searchParamIndex}
+          OR COALESCE(u."codUsuario", '') ILIKE $${searchParamIndex}
+          OR COALESCE(ui.inscricao, '') ILIKE $${searchParamIndex}
+        )`
+      : '';
+
+    const countResult = await prisma.$queryRawUnsafe<{ count: bigint }[]>(
+      `SELECT COUNT(*)::bigint as count
+       FROM "CursosTurmasInscricoes" i
+       INNER JOIN "CursosTurmas" t ON t.id = i."turmaId"
+       INNER JOIN "Usuarios" u ON u.id = i."alunoId"
+       LEFT JOIN "UsuariosInformation" ui ON ui."usuarioId" = u.id
+       WHERE t."cursoId" = $1
+         AND i."turmaId"::text IN (${turmaPlaceholders})
+         ${searchClause}`,
+      ...baseParams,
+    );
+
+    const total = Number(countResult?.[0]?.count ?? 0);
+    const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
+    const safePage = totalPages === 0 ? 1 : Math.min(page, totalPages);
+    const skip = (safePage - 1) * pageSize;
+
+    const orderByMap: Record<ListCursoNotasQuery['orderBy'], string> = {
+      alunoNome: 'aluno_nome',
+      nota: 'nota_final_original',
+      atualizadoEm: 'atualizado_em',
+    };
+
+    const orderColumn = orderByMap[orderBy] ?? orderByMap.alunoNome;
+    const orderDirection = order === 'desc' ? 'DESC' : 'ASC';
+
+    const rows = await prisma.$queryRawUnsafe<
+      {
+        curso_id: string;
+        turma_id: string;
+        inscricao_id: string;
+        aluno_id: string;
+        aluno_nome: string;
+        aluno_codigo: string | null;
+        aluno_cpf: string | null;
+        aluno_matricula: string | null;
+        nota_base: string | number;
+        ajustes_manuais: string | number;
+        nota_final_original: string | number;
+        atualizado_em: Date | string | null;
+      }[]
+    >(
+      `WITH base AS (
+        SELECT
+          i.id AS inscricao_id,
+          i."turmaId" AS turma_id,
+          SUM(COALESCE(e.nota, 0) * p.peso) AS soma_ponderada,
+          SUM(p.peso) AS soma_pesos,
+          MAX(e."atualizadoEm") AS envios_atualizado_em
+        FROM "CursosTurmasInscricoes" i
+        INNER JOIN "CursosTurmas" t ON t.id = i."turmaId"
+        INNER JOIN "CursosTurmasProvas" p
+          ON p."turmaId" = i."turmaId"
+         AND p.ativo = true
+        LEFT JOIN "CursosTurmasProvasEnvios" e
+          ON e."provaId" = p.id
+         AND e."inscricaoId" = i.id
+        WHERE t."cursoId" = $1
+          AND i."turmaId"::text IN (${turmaPlaceholders})
+        GROUP BY i.id, i."turmaId"
+      ),
+      manuais AS (
+        SELECT
+          n."inscricaoId" AS inscricao_id,
+          SUM(COALESCE(n.nota, 0)) AS soma_manual
+        FROM "CursosNotas" n
+        WHERE n."turmaId"::text IN (${turmaPlaceholders})
+          AND n."provaId" IS NULL
+        GROUP BY n."inscricaoId"
+      ),
+      notas_all AS (
+        SELECT
+          n."inscricaoId" AS inscricao_id,
+          MAX(n."atualizadoEm") AS notas_atualizado_em
+        FROM "CursosNotas" n
+        WHERE n."turmaId"::text IN (${turmaPlaceholders})
+        GROUP BY n."inscricaoId"
+      )
+      SELECT
+        t."cursoId" AS curso_id,
+        i."turmaId" AS turma_id,
+        i.id AS inscricao_id,
+        i."alunoId" AS aluno_id,
+        u."nomeCompleto" AS aluno_nome,
+        u."codUsuario" AS aluno_codigo,
+        u.cpf AS aluno_cpf,
+        ui.inscricao AS aluno_matricula,
+        CASE
+          WHEN COALESCE(base.soma_pesos, 0) = 0 THEN 0
+          ELSE (COALESCE(base.soma_ponderada, 0) / base.soma_pesos)
+        END AS nota_base,
+        COALESCE(manuais.soma_manual, 0) AS ajustes_manuais,
+        LEAST(
+          10,
+          CASE
+            WHEN COALESCE(base.soma_pesos, 0) = 0 THEN 0
+            ELSE (COALESCE(base.soma_ponderada, 0) / base.soma_pesos)
+          END + COALESCE(manuais.soma_manual, 0)
+        ) AS nota_final_original,
+        GREATEST(
+          COALESCE(notas_all.notas_atualizado_em, 'epoch'::timestamp),
+          COALESCE(base.envios_atualizado_em, 'epoch'::timestamp)
+        ) AS atualizado_em
+      FROM "CursosTurmasInscricoes" i
+      INNER JOIN "CursosTurmas" t ON t.id = i."turmaId"
+      INNER JOIN "Usuarios" u ON u.id = i."alunoId"
+      LEFT JOIN "UsuariosInformation" ui ON ui."usuarioId" = u.id
+      LEFT JOIN base ON base.inscricao_id = i.id
+      LEFT JOIN manuais ON manuais.inscricao_id = i.id
+      LEFT JOIN notas_all ON notas_all.inscricao_id = i.id
+      WHERE t."cursoId" = $1
+        AND i."turmaId"::text IN (${turmaPlaceholders})
+        ${searchClause}
+      ORDER BY ${orderColumn} ${orderDirection}
+      LIMIT ${pageSize} OFFSET ${skip}`,
+      ...baseParams,
+    );
+
+    const inscricaoIds = rows.map((r) => r.inscricao_id);
+    const manuais = inscricaoIds.length
+      ? await prisma.cursosNotas.findMany({
+          where: {
+            turmaId: { in: turmaIds },
+            inscricaoId: { in: inscricaoIds },
+            provaId: null,
+          },
+          orderBy: { criadoEm: 'desc' },
+          select: {
+            id: true,
+            inscricaoId: true,
+            nota: true,
+            titulo: true,
+            criadoEm: true,
+          },
+        })
+      : [];
+
+    const historicoPorInscricao = new Map<
+      string,
+      { id: string; action: 'ADDED'; at: string; nota: number; motivo: string | null }[]
+    >();
+    for (const item of manuais) {
+      const list = historicoPorInscricao.get(item.inscricaoId) ?? [];
+      list.push({
+        id: item.id,
+        action: 'ADDED',
+        at: item.criadoEm.toISOString(),
+        nota: item.nota ? Number(item.nota) : 0,
+        motivo: item.titulo ?? null,
+      });
+      historicoPorInscricao.set(item.inscricaoId, list);
+    }
+
+    return {
+      items: rows.map((row) => ({
+        cursoId: row.curso_id,
+        turmaId: row.turma_id,
+        inscricaoId: row.inscricao_id,
+        alunoId: row.aluno_id,
+        alunoNome: row.aluno_nome,
+        alunoCodigo: row.aluno_codigo,
+        alunoCpf: row.aluno_cpf,
+        alunoMatricula: row.aluno_matricula,
+        notaBase: Number(row.nota_base),
+        ajustesManuais: Number(row.ajustes_manuais),
+        notaFinalOriginal: Number(row.nota_final_original),
+        atualizadoEm:
+          row.atualizado_em instanceof Date
+            ? row.atualizado_em.toISOString()
+            : row.atualizado_em
+              ? new Date(row.atualizado_em).toISOString()
+              : null,
+        history: historicoPorInscricao.get(row.inscricao_id) ?? [],
+      })),
+      pagination: {
+        page: safePage,
+        requestedPage: page,
+        pageSize,
+        total,
+        totalPages: totalPages || 1,
+        hasNext: totalPages > 0 && safePage < totalPages,
+        hasPrevious: safePage > 1,
+        isPageAdjusted: safePage !== page,
+      },
     };
   },
 };

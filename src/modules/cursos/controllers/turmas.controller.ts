@@ -217,13 +217,17 @@ export class TurmasController {
     try {
       const data = createTurmaSchema.parse(req.body);
 
-      const turma = await turmasService.create(cursoId, {
-        ...data,
-        dataInicio: data.dataInicio ?? undefined,
-        dataFim: data.dataFim ?? undefined,
-        dataInscricaoInicio: data.dataInscricaoInicio ?? undefined,
-        dataInscricaoFim: data.dataInscricaoFim ?? undefined,
-      });
+      const turma = await turmasService.create(
+        cursoId,
+        {
+          ...data,
+          dataInicio: data.dataInicio ?? undefined,
+          dataFim: data.dataFim ?? undefined,
+          dataInscricaoInicio: data.dataInscricaoInicio ?? undefined,
+          dataInscricaoFim: data.dataInscricaoFim ?? undefined,
+        },
+        { id: req.user?.id ?? null },
+      );
 
       res.status(201).json(turma);
     } catch (error: any) {
@@ -241,6 +245,29 @@ export class TurmasController {
           success: false,
           code: 'CURSO_NOT_FOUND',
           message: 'Curso não encontrado',
+        });
+      }
+
+      if (error?.code === 'TURMA_PREREQUISITOS_NAO_ATENDIDOS') {
+        return res.status(422).json({
+          success: false,
+          code: 'TURMA_PREREQUISITOS_NAO_ATENDIDOS',
+          message:
+            error?.message ||
+            'Para cadastrar uma turma é necessário ter pelo menos 1 aula e 1 avaliação cadastradas.',
+          details: error?.details,
+        });
+      }
+
+      if (
+        error?.code === 'AULA_TEMPLATE_NOT_FOUND' ||
+        error?.code === 'AVALIACAO_TEMPLATE_NOT_FOUND'
+      ) {
+        return res.status(404).json({
+          success: false,
+          code: error.code,
+          message: error?.message || 'Template não encontrado',
+          details: error?.details,
         });
       }
 
@@ -308,6 +335,17 @@ export class TurmasController {
           success: false,
           code: 'INVALID_VAGAS_TOTAIS',
           message: 'Vagas totais não podem ser menores que inscrições ativas',
+        });
+      }
+
+      if (error?.code === 'TURMA_PREREQUISITOS_NAO_ATENDIDOS') {
+        return res.status(422).json({
+          success: false,
+          code: 'TURMA_PREREQUISITOS_NAO_ATENDIDOS',
+          message:
+            error?.message ||
+            'Para cadastrar/publicar uma turma é necessário ter pelo menos 1 aula e 1 avaliação cadastradas.',
+          details: error?.details,
         });
       }
 

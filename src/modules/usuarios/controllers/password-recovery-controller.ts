@@ -61,6 +61,16 @@ export class PasswordRecoveryController {
     try {
       const { identificador, email, cpf, cnpj }: SolicitarRecuperacaoData = req.body;
 
+      log.info(
+        {
+          identificador,
+          email,
+          cpf,
+          cnpj,
+        },
+        '📥 Recebida solicitação de recuperação de senha',
+      );
+
       const entradas = [
         { tipo: 'identificador', valor: identificador },
         { tipo: 'email', valor: email },
@@ -69,6 +79,7 @@ export class PasswordRecoveryController {
       ].filter((entrada) => typeof entrada.valor === 'string' && entrada.valor.trim() !== '');
 
       if (entradas.length === 0) {
+        log.warn('❌ Nenhum identificador fornecido');
         return res.status(400).json({
           message: 'Informe um email, CPF ou CNPJ para recuperar a senha',
         });
@@ -76,6 +87,20 @@ export class PasswordRecoveryController {
 
       const entradaSelecionada = entradas[0];
       const valorEntrada = (entradaSelecionada.valor as string).trim();
+
+      log.info(
+        {
+          tipoEntrada: entradaSelecionada.tipo,
+          valorEntrada:
+            entradaSelecionada.tipo === 'cpf' || entradaSelecionada.tipo === 'cnpj'
+              ? valorEntrada.substring(0, 3) + '***'
+              : entradaSelecionada.tipo === 'email'
+                ? valorEntrada.split('@')[0] + '@***'
+                : '***',
+        },
+        '🔍 Processando entrada selecionada',
+      );
+
       let buscarPor: Record<string, string> | null = null;
 
       if (entradaSelecionada.tipo === 'email') {
@@ -127,10 +152,18 @@ export class PasswordRecoveryController {
 
       // Busca usuário no banco
       if (!buscarPor) {
+        log.warn('❌ Não foi possível determinar critério de busca');
         return res.status(400).json({
           message: 'Não foi possível identificar um email, CPF ou CNPJ válido',
         });
       }
+
+      log.info(
+        {
+          buscaPor: Object.keys(buscarPor)[0],
+        },
+        '🔍 Buscando usuário no banco de dados',
+      );
 
       const usuario = await prisma.usuarios.findFirst({
         where: {
@@ -153,10 +186,25 @@ export class PasswordRecoveryController {
       });
 
       if (!usuario) {
+        log.warn(
+          {
+            buscaPor: Object.keys(buscarPor)[0],
+          },
+          '❌ Usuário não encontrado ou não está ativo',
+        );
         return res.status(404).json({
           message: 'Usuário não encontrado com este identificador',
         });
       }
+
+      log.info(
+        {
+          usuarioId: usuario.id,
+          email: usuario.email,
+          nomeCompleto: usuario.nomeCompleto,
+        },
+        '✅ Usuário encontrado',
+      );
 
       // Verifica limite de tentativas
       const agora = new Date();
@@ -220,15 +268,43 @@ export class PasswordRecoveryController {
 
       await invalidateUserCache(usuario);
 
+      // Log detalhado antes de enviar email
+      log.info(
+        {
+          usuarioId: usuario.id,
+          email: usuario.email,
+          nomeCompleto: usuario.nomeCompleto,
+          tokenLength: token.length,
+        },
+        '📧 Preparando envio de email de recuperação de senha',
+      );
+
       // Envia email de recuperação
       const emailResult = await this.emailService.enviarEmailRecuperacaoSenha(usuario, token);
 
       if (!emailResult.success) {
-        log.error({ error: emailResult.error }, 'Erro ao enviar email de recuperação');
+        log.error(
+          {
+            error: emailResult.error,
+            usuarioId: usuario.id,
+            email: usuario.email,
+          },
+          '❌ Erro ao enviar email de recuperação',
+        );
         return res.status(500).json({
           message: 'Erro interno ao enviar email de recuperação',
         });
       }
+
+      log.info(
+        {
+          usuarioId: usuario.id,
+          email: usuario.email,
+          messageId: emailResult.messageId,
+          simulated: emailResult.simulated,
+        },
+        '✅ Email de recuperação enviado com sucesso',
+      );
 
       res.json({
         message:

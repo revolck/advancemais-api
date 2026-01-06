@@ -12,6 +12,13 @@ export const frequenciaWithRelations = Prisma.validator<Prisma.CursosFrequenciaA
               id: true,
               nomeCompleto: true,
               email: true,
+              cpf: true,
+              codUsuario: true,
+              UsuariosInformation: {
+                select: {
+                  avatarUrl: true,
+                },
+              },
             },
           },
         },
@@ -71,9 +78,27 @@ export const mapFrequencia = (frequencia: FrequenciaWithRelations) => ({
           ? {
               id: frequencia.CursosTurmasInscricoes.Usuarios.id,
               nome: frequencia.CursosTurmasInscricoes.Usuarios.nomeCompleto,
+              nomeCompleto: frequencia.CursosTurmasInscricoes.Usuarios.nomeCompleto,
               email: frequencia.CursosTurmasInscricoes.Usuarios.email,
+              cpf: frequencia.CursosTurmasInscricoes.Usuarios.cpf ?? null,
+              codigo: frequencia.CursosTurmasInscricoes.Usuarios.codUsuario,
+              avatarUrl:
+                frequencia.CursosTurmasInscricoes.Usuarios.UsuariosInformation?.avatarUrl ?? null,
             }
           : null,
+      }
+    : null,
+  // Campos de aluno no nível raiz para compatibilidade com o frontend
+  aluno: frequencia.CursosTurmasInscricoes?.Usuarios
+    ? {
+        id: frequencia.CursosTurmasInscricoes.Usuarios.id,
+        nome: frequencia.CursosTurmasInscricoes.Usuarios.nomeCompleto,
+        nomeCompleto: frequencia.CursosTurmasInscricoes.Usuarios.nomeCompleto,
+        email: frequencia.CursosTurmasInscricoes.Usuarios.email,
+        cpf: frequencia.CursosTurmasInscricoes.Usuarios.cpf ?? null,
+        codigo: frequencia.CursosTurmasInscricoes.Usuarios.codUsuario,
+        avatarUrl:
+          frequencia.CursosTurmasInscricoes.Usuarios.UsuariosInformation?.avatarUrl ?? null,
       }
     : null,
 });

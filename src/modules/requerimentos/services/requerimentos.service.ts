@@ -545,7 +545,9 @@ export const requerimentosService = {
     // Queries sequenciais para evitar saturar pool no Supabase Free
     const totalAbertos = await prisma.requerimentos.count({ where: { status: 'ABERTO' } });
     const totalEmAnalise = await prisma.requerimentos.count({ where: { status: 'EM_ANALISE' } });
-    const totalAguardandoUsuario = await prisma.requerimentos.count({ where: { status: 'AGUARDANDO_USUARIO' } });
+    const totalAguardandoUsuario = await prisma.requerimentos.count({
+      where: { status: 'AGUARDANDO_USUARIO' },
+    });
     const totalResolvidos = await prisma.requerimentos.count({ where: { status: 'RESOLVIDO' } });
     const totalReembolsoPendente = await prisma.requerimentos.count({
       where: { tipo: 'REEMBOLSO', status: { in: ['ABERTO', 'EM_ANALISE'] } },

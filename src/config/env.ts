@@ -130,13 +130,7 @@ const coreRequiredVars = ['DATABASE_URL', 'DIRECT_URL', 'JWT_SECRET', 'JWT_REFRE
 
 // Validação específica por ambiente
 const environmentSpecificVars = {
-  production: [
-    ...coreRequiredVars,
-    'SUPABASE_URL',
-    'SUPABASE_KEY',
-    'BREVO_API_KEY',
-    'FRONTEND_URL',
-  ],
+  production: [...coreRequiredVars, 'BREVO_API_KEY', 'FRONTEND_URL'],
   development: coreRequiredVars,
   test: coreRequiredVars,
 };
@@ -160,36 +154,12 @@ if (!validation.isValid) {
 }
 
 // =============================================
-// CONFIGURAÇÕES DO SUPABASE
+// SUPABASE REMOVIDO
 // =============================================
-
-export const supabaseConfig = {
-  url: process.env.SUPABASE_URL || '',
-  key: process.env.SUPABASE_KEY || '',
-  jwksUri:
-    process.env.SUPABASE_JWKS_URI || `${process.env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`,
-
-  // Validação da configuração
-  isValid(): boolean {
-    return !!(this.url && this.key && EnvironmentValidator.isValidUrl(this.url));
-  },
-
-  // Status da configuração
-  getStatus(): { configured: boolean; issues: string[] } {
-    const issues: string[] = [];
-
-    if (!this.url) issues.push('SUPABASE_URL não configurada');
-    if (!this.key) issues.push('SUPABASE_KEY não configurada');
-    if (this.url && !EnvironmentValidator.isValidUrl(this.url)) {
-      issues.push('SUPABASE_URL tem formato inválido');
-    }
-
-    return {
-      configured: issues.length === 0,
-      issues,
-    };
-  },
-} as const;
+// As configurações do Supabase foram completamente removidas.
+// - Autenticação: Usa JWT genérico (JWT_SECRET)
+// - Storage: Frontend envia URLs diretamente
+// - Banco de dados: Usa Neon
 
 // =============================================
 // CONFIGURAÇÕES JWT
@@ -574,7 +544,6 @@ export class ConfigurationManager {
     const modules = {
       server: serverConfig.getStatus(),
       database: databaseConfig.getStatus(),
-      supabase: supabaseConfig.getStatus(),
       jwt: jwtConfig.getStatus(),
       brevo: brevoConfig.getStatus(),
       mercadopago: mercadopagoConfig.getStatus(),
@@ -645,7 +614,6 @@ export { isDevelopment, isProduction, isTest };
 export const appConfig = {
   server: serverConfig,
   database: databaseConfig,
-  supabase: supabaseConfig,
   jwt: jwtConfig,
   brevo: brevoConfig,
   security: securityConfig,

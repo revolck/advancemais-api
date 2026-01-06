@@ -5,7 +5,7 @@ import { MetricasController } from '@/modules/empresas/vagas-solicitacoes/contro
 
 const router = Router();
 
-const allowedRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.SETOR_DE_VAGAS];
+const allowedRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.SETOR_DE_VAGAS, Roles.RECRUTADOR];
 
 /**
  * @openapi
@@ -15,7 +15,8 @@ const allowedRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.SETOR_DE_VAGAS];
  *     description: |
  *       Retorna métricas consolidadas para o dashboard do Setor de Vagas.
  *       Inclui informações sobre empresas, vagas, candidatos e solicitações.
- *       Disponível para ADMIN, MODERADOR e SETOR_DE_VAGAS.
+ *       Disponível para ADMIN, MODERADOR, SETOR_DE_VAGAS e RECRUTADOR.
+ *       Para RECRUTADOR, os valores são filtrados pelas vagas vinculadas ao recrutador.
  *     tags: [Dashboard]
  *     security:
  *       - bearerAuth: []

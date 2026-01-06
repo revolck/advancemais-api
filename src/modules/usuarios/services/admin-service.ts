@@ -586,7 +586,7 @@ export class AdminService {
         role: true,
         status: true,
         tipoUsuario: true,
-        supabaseId: true,
+        authId: true,
         ultimoLogin: true,
         criadoEm: true,
         atualizadoEm: true,
@@ -837,7 +837,7 @@ export class AdminService {
         role: true,
         status: true,
         tipoUsuario: true,
-        supabaseId: true,
+        authId: true,
         ultimoLogin: true,
         criadoEm: true,
         atualizadoEm: true,
@@ -972,7 +972,7 @@ export class AdminService {
         role: true,
         status: true,
         atualizadoEm: true,
-        supabaseId: true,
+        authId: true,
       },
     });
 
@@ -1066,7 +1066,7 @@ export class AdminService {
         nomeCompleto: true,
         role: true,
         atualizadoEm: true,
-        supabaseId: true,
+        authId: true,
       },
     });
 
@@ -1104,7 +1104,7 @@ export class AdminService {
     }
 
     const aceitarTermos = dados.aceitarTermos ?? true;
-    const supabaseId = dados.supabaseId?.trim() || randomUUID();
+    const authId = dados.authId?.trim() || randomUUID();
     const normalizedRole =
       dados.role && Object.values(Roles).includes(dados.role)
         ? dados.role
@@ -1156,7 +1156,7 @@ export class AdminService {
     const duplicateCheck = await checkForDuplicates(
       {
         email: dados.email,
-        supabaseId,
+        authId,
         cpf: processedData.cpfLimpo,
         cnpj: processedData.cnpjLimpo,
       },
@@ -1184,7 +1184,7 @@ export class AdminService {
       tipoUsuario: dados.tipoUsuario,
       role: normalizedRole,
       aceitarTermos,
-      supabaseId,
+      authId,
       cpfLimpo: processedData.cpfLimpo,
       cnpjLimpo: processedData.cnpjLimpo,
       dataNascimento: processedData.dataNascimento,

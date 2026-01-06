@@ -95,7 +95,8 @@ async function testQuestoesCompletas() {
       data: {
         id: randomUUID(),
         provaId: prova.id,
-        enunciado: 'Explique detalhadamente o conceito de herança em programação orientada a objetos, incluindo exemplos práticos.',
+        enunciado:
+          'Explique detalhadamente o conceito de herança em programação orientada a objetos, incluindo exemplos práticos.',
         tipo: CursosTipoQuestao.TEXTO,
         ordem: 1,
         peso: 3.0,
@@ -114,7 +115,8 @@ async function testQuestoesCompletas() {
       data: {
         id: randomUUID(),
         provaId: prova.id,
-        enunciado: 'Qual é a linguagem de programação mais usada para desenvolvimento web front-end?',
+        enunciado:
+          'Qual é a linguagem de programação mais usada para desenvolvimento web front-end?',
         tipo: CursosTipoQuestao.MULTIPLA_ESCOLHA,
         ordem: 2,
         peso: 1.5,
@@ -338,19 +340,16 @@ async function testQuestoesCompletas() {
         corrigida: false,
       },
     });
-    await logResult(
-      'Resposta TEXTO',
-      !!respostaTexto.respostaTexto,
-      'Resposta de texto criada',
-      {
-        respostaId: respostaTexto.id,
-        temTexto: !!respostaTexto.respostaTexto,
-        tamanhoTexto: respostaTexto.respostaTexto?.length || 0,
-      },
-    );
+    await logResult('Resposta TEXTO', !!respostaTexto.respostaTexto, 'Resposta de texto criada', {
+      respostaId: respostaTexto.id,
+      temTexto: !!respostaTexto.respostaTexto,
+      tamanhoTexto: respostaTexto.respostaTexto?.length || 0,
+    });
 
     // 11. TESTE 8: Criar resposta para questão MULTIPLA_ESCOLHA (2 alt) - CORRETA
-    console.log('\n✍️  TESTE 8: Criando resposta para questão MULTIPLA_ESCOLHA (2 alt) - CORRETA...');
+    console.log(
+      '\n✍️  TESTE 8: Criando resposta para questão MULTIPLA_ESCOLHA (2 alt) - CORRETA...',
+    );
     const alternativaCorretaME2 = alternativasCriadasME2.find((a) => a.correta);
     if (alternativaCorretaME2) {
       const respostaME2Correta = await prisma.cursosTurmasProvasRespostas.create({
@@ -372,7 +371,9 @@ async function testQuestoesCompletas() {
     }
 
     // 12. TESTE 9: Criar resposta para questão MULTIPLA_ESCOLHA (3 alt) - INCORRETA
-    console.log('\n✍️  TESTE 9: Criando resposta para questão MULTIPLA_ESCOLHA (3 alt) - INCORRETA...');
+    console.log(
+      '\n✍️  TESTE 9: Criando resposta para questão MULTIPLA_ESCOLHA (3 alt) - INCORRETA...',
+    );
     const alternativaIncorretaME3 = alternativasCriadasME3.find((a) => !a.correta);
     if (alternativaIncorretaME3) {
       const respostaME3Incorreta = await prisma.cursosTurmasProvasRespostas.create({
@@ -396,7 +397,9 @@ async function testQuestoesCompletas() {
     }
 
     // 13. TESTE 10: Criar resposta para questão MULTIPLA_ESCOLHA (4 alt) - CORRETA
-    console.log('\n✍️  TESTE 10: Criando resposta para questão MULTIPLA_ESCOLHA (4 alt) - CORRETA...');
+    console.log(
+      '\n✍️  TESTE 10: Criando resposta para questão MULTIPLA_ESCOLHA (4 alt) - CORRETA...',
+    );
     const alternativaCorretaME4 = alternativasCriadasME4.find((a) => a.correta);
     if (alternativaCorretaME4) {
       const respostaME4Correta = await prisma.cursosTurmasProvasRespostas.create({
@@ -411,15 +414,22 @@ async function testQuestoesCompletas() {
           observacoes: 'Excelente! Resposta correta.',
         },
       });
-      await logResult('Resposta MULTIPLA_ESCOLHA (4 alt - correta)', true, 'Resposta correta criada', {
-        respostaId: respostaME4Correta.id,
-        alternativaId: alternativaCorretaME4.id,
-        nota: respostaME4Correta.nota,
-      });
+      await logResult(
+        'Resposta MULTIPLA_ESCOLHA (4 alt - correta)',
+        true,
+        'Resposta correta criada',
+        {
+          respostaId: respostaME4Correta.id,
+          alternativaId: alternativaCorretaME4.id,
+          nota: respostaME4Correta.nota,
+        },
+      );
     }
 
     // 14. TESTE 11: Criar resposta para questão MULTIPLA_ESCOLHA (5 alt) - CORRETA
-    console.log('\n✍️  TESTE 11: Criando resposta para questão MULTIPLA_ESCOLHA (5 alt) - CORRETA...');
+    console.log(
+      '\n✍️  TESTE 11: Criando resposta para questão MULTIPLA_ESCOLHA (5 alt) - CORRETA...',
+    );
     const alternativaCorretaME5 = alternativasCriadasME5.find((a) => a.correta);
     if (alternativaCorretaME5) {
       const respostaME5Correta = await prisma.cursosTurmasProvasRespostas.create({
@@ -433,11 +443,16 @@ async function testQuestoesCompletas() {
           nota: 2.5,
         },
       });
-      await logResult('Resposta MULTIPLA_ESCOLHA (5 alt - correta)', true, 'Resposta correta criada', {
-        respostaId: respostaME5Correta.id,
-        alternativaId: alternativaCorretaME5.id,
-        nota: respostaME5Correta.nota,
-      });
+      await logResult(
+        'Resposta MULTIPLA_ESCOLHA (5 alt - correta)',
+        true,
+        'Resposta correta criada',
+        {
+          respostaId: respostaME5Correta.id,
+          alternativaId: alternativaCorretaME5.id,
+          nota: respostaME5Correta.nota,
+        },
+      );
     }
 
     // 15. TESTE 12: Criar resposta para questão ANEXO
@@ -483,7 +498,8 @@ async function testQuestoesCompletas() {
       data: {
         corrigida: true,
         nota: 9.0,
-        observacoes: 'Arquivo recebido e avaliado. Currículo bem estruturado e portfólio interessante.',
+        observacoes:
+          'Arquivo recebido e avaliado. Currículo bem estruturado e portfólio interessante.',
       },
     });
     await logResult('Corrigir Resposta ANEXO', true, 'Resposta de anexo corrigida', {
@@ -579,10 +595,12 @@ async function testQuestoesCompletas() {
 
     if (falhas > 0) {
       console.log('\n   ❌ Testes que falharam:');
-      results.filter((r) => !r.success).forEach((r) => {
-        console.log(`      - ${r.test}: ${r.message}`);
-        if (r.error) console.log(`        Erro: ${r.error}`);
-      });
+      results
+        .filter((r) => !r.success)
+        .forEach((r) => {
+          console.log(`      - ${r.test}: ${r.message}`);
+          if (r.error) console.log(`        Erro: ${r.error}`);
+        });
     }
 
     return {
@@ -610,5 +628,3 @@ testQuestoesCompletas()
     console.error('\n💥 Falha crítica nos testes:', error);
     process.exit(1);
   });
-
-

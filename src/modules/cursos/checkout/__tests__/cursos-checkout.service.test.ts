@@ -9,7 +9,7 @@ describe('Cursos Checkout Service', () => {
     nomeCompleto: 'João Silva',
     email: 'joao@test.com',
     cpf: '12345678901',
-    supabaseId: 'supabase-123',
+    authId: 'auth-123',
     senha: 'hash',
     codUsuario: 'USER001',
     tipoUsuario: 'ALUNO' as any,

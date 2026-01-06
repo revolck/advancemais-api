@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import path from 'path';
 import { WebsiteStatus } from '@prisma/client';
 
-import { supabase } from '@/config/supabase';
+import { uploadImage } from '@/config/storage';
 import { bannerService } from '@/modules/website/services/banner.service';
 import { respondWithCache } from '@/modules/website/utils/cache-response';
 
@@ -31,17 +31,8 @@ function generateImageTitle(url: string): string {
   }
 }
 
-async function uploadImage(file: Express.Multer.File): Promise<string> {
-  const fileExt = path.extname(file.originalname);
-  const fileName = `banner-${Date.now()}${fileExt}`;
-  const { error } = await supabase.storage
-    .from('website')
-    .upload(`banners/${fileName}`, file.buffer, {
-      contentType: file.mimetype,
-    });
-  if (error) throw error;
-  const { data } = supabase.storage.from('website').getPublicUrl(`banners/${fileName}`);
-  return data.publicUrl;
+async function uploadBannerImage(file: Express.Multer.File): Promise<string> {
+  return uploadImage('website', 'banner', file);
 }
 
 export class BannerController {
@@ -81,7 +72,7 @@ export class BannerController {
       }
       let imagemUrl = '';
       if (req.file) {
-        imagemUrl = await uploadImage(req.file);
+        imagemUrl = await uploadBannerImage(req.file);
       } else if (req.body.imagemUrl) {
         imagemUrl = req.body.imagemUrl;
       }
@@ -113,7 +104,7 @@ export class BannerController {
       }
       let imagemUrl = req.body.imagemUrl as string | undefined;
       if (req.file) {
-        imagemUrl = await uploadImage(req.file);
+        imagemUrl = await uploadBannerImage(req.file);
       }
       const data: any = { link };
       if (status !== undefined) data.status = status as WebsiteStatus;

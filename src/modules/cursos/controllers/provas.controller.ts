@@ -6,6 +6,7 @@ import {
   createProvaSchema,
   registrarNotaSchema,
   updateProvaSchema,
+  listProvasQuerySchema,
 } from '../validators/provas.schema';
 
 const parseCursoId = (raw: string): string | null => {
@@ -48,9 +49,27 @@ export class ProvasController {
     }
 
     try {
-      const provas = await provasService.list(cursoId, turmaId);
+      // Validar e parsear query parameters
+      const queryParams = listProvasQuerySchema.parse(req.query);
+
+      const provas = await provasService.list(cursoId, turmaId, {
+        search: queryParams.search,
+        turmaId: queryParams.turmaId,
+        status: queryParams.status,
+        tipo: queryParams.tipo,
+      });
+
       res.json({ data: provas });
     } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros de busca inválidos',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
       if (error?.code === 'TURMA_NOT_FOUND') {
         return res.status(404).json({
           success: false,
@@ -116,7 +135,11 @@ export class ProvasController {
 
     try {
       const data = createProvaSchema.parse(req.body);
-      const prova = await provasService.create(cursoId, turmaId, data);
+      const usuarioId = req.user?.id;
+      const ip = req.ip || req.socket.remoteAddress || undefined;
+      const userAgent = req.get('user-agent') || undefined;
+
+      const prova = await provasService.create(cursoId, turmaId, data, usuarioId, ip, userAgent);
       res.status(201).json(prova);
     } catch (error: any) {
       if (error instanceof ZodError) {

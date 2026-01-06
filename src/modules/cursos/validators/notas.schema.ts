@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+const uuid = z.string().uuid('Identificador inválido');
+
 const notaTipos = [
   'PROVA',
   'TRABALHO',
@@ -81,9 +83,9 @@ const referenciaExternaSchema = z
 
 export const createNotaSchema = z
   .object({
-    inscricaoId: z.string().uuid('Identificador da inscrição inválido'),
+    inscricaoId: uuid,
     tipo: notaTipoSchema,
-    provaId: z.string().uuid('Identificador da prova inválido').nullish(),
+    provaId: uuid.nullish(),
     referenciaExterna: referenciaExternaSchema,
     titulo: tituloSchema.nullish(),
     descricao: descricaoSchema,
@@ -105,7 +107,7 @@ export const createNotaSchema = z
 export const updateNotaSchema = z
   .object({
     tipo: notaTipoSchema.optional(),
-    provaId: z.string().uuid('Identificador da prova inválido').nullish().optional(),
+    provaId: uuid.nullish().optional(),
     referenciaExterna: referenciaExternaSchema,
     titulo: tituloSchema.nullish().optional(),
     descricao: descricaoSchema.optional(),
@@ -138,3 +140,55 @@ export const updateNotaSchema = z
     path: ['provaId'],
     message: 'provaId não pode ser nulo para notas de prova',
   });
+
+// ========================================
+// NOVOS CONTRATOS (Dashboard / Notas)
+// ========================================
+
+const notaOrigemSchema = z
+  .object({
+    tipo: z.enum(['PROVA', 'ATIVIDADE', 'AULA', 'OUTRO']),
+    id: uuid.nullish(),
+    titulo: z.string().trim().max(255).nullish(),
+  })
+  .optional()
+  .nullable();
+
+export const createNotaManualSchema = z.object({
+  alunoId: uuid,
+  nota: decimalNotaSchema,
+  motivo: z.string().trim().min(1).max(255),
+  origem: notaOrigemSchema,
+});
+
+export const createNotaV2Schema = z.union([createNotaSchema, createNotaManualSchema]);
+
+export const clearNotasManuaisSchema = z.object({
+  alunoId: uuid,
+});
+
+export const listCursoNotasQuerySchema = z.object({
+  turmaIds: z.preprocess(
+    (value) => {
+      if (Array.isArray(value)) return value;
+      if (typeof value === 'string') {
+        return value
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+      return value;
+    },
+    z.array(uuid).min(1, 'turmaIds é obrigatório'),
+  ),
+  search: z.string().trim().optional(),
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().positive().max(100).default(10),
+  orderBy: z.enum(['alunoNome', 'nota', 'atualizadoEm']).optional().default('alunoNome'),
+  order: z.enum(['asc', 'desc']).optional().default('asc'),
+});
+
+export type CreateNotaManualInput = z.infer<typeof createNotaManualSchema>;
+export type CreateNotaV2Input = z.infer<typeof createNotaV2Schema>;
+export type ClearNotasManuaisInput = z.infer<typeof clearNotasManuaisSchema>;
+export type ListCursoNotasQuery = z.infer<typeof listCursoNotasQuerySchema>;

@@ -20,6 +20,7 @@ import dashboardRoutes from '@/modules/dashboard/routes';
 import { vagasSolicitacoesRoutes } from '@/modules/empresas/vagas-solicitacoes/routes';
 import { requerimentosRoutes } from '@/modules/requerimentos/routes';
 import { notificacoesRoutes } from '@/modules/notificacoes/routes';
+import { recrutadorRoutes } from '@/modules/recrutador';
 import { setCacheHeaders, DEFAULT_TTL } from '@/utils/cache';
 import { logger } from '@/utils/logger';
 import { checkDatabaseHealth } from '@/utils/database-health';
@@ -1263,6 +1264,24 @@ if (dashboardRoutes) {
   }
 } else {
   routesLogger.error({ feature: 'DashboardModule' }, '❌ dashboardRoutes não está definido');
+}
+
+/**
+ * Módulo Recrutador
+ * /api/v1/recrutador
+ */
+if (recrutadorRoutes) {
+  try {
+    router.use('/api/v1/recrutador', recrutadorRoutes);
+    routesLogger.info(
+      { feature: 'RecrutadorModule' },
+      '✅ Módulo Recrutador registrado com sucesso',
+    );
+  } catch (error) {
+    routesLogger.error({ feature: 'RecrutadorModule', err: error }, '❌ ERRO - Módulo Recrutador');
+  }
+} else {
+  routesLogger.error({ feature: 'RecrutadorModule' }, '❌ recrutadorRoutes não está definido');
 }
 
 /**

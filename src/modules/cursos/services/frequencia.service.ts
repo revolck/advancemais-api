@@ -353,4 +353,161 @@ export const frequenciaService = {
       frequencias: frequencias.map(mapFrequencia),
     };
   },
+
+  /**
+   * Retorna resumo de frequência por aluno para uma turma
+   * Query params: periodo (TOTAL|DIA|SEMANA|MES), anchorDate (YYYY-MM-DD), search, page, pageSize
+   */
+  async resumo(
+    cursoId: string,
+    turmaId: string,
+    filters: {
+      periodo?: 'TOTAL' | 'DIA' | 'SEMANA' | 'MES';
+      anchorDate?: Date;
+      search?: string;
+      page?: number;
+      pageSize?: number;
+    } = {},
+  ) {
+    await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
+
+    const { periodo = 'TOTAL', anchorDate = new Date(), search, page = 1, pageSize = 10 } = filters;
+
+    // Calcular intervalo de datas baseado no período
+    let dataInicio: Date | undefined;
+    let dataFim: Date | undefined;
+
+    if (periodo !== 'TOTAL') {
+      const anchor = new Date(anchorDate);
+      anchor.setHours(0, 0, 0, 0);
+
+      switch (periodo) {
+        case 'DIA':
+          dataInicio = new Date(anchor);
+          dataFim = new Date(anchor);
+          dataFim.setHours(23, 59, 59, 999);
+          break;
+        case 'SEMANA': {
+          const dayOfWeek = anchor.getDay();
+          dataInicio = new Date(anchor);
+          dataInicio.setDate(anchor.getDate() - dayOfWeek);
+          dataFim = new Date(dataInicio);
+          dataFim.setDate(dataInicio.getDate() + 6);
+          dataFim.setHours(23, 59, 59, 999);
+          break;
+        }
+        case 'MES':
+          dataInicio = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+          dataFim = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0);
+          dataFim.setHours(23, 59, 59, 999);
+          break;
+      }
+    }
+
+    // Buscar total de aulas no período
+    const totalAulasNoPeriodo = await prisma.cursosTurmasAulas.count({
+      where: {
+        turmaId,
+        deletedAt: null,
+        ...(dataInicio && dataFim
+          ? {
+              OR: [
+                { dataInicio: { gte: dataInicio, lte: dataFim } },
+                { dataFim: { gte: dataInicio, lte: dataFim } },
+              ],
+            }
+          : {}),
+      },
+    });
+
+    // Buscar inscrições da turma com filtro de busca
+    const inscricoesWhere: Prisma.CursosTurmasInscricoesWhereInput = {
+      turmaId,
+      status: { in: ['INSCRITO', 'EM_ANDAMENTO', 'EM_ESTAGIO'] },
+      ...(search
+        ? {
+            Usuarios: {
+              OR: [
+                { nomeCompleto: { contains: search, mode: 'insensitive' as const } },
+                { email: { contains: search, mode: 'insensitive' as const } },
+              ],
+            },
+          }
+        : {}),
+    };
+
+    const [totalInscricoes, inscricoes] = await Promise.all([
+      prisma.cursosTurmasInscricoes.count({ where: inscricoesWhere }),
+      prisma.cursosTurmasInscricoes.findMany({
+        where: inscricoesWhere,
+        include: {
+          Usuarios: {
+            select: {
+              id: true,
+              nomeCompleto: true,
+              email: true,
+              UsuariosInformation: { select: { inscricao: true } },
+            },
+          },
+        },
+        orderBy: { Usuarios: { nomeCompleto: 'asc' } },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    ]);
+
+    // Para cada inscrição, buscar contagens de frequência
+    // Nota: O enum CursosFrequenciaStatus tem: PRESENTE, AUSENTE, JUSTIFICADO, ATRASADO
+    const items = await Promise.all(
+      inscricoes.map(async (inscricao) => {
+        const frequenciaWhere: Prisma.CursosFrequenciaAlunosWhereInput = {
+          inscricaoId: inscricao.id,
+          turmaId,
+          ...(dataInicio && dataFim ? { dataReferencia: { gte: dataInicio, lte: dataFim } } : {}),
+        };
+
+        const [presencas, ausencias, atrasados, justificadas] = await Promise.all([
+          prisma.cursosFrequenciaAlunos.count({
+            where: { ...frequenciaWhere, status: CursosFrequenciaStatus.PRESENTE },
+          }),
+          prisma.cursosFrequenciaAlunos.count({
+            where: { ...frequenciaWhere, status: CursosFrequenciaStatus.AUSENTE },
+          }),
+          prisma.cursosFrequenciaAlunos.count({
+            where: { ...frequenciaWhere, status: CursosFrequenciaStatus.ATRASADO },
+          }),
+          prisma.cursosFrequenciaAlunos.count({
+            where: { ...frequenciaWhere, status: CursosFrequenciaStatus.JUSTIFICADO },
+          }),
+        ]);
+
+        const totalAulas = presencas + ausencias + atrasados + justificadas;
+        const taxaPresencaPct =
+          totalAulas > 0 ? Math.round(((presencas + atrasados) / totalAulas) * 100) : 0;
+
+        return {
+          alunoId: inscricao.Usuarios.id,
+          alunoNome: inscricao.Usuarios.nomeCompleto,
+          alunoCodigo: inscricao.Usuarios.UsuariosInformation?.inscricao ?? null,
+          totalAulas,
+          presencas,
+          ausencias,
+          atrasados,
+          justificadas,
+          taxaPresencaPct,
+        };
+      }),
+    );
+
+    return {
+      totalAulasNoPeriodo,
+      items,
+      pagination: {
+        page,
+        pageSize,
+        total: totalInscricoes,
+        totalPages: Math.ceil(totalInscricoes / pageSize),
+      },
+    };
+  },
 };

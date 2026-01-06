@@ -85,9 +85,7 @@ async function testCandidatosOverview() {
   console.log('\n📊 Query SQL direta:');
   console.log('═'.repeat(80));
 
-  const sqlResult = await prisma.$queryRaw<
-    { id: string; nomeCompleto: string; email: string }[]
-  >`
+  const sqlResult = await prisma.$queryRaw<{ id: string; nomeCompleto: string; email: string }[]>`
     SELECT id, "nomeCompleto", email 
     FROM "Usuarios" 
     WHERE role = 'ALUNO_CANDIDATO' 

@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import path from 'path';
 import { WebsiteStatus } from '@prisma/client';
 
-import { supabase } from '@/config/supabase';
+import { uploadImage } from '@/config/storage';
 import { logoEnterpriseService } from '@/modules/website/services/logoEnterprise.service';
 import { respondWithCache } from '@/modules/website/utils/cache-response';
 
@@ -32,17 +32,8 @@ function generateImageTitle(url: string): string {
   }
 }
 
-async function uploadImage(file: Express.Multer.File): Promise<string> {
-  const fileExt = path.extname(file.originalname);
-  const fileName = `logo-${Date.now()}${fileExt}`;
-  const { error } = await supabase.storage
-    .from('website')
-    .upload(`logos/${fileName}`, file.buffer, {
-      contentType: file.mimetype,
-    });
-  if (error) throw error;
-  const { data } = supabase.storage.from('website').getPublicUrl(`logos/${fileName}`);
-  return data.publicUrl;
+async function uploadLogoImage(file: Express.Multer.File): Promise<string> {
+  return uploadImage('website', 'logo', file);
 }
 
 export class LogoEnterpriseController {
@@ -82,7 +73,7 @@ export class LogoEnterpriseController {
       }
       let imagemUrl = '';
       if (req.file) {
-        imagemUrl = await uploadImage(req.file);
+        imagemUrl = await uploadLogoImage(req.file);
       } else if (req.body.imagemUrl) {
         imagemUrl = req.body.imagemUrl;
       }
@@ -115,7 +106,7 @@ export class LogoEnterpriseController {
       }
       let imagemUrl = req.body.imagemUrl as string | undefined;
       if (req.file) {
-        imagemUrl = await uploadImage(req.file);
+        imagemUrl = await uploadLogoImage(req.file);
       }
       const data: any = { nome, website };
       if (status !== undefined) data.status = status as WebsiteStatus;

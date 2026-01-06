@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { publicCache } from '../../../middlewares/cache-control';
 import multer from 'multer';
-import { supabaseAuthMiddleware } from '../../usuarios/auth';
+import { jwtAuthMiddleware } from '../../usuarios/auth/jwt-middleware';
 import { SliderController } from '../controllers/slider.controller';
 
 const router = Router();
@@ -118,7 +118,7 @@ router.get('/:id', publicCache, SliderController.get);
  */
 router.post(
   '/',
-  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  jwtAuthMiddleware(['ADMIN', 'MODERADOR']),
   upload.single('imagem'),
   SliderController.create,
 );
@@ -179,7 +179,7 @@ router.post(
  */
 router.put(
   '/:id',
-  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  jwtAuthMiddleware(['ADMIN', 'MODERADOR']),
   upload.single('imagem'),
   SliderController.update,
 );
@@ -234,11 +234,7 @@ router.put(
  *            -H "Content-Type: application/json" \\
  *            -d '{"ordem":2}'
  */
-router.put(
-  '/:id/reorder',
-  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
-  SliderController.reorder,
-);
+router.put('/:id/reorder', jwtAuthMiddleware(['ADMIN', 'MODERADOR']), SliderController.reorder);
 
 /**
  * @openapi
@@ -277,6 +273,6 @@ router.put(
  *           curl -X DELETE "http://localhost:3000/api/v1/website/slider/{sliderId}" \\
  *            -H "Authorization: Bearer <TOKEN>"
  */
-router.delete('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), SliderController.remove);
+router.delete('/:id', jwtAuthMiddleware(['ADMIN', 'MODERADOR']), SliderController.remove);
 
 export { router as sliderRoutes };

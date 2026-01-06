@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import path from 'path';
 
-import { supabase } from '@/config/supabase';
+import { uploadImage } from '@/config/storage';
 import { consultoriaService } from '@/modules/website/services/consultoria.service';
 import { respondWithCache } from '@/modules/website/utils/cache-response';
 
@@ -14,17 +14,8 @@ function generateImageTitle(url: string): string {
   }
 }
 
-async function uploadImage(file: Express.Multer.File): Promise<string> {
-  const fileExt = path.extname(file.originalname);
-  const fileName = `consultoria-${Date.now()}${fileExt}`;
-  const { error } = await supabase.storage
-    .from('website')
-    .upload(`consultoria/${fileName}`, file.buffer, {
-      contentType: file.mimetype,
-    });
-  if (error) throw error;
-  const { data } = supabase.storage.from('website').getPublicUrl(`consultoria/${fileName}`);
-  return data.publicUrl;
+async function uploadConsultoriaImage(file: Express.Multer.File): Promise<string> {
+  return uploadImage('website', 'consultoria', file);
 }
 
 export class ConsultoriaController {
@@ -55,7 +46,7 @@ export class ConsultoriaController {
       const { titulo, descricao, buttonUrl, buttonLabel } = req.body;
       let imagemUrl = '';
       if (req.file) {
-        imagemUrl = await uploadImage(req.file);
+        imagemUrl = await uploadConsultoriaImage(req.file);
       } else if (typeof req.body.imagemUrl === 'string') {
         imagemUrl = req.body.imagemUrl.trim();
       }
@@ -81,7 +72,7 @@ export class ConsultoriaController {
       const imagemUrlRaw = req.body.imagemUrl;
       let imagemUrl = typeof imagemUrlRaw === 'string' ? imagemUrlRaw.trim() : undefined;
       if (req.file) {
-        imagemUrl = await uploadImage(req.file);
+        imagemUrl = await uploadConsultoriaImage(req.file);
       }
       const data: any = {};
       if (titulo !== undefined) data.titulo = titulo;

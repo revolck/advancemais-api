@@ -7,12 +7,5 @@
     "declarationMap": false,
     "removeComments": true
   },
-  "exclude": [
-    "node_modules",
-    "**/*.test.ts",
-    "**/__tests__/**",
-    "scripts/**",
-    "prisma/**"
-  ]
+  "exclude": ["node_modules", "**/*.test.ts", "**/__tests__/**", "scripts/**", "prisma/**"]
 }
-

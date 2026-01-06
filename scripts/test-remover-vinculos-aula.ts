@@ -79,10 +79,7 @@ async function testRemoverVinculosAula() {
 
     // Buscar aula presencial com turma e instrutor
     const aulaPresencial = aulas.find(
-      (a: Aula) =>
-        a.modalidade === 'PRESENCIAL' &&
-        a.turma?.id &&
-        a.instrutor?.id,
+      (a: Aula) => a.modalidade === 'PRESENCIAL' && a.turma?.id && a.instrutor?.id,
     );
 
     if (!aulaPresencial) {
@@ -90,7 +87,9 @@ async function testRemoverVinculosAula() {
       console.log('📋 Aulas disponíveis:');
       aulas.slice(0, 5).forEach((a: Aula) => {
         console.log(`   - ${a.codigo}: ${a.titulo} (${a.modalidade})`);
-        console.log(`     Turma: ${a.turma?.id ? 'Sim' : 'Não'}, Instrutor: ${a.instrutor?.id ? 'Sim' : 'Não'}`);
+        console.log(
+          `     Turma: ${a.turma?.id ? 'Sim' : 'Não'}, Instrutor: ${a.instrutor?.id ? 'Sim' : 'Não'}`,
+        );
       });
       return;
     }
@@ -98,7 +97,9 @@ async function testRemoverVinculosAula() {
     console.log(`✅ Aula encontrada: ${aulaPresencial.codigo} - ${aulaPresencial.titulo}`);
     console.log(`   Modalidade atual: ${aulaPresencial.modalidade}`);
     console.log(`   Turma: ${aulaPresencial.turma?.nome || 'N/A'} (${aulaPresencial.turma?.id})`);
-    console.log(`   Instrutor: ${aulaPresencial.instrutor?.nome || 'N/A'} (${aulaPresencial.instrutor?.id})`);
+    console.log(
+      `   Instrutor: ${aulaPresencial.instrutor?.nome || 'N/A'} (${aulaPresencial.instrutor?.id})`,
+    );
     console.log(`   TurmaId: ${aulaPresencial.turmaId || 'N/A'}`);
     console.log(`   InstrutorId: ${aulaPresencial.instrutorId || 'N/A'}\n`);
 
@@ -149,7 +150,9 @@ async function testRemoverVinculosAula() {
       // ❌ NÃO enviar instrutorId (frontend remove o vínculo)
       // ❌ NÃO enviar moduloId (se existir)
       // Manter outros campos se necessário
-      dataInicio: aula.dataInicio ? new Date(aula.dataInicio).toISOString().split('T')[0] : undefined,
+      dataInicio: aula.dataInicio
+        ? new Date(aula.dataInicio).toISOString().split('T')[0]
+        : undefined,
       dataFim: aula.dataFim ? new Date(aula.dataFim).toISOString().split('T')[0] : undefined,
       horaInicio: aula.horaInicio || undefined,
       horaFim: aula.horaFim || undefined,
@@ -201,7 +204,9 @@ async function testRemoverVinculosAula() {
     console.log('\n📊 Estado DEPOIS da atualização:');
     console.log(`   Modalidade: ${aulaAtualizada.modalidade}`);
     console.log(`   TurmaId: ${aulaAtualizada.turma?.id || aulaAtualizada.turmaId || 'null'}`);
-    console.log(`   InstrutorId: ${aulaAtualizada.instrutor?.id || aulaAtualizada.instrutorId || 'null'}`);
+    console.log(
+      `   InstrutorId: ${aulaAtualizada.instrutor?.id || aulaAtualizada.instrutorId || 'null'}`,
+    );
     console.log(`   Turma: ${aulaAtualizada.turma?.nome || 'N/A'}`);
 
     // 7. Validações
@@ -213,13 +218,21 @@ async function testRemoverVinculosAula() {
       modalidadeConvertida: aulaAtualizada.modalidade !== 'LIVE', // Não deve retornar LIVE, deve ser AO_VIVO
     };
 
-    console.log(`   ✅ Modalidade alterada para AO_VIVO: ${validacoes.modalidadeAlterada ? 'SIM' : 'NÃO'}`);
+    console.log(
+      `   ✅ Modalidade alterada para AO_VIVO: ${validacoes.modalidadeAlterada ? 'SIM' : 'NÃO'}`,
+    );
     if (!validacoes.modalidadeAlterada) {
       console.log(`      ⚠️  Modalidade retornada: ${aulaAtualizada.modalidade}`);
     }
-    console.log(`   ✅ Modalidade convertida (não retorna LIVE): ${validacoes.modalidadeConvertida ? 'SIM' : 'NÃO'}`);
-    console.log(`   ✅ Turma removida (turmaId = null): ${validacoes.turmaRemovida ? 'SIM' : 'NÃO'}`);
-    console.log(`   ✅ Instrutor removido (instrutorId = null): ${validacoes.instrutorRemovido ? 'SIM' : 'NÃO'}`);
+    console.log(
+      `   ✅ Modalidade convertida (não retorna LIVE): ${validacoes.modalidadeConvertida ? 'SIM' : 'NÃO'}`,
+    );
+    console.log(
+      `   ✅ Turma removida (turmaId = null): ${validacoes.turmaRemovida ? 'SIM' : 'NÃO'}`,
+    );
+    console.log(
+      `   ✅ Instrutor removido (instrutorId = null): ${validacoes.instrutorRemovido ? 'SIM' : 'NÃO'}`,
+    );
 
     const todasValidas = Object.values(validacoes).every((v) => v);
     if (todasValidas) {
@@ -250,9 +263,7 @@ async function testRemoverVinculosAula() {
       console.log(`   InstrutorId: ${aulaFinal.instrutor?.id || aulaFinal.instrutorId || 'null'}`);
 
       const confirmacaoOk =
-        aulaFinal.modalidade === 'AO_VIVO' &&
-        !aulaFinal.turma?.id &&
-        !aulaFinal.instrutor?.id;
+        aulaFinal.modalidade === 'AO_VIVO' && !aulaFinal.turma?.id && !aulaFinal.instrutor?.id;
 
       if (confirmacaoOk) {
         console.log('\n✅ PERSISTÊNCIA CONFIRMADA!');
@@ -274,4 +285,3 @@ async function testRemoverVinculosAula() {
 }
 
 testRemoverVinculosAula();
-

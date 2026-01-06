@@ -259,7 +259,7 @@ const mapCandidatura = (candidatura: CandidaturaRecord) => ({
   candidatoId: candidatura.candidatoId,
   curriculoId: candidatura.curriculoId ?? null,
   empresaUsuarioId: candidatura.empresaUsuarioId,
-  status_processo: candidatura.status_processo,
+  statusProcessosCandidatos: candidatura.status_processo, // Campo renomeado para compatibilidade com frontend
   origem: candidatura.origem,
   aplicadaEm: candidatura.aplicadaEm,
   atualizadaEm: candidatura.atualizadaEm,
@@ -272,7 +272,7 @@ const mapProcesso = (processo: ProcessoRecord) => ({
   id: processo.id,
   vagaId: processo.vagaId,
   candidatoId: processo.candidatoId,
-  status_processo: processo.status_processo,
+  statusProcessosCandidatos: processo.status_processo, // Campo renomeado para compatibilidade com frontend
   origem: processo.origem,
   observacoes: processo.observacoes ?? null,
   agendadoEm: processo.agendadoEm ?? null,

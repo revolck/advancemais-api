@@ -1,0 +1,1 @@
+export { recrutadorRoutes } from './routes';

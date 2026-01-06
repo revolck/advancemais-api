@@ -36,16 +36,18 @@ function logResult(test: string, success: boolean, message: string, data?: any) 
 
 async function testQuestoesCompletasSQL() {
   let connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
-  
+
   if (connectionString && !connectionString.includes('sslmode=')) {
     connectionString += (connectionString.includes('?') ? '&' : '?') + 'sslmode=require';
   }
-  
+
   const client = new Client({
     connectionString,
-    ssl: connectionString?.includes('supabase') ? {
-      rejectUnauthorized: false,
-    } : undefined,
+    ssl: connectionString?.includes('supabase')
+      ? {
+          rejectUnauthorized: false,
+        }
+      : undefined,
   });
 
   try {
@@ -71,12 +73,15 @@ async function testQuestoesCompletasSQL() {
     const turma = turmaResult.rows[0];
     logResult('Buscar Turma', true, `Turma encontrada: ${turma.nome}`, { turmaId: turma.id });
 
-    const inscricaoResult = await client.query(`
+    const inscricaoResult = await client.query(
+      `
       SELECT id, "alunoId"
       FROM "CursosTurmasInscricoes"
       WHERE "turmaId" = $1
       LIMIT 1
-    `, [turma.id]);
+    `,
+      [turma.id],
+    );
 
     if (inscricaoResult.rows.length === 0) {
       throw new Error('Nenhuma inscrição encontrada na turma.');
@@ -89,36 +94,46 @@ async function testQuestoesCompletasSQL() {
     console.log('\n📝 Criando prova de teste completa...');
     const etiquetaUnica = `TESTE-${Date.now()}`;
     const provaId = randomUUID();
-    
+
     // Tentar criar, se já existir, buscar a existente
     try {
-      await client.query(`
+      await client.query(
+        `
         INSERT INTO "CursosTurmasProvas" (id, "turmaId", titulo, etiqueta, descricao, peso, "valePonto", ativo, ordem)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      `, [
-        provaId,
-        turma.id,
-        'Prova Completa - Teste de Todos os Tipos de Questões',
-        etiquetaUnica,
-        'Prova criada para testar todos os tipos de questões e alternativas',
-        10.0,
-        true,
-        true,
-        0,
-      ]);
+      `,
+        [
+          provaId,
+          turma.id,
+          'Prova Completa - Teste de Todos os Tipos de Questões',
+          etiquetaUnica,
+          'Prova criada para testar todos os tipos de questões e alternativas',
+          10.0,
+          true,
+          true,
+          0,
+        ],
+      );
       logResult('Criar Prova', true, 'Prova criada', { provaId, etiqueta: etiquetaUnica });
     } catch (error: any) {
       if (error.code === '23505') {
         // Prova já existe, buscar
-        const provaExistente = await client.query(`
+        const provaExistente = await client.query(
+          `
           SELECT id FROM "CursosTurmasProvas"
           WHERE "turmaId" = $1 AND etiqueta = $2
-        `, [turma.id, etiquetaUnica]);
+        `,
+          [turma.id, etiquetaUnica],
+        );
         if (provaExistente.rows.length > 0) {
           const provaExistenteId = provaExistente.rows[0].id;
-          logResult('Buscar Prova Existente', true, 'Usando prova existente', { provaId: provaExistenteId });
+          logResult('Buscar Prova Existente', true, 'Usando prova existente', {
+            provaId: provaExistenteId,
+          });
           // Usar a prova existente e limpar questões antigas se necessário
-          await client.query(`DELETE FROM "CursosTurmasProvasQuestoes" WHERE "provaId" = $1`, [provaExistenteId]);
+          await client.query(`DELETE FROM "CursosTurmasProvasQuestoes" WHERE "provaId" = $1`, [
+            provaExistenteId,
+          ]);
           // Atualizar provaId para usar a existente
           Object.assign({ provaId: provaExistenteId });
         } else {
@@ -132,204 +147,311 @@ async function testQuestoesCompletasSQL() {
     // 3. TESTE 1: Criar questão TEXTO
     console.log('\n📝 TESTE 1: Criando questão TEXTO...');
     const questaoTextoId = randomUUID();
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO "CursosTurmasProvasQuestoes" (id, "provaId", enunciado, tipo, ordem, peso, obrigatoria)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, [
-      questaoTextoId,
-      provaId,
-      'Explique detalhadamente o conceito de herança em programação orientada a objetos, incluindo exemplos práticos.',
-      'TEXTO',
-      1,
-      3.0,
-      true,
-    ]);
-    logResult('Questão TEXTO', true, 'Questão de texto criada', { questaoId: questaoTextoId, tipo: 'TEXTO' });
+    `,
+      [
+        questaoTextoId,
+        provaId,
+        'Explique detalhadamente o conceito de herança em programação orientada a objetos, incluindo exemplos práticos.',
+        'TEXTO',
+        1,
+        3.0,
+        true,
+      ],
+    );
+    logResult('Questão TEXTO', true, 'Questão de texto criada', {
+      questaoId: questaoTextoId,
+      tipo: 'TEXTO',
+    });
 
     // 4. TESTE 2: Criar questão MULTIPLA_ESCOLHA com 2 alternativas
     console.log('\n📝 TESTE 2: Criando questão MULTIPLA_ESCOLHA com 2 alternativas...');
     const questaoME2Id = randomUUID();
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO "CursosTurmasProvasQuestoes" (id, "provaId", enunciado, tipo, ordem, peso, obrigatoria)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, [
-      questaoME2Id,
-      provaId,
-      'Qual é a linguagem de programação mais usada para desenvolvimento web front-end?',
-      'MULTIPLA_ESCOLHA',
-      2,
-      1.5,
-      true,
-    ]);
+    `,
+      [
+        questaoME2Id,
+        provaId,
+        'Qual é a linguagem de programação mais usada para desenvolvimento web front-end?',
+        'MULTIPLA_ESCOLHA',
+        2,
+        1.5,
+        true,
+      ],
+    );
 
     const altME2_1 = randomUUID();
     const altME2_2 = randomUUID();
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO "CursosTurmasProvasQuestoesAlternativas" (id, "questaoId", texto, ordem, correta)
       VALUES ($1, $2, $3, $4, $5), ($6, $7, $8, $9, $10)
-    `, [altME2_1, questaoME2Id, 'Python', 1, false, altME2_2, questaoME2Id, 'JavaScript', 2, true]);
-    logResult('Questão MULTIPLA_ESCOLHA (2 alt)', true, 'Questão criada com 2 alternativas, 1 correta', {
-      questaoId: questaoME2Id,
-      alternativas: 2,
-      corretas: 1,
-    });
+    `,
+      [altME2_1, questaoME2Id, 'Python', 1, false, altME2_2, questaoME2Id, 'JavaScript', 2, true],
+    );
+    logResult(
+      'Questão MULTIPLA_ESCOLHA (2 alt)',
+      true,
+      'Questão criada com 2 alternativas, 1 correta',
+      {
+        questaoId: questaoME2Id,
+        alternativas: 2,
+        corretas: 1,
+      },
+    );
 
     // 5. TESTE 3: Criar questão MULTIPLA_ESCOLHA com 3 alternativas
     console.log('\n📝 TESTE 3: Criando questão MULTIPLA_ESCOLHA com 3 alternativas...');
     const questaoME3Id = randomUUID();
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO "CursosTurmasProvasQuestoes" (id, "provaId", enunciado, tipo, ordem, peso, obrigatoria)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, [
-      questaoME3Id,
-      provaId,
-      'Qual é o método HTTP usado para criar um novo recurso em uma API REST?',
-      'MULTIPLA_ESCOLHA',
-      3,
-      2.0,
-      true,
-    ]);
+    `,
+      [
+        questaoME3Id,
+        provaId,
+        'Qual é o método HTTP usado para criar um novo recurso em uma API REST?',
+        'MULTIPLA_ESCOLHA',
+        3,
+        2.0,
+        true,
+      ],
+    );
 
     const altME3_1 = randomUUID();
     const altME3_2 = randomUUID();
     const altME3_3 = randomUUID();
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO "CursosTurmasProvasQuestoesAlternativas" (id, "questaoId", texto, ordem, correta)
       VALUES ($1, $2, $3, $4, $5), ($6, $7, $8, $9, $10), ($11, $12, $13, $14, $15)
-    `, [
-      altME3_1, questaoME3Id, 'GET', 1, false,
-      altME3_2, questaoME3Id, 'POST', 2, true,
-      altME3_3, questaoME3Id, 'PUT', 3, false,
-    ]);
-    logResult('Questão MULTIPLA_ESCOLHA (3 alt)', true, 'Questão criada com 3 alternativas, 1 correta', {
-      questaoId: questaoME3Id,
-      alternativas: 3,
-      corretas: 1,
-    });
+    `,
+      [
+        altME3_1,
+        questaoME3Id,
+        'GET',
+        1,
+        false,
+        altME3_2,
+        questaoME3Id,
+        'POST',
+        2,
+        true,
+        altME3_3,
+        questaoME3Id,
+        'PUT',
+        3,
+        false,
+      ],
+    );
+    logResult(
+      'Questão MULTIPLA_ESCOLHA (3 alt)',
+      true,
+      'Questão criada com 3 alternativas, 1 correta',
+      {
+        questaoId: questaoME3Id,
+        alternativas: 3,
+        corretas: 1,
+      },
+    );
 
     // 6. TESTE 4: Criar questão MULTIPLA_ESCOLHA com 4 alternativas
     console.log('\n📝 TESTE 4: Criando questão MULTIPLA_ESCOLHA com 4 alternativas...');
     const questaoME4Id = randomUUID();
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO "CursosTurmasProvasQuestoes" (id, "provaId", enunciado, tipo, ordem, peso, obrigatoria)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, [
-      questaoME4Id,
-      provaId,
-      'Qual é a capital do Brasil?',
-      'MULTIPLA_ESCOLHA',
-      4,
-      1.0,
-      true,
-    ]);
+    `,
+      [questaoME4Id, provaId, 'Qual é a capital do Brasil?', 'MULTIPLA_ESCOLHA', 4, 1.0, true],
+    );
 
     const altME4_1 = randomUUID();
     const altME4_2 = randomUUID();
     const altME4_3 = randomUUID();
     const altME4_4 = randomUUID();
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO "CursosTurmasProvasQuestoesAlternativas" (id, "questaoId", texto, ordem, correta)
       VALUES ($1, $2, $3, $4, $5), ($6, $7, $8, $9, $10), ($11, $12, $13, $14, $15), ($16, $17, $18, $19, $20)
-    `, [
-      altME4_1, questaoME4Id, 'São Paulo', 1, false,
-      altME4_2, questaoME4Id, 'Rio de Janeiro', 2, false,
-      altME4_3, questaoME4Id, 'Brasília', 3, true,
-      altME4_4, questaoME4Id, 'Belo Horizonte', 4, false,
-    ]);
-    logResult('Questão MULTIPLA_ESCOLHA (4 alt)', true, 'Questão criada com 4 alternativas, 1 correta', {
-      questaoId: questaoME4Id,
-      alternativas: 4,
-      corretas: 1,
-    });
+    `,
+      [
+        altME4_1,
+        questaoME4Id,
+        'São Paulo',
+        1,
+        false,
+        altME4_2,
+        questaoME4Id,
+        'Rio de Janeiro',
+        2,
+        false,
+        altME4_3,
+        questaoME4Id,
+        'Brasília',
+        3,
+        true,
+        altME4_4,
+        questaoME4Id,
+        'Belo Horizonte',
+        4,
+        false,
+      ],
+    );
+    logResult(
+      'Questão MULTIPLA_ESCOLHA (4 alt)',
+      true,
+      'Questão criada com 4 alternativas, 1 correta',
+      {
+        questaoId: questaoME4Id,
+        alternativas: 4,
+        corretas: 1,
+      },
+    );
 
     // 7. TESTE 5: Criar questão MULTIPLA_ESCOLHA com 5 alternativas
     console.log('\n📝 TESTE 5: Criando questão MULTIPLA_ESCOLHA com 5 alternativas...');
     const questaoME5Id = randomUUID();
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO "CursosTurmasProvasQuestoes" (id, "provaId", enunciado, tipo, ordem, peso, obrigatoria)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, [
-      questaoME5Id,
-      provaId,
-      'Qual é o framework JavaScript mais popular para desenvolvimento front-end?',
-      'MULTIPLA_ESCOLHA',
-      5,
-      2.5,
-      false,
-    ]);
+    `,
+      [
+        questaoME5Id,
+        provaId,
+        'Qual é o framework JavaScript mais popular para desenvolvimento front-end?',
+        'MULTIPLA_ESCOLHA',
+        5,
+        2.5,
+        false,
+      ],
+    );
 
     const altME5_1 = randomUUID();
     const altME5_2 = randomUUID();
     const altME5_3 = randomUUID();
     const altME5_4 = randomUUID();
     const altME5_5 = randomUUID();
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO "CursosTurmasProvasQuestoesAlternativas" (id, "questaoId", texto, ordem, correta)
       VALUES ($1, $2, $3, $4, $5), ($6, $7, $8, $9, $10), ($11, $12, $13, $14, $15), ($16, $17, $18, $19, $20), ($21, $22, $23, $24, $25)
-    `, [
-      altME5_1, questaoME5Id, 'Angular', 1, false,
-      altME5_2, questaoME5Id, 'React', 2, true,
-      altME5_3, questaoME5Id, 'Vue.js', 3, false,
-      altME5_4, questaoME5Id, 'Svelte', 4, false,
-      altME5_5, questaoME5Id, 'Ember.js', 5, false,
-    ]);
-    logResult('Questão MULTIPLA_ESCOLHA (5 alt)', true, 'Questão criada com 5 alternativas, 1 correta', {
-      questaoId: questaoME5Id,
-      alternativas: 5,
-      corretas: 1,
-    });
+    `,
+      [
+        altME5_1,
+        questaoME5Id,
+        'Angular',
+        1,
+        false,
+        altME5_2,
+        questaoME5Id,
+        'React',
+        2,
+        true,
+        altME5_3,
+        questaoME5Id,
+        'Vue.js',
+        3,
+        false,
+        altME5_4,
+        questaoME5Id,
+        'Svelte',
+        4,
+        false,
+        altME5_5,
+        questaoME5Id,
+        'Ember.js',
+        5,
+        false,
+      ],
+    );
+    logResult(
+      'Questão MULTIPLA_ESCOLHA (5 alt)',
+      true,
+      'Questão criada com 5 alternativas, 1 correta',
+      {
+        questaoId: questaoME5Id,
+        alternativas: 5,
+        corretas: 1,
+      },
+    );
 
     // 8. TESTE 6: Criar questão ANEXO
     console.log('\n📝 TESTE 6: Criando questão ANEXO...');
     const questaoAnexoId = randomUUID();
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO "CursosTurmasProvasQuestoes" (id, "provaId", enunciado, tipo, ordem, peso, obrigatoria)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, [
-      questaoAnexoId,
-      provaId,
-      'Envie um arquivo PDF com seu currículo atualizado e portfólio de projetos.',
-      'ANEXO',
-      6,
-      5.0,
-      false,
-    ]);
-    logResult('Questão ANEXO', true, 'Questão de anexo criada', { questaoId: questaoAnexoId, tipo: 'ANEXO' });
+    `,
+      [
+        questaoAnexoId,
+        provaId,
+        'Envie um arquivo PDF com seu currículo atualizado e portfólio de projetos.',
+        'ANEXO',
+        6,
+        5.0,
+        false,
+      ],
+    );
+    logResult('Questão ANEXO', true, 'Questão de anexo criada', {
+      questaoId: questaoAnexoId,
+      tipo: 'ANEXO',
+    });
 
     // 9. Criar envio
     console.log('\n📤 Criando envio de prova...');
     const envioId = randomUUID();
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO "CursosTurmasProvasEnvios" (id, "provaId", "inscricaoId", "realizadoEm")
       VALUES ($1, $2, $3, $4)
-    `, [envioId, provaId, inscricao.id, new Date()]);
+    `,
+      [envioId, provaId, inscricao.id, new Date()],
+    );
     logResult('Criar Envio', true, 'Envio de prova criado', { envioId });
 
     // 10. TESTE 7: Criar resposta TEXTO
     console.log('\n✍️  TESTE 7: Criando resposta para questão TEXTO...');
     const respostaTextoId = randomUUID();
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO "CursosTurmasProvasRespostas" (id, "questaoId", "inscricaoId", "envioId", "respostaTexto", corrigida)
       VALUES ($1, $2, $3, $4, $5, $6)
       ON CONFLICT ("questaoId", "inscricaoId") DO UPDATE SET "respostaTexto" = EXCLUDED."respostaTexto"
-    `, [
-      respostaTextoId,
-      questaoTextoId,
-      inscricao.id,
-      envioId,
-      'Herança é um mecanismo fundamental em programação orientada a objetos que permite que uma classe (classe filha) herde características (atributos e métodos) de outra classe (classe pai). Isso promove reutilização de código e estabelece uma relação "é um tipo de" entre classes.',
-      false,
-    ]);
+    `,
+      [
+        respostaTextoId,
+        questaoTextoId,
+        inscricao.id,
+        envioId,
+        'Herança é um mecanismo fundamental em programação orientada a objetos que permite que uma classe (classe filha) herde características (atributos e métodos) de outra classe (classe pai). Isso promove reutilização de código e estabelece uma relação "é um tipo de" entre classes.',
+        false,
+      ],
+    );
     logResult('Resposta TEXTO', true, 'Resposta de texto criada', { respostaId: respostaTextoId });
 
     // 11. TESTE 8: Criar resposta MULTIPLA_ESCOLHA (2 alt) - CORRETA
-    console.log('\n✍️  TESTE 8: Criando resposta para questão MULTIPLA_ESCOLHA (2 alt) - CORRETA...');
+    console.log(
+      '\n✍️  TESTE 8: Criando resposta para questão MULTIPLA_ESCOLHA (2 alt) - CORRETA...',
+    );
     const respostaME2Id = randomUUID();
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO "CursosTurmasProvasRespostas" (id, "questaoId", "inscricaoId", "envioId", "alternativaId", corrigida, nota)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT ("questaoId", "inscricaoId") DO UPDATE SET "alternativaId" = EXCLUDED."alternativaId", nota = EXCLUDED.nota
-    `, [respostaME2Id, questaoME2Id, inscricao.id, envioId, altME2_2, true, 1.5]);
+    `,
+      [respostaME2Id, questaoME2Id, inscricao.id, envioId, altME2_2, true, 1.5],
+    );
     logResult('Resposta MULTIPLA_ESCOLHA (correta)', true, 'Resposta correta criada', {
       respostaId: respostaME2Id,
       alternativaId: altME2_2,
@@ -337,13 +459,27 @@ async function testQuestoesCompletasSQL() {
     });
 
     // 12. TESTE 9: Criar resposta MULTIPLA_ESCOLHA (3 alt) - INCORRETA
-    console.log('\n✍️  TESTE 9: Criando resposta para questão MULTIPLA_ESCOLHA (3 alt) - INCORRETA...');
+    console.log(
+      '\n✍️  TESTE 9: Criando resposta para questão MULTIPLA_ESCOLHA (3 alt) - INCORRETA...',
+    );
     const respostaME3Id = randomUUID();
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO "CursosTurmasProvasRespostas" (id, "questaoId", "inscricaoId", "envioId", "alternativaId", corrigida, nota, observacoes)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       ON CONFLICT ("questaoId", "inscricaoId") DO UPDATE SET "alternativaId" = EXCLUDED."alternativaId", nota = EXCLUDED.nota
-    `, [respostaME3Id, questaoME3Id, inscricao.id, envioId, altME3_1, true, 0.0, 'Resposta incorreta. O método correto é POST.']);
+    `,
+      [
+        respostaME3Id,
+        questaoME3Id,
+        inscricao.id,
+        envioId,
+        altME3_1,
+        true,
+        0.0,
+        'Resposta incorreta. O método correto é POST.',
+      ],
+    );
     logResult('Resposta MULTIPLA_ESCOLHA (incorreta)', true, 'Resposta incorreta criada', {
       respostaId: respostaME3Id,
       alternativaId: altME3_1,
@@ -351,13 +487,18 @@ async function testQuestoesCompletasSQL() {
     });
 
     // 13. TESTE 10: Criar resposta MULTIPLA_ESCOLHA (4 alt) - CORRETA
-    console.log('\n✍️  TESTE 10: Criando resposta para questão MULTIPLA_ESCOLHA (4 alt) - CORRETA...');
+    console.log(
+      '\n✍️  TESTE 10: Criando resposta para questão MULTIPLA_ESCOLHA (4 alt) - CORRETA...',
+    );
     const respostaME4Id = randomUUID();
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO "CursosTurmasProvasRespostas" (id, "questaoId", "inscricaoId", "envioId", "alternativaId", corrigida, nota)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT ("questaoId", "inscricaoId") DO UPDATE SET "alternativaId" = EXCLUDED."alternativaId", nota = EXCLUDED.nota
-    `, [respostaME4Id, questaoME4Id, inscricao.id, envioId, altME4_3, true, 1.0]);
+    `,
+      [respostaME4Id, questaoME4Id, inscricao.id, envioId, altME4_3, true, 1.0],
+    );
     logResult('Resposta MULTIPLA_ESCOLHA (4 alt - correta)', true, 'Resposta correta criada', {
       respostaId: respostaME4Id,
       alternativaId: altME4_3,
@@ -365,13 +506,18 @@ async function testQuestoesCompletasSQL() {
     });
 
     // 14. TESTE 11: Criar resposta MULTIPLA_ESCOLHA (5 alt) - CORRETA
-    console.log('\n✍️  TESTE 11: Criando resposta para questão MULTIPLA_ESCOLHA (5 alt) - CORRETA...');
+    console.log(
+      '\n✍️  TESTE 11: Criando resposta para questão MULTIPLA_ESCOLHA (5 alt) - CORRETA...',
+    );
     const respostaME5Id = randomUUID();
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO "CursosTurmasProvasRespostas" (id, "questaoId", "inscricaoId", "envioId", "alternativaId", corrigida, nota)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT ("questaoId", "inscricaoId") DO UPDATE SET "alternativaId" = EXCLUDED."alternativaId", nota = EXCLUDED.nota
-    `, [respostaME5Id, questaoME5Id, inscricao.id, envioId, altME5_2, true, 2.5]);
+    `,
+      [respostaME5Id, questaoME5Id, inscricao.id, envioId, altME5_2, true, 2.5],
+    );
     logResult('Resposta MULTIPLA_ESCOLHA (5 alt - correta)', true, 'Resposta correta criada', {
       respostaId: respostaME5Id,
       alternativaId: altME5_2,
@@ -381,19 +527,22 @@ async function testQuestoesCompletasSQL() {
     // 15. TESTE 12: Criar resposta ANEXO
     console.log('\n✍️  TESTE 12: Criando resposta para questão ANEXO...');
     const respostaAnexoId = randomUUID();
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO "CursosTurmasProvasRespostas" (id, "questaoId", "inscricaoId", "envioId", "anexoUrl", "anexoNome", corrigida)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT ("questaoId", "inscricaoId") DO UPDATE SET "anexoUrl" = EXCLUDED."anexoUrl", "anexoNome" = EXCLUDED."anexoNome"
-    `, [
-      respostaAnexoId,
-      questaoAnexoId,
-      inscricao.id,
-      envioId,
-      'https://storage.example.com/curriculo-portfolio.pdf',
-      'curriculo_portfolio_joao_silva.pdf',
-      false,
-    ]);
+    `,
+      [
+        respostaAnexoId,
+        questaoAnexoId,
+        inscricao.id,
+        envioId,
+        'https://storage.example.com/curriculo-portfolio.pdf',
+        'curriculo_portfolio_joao_silva.pdf',
+        false,
+      ],
+    );
     logResult('Resposta ANEXO', true, 'Resposta de anexo criada', {
       respostaId: respostaAnexoId,
       anexoUrl: 'https://storage.example.com/curriculo-portfolio.pdf',
@@ -401,35 +550,42 @@ async function testQuestoesCompletasSQL() {
 
     // 16. TESTE 13: Corrigir resposta TEXTO
     console.log('\n📝 TESTE 13: Corrigindo resposta TEXTO...');
-    await client.query(`
+    await client.query(
+      `
       UPDATE "CursosTurmasProvasRespostas"
       SET corrigida = $1, nota = $2, observacoes = $3
       WHERE id = $4
-    `, [
-      true,
-      8.5,
-      'Boa resposta! Você explicou bem o conceito de herança e deu um exemplo prático. Poderia ter mencionado também polimorfismo e encapsulamento.',
-      respostaTextoId,
-    ]);
+    `,
+      [
+        true,
+        8.5,
+        'Boa resposta! Você explicou bem o conceito de herança e deu um exemplo prático. Poderia ter mencionado também polimorfismo e encapsulamento.',
+        respostaTextoId,
+      ],
+    );
     logResult('Corrigir Resposta TEXTO', true, 'Resposta de texto corrigida', { nota: 8.5 });
 
     // 17. TESTE 14: Corrigir resposta ANEXO
     console.log('\n📝 TESTE 14: Corrigindo resposta ANEXO...');
-    await client.query(`
+    await client.query(
+      `
       UPDATE "CursosTurmasProvasRespostas"
       SET corrigida = $1, nota = $2, observacoes = $3
       WHERE id = $4
-    `, [
-      true,
-      9.0,
-      'Arquivo recebido e avaliado. Currículo bem estruturado e portfólio interessante.',
-      respostaAnexoId,
-    ]);
+    `,
+      [
+        true,
+        9.0,
+        'Arquivo recebido e avaliado. Currículo bem estruturado e portfólio interessante.',
+        respostaAnexoId,
+      ],
+    );
     logResult('Corrigir Resposta ANEXO', true, 'Resposta de anexo corrigida', { nota: 9.0 });
 
     // 18. Validação final
     console.log('\n🔍 Validação final...');
-    const validacaoResult = await client.query(`
+    const validacaoResult = await client.query(
+      `
       SELECT 
         p.id as prova_id,
         p.titulo,
@@ -445,7 +601,9 @@ async function testQuestoesCompletasSQL() {
       LEFT JOIN "CursosTurmasProvasRespostas" r ON r."questaoId" = q.id
       WHERE p.id = $1
       GROUP BY p.id, p.titulo, p."valePonto"
-    `, [provaId]);
+    `,
+      [provaId],
+    );
 
     if (validacaoResult.rows.length > 0) {
       const validacao = validacaoResult.rows[0];
@@ -459,7 +617,8 @@ async function testQuestoesCompletasSQL() {
       console.log(`   Soma das notas: ${parseFloat(validacao.soma_notas || 0).toFixed(1)}`);
 
       // Detalhes por questão
-      const questoesResult = await client.query(`
+      const questoesResult = await client.query(
+        `
         SELECT 
           q.id,
           q.ordem,
@@ -476,7 +635,9 @@ async function testQuestoesCompletasSQL() {
         WHERE q."provaId" = $1
         GROUP BY q.id, q.ordem, q.tipo, q.enunciado, q.peso, q.obrigatoria
         ORDER BY q.ordem
-      `, [provaId]);
+      `,
+        [provaId],
+      );
 
       console.log('\n   📝 Detalhes por questão:');
       for (const q of questoesResult.rows) {
@@ -508,9 +669,11 @@ async function testQuestoesCompletasSQL() {
 
     if (falhas > 0) {
       console.log('\n   ❌ Testes que falharam:');
-      results.filter((r) => !r.success).forEach((r) => {
-        console.log(`      - ${r.test}: ${r.message}`);
-      });
+      results
+        .filter((r) => !r.success)
+        .forEach((r) => {
+          console.log(`      - ${r.test}: ${r.message}`);
+        });
     }
 
     return {
@@ -538,4 +701,3 @@ testQuestoesCompletasSQL()
     console.error('\n💥 Falha crítica nos testes:', error);
     process.exit(1);
   });
-

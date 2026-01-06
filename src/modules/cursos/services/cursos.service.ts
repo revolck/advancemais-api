@@ -220,6 +220,28 @@ const mapTurmaDetailed = (turma: TurmaDetailedPayload) => {
     (turma as any).provas ||
     []) as unknown as ProvaWithRelations[];
 
+  const aulasStandalone = aulas.filter((aula) => aula.moduloId === null);
+  const provasStandalone = provas.filter((prova) => prova.moduloId === null);
+  const itens = [
+    ...aulasStandalone.map((aula) => ({
+      tipo: 'AULA',
+      ordem: aula.ordem,
+      aulaId: aula.id,
+      avaliacaoId: null,
+      aula: mapAula(aula),
+    })),
+    ...provasStandalone.map((prova) => ({
+      tipo: (prova as any).tipo ?? 'PROVA',
+      ordem: prova.ordem,
+      aulaId: null,
+      avaliacaoId: prova.id,
+      avaliacao: mapProva(prova),
+    })),
+  ].sort((a, b) => {
+    const diff = (a.ordem ?? 0) - (b.ordem ?? 0);
+    return diff !== 0 ? diff : String(a.tipo).localeCompare(String(b.tipo));
+  });
+
   return {
     id: turma.id,
     codigo: turma.codigo,
@@ -258,8 +280,9 @@ const mapTurmaDetailed = (turma: TurmaDetailedPayload) => {
       },
     ),
     modulos: modulos.map(mapModulo),
-    aulas: aulas.filter((aula) => aula.moduloId === null).map(mapAula),
-    provas: provas.filter((prova) => prova.moduloId === null).map(mapProva),
+    aulas: aulasStandalone.map(mapAula),
+    provas: provasStandalone.map((prova) => mapProva(prova, null)),
+    itens,
     regrasAvaliacao: mapRegrasAvaliacao(
       (turma as any).CursosTurmasRegrasAvaliacao || (turma as any).regrasAvaliacao || null,
     ),
@@ -277,6 +300,28 @@ const mapTurmaPublic = (turma: TurmaPublicPayload) => {
     (turma as any).provas ||
     []) as unknown as ProvaWithRelations[];
 
+  const aulasStandalone = aulas.filter((aula) => aula.moduloId === null);
+  const provasStandalone = provas.filter((prova) => prova.moduloId === null);
+  const itens = [
+    ...aulasStandalone.map((aula) => ({
+      tipo: 'AULA',
+      ordem: aula.ordem,
+      aulaId: aula.id,
+      avaliacaoId: null,
+      aula: mapAula(aula),
+    })),
+    ...provasStandalone.map((prova) => ({
+      tipo: (prova as any).tipo ?? 'PROVA',
+      ordem: prova.ordem,
+      aulaId: null,
+      avaliacaoId: prova.id,
+      avaliacao: mapProva(prova),
+    })),
+  ].sort((a, b) => {
+    const diff = (a.ordem ?? 0) - (b.ordem ?? 0);
+    return diff !== 0 ? diff : String(a.tipo).localeCompare(String(b.tipo));
+  });
+
   return {
     id: turma.id,
     codigo: turma.codigo,
@@ -291,8 +336,9 @@ const mapTurmaPublic = (turma: TurmaPublicPayload) => {
     dataInscricaoInicio: turma.dataInscricaoInicio?.toISOString() ?? null,
     dataInscricaoFim: turma.dataInscricaoFim?.toISOString() ?? null,
     modulos: modulos.map(mapModulo),
-    aulas: aulas.filter((aula) => aula.moduloId === null).map(mapAula),
-    provas: provas.filter((prova) => prova.moduloId === null).map(mapProva),
+    aulas: aulasStandalone.map(mapAula),
+    provas: provasStandalone.map((prova) => mapProva(prova, null)),
+    itens,
     regrasAvaliacao: mapRegrasAvaliacao(
       (turma as any).CursosTurmasRegrasAvaliacao || (turma as any).regrasAvaliacao || null,
     ),
@@ -938,6 +984,9 @@ export const cursosService = {
       subcategoriaId?: number | null;
       statusPadrao?: CursosStatusPadrao;
       estagioObrigatorio?: boolean;
+      valor?: number;
+      valorPromocional?: number | null;
+      gratuito?: boolean;
     },
     criadoPor?: string,
     ip?: string,
@@ -945,6 +994,15 @@ export const cursosService = {
   ) {
     return prisma.$transaction(async (tx) => {
       const codigo = await generateUniqueCourseCode(tx, cursosLogger);
+
+      // Processar campos de precificação
+      const valor = data.valor ?? 0;
+      const valorPromocional = data.valorPromocional ?? null;
+      const gratuito = data.gratuito ?? false;
+
+      // Se curso é gratuito, garantir que valor seja 0
+      const valorFinal = gratuito ? 0 : valor;
+      const valorPromocionalFinal = gratuito ? null : valorPromocional;
 
       const created = await tx.cursos.create({
         data: {
@@ -956,6 +1014,10 @@ export const cursosService = {
           subcategoriaId: data.subcategoriaId ?? null,
           statusPadrao: data.statusPadrao ?? CursosStatusPadrao.RASCUNHO,
           estagioObrigatorio: data.estagioObrigatorio ?? false,
+          valor: new Prisma.Decimal(valorFinal),
+          valorPromocional:
+            valorPromocionalFinal !== null ? new Prisma.Decimal(valorPromocionalFinal) : null,
+          gratuito,
           codigo,
           atualizadoEm: new Date(),
         },
@@ -970,7 +1032,7 @@ export const cursosService = {
       // Registrar auditoria de criação (após a transação)
       if (criadoPor) {
         // Usar require para evitar dependência circular
-         
+
         const { cursosAuditoriaService } = require('./cursos-auditoria.service');
         await cursosAuditoriaService.registrarCriacaoCurso(
           created.id,
@@ -1000,6 +1062,9 @@ export const cursosService = {
       subcategoriaId?: number | null;
       statusPadrao?: CursosStatusPadrao;
       estagioObrigatorio?: boolean;
+      valor?: number;
+      valorPromocional?: number | null;
+      gratuito?: boolean;
     }>,
     alteradoPor?: string,
     ip?: string,
@@ -1018,6 +1083,9 @@ export const cursosService = {
           subcategoriaId: true,
           statusPadrao: true,
           estagioObrigatorio: true,
+          valor: true,
+          valorPromocional: true,
+          gratuito: true,
         },
       });
 
@@ -1035,6 +1103,32 @@ export const cursosService = {
       if (data.estagioObrigatorio !== undefined)
         updateData.estagioObrigatorio = data.estagioObrigatorio;
 
+      // Processar campos de precificação
+      if (data.gratuito !== undefined || data.valor !== undefined) {
+        const gratuito = data.gratuito ?? cursoAnterior?.gratuito ?? false;
+        const valor = data.valor ?? Number(cursoAnterior?.valor ?? 0);
+
+        // Se curso é gratuito, garantir que valor seja 0
+        const valorFinal = gratuito ? 0 : valor;
+        updateData.valor = new Prisma.Decimal(valorFinal);
+        updateData.gratuito = gratuito;
+
+        // Se curso é gratuito, limpar valor promocional
+        if (gratuito) {
+          updateData.valorPromocional = null;
+        } else if (data.valorPromocional !== undefined) {
+          updateData.valorPromocional =
+            data.valorPromocional !== null ? new Prisma.Decimal(data.valorPromocional) : null;
+        }
+      } else if (data.valorPromocional !== undefined) {
+        // Apenas atualizar valor promocional se curso não for gratuito
+        const gratuito = cursoAnterior?.gratuito ?? false;
+        if (!gratuito) {
+          updateData.valorPromocional =
+            data.valorPromocional !== null ? new Prisma.Decimal(data.valorPromocional) : null;
+        }
+      }
+
       const updated = await tx.cursos.update({
         where: { id },
         data: updateData,
@@ -1049,7 +1143,7 @@ export const cursosService = {
       // Registrar auditoria para cada campo alterado (após a transação)
       if (alteradoPor && cursoAnterior) {
         // Usar require para evitar dependência circular
-         
+
         const { cursosAuditoriaService } = require('./cursos-auditoria.service');
 
         // Registrar alteração de nome
@@ -1170,6 +1264,58 @@ export const cursosService = {
             userAgent,
           );
         }
+
+        // Registrar alteração de valor
+        if (data.valor !== undefined) {
+          const valorAnterior = Number(cursoAnterior.valor ?? 0);
+          const valorNovo = data.gratuito ? 0 : data.valor;
+          if (valorAnterior !== valorNovo) {
+            await cursosAuditoriaService.registrarAtualizacaoCurso(
+              id,
+              alteradoPor,
+              'valor',
+              valorAnterior,
+              valorNovo,
+              `Valor do curso alterado de R$ ${valorAnterior.toFixed(2)} para R$ ${valorNovo.toFixed(2)}`,
+              ip,
+              userAgent,
+            );
+          }
+        }
+
+        // Registrar alteração de valor promocional
+        if (data.valorPromocional !== undefined) {
+          const valorPromocionalAnterior = cursoAnterior.valorPromocional
+            ? Number(cursoAnterior.valorPromocional)
+            : null;
+          const valorPromocionalNovo = data.valorPromocional;
+          if (valorPromocionalAnterior !== valorPromocionalNovo) {
+            await cursosAuditoriaService.registrarAtualizacaoCurso(
+              id,
+              alteradoPor,
+              'valorPromocional',
+              valorPromocionalAnterior,
+              valorPromocionalNovo,
+              `Valor promocional ${valorPromocionalNovo === null ? 'removido' : `alterado de R$ ${valorPromocionalAnterior?.toFixed(2) || 'não definido'} para R$ ${valorPromocionalNovo.toFixed(2)}`}`,
+              ip,
+              userAgent,
+            );
+          }
+        }
+
+        // Registrar alteração de gratuito
+        if (data.gratuito !== undefined && cursoAnterior.gratuito !== data.gratuito) {
+          await cursosAuditoriaService.registrarAtualizacaoCurso(
+            id,
+            alteradoPor,
+            'gratuito',
+            cursoAnterior.gratuito,
+            data.gratuito,
+            `Curso alterado de ${cursoAnterior.gratuito ? 'gratuito' : 'pago'} para ${data.gratuito ? 'gratuito' : 'pago'}`,
+            ip,
+            userAgent,
+          );
+        }
       }
 
       return mapCourse(updated);
@@ -1214,6 +1360,49 @@ export const cursosService = {
     }
 
     return mapCourse(updated);
+  },
+
+  async metaCurso(cursoId: string) {
+    const curso = await prisma.cursos.findUnique({ where: { id: cursoId }, select: { id: true } });
+    if (!curso) {
+      const error: any = new Error('Curso não encontrado');
+      error.code = 'CURSO_NOT_FOUND';
+      throw error;
+    }
+
+    const [templatesAulasCount, templatesAvaliacoesCount, turmasCount, inscricoesAtivas] =
+      await Promise.all([
+        prisma.cursosTurmasAulas.count({
+          where: {
+            cursoId,
+            turmaId: null,
+            deletedAt: null,
+          },
+        }),
+        prisma.cursosTurmasProvas.count({
+          where: {
+            cursoId,
+            turmaId: null,
+          },
+        }),
+        prisma.cursosTurmas.count({ where: { cursoId } }),
+        prisma.cursosTurmasInscricoes.count({
+          where: {
+            CursosTurmas: { cursoId },
+            status: {
+              in: ['INSCRITO', 'EM_ANDAMENTO', 'EM_ESTAGIO'],
+            },
+          },
+        }),
+      ]);
+
+    return {
+      cursoId,
+      templatesAulasCount,
+      templatesAvaliacoesCount,
+      turmasCount,
+      inscricoesAtivas,
+    };
   },
 };
 

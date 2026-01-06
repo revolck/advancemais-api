@@ -93,9 +93,7 @@ async function testContagemAulas() {
         },
       },
     });
-    console.log(
-      `⚠️  Total com CursosTurmas IS NOT NULL: ${totalComTurmaNotNull}`,
-    );
+    console.log(`⚠️  Total com CursosTurmas IS NOT NULL: ${totalComTurmaNotNull}`);
 
     console.log('\n✅ Testes concluídos!');
     console.log('\n📊 Resumo:');
@@ -118,4 +116,3 @@ async function testContagemAulas() {
 }
 
 testContagemAulas();
-

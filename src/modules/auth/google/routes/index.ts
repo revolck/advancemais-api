@@ -15,7 +15,13 @@ const router = Router();
 // GET /auth/google/connect - Gerar URL de autorização
 router.get(
   '/connect',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  supabaseAuthMiddleware([
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.PEDAGOGICO,
+    Roles.INSTRUTOR,
+    Roles.RECRUTADOR,
+  ]),
   GoogleOAuthController.connect,
 );
 
@@ -25,14 +31,26 @@ router.get('/callback', GoogleOAuthController.callback);
 // POST /auth/google/disconnect - Desconectar Google
 router.post(
   '/disconnect',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  supabaseAuthMiddleware([
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.PEDAGOGICO,
+    Roles.INSTRUTOR,
+    Roles.RECRUTADOR,
+  ]),
   GoogleOAuthController.disconnect,
 );
 
 // GET /auth/google/status - Verificar status da conexão
 router.get(
   '/status',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  supabaseAuthMiddleware([
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.PEDAGOGICO,
+    Roles.INSTRUTOR,
+    Roles.RECRUTADOR,
+  ]),
   GoogleOAuthController.status,
 );
 

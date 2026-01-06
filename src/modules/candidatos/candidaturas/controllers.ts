@@ -6,6 +6,7 @@ import { prisma } from '@/config/prisma';
 import { candidaturasService } from './services';
 import { candidaturasOverviewService } from './services/overview.service';
 import { candidaturasOverviewQuerySchema } from './validators/overview.schema';
+import { recrutadorVagasService } from '@/modules/usuarios/services/recrutador-vagas.service';
 
 export const CandidaturasController = {
   listMine: async (req: Request, res: Response) => {
@@ -88,6 +89,17 @@ export const CandidaturasController = {
         });
       }
 
+      if (error && typeof error === 'object' && 'status' in error && 'code' in error) {
+        const err = error as { status?: number; code?: string; message?: string };
+        if (err.status === 403) {
+          return res.status(403).json({
+            success: false,
+            code: err.code ?? 'FORBIDDEN',
+            message: err.message ?? 'Acesso negado',
+          });
+        }
+      }
+
       return res.status(500).json({
         success: false,
         code: 'CANDIDATURAS_OVERVIEW_ERROR',
@@ -125,6 +137,7 @@ export const CandidaturasController = {
 
   get: async (req: Request, res: Response) => {
     try {
+      const viewer = (req as any).user as { id?: string; role?: Roles } | undefined;
       const candidaturaId = req.params.id;
 
       if (!candidaturaId) {
@@ -143,6 +156,32 @@ export const CandidaturasController = {
           code: 'CANDIDATURA_NOT_FOUND',
           message: 'Candidatura não encontrada',
         });
+      }
+
+      if (!viewer?.id || !viewer?.role) {
+        return res.status(401).json({ success: false, code: 'UNAUTHORIZED' });
+      }
+
+      const role = viewer.role as Roles;
+
+      const isGlobal =
+        role === Roles.ADMIN || role === Roles.MODERADOR || role === Roles.SETOR_DE_VAGAS;
+
+      const canAccess =
+        isGlobal ||
+        (role === Roles.ALUNO_CANDIDATO && candidatura.candidatoId === viewer.id) ||
+        (role === Roles.EMPRESA && candidatura.empresaUsuarioId === viewer.id);
+
+      if (!canAccess) {
+        if (role === Roles.RECRUTADOR) {
+          await recrutadorVagasService.assertVinculo(viewer.id, candidatura.vagaId);
+        } else {
+          return res.status(403).json({
+            success: false,
+            code: 'FORBIDDEN',
+            message: 'Acesso negado',
+          });
+        }
       }
 
       // Mapear dados para formato mais amigável
@@ -227,7 +266,7 @@ export const CandidaturasController = {
         empresaUsuarioId: candidatura.empresaUsuarioId,
         statusId: candidatura.statusId,
         status: candidatura.status_processo?.nome ?? 'DESCONHECIDO',
-        status_processo: candidatura.status_processo,
+        statusProcessosCandidatos: candidatura.status_processo, // Campo renomeado para compatibilidade com frontend
         origem: candidatura.origem,
         aplicadaEm: candidatura.aplicadaEm,
         atualizadaEm: candidatura.atualizadaEm,
@@ -239,6 +278,13 @@ export const CandidaturasController = {
 
       res.json({ success: true, candidatura: response });
     } catch (error: any) {
+      if (error?.status === 403) {
+        return res.status(403).json({
+          success: false,
+          code: error?.code ?? 'FORBIDDEN',
+          message: error?.message ?? 'Acesso negado',
+        });
+      }
       res.status(500).json({
         success: false,
         code: 'GET_CANDIDATURA_ERROR',
@@ -335,7 +381,7 @@ export const CandidaturasController = {
 
   listStatusDisponiveis: async (_req: Request, res: Response) => {
     try {
-      const statusList = await prisma.status_processo.findMany({
+      const statusList = await prisma.statusProcessosCandidatos.findMany({
         where: { ativo: true },
         orderBy: { nome: 'asc' },
         select: {

@@ -31,7 +31,7 @@ describe('API - Autenticação', () => {
         .post('/api/v1/usuarios/login')
         .set('X-Forwarded-For', `127.0.0.${Math.floor(Math.random() * 255)}`)
         .send({
-          documento: testUser.cpf,
+          documento: testUser.cpf!,
           senha: testUser.password,
         })
         .expect(200);
@@ -70,7 +70,7 @@ describe('API - Autenticação', () => {
         .post('/api/v1/usuarios/login')
         .set('X-Forwarded-For', `127.0.0.${Math.floor(Math.random() * 255)}`)
         .send({
-          documento: testUser.cpf,
+          documento: testUser.cpf!,
           senha: 'WrongPassword123!',
         })
         .expect(401);
@@ -117,7 +117,7 @@ describe('API - Autenticação', () => {
         .post('/api/v1/usuarios/login')
         .set('X-Forwarded-For', `127.0.0.${Math.floor(Math.random() * 255)}`)
         .send({
-          documento: testUser.cpf,
+          documento: testUser.cpf!,
           senha: testUser.password,
         });
 

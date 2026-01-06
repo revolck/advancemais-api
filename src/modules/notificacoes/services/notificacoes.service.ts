@@ -449,6 +449,104 @@ export const notificacoesService = {
     });
   },
 
+  // =============================================
+  // NOTIFICAÇÕES DE RECUPERAÇÃO FINAL (CURSOS)
+  // =============================================
+
+  /**
+   * Notifica aluno que a recuperação final está disponível e aguardando pagamento
+   */
+  notificarRecuperacaoFinalPendente: async (params: {
+    alunoId: string;
+    cursoId: string;
+    cursoNome: string;
+    turmaId: string;
+    turmaNome: string;
+    provaId: string;
+    valor: number;
+  }) => {
+    return notificacoesService.criar({
+      usuarioId: params.alunoId,
+      tipo: 'RECUPERACAO_FINAL_PAGAMENTO_PENDENTE',
+      titulo: 'Recuperação Final Disponível',
+      mensagem: `Você está elegível para a recuperação final do curso "${params.cursoNome}". Valor: R$ ${params.valor.toFixed(2)}. Efetue o pagamento para liberar a prova.`,
+      prioridade: 'ALTA',
+      dados: {
+        cursoId: params.cursoId,
+        cursoNome: params.cursoNome,
+        turmaId: params.turmaId,
+        turmaNome: params.turmaNome,
+        provaId: params.provaId,
+        valor: params.valor,
+        titulo: 'Recuperação Final',
+        returnTo: '/dashboard',
+      },
+      linkAcao: `/dashboard/cursos/${params.cursoId}/turmas/${params.turmaId}/recuperacao`,
+    });
+  },
+
+  /**
+   * Notifica aluno que o pagamento da recuperação final foi aprovado
+   */
+  notificarRecuperacaoFinalAprovada: async (params: {
+    alunoId: string;
+    cursoId: string;
+    cursoNome: string;
+    turmaId: string;
+    turmaNome: string;
+    provaId: string;
+  }) => {
+    return notificacoesService.criar({
+      usuarioId: params.alunoId,
+      tipo: 'RECUPERACAO_FINAL_PAGAMENTO_APROVADO',
+      titulo: 'Pagamento Aprovado - Recuperação Final',
+      mensagem: `Seu pagamento para a recuperação final do curso "${params.cursoNome}" foi aprovado! A prova já está liberada.`,
+      prioridade: 'ALTA',
+      dados: {
+        cursoId: params.cursoId,
+        cursoNome: params.cursoNome,
+        turmaId: params.turmaId,
+        turmaNome: params.turmaNome,
+        provaId: params.provaId,
+        titulo: 'Recuperação Final',
+        returnTo: '/dashboard',
+      },
+      linkAcao: `/dashboard/cursos/${params.cursoId}/turmas/${params.turmaId}/provas/${params.provaId}`,
+    });
+  },
+
+  /**
+   * Notifica aluno que o pagamento da recuperação final foi recusado
+   */
+  notificarRecuperacaoFinalRecusada: async (params: {
+    alunoId: string;
+    cursoId: string;
+    cursoNome: string;
+    turmaId: string;
+    turmaNome: string;
+    provaId: string;
+    motivo?: string;
+  }) => {
+    return notificacoesService.criar({
+      usuarioId: params.alunoId,
+      tipo: 'RECUPERACAO_FINAL_PAGAMENTO_RECUSADO',
+      titulo: 'Pagamento Recusado - Recuperação Final',
+      mensagem: `O pagamento para a recuperação final do curso "${params.cursoNome}" foi recusado.${params.motivo ? ` Motivo: ${params.motivo}` : ''} Por favor, tente novamente.`,
+      prioridade: 'URGENTE',
+      dados: {
+        cursoId: params.cursoId,
+        cursoNome: params.cursoNome,
+        turmaId: params.turmaId,
+        turmaNome: params.turmaNome,
+        provaId: params.provaId,
+        titulo: 'Recuperação Final',
+        returnTo: '/dashboard',
+        motivo: params.motivo,
+      },
+      linkAcao: `/dashboard/cursos/${params.cursoId}/turmas/${params.turmaId}/recuperacao`,
+    });
+  },
+
   /**
    * Deleta notificações antigas (para limpeza)
    * Chamado por um job periódico

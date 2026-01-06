@@ -64,9 +64,7 @@ const baseRegisterSchema = z.object({
     required_error: 'É necessário informar se os termos foram aceitos',
     invalid_type_error: 'Aceitar termos deve ser um valor booleano',
   }),
-  supabaseId: z
-    .string({ required_error: 'Supabase ID é obrigatório' })
-    .min(1, 'Supabase ID é obrigatório'),
+  authId: z.string({ required_error: 'Auth ID é obrigatório' }).min(1, 'Auth ID é obrigatório'),
   role: z.nativeEnum(Roles).optional(),
 });
 
@@ -86,7 +84,7 @@ export const registerSchema = z.union([pessoaFisicaRegisterSchema, pessoaJuridic
 
 const adminBaseRegisterSchema = baseRegisterSchema.extend({
   aceitarTermos: baseRegisterSchema.shape.aceitarTermos.optional().default(true),
-  supabaseId: baseRegisterSchema.shape.supabaseId.optional(),
+  authId: baseRegisterSchema.shape.authId.optional(),
   status: z.nativeEnum(Status).optional(),
   endereco: enderecoSchema.optional(),
 });
@@ -194,3 +192,73 @@ const collectIssues = (
 };
 
 export const formatZodErrors = (error: ZodError) => collectIssues(error.issues);
+
+// Schema para atualização de perfil do próprio usuário
+const redesSociaisUpdateSchema = z
+  .object({
+    instagram: z.string().url('Instagram deve ser uma URL válida').nullable().optional(),
+    linkedin: z.string().url('LinkedIn deve ser uma URL válida').nullable().optional(),
+    facebook: z.string().url('Facebook deve ser uma URL válida').nullable().optional(),
+    youtube: z.string().url('YouTube deve ser uma URL válida').nullable().optional(),
+    twitter: z.string().url('Twitter deve ser uma URL válida').nullable().optional(),
+    tiktok: z.string().url('TikTok deve ser uma URL válida').nullable().optional(),
+  })
+  .partial();
+
+export const updateProfileSchema = z
+  .object({
+    nomeCompleto: z.string().trim().min(1, 'Nome completo é obrigatório').optional(),
+    email: z
+      .string()
+      .email('Formato de email inválido')
+      .optional()
+      .refine((val) => !val || val.trim().length > 0, {
+        message: 'Email não pode ser vazio',
+      }),
+    telefone: z
+      .union([z.string().trim().min(1, 'Telefone é obrigatório'), z.null()])
+      .optional()
+      .transform((val) => (val === '' || val === null || val === undefined ? null : val)),
+    dataNasc: z
+      .union([z.string(), z.null()])
+      .optional()
+      .transform((val) => {
+        if (val === '' || val === null || val === undefined) return null;
+        return val;
+      }),
+    genero: z
+      .enum(['MASCULINO', 'FEMININO', 'OUTRO', 'NAO_INFORMAR'], {
+        errorMap: () => ({
+          message: 'Gênero deve ser: MASCULINO, FEMININO, OUTRO ou NAO_INFORMAR',
+        }),
+      })
+      .nullable()
+      .optional(),
+    descricao: z
+      .union([z.string().trim().max(500, 'Descrição deve ter no máximo 500 caracteres'), z.null()])
+      .optional()
+      .transform((val) => (val === '' || val === null || val === undefined ? null : val)),
+    avatarUrl: z
+      .union([z.string().url('Avatar URL deve ser uma URL válida'), z.null()])
+      .optional()
+      .transform((val) => (val === '' || val === null || val === undefined ? null : val)),
+    endereco: enderecoSchema.optional().nullable(),
+    redesSociais: redesSociaisUpdateSchema.optional().nullable(),
+  })
+  .passthrough() // Preserva campos extras que não estão no schema
+  .refine(
+    (data) => {
+      // Se dataNasc fornecida, deve ser uma data válida
+      if (data.dataNasc && data.dataNasc !== null && data.dataNasc !== undefined) {
+        const date = new Date(data.dataNasc);
+        return !isNaN(date.getTime()) && date <= new Date();
+      }
+      return true;
+    },
+    {
+      message: 'Data de nascimento inválida ou futura',
+      path: ['dataNasc'],
+    },
+  );
+
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

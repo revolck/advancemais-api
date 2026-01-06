@@ -39,6 +39,7 @@ async function notificarProvasEm(horas: number) {
       // dataInicio entre inicio e fim
       // Nota: Ajustar conforme campo real da prova
       ativo: true,
+      turmaId: { not: null },
     },
     include: {
       CursosTurmas: {
@@ -63,6 +64,10 @@ async function notificarProvasEm(horas: number) {
   let notificacoesEnviadas = 0;
 
   for (const prova of provas) {
+    if (!prova.CursosTurmas) {
+      continue;
+    }
+
     const alunos = prova.CursosTurmas.CursosTurmasInscricoes;
 
     for (const inscricao of alunos) {
@@ -102,7 +107,7 @@ async function notificarProvasEm(horas: number) {
     provasEncontradas: provas.length,
     notificacoesEnviadas,
     emailsEnviados: enviarEmail
-      ? provas.reduce((sum, p) => sum + p.CursosTurmas.CursosTurmasInscricoes.length, 0)
+      ? provas.reduce((sum, p) => sum + (p.CursosTurmas?.CursosTurmasInscricoes.length ?? 0), 0)
       : 0,
   });
 

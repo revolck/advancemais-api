@@ -67,13 +67,15 @@ async function testAtualizarTurmaId() {
     // Buscar uma aula para testar (preferir uma sem turma ou com turma diferente)
     const aulaTeste = aulas[0];
     console.log(`✅ Aula selecionada: ${aulaTeste.codigo} - ${aulaTeste.titulo}`);
-    console.log(`   Turma atual: ${aulaTeste.turma?.nome || 'N/A'} (${aulaTeste.turmaId || 'null'})\n`);
+    console.log(
+      `   Turma atual: ${aulaTeste.turma?.nome || 'N/A'} (${aulaTeste.turmaId || 'null'})\n`,
+    );
 
     // 3. Buscar uma turma para vincular
     console.log('3️⃣ Buscando turma para vincular...');
     // Usar a turma da primeira aula que tem turma, ou buscar outra
     const turmaParaVincular = aulas.find((a: any) => a.turma?.id)?.turma;
-    
+
     if (!turmaParaVincular) {
       console.log('⚠️  Nenhuma turma disponível para vincular');
       return;
@@ -115,7 +117,9 @@ async function testAtualizarTurmaId() {
       obrigatoria: aula.obrigatoria,
       duracaoMinutos: aula.duracaoMinutos || 120,
       gravarAula: aula.gravarAula ?? true,
-      dataInicio: aula.dataInicio ? new Date(aula.dataInicio).toISOString().split('T')[0] : undefined,
+      dataInicio: aula.dataInicio
+        ? new Date(aula.dataInicio).toISOString().split('T')[0]
+        : undefined,
       dataFim: aula.dataFim ? new Date(aula.dataFim).toISOString().split('T')[0] : undefined,
       horaInicio: aula.horaInicio || undefined,
       horaFim: aula.horaFim || undefined,
@@ -172,12 +176,16 @@ async function testAtualizarTurmaId() {
       turmaIdCorreto: aulaAtualizada.turma?.id === turmaParaVincular.id,
     };
 
-    console.log(`   ✅ TurmaId atualizado corretamente: ${validacoes.turmaIdAtualizado ? 'SIM' : 'NÃO'}`);
+    console.log(
+      `   ✅ TurmaId atualizado corretamente: ${validacoes.turmaIdAtualizado ? 'SIM' : 'NÃO'}`,
+    );
     if (!validacoes.turmaIdAtualizado) {
       console.log(`      ⚠️  Esperado: ${turmaParaVincular.id}`);
       console.log(`      ⚠️  Recebido: ${aulaAtualizada.turmaId || 'null'}`);
     }
-    console.log(`   ✅ Turma preenchida na resposta: ${validacoes.turmaPreenchida ? 'SIM' : 'NÃO'}`);
+    console.log(
+      `   ✅ Turma preenchida na resposta: ${validacoes.turmaPreenchida ? 'SIM' : 'NÃO'}`,
+    );
     console.log(`   ✅ Turma ID correto: ${validacoes.turmaIdCorreto ? 'SIM' : 'NÃO'}`);
 
     const todasValidas = Object.values(validacoes).every((v) => v);
@@ -209,8 +217,7 @@ async function testAtualizarTurmaId() {
       console.log(`   Turma ID: ${aulaFinal.turma?.id || 'N/A'}`);
 
       const confirmacaoOk =
-        aulaFinal.turmaId === turmaParaVincular.id &&
-        aulaFinal.turma?.id === turmaParaVincular.id;
+        aulaFinal.turmaId === turmaParaVincular.id && aulaFinal.turma?.id === turmaParaVincular.id;
 
       if (confirmacaoOk) {
         console.log('\n✅ PERSISTÊNCIA CONFIRMADA!');
@@ -232,5 +239,3 @@ async function testAtualizarTurmaId() {
 }
 
 testAtualizarTurmaId();
-
-

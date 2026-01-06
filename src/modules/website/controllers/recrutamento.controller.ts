@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import path from 'path';
 
-import { supabase } from '@/config/supabase';
+import { uploadImage } from '@/config/storage';
 import { recrutamentoService } from '@/modules/website/services/recrutamento.service';
 import { respondWithCache } from '@/modules/website/utils/cache-response';
 
@@ -14,17 +14,8 @@ function generateImageTitle(url: string): string {
   }
 }
 
-async function uploadImage(file: Express.Multer.File): Promise<string> {
-  const fileExt = path.extname(file.originalname);
-  const fileName = `recrutamento-${Date.now()}${fileExt}`;
-  const { error } = await supabase.storage
-    .from('website')
-    .upload(`recrutamento/${fileName}`, file.buffer, {
-      contentType: file.mimetype,
-    });
-  if (error) throw error;
-  const { data } = supabase.storage.from('website').getPublicUrl(`recrutamento/${fileName}`);
-  return data.publicUrl;
+async function uploadRecrutamentoImage(file: Express.Multer.File): Promise<string> {
+  return uploadImage('website', 'recrutamento', file);
 }
 
 export class RecrutamentoController {
@@ -55,7 +46,7 @@ export class RecrutamentoController {
       const { titulo, descricao, buttonUrl, buttonLabel } = req.body;
       let imagemUrl = '';
       if (req.file) {
-        imagemUrl = await uploadImage(req.file);
+        imagemUrl = await uploadRecrutamentoImage(req.file);
       } else if (typeof req.body.imagemUrl === 'string') {
         imagemUrl = req.body.imagemUrl.trim();
       }
@@ -84,7 +75,7 @@ export class RecrutamentoController {
       const imagemUrlRaw = req.body.imagemUrl;
       let imagemUrl = typeof imagemUrlRaw === 'string' ? imagemUrlRaw.trim() : undefined;
       if (req.file) {
-        imagemUrl = await uploadImage(req.file);
+        imagemUrl = await uploadRecrutamentoImage(req.file);
       }
       const data: any = {};
       if (titulo !== undefined) data.titulo = titulo;

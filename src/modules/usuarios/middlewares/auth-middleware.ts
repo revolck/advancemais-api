@@ -2,35 +2,42 @@ import { Request, Response, NextFunction } from 'express';
 import jwt, { type JwtPayload } from 'jsonwebtoken';
 import jwksRsa from 'jwks-rsa';
 
-import { supabaseConfig } from '@/config/env';
+// Removido: import { supabaseConfig } from '@/config/env';
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 
 /**
- * Cliente JWKS para validação de tokens
+ * @deprecated Este middleware não usa mais JWKS do Supabase
+ * Use jwtAuthMiddleware do módulo auth/jwt-middleware
  */
+
+const authMiddlewareLogger = logger.child({ module: 'AuthMiddleware' });
+
+// Cliente JWKS para validação de tokens (mantido para compatibilidade)
+// NOTA: Este middleware está deprecated - usar jwtAuthMiddleware
 const jwksClient = jwksRsa({
-  jwksUri: supabaseConfig.jwksUri,
+  jwksUri: process.env.JWKS_URI || 'https://example.com/.well-known/jwks.json',
   cache: true,
   rateLimit: true,
 });
-
-const authMiddlewareLogger = logger.child({ module: 'AuthMiddleware' });
 
 /**
  * Função auxiliar para obter chave de assinatura
  * @param header - Header do token JWT
  * @param callback - Callback para retorno da chave
  */
-function getKey(header: any, callback: any) {
-  jwksClient.getSigningKey(header.kid, function (err, key) {
-    if (err) {
-      callback(err);
-    } else {
-      const signingKey = key?.getPublicKey();
-      callback(null, signingKey);
-    }
-  });
+function getKey(header: jwt.JwtHeader, callback: (err: Error | null, key?: string) => void) {
+  jwksClient.getSigningKey(
+    header.kid,
+    function (err: Error | null, key: jwksRsa.SigningKey | undefined) {
+      if (err) {
+        callback(err);
+      } else {
+        const signingKey = key?.getPublicKey();
+        callback(null, signingKey);
+      }
+    },
+  );
 }
 
 async function verifyToken(token: string): Promise<JwtPayload> {
@@ -126,16 +133,16 @@ export const authMiddlewareWithDB = (roles?: string[]) => {
       const decoded = await verifyToken(token);
 
       try {
-        // Busca usuário no banco usando supabaseId
+        // Busca usuário no banco usando id (tokens JWT usam id como subject)
         const usuario = await prisma.usuarios.findUnique({
-          where: { supabaseId: decoded.sub },
+          where: { id: decoded.sub },
           select: {
             id: true,
             email: true,
             nomeCompleto: true,
             role: true,
             status: true,
-            supabaseId: true,
+            authId: true,
           },
         });
 

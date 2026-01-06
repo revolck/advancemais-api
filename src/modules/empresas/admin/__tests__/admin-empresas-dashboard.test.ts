@@ -41,10 +41,7 @@ describe('AdminEmpresasController - listDashboard', () => {
 
     (adminEmpresasService.listDashboard as jest.Mock).mockResolvedValue(mockData);
 
-    await AdminEmpresasController.listDashboard(
-      mockReq as Request,
-      mockRes as Response,
-    );
+    await AdminEmpresasController.listDashboard(mockReq as Request, mockRes as Response);
 
     expect(adminEmpresasService.listDashboard).toHaveBeenCalledWith({
       page: 1,
@@ -56,21 +53,15 @@ describe('AdminEmpresasController - listDashboard', () => {
   });
 
   it('deve retornar 503 para erro de conexão P1001', async () => {
-    const connectionError = new PrismaClientKnownRequestError(
-      "Can't reach database server",
-      {
-        code: 'P1001',
-        clientVersion: '6.19.0',
-        meta: { database_location: 'aws-0-sa-east-1.pooler.supabase.com:5432' },
-      },
-    );
+    const connectionError = new PrismaClientKnownRequestError("Can't reach database server", {
+      code: 'P1001',
+      clientVersion: '6.19.0',
+      meta: { database_location: 'aws-0-sa-east-1.pooler.supabase.com:5432' },
+    });
 
     (adminEmpresasService.listDashboard as jest.Mock).mockRejectedValue(connectionError);
 
-    await AdminEmpresasController.listDashboard(
-      mockReq as Request,
-      mockRes as Response,
-    );
+    await AdminEmpresasController.listDashboard(mockReq as Request, mockRes as Response);
 
     expect(statusMock).toHaveBeenCalledWith(503);
     expect(jsonMock).toHaveBeenCalledWith({
@@ -88,10 +79,7 @@ describe('AdminEmpresasController - listDashboard', () => {
 
     (adminEmpresasService.listDashboard as jest.Mock).mockRejectedValue(timeoutError);
 
-    await AdminEmpresasController.listDashboard(
-      mockReq as Request,
-      mockRes as Response,
-    );
+    await AdminEmpresasController.listDashboard(mockReq as Request, mockRes as Response);
 
     expect(statusMock).toHaveBeenCalledWith(503);
     expect(jsonMock).toHaveBeenCalledWith({
@@ -106,10 +94,7 @@ describe('AdminEmpresasController - listDashboard', () => {
 
     (adminEmpresasService.listDashboard as jest.Mock).mockRejectedValue(genericError);
 
-    await AdminEmpresasController.listDashboard(
-      mockReq as Request,
-      mockRes as Response,
-    );
+    await AdminEmpresasController.listDashboard(mockReq as Request, mockRes as Response);
 
     expect(statusMock).toHaveBeenCalledWith(500);
     expect(jsonMock).toHaveBeenCalledWith({
@@ -128,4 +113,3 @@ describe('adminEmpresasService - listDashboard com retryOperation', () => {
     expect(retryOperation).toBeDefined();
   });
 });
-

@@ -123,7 +123,9 @@ async function testModalidadeAula() {
         console.log(`✅ Aula encontrada:`);
         console.log(`   Modalidade: ${aula.modalidade}`);
         console.log(`   Turma método: ${aula.turma?.metodo || 'N/A'}`);
-        console.log(`   Modalidade esperada: ${aula.turma?.metodo === 'LIVE' ? 'AO_VIVO' : aula.turma?.metodo || 'N/A'}\n`);
+        console.log(
+          `   Modalidade esperada: ${aula.turma?.metodo === 'LIVE' ? 'AO_VIVO' : aula.turma?.metodo || 'N/A'}\n`,
+        );
 
         // 5. Testar atualização (se houver inconsistência)
         if (inconsistencias.length > 0 && inconsistencias[0].aulaId === aulaTeste.id) {
@@ -146,7 +148,9 @@ async function testModalidadeAula() {
           if (updateResponse.ok) {
             const updateData = await updateResponse.json();
             console.log(`✅ Aula atualizada:`);
-            console.log(`   Nova modalidade: ${updateData.aula?.modalidade || updateData.data?.modalidade}`);
+            console.log(
+              `   Nova modalidade: ${updateData.aula?.modalidade || updateData.data?.modalidade}`,
+            );
           } else {
             const errorText = await updateResponse.text();
             console.error(`❌ Erro ao atualizar:`, updateResponse.status, errorText);
@@ -162,5 +166,3 @@ async function testModalidadeAula() {
 }
 
 testModalidadeAula();
-
-

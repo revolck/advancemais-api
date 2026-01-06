@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { RequerimentosController } from '../controllers/requerimentos.controller';
-import { supabaseAuthMiddleware } from '../../usuarios/auth/supabase-middleware';
+import { supabaseAuthMiddleware } from '../../usuarios/auth';
 import { asyncHandler } from '../../../utils/asyncHandler';
 
 const router = Router();

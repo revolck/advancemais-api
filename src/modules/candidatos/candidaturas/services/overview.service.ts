@@ -5,15 +5,16 @@ import {
   buildCandidatoSelect,
   mapCandidatoDetalhe,
 } from '@/modules/candidatos/candidaturas/utils/candidatos-overview-mapper';
+import { recrutadorVagasService } from '@/modules/usuarios/services/recrutador-vagas.service';
 
 import type { CandidaturasOverviewQuery } from '../validators/overview.schema';
 
-const GLOBAL_ROLES = new Set<Roles>([
-  Roles.ADMIN,
-  Roles.MODERADOR,
-  Roles.SETOR_DE_VAGAS,
-  Roles.RECRUTADOR,
-]);
+const GLOBAL_ROLES = new Set<Roles>([Roles.ADMIN, Roles.MODERADOR, Roles.SETOR_DE_VAGAS]);
+
+export class CandidaturasOverviewForbiddenError extends Error {
+  status = 403 as const;
+  code = 'FORBIDDEN_EMPRESA_SCOPE' as const;
+}
 
 const isValidUUID = (str: string): boolean => {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -62,7 +63,8 @@ interface FiltersResult {
   candidaturasSelectWhere?: Prisma.EmpresasCandidatosWhereInput;
   candidaturasMetricsWhere?: Prisma.EmpresasCandidatosWhereInput;
   scope: 'GLOBAL' | 'EMPRESA';
-  effectiveEmpresaUsuarioId: string | null;
+  effectiveEmpresaUsuarioIds: string[] | null;
+  effectiveVagaIds: string[] | null;
   appliedFilters: {
     vagaId: string | null;
     status: string[];
@@ -70,10 +72,12 @@ interface FiltersResult {
     onlyWithCandidaturas: boolean;
     aplicadaDe: string | null;
     aplicadaAte: string | null;
+    empresaUsuarioIds: string[];
+    vagaIds: string[];
   };
 }
 
-const buildFilters = ({
+const buildFilters = async ({
   viewerId,
   viewerRole,
   onlyWithCandidaturas,
@@ -83,9 +87,59 @@ const buildFilters = ({
   search,
   aplicadaDe,
   aplicadaAte,
-}: OverviewParams): FiltersResult => {
+}: OverviewParams): Promise<FiltersResult> => {
   const isGlobalViewer = GLOBAL_ROLES.has(viewerRole);
-  const effectiveEmpresaUsuarioId = isGlobalViewer ? (empresaUsuarioId ?? null) : viewerId;
+  const isEmpresa = viewerRole === Roles.EMPRESA;
+  const isRecruiter = viewerRole === Roles.RECRUTADOR;
+
+  const effectiveEmpresaUsuarioIds: string[] | null = (() => {
+    if (isEmpresa) return [viewerId];
+    if (isGlobalViewer) return empresaUsuarioId ? [empresaUsuarioId] : null;
+    return null;
+  })();
+
+  const allowedVagaIds = isRecruiter ? await recrutadorVagasService.listVagaIds(viewerId) : null;
+
+  const effectiveVagaIds: string[] | null = isRecruiter
+    ? await (async () => {
+        if (!allowedVagaIds || allowedVagaIds.length === 0) return [];
+
+        if (empresaUsuarioId) {
+          const vagaIdsByEmpresa = await recrutadorVagasService.listVagaIdsByEmpresa(
+            viewerId,
+            empresaUsuarioId,
+          );
+
+          if (vagaIdsByEmpresa.length === 0) {
+            throw new CandidaturasOverviewForbiddenError(
+              'Acesso negado: empresaUsuarioId sem vagas vinculadas ao recrutador',
+            );
+          }
+
+          if (vagaId) {
+            if (!vagaIdsByEmpresa.includes(vagaId)) {
+              throw new CandidaturasOverviewForbiddenError(
+                'Acesso negado: vagaId não pertence à empresaUsuarioId informada',
+              );
+            }
+            return [vagaId];
+          }
+
+          return vagaIdsByEmpresa;
+        }
+
+        if (vagaId) {
+          if (!allowedVagaIds.includes(vagaId)) {
+            throw new CandidaturasOverviewForbiddenError(
+              'Acesso negado: vagaId fora do vínculo do recrutador',
+            );
+          }
+          return [vagaId];
+        }
+
+        return allowedVagaIds;
+      })()
+    : null;
 
   const searchWhere = buildSearchWhere(search);
   const isSearchingByUserId = search && isValidUUID(search.trim());
@@ -107,13 +161,15 @@ const buildFilters = ({
 
   const candidaturasWhereBase: Prisma.EmpresasCandidatosWhereInput = {};
 
-  // Se está buscando por userId específico, não filtrar por empresa
-  // para retornar todas as candidaturas desse candidato
-  if (!isSearchingByUserId && effectiveEmpresaUsuarioId) {
-    candidaturasWhereBase.empresaUsuarioId = effectiveEmpresaUsuarioId;
+  if (effectiveEmpresaUsuarioIds !== null) {
+    candidaturasWhereBase.empresaUsuarioId = {
+      in: effectiveEmpresaUsuarioIds,
+    };
   }
 
-  if (vagaId) {
+  if (effectiveVagaIds !== null) {
+    candidaturasWhereBase.vagaId = { in: effectiveVagaIds };
+  } else if (vagaId) {
     candidaturasWhereBase.vagaId = vagaId;
   }
 
@@ -157,14 +213,21 @@ const buildFilters = ({
   }
 
   // Quando busca por userId, sempre retornar todas as candidaturas desse candidato
-  // independente de filtros de empresa
-  const candidaturasSelectWhere = isSearchingByUserId
-    ? searchWhere?.id
-      ? { candidatoId: searchWhere.id as string }
-      : undefined
-    : hasCandidaturaFilters
-      ? candidaturasWhereBase
-      : undefined;
+  // (admins podem ver tudo; recrutadores ficam restritos ao escopo de empresas)
+  const candidaturasSelectWhere =
+    isSearchingByUserId && searchWhere?.id
+      ? effectiveEmpresaUsuarioIds === null && effectiveVagaIds === null
+        ? { candidatoId: searchWhere.id as string }
+        : {
+            candidatoId: searchWhere.id as string,
+            ...(effectiveEmpresaUsuarioIds
+              ? { empresaUsuarioId: { in: effectiveEmpresaUsuarioIds } }
+              : {}),
+            ...(effectiveVagaIds ? { vagaId: { in: effectiveVagaIds } } : {}),
+          }
+      : hasCandidaturaFilters
+        ? candidaturasWhereBase
+        : undefined;
 
   const candidaturasMetricsWhere: Prisma.EmpresasCandidatosWhereInput | undefined = (() => {
     if (!hasCandidaturaFilters && !searchWhere) {
@@ -184,8 +247,9 @@ const buildFilters = ({
     usuariosWhere,
     candidaturasSelectWhere,
     candidaturasMetricsWhere,
-    scope: isGlobalViewer && !effectiveEmpresaUsuarioId ? 'GLOBAL' : 'EMPRESA',
-    effectiveEmpresaUsuarioId,
+    scope: effectiveEmpresaUsuarioIds === null && effectiveVagaIds === null ? 'GLOBAL' : 'EMPRESA',
+    effectiveEmpresaUsuarioIds,
+    effectiveVagaIds,
     appliedFilters: {
       vagaId: vagaId ?? null,
       status: status ?? [],
@@ -193,6 +257,8 @@ const buildFilters = ({
       onlyWithCandidaturas: Boolean(shouldRequireCandidaturas),
       aplicadaDe: aplicadaDe?.toISOString() ?? null,
       aplicadaAte: aplicadaAte?.toISOString() ?? null,
+      empresaUsuarioIds: effectiveEmpresaUsuarioIds ?? [],
+      vagaIds: effectiveVagaIds ?? [],
     },
   } satisfies FiltersResult;
 };
@@ -207,9 +273,10 @@ export const candidaturasOverviewService = {
       candidaturasSelectWhere,
       candidaturasMetricsWhere,
       scope,
-      effectiveEmpresaUsuarioId,
+      effectiveEmpresaUsuarioIds,
+      effectiveVagaIds,
       appliedFilters,
-    } = buildFilters(params);
+    } = await buildFilters(params);
 
     const [total, candidatos, totalCurriculos, totalCandidaturas] = await prisma.$transaction([
       prisma.usuarios.count({ where: usuariosWhere }),
@@ -245,7 +312,9 @@ export const candidaturasOverviewService = {
       filters: {
         ...appliedFilters,
         scope,
-        empresaUsuarioId: effectiveEmpresaUsuarioId,
+        empresaUsuarioId:
+          effectiveEmpresaUsuarioIds?.length === 1 ? effectiveEmpresaUsuarioIds[0] : null,
+        vagaId: effectiveVagaIds?.length === 1 ? effectiveVagaIds[0] : null,
         viewerRole,
       },
     };

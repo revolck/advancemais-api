@@ -1,4 +1,4 @@
-import { CandidatoLogTipo, Roles } from '@prisma/client';
+import { CandidatoLogTipo, Prisma, Roles } from '@prisma/client';
 import { prisma } from '@/config/prisma';
 import type { CurriculoCreateInput, CurriculoUpdateInput } from './validators';
 import { candidatoLogsService } from '@/modules/candidatos/logs/service';
@@ -6,10 +6,38 @@ import { candidaturasService } from '@/modules/candidatos/candidaturas/services'
 
 const MAX_CURRICULOS = 5;
 
+export interface CurriculosFiltros {
+  busca?: string; // Busca em título ou resumo
+  principal?: boolean; // Se é principal (true/false)
+  autorizaContato?: boolean; // Se autoriza contato (true/false)
+  salarioMinimo?: number; // Pretensão salarial mínima (filtra preferencias.salarioMinimo >= valor)
+  salarioMaximo?: number; // Pretensão salarial máxima (filtra preferencias.salarioMinimo <= valor)
+}
+
 export const curriculosService = {
-  listOwn: async (usuarioId: string) => {
+  listOwn: async (usuarioId: string, filtros?: CurriculosFiltros) => {
+    // Construir where clause
+    const where: Prisma.UsuariosCurriculosWhereInput = {
+      usuarioId,
+    };
+
+    // Filtro: busca textual em título ou resumo
+    if (filtros?.busca) {
+      const buscaTerm = filtros.busca.trim();
+      where.OR = [
+        { titulo: { contains: buscaTerm, mode: 'insensitive' } },
+        { resumo: { contains: buscaTerm, mode: 'insensitive' } },
+      ];
+    }
+
+    // Filtro: principal
+    if (filtros?.principal !== undefined) {
+      where.principal = filtros.principal;
+    }
+
+    // Filtros que envolvem campos JSON precisam ser aplicados após buscar
     const curriculos = await prisma.usuariosCurriculos.findMany({
-      where: { usuarioId },
+      where,
       include: {
         Usuarios: {
           select: {
@@ -24,14 +52,43 @@ export const curriculosService = {
       orderBy: [{ principal: 'desc' }, { atualizadoEm: 'desc' }],
     });
 
-    // Mapear para incluir avatarUrl no nível raiz
-    return curriculos.map((curriculo) => {
+    // Mapear e aplicar filtros de campos JSON
+    let curriculosMapeados = curriculos.map((curriculo) => {
       const { Usuarios, ...rest } = curriculo;
       return {
         ...rest,
         avatarUrl: Usuarios?.UsuariosInformation?.avatarUrl || null,
       };
     });
+
+    // Filtro: autorizaContato (campo JSON consentimentos.autorizarContato)
+    if (filtros?.autorizaContato !== undefined) {
+      curriculosMapeados = curriculosMapeados.filter((curriculo) => {
+        const consentimentos = curriculo.consentimentos as any;
+        if (!consentimentos) return false;
+        return consentimentos.autorizarContato === filtros.autorizaContato;
+      });
+    }
+
+    // Filtro: salarioMinimo (campo JSON preferencias.salarioMinimo)
+    if (filtros?.salarioMinimo !== undefined) {
+      curriculosMapeados = curriculosMapeados.filter((curriculo) => {
+        const preferencias = curriculo.preferencias as any;
+        if (!preferencias || preferencias.salarioMinimo === undefined) return false;
+        return Number(preferencias.salarioMinimo) >= filtros.salarioMinimo!;
+      });
+    }
+
+    // Filtro: salarioMaximo (campo JSON preferencias.salarioMinimo)
+    if (filtros?.salarioMaximo !== undefined) {
+      curriculosMapeados = curriculosMapeados.filter((curriculo) => {
+        const preferencias = curriculo.preferencias as any;
+        if (!preferencias || preferencias.salarioMinimo === undefined) return false;
+        return Number(preferencias.salarioMinimo) <= filtros.salarioMaximo!;
+      });
+    }
+
+    return curriculosMapeados;
   },
 
   getOwn: async (usuarioId: string, id: string) => {
@@ -217,6 +274,65 @@ export const curriculosService = {
       }
 
       return updated;
+    });
+  },
+
+  setPrincipal: async (usuarioId: string, id: string) => {
+    const exists = await prisma.usuariosCurriculos.findFirst({ where: { id, usuarioId } });
+    if (!exists) throw Object.assign(new Error('Currículo não encontrado'), { code: 'NOT_FOUND' });
+
+    // Se já é principal, não precisa fazer nada
+    if (exists.principal) {
+      return exists;
+    }
+
+    return prisma.$transaction(async (tx) => {
+      // Desmarcar todos os outros currículos principais do usuário
+      await tx.usuariosCurriculos.updateMany({
+        where: { usuarioId, principal: true, id: { not: id } },
+        data: { principal: false },
+      });
+
+      // Marcar este currículo como principal
+      const updated = await tx.usuariosCurriculos.update({
+        where: { id },
+        data: {
+          principal: true,
+          ultimaAtualizacao: new Date(),
+        },
+        include: {
+          Usuarios: {
+            select: {
+              UsuariosInformation: {
+                select: {
+                  avatarUrl: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // Log de auditoria
+      await candidatoLogsService.create(
+        {
+          usuarioId,
+          tipo: CandidatoLogTipo.CURRICULO_ATUALIZADO,
+          metadata: {
+            curriculoId: updated.id,
+            principal: true,
+            acao: 'DEFINIDO_COMO_PRINCIPAL',
+          },
+        },
+        tx,
+      );
+
+      // Mapear para incluir avatarUrl no nível raiz
+      const { Usuarios, ...rest } = updated;
+      return {
+        ...rest,
+        avatarUrl: Usuarios?.UsuariosInformation?.avatarUrl || null,
+      };
     });
   },
 

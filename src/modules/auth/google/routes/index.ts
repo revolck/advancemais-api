@@ -13,14 +13,19 @@ const router = Router();
  */
 
 // GET /auth/google/connect - Gerar URL de autorização
+// ✅ Permitir todas as roles - todos podem conectar Google Calendar
 router.get(
   '/connect',
   supabaseAuthMiddleware([
     Roles.ADMIN,
     Roles.MODERADOR,
+    Roles.FINANCEIRO,
     Roles.PEDAGOGICO,
     Roles.INSTRUTOR,
+    Roles.EMPRESA,
+    Roles.SETOR_DE_VAGAS,
     Roles.RECRUTADOR,
+    Roles.ALUNO_CANDIDATO,
   ]),
   GoogleOAuthController.connect,
 );
@@ -29,27 +34,37 @@ router.get(
 router.get('/callback', GoogleOAuthController.callback);
 
 // POST /auth/google/disconnect - Desconectar Google
+// ✅ Permitir todas as roles
 router.post(
   '/disconnect',
   supabaseAuthMiddleware([
     Roles.ADMIN,
     Roles.MODERADOR,
+    Roles.FINANCEIRO,
     Roles.PEDAGOGICO,
     Roles.INSTRUTOR,
+    Roles.EMPRESA,
+    Roles.SETOR_DE_VAGAS,
     Roles.RECRUTADOR,
+    Roles.ALUNO_CANDIDATO,
   ]),
   GoogleOAuthController.disconnect,
 );
 
 // GET /auth/google/status - Verificar status da conexão
+// ✅ Permitir todas as roles
 router.get(
   '/status',
   supabaseAuthMiddleware([
     Roles.ADMIN,
     Roles.MODERADOR,
+    Roles.FINANCEIRO,
     Roles.PEDAGOGICO,
     Roles.INSTRUTOR,
+    Roles.EMPRESA,
+    Roles.SETOR_DE_VAGAS,
     Roles.RECRUTADOR,
+    Roles.ALUNO_CANDIDATO,
   ]),
   GoogleOAuthController.status,
 );

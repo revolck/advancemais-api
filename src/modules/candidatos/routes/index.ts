@@ -222,6 +222,96 @@ router.get(
   supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
   CandidaturasController.listMine,
 );
+router.get(
+  '/candidaturas/verificar',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  CandidaturasController.checkApplied,
+);
+/**
+ * @openapi
+ * /api/v1/candidatos/candidaturas/verificar:
+ *   get:
+ *     summary: Verificar se já se candidatou a uma vaga
+ *     description: "Verifica se o candidato autenticado já se candidatou à vaga especificada. Retorna um objeto simples indicando se já se candidatou e, caso positivo, informações básicas da candidatura."
+ *     tags: [Candidatos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: vagaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID da vaga para verificar
+ *     responses:
+ *       200:
+ *         description: Resultado da verificação
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               oneOf:
+ *                 - type: object
+ *                   properties:
+ *                     hasApplied:
+ *                       type: boolean
+ *                       example: true
+ *                     candidatura:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           format: uuid
+ *                         vagaId:
+ *                           type: string
+ *                           format: uuid
+ *                         curriculoId:
+ *                           type: string
+ *                           format: uuid
+ *                           nullable: true
+ *                         status:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                             nome:
+ *                               type: string
+ *                             descricao:
+ *                               type: string
+ *                         aplicadaEm:
+ *                           type: string
+ *                           format: date-time
+ *                 - type: object
+ *                   properties:
+ *                     hasApplied:
+ *                       type: boolean
+ *                       example: false
+ *             examples:
+ *               jaCandidatou:
+ *                 summary: Já se candidatou
+ *                 value:
+ *                   hasApplied: true
+ *                   candidatura:
+ *                     id: "550e8400-e29b-41d4-a716-446655440000"
+ *                     vagaId: "660e8400-e29b-41d4-a716-446655440001"
+ *                     curriculoId: "880e8400-e29b-41d4-a716-446655440003"
+ *                     status:
+ *                       id: "aa0e8400-e29b-41d4-a716-446655440005"
+ *                       nome: "Recebida"
+ *                       descricao: "Candidatura recebida e aguardando análise"
+ *                     aplicadaEm: "2024-01-15T10:30:00.000Z"
+ *               naoCandidatou:
+ *                 summary: Não se candidatou
+ *                 value:
+ *                   hasApplied: false
+ *       400:
+ *         description: vagaId não fornecido
+ *       401:
+ *         description: Não autenticado
+ *       500:
+ *         description: Erro interno do servidor
+ */
 /**
  * @openapi
  * /api/v1/candidatos/candidaturas/overview:

@@ -6,7 +6,14 @@ const agendaLogger = logger.child({ module: 'AgendaService' });
 
 type AgendaEvento = {
   id: string;
-  tipo: 'AULA' | 'PROVA' | 'ANIVERSARIO' | 'TURMA_INICIO' | 'TURMA_FIM';
+  tipo:
+    | 'AULA'
+    | 'PROVA'
+    | 'ATIVIDADE'
+    | 'ENTREVISTA'
+    | 'ANIVERSARIO'
+    | 'TURMA_INICIO'
+    | 'TURMA_FIM';
   titulo: string;
   dataInicio?: Date;
   dataFim?: Date;
@@ -30,7 +37,14 @@ export const agendaService = {
     tipos?: string[];
   }): Promise<{ eventos: AgendaEvento[] }> {
     const eventos: AgendaEvento[] = [];
-    const tipos = params.tipos || ['AULA', 'PROVA', 'ANIVERSARIO', 'TURMA'];
+    const tipos = params.tipos || [
+      'AULA',
+      'PROVA',
+      'ATIVIDADE',
+      'ENTREVISTA',
+      'ANIVERSARIO',
+      'TURMA',
+    ];
 
     // 1. AULAS AO VIVO
     if (tipos.includes('AULA')) {
@@ -44,13 +58,25 @@ export const agendaService = {
       eventos.push(...provas);
     }
 
-    // 3. ANIVERSÁRIOS
+    // 3. ATIVIDADES
+    if (tipos.includes('ATIVIDADE')) {
+      const atividades = await this.getAtividadesAgenda(params);
+      eventos.push(...atividades);
+    }
+
+    // 4. ENTREVISTAS
+    if (tipos.includes('ENTREVISTA')) {
+      const entrevistas = await this.getEntrevistasAgenda(params);
+      eventos.push(...entrevistas);
+    }
+
+    // 5. ANIVERSÁRIOS
     if (tipos.includes('ANIVERSARIO')) {
       const aniversarios = await this.getAniversariosAgenda(params);
       eventos.push(...aniversarios);
     }
 
-    // 4. INÍCIO/FIM DE TURMAS
+    // 6. INÍCIO/FIM DE TURMAS
     if (tipos.includes('TURMA')) {
       const turmas = await this.getTurmasAgenda(params);
       eventos.push(...turmas);
@@ -141,9 +167,172 @@ export const agendaService = {
     dataInicio: Date;
     dataFim: Date;
   }): Promise<AgendaEvento[]> {
-    // TODO: Implementar quando tiver campo de data em CursosTurmasProvas
-    agendaLogger.warn('[AGENDA] Provas não implementadas ainda');
-    return [];
+    const where: any = {
+      tipo: 'PROVA',
+      ativo: true,
+      status: { in: ['PUBLICADA', 'EM_ANDAMENTO'] },
+      dataInicio: {
+        gte: params.dataInicio,
+        lte: params.dataFim,
+      },
+      turmaId: { not: null },
+    };
+
+    // Filtrar por role
+    if (params.role === 'INSTRUTOR') {
+      where.instrutorId = params.usuarioId;
+    } else if (params.role === 'ALUNO_CANDIDATO') {
+      where.CursosTurmas = {
+        CursosTurmasInscricoes: {
+          some: {
+            alunoId: params.usuarioId,
+            status: 'INSCRITO',
+          },
+        },
+      };
+    }
+
+    const provas = await prisma.cursosTurmasProvas.findMany({
+      where,
+      include: {
+        CursosTurmas: {
+          select: { id: true, nome: true, Cursos: { select: { nome: true } } },
+        },
+      },
+    });
+
+    return provas.map((p) => ({
+      id: p.id,
+      tipo: 'PROVA' as const,
+      titulo: p.titulo,
+      dataInicio: p.dataInicio || undefined,
+      dataFim: p.dataFim || undefined,
+      turma: {
+        id: p.CursosTurmas?.id || '',
+        nome: p.CursosTurmas?.nome || '',
+        curso: p.CursosTurmas?.Cursos?.nome || '',
+      },
+      cor: '#ef4444', // Vermelho
+    }));
+  },
+
+  /**
+   * Buscar atividades para agenda
+   */
+  async getAtividadesAgenda(params: {
+    usuarioId: string;
+    role: string;
+    dataInicio: Date;
+    dataFim: Date;
+  }): Promise<AgendaEvento[]> {
+    const where: any = {
+      tipo: 'ATIVIDADE',
+      ativo: true,
+      status: { in: ['PUBLICADA', 'EM_ANDAMENTO'] },
+      dataInicio: {
+        gte: params.dataInicio,
+        lte: params.dataFim,
+      },
+      turmaId: { not: null },
+    };
+
+    // Filtrar por role
+    if (params.role === 'INSTRUTOR') {
+      where.instrutorId = params.usuarioId;
+    } else if (params.role === 'ALUNO_CANDIDATO') {
+      where.CursosTurmas = {
+        CursosTurmasInscricoes: {
+          some: {
+            alunoId: params.usuarioId,
+            status: 'INSCRITO',
+          },
+        },
+      };
+    }
+
+    const atividades = await prisma.cursosTurmasProvas.findMany({
+      where,
+      include: {
+        CursosTurmas: {
+          select: { id: true, nome: true, Cursos: { select: { nome: true } } },
+        },
+      },
+    });
+
+    return atividades.map((a) => ({
+      id: a.id,
+      tipo: 'ATIVIDADE' as const,
+      titulo: a.titulo,
+      dataInicio: a.dataInicio || undefined,
+      dataFim: a.dataFim || undefined,
+      turma: {
+        id: a.CursosTurmas?.id || '',
+        nome: a.CursosTurmas?.nome || '',
+        curso: a.CursosTurmas?.Cursos?.nome || '',
+      },
+      cor: '#f59e0b', // Laranja
+    }));
+  },
+
+  /**
+   * Buscar entrevistas para agenda
+   */
+  async getEntrevistasAgenda(params: {
+    usuarioId: string;
+    role: string;
+    dataInicio: Date;
+    dataFim: Date;
+  }): Promise<AgendaEvento[]> {
+    const where: any = {
+      status: 'AGENDADA',
+      dataInicio: {
+        gte: params.dataInicio,
+        lte: params.dataFim,
+      },
+    };
+
+    // Filtrar por role
+    if (params.role === 'RECRUTADOR' || params.role === 'SETOR_DE_VAGAS') {
+      where.recrutadorId = params.usuarioId;
+    } else if (params.role === 'ALUNO_CANDIDATO') {
+      where.candidatoId = params.usuarioId;
+    } else if (params.role === 'EMPRESA') {
+      where.empresaUsuarioId = params.usuarioId;
+    } else {
+      // Outras roles não veem entrevistas
+      return [];
+    }
+
+    const entrevistas = await prisma.empresasVagasEntrevistas.findMany({
+      where,
+      include: {
+        EmpresasVagas: { select: { titulo: true } },
+        candidato: { select: { nomeCompleto: true } },
+        recrutador: { select: { nomeCompleto: true } },
+      },
+    });
+
+    return entrevistas.map((e) => ({
+      id: e.id,
+      tipo: 'ENTREVISTA' as const,
+      titulo: e.titulo,
+      dataInicio: e.dataInicio,
+      dataFim: e.dataFim,
+      vaga: {
+        id: e.vagaId,
+        titulo: e.EmpresasVagas.titulo,
+      },
+      candidato: {
+        id: e.candidatoId,
+        nome: e.candidato.nomeCompleto,
+      },
+      recrutador: {
+        id: e.recrutadorId,
+        nome: e.recrutador.nomeCompleto,
+      },
+      meetUrl: e.meetUrl,
+      cor: '#8b5cf6', // Roxo
+    }));
   },
 
   /**

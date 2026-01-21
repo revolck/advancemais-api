@@ -3,6 +3,7 @@ import { cobrancaAutomaticaService } from '../services/cobranca-automatica.servi
 import { logger } from '@/utils/logger';
 import { handlePrismaConnectionError } from '@/utils/prisma-errors';
 import { checkDatabaseConnection } from '@/utils/db-connection-check';
+import { parseScheduleConfig } from '@/utils/cron-helpers';
 
 const log = logger.child({ module: 'CobrancaAutomaticaCron' });
 
@@ -105,8 +106,9 @@ export function startCobrancaAutomaticaJob() {
     return;
   }
 
-  // Schedule: 6h da manhã todos os dias (ou configurável via env)
-  const schedule = process.env.CRON_COBRANCA_SCHEDULE || '0 6 * * *';
+  // Schedule: padrão 6h da manhã (360 minutos = 6 horas)
+  // Use apenas minutos (ex: 360 = 6h) ou expressão cron completa
+  const schedule = parseScheduleConfig(process.env.CRON_COBRANCA_SCHEDULE, 360);
 
   cron.schedule(schedule, async () => {
     await processarCobrancasAutomaticas();

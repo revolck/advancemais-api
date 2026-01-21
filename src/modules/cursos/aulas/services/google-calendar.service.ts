@@ -50,7 +50,7 @@ export const googleCalendarService = {
             useDefault: false,
             overrides: [
               { method: 'email', minutes: 120 }, // 2h antes
-              { method: 'popup', minutes: 30 }, // 30min antes
+              { method: 'popup', minutes: 15 }, // 15min antes
             ],
           },
           guestsCanModify: false,
@@ -206,5 +206,259 @@ export const googleCalendarService = {
     });
 
     return { total: aulas.length, sincronizadas };
+  },
+
+  /**
+   * Criar evento no Google Calendar (sem Meet) - para sincronização de alunos
+   */
+  async createCalendarEvent(params: {
+    usuarioId: string;
+    titulo: string;
+    descricao: string;
+    dataInicio: Date;
+    dataFim: Date;
+    location?: string;
+    link?: string;
+  }): Promise<{ eventId: string }> {
+    const oauth2Client = await googleOAuthService.getOAuth2Client(params.usuarioId);
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+
+    try {
+      const event = await calendar.events.insert({
+        calendarId: 'primary',
+        requestBody: {
+          summary: params.titulo,
+          description: params.descricao + (params.link ? `\n\nLink: ${params.link}` : ''),
+          location: params.location,
+          start: {
+            dateTime: params.dataInicio.toISOString(),
+            timeZone: 'America/Sao_Paulo',
+          },
+          end: {
+            dateTime: params.dataFim.toISOString(),
+            timeZone: 'America/Sao_Paulo',
+          },
+          reminders: {
+            useDefault: false,
+            overrides: [
+              { method: 'email', minutes: 120 }, // 2h antes
+              { method: 'popup', minutes: 15 }, // 15min antes
+            ],
+          },
+        },
+      });
+
+      const eventId = event.data.id!;
+
+      calendarLogger.info('[CALENDAR_EVENT_CRIADO]', {
+        eventId,
+        titulo: params.titulo,
+        usuarioId: params.usuarioId,
+      });
+
+      return { eventId };
+    } catch (error: any) {
+      calendarLogger.error('[CALENDAR_EVENT_ERRO]', {
+        error: error?.message,
+        usuarioId: params.usuarioId,
+      });
+      throw new Error(`Erro ao criar evento no Google Calendar: ${error?.message}`);
+    }
+  },
+
+  /**
+   * Sincronizar agenda completa do aluno ao se inscrever em turma
+   * Sincroniza: aulas, provas e atividades da turma
+   */
+  async sincronizarAgendaAluno(params: {
+    alunoId: string;
+    turmaId: string;
+  }): Promise<{ sincronizados: number; erros: number }> {
+    const { alunoId, turmaId } = params;
+
+    // Verificar se aluno tem Google Calendar conectado
+    const aluno = await prisma.usuarios.findUnique({
+      where: { id: alunoId },
+      select: {
+        id: true,
+        email: true,
+        googleCalendarId: true,
+        googleAccessToken: true,
+      },
+    });
+
+    if (!aluno?.googleAccessToken) {
+      calendarLogger.info('[SYNC_SKIP] Aluno sem Google Calendar conectado', { alunoId });
+      return { sincronizados: 0, erros: 0 };
+    }
+
+    let sincronizados = 0;
+    let erros = 0;
+
+    // Buscar turma e todos os eventos futuros
+    const turma = await prisma.cursosTurmas.findUnique({
+      where: { id: turmaId },
+      include: {
+        Cursos: { select: { nome: true } },
+        CursosTurmasAulas: {
+          where: {
+            dataInicio: { gte: new Date() },
+            status: { in: ['PUBLICADA', 'EM_ANDAMENTO'] },
+            deletedAt: null,
+          },
+          orderBy: { dataInicio: 'asc' },
+        },
+        CursosTurmasProvas: {
+          where: {
+            dataInicio: { gte: new Date() },
+            ativo: true,
+            status: { in: ['PUBLICADA', 'EM_ANDAMENTO'] },
+          },
+          orderBy: { dataInicio: 'asc' },
+        },
+      },
+    });
+
+    if (!turma) {
+      throw new Error('Turma não encontrada');
+    }
+
+    // Sincronizar aulas
+    for (const aula of turma.CursosTurmasAulas) {
+      try {
+        if (!aula.dataInicio || !aula.dataFim) continue;
+
+        const dataFim = aula.dataFim || new Date(aula.dataInicio.getTime() + 60 * 60 * 1000);
+
+        await this.createCalendarEvent({
+          usuarioId: alunoId,
+          titulo: `📚 ${aula.nome}`,
+          descricao: `Aula: ${aula.nome}\nCurso: ${turma.Cursos.nome}\nTurma: ${turma.nome}${aula.descricao ? `\n\n${aula.descricao}` : ''}`,
+          dataInicio: aula.dataInicio,
+          dataFim,
+          location: aula.sala || undefined,
+          link: aula.urlMeet || aula.urlVideo || undefined,
+        });
+
+        sincronizados++;
+      } catch (error: any) {
+        calendarLogger.error('[SYNC_AULA_ERRO]', {
+          aulaId: aula.id,
+          alunoId,
+          error: error?.message,
+        });
+        erros++;
+      }
+    }
+
+    // Sincronizar provas e atividades
+    for (const prova of turma.CursosTurmasProvas) {
+      try {
+        if (!prova.dataInicio || !prova.dataFim) continue;
+
+        const tipo = prova.tipo === 'PROVA' ? '📝 Prova' : '📋 Atividade';
+        await this.createCalendarEvent({
+          usuarioId: alunoId,
+          titulo: `${tipo}: ${prova.titulo}`,
+          descricao: `${prova.tipo === 'PROVA' ? 'Prova' : 'Atividade'}: ${prova.titulo}\nCurso: ${turma.Cursos.nome}\nTurma: ${turma.nome}${prova.descricao ? `\n\n${prova.descricao}` : ''}`,
+          dataInicio: prova.dataInicio,
+          dataFim: prova.dataFim,
+        });
+
+        sincronizados++;
+      } catch (error: any) {
+        calendarLogger.error('[SYNC_PROVA_ERRO]', {
+          provaId: prova.id,
+          alunoId,
+          error: error?.message,
+        });
+        erros++;
+      }
+    }
+
+    calendarLogger.info('[SYNC_ALUNO_COMPLETO]', {
+      alunoId,
+      turmaId,
+      sincronizados,
+      erros,
+    });
+
+    return { sincronizados, erros };
+  },
+
+  /**
+   * Sincronizar entrevista no Google Calendar do recrutador e candidato
+   */
+  async sincronizarEntrevista(params: {
+    entrevistaId: string;
+    recrutadorId: string;
+    candidatoId: string;
+  }): Promise<{ recrutadorEventId?: string; candidatoEventId?: string }> {
+    const { entrevistaId, recrutadorId, candidatoId } = params;
+
+    const entrevista = await prisma.empresasVagasEntrevistas.findUnique({
+      where: { id: entrevistaId },
+      include: {
+        EmpresasVagas: { select: { titulo: true } },
+        candidato: { select: { nomeCompleto: true, email: true, googleAccessToken: true } },
+        recrutador: { select: { nomeCompleto: true, email: true, googleAccessToken: true } },
+      },
+    });
+
+    if (!entrevista) {
+      throw new Error('Entrevista não encontrada');
+    }
+
+    const resultado: { recrutadorEventId?: string; candidatoEventId?: string } = {};
+
+    // Sincronizar com recrutador (sempre tenta)
+    try {
+      if (entrevista.recrutador.googleAccessToken) {
+        const event = await this.createCalendarEvent({
+          usuarioId: recrutadorId,
+          titulo: `💼 Entrevista: ${entrevista.candidato.nomeCompleto} - ${entrevista.EmpresasVagas.titulo}`,
+          descricao: `Entrevista agendada\n\nVaga: ${entrevista.EmpresasVagas.titulo}\nCandidato: ${entrevista.candidato.nomeCompleto}\n${entrevista.descricao ? `\n${entrevista.descricao}` : ''}`,
+          dataInicio: entrevista.dataInicio,
+          dataFim: entrevista.dataFim,
+          link: entrevista.meetUrl || undefined,
+        });
+        resultado.recrutadorEventId = event.eventId;
+      }
+    } catch (error: any) {
+      calendarLogger.error('[SYNC_ENTREVISTA_RECRUTADOR_ERRO]', {
+        entrevistaId,
+        recrutadorId,
+        error: error?.message,
+      });
+    }
+
+    // Sincronizar com candidato (se tiver Google conectado)
+    try {
+      if (entrevista.candidato.googleAccessToken) {
+        const event = await this.createCalendarEvent({
+          usuarioId: candidatoId,
+          titulo: `🎯 Entrevista: ${entrevista.EmpresasVagas.titulo}`,
+          descricao: `Entrevista agendada\n\nVaga: ${entrevista.EmpresasVagas.titulo}\nRecrutador: ${entrevista.recrutador.nomeCompleto}\n${entrevista.descricao ? `\n${entrevista.descricao}` : ''}`,
+          dataInicio: entrevista.dataInicio,
+          dataFim: entrevista.dataFim,
+          link: entrevista.meetUrl || undefined,
+        });
+        resultado.candidatoEventId = event.eventId;
+      }
+    } catch (error: any) {
+      calendarLogger.error('[SYNC_ENTREVISTA_CANDIDATO_ERRO]', {
+        entrevistaId,
+        candidatoId,
+        error: error?.message,
+      });
+    }
+
+    calendarLogger.info('[SYNC_ENTREVISTA_COMPLETO]', {
+      entrevistaId,
+      recrutadorEventId: resultado.recrutadorEventId,
+      candidatoEventId: resultado.candidatoEventId,
+    });
+
+    return resultado;
   },
 };

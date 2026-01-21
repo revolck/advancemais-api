@@ -133,6 +133,23 @@ export class RecrutadorEntrevistasController {
         },
       });
 
+      // Sincronizar com Google Calendar do recrutador e candidato (em background)
+      setImmediate(async () => {
+        try {
+          await googleCalendarService.sincronizarEntrevista({
+            entrevistaId: entrevista.id,
+            recrutadorId: recruiterId,
+            candidatoId,
+          });
+        } catch (error: any) {
+          // Log mas não falha a criação da entrevista
+          console.error('[SYNC_ENTREVISTA_ERRO]', {
+            entrevistaId: entrevista.id,
+            error: error?.message,
+          });
+        }
+      });
+
       return res.status(201).json({ success: true, entrevista });
     } catch (error: any) {
       if (error?.status === 403) {

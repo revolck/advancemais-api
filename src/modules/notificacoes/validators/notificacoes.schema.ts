@@ -25,6 +25,9 @@ export const NotificacaoTipoEnum = z.enum([
   'PROVA_EM_24H',
   'PROVA_EM_8H',
   'PROVA_EM_2H',
+  // Notificações de ENTREVISTAS
+  'ENTREVISTA_EM_2H',
+  'ENTREVISTA_INICIADA',
   // Notificações de RECUPERAÇÃO FINAL
   'RECUPERACAO_FINAL_PAGAMENTO_PENDENTE',
   'RECUPERACAO_FINAL_PAGAMENTO_APROVADO',

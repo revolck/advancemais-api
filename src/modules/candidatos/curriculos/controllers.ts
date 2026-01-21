@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { ZodError } from 'zod';
-import { curriculosService } from './services';
+import { curriculosService, type CurriculosFiltros } from './services';
 import { curriculoCreateSchema, curriculoUpdateSchema } from './validators';
 import { Roles } from '@prisma/client';
 
@@ -8,7 +8,38 @@ export const CurriculosController = {
   list: async (req: Request, res: Response) => {
     const usuarioId = (req as any).user?.id || req.query.usuarioId;
     if (!usuarioId) return res.status(401).json({ success: false, code: 'UNAUTHORIZED' });
-    const items = await curriculosService.listOwn(String(usuarioId));
+
+    // Extrair filtros dos query params
+    const filtros: CurriculosFiltros = {};
+
+    if (req.query.busca && typeof req.query.busca === 'string') {
+      filtros.busca = req.query.busca;
+    }
+
+    if (req.query.principal !== undefined) {
+      filtros.principal = req.query.principal === 'true' || req.query.principal === '1';
+    }
+
+    if (req.query.autorizaContato !== undefined) {
+      filtros.autorizaContato =
+        req.query.autorizaContato === 'true' || req.query.autorizaContato === '1';
+    }
+
+    if (req.query.salarioMinimo !== undefined) {
+      const min = Number(req.query.salarioMinimo);
+      if (!isNaN(min)) {
+        filtros.salarioMinimo = min;
+      }
+    }
+
+    if (req.query.salarioMaximo !== undefined) {
+      const max = Number(req.query.salarioMaximo);
+      if (!isNaN(max)) {
+        filtros.salarioMaximo = max;
+      }
+    }
+
+    const items = await curriculosService.listOwn(String(usuarioId), filtros);
     res.json(items);
   },
 
@@ -70,6 +101,21 @@ export const CurriculosController = {
       if (error?.code === 'CURRICULO_PRINCIPAL_REQUIRED')
         return res.status(400).json({ success: false, code: error.code, message: error.message });
       res.status(500).json({ success: false, code: 'UPDATE_ERROR', message: error?.message });
+    }
+  },
+
+  setPrincipal: async (req: Request, res: Response) => {
+    try {
+      const usuarioId = (req as any).user?.id;
+      if (!usuarioId) return res.status(401).json({ success: false, code: 'UNAUTHORIZED' });
+      const updated = await curriculosService.setPrincipal(String(usuarioId), req.params.id);
+      res.json(updated);
+    } catch (error: any) {
+      if (error?.code === 'NOT_FOUND')
+        return res.status(404).json({ success: false, code: error.code, message: error.message });
+      res
+        .status(500)
+        .json({ success: false, code: 'SET_PRINCIPAL_ERROR', message: error?.message });
     }
   },
 

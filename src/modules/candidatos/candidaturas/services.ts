@@ -108,6 +108,37 @@ export const candidaturasService = {
     });
   },
 
+  hasApplied: async (params: { usuarioId: string; vagaId: string }) => {
+    const candidatura = await prisma.empresasCandidatos.findFirst({
+      where: {
+        candidatoId: params.usuarioId,
+        vagaId: params.vagaId,
+      },
+      select: {
+        id: true,
+        vagaId: true,
+        curriculoId: true,
+        status_processo: {
+          select: { id: true, nome: true, descricao: true },
+        },
+        aplicadaEm: true,
+      },
+    });
+
+    return candidatura
+      ? {
+          hasApplied: true,
+          candidatura: {
+            id: candidatura.id,
+            vagaId: candidatura.vagaId,
+            curriculoId: candidatura.curriculoId,
+            status: candidatura.status_processo,
+            aplicadaEm: candidatura.aplicadaEm,
+          },
+        }
+      : { hasApplied: false };
+  },
+
   getById: async (id: string) => {
     return prisma.empresasCandidatos.findUnique({
       where: { id },

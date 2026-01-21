@@ -135,6 +135,33 @@ export const CandidaturasController = {
     }
   },
 
+  checkApplied: async (req: Request, res: Response) => {
+    try {
+      const usuarioId = (req as any).user?.id;
+      if (!usuarioId) return res.status(401).json({ success: false, code: 'UNAUTHORIZED' });
+
+      const { vagaId } = req.query;
+      if (!vagaId || typeof vagaId !== 'string') {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'vagaId é obrigatório',
+        });
+      }
+
+      const result = await candidaturasService.hasApplied({
+        usuarioId: String(usuarioId),
+        vagaId: String(vagaId),
+      });
+
+      res.json(result);
+    } catch (error: any) {
+      res
+        .status(500)
+        .json({ success: false, code: 'CHECK_APPLIED_ERROR', message: error?.message });
+    }
+  },
+
   get: async (req: Request, res: Response) => {
     try {
       const viewer = (req as any).user as { id?: string; role?: Roles } | undefined;

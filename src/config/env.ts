@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import { logger } from '@/utils/logger';
+import { parseScheduleConfig } from '@/utils/cron-helpers';
 
 // Carrega as variáveis de ambiente o mais cedo possível
 const envFiles = ['.env', '.env.local'] as const;
@@ -363,9 +364,13 @@ export const mercadopagoConfig = {
     assistedRecurringPixBoleto: process.env.ASSINATURAS_ASSISTIDA_PIX_BOLETO !== 'false',
     billingPortalUrl: process.env.MP_BILLING_PORTAL_URL || '',
     cronEnabled: process.env.CRON_RECONCILIATION_ENABLED === 'true',
-    cronSchedule: process.env.CRON_RECONCILIATION_SCHEDULE || '0 2 * * *', // 02:00
+    // Schedule: use apenas minutos (ex: 120 = 2h) ou expressão cron completa
+    // Padrão: 2h (120 minutos) = "0 2 * * *"
+    cronSchedule: parseScheduleConfig(process.env.CRON_RECONCILIATION_SCHEDULE, 120),
     boletoWatcherEnabled: process.env.CRON_BOLETO_ENABLED === 'true',
-    boletoWatcherSchedule: process.env.CRON_BOLETO_SCHEDULE || '0 * * * *',
+    // Schedule: use apenas minutos (ex: 60 = 1h) ou expressão cron completa
+    // Padrão: 1h (60 minutos) = "0 * * * *"
+    boletoWatcherSchedule: parseScheduleConfig(process.env.CRON_BOLETO_SCHEDULE, 60),
     boletoWatcherMaxDays: parseInt(process.env.CRON_BOLETO_MAX_DAYS || '5', 10),
   },
 

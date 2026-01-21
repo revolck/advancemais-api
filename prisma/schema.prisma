@@ -2476,6 +2476,9 @@ enum NotificacaoTipo {
   PROVA_EM_24H // Prova em 24 horas
   PROVA_EM_8H // Prova em 8 horas
   PROVA_EM_2H // Prova em 2 horas
+  // Notificações de ENTREVISTAS
+  ENTREVISTA_EM_2H // Entrevista agendada começa em 2h
+  ENTREVISTA_INICIADA // Entrevista agendada iniciando
   RECUPERACAO_FINAL_PAGAMENTO_PENDENTE // Recuperação final aguardando pagamento
   RECUPERACAO_FINAL_PAGAMENTO_APROVADO // Pagamento da recuperação final aprovado
   RECUPERACAO_FINAL_PAGAMENTO_RECUSADO // Pagamento da recuperação final recusado

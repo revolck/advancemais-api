@@ -23,6 +23,7 @@ import { startBoletoWatcherJob } from '@/modules/mercadopago/assinaturas/cron/bo
 import { startBloqueiosWatcherJob } from '@/modules/usuarios/bloqueios/cron/bloqueio-watcher';
 import { startEstagiosWatcherJob } from '@/modules/cursos/cron/estagios-watcher';
 import { startCobrancaAutomaticaJob } from '@/modules/empresas/cartoes/cron/cobranca-automatica';
+import { startAgendaCronJobs } from '@/modules/cursos/aulas/cron/agenda-jobs';
 
 /**
  * Aplicação principal - Advance+ API
@@ -170,6 +171,7 @@ try {
     startBloqueiosWatcherJob();
     startEstagiosWatcherJob();
     startCobrancaAutomaticaJob(); // Cobrança automática de cartões
+    startAgendaCronJobs(); // Cron jobs de agenda (aulas, provas, entrevistas)
   } catch (e) {
     routerLogger.warn({ err: e }, '⚠️ Falha ao iniciar crons');
   }

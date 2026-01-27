@@ -17,35 +17,39 @@ const router = Router();
  * - ALUNO_CANDIDATO: apenas progresso e presença próprias
  */
 
-// Middleware de autenticação para todas as rotas
-router.use(
-  supabaseAuthMiddleware([
-    Roles.ADMIN,
-    Roles.MODERADOR,
-    Roles.PEDAGOGICO,
-    Roles.INSTRUTOR,
-    Roles.ALUNO_CANDIDATO, // Para progresso e presença
-  ]),
-);
+const rolesGestaoAulas = [Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR];
+const rolesAlunoOuGestao = [...rolesGestaoAulas, Roles.ALUNO_CANDIDATO];
 
 // CRUD de aulas
-router.get('/', AulasController.list);
-router.get('/:id', AulasController.get);
-router.post('/', AulasController.create);
-router.put('/:id', AulasController.update);
-router.patch('/:id/publicar', AulasController.publicar); // Publicar/despublicar (antes de :id para evitar conflito)
-router.delete('/:id', AulasController.delete);
+router.get('/', supabaseAuthMiddleware(rolesGestaoAulas), AulasController.list);
+router.get('/:id', supabaseAuthMiddleware(rolesGestaoAulas), AulasController.get);
+router.post('/', supabaseAuthMiddleware(rolesGestaoAulas), AulasController.create);
+router.put('/:id', supabaseAuthMiddleware(rolesGestaoAulas), AulasController.update);
+router.patch(
+  '/:id/publicar',
+  supabaseAuthMiddleware(rolesGestaoAulas),
+  AulasController.publicar,
+); // Publicar/despublicar (antes de :id para evitar conflito)
+router.delete(
+  '/:id',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  AulasController.delete,
+);
 
 // Histórico de alterações
-router.get('/:id/historico', AulasController.getHistorico);
+router.get(
+  '/:id/historico',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  AulasController.getHistorico,
+);
 
 // Progresso do aluno
-router.post('/:id/progresso', AulasController.updateProgresso);
-router.get('/:id/progresso', AulasController.getProgresso);
+router.post('/:id/progresso', supabaseAuthMiddleware(rolesAlunoOuGestao), AulasController.updateProgresso);
+router.get('/:id/progresso', supabaseAuthMiddleware(rolesAlunoOuGestao), AulasController.getProgresso);
 
 // Presença em aula ao vivo
-router.post('/:id/presenca', AulasController.registrarPresenca);
-router.get('/:id/presenca', AulasController.getPresencas);
+router.post('/:id/presenca', supabaseAuthMiddleware(rolesAlunoOuGestao), AulasController.registrarPresenca);
+router.get('/:id/presenca', supabaseAuthMiddleware(rolesGestaoAulas), AulasController.getPresencas);
 
 // Materiais complementares
 router.use('/', materiaisRoutes);

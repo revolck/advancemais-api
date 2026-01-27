@@ -4,7 +4,7 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { aulasService } from '../services/aulas.service';
 import {
   createAulaSchema,
-  updateAulaSchema,
+  putUpdateAulaSchema,
   listAulasQuerySchema,
   updateProgressoSchema,
   registrarPresencaSchema,
@@ -114,6 +114,22 @@ export class AulasController {
         });
       }
 
+      if (error?.code === 'VALIDATION_ERROR') {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: error?.message || 'Payload inválido',
+        });
+      }
+
+      if (error?.code === 'TURMA_NOT_FOUND' || error?.code === 'CURSO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: error?.code,
+          message: error?.message || 'Recurso não encontrado',
+        });
+      }
+
       logger.error('[AULAS_CREATE_ERROR]', { error: error?.message });
       res.status(500).json({
         success: false,
@@ -130,7 +146,7 @@ export class AulasController {
   static update = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const payload = updateAulaSchema.parse(req.body);
+      const payload = putUpdateAulaSchema.parse(req.body);
       const usuarioLogado = req.user!;
 
       const aula = await aulasService.update(id, payload, usuarioLogado);
@@ -154,6 +170,22 @@ export class AulasController {
           success: false,
           code: 'FORBIDDEN',
           message: error?.message || 'Sem permissão para editar esta aula',
+        });
+      }
+
+      if (error?.code === 'VALIDATION_ERROR') {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: error?.message || 'Payload inválido',
+        });
+      }
+
+      if (error?.code === 'TURMA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'TURMA_NOT_FOUND',
+          message: error?.message || 'Turma não encontrada',
         });
       }
 
@@ -402,13 +434,13 @@ export class AulasController {
     try {
       const { id } = req.params;
       const payload = registrarPresencaSchema.parse(req.body);
-      const usuarioId = req.user!.id;
+      const usuarioLogado = req.user!;
 
       const result = await aulasService.registrarPresenca(
         id,
         payload.tipo,
         payload.inscricaoId,
-        usuarioId,
+        usuarioLogado,
       );
 
       res.json(result);
@@ -418,6 +450,14 @@ export class AulasController {
           success: false,
           code: 'VALIDATION_ERROR',
           issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para registrar presença',
         });
       }
 
@@ -439,6 +479,11 @@ export class AulasController {
       const usuarioLogado = req.user!;
 
       const historico = await aulasService.getHistorico(id, usuarioLogado);
+
+      // Adicionar header para evitar cache
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
 
       res.json({
         success: true,

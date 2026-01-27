@@ -5,6 +5,37 @@ const modalidadeEnum = z.enum(['ONLINE', 'PRESENCIAL', 'AO_VIVO', 'SEMIPRESENCIA
 const tipoLinkEnum = z.enum(['YOUTUBE', 'MEET']);
 const statusEnum = z.enum(['RASCUNHO', 'PUBLICADA', 'EM_ANDAMENTO', 'CONCLUIDA', 'CANCELADA']);
 
+const materiaisInputItemSchema = z.union([
+  z.string().url('URL do material inválida'),
+  z.object({
+    url: z.string().url('URL do material inválida'),
+    titulo: z.string().min(1).max(255).optional(),
+  }),
+]);
+
+const materiaisInputSchema = z.array(materiaisInputItemSchema).max(3, 'Máximo de 3 materiais');
+
+const coerceBoolean = (value: unknown) => {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value === 1;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['true', '1', 'sim', 's', 'yes', 'y'].includes(normalized)) return true;
+    if (['false', '0', 'nao', 'não', 'n', 'no'].includes(normalized)) return false;
+  }
+  return value;
+};
+
+const requiredBooleanSchema = z.preprocess(
+  (value) => coerceBoolean(value),
+  z.boolean({ required_error: 'Campo obrigatório' }),
+);
+
+const optionalBooleanSchema = z.preprocess((value) => {
+  if (value === undefined || value === null || value === '') return undefined;
+  return coerceBoolean(value);
+}, z.boolean().optional());
+
 /**
  * Schema para criar aula
  */
@@ -12,12 +43,15 @@ export const createAulaSchema = z
   .object({
     cursoId: z.string().uuid('cursoId deve ser um UUID válido').optional(),
     titulo: z.string().min(3, 'Título deve ter no mínimo 3 caracteres').max(255),
-    descricao: z.string().min(10, 'Descrição deve ter no mínimo 10 caracteres'),
+    descricao: z.string().min(1, 'Descrição é obrigatória').max(5000, 'Máximo de 5000 caracteres'),
     modalidade: modalidadeEnum,
     tipoLink: tipoLinkEnum.optional(),
     youtubeUrl: z.string().url('URL do YouTube inválida').optional(),
-    obrigatoria: z.boolean().optional().default(true),
-    duracaoMinutos: z.number().int().positive('Duração deve ser maior que 0'),
+    obrigatoria: requiredBooleanSchema,
+    duracaoMinutos: z.coerce
+      .number({ required_error: 'Campo "duracaoMinutos" é obrigatório' })
+      .int()
+      .positive('Duração deve ser maior que 0'),
     // ✅ IMPORTANTE: Aulas devem ser criadas sempre como RASCUNHO
     // Publicação deve ser feita via endpoint específico PATCH /api/v1/cursos/aulas/{id}/publicar
     status: z.enum(['RASCUNHO']).optional().default('RASCUNHO'), // ✅ Apenas RASCUNHO permitido na criação
@@ -27,6 +61,8 @@ export const createAulaSchema = z
     instrutorId: z.string().uuid('instrutorId deve ser um UUID válido').optional(),
     moduloId: z.string().uuid().optional(),
     sala: z.string().max(100).optional(),
+    // Materiais complementares (front envia URLs do blob)
+    materiais: materiaisInputSchema.optional(),
     // Data e Hora (SEPARADOS - Arquitetura Ideal)
     // Aceita múltiplos formatos e converte para YYYY-MM-DD
     dataInicio: z
@@ -99,94 +135,15 @@ export const createAulaSchema = z
       .optional(),
   })
   .superRefine((data, ctx) => {
-    if (!data.turmaId && !data.cursoId) {
+    // Regra de vínculo:
+    // - Usuário pode salvar como rascunho sem curso e sem turma
+    // - Se enviar cursoId, deve obrigatoriamente enviar turmaId
+    if (data.cursoId && !data.turmaId) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['cursoId'],
-        message: 'cursoId é obrigatório quando turmaId não for informado (aula template)',
+        path: ['turmaId'],
+        message: 'Quando cursoId for informado, turmaId é obrigatório',
       });
-    }
-
-    // Validar ONLINE (não precisa de período)
-    if (data.modalidade === 'ONLINE') {
-      if (!data.youtubeUrl) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['youtubeUrl'],
-          message: 'Link do YouTube é obrigatório para aulas online',
-        });
-      }
-      // ONLINE não usa período - será ignorado
-    }
-
-    // Validar PRESENCIAL (precisa de dataInicio, dataFim é opcional)
-    if (data.modalidade === 'PRESENCIAL') {
-      if (!data.dataInicio) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['dataInicio'],
-          message: 'Data de início é obrigatória para aulas presenciais',
-        });
-      }
-      // dataFim é opcional - se não informado, aula acontece apenas no dataInicio
-      // Se informado, aula acontece de dataInicio a dataFim
-    }
-
-    // Validar AO_VIVO (precisa de dataInicio, dataFim é opcional)
-    if (data.modalidade === 'AO_VIVO') {
-      if (!data.dataInicio) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['dataInicio'],
-          message: 'Data de início é obrigatória para aulas ao vivo',
-        });
-      }
-      // Validar futuro
-      if (data.dataInicio && new Date(data.dataInicio) < new Date()) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['dataInicio'],
-          message: 'Aula ao vivo deve ser agendada para o futuro',
-        });
-      }
-      // dataFim é opcional - será calculado automaticamente se não informado
-    }
-
-    // Validar SEMIPRESENCIAL (usa YouTube OU Meet)
-    if (data.modalidade === 'SEMIPRESENCIAL') {
-      // Precisa ter YouTube URL OU dataInicio (para Meet)
-      const temYoutube = !!data.youtubeUrl;
-      const temDataInicio = !!data.dataInicio;
-
-      if (!temYoutube && !temDataInicio) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['youtubeUrl'],
-          message: 'Aula semipresencial requer YouTube URL ou data de início (para Meet)',
-        });
-      }
-
-      // Se tem dataInicio (para Meet), validar futuro
-      if (temDataInicio && data.dataInicio && new Date(data.dataInicio) < new Date()) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['dataInicio'],
-          message: 'Aula semipresencial com Meet deve ser agendada para o futuro',
-        });
-      }
-      // dataFim é opcional - será calculado automaticamente se não informado
-    }
-
-    // Validar YouTube URL
-    if (data.youtubeUrl) {
-      const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\//;
-      if (!youtubeRegex.test(data.youtubeUrl)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['youtubeUrl'],
-          message: 'URL do YouTube inválida',
-        });
-      }
     }
 
     // Validar dataFim > dataInicio (apenas se dataFim foi informado)
@@ -226,13 +183,14 @@ export const createAulaSchema = z
  */
 export const updateAulaSchema = z
   .object({
+    cursoId: z.string().uuid('cursoId deve ser um UUID válido').nullable().optional(),
     titulo: z.string().min(3).max(255).optional(),
-    descricao: z.string().optional(),
+    descricao: z.string().max(5000).optional(),
     modalidade: modalidadeEnum.optional(),
     tipoLink: tipoLinkEnum.optional(),
     youtubeUrl: z.string().url().optional(),
-    obrigatoria: z.boolean().optional(),
-    duracaoMinutos: z.number().int().positive().optional(),
+    obrigatoria: optionalBooleanSchema,
+    duracaoMinutos: z.coerce.number().int().positive().optional(),
     status: statusEnum.optional(),
     dataInicio: z.coerce.date().optional(),
     dataFim: z.coerce.date().optional(),
@@ -248,8 +206,48 @@ export const updateAulaSchema = z
     turmaId: z.string().uuid('turmaId deve ser um UUID válido').nullable().optional(),
     instrutorId: z.string().uuid('instrutorId deve ser um UUID válido').nullable().optional(),
     moduloId: z.string().uuid('moduloId deve ser um UUID válido').nullable().optional(),
+    // Materiais complementares (URLs do blob) - quando enviado, substitui a lista atual
+    materiais: materiaisInputSchema.optional(),
   })
   .partial();
+
+/**
+ * Schema para PUT /api/v1/cursos/aulas/:id
+ * Tela do frontend envia um payload completo (campos principais obrigatórios).
+ */
+export const putUpdateAulaSchema = z
+  .object({
+    status: statusEnum.optional(),
+    titulo: z.string().min(3).max(255),
+    descricao: z.string().min(1, 'Descrição é obrigatória').max(5000, 'Máximo de 5000 caracteres'),
+    modalidade: modalidadeEnum,
+    duracaoMinutos: z.coerce.number().int().positive('Duração deve ser maior que 0'),
+    obrigatoria: requiredBooleanSchema,
+    // Vinculações
+    cursoId: z.string().uuid('cursoId deve ser um UUID válido').nullable().optional(),
+    turmaId: z.string().uuid('turmaId deve ser um UUID válido').nullable().optional(),
+    instrutorId: z.string().uuid('instrutorId deve ser um UUID válido').nullable().optional(),
+    moduloId: z.string().uuid('moduloId deve ser um UUID válido').nullable().optional(),
+    // Demais campos suportados
+    tipoLink: tipoLinkEnum.optional(),
+    youtubeUrl: z.string().url('URL inválida').optional(),
+    sala: z.string().max(100).optional(),
+    dataInicio: z.coerce.date().optional(),
+    dataFim: z.coerce.date().optional(),
+    horaInicio: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+    horaFim: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+    materiais: materiaisInputSchema.optional(),
+  })
+  .superRefine((data, ctx) => {
+    // Se cursoId vier preenchido, turmaId é obrigatório
+    if (data.cursoId && !data.turmaId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['turmaId'],
+        message: 'Se cursoId for informado, turmaId é obrigatório',
+      });
+    }
+  });
 
 /**
  * Schema para listar aulas
@@ -259,6 +257,8 @@ export const listAulasQuerySchema = z
     page: z.coerce.number().int().positive().default(1),
     pageSize: z.coerce.number().int().positive().max(100).default(10),
     cursoId: z.string().uuid().optional(),
+    // filtros por nome/código (para telas com busca por texto)
+    curso: z.string().min(1).max(255).optional(),
     semTurma: z.preprocess((value) => {
       if (value === undefined || value === null || value === '') return undefined;
       if (typeof value === 'boolean') return value;
@@ -270,14 +270,82 @@ export const listAulasQuerySchema = z
       return value;
     }, z.boolean().optional()),
     turmaId: z.string().uuid().optional(),
+    turma: z.string().min(1).max(255).optional(),
     moduloId: z.string().uuid().optional(),
     instrutorId: z.string().uuid().optional(),
-    modalidade: z.string().optional(), // ONLINE,AO_VIVO (CSV)
-    status: z.string().optional(), // PUBLICADA,CONCLUIDA (CSV)
-    obrigatoria: z.coerce.boolean().optional(),
-    dataInicio: z.coerce.date().optional(),
-    dataFim: z.coerce.date().optional(),
+    instrutor: z.string().min(1).max(255).optional(),
+    modalidade: z.preprocess((value) => {
+      if (value === undefined || value === null || value === '') return undefined;
+      if (Array.isArray(value)) return value.join(',');
+      return value;
+    }, z.string().optional()), // ONLINE,AO_VIVO (CSV ou array)
+    status: z.preprocess((value) => {
+      if (value === undefined || value === null || value === '') return undefined;
+      if (Array.isArray(value)) return value.join(',');
+      return value;
+    }, z.string().optional()), // PUBLICADA,CONCLUIDA (CSV ou array)
+    obrigatoria: z.preprocess((value) => {
+      if (value === undefined || value === null || value === '') return undefined;
+      if (typeof value === 'boolean') return value;
+      if (typeof value === 'number') return value === 1;
+      if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        if (normalized === 'true' || normalized === '1') return true;
+        if (normalized === 'false' || normalized === '0') return false;
+      }
+      return value;
+    }, z.boolean().optional()),
+    // aliases de período (frontend)
+    periodo: z.string().optional(), // ex: "2026-02-01,2026-02-28" ou ISO/ISO
+    periodoInicio: z.preprocess((value) => {
+      if (value === undefined || value === null || value === '') return undefined;
+      if (value instanceof Date) return value;
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+          return new Date(`${trimmed}T00:00:00.000Z`);
+        }
+      }
+      return value;
+    }, z.coerce.date().optional()),
+    periodoFim: z.preprocess((value) => {
+      if (value === undefined || value === null || value === '') return undefined;
+      if (value instanceof Date) return value;
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+          return new Date(`${trimmed}T23:59:59.999Z`);
+        }
+      }
+      return value;
+    }, z.coerce.date().optional()),
+    dataInicio: z.preprocess((value) => {
+      if (value === undefined || value === null || value === '') return undefined;
+      if (value instanceof Date) return value;
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+          // date-only → início do dia (UTC)
+          return new Date(`${trimmed}T00:00:00.000Z`);
+        }
+      }
+      return value;
+    }, z.coerce.date().optional()),
+    dataFim: z.preprocess((value) => {
+      if (value === undefined || value === null || value === '') return undefined;
+      if (value instanceof Date) return value;
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+          // date-only → fim do dia (UTC)
+          return new Date(`${trimmed}T23:59:59.999Z`);
+        }
+      }
+      return value;
+    }, z.coerce.date().optional()),
+    // search (compat) e titulo (telas que enviam "titulo" ao invés de "search")
     search: z.string().optional(),
+    titulo: z.string().optional(),
     orderBy: z.enum(['criadoEm', 'titulo', 'ordem', 'dataInicio']).optional().default('ordem'),
     order: z.enum(['asc', 'desc']).optional().default('asc'),
   })
@@ -320,6 +388,7 @@ export const registrarPresencaSchema = z.object({
 // Tipos exportados
 export type CreateAulaInput = z.infer<typeof createAulaSchema>;
 export type UpdateAulaInput = z.infer<typeof updateAulaSchema>;
+export type PutUpdateAulaInput = z.infer<typeof putUpdateAulaSchema>;
 export type ListAulasQuery = z.infer<typeof listAulasQuerySchema>;
 export type UpdateProgressoInput = z.infer<typeof updateProgressoSchema>;
 export type RegistrarPresencaInput = z.infer<typeof registrarPresencaSchema>;

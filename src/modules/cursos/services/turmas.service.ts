@@ -1137,7 +1137,7 @@ export const turmasService = {
       // Sincronizar agenda do aluno com Google Calendar (em background, não bloqueia)
       setImmediate(async () => {
         try {
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
+           
           const {
             googleCalendarService,
           } = require('@/modules/cursos/aulas/services/google-calendar.service');

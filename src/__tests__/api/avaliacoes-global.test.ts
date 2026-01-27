@@ -1,46 +1,53 @@
 import request from 'supertest';
-import { app } from '@/index';
 import { prisma } from '@/config/prisma';
 import { CursosAvaliacaoTipo } from '@prisma/client';
-import { createTestUser, cleanupTestUsers } from '../helpers/test-helpers';
+import type { Express } from 'express';
+import { getTestApp } from '../helpers/test-setup';
+import { createTestAdmin, cleanupTestUsers, type TestUser } from '../helpers/auth-helper';
 
 describe('GET /api/v1/cursos/avaliacoes - Listagem Global', () => {
-  let testAdmin: { id: string; token: string };
+  let app: Express;
+  let testAdmin: TestUser;
   let testCurso1Id: string;
   let testCurso2Id: string;
   let testTurma1Id: string;
   let testTurma2Id: string;
-  let testAvaliacaoIds: string[] = [];
-  let testUsers: { id: string; token: string }[] = [];
+  const testAvaliacaoIds: string[] = [];
+  const testUsers: TestUser[] = [];
 
   beforeAll(async () => {
+    app = await getTestApp();
     // Criar usuário admin de teste
-    testAdmin = await createTestUser('ADMIN');
+    testAdmin = await createTestAdmin();
     testUsers.push(testAdmin);
+
+    const timestamp = Date.now().toString().slice(-6);
 
     // Criar cursos de teste
     const curso1 = await prisma.cursos.create({
       data: {
-        codigo: `TESTE-C1-${Date.now()}`,
+        codigo: `C1${timestamp}`,
         nome: 'Curso Teste 1 - Matemática',
         descricao: 'Curso para testes',
         cargaHoraria: 40,
-        vagasDisponiveis: 30,
-        preco: 100,
-        ativo: true,
+        statusPadrao: 'PUBLICADO',
+        valor: 100,
+        gratuito: false,
+        estagioObrigatorio: false,
       },
     });
     testCurso1Id = curso1.id;
 
     const curso2 = await prisma.cursos.create({
       data: {
-        codigo: `TESTE-C2-${Date.now()}`,
+        codigo: `C2${timestamp}`,
         nome: 'Curso Teste 2 - Programação',
         descricao: 'Curso para testes',
         cargaHoraria: 60,
-        vagasDisponiveis: 25,
-        preco: 150,
-        ativo: true,
+        statusPadrao: 'PUBLICADO',
+        valor: 150,
+        gratuito: false,
+        estagioObrigatorio: false,
       },
     });
     testCurso2Id = curso2.id;
@@ -49,9 +56,11 @@ describe('GET /api/v1/cursos/avaliacoes - Listagem Global', () => {
     const turma1 = await prisma.cursosTurmas.create({
       data: {
         cursoId: testCurso1Id,
-        codigo: `TURMA-T1-${Date.now()}`,
+        codigo: `T1${timestamp}`,
         nome: 'Turma 1',
-        vagas: 30,
+        vagasTotais: 30,
+        vagasDisponiveis: 30,
+        status: 'PUBLICADO',
       },
     });
     testTurma1Id = turma1.id;
@@ -59,9 +68,11 @@ describe('GET /api/v1/cursos/avaliacoes - Listagem Global', () => {
     const turma2 = await prisma.cursosTurmas.create({
       data: {
         cursoId: testCurso2Id,
-        codigo: `TURMA-T2-${Date.now()}`,
+        codigo: `T2${timestamp}`,
         nome: 'Turma 2',
-        vagas: 25,
+        vagasTotais: 25,
+        vagasDisponiveis: 25,
+        status: 'PUBLICADO',
       },
     });
     testTurma2Id = turma2.id;
@@ -239,7 +250,7 @@ describe('GET /api/v1/cursos/avaliacoes - Listagem Global', () => {
       expect(response.body).toHaveProperty('success', true);
       expect(Array.isArray(response.body.data)).toBe(true);
       response.body.data.forEach((av: any) => {
-        expect(av.status).toBe('ATIVO');
+        expect(av.statusAtivo).toBe('ATIVO');
       });
     });
 
@@ -253,7 +264,7 @@ describe('GET /api/v1/cursos/avaliacoes - Listagem Global', () => {
       expect(response.body).toHaveProperty('success', true);
       expect(Array.isArray(response.body.data)).toBe(true);
       response.body.data.forEach((av: any) => {
-        expect(av.status).toBe('INATIVO');
+        expect(av.statusAtivo).toBe('INATIVO');
       });
     });
 
@@ -342,7 +353,7 @@ describe('GET /api/v1/cursos/avaliacoes - Listagem Global', () => {
       expect(Array.isArray(response.body.data)).toBe(true);
       response.body.data.forEach((av: any) => {
         expect(av.tipo).toBe('PROVA');
-        expect(av.status).toBe('ATIVO');
+        expect(av.statusAtivo).toBe('ATIVO');
       });
     });
 
@@ -357,7 +368,7 @@ describe('GET /api/v1/cursos/avaliacoes - Listagem Global', () => {
       expect(Array.isArray(response.body.data)).toBe(true);
       response.body.data.forEach((av: any) => {
         expect(av.tipo).toBe('PROVA');
-        expect(av.status).toBe('ATIVO');
+        expect(av.statusAtivo).toBe('ATIVO');
         const matchesTitulo = av.titulo.toLowerCase().includes('prova');
         const matchesEtiqueta = av.etiqueta?.toLowerCase().includes('prova');
         expect(matchesTitulo || matchesEtiqueta).toBe(true);

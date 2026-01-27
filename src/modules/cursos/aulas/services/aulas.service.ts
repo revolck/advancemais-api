@@ -9,6 +9,7 @@ import type {
 import type { Prisma, Usuarios } from '@prisma/client';
 import { googleCalendarService } from './google-calendar.service';
 import { notificacoesHelper } from './notificacoes-helper.service';
+import { montarCamposAlteradosMaterial } from './historico-materiais.helper';
 
 const aulasLogger = logger.child({ module: 'AulasService' });
 
@@ -204,6 +205,44 @@ function validarDespublicacao(aula: any): { valido: boolean; erro?: string; codi
  */
 export const aulasService = {
   /**
+   * Normaliza input de materiais (URLs do blob) para { url, titulo }
+   */
+  _normalizeMateriaisInput(input: unknown): { url: string; titulo: string }[] {
+    if (!Array.isArray(input)) return [];
+
+    const toTitleFromUrl = (url: string) => {
+      try {
+        const u = new URL(url);
+        const last = u.pathname.split('/').filter(Boolean).pop();
+        if (!last) return 'Material';
+        return decodeURIComponent(last).slice(0, 255);
+      } catch {
+        return 'Material';
+      }
+    };
+
+    return input
+      .map((item: any, idx: number) => {
+        if (typeof item === 'string') {
+          return {
+            url: item,
+            titulo: `Material ${idx + 1} - ${toTitleFromUrl(item)}`.slice(0, 255),
+          };
+        }
+        if (item && typeof item === 'object' && typeof item.url === 'string') {
+          const titulo =
+            typeof item.titulo === 'string' && item.titulo.trim() !== ''
+              ? item.titulo.trim()
+              : `Material ${idx + 1} - ${toTitleFromUrl(item.url)}`;
+          return { url: item.url, titulo: titulo.slice(0, 255) };
+        }
+        return null;
+      })
+      .filter(Boolean)
+      .slice(0, 3) as { url: string; titulo: string }[];
+  },
+
+  /**
    * Listar aulas com filtros e paginação
    */
   async list(query: ListAulasQuery, usuarioLogado: any) {
@@ -211,16 +250,23 @@ export const aulasService = {
       page,
       pageSize,
       cursoId,
+      curso,
       semTurma,
       turmaId,
+      turma,
       moduloId,
       instrutorId,
+      instrutor,
       modalidade,
       status,
       obrigatoria,
+      periodo,
+      periodoInicio,
+      periodoFim,
       dataInicio,
       dataFim,
       search,
+      titulo,
       orderBy,
       order,
     } = query;
@@ -228,6 +274,11 @@ export const aulasService = {
     const where: Prisma.CursosTurmasAulasWhereInput = {
       deletedAt: null, // Não mostrar deletadas
     };
+
+    const searchTerm = (search ?? titulo)?.trim();
+    const cursoTerm = curso?.trim();
+    const turmaTerm = turma?.trim();
+    const instrutorTerm = instrutor?.trim();
 
     const applyAndFilter = (filter: Prisma.CursosTurmasAulasWhereInput) => {
       if (where.AND && Array.isArray(where.AND)) {
@@ -297,23 +348,123 @@ export const aulasService = {
     }
     if (moduloId) where.moduloId = moduloId;
     if (instrutorId) applyAndFilter({ instrutorId });
-    if (modalidade) where.modalidade = { in: modalidade.split(',') as any };
-    if (status) where.status = { in: status.split(',') as any };
+    if (modalidade) {
+      const modalidadesDB = Array.from(
+        new Set(
+          modalidade
+            .split(',')
+            .map((m) => m.trim())
+            .filter(Boolean)
+            .map((m) => mapModalidade(m.toUpperCase())),
+        ),
+      );
+      if (modalidadesDB.length > 0) where.modalidade = { in: modalidadesDB as any };
+    }
+    if (status) {
+      const statuses = Array.from(
+        new Set(
+          status
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .map((s) => s.toUpperCase()),
+        ),
+      );
+      if (statuses.length > 0) where.status = { in: statuses as any };
+    }
     if (obrigatoria !== undefined) where.obrigatoria = obrigatoria;
-    if (dataInicio || dataFim) {
+    // Período (dataInicio/dataFim) + aliases do frontend (periodoInicio/periodoFim/periodo)
+    const parsePeriodoString = (value: string): { start?: Date; end?: Date } => {
+      const raw = value.trim();
+      if (!raw) return {};
+      const separators = [',', ';', ' - ', ' to ', ' até ', ' ate ', '|', '..', '...'];
+      let parts: string[] | null = null;
+      for (const sep of separators) {
+        if (raw.includes(sep)) {
+          parts = raw.split(sep).map((p) => p.trim());
+          break;
+        }
+      }
+      if (!parts) parts = [raw];
+      const [p1, p2] = parts;
+      const start = p1 ? new Date(p1) : undefined;
+      const end = p2 ? new Date(p2) : undefined;
+      return {
+        start: start && !Number.isNaN(start.getTime()) ? start : undefined,
+        end: end && !Number.isNaN(end.getTime()) ? end : undefined,
+      };
+    };
+
+    const periodoParsed = typeof periodo === 'string' ? parsePeriodoString(periodo) : {};
+    const start =
+      dataInicio ??
+      (periodoInicio as Date | undefined) ??
+      periodoParsed.start ??
+      undefined;
+    const end =
+      dataFim ??
+      (periodoFim as Date | undefined) ??
+      periodoParsed.end ??
+      undefined;
+
+    if (start || end) {
+      const startFinal = start ?? new Date('1970-01-01T00:00:00.000Z');
+      const endFinal = end ?? new Date('9999-12-31T23:59:59.999Z');
+
+      // Período: aulas que acontecem dentro/encostam no intervalo.
+      // - Se dataFim da aula for null, considera dataInicio como único dia.
       applyAndFilter({
-        dataInicio: {
-          gte: dataInicio ?? undefined,
-          lte: dataFim ?? undefined,
+        AND: [
+          { dataInicio: { not: null } },
+          {
+            OR: [
+              { dataFim: null, dataInicio: { gte: startFinal, lte: endFinal } },
+              { dataFim: { not: null, gte: startFinal }, dataInicio: { lte: endFinal } },
+            ],
+          },
+        ],
+      });
+    }
+    if (cursoTerm) {
+      applyAndFilter({
+        OR: [
+          { Cursos: { nome: { contains: cursoTerm, mode: 'insensitive' } } },
+          { Cursos: { codigo: { contains: cursoTerm, mode: 'insensitive' } } },
+          { CursosTurmas: { Cursos: { nome: { contains: cursoTerm, mode: 'insensitive' } } } },
+          { CursosTurmas: { Cursos: { codigo: { contains: cursoTerm, mode: 'insensitive' } } } },
+        ],
+      });
+    }
+
+    if (turmaTerm) {
+      applyAndFilter({
+        CursosTurmas: {
+          OR: [
+            { nome: { contains: turmaTerm, mode: 'insensitive' } },
+            { codigo: { contains: turmaTerm, mode: 'insensitive' } },
+          ],
         },
       });
     }
-    if (search) {
+
+    if (instrutorTerm) {
+      applyAndFilter({
+        instrutor: {
+          OR: [
+            { nomeCompleto: { contains: instrutorTerm, mode: 'insensitive' } },
+            { email: { contains: instrutorTerm, mode: 'insensitive' } },
+            { cpf: { contains: instrutorTerm, mode: 'insensitive' } },
+          ],
+        },
+      });
+    }
+
+    if (searchTerm) {
       // Combinar search com filtros existentes usando AND
       const searchFilter: Prisma.CursosTurmasAulasWhereInput = {
         OR: [
-          { nome: { contains: search, mode: 'insensitive' } },
-          { descricao: { contains: search, mode: 'insensitive' } },
+          { nome: { contains: searchTerm, mode: 'insensitive' } },
+          { descricao: { contains: searchTerm, mode: 'insensitive' } },
         ],
       };
       if (where.AND && Array.isArray(where.AND)) {
@@ -612,20 +763,10 @@ export const aulasService = {
         }
       }
     } else {
-      if (!cursoIdFinal) {
-        const error: any = new Error('cursoId é obrigatório quando turmaId não for informado');
+      // Sem turma: pode salvar rascunho sem curso, mas não pode enviar cursoId sem turmaId
+      if (cursoIdFinal) {
+        const error: any = new Error('Se cursoId for informado, turmaId é obrigatório');
         error.code = 'VALIDATION_ERROR';
-        throw error;
-      }
-
-      const curso = await prisma.cursos.findUnique({
-        where: { id: cursoIdFinal },
-        select: { id: true },
-      });
-
-      if (!curso) {
-        const error: any = new Error('Curso não encontrado');
-        error.code = 'CURSO_NOT_FOUND';
         throw error;
       }
     }
@@ -653,16 +794,18 @@ export const aulasService = {
         nome: input.titulo,
         descricao: input.descricao,
         turmaId: input.turmaId || null,
-        instrutorId: input.instrutorId || usuarioLogado.id,
+        instrutorId:
+          input.instrutorId ??
+          (usuarioLogado.role === 'INSTRUTOR' ? (usuarioLogado.id as string) : null),
         moduloId: input.moduloId,
         modalidade: mapModalidade(input.modalidade),
         urlVideo: input.youtubeUrl || null,
         sala: input.sala || null,
-        obrigatoria: input.obrigatoria ?? true,
+        obrigatoria: input.obrigatoria,
         duracaoMinutos: input.duracaoMinutos,
         // ✅ IMPORTANTE: Aulas devem ser criadas sempre como RASCUNHO
         // Se frontend enviar PUBLICADA, forçar RASCUNHO (publicação via endpoint específico)
-        status: (input.status ?? 'RASCUNHO') as any,
+        status: 'RASCUNHO',
         dataInicio: dataInicioCompleta,
         dataFim: dataFimCompleta,
         horaInicio: input.horaInicio || null,
@@ -673,6 +816,23 @@ export const aulasService = {
         adicionadaAposCriacao: (input as any).adicionadaAposCriacao || false,
       },
     });
+
+    // 5.1 Materiais complementares (quando enviados)
+    if ((input as any).materiais) {
+      const materiais = this._normalizeMateriaisInput((input as any).materiais);
+      await prisma.cursosTurmasAulasMateriais.deleteMany({ where: { aulaId: aula.id } });
+      if (materiais.length > 0) {
+        await prisma.cursosTurmasAulasMateriais.createMany({
+          data: materiais.map((m, idx) => ({
+            aulaId: aula.id,
+            tipo: 'OUTRO' as any,
+            titulo: m.titulo,
+            url: m.url,
+            ordem: idx + 1,
+          })),
+        });
+      }
+    }
 
     // 5. Registrar histórico
     await prisma.cursosAulasHistorico.create({
@@ -754,6 +914,13 @@ export const aulasService = {
       prisma.cursosTurmasAulas.findUnique({
         where: { id: aulaId, deletedAt: null },
         include: {
+          Cursos: {
+            select: {
+              id: true,
+              codigo: true,
+              nome: true,
+            },
+          },
           CursosTurmas: {
             select: {
               id: true,
@@ -789,6 +956,10 @@ export const aulasService = {
                 },
               },
             },
+          },
+          CursosTurmasAulasMateriais: {
+            select: { id: true, titulo: true, url: true, ordem: true, tipo: true },
+            orderBy: { ordem: 'asc' },
           },
         },
       }),
@@ -826,6 +997,7 @@ export const aulasService = {
     return {
       id: aula.id,
       codigo: aula.codigo,
+      cursoId: aula.CursosTurmas?.Cursos?.id || aula.Cursos?.id || null,
       titulo: aula.nome,
       descricao: aula.descricao || null,
       duracaoMinutos: aula.duracaoMinutos || null,
@@ -847,6 +1019,14 @@ export const aulasService = {
       statusGravacao: aula.statusGravacao || null,
       meetEventId: aula.meetEventId || null,
       turmaId: aula.turmaId || null,
+      materiais:
+        (aula as any).CursosTurmasAulasMateriais?.map((m: any) => ({
+          id: m.id,
+          titulo: m.titulo,
+          url: m.url,
+          ordem: m.ordem,
+          tipo: m.tipo,
+        })) ?? [],
       turma: aula.CursosTurmas
         ? {
             id: aula.CursosTurmas.id,
@@ -896,6 +1076,20 @@ export const aulasService = {
    */
   async update(aulaId: string, input: UpdateAulaInput, usuarioLogado: any) {
     const aulaAnterior = await this.getById(aulaId, usuarioLogado);
+    const aulaDbAnterior = await prisma.cursosTurmasAulas.findUnique({
+      where: { id: aulaId },
+      select: {
+        turmaId: true,
+        cursoId: true,
+        instrutorId: true,
+        moduloId: true,
+        status: true,
+      },
+    });
+
+    if (!aulaDbAnterior) {
+      throw new Error('Aula não encontrada');
+    }
 
     // Validar permissão
     const podeEditar =
@@ -922,9 +1116,21 @@ export const aulasService = {
       throw error;
     }
 
-    // Validar publicação se status está mudando para PUBLICADA
+    const turmaIdFinal =
+      input.turmaId === undefined ? aulaDbAnterior.turmaId : (input.turmaId as any);
+    const cursoIdInput = (input as any).cursoId as string | null | undefined;
+
+    // Regra do frontend: se cursoId for informado, turmaId é obrigatório
+    if (cursoIdInput && !turmaIdFinal) {
+      const error: any = new Error('Se cursoId for informado, turmaId é obrigatório');
+      error.code = 'VALIDATION_ERROR';
+      throw error;
+    }
+
+    // Status final: sem turma vinculada, sempre RASCUNHO
     const statusAnterior = aulaAnterior.status;
-    const statusNovo = input.status || statusAnterior;
+    const statusDesejado = input.status ?? statusAnterior;
+    const statusNovo = turmaIdFinal ? statusDesejado : 'RASCUNHO';
     const estaPublicando = statusAnterior !== 'PUBLICADA' && statusNovo === 'PUBLICADA';
     const estaDespublicando = statusAnterior === 'PUBLICADA' && statusNovo === 'RASCUNHO';
 
@@ -981,84 +1187,56 @@ export const aulasService = {
       }
     }
 
-    // ✅ Tratar remoção de vínculos (turmaId, instrutorId, moduloId)
-    // Se campo não foi enviado mas existia antes, remover vínculo (setar null)
-    // Se campo foi enviado, atualizar (pode ser null para remover explicitamente)
-    const aulaAnteriorTyped = aulaAnterior as any;
-    // @ts-ignore - turmaId, instrutorId, moduloId podem estar nos relacionamentos ou diretamente
-    const turmaIdAnterior = aulaAnterior.turma?.id || aulaAnteriorTyped?.turmaId || null;
-    // @ts-ignore
-    const instrutorIdAnterior =
-      aulaAnterior.instrutor?.id || aulaAnteriorTyped?.instrutorId || null;
-    // @ts-ignore
-    const moduloIdAnterior = aulaAnterior.modulo?.id || aulaAnteriorTyped?.moduloId || null;
+    // ✅ Tratar vínculos (undefined = manter; null = remover; string = atualizar)
+    const turmaIdAnterior = aulaDbAnterior.turmaId;
+    const instrutorIdAnterior = aulaDbAnterior.instrutorId;
+    const moduloIdAnterior = aulaDbAnterior.moduloId;
 
-    // Determinar valores finais para turmaId, instrutorId e moduloId
-    let turmaIdParaSalvar: string | null | undefined;
-    let instrutorIdParaSalvar: string | null | undefined;
-    let moduloIdParaSalvar: string | null | undefined;
-
-    // ✅ Processar turmaId
-    if (input.turmaId !== undefined) {
-      // Campo foi enviado explicitamente (pode ser null para remover)
-      turmaIdParaSalvar = input.turmaId || null;
-    } else if (turmaIdAnterior) {
-      // Campo não foi enviado mas existia antes → remover vínculo
-      turmaIdParaSalvar = null;
-    }
-    // Se não foi enviado e não existia antes, não incluir no update (mantém null)
-
-    // ✅ Processar instrutorId
-    if (input.instrutorId !== undefined) {
-      // Campo foi enviado explicitamente (pode ser null para remover)
-      instrutorIdParaSalvar = input.instrutorId || null;
-    } else if (instrutorIdAnterior) {
-      // Campo não foi enviado mas existia antes → remover vínculo
-      instrutorIdParaSalvar = null;
-    }
-
-    // ✅ Processar moduloId
-    if (input.moduloId !== undefined) {
-      // Campo foi enviado explicitamente (pode ser null para remover)
-      moduloIdParaSalvar = input.moduloId || null;
-    } else if (moduloIdAnterior) {
-      // Campo não foi enviado mas existia antes → remover vínculo
-      moduloIdParaSalvar = null;
-    }
+    const turmaIdParaSalvar: string | null | undefined =
+      input.turmaId === undefined ? undefined : input.turmaId;
+    const instrutorIdParaSalvar: string | null | undefined =
+      input.instrutorId === undefined ? undefined : input.instrutorId;
+    const moduloIdParaSalvar: string | null | undefined =
+      input.moduloId === undefined ? undefined : input.moduloId;
 
     // ✅ Validar e forçar modalidade baseada na turma quando turmaId é fornecido
     let modalidadeParaSalvar = input.modalidade ? mapModalidade(input.modalidade) : undefined;
 
-    // Se turmaId foi fornecido (não null), validar modalidade
-    if (turmaIdParaSalvar) {
-      // Buscar método da turma
+    if (turmaIdFinal) {
+      // Buscar método e cursoId da turma
       const turma = await retryOperation(() =>
         prisma.cursosTurmas.findUnique({
-          where: { id: turmaIdParaSalvar },
-          select: { metodo: true },
+          where: { id: turmaIdFinal as any },
+          select: { metodo: true, cursoId: true },
         }),
       );
 
-      if (turma?.metodo) {
-        // Converter método da turma para modalidade da aula
-        const modalidadeEsperada = mapMetodoTurmaToModalidadeAula(turma.metodo);
+      if (!turma) {
+        const error: any = new Error('Turma não encontrada');
+        error.code = 'TURMA_NOT_FOUND';
+        throw error;
+      }
 
-        // Se modalidade foi fornecida e não corresponde à turma, usar a da turma
+      // Se cursoId foi enviado, validar consistência com a turma
+      if (cursoIdInput && cursoIdInput !== turma.cursoId) {
+        const error: any = new Error('cursoId não corresponde à turma informada');
+        error.code = 'VALIDATION_ERROR';
+        throw error;
+      }
+
+      if (turma.metodo) {
+        const modalidadeEsperada = mapMetodoTurmaToModalidadeAula(turma.metodo);
         if (
           modalidadeParaSalvar &&
           mapModalidadeFromDB(modalidadeParaSalvar) !== modalidadeEsperada
         ) {
-          // Converter modalidade esperada para formato do banco
           modalidadeParaSalvar = mapModalidade(modalidadeEsperada);
         } else if (!modalidadeParaSalvar) {
-          // Se modalidade não foi fornecida, usar a da turma
           modalidadeParaSalvar = mapModalidade(modalidadeEsperada);
         }
       }
-    } else if (turmaIdAnterior && !turmaIdParaSalvar) {
-      // Turma foi removida, modalidade pode ser independente
-      // Se modalidade foi fornecida, usar ela (já convertida acima)
-      // Se não foi fornecida, manter a atual (não incluir no update)
+    } else if (turmaIdAnterior && turmaIdParaSalvar === null) {
+      // Turma foi removida explicitamente; modalidade pode ser independente.
     }
 
     // Preparar objeto de atualização
@@ -1067,9 +1245,10 @@ export const aulasService = {
       descricao: input.descricao,
       tipoLink: null,
       urlVideo: input.youtubeUrl,
+      sala: (input as any).sala,
       obrigatoria: input.obrigatoria,
       duracaoMinutos: input.duracaoMinutos,
-      status: input.status,
+      status: statusNovo,
       dataInicio: input.dataInicio,
       dataFim: input.dataFim,
       horaInicio: input.horaInicio,
@@ -1086,6 +1265,15 @@ export const aulasService = {
       updateData.turmaId = turmaIdParaSalvar;
     }
 
+    // Curso:
+    // - Quando há turma vinculada, cursoId deve ser null (curso vem da turma)
+    // - Sem turma, cursoId só pode ser atualizado se enviado explicitamente
+    if (turmaIdFinal) {
+      updateData.cursoId = null;
+    } else if (cursoIdInput !== undefined) {
+      updateData.cursoId = cursoIdInput;
+    }
+
     // Incluir instrutorId apenas se foi explicitamente definido (incluindo null para remover)
     if (instrutorIdParaSalvar !== undefined) {
       updateData.instrutorId = instrutorIdParaSalvar;
@@ -1096,11 +1284,158 @@ export const aulasService = {
       updateData.moduloId = moduloIdParaSalvar;
     }
 
-    // Atualizar
-    const aulaAtualizada = await prisma.cursosTurmasAulas.update({
-      where: { id: aulaId },
-      data: updateData,
+    const materiaisNormalizados =
+      (input as any).materiais !== undefined
+        ? this._normalizeMateriaisInput((input as any).materiais)
+        : null;
+
+    if (materiaisNormalizados && materiaisNormalizados.length > 3) {
+      const error: any = new Error('Máximo de 3 materiais por aula');
+      error.code = 'VALIDATION_ERROR';
+      throw error;
+    }
+
+    // Buscar materiais antigos antes de atualizar (para histórico)
+    const materiaisAntigos =
+      materiaisNormalizados !== null
+        ? await prisma.cursosTurmasAulasMateriais.findMany({
+            where: { aulaId },
+            orderBy: { ordem: 'asc' },
+          })
+        : [];
+
+    const aulaAtualizada = await prisma.$transaction(async (tx) => {
+      const updated = await tx.cursosTurmasAulas.update({
+        where: { id: aulaId },
+        data: updateData,
+      });
+
+      if (materiaisNormalizados) {
+        // Deletar todos os materiais antigos
+        await tx.cursosTurmasAulasMateriais.deleteMany({ where: { aulaId } });
+        
+        // Criar novos materiais
+        if (materiaisNormalizados.length > 0) {
+          await tx.cursosTurmasAulasMateriais.createMany({
+            data: materiaisNormalizados.map((m, idx) => ({
+              aulaId,
+              tipo: 'OUTRO' as any,
+              titulo: m.titulo,
+              url: m.url,
+              ordem: idx + 1,
+            })),
+          });
+        }
+      }
+
+      return updated;
     });
+
+    // Registrar histórico de materiais se foram alterados
+    if (materiaisNormalizados !== null) {
+      const materiaisNovos = materiaisNormalizados.length > 0
+        ? await prisma.cursosTurmasAulasMateriais.findMany({
+            where: { aulaId },
+            orderBy: { ordem: 'asc' },
+          })
+        : [];
+
+      // Identificar materiais adicionados e removidos
+      const materiaisAntigosMap = new Map(materiaisAntigos.map((m) => [m.url, m]));
+      const materiaisNovosMap = new Map(materiaisNovos.map((m) => [m.url, m]));
+
+      // Materiais removidos (estavam antes, não estão agora)
+      for (const materialAntigo of materiaisAntigos) {
+        if (!materiaisNovosMap.has(materialAntigo.url || '')) {
+          // Tentar extrair nome do arquivo da URL
+          let arquivoNome = null;
+          if (materialAntigo.url) {
+            try {
+              const url = new URL(materialAntigo.url);
+              const pathname = url.pathname;
+              const filename = pathname.split('/').pop() || pathname;
+              if (filename && filename.includes('.')) {
+                arquivoNome = decodeURIComponent(filename);
+              }
+            } catch {
+              // Ignorar erro de URL
+            }
+          }
+
+          const materialCompleto = {
+            ...materialAntigo,
+            arquivoNome,
+            arquivoTamanho: materialAntigo.tamanhoEmBytes || null,
+            linkUrl: materialAntigo.url || null,
+          };
+
+          const camposAlterados = montarCamposAlteradosMaterial(
+            'MATERIAL_REMOVIDO',
+            materialCompleto,
+            null,
+          );
+
+          // Só criar histórico se houver informações úteis
+          if (Object.keys(camposAlterados).length > 1) {
+            // Mais que apenas 'acao'
+            await prisma.cursosAulasHistorico.create({
+              data: {
+                aulaId,
+                usuarioId: usuarioLogado.id,
+                acao: 'EDITADA',
+                camposAlterados,
+              },
+            });
+          }
+        }
+      }
+
+      // Materiais adicionados (não estavam antes, estão agora)
+      for (const materialNovo of materiaisNovos) {
+        if (!materiaisAntigosMap.has(materialNovo.url || '')) {
+          // Tentar extrair nome do arquivo da URL
+          let arquivoNome = null;
+          if (materialNovo.url) {
+            try {
+              const url = new URL(materialNovo.url);
+              const pathname = url.pathname;
+              const filename = pathname.split('/').pop() || pathname;
+              if (filename && filename.includes('.')) {
+                arquivoNome = decodeURIComponent(filename);
+              }
+            } catch {
+              // Ignorar erro de URL
+            }
+          }
+
+          const materialCompleto = {
+            ...materialNovo,
+            arquivoNome,
+            arquivoTamanho: materialNovo.tamanhoEmBytes || null,
+            linkUrl: materialNovo.url || null,
+          };
+
+          const camposAlterados = montarCamposAlteradosMaterial(
+            'MATERIAL_ADICIONADO',
+            null,
+            materialCompleto,
+          );
+
+          // Só criar histórico se houver informações úteis
+          if (Object.keys(camposAlterados).length > 1) {
+            // Mais que apenas 'acao'
+            await prisma.cursosAulasHistorico.create({
+              data: {
+                aulaId,
+                usuarioId: usuarioLogado.id,
+                acao: 'EDITADA',
+                camposAlterados,
+              },
+            });
+          }
+        }
+      }
+    }
 
     // Ações automáticas ao publicar
     // ✅ Apenas turmaId é necessário - instrutorId pode ser adicionado depois
@@ -1253,6 +1588,9 @@ export const aulasService = {
       prisma.cursosTurmasAulas.findUnique({
         where: { id: aulaId },
         include: {
+          Cursos: {
+            select: { id: true, codigo: true, nome: true },
+          },
           CursosTurmas: {
             select: {
               id: true,
@@ -1289,6 +1627,10 @@ export const aulasService = {
               },
             },
           },
+          CursosTurmasAulasMateriais: {
+            select: { id: true, titulo: true, url: true, ordem: true, tipo: true },
+            orderBy: { ordem: 'asc' },
+          },
         },
       }),
     );
@@ -1313,6 +1655,7 @@ export const aulasService = {
     return {
       id: aulaRetornada.id,
       codigo: aulaRetornada.codigo,
+      cursoId: aulaRetornada.CursosTurmas?.Cursos?.id || (aulaRetornada as any).Cursos?.id || null,
       titulo: aulaRetornada.nome,
       descricao: aulaRetornada.descricao || null,
       duracaoMinutos: aulaRetornada.duracaoMinutos || null,
@@ -1333,6 +1676,14 @@ export const aulasService = {
       statusGravacao: aulaRetornada.statusGravacao || null,
       meetEventId: aulaRetornada.meetEventId || null,
       turmaId: aulaRetornada.turmaId || null,
+      materiais:
+        (aulaRetornada as any).CursosTurmasAulasMateriais?.map((m: any) => ({
+          id: m.id,
+          titulo: m.titulo,
+          url: m.url,
+          ordem: m.ordem,
+          tipo: m.tipo,
+        })) ?? [],
       turma: aulaRetornada.CursosTurmas
         ? {
             id: aulaRetornada.CursosTurmas.id,
@@ -1592,7 +1943,7 @@ export const aulasService = {
     aulaId: string,
     tipo: 'entrada' | 'saida',
     inscricaoId: string,
-    usuarioId: string,
+    usuarioLogado: any,
   ) {
     const aula = await prisma.cursosTurmasAulas.findUnique({
       where: { id: aulaId },
@@ -1602,16 +1953,37 @@ export const aulasService = {
     if (!aula) throw new Error('Aula não encontrada');
 
     // Validar modalidade
-    if (!['AO_VIVO', 'SEMIPRESENCIAL'].includes(aula.modalidade)) {
+    if (!['LIVE', 'SEMIPRESENCIAL'].includes(aula.modalidade)) {
       throw new Error('Presença só pode ser registrada em aulas ao vivo');
+    }
+
+    if (!aula.turmaId) {
+      throw new Error('Aula sem turma vinculada - não é possível registrar presença');
+    }
+
+    const inscricao = await prisma.cursosTurmasInscricoes.findUnique({
+      where: { id: inscricaoId },
+      select: { id: true, alunoId: true, turmaId: true, status: true },
+    });
+
+    if (!inscricao) throw new Error('Inscrição não encontrada');
+
+    if (inscricao.turmaId !== aula.turmaId) {
+      throw new Error('Inscrição não pertence à turma desta aula');
+    }
+
+    if (inscricao.status !== 'INSCRITO') {
+      throw new Error('Inscrição não está ativa para registrar presença');
+    }
+
+    if (usuarioLogado.role === 'ALUNO_CANDIDATO' && inscricao.alunoId !== usuarioLogado.id) {
+      const error: any = new Error('Sem permissão para registrar presença para outro aluno');
+      error.code = 'FORBIDDEN';
+      throw error;
     }
 
     if (tipo === 'entrada') {
       // Registrar entrada via CursosFrequenciaAlunos
-      if (!aula.turmaId) {
-        throw new Error('Aula sem turma vinculada - não é possível registrar presença');
-      }
-
       await prisma.cursosFrequenciaAlunos.create({
         data: {
           turmaId: aula.turmaId,
@@ -1622,7 +1994,7 @@ export const aulasService = {
         },
       });
 
-      aulasLogger.info('[PRESENCA_ENTRADA]', { aulaId, usuarioId });
+      aulasLogger.info('[PRESENCA_ENTRADA]', { aulaId, usuarioId: usuarioLogado.id });
     } else {
       // Registrar saída (já existe entrada)
       const presenca = await prisma.cursosFrequenciaAlunos.findFirst({
@@ -1642,7 +2014,7 @@ export const aulasService = {
         });
       }
 
-      aulasLogger.info('[PRESENCA_SAIDA]', { aulaId, usuarioId });
+      aulasLogger.info('[PRESENCA_SAIDA]', { aulaId, usuarioId: usuarioLogado.id });
     }
 
     return { success: true };
@@ -1753,8 +2125,16 @@ export const aulasService = {
 
     if (!aula) throw new Error('Aula não encontrada');
 
-    if (!['AO_VIVO', 'SEMIPRESENCIAL'].includes(aula.modalidade)) {
+    if (!['LIVE', 'SEMIPRESENCIAL'].includes(aula.modalidade)) {
       throw new Error('Presença só está disponível para aulas ao vivo');
+    }
+
+    if (usuarioLogado.role === 'ALUNO_CANDIDATO') {
+      throw new Error('Sem permissão para ver presenças de outros alunos');
+    }
+
+    if (!aula.turmaId) {
+      throw new Error('Aula sem turma vinculada - não há presenças para listar');
     }
 
     // Validar permissão (instrutor só vê suas turmas)

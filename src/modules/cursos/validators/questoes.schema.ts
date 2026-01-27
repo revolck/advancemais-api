@@ -26,7 +26,7 @@ const questaoBaseSchema = z.object({
     .string({ invalid_type_error: 'Enunciado deve ser um texto' })
     .trim()
     .min(1, 'Enunciado não pode estar vazio')
-    .max(2000, 'Enunciado deve ter no máximo 2000 caracteres'),
+    .max(5000, 'Enunciado deve ter no máximo 5000 caracteres'),
   tipo: z.nativeEnum(CursosTipoQuestao, {
     errorMap: () => ({ message: 'Tipo de questão inválido' }),
   }),
@@ -45,6 +45,14 @@ export const createQuestaoSchema = questaoBaseSchema
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: 'Questões de múltipla escolha devem ter pelo menos 2 alternativas',
+          path: ['alternativas'],
+        });
+        return;
+      }
+      if (data.alternativas.length > 4) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Questões de múltipla escolha podem ter no máximo 4 alternativas',
           path: ['alternativas'],
         });
         return;

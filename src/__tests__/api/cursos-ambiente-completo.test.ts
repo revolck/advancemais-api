@@ -284,11 +284,18 @@ describe('API - Ambiente Completo de Cursos (Gratuito, Pago, Recuperação, Cert
       const atividadeData = {
         cursoId: cursoGratuitoId,
         tipo: 'ATIVIDADE',
+        tipoAtividade: 'QUESTOES',
         titulo: 'Atividade Prática 1',
         etiqueta: 'AT1',
         descricao: 'Atividade prática para avaliação',
         peso: 1,
         valePonto: true,
+        obrigatoria: true,
+        modalidade: 'ONLINE',
+        dataInicio: '2099-01-27',
+        dataFim: '2099-01-31',
+        horaInicio: '10:00',
+        horaTermino: '11:00',
         questoes: [
           {
             enunciado: 'Qual a resposta correta?',
@@ -329,6 +336,12 @@ describe('API - Ambiente Completo de Cursos (Gratuito, Pago, Recuperação, Cert
         descricao: 'Prova final do curso',
         peso: 3,
         valePonto: true,
+        obrigatoria: true,
+        modalidade: 'ONLINE',
+        dataInicio: '2099-01-27',
+        dataFim: '2099-01-31',
+        horaInicio: '10:00',
+        horaTermino: '11:00',
         questoes: [
           {
             enunciado: 'Pergunta 1 da prova?',
@@ -377,6 +390,12 @@ describe('API - Ambiente Completo de Cursos (Gratuito, Pago, Recuperação, Cert
         peso: 1,
         valePonto: true,
         recuperacaoFinal: true,
+        obrigatoria: true,
+        modalidade: 'ONLINE',
+        dataInicio: '2099-02-01',
+        dataFim: '2099-02-01',
+        horaInicio: '10:00',
+        horaTermino: '11:00',
         questoes: [
           {
             enunciado: 'Pergunta de recuperação?',

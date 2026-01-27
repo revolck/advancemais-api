@@ -119,6 +119,7 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
           peso: 10,
           valePonto: true,
           obrigatoria: true,
+          modalidade: 'PRESENCIAL',
           dataInicio: '2026-03-15',
           dataFim: '2026-03-15',
           horaInicio: '14:00',
@@ -542,8 +543,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
       expect(response.body.success).toBe(false);
     });
 
-    it('deve rejeitar PERGUNTA_RESPOSTA com descricao > 500 caracteres', async () => {
-      const descricaoLonga = 'a'.repeat(501);
+    it('deve rejeitar PERGUNTA_RESPOSTA com descricao > 5000 caracteres', async () => {
+      const descricaoLonga = 'a'.repeat(5001);
 
       const response = await request(app)
         .post('/api/v1/cursos/avaliacoes')

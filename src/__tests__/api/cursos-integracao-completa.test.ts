@@ -220,6 +220,22 @@ describe('API - Cursos Integração Completa (Turmas, Aulas, Provas, Frequência
         etiqueta: 'P1',
         peso: 10.0,
         valePonto: true,
+        obrigatoria: true,
+        modalidade: 'ONLINE',
+        dataInicio: '2099-01-27',
+        dataFim: '2099-01-31',
+        horaInicio: '10:00',
+        horaTermino: '11:00',
+        questoes: [
+          {
+            enunciado: 'Pergunta 1',
+            tipo: 'MULTIPLA_ESCOLHA',
+            alternativas: [
+              { texto: 'A', correta: true },
+              { texto: 'B', correta: false },
+            ],
+          },
+        ],
         ativo: true,
         recuperacaoFinal: false,
       };
@@ -249,11 +265,28 @@ describe('API - Cursos Integração Completa (Turmas, Aulas, Provas, Frequência
       const avaliacaoData = {
         cursoId: testCursoId,
         tipo: 'ATIVIDADE',
+        tipoAtividade: 'QUESTOES',
         titulo: 'Atividade Template 1',
         descricao: 'Atividade template de teste',
         etiqueta: 'AT1',
         peso: 5.0,
         valePonto: true,
+        obrigatoria: true,
+        modalidade: 'ONLINE',
+        dataInicio: '2099-01-27',
+        dataFim: '2099-01-31',
+        horaInicio: '10:00',
+        horaTermino: '11:00',
+        questoes: [
+          {
+            enunciado: 'Pergunta 1',
+            tipo: 'MULTIPLA_ESCOLHA',
+            alternativas: [
+              { texto: 'A', correta: true },
+              { texto: 'B', correta: false },
+            ],
+          },
+        ],
         ativo: true,
         recuperacaoFinal: false,
       };
@@ -285,6 +318,22 @@ describe('API - Cursos Integração Completa (Turmas, Aulas, Provas, Frequência
         etiqueta: 'REC',
         peso: 10.0,
         valePonto: true,
+        obrigatoria: true,
+        modalidade: 'ONLINE',
+        dataInicio: '2099-01-27',
+        dataFim: '2099-01-31',
+        horaInicio: '10:00',
+        horaTermino: '11:00',
+        questoes: [
+          {
+            enunciado: 'Pergunta 1',
+            tipo: 'MULTIPLA_ESCOLHA',
+            alternativas: [
+              { texto: 'A', correta: true },
+              { texto: 'B', correta: false },
+            ],
+          },
+        ],
         ativo: true,
         recuperacaoFinal: true,
       };

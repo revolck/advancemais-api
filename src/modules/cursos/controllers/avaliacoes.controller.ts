@@ -8,7 +8,7 @@ import {
   clonarAvaliacaoSchema,
   createAvaliacaoSchema,
   listAvaliacoesQuerySchema,
-  updateAvaliacaoSchema,
+  putUpdateAvaliacaoSchema,
 } from '../validators/avaliacoes.schema';
 
 const parseUuid = (raw: unknown) => {
@@ -26,7 +26,8 @@ export class AvaliacoesController {
   static list = async (req: Request, res: Response) => {
     try {
       const query = listAvaliacoesQuerySchema.parse(req.query);
-      const result = await avaliacoesService.list(query);
+      const usuarioLogado = req.user!;
+      const result = await avaliacoesService.list(query, usuarioLogado);
       res.json({ success: true, ...result });
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -58,7 +59,8 @@ export class AvaliacoesController {
     }
 
     try {
-      const avaliacao = await avaliacoesService.get(id);
+      const usuarioLogado = req.user!;
+      const avaliacao = await avaliacoesService.get(id, usuarioLogado);
       res.json({ success: true, avaliacao });
     } catch (error: any) {
       if (error?.code === 'AVALIACAO_NOT_FOUND') {
@@ -66,6 +68,14 @@ export class AvaliacoesController {
           success: false,
           code: 'AVALIACAO_NOT_FOUND',
           message: 'Avaliação não encontrada',
+        });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para acessar esta avaliação',
         });
       }
 
@@ -225,16 +235,10 @@ export class AvaliacoesController {
     }
 
     try {
-      const payload = updateAvaliacaoSchema.parse(req.body);
-      if (Object.keys(payload).length === 0) {
-        return res.status(400).json({
-          success: false,
-          code: 'VALIDATION_ERROR',
-          message: 'Informe ao menos um campo para atualização',
-        });
-      }
+      const payload = putUpdateAvaliacaoSchema.parse(req.body);
+      const usuarioLogado = req.user!;
 
-      const avaliacao = await avaliacoesService.update(id, payload);
+      const avaliacao = await avaliacoesService.update(id, payload, usuarioLogado);
       res.json({ success: true, avaliacao });
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -251,6 +255,30 @@ export class AvaliacoesController {
           success: false,
           code: 'AVALIACAO_NOT_FOUND',
           message: 'Avaliação não encontrada',
+        });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para editar esta avaliação',
+        });
+      }
+
+      if (error?.code === 'TURMA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'TURMA_NOT_FOUND',
+          message: error?.message || 'Turma não encontrada',
+        });
+      }
+
+      if (error?.code === 'TURMA_CURSO_MISMATCH') {
+        return res.status(400).json({
+          success: false,
+          code: 'TURMA_CURSO_MISMATCH',
+          message: error?.message || 'Turma não pertence ao curso informado',
         });
       }
 
@@ -274,7 +302,8 @@ export class AvaliacoesController {
     }
 
     try {
-      const result = await avaliacoesService.remove(id);
+      const usuarioLogado = req.user!;
+      const result = await avaliacoesService.remove(id, usuarioLogado);
       res.json(result);
     } catch (error: any) {
       if (error?.code === 'AVALIACAO_NOT_FOUND') {
@@ -282,6 +311,14 @@ export class AvaliacoesController {
           success: false,
           code: 'AVALIACAO_NOT_FOUND',
           message: 'Avaliação não encontrada',
+        });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para remover esta avaliação',
         });
       }
 

@@ -6,6 +6,11 @@ import type {
   UpdateMaterialInput,
   ReordenarMateriaisInput,
 } from '../validators/materiais.schema';
+import { montarCamposAlteradosMaterial } from './historico-materiais.helper';
+
+// Re-exportar tipos para uso na função helper
+type CreateMaterialInputType = CreateMaterialInput;
+type UpdateMaterialInputType = UpdateMaterialInput;
 
 const materiaisLogger = logger.child({ module: 'MateriaisService' });
 
@@ -18,6 +23,7 @@ function mapTipoMaterial(tipo: string): any {
   };
   return map[tipo] || tipo;
 }
+
 
 const ALLOWED_MIME_TYPES = [
   'application/pdf',
@@ -95,21 +101,35 @@ export const materiaisService = {
             : input.tipo === 'LINK'
               ? input.linkUrl
               : null,
+        // Campos adicionais se disponíveis
+        tamanhoEmBytes: input.tipo === 'ARQUIVO' ? input.arquivoTamanho : null,
       },
     });
 
-    // 5. Registrar no histórico da aula
+    // 5. Preparar dados do material para histórico (incluir dados do input que não estão no banco)
+    const materialCompleto = {
+      ...material,
+      arquivoNome: input.tipo === 'ARQUIVO' ? input.arquivoNome : undefined,
+      arquivoMimeType: input.tipo === 'ARQUIVO' ? input.arquivoMimeType : undefined,
+      arquivoTamanho: input.tipo === 'ARQUIVO' ? input.arquivoTamanho : undefined,
+      linkUrl: input.tipo === 'LINK' ? input.linkUrl : undefined,
+      conteudoHtml: input.tipo === 'TEXTO' ? input.conteudoHtml : undefined,
+    };
+
+    // 6. Registrar no histórico da aula com informações detalhadas
+    const camposAlterados = montarCamposAlteradosMaterial(
+      'MATERIAL_ADICIONADO',
+      null,
+      materialCompleto,
+      input,
+    );
+
     await prisma.cursosAulasHistorico.create({
       data: {
         aulaId,
         usuarioId,
-        acao: 'EDITADA',
-        camposAlterados: {
-          acao: 'MATERIAL_ADICIONADO',
-          materialId: material.id,
-          materialTitulo: material.titulo,
-          materialTipo: material.tipo,
-        },
+        acao: 'EDITADA', // Manter enum existente, ação específica em camposAlterados
+        camposAlterados,
       },
     });
 
@@ -169,32 +189,52 @@ export const materiaisService = {
    * Atualizar material
    */
   async update(aulaId: string, materialId: string, input: UpdateMaterialInput, usuarioId: string) {
-    const material = await prisma.cursosTurmasAulasMateriais.findFirst({
+    const materialAntigo = await prisma.cursosTurmasAulasMateriais.findFirst({
       where: { id: materialId, aulaId },
     });
 
-    if (!material) throw new Error('Material não encontrado');
+    if (!materialAntigo) throw new Error('Material não encontrado');
 
-    const atualizado = await prisma.cursosTurmasAulasMateriais.update({
+    const materialAtualizado = await prisma.cursosTurmasAulasMateriais.update({
       where: { id: materialId },
       data: input,
     });
 
-    // Registrar histórico
+    // Preparar dados para histórico
+    const materialAntigoCompleto = {
+      ...materialAntigo,
+      arquivoNome: null, // Não temos no banco, mas pode vir do input se for atualização de arquivo
+      arquivoMimeType: null,
+      arquivoTamanho: materialAntigo.tamanhoEmBytes || null,
+      linkUrl: materialAntigo.url || null,
+    };
+
+    const materialNovoCompleto = {
+      ...materialAtualizado,
+      arquivoNome: (input as any)?.arquivoNome || null,
+      arquivoMimeType: (input as any)?.arquivoMimeType || null,
+      arquivoTamanho: materialAtualizado.tamanhoEmBytes || null,
+      linkUrl: materialAtualizado.url || null,
+    };
+
+    // Registrar histórico com informações detalhadas
+    const camposAlterados = montarCamposAlteradosMaterial(
+      'MATERIAL_ATUALIZADO',
+      materialAntigoCompleto,
+      materialNovoCompleto,
+      input,
+    );
+
     await prisma.cursosAulasHistorico.create({
       data: {
         aulaId,
         usuarioId,
         acao: 'EDITADA',
-        camposAlterados: {
-          acao: 'MATERIAL_ATUALIZADO',
-          materialId,
-          mudancas: input,
-        },
+        camposAlterados,
       },
     });
 
-    return atualizado;
+    return materialAtualizado;
   },
 
   /**
@@ -207,21 +247,46 @@ export const materiaisService = {
 
     if (!material) throw new Error('Material não encontrado');
 
+    // Preparar dados do material antes de deletar
+    const materialCompleto: any = {
+      ...material,
+      arquivoNome: null as string | null, // Não temos no banco, mas tentar extrair da URL se possível
+      arquivoMimeType: null as string | null,
+      arquivoTamanho: material.tamanhoEmBytes || null,
+      linkUrl: material.url || null,
+    };
+
+    // Tentar extrair nome do arquivo da URL se for arquivo
+    if (material.url && material.tipo === 'APOSTILA') {
+      try {
+        const url = new URL(material.url);
+        const pathname = url.pathname;
+        const filename = pathname.split('/').pop() || pathname;
+        if (filename && filename.includes('.')) {
+          materialCompleto.arquivoNome = decodeURIComponent(filename);
+        }
+      } catch {
+        // Ignorar erro de URL
+      }
+    }
+
     await prisma.cursosTurmasAulasMateriais.delete({
       where: { id: materialId },
     });
 
-    // Registrar histórico
+    // Registrar histórico com informações detalhadas
+    const camposAlterados = montarCamposAlteradosMaterial(
+      'MATERIAL_REMOVIDO',
+      materialCompleto,
+      null,
+    );
+
     await prisma.cursosAulasHistorico.create({
       data: {
         aulaId,
         usuarioId,
         acao: 'EDITADA',
-        camposAlterados: {
-          acao: 'MATERIAL_REMOVIDO',
-          materialId,
-          materialTitulo: material.titulo,
-        },
+        camposAlterados,
       },
     });
 
@@ -237,6 +302,19 @@ export const materiaisService = {
    * Reordenar materiais
    */
   async reordenar(aulaId: string, input: ReordenarMateriaisInput, usuarioId: string) {
+    // Buscar materiais antes de atualizar para ter informações completas
+    const materiaisAntigos = await prisma.cursosTurmasAulasMateriais.findMany({
+      where: {
+        aulaId,
+        id: { in: input.ordens.map((o) => o.id) },
+      },
+      orderBy: { ordem: 'asc' },
+    });
+
+    // Criar mapa de ordens antigas
+    const ordensAntigas = new Map(materiaisAntigos.map((m) => [m.id, m.ordem]));
+    const materiaisMap = new Map(materiaisAntigos.map((m) => [m.id, m]));
+
     // Atualizar ordem de cada material
     for (const item of input.ordens) {
       await prisma.cursosTurmasAulasMateriais.updateMany({
@@ -245,18 +323,37 @@ export const materiaisService = {
       });
     }
 
-    // Registrar histórico
-    await prisma.cursosAulasHistorico.create({
-      data: {
-        aulaId,
-        usuarioId,
-        acao: 'EDITADA',
-        camposAlterados: {
-          acao: 'MATERIAIS_REORDENADOS',
-          ordens: input.ordens,
+    // Preparar informações de reordenação para histórico
+    const materiaisReordenados = input.ordens
+      .filter((item) => {
+        const ordemAntiga = ordensAntigas.get(item.id);
+        return ordemAntiga !== undefined && ordemAntiga !== item.ordem;
+      })
+      .map((item) => {
+        const material = materiaisMap.get(item.id);
+        return {
+          materialId: item.id,
+          materialTitulo: material?.titulo || 'Material',
+          ordem: { de: ordensAntigas.get(item.id) || null, para: item.ordem },
+        };
+      });
+
+    // Registrar histórico apenas se houver mudanças
+    if (materiaisReordenados.length > 0) {
+      const camposAlterados: Record<string, any> = {
+        acao: 'MATERIAIS_REORDENADOS',
+        materiais: materiaisReordenados,
+      };
+
+      await prisma.cursosAulasHistorico.create({
+        data: {
+          aulaId,
+          usuarioId,
+          acao: 'EDITADA',
+          camposAlterados,
         },
-      },
-    });
+      });
+    }
 
     return { success: true, message: 'Materiais reordenados com sucesso' };
   },
@@ -275,7 +372,7 @@ export const materiaisService = {
     // Retornar URL direta (arquivoToken não existe no schema)
     return {
       token: materialId,
-      downloadUrl: material.url,
+      downloadUrl: material.url || '',
       expiresIn: 3600,
     };
   },

@@ -14,7 +14,7 @@ import { logger } from '@/utils/logger';
 import type {
   CreateAvaliacaoInput,
   ListAvaliacoesQuery,
-  UpdateAvaliacaoInput,
+  PutUpdateAvaliacaoInput,
   ClonarAvaliacaoInput,
 } from '../validators/avaliacoes.schema';
 
@@ -63,8 +63,19 @@ const normalizeDecimal = (value: Prisma.Decimal | number | null | undefined) => 
   return Number(value);
 };
 
+const mapModalidadeFromDB = (modalidade: string | null | undefined) => {
+  if (!modalidade) return null;
+  return modalidade === 'LIVE' ? 'AO_VIVO' : modalidade;
+};
+
 const mapAvaliacao = (avaliacao: AvaliacaoWithQuestoes) => {
   const cursoRelacionado = avaliacao.CursosTurmas?.Cursos ?? avaliacao.Cursos ?? null;
+  let modalidadeAvaliacao = mapModalidadeFromDB(avaliacao.modalidade) ?? null;
+
+  // Se há turma vinculada, modalidade deve seguir método da turma
+  if (avaliacao.CursosTurmas?.metodo) {
+    modalidadeAvaliacao = mapModalidadeFromDB(avaliacao.CursosTurmas.metodo) ?? modalidadeAvaliacao;
+  }
 
   return {
     id: avaliacao.id,
@@ -82,7 +93,7 @@ const mapAvaliacao = (avaliacao: AvaliacaoWithQuestoes) => {
     valePonto: avaliacao.valePonto ?? true,
     ativo: avaliacao.ativo,
     status: avaliacao.status,
-    modalidade: avaliacao.modalidade,
+    modalidade: modalidadeAvaliacao,
     obrigatoria: avaliacao.obrigatoria,
     dataInicio: avaliacao.dataInicio?.toISOString() ?? null,
     dataFim: avaliacao.dataFim?.toISOString() ?? null,
@@ -104,7 +115,7 @@ const mapAvaliacao = (avaliacao: AvaliacaoWithQuestoes) => {
           id: avaliacao.CursosTurmas.id,
           codigo: avaliacao.CursosTurmas.codigo,
           nome: avaliacao.CursosTurmas.nome,
-          modalidade: avaliacao.CursosTurmas.metodo, // metodo da turma vira modalidade na API
+          modalidade: mapModalidadeFromDB(avaliacao.CursosTurmas.metodo), // metodo da turma vira modalidade na API
         }
       : null,
     instrutor: avaliacao.Usuarios
@@ -250,59 +261,204 @@ const createQuestoes = async (
 };
 
 export const avaliacoesService = {
-  async list(query: ListAvaliacoesQuery) {
-    const { cursoId, turmaId, tipo, status, semTurma, search, page, pageSize, orderBy, order } =
-      query;
+  async list(query: ListAvaliacoesQuery, usuarioLogado: any) {
+    const {
+      cursoId,
+      turmaId,
+      instrutorId,
+      curso,
+      turma,
+      instrutor,
+      tipo,
+      tipoAtividade,
+      modalidade,
+      status,
+      obrigatoria,
+      semTurma,
+      search,
+      titulo,
+      periodo,
+      periodoInicio,
+      periodoFim,
+      dataInicio,
+      dataFim,
+      page,
+      pageSize,
+      orderBy,
+      order,
+    } = query as any;
 
     const where: Prisma.CursosTurmasProvasWhereInput = {};
 
-    // Filtro por curso (OPCIONAL)
+    const applyAndFilter = (filter: Prisma.CursosTurmasProvasWhereInput) => {
+      if (where.AND && Array.isArray(where.AND)) {
+        where.AND.push(filter);
+        return;
+      }
+
+      if (where.OR) {
+        where.AND = [{ OR: where.OR }, filter];
+        delete where.OR;
+        return;
+      }
+
+      where.AND = [filter];
+    };
+
+    // Filtro por role: INSTRUTOR vê apenas suas turmas (ou avaliações sem turma mas dele)
+    if (usuarioLogado?.role === 'INSTRUTOR' && !turmaId) {
+      const turmasDoInstrutor = await prisma.cursosTurmas.findMany({
+        where: { instrutorId: usuarioLogado.id },
+        select: { id: true },
+      });
+      const turmasIds = turmasDoInstrutor.map((t) => t.id);
+      if (turmasIds.length > 0) {
+        where.OR = [{ turmaId: { in: turmasIds } }, { turmaId: null, instrutorId: usuarioLogado.id }];
+      } else {
+        where.turmaId = null;
+        where.instrutorId = usuarioLogado.id;
+      }
+    }
+
+    // Filtro por cursoId (templates do curso ou avaliações das turmas do curso)
     if (cursoId) {
       if (semTurma === true) {
-        where.turmaId = null;
-        where.cursoId = cursoId;
+        applyAndFilter({ turmaId: null, cursoId });
       } else if (semTurma === false) {
-        where.turmaId = { not: null };
-        where.CursosTurmas = { cursoId };
+        applyAndFilter({ turmaId: { not: null }, CursosTurmas: { cursoId } });
       } else {
-        where.OR = [{ turmaId: null, cursoId }, { CursosTurmas: { cursoId } }];
+        applyAndFilter({ OR: [{ turmaId: null, cursoId }, { CursosTurmas: { cursoId } }] });
       }
-    } else {
-      // Sem cursoId: listagem global
-      if (semTurma === true) {
-        where.turmaId = null;
-      } else if (semTurma === false) {
-        where.turmaId = { not: null };
-      }
-      // Se semTurma não for especificado, retorna tudo
+    } else if (semTurma === true) {
+      applyAndFilter({ turmaId: null });
+    } else if (semTurma === false) {
+      applyAndFilter({ turmaId: { not: null } });
     }
 
-    // Filtro por turma específica (OPCIONAL)
     if (turmaId) {
-      where.turmaId = turmaId;
+      if (where.OR) {
+        where.AND = [{ OR: where.OR }, { turmaId }];
+        delete where.OR;
+      } else {
+        where.turmaId = turmaId;
+      }
     }
 
-    // Filtro por tipo (OPCIONAL)
-    if (tipo) {
-      where.tipo = tipo;
+    if (instrutorId) applyAndFilter({ instrutorId });
+    if (tipo) where.tipo = tipo;
+    if (tipoAtividade) where.tipoAtividade = tipoAtividade;
+    if (obrigatoria !== undefined) where.obrigatoria = obrigatoria;
+
+    // Modalidade (CSV) - aceita LIVE e também AO_VIVO (já normalizado no validator)
+    if (modalidade) {
+      const modalidades = Array.from(
+        new Set(
+          String(modalidade)
+            .split(',')
+            .map((m) => m.trim())
+            .filter(Boolean),
+        ),
+      );
+      if (modalidades.length > 0) where.modalidade = { in: modalidades as any };
     }
 
-    // Filtro por status (OPCIONAL)
+    // status (compat): "ATIVO|INATIVO" -> boolean ativo; caso contrário -> CursosAulaStatus CSV
     if (status) {
-      where.ativo = status === 'ATIVO';
+      const parts = String(status)
+        .split(',')
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean);
+      const onlyAtivo = parts.length > 0 && parts.every((s) => s === 'ATIVO' || s === 'INATIVO');
+      if (onlyAtivo) {
+        if (parts.length === 1) where.ativo = parts[0] === 'ATIVO';
+      } else {
+        where.status = { in: parts as any };
+      }
     }
 
-    // Busca por título ou etiqueta (OPCIONAL)
-    if (search) {
-      const searchFilter: Prisma.CursosTurmasProvasWhereInput = {
-        OR: [
-          { titulo: { contains: search, mode: 'insensitive' } },
-          { etiqueta: { contains: search, mode: 'insensitive' } },
-        ],
-      };
+    const searchTerm = (search ?? titulo)?.trim();
+    const cursoTerm = typeof curso === 'string' ? curso.trim() : undefined;
+    const turmaTerm = typeof turma === 'string' ? turma.trim() : undefined;
+    const instrutorTerm = typeof instrutor === 'string' ? instrutor.trim() : undefined;
 
-      where.AND =
-        where.AND && Array.isArray(where.AND) ? [...where.AND, searchFilter] : [searchFilter];
+    if (cursoTerm) {
+      applyAndFilter({
+        OR: [
+          { Cursos: { nome: { contains: cursoTerm, mode: 'insensitive' } } },
+          { Cursos: { codigo: { contains: cursoTerm, mode: 'insensitive' } } },
+          { CursosTurmas: { Cursos: { nome: { contains: cursoTerm, mode: 'insensitive' } } } },
+          { CursosTurmas: { Cursos: { codigo: { contains: cursoTerm, mode: 'insensitive' } } } },
+        ],
+      });
+    }
+
+    if (turmaTerm) {
+      applyAndFilter({
+        CursosTurmas: {
+          OR: [
+            { nome: { contains: turmaTerm, mode: 'insensitive' } },
+            { codigo: { contains: turmaTerm, mode: 'insensitive' } },
+          ],
+        },
+      });
+    }
+
+    if (instrutorTerm) {
+      applyAndFilter({
+        Usuarios: {
+          OR: [
+            { nomeCompleto: { contains: instrutorTerm, mode: 'insensitive' } },
+            { email: { contains: instrutorTerm, mode: 'insensitive' } },
+            { cpf: { contains: instrutorTerm, mode: 'insensitive' } },
+          ],
+        },
+      });
+    }
+
+    if (searchTerm) {
+      applyAndFilter({
+        OR: [
+          { titulo: { contains: searchTerm, mode: 'insensitive' } },
+          { etiqueta: { contains: searchTerm, mode: 'insensitive' } },
+        ],
+      });
+    }
+
+    // Período: overlap entre [dataInicio,dataFim] e [start,end]
+    const parsePeriodoString = (value: string): { start?: Date; end?: Date } => {
+      const raw = value.trim();
+      if (!raw) return {};
+      const separators = [',', ';', ' - ', ' to ', ' até ', ' ate ', '|', '..', '...'];
+      let parts: string[] | null = null;
+      for (const sep of separators) {
+        if (raw.includes(sep)) {
+          parts = raw.split(sep).map((p) => p.trim());
+          break;
+        }
+      }
+      if (!parts) parts = [raw];
+      const [p1, p2] = parts;
+      const start = p1 ? new Date(p1) : undefined;
+      const end = p2 ? new Date(p2) : undefined;
+      return {
+        start: start && !Number.isNaN(start.getTime()) ? start : undefined,
+        end: end && !Number.isNaN(end.getTime()) ? end : undefined,
+      };
+    };
+
+    const periodoParsed = typeof periodo === 'string' ? parsePeriodoString(periodo) : {};
+    const start = dataInicio ?? periodoInicio ?? periodoParsed.start;
+    const end = dataFim ?? periodoFim ?? periodoParsed.end;
+
+    if (start || end) {
+      const startFinal = start ?? new Date('1970-01-01T00:00:00.000Z');
+      const endFinal = end ?? new Date('9999-12-31T23:59:59.999Z');
+      applyAndFilter({
+        OR: [
+          { dataFim: null, dataInicio: { gte: startFinal, lte: endFinal } },
+          { dataFim: { not: null, gte: startFinal }, dataInicio: { lte: endFinal } },
+        ],
+      });
     }
 
     const total = await prisma.cursosTurmasProvas.count({ where });
@@ -375,7 +531,7 @@ export const avaliacoesService = {
           nome: mapped.titulo,
           cursoNome: mapped.curso?.nome ?? null,
           turmaNome: mapped.turma?.nome ?? null,
-          status: a.ativo ? 'ATIVO' : 'INATIVO',
+          statusAtivo: a.ativo ? 'ATIVO' : 'INATIVO',
           data: a.criadoEm.toISOString(),
           pesoNota: normalizeDecimal(a.peso) ?? 0,
           criadoPor,
@@ -394,8 +550,29 @@ export const avaliacoesService = {
     };
   },
 
-  async get(avaliacaoId: string) {
-    return fetchTemplate(prisma, avaliacaoId);
+  async get(avaliacaoId: string, usuarioLogado: any) {
+    const avaliacao = await fetchAny(prisma, avaliacaoId);
+
+    // Restrição extra para instrutor: apenas turmas dele (ou avaliações sem turma com instrutorId dele)
+    if (usuarioLogado?.role === 'INSTRUTOR') {
+      if (avaliacao.turmaId) {
+        const turma = await prisma.cursosTurmas.findUnique({
+          where: { id: avaliacao.turmaId },
+          select: { instrutorId: true },
+        });
+        if (turma?.instrutorId !== usuarioLogado.id) {
+          const error: any = new Error('Instrutor só pode acessar avaliações de suas turmas');
+          error.code = 'FORBIDDEN';
+          throw error;
+        }
+      } else if (avaliacao.instrutorId !== usuarioLogado.id) {
+        const error: any = new Error('Instrutor só pode acessar avaliações próprias');
+        error.code = 'FORBIDDEN';
+        throw error;
+      }
+    }
+
+    return avaliacao;
   },
 
   async create(data: CreateAvaliacaoInput) {
@@ -514,7 +691,7 @@ export const avaliacoesService = {
           titulo: data.titulo,
           etiqueta,
           descricao: data.descricao ?? null,
-          peso: new Prisma.Decimal(data.peso),
+          peso: new Prisma.Decimal(data.valePonto ? (data.peso ?? 0) : 0),
           valePonto: data.valePonto ?? true,
           ativo: true, // Sempre ativo (status controla publicação)
           status: statusFinal,
@@ -549,56 +726,150 @@ export const avaliacoesService = {
     });
   },
 
-  async update(avaliacaoId: string, data: UpdateAvaliacaoInput) {
+  async update(avaliacaoId: string, data: PutUpdateAvaliacaoInput, usuarioLogado: any) {
     return prisma.$transaction(async (tx) => {
       const existente = await tx.cursosTurmasProvas.findUnique({
         where: { id: avaliacaoId },
-        select: { id: true, turmaId: true },
-      });
-
-      if (!existente || existente.turmaId) {
-        const error: any = new Error('Avaliação não encontrada');
-        error.code = 'AVALIACAO_NOT_FOUND';
-        throw error;
-      }
-
-      await tx.cursosTurmasProvas.update({
-        where: { id: avaliacaoId },
-        data: {
-          tipo: data.tipo ?? undefined,
-          recuperacaoFinal: data.recuperacaoFinal ?? undefined,
-          titulo: data.titulo ?? undefined,
-          etiqueta: data.etiqueta ?? undefined,
-          descricao: data.descricao !== undefined ? data.descricao : undefined,
-          peso: data.peso !== undefined ? new Prisma.Decimal(data.peso) : undefined,
-          valePonto: data.valePonto ?? undefined,
-          ativo: data.ativo ?? undefined,
-          ordem: data.ordem ?? undefined,
+        select: {
+          id: true,
+          turmaId: true,
+          cursoId: true,
+          instrutorId: true,
+          status: true,
         },
       });
 
-      if (data.questoes) {
-        await tx.cursosTurmasProvasQuestoes.deleteMany({ where: { provaId: avaliacaoId } });
-        await createQuestoes(tx, avaliacaoId, data.questoes);
-      }
-
-      avaliacoesLogger.info({ avaliacaoId }, 'Avaliação template atualizada');
-
-      return fetchTemplate(tx, avaliacaoId);
-    });
-  },
-
-  async remove(avaliacaoId: string) {
-    return prisma.$transaction(async (tx) => {
-      const existente = await tx.cursosTurmasProvas.findUnique({
-        where: { id: avaliacaoId },
-        select: { id: true, turmaId: true },
-      });
-
-      if (!existente || existente.turmaId) {
+      if (!existente) {
         const error: any = new Error('Avaliação não encontrada');
         error.code = 'AVALIACAO_NOT_FOUND';
         throw error;
+      }
+
+      // Permissão: instrutor só edita avaliações de suas turmas (ou sem turma mas dele)
+      if (usuarioLogado?.role === 'INSTRUTOR') {
+        if (existente.turmaId) {
+          const turmaDoInstrutor = await tx.cursosTurmas.findFirst({
+            where: { id: existente.turmaId, instrutorId: usuarioLogado.id },
+            select: { id: true },
+          });
+          if (!turmaDoInstrutor) {
+            const error: any = new Error('Instrutor só pode editar avaliações de suas turmas');
+            error.code = 'FORBIDDEN';
+            throw error;
+          }
+        } else if (existente.instrutorId !== usuarioLogado.id) {
+          const error: any = new Error('Instrutor só pode editar avaliações próprias');
+          error.code = 'FORBIDDEN';
+          throw error;
+        }
+      }
+
+      const turmaIdFinal = data.turmaId !== undefined ? data.turmaId : existente.turmaId;
+      const statusFinal = turmaIdFinal ? (data.status ?? existente.status) : CursosAulaStatus.RASCUNHO;
+
+      // Se houver turma, modalidade segue turma.metodo e cursoId segue turma.cursoId
+      let modalidadeFinal = data.modalidade;
+      let cursoIdFinal: string | null | undefined =
+        data.cursoId !== undefined ? data.cursoId : existente.cursoId;
+
+      if (turmaIdFinal) {
+        const turmaDb = await tx.cursosTurmas.findUnique({
+          where: { id: turmaIdFinal },
+          select: { cursoId: true, metodo: true },
+        });
+
+        if (!turmaDb) {
+          const error: any = new Error('Turma não encontrada');
+          error.code = 'TURMA_NOT_FOUND';
+          throw error;
+        }
+
+        // Se cursoId foi informado, validar compatibilidade com a turma
+        if (cursoIdFinal && turmaDb.cursoId !== cursoIdFinal) {
+          const error: any = new Error('Turma não pertence ao curso informado');
+          error.code = 'TURMA_CURSO_MISMATCH';
+          throw error;
+        }
+
+        cursoIdFinal = turmaDb.cursoId;
+        modalidadeFinal = turmaDb.metodo as any;
+      }
+
+      // Peso: se não vale ponto, peso = 0
+      const pesoFinal = data.valePonto ? (data.peso ?? 0) : 0;
+
+      const updateData: Prisma.CursosTurmasProvasUncheckedUpdateInput = {
+        tipo: data.tipo,
+        tipoAtividade: data.tipo === CursosAvaliacaoTipo.ATIVIDADE ? (data.tipoAtividade ?? null) : null,
+        recuperacaoFinal: data.tipo === CursosAvaliacaoTipo.PROVA ? (data.recuperacaoFinal ?? false) : false,
+        titulo: data.titulo,
+        etiqueta: data.etiqueta ?? undefined,
+        descricao: data.descricao !== undefined ? (data.descricao ?? null) : undefined,
+        peso: new Prisma.Decimal(pesoFinal),
+        valePonto: data.valePonto,
+        status: statusFinal,
+        modalidade: modalidadeFinal as any,
+        obrigatoria: data.obrigatoria,
+        dataInicio: data.dataInicio,
+        dataFim: data.dataFim,
+        horaInicio: data.horaInicio,
+        horaTermino: data.horaTermino,
+      };
+
+      if (turmaIdFinal !== undefined) updateData.turmaId = turmaIdFinal;
+      if (cursoIdFinal !== undefined) updateData.cursoId = cursoIdFinal;
+      if (data.instrutorId !== undefined) updateData.instrutorId = data.instrutorId;
+
+      await tx.cursosTurmasProvas.update({
+        where: { id: avaliacaoId },
+        data: updateData,
+      });
+
+      // Questões:
+      // - PROVA e ATIVIDADE(QUESTOES): substitui pelo payload
+      // - ATIVIDADE(PERGUNTA_RESPOSTA): remove quaisquer questões antigas
+      if (data.questoes) {
+        await tx.cursosTurmasProvasQuestoes.deleteMany({ where: { provaId: avaliacaoId } });
+        await createQuestoes(tx, avaliacaoId, data.questoes);
+      } else if (data.tipo === CursosAvaliacaoTipo.ATIVIDADE && data.tipoAtividade === CursosAtividadeTipo.PERGUNTA_RESPOSTA) {
+        await tx.cursosTurmasProvasQuestoes.deleteMany({ where: { provaId: avaliacaoId } });
+      }
+
+      avaliacoesLogger.info({ avaliacaoId }, 'Avaliação atualizada');
+
+      return fetchAny(tx, avaliacaoId);
+    });
+  },
+
+  async remove(avaliacaoId: string, usuarioLogado: any) {
+    return prisma.$transaction(async (tx) => {
+      const existente = await tx.cursosTurmasProvas.findUnique({
+        where: { id: avaliacaoId },
+        select: { id: true, turmaId: true, instrutorId: true },
+      });
+
+      if (!existente) {
+        const error: any = new Error('Avaliação não encontrada');
+        error.code = 'AVALIACAO_NOT_FOUND';
+        throw error;
+      }
+
+      if (usuarioLogado?.role === 'INSTRUTOR') {
+        if (existente.turmaId) {
+          const turmaDoInstrutor = await tx.cursosTurmas.findFirst({
+            where: { id: existente.turmaId, instrutorId: usuarioLogado.id },
+            select: { id: true },
+          });
+          if (!turmaDoInstrutor) {
+            const error: any = new Error('Instrutor só pode remover avaliações de suas turmas');
+            error.code = 'FORBIDDEN';
+            throw error;
+          }
+        } else if (existente.instrutorId !== usuarioLogado.id) {
+          const error: any = new Error('Instrutor só pode remover avaliações próprias');
+          error.code = 'FORBIDDEN';
+          throw error;
+        }
       }
 
       await tx.cursosTurmasProvas.delete({ where: { id: avaliacaoId } });

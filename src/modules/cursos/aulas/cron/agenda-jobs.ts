@@ -151,7 +151,7 @@ export function startEntrevistasNotificationJob() {
   }
 
   // Importação dinâmica para evitar dependência circular
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+   
   const {
     notificarEntrevistasProximas,
   } = require('@/modules/recrutador/cron/notificar-entrevistas.cron');

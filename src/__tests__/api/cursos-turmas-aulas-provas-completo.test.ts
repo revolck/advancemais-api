@@ -153,12 +153,12 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
         .expect(200);
 
       expect(response.body).toHaveProperty('success', true);
-      expect(response.body).toHaveProperty('items');
-      expect(Array.isArray(response.body.items)).toBe(true);
-      expect(response.body.items.length).toBeGreaterThan(0);
+      expect(response.body).toHaveProperty('data');
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.data.length).toBeGreaterThan(0);
 
       // Verificar que são templates (turmaId null)
-      const templates = response.body.items.filter((a: any) => a.turmaId === null);
+      const templates = response.body.data.filter((a: any) => a.turmaId === null);
       expect(templates.length).toBeGreaterThan(0);
     });
   });
@@ -177,6 +177,22 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
         etiqueta: 'P1',
         peso: 10.0,
         valePonto: true,
+        obrigatoria: true,
+        modalidade: 'ONLINE',
+        dataInicio: '2099-01-27',
+        dataFim: '2099-01-31',
+        horaInicio: '10:00',
+        horaTermino: '11:00',
+        questoes: [
+          {
+            enunciado: 'Pergunta 1',
+            tipo: 'MULTIPLA_ESCOLHA',
+            alternativas: [
+              { texto: 'A', correta: true },
+              { texto: 'B', correta: false },
+            ],
+          },
+        ],
         ativo: true,
       };
 
@@ -205,11 +221,28 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
       const avaliacaoData = {
         cursoId: testCursoId,
         tipo: 'ATIVIDADE',
+        tipoAtividade: 'QUESTOES',
         titulo: 'Atividade Template 1',
         descricao: 'Atividade template de teste',
         etiqueta: 'AT1',
         peso: 5.0,
         valePonto: true,
+        obrigatoria: true,
+        modalidade: 'ONLINE',
+        dataInicio: '2099-01-27',
+        dataFim: '2099-01-31',
+        horaInicio: '10:00',
+        horaTermino: '11:00',
+        questoes: [
+          {
+            enunciado: 'Pergunta 1',
+            tipo: 'MULTIPLA_ESCOLHA',
+            alternativas: [
+              { texto: 'A', correta: true },
+              { texto: 'B', correta: false },
+            ],
+          },
+        ],
         ativo: true,
       };
 
@@ -238,12 +271,12 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
         .expect(200);
 
       expect(response.body).toHaveProperty('success', true);
-      expect(response.body).toHaveProperty('items');
-      expect(Array.isArray(response.body.items)).toBe(true);
-      expect(response.body.items.length).toBeGreaterThanOrEqual(2);
+      expect(response.body).toHaveProperty('data');
+      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.data.length).toBeGreaterThanOrEqual(2);
 
       // Verificar que são templates (turmaId null)
-      const templates = response.body.items.filter((a: any) => a.turmaId === null);
+      const templates = response.body.data.filter((a: any) => a.turmaId === null);
       expect(templates.length).toBeGreaterThanOrEqual(2);
     });
   });

@@ -784,7 +784,7 @@ model CursosTurmasRecuperacoes {
 model CursosTurmasProvasQuestoes {
   id                                     String                                   @id @default(uuid())
   provaId                                String
-  enunciado                              String                                   @db.VarChar(2000)
+  enunciado                              String                                   @db.VarChar(5000)
   tipo                                   CursosTipoQuestao
   ordem                                  Int                                      @default(0)
   peso                                   Decimal?                                 @db.Decimal(5, 2)

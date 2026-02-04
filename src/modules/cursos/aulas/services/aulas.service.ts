@@ -252,6 +252,7 @@ export const aulasService = {
       cursoId,
       curso,
       semTurma,
+      includeSemCurso,
       turmaId,
       turma,
       moduloId,
@@ -327,7 +328,12 @@ export const aulasService = {
       if (turmaId) {
         applyAndFilter({ CursosTurmas: { cursoId } });
       } else if (semTurma === true) {
-        applyAndFilter({ cursoId });
+        const includeSemCursoFinal = includeSemCurso !== undefined ? includeSemCurso : true;
+        if (includeSemCursoFinal) {
+          applyAndFilter({ OR: [{ cursoId }, { cursoId: null }] });
+        } else {
+          applyAndFilter({ cursoId });
+        }
       } else if (semTurma === false) {
         applyAndFilter({ turmaId: { not: null }, CursosTurmas: { cursoId } });
       } else {
@@ -397,15 +403,8 @@ export const aulasService = {
 
     const periodoParsed = typeof periodo === 'string' ? parsePeriodoString(periodo) : {};
     const start =
-      dataInicio ??
-      (periodoInicio as Date | undefined) ??
-      periodoParsed.start ??
-      undefined;
-    const end =
-      dataFim ??
-      (periodoFim as Date | undefined) ??
-      periodoParsed.end ??
-      undefined;
+      dataInicio ?? (periodoInicio as Date | undefined) ?? periodoParsed.start ?? undefined;
+    const end = dataFim ?? (periodoFim as Date | undefined) ?? periodoParsed.end ?? undefined;
 
     if (start || end) {
       const startFinal = start ?? new Date('1970-01-01T00:00:00.000Z');
@@ -538,7 +537,8 @@ export const aulasService = {
     return {
       data: aulas.map((a) => {
         // ✅ Converter modalidade do banco para API (LIVE → AO_VIVO)
-        let modalidadeAula = mapModalidadeFromDB(a.modalidade);
+        const rawModalidade = (a as any).modalidade as string | null | undefined;
+        let modalidadeAula = rawModalidade ? mapModalidadeFromDB(rawModalidade) : null;
         const cursoRelacionado = a.CursosTurmas?.Cursos ?? a.Cursos ?? null;
 
         // ✅ Se há turma vinculada, a modalidade deve corresponder ao método da turma
@@ -1313,7 +1313,7 @@ export const aulasService = {
       if (materiaisNormalizados) {
         // Deletar todos os materiais antigos
         await tx.cursosTurmasAulasMateriais.deleteMany({ where: { aulaId } });
-        
+
         // Criar novos materiais
         if (materiaisNormalizados.length > 0) {
           await tx.cursosTurmasAulasMateriais.createMany({
@@ -1333,12 +1333,13 @@ export const aulasService = {
 
     // Registrar histórico de materiais se foram alterados
     if (materiaisNormalizados !== null) {
-      const materiaisNovos = materiaisNormalizados.length > 0
-        ? await prisma.cursosTurmasAulasMateriais.findMany({
-            where: { aulaId },
-            orderBy: { ordem: 'asc' },
-          })
-        : [];
+      const materiaisNovos =
+        materiaisNormalizados.length > 0
+          ? await prisma.cursosTurmasAulasMateriais.findMany({
+              where: { aulaId },
+              orderBy: { ordem: 'asc' },
+            })
+          : [];
 
       // Identificar materiais adicionados e removidos
       const materiaisAntigosMap = new Map(materiaisAntigos.map((m) => [m.url, m]));

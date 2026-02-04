@@ -393,10 +393,11 @@ export const cursosCheckoutService = {
       where: { id: turmaId },
       select: {
         vagasTotais: true,
+        vagasIlimitadas: true,
         _count: {
           select: {
             CursosTurmasInscricoes: {
-              where: { status: 'INSCRITO' },
+              where: { status: { notIn: ['CANCELADO', 'TRANCADO'] } },
             },
           },
         },
@@ -406,7 +407,7 @@ export const cursosCheckoutService = {
     if (!turma) throw new Error('Turma não encontrada');
 
     // Se não há limite, sempre tem vaga
-    if (!turma.vagasTotais || turma.vagasTotais === 0) return true;
+    if (turma.vagasIlimitadas || !turma.vagasTotais || turma.vagasTotais === 0) return true;
 
     // Verificar se ainda há vagas
     return turma._count.CursosTurmasInscricoes < turma.vagasTotais;

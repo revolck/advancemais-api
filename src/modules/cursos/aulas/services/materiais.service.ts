@@ -24,7 +24,6 @@ function mapTipoMaterial(tipo: string): any {
   return map[tipo] || tipo;
 }
 
-
 const ALLOWED_MIME_TYPES = [
   'application/pdf',
   'application/msword',

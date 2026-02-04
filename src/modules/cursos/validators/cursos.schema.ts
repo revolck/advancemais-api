@@ -92,6 +92,25 @@ export const createCourseSchema = z.object({
 
 export const updateCourseSchema = createCourseSchema.partial();
 
+const uuid = z.string().uuid('Identificador inválido');
+
+export const vincularTemplatesSchema = z
+  .object({
+    cursoId: uuid,
+    aulaTemplateIds: z.array(uuid).optional().default([]),
+    avaliacaoTemplateIds: z.array(uuid).optional().default([]),
+  })
+  .superRefine((value, ctx) => {
+    const total = (value.aulaTemplateIds?.length ?? 0) + (value.avaliacaoTemplateIds?.length ?? 0);
+    if (total === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['aulaTemplateIds'],
+        message: 'Informe ao menos um template de aula ou avaliação para vincular',
+      });
+    }
+  });
+
 /**
  * Schema de validação para histórico de inscrições de um curso
  * Similar ao histórico de alunos

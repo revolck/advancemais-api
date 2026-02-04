@@ -1,6 +1,6 @@
 /**
  * Service de Cursos para ALUNO_CANDIDATO
- * 
+ *
  * Retorna:
  * - Próxima aula (se houver)
  * - Lista de cursos com paginação (8 por página)
@@ -54,7 +54,11 @@ const buscarProximaAula = async (usuarioId: string) => {
             some: {
               alunoId: usuarioId,
               status: {
-                in: [StatusInscricao.INSCRITO, StatusInscricao.EM_ANDAMENTO, StatusInscricao.EM_ESTAGIO],
+                in: [
+                  StatusInscricao.INSCRITO,
+                  StatusInscricao.EM_ANDAMENTO,
+                  StatusInscricao.EM_ESTAGIO,
+                ],
               },
             },
           },
@@ -136,14 +140,19 @@ export const candidatoCursosService = {
     // Construir filtro de modalidade
     // Mapear valores do frontend para valores do banco
     let modalidadeFilter: CursosMetodos[] | undefined = undefined;
-    
+
     if (modalidade !== 'TODOS') {
       const modalidadeUpper = modalidade.toUpperCase();
       if (modalidadeUpper === 'AO_VIVO') {
         modalidadeFilter = ['LIVE'];
       } else {
         // Validar se é um valor válido do enum
-        const validModalidades: CursosMetodos[] = ['ONLINE', 'PRESENCIAL', 'LIVE', 'SEMIPRESENCIAL'];
+        const validModalidades: CursosMetodos[] = [
+          'ONLINE',
+          'PRESENCIAL',
+          'LIVE',
+          'SEMIPRESENCIAL',
+        ];
         if (validModalidades.includes(modalidadeUpper as CursosMetodos)) {
           modalidadeFilter = [modalidadeUpper as CursosMetodos];
         }
@@ -251,7 +260,9 @@ export const candidatoCursosService = {
           const fim = new Date(inscricao.CursosTurmas.dataFim).getTime();
           const atual = agora.getTime();
           if (fim > inicio) {
-            progresso = Math.round(Math.min(100, Math.max(0, ((atual - inicio) / (fim - inicio)) * 100)));
+            progresso = Math.round(
+              Math.min(100, Math.max(0, ((atual - inicio) / (fim - inicio)) * 100)),
+            );
           }
         }
       } else {
@@ -307,4 +318,3 @@ export const candidatoCursosService = {
     };
   },
 };
-

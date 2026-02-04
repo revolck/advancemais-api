@@ -33,4 +33,3 @@ describe('putUpdateAulaSchema', () => {
     expect(result.success).toBe(false);
   });
 });
-

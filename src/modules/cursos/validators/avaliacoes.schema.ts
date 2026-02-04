@@ -78,60 +78,63 @@ const parseModalidadeQuery = (value: unknown) => {
     .join(',');
 };
 
-export const listAvaliacoesQuerySchema = z.object({
-  page: z.coerce.number().int().positive().default(1),
-  pageSize: z.coerce.number().int().positive().max(100).default(10),
-  // filtros por id
-  cursoId: z.preprocess(parseUuidQuery, uuid.optional()),
-  turmaId: z.preprocess(parseUuidQuery, uuid.optional()),
-  instrutorId: z.preprocess(parseUuidQuery, uuid.optional()),
-  // filtros por texto (telas com busca)
-  curso: z.string().trim().min(1).max(255).optional(),
-  turma: z.string().trim().min(1).max(255).optional(),
-  instrutor: z.string().trim().min(1).max(255).optional(),
-  // filtros principais
-  tipo: z.nativeEnum(CursosAvaliacaoTipo).optional(),
-  tipoAtividade: z.nativeEnum(CursosAtividadeTipo).optional(),
-  modalidade: z.preprocess(parseModalidadeQuery, z.string().optional()), // CSV com ONLINE,PRESENCIAL,LIVE,SEMIPRESENCIAL
-  // status: compatibilidade
-  // - "ATIVO|INATIVO" filtra por `ativo`
-  // - "RASCUNHO|PUBLICADA|..." filtra por `status` (CSV)
-  status: z.preprocess(parseCsvOrArray, z.string().optional()),
-  obrigatoria: z.preprocess(parseBooleanQuery, z.boolean().optional()),
-  semTurma: z.preprocess(parseBooleanQuery, z.boolean().optional()),
-  search: z.string().trim().min(1).optional(),
-  titulo: z.string().trim().min(1).optional(),
-  // período
-  periodo: z.string().trim().min(1).optional(),
-  periodoInicio: z.preprocess((v) => preprocessDateQuery(v, 'start'), z.coerce.date().optional()),
-  periodoFim: z.preprocess((v) => preprocessDateQuery(v, 'end'), z.coerce.date().optional()),
-  dataInicio: z.preprocess((v) => preprocessDateQuery(v, 'start'), z.coerce.date().optional()),
-  dataFim: z.preprocess((v) => preprocessDateQuery(v, 'end'), z.coerce.date().optional()),
-  orderBy: z.enum(['criadoEm', 'titulo', 'ordem', 'dataInicio']).optional().default('criadoEm'),
-  order: z.enum(['asc', 'desc']).optional().default('desc'),
-}).superRefine((data, ctx) => {
-  if (!data.status) return;
+export const listAvaliacoesQuerySchema = z
+  .object({
+    page: z.coerce.number().int().positive().default(1),
+    pageSize: z.coerce.number().int().positive().max(200).default(10),
+    // filtros por id
+    cursoId: z.preprocess(parseUuidQuery, uuid.optional()),
+    turmaId: z.preprocess(parseUuidQuery, uuid.optional()),
+    instrutorId: z.preprocess(parseUuidQuery, uuid.optional()),
+    includeSemCurso: z.preprocess(parseBooleanQuery, z.boolean().optional()),
+    // filtros por texto (telas com busca)
+    curso: z.string().trim().min(1).max(255).optional(),
+    turma: z.string().trim().min(1).max(255).optional(),
+    instrutor: z.string().trim().min(1).max(255).optional(),
+    // filtros principais
+    tipo: z.nativeEnum(CursosAvaliacaoTipo).optional(),
+    tipoAtividade: z.nativeEnum(CursosAtividadeTipo).optional(),
+    modalidade: z.preprocess(parseModalidadeQuery, z.string().optional()), // CSV com ONLINE,PRESENCIAL,LIVE,SEMIPRESENCIAL
+    // status: compatibilidade
+    // - "ATIVO|INATIVO" filtra por `ativo`
+    // - "RASCUNHO|PUBLICADA|..." filtra por `status` (CSV)
+    status: z.preprocess(parseCsvOrArray, z.string().optional()),
+    obrigatoria: z.preprocess(parseBooleanQuery, z.boolean().optional()),
+    semTurma: z.preprocess(parseBooleanQuery, z.boolean().optional()),
+    search: z.string().trim().min(1).optional(),
+    titulo: z.string().trim().min(1).optional(),
+    // período
+    periodo: z.string().trim().min(1).optional(),
+    periodoInicio: z.preprocess((v) => preprocessDateQuery(v, 'start'), z.coerce.date().optional()),
+    periodoFim: z.preprocess((v) => preprocessDateQuery(v, 'end'), z.coerce.date().optional()),
+    dataInicio: z.preprocess((v) => preprocessDateQuery(v, 'start'), z.coerce.date().optional()),
+    dataFim: z.preprocess((v) => preprocessDateQuery(v, 'end'), z.coerce.date().optional()),
+    orderBy: z.enum(['criadoEm', 'titulo', 'ordem', 'dataInicio']).optional().default('criadoEm'),
+    order: z.enum(['asc', 'desc']).optional().default('desc'),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.status) return;
 
-  const allowed = new Set<string>([
-    'ATIVO',
-    'INATIVO',
-    ...Object.values(CursosAulaStatus).map((s) => String(s).toUpperCase()),
-  ]);
+    const allowed = new Set<string>([
+      'ATIVO',
+      'INATIVO',
+      ...Object.values(CursosAulaStatus).map((s) => String(s).toUpperCase()),
+    ]);
 
-  const tokens = String(data.status)
-    .split(',')
-    .map((s) => s.trim().toUpperCase())
-    .filter(Boolean);
+    const tokens = String(data.status)
+      .split(',')
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean);
 
-  const invalid = tokens.filter((t) => !allowed.has(t));
-  if (invalid.length > 0) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: `Status inválido: ${invalid.join(', ')}`,
-      path: ['status'],
-    });
-  }
-});
+    const invalid = tokens.filter((t) => !allowed.has(t));
+    if (invalid.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Status inválido: ${invalid.join(', ')}`,
+        path: ['status'],
+      });
+    }
+  });
 
 // Helper para validar horário no formato HH:mm
 const horarioSchema = z
@@ -171,7 +174,9 @@ export const createAvaliacaoSchema = z
     // Campos de configuração
     recuperacaoFinal: z.preprocess(parseBooleanBody, z.boolean()).optional().default(false),
     valePonto: z.preprocess(parseBooleanBody, z.boolean()).optional().default(true),
-    peso: z.preprocess((v) => (v === '' ? undefined : v), z.coerce.number().min(0).max(10)).optional(),
+    peso: z
+      .preprocess((v) => (v === '' ? undefined : v), z.coerce.number().min(0).max(10))
+      .optional(),
     obrigatoria: z.preprocess(parseBooleanBody, z.boolean()).optional().default(true),
     modalidade: modalidadeBodySchema,
     // status é definido automaticamente como RASCUNHO (não deve ser enviado na criação)
@@ -412,7 +417,9 @@ export const putUpdateAvaliacaoSchema = z
     modalidade: modalidadeBodySchema,
     obrigatoria: z.preprocess(parseBooleanBody, z.boolean()),
     valePonto: z.preprocess(parseBooleanBody, z.boolean()),
-    peso: z.preprocess((v) => (v === '' ? undefined : v), z.coerce.number().min(0).max(10)).optional(),
+    peso: z
+      .preprocess((v) => (v === '' ? undefined : v), z.coerce.number().min(0).max(10))
+      .optional(),
     // Status segue a mesma regra da aula (se não tiver turma, backend força RASCUNHO)
     status: z.nativeEnum(CursosAulaStatus).optional(),
     // Vinculações

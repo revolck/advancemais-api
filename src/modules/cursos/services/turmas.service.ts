@@ -29,11 +29,15 @@ type TurmaEstruturaItemInput = {
   endDate?: Date;
   instructorId?: string;
   instructorIds?: string[];
+  obrigatoria?: boolean;
+  recuperacaoFinal?: boolean;
   ordem?: number;
 };
 
 type TurmaEstruturaModuleInput = {
+  id?: string;
   title: string;
+  ordem?: number;
   items: TurmaEstruturaItemInput[];
   startDate?: Date;
   endDate?: Date;
@@ -92,9 +96,11 @@ const turmaSummarySelect = {
   id: true,
   codigo: true,
   nome: true,
+  estruturaTipo: true,
   turno: true,
   metodo: true,
   status: true,
+  vagasIlimitadas: true,
   vagasTotais: true,
   vagasDisponiveis: true,
   dataInicio: true,
@@ -124,6 +130,21 @@ const regrasAvaliacaoSelect = {
 
 const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
   include: {
+    CursosTurmasInstrutores: {
+      include: {
+        Instrutor: {
+          select: {
+            id: true,
+            nomeCompleto: true,
+            email: true,
+            cpf: true,
+            codUsuario: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: [{ criadoEm: 'asc' }],
+    },
     CursosTurmasInscricoes: {
       include: {
         Usuarios: {
@@ -224,7 +245,66 @@ const countTemplatesForCurso = async (client: PrismaClientOrTx, cursoId: string)
   return { templatesAulasCount, templatesAvaliacoesCount };
 };
 
-const ensureTemplatesExistForTurmaCreate = async (client: PrismaClientOrTx, cursoId: string) => {
+const ensureTemplatesExistForTurmaCreate = async (
+  client: PrismaClientOrTx,
+  cursoId: string,
+  estrutura?: TurmaEstruturaInput,
+) => {
+  const { moduleItems, standaloneItems } = estrutura
+    ? buildItemsFromEstrutura(estrutura)
+    : { moduleItems: [], standaloneItems: [] };
+
+  const allItems = [...moduleItems.flatMap((entry) => entry.items ?? []), ...standaloneItems];
+
+  const aulaTemplateIds = Array.from(
+    new Set(allItems.filter((item) => item.type === 'AULA').map((item) => item.templateId)),
+  ).filter(Boolean);
+
+  const avaliacaoTemplateIds = Array.from(
+    new Set(
+      allItems
+        .filter((item) => item.type === 'PROVA' || item.type === 'ATIVIDADE')
+        .map((item) => item.templateId),
+    ),
+  ).filter(Boolean);
+
+  if (aulaTemplateIds.length > 0 || avaliacaoTemplateIds.length > 0) {
+    const [aulasEncontradas, avaliacoesEncontradas] = await Promise.all([
+      aulaTemplateIds.length > 0
+        ? client.cursosTurmasAulas.findMany({
+            where: { id: { in: aulaTemplateIds }, turmaId: null, deletedAt: null },
+            select: { id: true },
+          })
+        : Promise.resolve([]),
+      avaliacaoTemplateIds.length > 0
+        ? client.cursosTurmasProvas.findMany({
+            where: { id: { in: avaliacaoTemplateIds }, turmaId: null },
+            select: { id: true },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const aulasSet = new Set(aulasEncontradas.map((item) => item.id));
+    const avaliacoesSet = new Set(avaliacoesEncontradas.map((item) => item.id));
+
+    const missingAulas = aulaTemplateIds.filter((id) => !aulasSet.has(id));
+    const missingAvaliacoes = avaliacaoTemplateIds.filter((id) => !avaliacoesSet.has(id));
+
+    if (missingAulas.length > 0 || missingAvaliacoes.length > 0) {
+      const error: any = new Error(
+        'Templates informados não encontrados ou não são templates válidos (sem turma).',
+      );
+      error.code = 'TURMA_PREREQUISITOS_NAO_ATENDIDOS';
+      error.details = {
+        missingAulaTemplateIds: missingAulas,
+        missingAvaliacaoTemplateIds: missingAvaliacoes,
+      };
+      throw error;
+    }
+
+    return;
+  }
+
   const { templatesAulasCount, templatesAvaliacoesCount } = await countTemplatesForCurso(
     client,
     cursoId,
@@ -311,12 +391,15 @@ const cloneAulaTemplateToTurma = async (
     cursoId: string;
     turmaId: string;
     moduloId: string | null;
+    turmaInicio?: Date | null;
+    turmaFim?: Date | null;
     ordem: number;
     templateId: string;
     title?: string;
     dataInicio?: Date;
     dataFim?: Date;
     instrutorId?: string | null;
+    obrigatoria?: boolean;
     criadoPorId?: string | null;
   },
 ) => {
@@ -341,6 +424,30 @@ const cloneAulaTemplateToTurma = async (
     throw error;
   }
 
+  // Validação: datas da aula devem estar dentro do período da turma
+  if (params.turmaInicio && params.turmaFim) {
+    const effectiveStart = params.dataInicio ?? template.dataInicio ?? null;
+    const effectiveEnd = params.dataFim ?? template.dataFim ?? null;
+
+    if (effectiveStart && effectiveStart.getTime() < params.turmaInicio.getTime()) {
+      const error: any = new Error('Data de início da aula deve estar dentro do período da turma');
+      error.code = 'VALIDATION_ERROR';
+      throw error;
+    }
+
+    if (effectiveEnd && effectiveEnd.getTime() > params.turmaFim.getTime()) {
+      const error: any = new Error('Data de fim da aula deve estar dentro do período da turma');
+      error.code = 'VALIDATION_ERROR';
+      throw error;
+    }
+
+    if (effectiveStart && effectiveEnd && effectiveStart.getTime() > effectiveEnd.getTime()) {
+      const error: any = new Error('Data de fim da aula deve ser posterior à data de início');
+      error.code = 'VALIDATION_ERROR';
+      throw error;
+    }
+  }
+
   // Gerar código único com retry em caso de concorrência
   let aulaCreated: { id: string } | null = null;
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -363,7 +470,7 @@ const cloneAulaTemplateToTurma = async (
           meetEventId: null,
           modalidade: template.modalidade,
           tipoLink: template.tipoLink ?? null,
-          obrigatoria: template.obrigatoria,
+          obrigatoria: params.obrigatoria ?? template.obrigatoria,
           duracaoMinutos: template.duracaoMinutos ?? null,
           // Instância sempre nasce como rascunho (publicação via fluxo próprio)
           status: 'RASCUNHO' as any,
@@ -419,9 +526,16 @@ const cloneAvaliacaoTemplateToTurma = async (
     cursoId: string;
     turmaId: string;
     moduloId: string | null;
+    turmaInicio?: Date | null;
+    turmaFim?: Date | null;
     ordem: number;
     templateId: string;
     title?: string;
+    dataInicio?: Date;
+    dataFim?: Date;
+    instrutorId?: string | null;
+    obrigatoria?: boolean;
+    recuperacaoFinal?: boolean;
   },
 ) => {
   const template = await tx.cursosTurmasProvas.findFirst({
@@ -449,6 +563,34 @@ const cloneAvaliacaoTemplateToTurma = async (
     throw error;
   }
 
+  // Validação: datas da avaliação devem estar dentro do período da turma
+  if (params.turmaInicio && params.turmaFim) {
+    const effectiveStart = params.dataInicio ?? template.dataInicio ?? null;
+    const effectiveEnd = params.dataFim ?? template.dataFim ?? null;
+
+    if (effectiveStart && effectiveStart.getTime() < params.turmaInicio.getTime()) {
+      const error: any = new Error(
+        'Data de início da avaliação deve estar dentro do período da turma',
+      );
+      error.code = 'VALIDATION_ERROR';
+      throw error;
+    }
+
+    if (effectiveEnd && effectiveEnd.getTime() > params.turmaFim.getTime()) {
+      const error: any = new Error(
+        'Data de fim da avaliação deve estar dentro do período da turma',
+      );
+      error.code = 'VALIDATION_ERROR';
+      throw error;
+    }
+
+    if (effectiveStart && effectiveEnd && effectiveStart.getTime() > effectiveEnd.getTime()) {
+      const error: any = new Error('Data de fim da avaliação deve ser posterior à data de início');
+      error.code = 'VALIDATION_ERROR';
+      throw error;
+    }
+  }
+
   const etiqueta = await makeUniqueEtiqueta(tx, params.turmaId, template.etiqueta);
 
   const nova = await tx.cursosTurmasProvas.create({
@@ -456,14 +598,24 @@ const cloneAvaliacaoTemplateToTurma = async (
       turmaId: params.turmaId,
       cursoId: params.cursoId,
       moduloId: params.moduloId,
+      instrutorId:
+        params.instrutorId === undefined ? (template.instrutorId ?? null) : params.instrutorId,
       tipo: template.tipo,
-      recuperacaoFinal: template.recuperacaoFinal ?? false,
+      tipoAtividade: template.tipoAtividade ?? null,
+      recuperacaoFinal: params.recuperacaoFinal ?? template.recuperacaoFinal ?? false,
       titulo: params.title?.trim().length ? params.title.trim() : template.titulo,
       etiqueta,
       descricao: template.descricao ?? null,
       peso: template.peso,
       valePonto: template.valePonto ?? true,
       ativo: template.ativo ?? true,
+      status: 'RASCUNHO' as any,
+      modalidade: template.modalidade,
+      obrigatoria: params.obrigatoria ?? template.obrigatoria ?? true,
+      dataInicio: params.dataInicio ?? template.dataInicio ?? null,
+      dataFim: params.dataFim ?? template.dataFim ?? null,
+      horaInicio: template.horaInicio ?? null,
+      horaTermino: template.horaTermino ?? null,
       ordem: params.ordem,
       localizacao: params.moduloId ? 'MODULO' : 'TURMA',
     },
@@ -622,7 +774,10 @@ export const turmasService = {
         ...turma,
         inscricoesCount: inscricoesCount ?? 0,
         vagasOcupadas: inscricoesCount ?? 0,
-        vagasDisponiveisCalculadas: (turma.vagasTotais ?? 0) - (inscricoesCount ?? 0),
+        vagasDisponiveisCalculadas:
+          turma.vagasIlimitadas || turma.vagasTotais === 0
+            ? null
+            : (turma.vagasTotais ?? 0) - (inscricoesCount ?? 0),
       };
     } catch (error: any) {
       turmasLogger.error(
@@ -720,13 +875,16 @@ export const turmasService = {
     data: {
       nome: string;
       instrutorId?: string;
+      instrutorIds?: string[];
+      estruturaTipo: 'MODULAR' | 'DINAMICA' | 'PADRAO';
       turno?: CursosTurnos;
       metodo?: CursosMetodos;
       dataInicio?: Date | null;
       dataFim?: Date | null;
       dataInscricaoInicio?: Date | null;
       dataInscricaoFim?: Date | null;
-      vagasTotais: number;
+      vagasIlimitadas: boolean;
+      vagasTotais?: number;
       vagasDisponiveis?: number;
       status?: CursoStatus;
       estrutura: TurmaEstruturaInput;
@@ -741,19 +899,36 @@ export const turmasService = {
         throw error;
       }
 
-      await ensureTemplatesExistForTurmaCreate(tx, cursoId);
+      await ensureTemplatesExistForTurmaCreate(tx, cursoId, data.estrutura);
 
-      const vagasDisponiveis =
-        data.vagasDisponiveis !== undefined
-          ? Math.min(data.vagasDisponiveis, data.vagasTotais)
-          : data.vagasTotais;
+      const UNLIMITED_VAGAS_TOTAL = 1_000_000;
+
+      if (!data.vagasIlimitadas && (!data.vagasTotais || data.vagasTotais <= 0)) {
+        const error: any = new Error('Informe o total de vagas');
+        error.code = 'VALIDATION_ERROR';
+        throw error;
+      }
+
+      const vagasTotaisFinal = data.vagasIlimitadas ? 0 : (data.vagasTotais as number);
+
+      const vagasDisponiveis = data.vagasIlimitadas
+        ? 0
+        : data.vagasDisponiveis !== undefined
+          ? Math.min(data.vagasDisponiveis, vagasTotaisFinal)
+          : vagasTotaisFinal;
 
       const codigo = await generateUniqueTurmaCode(tx, turmasLogger);
+
+      const instrutorIdsFinal = Array.isArray(data.instrutorIds)
+        ? data.instrutorIds.filter(Boolean)
+        : [];
+      const primaryInstrutorId = data.instrutorId ?? instrutorIdsFinal[0] ?? null;
 
       const created = await tx.cursosTurmas.create({
         data: {
           cursoId,
-          instrutorId: data.instrutorId ?? null,
+          instrutorId: primaryInstrutorId,
+          estruturaTipo: data.estruturaTipo as any,
           nome: data.nome,
           codigo,
           turno: data.turno ?? CursosTurnos.INTEGRAL,
@@ -762,11 +937,29 @@ export const turmasService = {
           dataFim: data.dataFim ?? null,
           dataInscricaoInicio: data.dataInscricaoInicio ?? null,
           dataInscricaoFim: data.dataInscricaoFim ?? null,
-          vagasTotais: data.vagasTotais,
+          vagasIlimitadas: data.vagasIlimitadas,
+          vagasTotais: vagasTotaisFinal,
           vagasDisponiveis,
-          status: data.status ?? CursoStatus.RASCUNHO,
+          // Entrada do usuário: apenas RASCUNHO/PUBLICADO (demais status são automáticos).
+          status:
+            data.status === CursoStatus.PUBLICADO ? CursoStatus.PUBLICADO : CursoStatus.RASCUNHO,
         },
       });
+
+      // Vincular instrutores (0..N)
+      const instrutoresParaVincular = Array.from(
+        new Set([primaryInstrutorId, ...instrutorIdsFinal].filter(Boolean)),
+      ) as string[];
+
+      if (instrutoresParaVincular.length > 0) {
+        await tx.cursosTurmasInstrutores.createMany({
+          data: instrutoresParaVincular.map((instrutorId) => ({
+            turmaId: created.id,
+            instrutorId,
+          })),
+          skipDuplicates: true,
+        });
+      }
 
       const mapping: {
         templateId: string;
@@ -778,6 +971,9 @@ export const turmasService = {
 
       const { moduleItems, standaloneItems } = buildItemsFromEstrutura(data.estrutura);
 
+      const pickInstructorId = (input: { instructorId?: string; instructorIds?: string[] }) =>
+        input.instructorId ?? input.instructorIds?.[0];
+
       for (const entry of moduleItems) {
         const module = entry.module;
         const modulo = await tx.cursosTurmasModulos.create({
@@ -786,24 +982,32 @@ export const turmasService = {
             nome: module.title,
             descricao: null,
             obrigatorio: true,
-            ordem: entry.moduleIndex + 1,
+            ordem: module.ordem ?? entry.moduleIndex + 1,
           },
           select: { id: true },
         });
 
         for (const [index, item] of entry.items.entries()) {
           const ordem = item.ordem ?? index + 1;
+          const instrutorIdResolved =
+            pickInstructorId(item) ?? pickInstructorId(module) ?? data.instrutorId ?? null;
+          const dataInicioResolved = item.startDate ?? module.startDate;
+          const dataFimResolved = item.endDate ?? module.endDate;
+
           if (item.type === 'AULA') {
             const instanceId = await cloneAulaTemplateToTurma(tx, {
               cursoId,
               turmaId: created.id,
               moduloId: modulo.id,
+              turmaInicio: data.dataInicio ?? null,
+              turmaFim: data.dataFim ?? null,
               ordem,
               templateId: item.templateId,
               title: item.title,
-              dataInicio: item.startDate,
-              dataFim: item.endDate,
-              instrutorId: item.instructorId ?? data.instrutorId ?? null,
+              dataInicio: dataInicioResolved,
+              dataFim: dataFimResolved,
+              instrutorId: instrutorIdResolved,
+              obrigatoria: item.obrigatoria,
               criadoPorId: actor?.id ?? null,
             });
             mapping.push({
@@ -818,9 +1022,16 @@ export const turmasService = {
               cursoId,
               turmaId: created.id,
               moduloId: modulo.id,
+              turmaInicio: data.dataInicio ?? null,
+              turmaFim: data.dataFim ?? null,
               ordem,
               templateId: item.templateId,
               title: item.title,
+              dataInicio: dataInicioResolved,
+              dataFim: dataFimResolved,
+              instrutorId: instrutorIdResolved,
+              obrigatoria: item.obrigatoria,
+              recuperacaoFinal: item.recuperacaoFinal,
             });
             mapping.push({
               templateId: item.templateId,
@@ -835,17 +1046,22 @@ export const turmasService = {
 
       for (const [index, item] of standaloneItems.entries()) {
         const ordem = item.ordem ?? index + 1;
+        const instrutorIdResolved = pickInstructorId(item) ?? data.instrutorId ?? null;
+
         if (item.type === 'AULA') {
           const instanceId = await cloneAulaTemplateToTurma(tx, {
             cursoId,
             turmaId: created.id,
             moduloId: null,
+            turmaInicio: data.dataInicio ?? null,
+            turmaFim: data.dataFim ?? null,
             ordem,
             templateId: item.templateId,
             title: item.title,
             dataInicio: item.startDate,
             dataFim: item.endDate,
-            instrutorId: item.instructorId ?? data.instrutorId ?? null,
+            instrutorId: instrutorIdResolved,
+            obrigatoria: item.obrigatoria,
             criadoPorId: actor?.id ?? null,
           });
           mapping.push({
@@ -860,9 +1076,16 @@ export const turmasService = {
             cursoId,
             turmaId: created.id,
             moduloId: null,
+            turmaInicio: data.dataInicio ?? null,
+            turmaFim: data.dataFim ?? null,
             ordem,
             templateId: item.templateId,
             title: item.title,
+            dataInicio: item.startDate,
+            dataFim: item.endDate,
+            instrutorId: instrutorIdResolved,
+            obrigatoria: item.obrigatoria,
+            recuperacaoFinal: item.recuperacaoFinal,
           });
           mapping.push({
             templateId: item.templateId,
@@ -888,12 +1111,15 @@ export const turmasService = {
     data: Partial<{
       nome: string;
       instrutorId?: string;
+      instrutorIds?: string[];
+      estruturaTipo?: 'MODULAR' | 'DINAMICA' | 'PADRAO';
       turno?: CursosTurnos;
       metodo?: CursosMetodos;
       dataInicio?: Date | null;
       dataFim?: Date | null;
       dataInscricaoInicio?: Date | null;
       dataInscricaoFim?: Date | null;
+      vagasIlimitadas?: boolean;
       vagasTotais: number;
       vagasDisponiveis?: number;
       status?: CursoStatus;
@@ -906,9 +1132,13 @@ export const turmasService = {
           id: true,
           cursoId: true,
           status: true,
+          vagasIlimitadas: true,
           vagasTotais: true,
           vagasDisponiveis: true,
-          CursosTurmasInscricoes: { select: { id: true } },
+          dataInicio: true,
+          dataFim: true,
+          dataInscricaoInicio: true,
+          dataInscricaoFim: true,
         },
       });
 
@@ -918,8 +1148,14 @@ export const turmasService = {
         throw error;
       }
 
-      const inscricoesAtivas = turma.CursosTurmasInscricoes.length;
-      const vagasTotais = data.vagasTotais ?? turma.vagasTotais;
+      const inscricoesAtivas = await tx.cursosTurmasInscricoes.count({
+        where: {
+          turmaId,
+          status: { notIn: [StatusInscricao.CANCELADO, StatusInscricao.TRANCADO] },
+        },
+      });
+      const vagasIlimitadasFinal = data.vagasIlimitadas ?? turma.vagasIlimitadas;
+      const vagasTotais = vagasIlimitadasFinal ? 0 : (data.vagasTotais ?? turma.vagasTotais);
 
       if (vagasTotais < inscricoesAtivas) {
         const error = new Error('Vagas totais não podem ser menores que inscrições ativas');
@@ -927,9 +1163,10 @@ export const turmasService = {
         throw error;
       }
 
-      const minimoDisponiveis = vagasTotais - inscricoesAtivas;
-      let vagasDisponiveis =
-        data.vagasDisponiveis !== undefined
+      const minimoDisponiveis = vagasIlimitadasFinal ? 0 : vagasTotais - inscricoesAtivas;
+      let vagasDisponiveis = vagasIlimitadasFinal
+        ? 0
+        : data.vagasDisponiveis !== undefined
           ? Math.min(data.vagasDisponiveis, vagasTotais)
           : data.vagasTotais !== undefined
             ? minimoDisponiveis
@@ -939,13 +1176,58 @@ export const turmasService = {
         vagasDisponiveis = minimoDisponiveis;
       }
 
+      // Validação de período (considerando valores existentes quando não informados)
+      const dataInicioFinal = data.dataInicio !== undefined ? data.dataInicio : turma.dataInicio;
+      const dataFimFinal = data.dataFim !== undefined ? data.dataFim : turma.dataFim;
+      const dataInscricaoInicioFinal =
+        data.dataInscricaoInicio !== undefined
+          ? data.dataInscricaoInicio
+          : turma.dataInscricaoInicio;
+      const dataInscricaoFimFinal =
+        data.dataInscricaoFim !== undefined ? data.dataInscricaoFim : turma.dataInscricaoFim;
+
+      if (dataInicioFinal && dataFimFinal && dataInicioFinal > dataFimFinal) {
+        const error: any = new Error('Data de fim deve ser posterior à data de início');
+        error.code = 'VALIDATION_ERROR';
+        throw error;
+      }
+
+      if (
+        dataInscricaoInicioFinal &&
+        dataInscricaoFimFinal &&
+        dataInscricaoInicioFinal > dataInscricaoFimFinal
+      ) {
+        const error: any = new Error('Data final de inscrição deve ser posterior à data inicial');
+        error.code = 'VALIDATION_ERROR';
+        throw error;
+      }
+
+      if (dataInicioFinal && dataInscricaoFimFinal && dataInicioFinal < dataInscricaoFimFinal) {
+        const error: any = new Error(
+          'Data de início da turma não pode ser anterior à data final das inscrições',
+        );
+        error.code = 'VALIDATION_ERROR';
+        throw error;
+      }
+
       const statusNovo = data.status;
       const statusAnterior = turma.status;
+
+      // Entrada do usuário: apenas RASCUNHO/PUBLICADO (demais status são automáticos).
+      if (
+        statusNovo !== undefined &&
+        statusNovo !== CursoStatus.RASCUNHO &&
+        statusNovo !== CursoStatus.PUBLICADO
+      ) {
+        const error: any = new Error('Status inválido. Use apenas RASCUNHO ou PUBLICADO.');
+        error.code = 'VALIDATION_ERROR';
+        throw error;
+      }
 
       const estaPublicandoOuAbrindoInscricoes =
         statusNovo !== undefined &&
         statusNovo !== statusAnterior &&
-        (statusNovo === CursoStatus.PUBLICADO || statusNovo === CursoStatus.INSCRICOES_ABERTAS);
+        statusNovo === CursoStatus.PUBLICADO;
 
       if (estaPublicandoOuAbrindoInscricoes) {
         const [aulasCount, avaliacoesCount] = await Promise.all([
@@ -981,17 +1263,31 @@ export const turmasService = {
         data: {
           nome: data.nome,
           instrutorId: data.instrutorId ?? undefined,
+          estruturaTipo: data.estruturaTipo as any,
           turno: data.turno,
           metodo: data.metodo,
           dataInicio: data.dataInicio,
           dataFim: data.dataFim,
           dataInscricaoInicio: data.dataInscricaoInicio,
           dataInscricaoFim: data.dataInscricaoFim,
+          vagasIlimitadas: data.vagasIlimitadas,
           vagasTotais,
           vagasDisponiveis,
           status: data.status,
         },
       });
+
+      // Atualizar instrutores vinculados (quando instrutorIds é enviado)
+      if (Array.isArray(data.instrutorIds)) {
+        await tx.cursosTurmasInstrutores.deleteMany({ where: { turmaId } });
+        const normalized = Array.from(new Set(data.instrutorIds.filter(Boolean)));
+        if (normalized.length > 0) {
+          await tx.cursosTurmasInstrutores.createMany({
+            data: normalized.map((instrutorId) => ({ turmaId, instrutorId })),
+            skipDuplicates: true,
+          });
+        }
+      }
 
       return fetchTurmaDetailed(tx, turmaId);
     });
@@ -1011,6 +1307,7 @@ export const turmasService = {
           cursoId: true,
           vagasDisponiveis: true,
           vagasTotais: true,
+          vagasIlimitadas: true,
           dataInscricaoFim: true,
         },
       });
@@ -1044,8 +1341,19 @@ export const turmasService = {
         }
       }
 
-      // Verificar vagas disponíveis - ADMIN/MODERADOR podem ignorar
-      if (turma.vagasDisponiveis <= 0) {
+      // Verificar vagas disponíveis (vaga fica ocupada enquanto inscrição não está CANCELADO/TRANCADO)
+      const inscricoesAtivas = await tx.cursosTurmasInscricoes.count({
+        where: {
+          turmaId,
+          status: { notIn: [StatusInscricao.CANCELADO, StatusInscricao.TRANCADO] },
+        },
+      });
+
+      if (
+        !turma.vagasIlimitadas &&
+        turma.vagasTotais > 0 &&
+        inscricoesAtivas >= turma.vagasTotais
+      ) {
         const canOverrideVagas = actor?.role === Roles.ADMIN || actor?.role === Roles.MODERADOR;
 
         if (canOverrideVagas) {
@@ -1125,19 +1433,9 @@ export const turmasService = {
         },
       });
 
-      // Atualizar vagas disponíveis
-      // Se turma estava cheia e ADMIN/MODERADOR inscreveu, vagasDisponiveis ficará negativo (indica overflow)
-      await tx.cursosTurmas.update({
-        where: { id: turmaId },
-        data: {
-          vagasDisponiveis: turma.vagasDisponiveis - 1,
-        },
-      });
-
       // Sincronizar agenda do aluno com Google Calendar (em background, não bloqueia)
       setImmediate(async () => {
         try {
-           
           const {
             googleCalendarService,
           } = require('@/modules/cursos/aulas/services/google-calendar.service');
@@ -1269,7 +1567,7 @@ export const turmasService = {
     return prisma.$transaction(async (tx) => {
       const turma = await tx.cursosTurmas.findUnique({
         where: { id: turmaId },
-        select: { id: true, cursoId: true, vagasDisponiveis: true, vagasTotais: true },
+        select: { id: true, cursoId: true },
       });
 
       if (!turma || turma.cursoId !== cursoId) {
@@ -1291,15 +1589,6 @@ export const turmasService = {
 
       await tx.cursosTurmasInscricoes.delete({
         where: { turmaId_alunoId: { turmaId, alunoId } },
-      });
-
-      const novasVagasDisponiveis = Math.min(turma.vagasDisponiveis + 1, turma.vagasTotais);
-
-      await tx.cursosTurmas.update({
-        where: { id: turmaId },
-        data: {
-          vagasDisponiveis: novasVagasDisponiveis,
-        },
       });
 
       return fetchTurmaDetailed(tx, turmaId);

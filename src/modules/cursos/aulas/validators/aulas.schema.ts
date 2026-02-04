@@ -234,8 +234,14 @@ export const putUpdateAulaSchema = z
     sala: z.string().max(100).optional(),
     dataInicio: z.coerce.date().optional(),
     dataFim: z.coerce.date().optional(),
-    horaInicio: z.string().regex(/^\d{2}:\d{2}$/).optional(),
-    horaFim: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+    horaInicio: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/)
+      .optional(),
+    horaFim: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/)
+      .optional(),
     materiais: materiaisInputSchema.optional(),
   })
   .superRefine((data, ctx) => {
@@ -255,11 +261,21 @@ export const putUpdateAulaSchema = z
 export const listAulasQuerySchema = z
   .object({
     page: z.coerce.number().int().positive().default(1),
-    pageSize: z.coerce.number().int().positive().max(100).default(10),
+    pageSize: z.coerce.number().int().positive().max(200).default(10),
     cursoId: z.string().uuid().optional(),
     // filtros por nome/código (para telas com busca por texto)
     curso: z.string().min(1).max(255).optional(),
     semTurma: z.preprocess((value) => {
+      if (value === undefined || value === null || value === '') return undefined;
+      if (typeof value === 'boolean') return value;
+      if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        if (normalized === 'true') return true;
+        if (normalized === 'false') return false;
+      }
+      return value;
+    }, z.boolean().optional()),
+    includeSemCurso: z.preprocess((value) => {
       if (value === undefined || value === null || value === '') return undefined;
       if (typeof value === 'boolean') return value;
       if (typeof value === 'string') {
@@ -350,14 +366,6 @@ export const listAulasQuerySchema = z
     order: z.enum(['asc', 'desc']).optional().default('asc'),
   })
   .superRefine((query, ctx) => {
-    if (query.semTurma === true && !query.cursoId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['cursoId'],
-        message: 'cursoId é obrigatório quando semTurma=true',
-      });
-    }
-
     if (query.semTurma === true && query.turmaId) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

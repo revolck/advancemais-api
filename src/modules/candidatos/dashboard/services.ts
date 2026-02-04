@@ -1,6 +1,6 @@
 /**
  * Service de Dashboard para ALUNO_CANDIDATO
- * 
+ *
  * Retorna:
  * - Métricas (cursos em progresso, concluídos, total de cursos, total de candidaturas)
  * - Últimos 8 cursos com progresso
@@ -60,8 +60,9 @@ export const candidatoDashboardService = {
       const cursosEmProgresso = inscricoes.filter((i) =>
         ['INSCRITO', 'EM_ANDAMENTO'].includes(i.status),
       ).length;
-      const cursosConcluidos = inscricoes.filter((i) => i.status === StatusInscricao.CONCLUIDO)
-        .length;
+      const cursosConcluidos = inscricoes.filter(
+        (i) => i.status === StatusInscricao.CONCLUIDO,
+      ).length;
       const totalCursos = inscricoes.length;
       const totalCandidaturas = candidaturas.length;
 
@@ -123,7 +124,9 @@ export const candidatoDashboardService = {
             const fim = new Date(inscricao.CursosTurmas.dataFim).getTime();
             const atual = agora.getTime();
             if (fim > inicio) {
-              progresso = Math.round(Math.min(100, Math.max(0, ((atual - inicio) / (fim - inicio)) * 100)));
+              progresso = Math.round(
+                Math.min(100, Math.max(0, ((atual - inicio) / (fim - inicio)) * 100)),
+              );
             }
           }
         } else {
@@ -140,7 +143,10 @@ export const candidatoDashboardService = {
           statusExibicao = 'Em progresso';
         } else if (inscricao.status === StatusInscricao.INSCRITO) {
           statusExibicao = 'Em progresso';
-        } else if (inscricao.status === StatusInscricao.CANCELADO || inscricao.status === StatusInscricao.TRANCADO) {
+        } else if (
+          inscricao.status === StatusInscricao.CANCELADO ||
+          inscricao.status === StatusInscricao.TRANCADO
+        ) {
           statusExibicao = 'Cancelado';
         } else {
           statusExibicao = 'Não iniciado';
@@ -209,9 +215,7 @@ export const candidatoDashboardService = {
         } else if (vaga.modalidade === 'REMOTO') {
           localFormatado = 'Remoto';
         } else if (vaga.modalidade === 'HIBRIDO') {
-          localFormatado = localizacao?.cidade
-            ? `${localizacao.cidade} (Híbrido)`
-            : 'Híbrido';
+          localFormatado = localizacao?.cidade ? `${localizacao.cidade} (Híbrido)` : 'Híbrido';
         } else {
           localFormatado = 'Não informado';
         }
@@ -249,4 +253,3 @@ export const candidatoDashboardService = {
     }
   },
 };
-

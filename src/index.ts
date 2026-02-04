@@ -22,6 +22,7 @@ import { startAssinaturasReconJob } from '@/modules/mercadopago/assinaturas/cron
 import { startBoletoWatcherJob } from '@/modules/mercadopago/assinaturas/cron/boleto-watcher';
 import { startBloqueiosWatcherJob } from '@/modules/usuarios/bloqueios/cron/bloqueio-watcher';
 import { startEstagiosWatcherJob } from '@/modules/cursos/cron/estagios-watcher';
+import { startTurmasStatusWatcherJob } from '@/modules/cursos/cron/turmas-status-watcher';
 import { startCobrancaAutomaticaJob } from '@/modules/empresas/cartoes/cron/cobranca-automatica';
 import { startAgendaCronJobs } from '@/modules/cursos/aulas/cron/agenda-jobs';
 
@@ -160,20 +161,25 @@ setupSwagger(app);
  */
 const routerLogger = bootstrapLogger.child({ context: 'RouterInit' });
 
+const isTestEnv = process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined;
+
 try {
   app.use('/', appRoutes);
   routerLogger.info('✅ Router principal carregado com sucesso');
-  startExpiredUserCleanupJob();
-  // Cron de reconciliação de assinaturas (habilitado via env)
-  try {
-    startAssinaturasReconJob();
-    startBoletoWatcherJob();
-    startBloqueiosWatcherJob();
-    startEstagiosWatcherJob();
-    startCobrancaAutomaticaJob(); // Cobrança automática de cartões
-    startAgendaCronJobs(); // Cron jobs de agenda (aulas, provas, entrevistas)
-  } catch (e) {
-    routerLogger.warn({ err: e }, '⚠️ Falha ao iniciar crons');
+  if (!isTestEnv) {
+    startExpiredUserCleanupJob();
+    // Cron de reconciliação de assinaturas (habilitado via env)
+    try {
+      startAssinaturasReconJob();
+      startBoletoWatcherJob();
+      startBloqueiosWatcherJob();
+      startEstagiosWatcherJob();
+      startTurmasStatusWatcherJob();
+      startCobrancaAutomaticaJob(); // Cobrança automática de cartões
+      startAgendaCronJobs(); // Cron jobs de agenda (aulas, provas, entrevistas)
+    } catch (e) {
+      routerLogger.warn({ err: e }, '⚠️ Falha ao iniciar crons');
+    }
   }
 } catch (error) {
   routerLogger.error({ err: error }, '❌ Erro crítico ao carregar router principal');
@@ -224,54 +230,57 @@ app.use(errorMiddleware);
 /**
  * Inicia o servidor HTTP na porta configurada
  */
-const server = app.listen(serverConfig.port, async () => {
-  const startupLogger = bootstrapLogger.child({ context: 'ServerStart' });
-  startupLogger.info(
-    {
-      baseUrl: `http://localhost:${serverConfig.port}`,
-      environment: serverConfig.nodeEnv,
-      startedAt: new Date().toISOString(),
-    },
-    '🚀 Advance+ API - Servidor iniciado',
-  );
-
-  if (process.env.REDIS_URL) {
-    try {
-      await redis.ping();
-      startupLogger.info('🧠 Redis conectado');
-    } catch (error) {
-      startupLogger.error({ err: error }, '🧠 Redis indisponível');
-    }
-  } else {
-    startupLogger.warn('🧠 Redis não configurado');
-  }
-
-  startupLogger.info(
-    {
-      endpoints: {
-        health: `http://localhost:${serverConfig.port}/health`,
-        usuarios: `http://localhost:${serverConfig.port}/api/v1/usuarios`,
-        brevo: `http://localhost:${serverConfig.port}/api/v1/brevo`,
-        website: `http://localhost:${serverConfig.port}/api/v1/website`,
-        cursos: `http://localhost:${serverConfig.port}/api/v1/cursos`,
+let server: ReturnType<typeof app.listen> | null = null;
+if (!isTestEnv) {
+  server = app.listen(serverConfig.port, async () => {
+    const startupLogger = bootstrapLogger.child({ context: 'ServerStart' });
+    startupLogger.info(
+      {
+        baseUrl: `http://localhost:${serverConfig.port}`,
+        environment: serverConfig.nodeEnv,
+        startedAt: new Date().toISOString(),
       },
-    },
-    '📋 Endpoints principais',
-  );
+      '🚀 Advance+ API - Servidor iniciado',
+    );
 
-  startupLogger.info(
-    {
-      commands: [
-        `curl http://localhost:${serverConfig.port}/health`,
-        `curl http://localhost:${serverConfig.port}/api/v1/brevo/health`,
-      ],
-    },
-    '🧪 Testes rápidos',
-  );
+    if (process.env.REDIS_URL) {
+      try {
+        await redis.ping();
+        startupLogger.info('🧠 Redis conectado');
+      } catch (error) {
+        startupLogger.error({ err: error }, '🧠 Redis indisponível');
+      }
+    } else {
+      startupLogger.warn('🧠 Redis não configurado');
+    }
 
-  // Inicia keep-alive para evitar hibernação da instância
-  startKeepAlive();
-});
+    startupLogger.info(
+      {
+        endpoints: {
+          health: `http://localhost:${serverConfig.port}/health`,
+          usuarios: `http://localhost:${serverConfig.port}/api/v1/usuarios`,
+          brevo: `http://localhost:${serverConfig.port}/api/v1/brevo`,
+          website: `http://localhost:${serverConfig.port}/api/v1/website`,
+          cursos: `http://localhost:${serverConfig.port}/api/v1/cursos`,
+        },
+      },
+      '📋 Endpoints principais',
+    );
+
+    startupLogger.info(
+      {
+        commands: [
+          `curl http://localhost:${serverConfig.port}/health`,
+          `curl http://localhost:${serverConfig.port}/api/v1/brevo/health`,
+        ],
+      },
+      '🧪 Testes rápidos',
+    );
+
+    // Inicia keep-alive para evitar hibernação da instância
+    startKeepAlive();
+  });
+}
 
 // =============================================
 // GRACEFUL SHUTDOWN
@@ -280,35 +289,39 @@ const server = app.listen(serverConfig.port, async () => {
 /**
  * Graceful shutdown em caso de SIGTERM (Docker, PM2, etc.)
  */
-process.on('SIGTERM', async () => {
-  const shutdownLogger = bootstrapLogger.child({ context: 'Shutdown', signal: 'SIGTERM' });
-  shutdownLogger.info('🔄 SIGTERM recebido, encerrando servidor graciosamente...');
-  try {
-    await prisma.$disconnect();
-    shutdownLogger.info('🔌 Prisma desconectado');
-  } catch (err) {
-    shutdownLogger.error({ err }, 'Erro ao desconectar Prisma');
-  }
-  server.close(() => {
-    shutdownLogger.info('✅ Servidor encerrado com sucesso');
-    process.exit(0);
+if (!isTestEnv && server) {
+  process.on('SIGTERM', async () => {
+    const shutdownLogger = bootstrapLogger.child({ context: 'Shutdown', signal: 'SIGTERM' });
+    shutdownLogger.info('🔄 SIGTERM recebido, encerrando servidor graciosamente...');
+    try {
+      await prisma.$disconnect();
+      shutdownLogger.info('🔌 Prisma desconectado');
+    } catch (err) {
+      shutdownLogger.error({ err }, 'Erro ao desconectar Prisma');
+    }
+    server?.close(() => {
+      shutdownLogger.info('✅ Servidor encerrado com sucesso');
+      process.exit(0);
+    });
   });
-});
+}
 
 /**
  * Graceful shutdown em caso de SIGINT (Ctrl+C)
  */
-process.on('SIGINT', async () => {
-  const shutdownLogger = bootstrapLogger.child({ context: 'Shutdown', signal: 'SIGINT' });
-  shutdownLogger.info('🔄 SIGINT recebido, encerrando servidor graciosamente...');
-  try {
-    await prisma.$disconnect();
-    shutdownLogger.info('🔌 Prisma desconectado');
-  } catch (err) {
-    shutdownLogger.error({ err }, 'Erro ao desconectar Prisma');
-  }
-  server.close(() => {
-    shutdownLogger.info('✅ Servidor encerrado com sucesso');
-    process.exit(0);
+if (!isTestEnv && server) {
+  process.on('SIGINT', async () => {
+    const shutdownLogger = bootstrapLogger.child({ context: 'Shutdown', signal: 'SIGINT' });
+    shutdownLogger.info('🔄 SIGINT recebido, encerrando servidor graciosamente...');
+    try {
+      await prisma.$disconnect();
+      shutdownLogger.info('🔌 Prisma desconectado');
+    } catch (err) {
+      shutdownLogger.error({ err }, 'Erro ao desconectar Prisma');
+    }
+    server?.close(() => {
+      shutdownLogger.info('✅ Servidor encerrado com sucesso');
+      process.exit(0);
+    });
   });
-});
+}

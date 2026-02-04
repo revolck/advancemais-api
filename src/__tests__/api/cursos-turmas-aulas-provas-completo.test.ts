@@ -291,7 +291,7 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
       const cursoSemTemplates = await prisma.cursos.create({
         data: {
           nome: `Curso Sem Templates ${Date.now()}`,
-          codigo: `ST${Date.now()}`,
+          codigo: `ST${Date.now().toString().slice(-6)}`,
           descricao: 'Teste',
           cargaHoraria: 40,
           statusPadrao: 'RASCUNHO',
@@ -300,22 +300,23 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
       });
 
       const turmaData = {
+        estruturaTipo: 'PADRAO',
         nome: 'Turma Test',
         turno: 'NOITE',
         metodo: 'LIVE',
+        vagasIlimitadas: false,
         vagasTotais: 30,
         dataInicio: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         dataFim: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
         dataInscricaoInicio: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
         dataInscricaoFim: new Date(Date.now() + 29 * 24 * 60 * 60 * 1000).toISOString(),
         estrutura: {
-          modules: [
-            {
-              title: 'Módulo 1',
-              items: [],
-            },
+          modules: [],
+          // Estrutura válida (para chegar na validação de templates do service)
+          standaloneItems: [
+            { type: 'AULA', title: 'Aula 1', templateId: '00000000-0000-0000-0000-000000000000' },
+            { type: 'PROVA', title: 'Prova 1', templateId: '00000000-0000-0000-0000-000000000000' },
           ],
-          standaloneItems: [],
         },
       };
 
@@ -347,10 +348,12 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
       }
 
       const turmaData = {
+        estruturaTipo: 'DINAMICA',
         nome: 'Turma Completa Test',
         instrutorId: testInstrutor.id,
         turno: 'NOITE',
         metodo: 'LIVE',
+        vagasIlimitadas: false,
         vagasTotais: 30,
         dataInicio: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         dataFim: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
@@ -631,8 +634,16 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
       }
 
       const turmaDataInvalida = {
+        estruturaTipo: 'MODULAR',
         nome: 'Turma Inválida',
+        turno: 'NOITE',
+        metodo: 'LIVE',
+        vagasIlimitadas: false,
         vagasTotais: 30,
+        dataInicio: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        dataFim: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+        dataInscricaoInicio: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+        dataInscricaoFim: new Date(Date.now() + 29 * 24 * 60 * 60 * 1000).toISOString(),
         estrutura: {
           modules: [
             {
@@ -663,8 +674,16 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
     it('deve retornar erro 404 para curso inexistente ao criar turma', async () => {
       const fakeCursoId = randomUUID();
       const turmaData = {
+        estruturaTipo: 'MODULAR',
         nome: 'Turma Test',
+        turno: 'NOITE',
+        metodo: 'LIVE',
+        vagasIlimitadas: false,
         vagasTotais: 30,
+        dataInicio: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        dataFim: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+        dataInscricaoInicio: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+        dataInscricaoFim: new Date(Date.now() + 29 * 24 * 60 * 60 * 1000).toISOString(),
         estrutura: {
           modules: [
             {
@@ -705,8 +724,16 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
       }
 
       const turmaData = {
+        estruturaTipo: 'MODULAR',
         nome: 'Turma Test',
+        turno: 'NOITE',
+        metodo: 'LIVE',
+        vagasIlimitadas: false,
         vagasTotais: 30,
+        dataInicio: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        dataFim: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+        dataInscricaoInicio: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+        dataInscricaoFim: new Date(Date.now() + 29 * 24 * 60 * 60 * 1000).toISOString(),
         estrutura: {
           modules: [
             {

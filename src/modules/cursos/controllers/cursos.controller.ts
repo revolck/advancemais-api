@@ -12,6 +12,7 @@ import {
   createCourseSchema,
   listCoursesQuerySchema,
   updateCourseSchema,
+  vincularTemplatesSchema,
 } from '../validators/cursos.schema';
 import {
   listAlunosComInscricoesQuerySchema,
@@ -209,6 +210,47 @@ export class CursosController {
         success: false,
         code: 'CURSOS_LIST_ERROR',
         message: 'Erro ao listar cursos',
+        error: error?.message,
+      });
+    }
+  };
+
+  static vincularTemplates = async (req: Request, res: Response) => {
+    try {
+      const payload = vincularTemplatesSchema.parse(req.body);
+      const result = await cursosService.vincularTemplates(payload);
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Payload inválido',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'CURSO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'CURSO_NOT_FOUND',
+          message: 'Curso não encontrado',
+        });
+      }
+
+      if (error?.code === 'TEMPLATES_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'TEMPLATES_NOT_FOUND',
+          message: 'Templates informados não encontrados ou não são templates válidos (sem turma).',
+          details: error?.details,
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'CURSOS_VINCULAR_TEMPLATES_ERROR',
+        message: 'Erro ao vincular templates ao curso',
         error: error?.message,
       });
     }

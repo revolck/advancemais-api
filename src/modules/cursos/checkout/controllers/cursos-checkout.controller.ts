@@ -242,10 +242,12 @@ export class CursosCheckoutController {
           nome: true,
           cursoId: true,
           vagasTotais: true,
+          vagasIlimitadas: true,
           _count: {
             select: {
               CursosTurmasInscricoes: {
-                where: { status: 'INSCRITO' },
+                // Vaga fica ocupada enquanto a inscrição não estiver CANCELADO/TRANCADO (inclui boleto pendente)
+                where: { status: { notIn: ['CANCELADO', 'TRANCADO'] } },
               },
             },
           },
@@ -269,10 +271,10 @@ export class CursosCheckoutController {
       }
 
       const inscritosAtual = turma._count.CursosTurmasInscricoes;
-      const vagasTotais = turma.vagasTotais || null;
-      const temVaga = vagasTotais === null || vagasTotais === 0 || inscritosAtual < vagasTotais;
-      const vagasDisponiveis =
-        vagasTotais === null || vagasTotais === 0 ? null : vagasTotais - inscritosAtual;
+      const ilimitado = turma.vagasIlimitadas || !turma.vagasTotais || turma.vagasTotais === 0;
+      const vagasTotais = ilimitado ? null : turma.vagasTotais;
+      const temVaga = ilimitado ? true : inscritosAtual < (vagasTotais as number);
+      const vagasDisponiveis = ilimitado ? null : (vagasTotais as number) - inscritosAtual;
 
       res.json({
         success: true,
@@ -285,7 +287,7 @@ export class CursosCheckoutController {
           inscritosAtual,
           vagasTotais,
           vagasDisponiveis,
-          ilimitado: vagasTotais === null || vagasTotais === 0,
+          ilimitado,
         },
       });
     } catch (error: any) {

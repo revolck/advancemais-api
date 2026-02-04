@@ -454,10 +454,12 @@ describe('API - Ambiente Completo de Cursos (Gratuito, Pago, Recuperação, Cert
 
       const timestamp = Date.now().toString().slice(-6);
       const turmaData = {
+        estruturaTipo: 'MODULAR',
         nome: `Turma Gratuita Concluída ${timestamp}`,
         instrutorId: testInstrutor.id,
         turno: 'NOITE',
         metodo: 'LIVE',
+        vagasIlimitadas: false,
         vagasTotais: 30,
         dataInicio: doisMesesAtras.toISOString(),
         dataFim: ontem.toISOString(),

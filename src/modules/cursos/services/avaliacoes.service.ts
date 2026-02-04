@@ -266,6 +266,7 @@ export const avaliacoesService = {
       cursoId,
       turmaId,
       instrutorId,
+      includeSemCurso,
       curso,
       turma,
       instrutor,
@@ -313,7 +314,10 @@ export const avaliacoesService = {
       });
       const turmasIds = turmasDoInstrutor.map((t) => t.id);
       if (turmasIds.length > 0) {
-        where.OR = [{ turmaId: { in: turmasIds } }, { turmaId: null, instrutorId: usuarioLogado.id }];
+        where.OR = [
+          { turmaId: { in: turmasIds } },
+          { turmaId: null, instrutorId: usuarioLogado.id },
+        ];
       } else {
         where.turmaId = null;
         where.instrutorId = usuarioLogado.id;
@@ -323,7 +327,12 @@ export const avaliacoesService = {
     // Filtro por cursoId (templates do curso ou avaliações das turmas do curso)
     if (cursoId) {
       if (semTurma === true) {
-        applyAndFilter({ turmaId: null, cursoId });
+        const includeSemCursoFinal = includeSemCurso !== undefined ? includeSemCurso : true;
+        if (includeSemCursoFinal) {
+          applyAndFilter({ turmaId: null, OR: [{ cursoId }, { cursoId: null }] });
+        } else {
+          applyAndFilter({ turmaId: null, cursoId });
+        }
       } else if (semTurma === false) {
         applyAndFilter({ turmaId: { not: null }, CursosTurmas: { cursoId } });
       } else {
@@ -765,7 +774,9 @@ export const avaliacoesService = {
       }
 
       const turmaIdFinal = data.turmaId !== undefined ? data.turmaId : existente.turmaId;
-      const statusFinal = turmaIdFinal ? (data.status ?? existente.status) : CursosAulaStatus.RASCUNHO;
+      const statusFinal = turmaIdFinal
+        ? (data.status ?? existente.status)
+        : CursosAulaStatus.RASCUNHO;
 
       // Se houver turma, modalidade segue turma.metodo e cursoId segue turma.cursoId
       let modalidadeFinal = data.modalidade;
@@ -800,8 +811,10 @@ export const avaliacoesService = {
 
       const updateData: Prisma.CursosTurmasProvasUncheckedUpdateInput = {
         tipo: data.tipo,
-        tipoAtividade: data.tipo === CursosAvaliacaoTipo.ATIVIDADE ? (data.tipoAtividade ?? null) : null,
-        recuperacaoFinal: data.tipo === CursosAvaliacaoTipo.PROVA ? (data.recuperacaoFinal ?? false) : false,
+        tipoAtividade:
+          data.tipo === CursosAvaliacaoTipo.ATIVIDADE ? (data.tipoAtividade ?? null) : null,
+        recuperacaoFinal:
+          data.tipo === CursosAvaliacaoTipo.PROVA ? (data.recuperacaoFinal ?? false) : false,
         titulo: data.titulo,
         etiqueta: data.etiqueta ?? undefined,
         descricao: data.descricao !== undefined ? (data.descricao ?? null) : undefined,
@@ -831,7 +844,10 @@ export const avaliacoesService = {
       if (data.questoes) {
         await tx.cursosTurmasProvasQuestoes.deleteMany({ where: { provaId: avaliacaoId } });
         await createQuestoes(tx, avaliacaoId, data.questoes);
-      } else if (data.tipo === CursosAvaliacaoTipo.ATIVIDADE && data.tipoAtividade === CursosAtividadeTipo.PERGUNTA_RESPOSTA) {
+      } else if (
+        data.tipo === CursosAvaliacaoTipo.ATIVIDADE &&
+        data.tipoAtividade === CursosAtividadeTipo.PERGUNTA_RESPOSTA
+      ) {
         await tx.cursosTurmasProvasQuestoes.deleteMany({ where: { provaId: avaliacaoId } });
       }
 

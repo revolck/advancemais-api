@@ -398,12 +398,14 @@ describe('API - Cursos Integração Completa (Turmas, Aulas, Provas, Frequência
       const dataInicio = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
       const dataFim = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
       const dataInscricaoInicio = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
-      const dataInscricaoFim = new Date(dataInicio.getTime() + 1 * 24 * 60 * 60 * 1000); // 1 dia depois de dataInicio
+      const dataInscricaoFim = new Date(dataInicio.getTime() - 1 * 24 * 60 * 60 * 1000); // 1 dia antes de dataInicio
 
       const turmaData = {
+        estruturaTipo: 'MODULAR',
         nome: 'Turma Test',
         turno: 'NOITE',
         metodo: 'LIVE',
+        vagasIlimitadas: false,
         vagasTotais: 30,
         dataInicio: dataInicio.toISOString(),
         dataFim: dataFim.toISOString(),
@@ -464,13 +466,15 @@ describe('API - Cursos Integração Completa (Turmas, Aulas, Provas, Frequência
       const dataInicio = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
       const dataFim = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
       const dataInscricaoInicio = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
-      const dataInscricaoFim = new Date(dataInicio.getTime() + 1 * 24 * 60 * 60 * 1000); // 1 dia depois de dataInicio
+      const dataInscricaoFim = new Date(dataInicio.getTime() - 1 * 24 * 60 * 60 * 1000); // 1 dia antes de dataInicio
 
       const turmaData = {
+        estruturaTipo: 'DINAMICA',
         nome: 'Turma Completa Test',
         instrutorId: testInstrutor.id,
         turno: 'NOITE',
         metodo: 'LIVE',
+        vagasIlimitadas: false,
         vagasTotais: 30,
         dataInicio: dataInicio.toISOString(),
         dataFim: dataFim.toISOString(),
@@ -985,8 +989,16 @@ describe('API - Cursos Integração Completa (Turmas, Aulas, Provas, Frequência
       }
 
       const turmaDataInvalida = {
+        estruturaTipo: 'MODULAR',
         nome: 'Turma Inválida',
+        turno: 'NOITE',
+        metodo: 'LIVE',
+        vagasIlimitadas: false,
         vagasTotais: 30,
+        dataInicio: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        dataFim: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+        dataInscricaoInicio: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+        dataInscricaoFim: new Date(Date.now() + 29 * 24 * 60 * 60 * 1000).toISOString(),
         estrutura: {
           modules: [
             {
@@ -1017,8 +1029,16 @@ describe('API - Cursos Integração Completa (Turmas, Aulas, Provas, Frequência
     it('deve retornar erro 404 para curso inexistente ao criar turma', async () => {
       const fakeCursoId = randomUUID();
       const turmaData = {
+        estruturaTipo: 'MODULAR',
         nome: 'Turma Test',
+        turno: 'NOITE',
+        metodo: 'LIVE',
+        vagasIlimitadas: false,
         vagasTotais: 30,
+        dataInicio: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        dataFim: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+        dataInscricaoInicio: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+        dataInscricaoFim: new Date(Date.now() + 29 * 24 * 60 * 60 * 1000).toISOString(),
         estrutura: {
           modules: [
             {
@@ -1058,8 +1078,16 @@ describe('API - Cursos Integração Completa (Turmas, Aulas, Provas, Frequência
       }
 
       const turmaData = {
+        estruturaTipo: 'MODULAR',
         nome: 'Turma Test',
+        turno: 'NOITE',
+        metodo: 'LIVE',
+        vagasIlimitadas: false,
         vagasTotais: 30,
+        dataInicio: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        dataFim: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+        dataInscricaoInicio: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+        dataInscricaoFim: new Date(Date.now() + 29 * 24 * 60 * 60 * 1000).toISOString(),
         estrutura: {
           modules: [
             {

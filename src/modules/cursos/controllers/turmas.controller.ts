@@ -77,6 +77,14 @@ export class TurmasController {
         });
       }
 
+      if (error?.code === 'VALIDATION_ERROR') {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: error?.message || 'Dados inválidos para criação da turma',
+        });
+      }
+
       res.status(500).json({
         success: false,
         code: 'TURMAS_LIST_ERROR',

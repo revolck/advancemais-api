@@ -1746,6 +1746,56 @@ router.post(
 
 /**
  * @openapi
+ * /api/v1/cursos/templates/vincular:
+ *   post:
+ *     summary: Vincular templates de aula/avaliação a um curso
+ *     tags: [Cursos]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [cursoId]
+ *             properties:
+ *               cursoId:
+ *                 type: string
+ *                 format: uuid
+ *               aulaTemplateIds:
+ *                 type: array
+ *                 items: { type: string, format: uuid }
+ *               avaliacaoTemplateIds:
+ *                 type: array
+ *                 items: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Templates vinculados com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     updatedAulas: { type: integer }
+ *                     updatedAvaliacoes: { type: integer }
+ *       400:
+ *         description: Payload inválido
+ *       404:
+ *         description: Curso ou templates não encontrados
+ */
+router.post(
+  '/templates/vincular',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  CursosController.vincularTemplates,
+);
+
+/**
+ * @openapi
  * /api/v1/cursos/{cursoId}:
  *   put:
  *     summary: Atualizar dados de um curso
@@ -2499,9 +2549,9 @@ router.get('/:cursoId/turmas', publicCache, TurmasController.list);
  *       - in: path
  *         name: cursoId
  *         required: true
- *         schema: { type: integer, minimum: 1 }
- *         description: ID numérico do curso
- *         example: 4
+ *         schema: { type: string, format: uuid }
+ *         description: UUID do curso
+ *         example: "0b89ee94-f3ab-4682-999b-36574f81751a"
  *       - in: path
  *         name: turmaId
  *         required: true
@@ -2567,9 +2617,9 @@ router.get('/:cursoId/turmas/:turmaId', publicCache, TurmasController.get);
  *       - in: path
  *         name: cursoId
  *         required: true
- *         schema: { type: integer, minimum: 1 }
- *         description: ID numérico do curso
- *         example: 4
+ *         schema: { type: string, format: uuid }
+ *         description: UUID do curso
+ *         example: "0b89ee94-f3ab-4682-999b-36574f81751a"
  *       - in: path
  *         name: turmaId
  *         required: true
@@ -2692,7 +2742,7 @@ router.get('/:cursoId/turmas/:turmaId/inscricoes', TurmasController.listInscrico
  *       - in: path
  *         name: cursoId
  *         required: true
- *         schema: { type: integer, minimum: 1 }
+ *         schema: { type: string, format: uuid }
  *     requestBody:
  *       required: true
  *       content:

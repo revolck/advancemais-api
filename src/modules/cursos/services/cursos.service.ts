@@ -38,9 +38,11 @@ const turmaSummarySelect = {
   id: true,
   codigo: true,
   nome: true,
+  estruturaTipo: true,
   turno: true,
   metodo: true,
   status: true,
+  vagasIlimitadas: true,
   vagasTotais: true,
   vagasDisponiveis: true,
   dataInicio: true,
@@ -61,6 +63,21 @@ const regrasAvaliacaoSelect = {
 
 const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
   include: {
+    CursosTurmasInstrutores: {
+      include: {
+        Instrutor: {
+          select: {
+            id: true,
+            nomeCompleto: true,
+            email: true,
+            cpf: true,
+            codUsuario: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: [{ criadoEm: 'asc' }],
+    },
     CursosTurmasInscricoes: {
       include: {
         Usuarios: {
@@ -109,6 +126,21 @@ const buildPublicTurmaWhere = (referenceDate: Date): Prisma.CursosTurmasWhereInp
 
 const turmaPublicInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
   include: {
+    CursosTurmasInstrutores: {
+      include: {
+        Instrutor: {
+          select: {
+            id: true,
+            nomeCompleto: true,
+            email: true,
+            cpf: true,
+            codUsuario: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: [{ criadoEm: 'asc' }],
+    },
     CursosTurmasAulas: {
       orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
       include: aulaWithMateriaisInclude.include,
@@ -162,9 +194,11 @@ const mapTurmaSummary = (
   id: turma.id,
   codigo: turma.codigo,
   nome: turma.nome,
+  estruturaTipo: (turma as any).estruturaTipo ?? 'PADRAO',
   turno: turma.turno,
   metodo: turma.metodo,
   status: turma.status,
+  vagasIlimitadas: (turma as any).vagasIlimitadas ?? false,
   vagasTotais: turma.vagasTotais,
   vagasDisponiveis: turma.vagasDisponiveis,
   dataInicio: turma.dataInicio?.toISOString() ?? null,
@@ -184,7 +218,10 @@ export const mapTurmaSummaryWithInscricoes = (
   ...mapTurmaSummary(turma),
   inscricoesCount,
   vagasOcupadas: inscricoesCount,
-  vagasDisponiveisCalculadas: turma.vagasTotais - inscricoesCount,
+  vagasDisponiveisCalculadas:
+    (turma as any).vagasIlimitadas || turma.vagasTotais === 0
+      ? null
+      : turma.vagasTotais - inscricoesCount,
 });
 
 const mapRegrasAvaliacao = (
@@ -242,19 +279,37 @@ const mapTurmaDetailed = (turma: TurmaDetailedPayload) => {
     return diff !== 0 ? diff : String(a.tipo).localeCompare(String(b.tipo));
   });
 
+  const instrutores = ((turma as any).CursosTurmasInstrutores ?? [])
+    .map((rel: any) => {
+      const u = rel.Instrutor;
+      if (!u) return null;
+      return {
+        id: u.id,
+        codigo: u.codUsuario ?? null,
+        nome: u.nomeCompleto ?? null,
+        email: u.email ?? null,
+        cpf: u.cpf ?? null,
+        role: u.role ?? null,
+      };
+    })
+    .filter(Boolean);
+
   return {
     id: turma.id,
     codigo: turma.codigo,
     nome: turma.nome,
+    estruturaTipo: (turma as any).estruturaTipo ?? 'PADRAO',
     turno: turma.turno,
     metodo: turma.metodo,
     status: turma.status,
+    vagasIlimitadas: (turma as any).vagasIlimitadas ?? false,
     vagasTotais: turma.vagasTotais,
     vagasDisponiveis: turma.vagasDisponiveis,
     dataInicio: turma.dataInicio?.toISOString() ?? null,
     dataFim: turma.dataFim?.toISOString() ?? null,
     dataInscricaoInicio: turma.dataInscricaoInicio?.toISOString() ?? null,
     dataInscricaoFim: turma.dataInscricaoFim?.toISOString() ?? null,
+    instrutores,
     alunos: (turma.CursosTurmasInscricoes || (turma as any).inscricoes || []).map(
       (inscricao: any) => {
         const aluno = inscricao.Usuarios || inscricao.aluno;
@@ -322,19 +377,37 @@ const mapTurmaPublic = (turma: TurmaPublicPayload) => {
     return diff !== 0 ? diff : String(a.tipo).localeCompare(String(b.tipo));
   });
 
+  const instrutores = ((turma as any).CursosTurmasInstrutores ?? [])
+    .map((rel: any) => {
+      const u = rel.Instrutor;
+      if (!u) return null;
+      return {
+        id: u.id,
+        codigo: u.codUsuario ?? null,
+        nome: u.nomeCompleto ?? null,
+        email: u.email ?? null,
+        cpf: u.cpf ?? null,
+        role: u.role ?? null,
+      };
+    })
+    .filter(Boolean);
+
   return {
     id: turma.id,
     codigo: turma.codigo,
     nome: turma.nome,
+    estruturaTipo: (turma as any).estruturaTipo ?? 'PADRAO',
     turno: turma.turno,
     metodo: turma.metodo,
     status: turma.status,
+    vagasIlimitadas: (turma as any).vagasIlimitadas ?? false,
     vagasTotais: turma.vagasTotais,
     vagasDisponiveis: turma.vagasDisponiveis,
     dataInicio: turma.dataInicio?.toISOString() ?? null,
     dataFim: turma.dataFim?.toISOString() ?? null,
     dataInscricaoInicio: turma.dataInscricaoInicio?.toISOString() ?? null,
     dataInscricaoFim: turma.dataInscricaoFim?.toISOString() ?? null,
+    instrutores,
     modulos: modulos.map(mapModulo),
     aulas: aulasStandalone.map(mapAula),
     provas: provasStandalone.map((prova) => mapProva(prova, null)),
@@ -370,7 +443,10 @@ const mapCourse = async (course: RawCourse) => {
             ...detailed,
             inscricoesCount: inscricoesCount ?? 0,
             vagasOcupadas: inscricoesCount ?? 0,
-            vagasDisponiveisCalculadas: (turma.vagasTotais ?? 0) - (inscricoesCount ?? 0),
+            vagasDisponiveisCalculadas:
+              (turma as any).vagasIlimitadas || turma.vagasTotais === 0
+                ? null
+                : (turma.vagasTotais ?? 0) - (inscricoesCount ?? 0),
           };
         } else {
           // Turma summary: usar mapper com inscrições
@@ -545,6 +621,97 @@ const statusLabels: Record<CursosStatusPadrao, string> = {
 };
 
 export const cursosService = {
+  async vincularTemplates(params: {
+    cursoId: string;
+    aulaTemplateIds?: string[];
+    avaliacaoTemplateIds?: string[];
+  }) {
+    const cursoId = params.cursoId;
+    const aulaTemplateIds = Array.from(new Set(params.aulaTemplateIds ?? [])).filter(Boolean);
+    const avaliacaoTemplateIds = Array.from(new Set(params.avaliacaoTemplateIds ?? [])).filter(
+      Boolean,
+    );
+
+    return prisma.$transaction(async (tx) => {
+      const curso = await tx.cursos.findUnique({ where: { id: cursoId }, select: { id: true } });
+      if (!curso) {
+        const error: any = new Error('Curso não encontrado');
+        error.code = 'CURSO_NOT_FOUND';
+        throw error;
+      }
+
+      const [aulasEncontradas, avaliacoesEncontradas] = await Promise.all([
+        aulaTemplateIds.length > 0
+          ? tx.cursosTurmasAulas.findMany({
+              where: {
+                id: { in: aulaTemplateIds },
+                turmaId: null,
+                deletedAt: null,
+                OR: [{ cursoId: null }, { cursoId }],
+              },
+              select: { id: true },
+            })
+          : Promise.resolve([]),
+        avaliacaoTemplateIds.length > 0
+          ? tx.cursosTurmasProvas.findMany({
+              where: {
+                id: { in: avaliacaoTemplateIds },
+                turmaId: null,
+                OR: [{ cursoId: null }, { cursoId }],
+              },
+              select: { id: true },
+            })
+          : Promise.resolve([]),
+      ]);
+
+      const aulasSet = new Set(aulasEncontradas.map((item) => item.id));
+      const avaliacoesSet = new Set(avaliacoesEncontradas.map((item) => item.id));
+
+      const missingAulas = aulaTemplateIds.filter((id) => !aulasSet.has(id));
+      const missingAvaliacoes = avaliacaoTemplateIds.filter((id) => !avaliacoesSet.has(id));
+
+      if (missingAulas.length > 0 || missingAvaliacoes.length > 0) {
+        const error: any = new Error(
+          'Templates informados não encontrados ou não são templates válidos (sem turma).',
+        );
+        error.code = 'TEMPLATES_NOT_FOUND';
+        error.details = {
+          missingAulaTemplateIds: missingAulas,
+          missingAvaliacaoTemplateIds: missingAvaliacoes,
+        };
+        throw error;
+      }
+
+      const [aulasUpdate, avaliacoesUpdate] = await Promise.all([
+        aulaTemplateIds.length > 0
+          ? tx.cursosTurmasAulas.updateMany({
+              where: {
+                id: { in: aulaTemplateIds },
+                turmaId: null,
+                OR: [{ cursoId: null }, { cursoId }],
+              },
+              data: { cursoId },
+            })
+          : Promise.resolve({ count: 0 }),
+        avaliacaoTemplateIds.length > 0
+          ? tx.cursosTurmasProvas.updateMany({
+              where: {
+                id: { in: avaliacaoTemplateIds },
+                turmaId: null,
+                OR: [{ cursoId: null }, { cursoId }],
+              },
+              data: { cursoId },
+            })
+          : Promise.resolve({ count: 0 }),
+      ]);
+
+      return {
+        updatedAulas: aulasUpdate.count,
+        updatedAvaliacoes: avaliacoesUpdate.count,
+      };
+    });
+  },
+
   async list(params: CourseListParams) {
     const {
       page,
@@ -946,7 +1113,10 @@ export const cursosService = {
             ...turma,
             inscricoesCount: inscricoesCountMap[turma.id] || 0,
             vagasOcupadas: inscricoesCountMap[turma.id] || 0,
-            vagasDisponiveisCalculadas: turma.vagasTotais - (inscricoesCountMap[turma.id] || 0),
+            vagasDisponiveisCalculadas:
+              (turma as any).vagasIlimitadas || turma.vagasTotais === 0
+                ? null
+                : turma.vagasTotais - (inscricoesCountMap[turma.id] || 0),
           })),
         };
       }

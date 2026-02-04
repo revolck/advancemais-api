@@ -766,15 +766,103 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
             },
           },
         },
+        CursosTurmaEstruturaTipo: {
+          type: 'string',
+          enum: ['MODULAR', 'DINAMICA', 'PADRAO'],
+          description:
+            'Tipo de estrutura inicial da turma (conforme UI do dashboard). Define como o frontend organiza a estrutura enviada em `estrutura`.',
+        },
+        CursoTurmaEstruturaItemInput: {
+          type: 'object',
+          required: ['type', 'title', 'templateId'],
+          properties: {
+            type: { type: 'string', enum: ['AULA', 'PROVA', 'ATIVIDADE'] },
+            title: { type: 'string', example: 'Aula 01 - Introdução' },
+            templateId: { type: 'string', format: 'uuid' },
+            strategy: {
+              type: 'string',
+              enum: ['CLONE', 'REFERENCE'],
+              default: 'CLONE',
+              description:
+                'Compatibilidade: o backend aceita, mas atualmente sempre instancia via CLONE (novos IDs por turma).',
+            },
+            ordem: { type: 'integer', minimum: 0, example: 1 },
+            startDate: { type: 'string', format: 'date-time', nullable: true },
+            endDate: { type: 'string', format: 'date-time', nullable: true },
+            instructorId: { type: 'string', format: 'uuid', nullable: true },
+            instructorIds: {
+              type: 'array',
+              items: { type: 'string', format: 'uuid' },
+              nullable: true,
+              description: 'Instrutores sugeridos para o item (não obrigatório).',
+            },
+            obrigatoria: {
+              type: 'boolean',
+              nullable: true,
+              description:
+                'Override opcional da obrigatoriedade do item. Se omitido, o backend usa o valor do template.',
+            },
+            recuperacaoFinal: {
+              type: 'boolean',
+              nullable: true,
+              description:
+                'Apenas para itens do tipo PROVA: define se é uma prova de recuperação final. Se omitido, o backend usa o valor do template.',
+            },
+          },
+        },
+        CursoTurmaEstruturaModuleInput: {
+          type: 'object',
+          required: ['title', 'items'],
+          properties: {
+            id: { type: 'string', format: 'uuid', nullable: true },
+            title: { type: 'string', example: 'Módulo 1 - Fundamentos' },
+            ordem: { type: 'integer', minimum: 0, example: 1 },
+            startDate: { type: 'string', format: 'date-time', nullable: true },
+            endDate: { type: 'string', format: 'date-time', nullable: true },
+            instructorId: { type: 'string', format: 'uuid', nullable: true },
+            instructorIds: {
+              type: 'array',
+              items: { type: 'string', format: 'uuid' },
+              nullable: true,
+            },
+            items: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursoTurmaEstruturaItemInput' },
+              default: [],
+            },
+          },
+        },
+        CursoTurmaEstruturaInput: {
+          type: 'object',
+          properties: {
+            modules: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursoTurmaEstruturaModuleInput' },
+              default: [],
+            },
+            standaloneItems: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CursoTurmaEstruturaItemInput' },
+              default: [],
+            },
+          },
+        },
         CursoTurma: {
           type: 'object',
           properties: {
             id: { type: 'string', format: 'uuid', example: 'f8a6c3b5-1234-4d9c-9a1b-abcdef123456' },
             codigo: { type: 'string', example: 'TRAB1234' },
             nome: { type: 'string', example: 'Turma 01 - Manhã' },
+            estruturaTipo: { $ref: '#/components/schemas/CursosTurmaEstruturaTipo' },
             turno: { $ref: '#/components/schemas/CursosTurnos' },
             metodo: { $ref: '#/components/schemas/CursosMetodos' },
             status: { $ref: '#/components/schemas/CursoStatus' },
+            vagasIlimitadas: {
+              type: 'boolean',
+              example: false,
+              description:
+                'Quando true, o backend ignora controle de vagas (não bloqueia inscrições).',
+            },
             vagasTotais: { type: 'integer', example: 30 },
             vagasDisponiveis: {
               type: 'integer',
@@ -794,14 +882,33 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
             },
             vagasDisponiveisCalculadas: {
               type: 'integer',
+              nullable: true,
               example: 27,
               description:
-                '✅ NOVO: Vagas disponíveis calculadas em tempo real (vagasTotais - inscricoesCount). Sempre atualizado e preciso.',
+                '✅ NOVO: Vagas disponíveis calculadas em tempo real (vagasTotais - inscricoesCount). Quando vagasIlimitadas=true, retorna null.',
             },
             dataInicio: { type: 'string', format: 'date-time', nullable: true },
             dataFim: { type: 'string', format: 'date-time', nullable: true },
             dataInscricaoInicio: { type: 'string', format: 'date-time', nullable: true },
             dataInscricaoFim: { type: 'string', format: 'date-time', nullable: true },
+            instrutores: {
+              type: 'array',
+              description: 'Lista de instrutores vinculados à turma (0..N).',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string', format: 'uuid' },
+                  codigo: { type: 'string', nullable: true, example: 'INS-76482' },
+                  nome: { type: 'string', nullable: true, example: 'Instrutor Maria Silva' },
+                  email: {
+                    type: 'string',
+                    nullable: true,
+                    example: 'instrutor@advancemais.com.br',
+                  },
+                  cpf: { type: 'string', nullable: true, example: '12345678901' },
+                },
+              },
+            },
             instrutor: {
               nullable: true,
               allOf: [{ $ref: '#/components/schemas/CursoInstrutor' }],
@@ -827,6 +934,22 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
             regrasAvaliacao: {
               nullable: true,
               allOf: [{ $ref: '#/components/schemas/CursoTurmaRegrasAvaliacao' }],
+            },
+            mapping: {
+              type: 'array',
+              nullable: true,
+              description:
+                'Retornado na criação da turma: mapeamento de templates -> instâncias clonadas (útil para o builder).',
+              items: {
+                type: 'object',
+                properties: {
+                  templateId: { type: 'string', format: 'uuid' },
+                  instanceId: { type: 'string', format: 'uuid' },
+                  tipo: { type: 'string', enum: ['AULA', 'PROVA', 'ATIVIDADE'] },
+                  moduloId: { type: 'string', format: 'uuid', nullable: true },
+                  strategy: { type: 'string', enum: ['CLONE'] },
+                },
+              },
             },
           },
         },
@@ -1105,32 +1228,79 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
         },
         CursoTurmaCreateInput: {
           type: 'object',
-          required: ['nome', 'vagasTotais'],
+          required: [
+            'nome',
+            'estruturaTipo',
+            'turno',
+            'metodo',
+            'dataInscricaoInicio',
+            'dataInscricaoFim',
+            'dataInicio',
+            'dataFim',
+            'vagasIlimitadas',
+            'estrutura',
+          ],
           properties: {
             nome: { type: 'string', example: 'Turma 01 - Manhã' },
-            instrutorId: { type: 'string', format: 'uuid', nullable: true, example: 'P-02' },
+            estruturaTipo: { $ref: '#/components/schemas/CursosTurmaEstruturaTipo' },
+            instrutorId: { type: 'string', format: 'uuid', nullable: true },
+            instrutorIds: {
+              type: 'array',
+              items: { type: 'string', format: 'uuid' },
+              nullable: true,
+              description:
+                'Lista de instrutores (1..N) quando o usuário escolher "Adicionar agora". Se informado, o backend vincula todos e define instrutorId como o primeiro (compatibilidade).',
+            },
             turno: {
               $ref: '#/components/schemas/CursosTurnos',
-              description: 'Opcional. Se não informado, assume INTEGRAL.',
+              description: 'Turno da turma.',
             },
             metodo: {
               $ref: '#/components/schemas/CursosMetodos',
-              description: 'Opcional. Se não informado, assume ONLINE.',
+              description: 'Modalidade/metodologia da turma.',
             },
-            dataInicio: { type: 'string', format: 'date-time', nullable: true },
-            dataFim: { type: 'string', format: 'date-time', nullable: true },
-            dataInscricaoInicio: { type: 'string', format: 'date-time', nullable: true },
-            dataInscricaoFim: { type: 'string', format: 'date-time', nullable: true },
-            vagasTotais: { type: 'integer', example: 30, minimum: 1 },
+            dataInicio: { type: 'string', format: 'date-time' },
+            dataFim: { type: 'string', format: 'date-time' },
+            dataInscricaoInicio: { type: 'string', format: 'date-time' },
+            dataInscricaoFim: {
+              type: 'string',
+              format: 'date-time',
+              description:
+                'Regra: dataInicio da turma não pode ser anterior a dataInscricaoFim (inscrições devem encerrar antes do início).',
+            },
+            vagasIlimitadas: { type: 'boolean', example: false },
+            vagasTotais: {
+              type: 'integer',
+              nullable: true,
+              example: 30,
+              minimum: 1,
+              description: 'Obrigatório quando vagasIlimitadas=false.',
+            },
             vagasDisponiveis: { type: 'integer', nullable: true, example: 25 },
-            status: { $ref: '#/components/schemas/CursoStatus' },
+            status: {
+              type: 'string',
+              enum: ['RASCUNHO', 'PUBLICADO'],
+              nullable: true,
+              description:
+                'Entrada do usuário: apenas RASCUNHO/PUBLICADO (toggle do frontend). Os demais status (inscrições e andamento) são definidos automaticamente pelo backend com base nas datas.',
+              example: 'RASCUNHO',
+            },
+            estrutura: { $ref: '#/components/schemas/CursoTurmaEstruturaInput' },
           },
         },
         CursoTurmaUpdateInput: {
           type: 'object',
           properties: {
             nome: { type: 'string', example: 'Turma 02 - Noite' },
-            instrutorId: { type: 'string', format: 'uuid', nullable: true, example: 'P-02' },
+            estruturaTipo: { $ref: '#/components/schemas/CursosTurmaEstruturaTipo' },
+            instrutorId: { type: 'string', format: 'uuid', nullable: true },
+            instrutorIds: {
+              type: 'array',
+              items: { type: 'string', format: 'uuid' },
+              nullable: true,
+              description:
+                'Se enviado, substitui a lista de instrutores vinculados da turma (0..N).',
+            },
             turno: {
               $ref: '#/components/schemas/CursosTurnos',
               description: 'Atualiza o turno da turma.',
@@ -1143,9 +1313,17 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
             dataFim: { type: 'string', format: 'date-time', nullable: true },
             dataInscricaoInicio: { type: 'string', format: 'date-time', nullable: true },
             dataInscricaoFim: { type: 'string', format: 'date-time', nullable: true },
+            vagasIlimitadas: { type: 'boolean', nullable: true },
             vagasTotais: { type: 'integer', example: 35 },
             vagasDisponiveis: { type: 'integer', nullable: true, example: 20 },
-            status: { $ref: '#/components/schemas/CursoStatus' },
+            status: {
+              type: 'string',
+              enum: ['RASCUNHO', 'PUBLICADO'],
+              nullable: true,
+              description:
+                'Entrada do usuário: apenas RASCUNHO/PUBLICADO. Demais status são automáticos (datas de inscrição e período da turma).',
+              example: 'PUBLICADO',
+            },
           },
         },
         CursoEstagioLocal: {

@@ -38,19 +38,22 @@ export function montarCamposAlteradosMaterial(
   }
 
   // Campos específicos por tipo
-  if (tipoNovo === 'ARQUIVO' || tipoAntigo === 'ARQUIVO' || tipoNovo === 'APOSTILA' || tipoAntigo === 'APOSTILA') {
+  if (
+    tipoNovo === 'ARQUIVO' ||
+    tipoAntigo === 'ARQUIVO' ||
+    tipoNovo === 'APOSTILA' ||
+    tipoAntigo === 'APOSTILA'
+  ) {
     // Nome do arquivo
     const arquivoNomeAntigo = materialAntigo?.arquivoNome || null;
-    const arquivoNomeNovo =
-      materialNovo?.arquivoNome || inputNovo?.arquivoNome || null;
+    const arquivoNomeNovo = materialNovo?.arquivoNome || inputNovo?.arquivoNome || null;
     if (arquivoNomeAntigo || arquivoNomeNovo) {
       campos.arquivoNome = { de: arquivoNomeAntigo, para: arquivoNomeNovo };
     }
 
     // MIME Type
     const mimeTypeAntigo = materialAntigo?.arquivoMimeType || null;
-    const mimeTypeNovo =
-      materialNovo?.arquivoMimeType || inputNovo?.arquivoMimeType || null;
+    const mimeTypeNovo = materialNovo?.arquivoMimeType || inputNovo?.arquivoMimeType || null;
     if (mimeTypeAntigo || mimeTypeNovo) {
       campos.arquivoMimeType = { de: mimeTypeAntigo, para: mimeTypeNovo };
     }
@@ -67,7 +70,12 @@ export function montarCamposAlteradosMaterial(
     }
   }
 
-  if (tipoNovo === 'LINK' || tipoAntigo === 'LINK' || tipoNovo === 'ARTIGO' || tipoAntigo === 'ARTIGO') {
+  if (
+    tipoNovo === 'LINK' ||
+    tipoAntigo === 'LINK' ||
+    tipoNovo === 'ARTIGO' ||
+    tipoAntigo === 'ARTIGO'
+  ) {
     // URL do link
     const urlAntiga = materialAntigo?.url || materialAntigo?.linkUrl || null;
     const urlNova = materialNovo?.url || materialNovo?.linkUrl || inputNovo?.linkUrl || null;

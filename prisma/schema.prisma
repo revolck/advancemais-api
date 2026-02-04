@@ -411,6 +411,7 @@ model CursosTurmas {
   codigo                      String                       @unique @db.VarChar(12)
   cursoId                     String
   instrutorId                 String?
+  estruturaTipo               CursosTurmaEstruturaTipo     @default(PADRAO)
   nome                        String                       @db.VarChar(255)
   turno                       CursosTurnos                 @default(INTEGRAL)
   metodo                      CursosMetodos                @default(ONLINE)
@@ -418,6 +419,7 @@ model CursosTurmas {
   dataFim                     DateTime?
   dataInscricaoInicio         DateTime?
   dataInscricaoFim            DateTime?
+  vagasIlimitadas             Boolean                      @default(false)
   vagasTotais                 Int
   vagasDisponiveis            Int
   status                      CursoStatus                  @default(RASCUNHO)
@@ -431,6 +433,7 @@ model CursosTurmas {
   CursosTurmasAgenda          CursosTurmasAgenda[]
   CursosTurmasAulas           CursosTurmasAulas[]
   CursosTurmasInscricoes      CursosTurmasInscricoes[]
+  CursosTurmasInstrutores     CursosTurmasInstrutores[]
   CursosTurmasModulos         CursosTurmasModulos[]
   CursosTurmasProvas          CursosTurmasProvas[]
   CursosTurmasRecuperacoes    CursosTurmasRecuperacoes[]
@@ -440,6 +443,20 @@ model CursosTurmas {
   @@index([cursoId])
   @@index([instrutorId])
   @@index([status])
+}
+
+model CursosTurmasInstrutores {
+  id           String      @id @default(uuid())
+  turmaId      String
+  instrutorId  String
+  criadoEm     DateTime    @default(now())
+  atualizadoEm DateTime    @default(now())
+  CursosTurmas CursosTurmas @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  Instrutor    Usuarios    @relation("TurmasInstrutores", fields: [instrutorId], references: [id], onDelete: Cascade)
+
+  @@unique([turmaId, instrutorId])
+  @@index([turmaId])
+  @@index([instrutorId])
 }
 
 model CursosTurmasAgenda {
@@ -1236,6 +1253,7 @@ model Usuarios {
   UsuariosVagasVinculos_UsuariosVagasVinculos_recrutadorIdToUsuarios UsuariosVagasVinculos[] @relation("UsuariosVagasVinculos_recrutadorIdToUsuarios")
   // Provas e Atividades como instrutor
   CursosTurmasProvas                                                   CursosTurmasProvas[]
+  CursosTurmasInstrutores                                              CursosTurmasInstrutores[] @relation("TurmasInstrutores")
 
   @@index([criadoEm])
   @@index([role])
@@ -2147,6 +2165,12 @@ enum CursosTurnos {
   TARDE
   NOITE
   INTEGRAL
+}
+
+enum CursosTurmaEstruturaTipo {
+  MODULAR
+  DINAMICA
+  PADRAO
 }
 
 enum EmpresasAuditoriaAcao {

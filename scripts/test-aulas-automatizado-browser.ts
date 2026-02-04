@@ -66,7 +66,7 @@ async function fazerLogin(page: Page): Promise<boolean> {
     }
 
     // Clicar no botão de login - usar XPath para encontrar por texto
-     
+
     const loginButton = await page.evaluateHandle(() => {
       // eslint-disable-next-line no-undef
       const buttons = Array.from(document.querySelectorAll('button'));
@@ -145,7 +145,7 @@ async function preencherFormularioAula(page: Page, config: TestConfig): Promise<
       await new Promise((resolve) => setTimeout(resolve, 500));
     } else {
       // Tentar encontrar e clicar usando evaluate
-       
+
       const clicou = await page.evaluate((modalidade) => {
         // Tentar select primeiro
         // eslint-disable-next-line no-undef
@@ -218,7 +218,6 @@ async function preencherFormularioAula(page: Page, config: TestConfig): Promise<
       'input[name="obrigatoria"], input[type="checkbox"][id*="obrigatoria"]',
     );
     if (obrigatoriaCheckbox) {
-       
       const isChecked = await page.evaluate(
         // eslint-disable-next-line no-undef
         (el: HTMLInputElement) => el.checked,
@@ -292,7 +291,7 @@ async function preencherFormularioAula(page: Page, config: TestConfig): Promise<
     if (config.materiais && config.materiais.length > 0) {
       for (const material of config.materiais) {
         // Procurar botão de adicionar material
-         
+
         const addMaterialButton = await page.evaluateHandle(() => {
           // eslint-disable-next-line no-undef
           const buttons = Array.from(document.querySelectorAll('button'));
@@ -329,7 +328,7 @@ async function preencherFormularioAula(page: Page, config: TestConfig): Promise<
 async function submeterFormulario(page: Page): Promise<{ sucesso: boolean; erro?: string }> {
   try {
     // Procurar botão de salvar
-     
+
     const saveButton = await page.evaluateHandle(() => {
       // eslint-disable-next-line no-undef
       const buttons = Array.from(document.querySelectorAll('button'));

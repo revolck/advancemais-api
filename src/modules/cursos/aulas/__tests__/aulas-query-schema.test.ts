@@ -45,4 +45,3 @@ describe('listAulasQuerySchema', () => {
     expect(parsed.titulo).toBe('aula 1');
   });
 });
-

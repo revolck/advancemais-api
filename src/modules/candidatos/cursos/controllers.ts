@@ -56,10 +56,7 @@ export const CandidatoCursosController = {
         data: result,
       });
     } catch (error: any) {
-      cursosControllerLogger.error(
-        { error, usuarioId },
-        'Erro ao buscar cursos do candidato',
-      );
+      cursosControllerLogger.error({ error, usuarioId }, 'Erro ao buscar cursos do candidato');
       return res.status(500).json({
         success: false,
         code: 'CURSOS_ERROR',
@@ -68,4 +65,3 @@ export const CandidatoCursosController = {
     }
   },
 };
-

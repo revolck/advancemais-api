@@ -20,8 +20,15 @@ import { CertificadosController } from '../controllers/certificados.controller';
 import { EstagiosController } from '../controllers/estagios.controller';
 import cursosCheckoutRoutes from '../checkout/routes';
 import aulasRoutes, { agendaRoutes } from '../aulas/routes';
+import {
+  cursosTurmasGetResponseCache,
+  cursosTurmasInvalidateCacheOnMutation,
+} from '../middlewares/turmas-response-cache';
 
 const router = Router();
+
+// Cache HTTP transversal para rotas sob /:cursoId/turmas*
+router.use('/:cursoId/turmas', cursosTurmasGetResponseCache, cursosTurmasInvalidateCacheOnMutation);
 
 // ========================================
 // ROTAS DE CHECKOUT DE CURSOS (Mercado Pago)

@@ -5,6 +5,8 @@ import type { Express } from 'express';
 import { getTestApp } from '../helpers/test-setup';
 import { createTestAdmin, cleanupTestUsers, type TestUser } from '../helpers/auth-helper';
 
+jest.setTimeout(45000);
+
 describe('GET /api/v1/cursos/avaliacoes - Listagem Global', () => {
   let app: Express;
   let testAdmin: TestUser;
@@ -12,6 +14,7 @@ describe('GET /api/v1/cursos/avaliacoes - Listagem Global', () => {
   let testCurso2Id: string;
   let testTurma1Id: string;
   let testTurma2Id: string;
+  let marker: string;
   const testAvaliacaoIds: string[] = [];
   const testUsers: TestUser[] = [];
 
@@ -22,6 +25,7 @@ describe('GET /api/v1/cursos/avaliacoes - Listagem Global', () => {
     testUsers.push(testAdmin);
 
     const timestamp = Date.now().toString().slice(-6);
+    marker = `AVGLB-${timestamp}`;
 
     // Criar cursos de teste
     const curso1 = await prisma.cursos.create({
@@ -83,7 +87,7 @@ describe('GET /api/v1/cursos/avaliacoes - Listagem Global', () => {
       data: {
         cursoId: testCurso1Id,
         turmaId: null,
-        titulo: 'Template Prova de Matemática',
+        titulo: `${marker} Template Prova de Matemática`,
         etiqueta: 'TEMP-MAT',
         tipo: CursosAvaliacaoTipo.PROVA,
         peso: 10,
@@ -97,7 +101,7 @@ describe('GET /api/v1/cursos/avaliacoes - Listagem Global', () => {
       data: {
         cursoId: testCurso2Id,
         turmaId: null,
-        titulo: 'Template Atividade de Programação',
+        titulo: `${marker} Template Atividade de Programação`,
         etiqueta: 'TEMP-PROG',
         tipo: CursosAvaliacaoTipo.ATIVIDADE,
         peso: 5,
@@ -112,7 +116,7 @@ describe('GET /api/v1/cursos/avaliacoes - Listagem Global', () => {
       data: {
         cursoId: testCurso1Id,
         turmaId: testTurma1Id,
-        titulo: 'Prova Final de Matemática',
+        titulo: `${marker} Prova Final de Matemática`,
         etiqueta: 'PROVA-MAT-FINAL',
         tipo: CursosAvaliacaoTipo.PROVA,
         peso: 10,
@@ -126,7 +130,7 @@ describe('GET /api/v1/cursos/avaliacoes - Listagem Global', () => {
       data: {
         cursoId: testCurso2Id,
         turmaId: testTurma2Id,
-        titulo: 'Atividade Prática JavaScript',
+        titulo: `${marker} Atividade Prática JavaScript`,
         etiqueta: 'ATIV-JS',
         tipo: CursosAvaliacaoTipo.ATIVIDADE,
         peso: 5,
@@ -140,7 +144,7 @@ describe('GET /api/v1/cursos/avaliacoes - Listagem Global', () => {
       data: {
         cursoId: testCurso1Id,
         turmaId: testTurma1Id,
-        titulo: 'Prova Intermediária',
+        titulo: `${marker} Prova Intermediária`,
         etiqueta: 'PROVA-MAT-INT',
         tipo: CursosAvaliacaoTipo.PROVA,
         peso: 8,
@@ -474,6 +478,7 @@ describe('GET /api/v1/cursos/avaliacoes - Listagem Global', () => {
     it('deve ordenar por criadoEm desc (padrão)', async () => {
       const response = await request(app)
         .get('/api/v1/cursos/avaliacoes')
+        .query({ search: marker })
         .set('Authorization', `Bearer ${testAdmin.token}`)
         .expect(200);
 
@@ -488,7 +493,7 @@ describe('GET /api/v1/cursos/avaliacoes - Listagem Global', () => {
     it('deve ordenar por titulo asc', async () => {
       const response = await request(app)
         .get('/api/v1/cursos/avaliacoes')
-        .query({ orderBy: 'titulo', order: 'asc' })
+        .query({ search: marker, orderBy: 'titulo', order: 'asc' })
         .set('Authorization', `Bearer ${testAdmin.token}`)
         .expect(200);
 

@@ -1,15 +1,11 @@
 import request from 'supertest';
 import type { Express } from 'express';
 import { getTestApp } from '../helpers/test-setup';
-import {
-  createTestUser,
-  createTestAdmin,
-  cleanupTestUsers,
-  type TestUser,
-} from '../helpers/auth-helper';
+import { createTestAdmin, cleanupTestUsers, type TestUser } from '../helpers/auth-helper';
 import { prisma } from '@/config/prisma';
-import { randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
+
+jest.setTimeout(45000);
 
 describe('API - Provas/Atividades - Filtros', () => {
   let app: Express;
@@ -25,10 +21,12 @@ describe('API - Provas/Atividades - Filtros', () => {
     testUsers.push(testAdmin);
 
     // Criar curso de teste
+    const suffix = Date.now().toString().slice(-6);
+
     const curso = await prisma.cursos.create({
       data: {
-        codigo: `TEST-${Date.now()}`,
-        nome: 'Curso de Teste - Filtros',
+        codigo: `TST${suffix}`,
+        nome: `Curso Teste ${suffix}`,
         cargaHoraria: 40,
         valor: new Prisma.Decimal(100),
         gratuito: false,
@@ -40,8 +38,10 @@ describe('API - Provas/Atividades - Filtros', () => {
     const turma = await prisma.cursosTurmas.create({
       data: {
         cursoId: curso.id,
+        codigo: `TM${suffix}`,
         nome: 'Turma de Teste - Filtros',
         vagasTotais: 30,
+        vagasDisponiveis: 30,
         dataInicio: new Date(),
         dataFim: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       },

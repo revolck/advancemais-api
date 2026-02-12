@@ -79,18 +79,15 @@ const fetchCriadorInfo = async (provaId: string) => {
       orderBy: { criadoEm: 'asc' },
       include: {
         Usuarios: {
-          include: {
+          select: {
+            id: true,
+            nomeCompleto: true,
+            cpf: true,
             UsuariosInformation: {
               select: {
                 avatarUrl: true,
               },
             },
-          },
-          select: {
-            id: true,
-            nomeCompleto: true,
-            cpf: true,
-            UsuariosInformation: true,
           },
         },
       },
@@ -203,18 +200,15 @@ export const provasService = {
       },
       include: {
         Usuarios: {
-          include: {
+          select: {
+            id: true,
+            nomeCompleto: true,
+            cpf: true,
             UsuariosInformation: {
               select: {
                 avatarUrl: true,
               },
             },
-          },
-          select: {
-            id: true,
-            nomeCompleto: true,
-            cpf: true,
-            UsuariosInformation: true,
           },
         },
       },

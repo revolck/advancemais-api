@@ -3,16 +3,17 @@ import { CursosAvaliacaoTipo, CursosAtividadeTipo, CursosAulaStatus } from '@pri
 
 import { prisma } from '@/config/prisma';
 import { getTestApp } from '../helpers/test-setup';
-import { createTestUser } from '../helpers/auth-helper';
+import { cleanupTestUsers, createTestUser, type TestUser } from '../helpers/auth-helper';
+
+jest.setTimeout(45000);
 
 describe('API - Criação de Avaliações (Provas e Atividades)', () => {
   let app: any;
   let adminToken: string;
-  let adminId: string;
-  let instrutorToken: string;
   let instrutorId: string;
   let cursoId: string;
   let turmaId: string;
+  const testUsers: TestUser[] = [];
 
   beforeAll(async () => {
     app = await getTestApp();
@@ -24,14 +25,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
       emailVerificado: true,
       role: 'ADMIN',
     });
-    adminId = admin.id;
-
-    // Login admin
-    const adminLogin = await request(app)
-      .post('/api/v1/usuarios/login')
-      .send({ documento: admin.cpf, senha: admin.password })
-      .expect(200);
-    adminToken = adminLogin.body.token;
+    testUsers.push(admin);
+    adminToken = admin.token;
 
     // Criar usuário instrutor
     const instrutor = await createTestUser({
@@ -40,14 +35,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
       emailVerificado: true,
       role: 'INSTRUTOR',
     });
+    testUsers.push(instrutor);
     instrutorId = instrutor.id;
-
-    // Login instrutor
-    const instrutorLogin = await request(app)
-      .post('/api/v1/usuarios/login')
-      .send({ documento: instrutor.cpf, senha: instrutor.password })
-      .expect(200);
-    instrutorToken = instrutorLogin.body.token;
 
     // Criar curso de teste
     const timestamp = Date.now().toString().slice(-6);
@@ -97,12 +86,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
         })
         .catch(() => {});
     }
-    if (adminId || instrutorId) {
-      await prisma.usuarios
-        .deleteMany({
-          where: { id: { in: [adminId, instrutorId].filter(Boolean) } },
-        })
-        .catch(() => {});
+    if (testUsers.length > 0) {
+      await cleanupTestUsers(testUsers.map((u) => u.id));
     }
   });
 

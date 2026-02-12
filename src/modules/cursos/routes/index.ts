@@ -32,6 +32,10 @@ import {
   cursosAlunosGetResponseCache,
   cursosAlunosInvalidateCacheOnMutation,
 } from '../middlewares/alunos-response-cache';
+import {
+  cursosAvaliacoesGetResponseCache,
+  cursosAvaliacoesInvalidateCacheOnMutation,
+} from '../middlewares/avaliacoes-response-cache';
 
 const router = Router();
 
@@ -86,42 +90,50 @@ router.get('/meta', publicCache, CursosController.meta);
 router.get(
   '/avaliacoes',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  cursosAvaliacoesGetResponseCache,
   AvaliacoesController.list,
 );
 // Rotas auxiliares para formulário de criação (ANTES do POST)
 router.get(
   '/avaliacoes/turmas',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  cursosAvaliacoesGetResponseCache,
   AvaliacoesController.listTurmas,
 );
 router.get(
   '/avaliacoes/instrutores',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  cursosAvaliacoesGetResponseCache,
   AvaliacoesController.listInstrutores,
 );
 router.post(
   '/avaliacoes',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  cursosAvaliacoesInvalidateCacheOnMutation,
   AvaliacoesController.create,
 );
 router.get(
   '/avaliacoes/:id',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  cursosAvaliacoesGetResponseCache,
   AvaliacoesController.get,
 );
 router.put(
   '/avaliacoes/:id',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  cursosAvaliacoesInvalidateCacheOnMutation,
   AvaliacoesController.update,
 );
 router.delete(
   '/avaliacoes/:id',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  cursosAvaliacoesInvalidateCacheOnMutation,
   AvaliacoesController.delete,
 );
 router.post(
   '/:cursoId/turmas/:turmaId/avaliacoes/clone',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  cursosAvaliacoesInvalidateCacheOnMutation,
   AvaliacoesController.clonarParaTurma,
 );
 

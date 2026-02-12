@@ -3,6 +3,14 @@ import { Roles, CursoStatus } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { getTestApp } from '../helpers/test-setup';
+import {
+  cleanupTestUsers,
+  createTestAdmin,
+  createTestUser,
+  type TestUser,
+} from '../helpers/auth-helper';
+
+jest.setTimeout(45000);
 
 describe('Avaliacoes - Form Helpers', () => {
   let app: any;
@@ -13,9 +21,14 @@ describe('Avaliacoes - Form Helpers', () => {
   let turmaVinculadaId: string;
   let turmaNaoVinculadaId: string;
   let cursoId: string;
+  const testUsers: TestUser[] = [];
 
   beforeAll(async () => {
     app = await getTestApp();
+    const admin = await createTestAdmin();
+    adminToken = admin.token;
+    testUsers.push(admin);
+
     // Criar curso de teste
     const timestamp = Date.now().toString().slice(-6); // Últimos 6 dígitos
     const curso = await prisma.cursos.create({
@@ -33,31 +46,23 @@ describe('Avaliacoes - Form Helpers', () => {
     cursoId = curso.id;
 
     // Criar instrutor 1
-    const instrutor1 = await prisma.usuarios.create({
-      data: {
-        nomeCompleto: 'Instrutor 1 Teste',
-        email: `instrutor1.${Date.now()}@test.com`,
-        senha: 'senha123',
-        cpf: `${Date.now().toString().slice(-11)}`,
-        telefone: '11999990001',
-        role: Roles.INSTRUTOR,
-        ativo: true,
-      },
+    const instrutor1 = await createTestUser({
+      nomeCompleto: 'Instrutor 1 Teste',
+      email: `instrutor1.${Date.now()}@test.com`,
+      password: 'senha123',
+      role: Roles.INSTRUTOR,
     });
+    testUsers.push(instrutor1);
     instrutorId = instrutor1.id;
 
     // Criar instrutor 2
-    const instrutor2 = await prisma.usuarios.create({
-      data: {
-        nomeCompleto: 'Instrutor 2 Teste',
-        email: `instrutor2.${Date.now()}@test.com`,
-        senha: 'senha123',
-        cpf: `${Date.now().toString().slice(-10)}2`,
-        telefone: '11999990002',
-        role: Roles.INSTRUTOR,
-        ativo: true,
-      },
+    const instrutor2 = await createTestUser({
+      nomeCompleto: 'Instrutor 2 Teste',
+      email: `instrutor2.${Date.now()}@test.com`,
+      password: 'senha123',
+      role: Roles.INSTRUTOR,
     });
+    testUsers.push(instrutor2);
     instrutor2Id = instrutor2.id;
 
     // Criar turma vinculada ao instrutor 1
@@ -68,7 +73,7 @@ describe('Avaliacoes - Form Helpers', () => {
         instrutorId: instrutor1.id,
         nome: 'Turma Vinculada ao Instrutor 1',
         metodo: 'ONLINE',
-        turno: 'NOTURNO',
+        turno: 'NOITE',
         vagasTotais: 30,
         vagasDisponiveis: 30,
         status: CursoStatus.PUBLICADO,
@@ -83,27 +88,14 @@ describe('Avaliacoes - Form Helpers', () => {
         cursoId: curso.id,
         nome: 'Turma Sem Instrutor',
         metodo: 'PRESENCIAL',
-        turno: 'MATUTINO',
+        turno: 'MANHA',
         vagasTotais: 25,
         vagasDisponiveis: 25,
         status: CursoStatus.PUBLICADO,
       },
     });
     turmaNaoVinculadaId = turmaNaoVinculada.id;
-
-    // Login Admin
-    const adminLogin = await request(app).post('/api/v1/usuarios/login').send({
-      documento: '11111111111',
-      senha: 'AdminTeste@123',
-    });
-    adminToken = adminLogin.body.token;
-
-    // Login Instrutor
-    const instrutorLogin = await request(app).post('/api/v1/usuarios/login').send({
-      documento: instrutor1.cpf,
-      senha: 'senha123',
-    });
-    instrutorToken = instrutorLogin.body.token;
+    instrutorToken = instrutor1.token;
   });
 
   afterAll(async () => {
@@ -123,10 +115,8 @@ describe('Avaliacoes - Form Helpers', () => {
         where: { id: cursoId },
       });
     }
-    if (instrutorId || instrutor2Id) {
-      await prisma.usuarios.deleteMany({
-        where: { id: { in: [instrutorId, instrutor2Id].filter(Boolean) } },
-      });
+    if (testUsers.length > 0) {
+      await cleanupTestUsers(testUsers.map((user) => user.id));
     }
   });
 

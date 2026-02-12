@@ -31,6 +31,7 @@ const avaliacaoWithQuestoesInclude = Prisma.validator<Prisma.CursosTurmasProvasD
         codigo: true,
         nome: true,
         cursoId: true,
+        instrutorId: true,
         metodo: true,
         Cursos: { select: { id: true, codigo: true, nome: true } },
       },
@@ -115,6 +116,7 @@ const mapAvaliacao = (avaliacao: AvaliacaoWithQuestoes) => {
           id: avaliacao.CursosTurmas.id,
           codigo: avaliacao.CursosTurmas.codigo,
           nome: avaliacao.CursosTurmas.nome,
+          instrutorId: avaliacao.CursosTurmas.instrutorId,
           modalidade: mapModalidadeFromDB(avaliacao.CursosTurmas.metodo), // metodo da turma vira modalidade na API
         }
       : null,
@@ -306,22 +308,14 @@ export const avaliacoesService = {
       where.AND = [filter];
     };
 
-    // Filtro por role: INSTRUTOR vê apenas suas turmas (ou avaliações sem turma mas dele)
+    // Filtro por role: INSTRUTOR vê apenas avaliações das suas turmas (ou sem turma, próprias)
     if (usuarioLogado?.role === 'INSTRUTOR' && !turmaId) {
-      const turmasDoInstrutor = await prisma.cursosTurmas.findMany({
-        where: { instrutorId: usuarioLogado.id },
-        select: { id: true },
-      });
-      const turmasIds = turmasDoInstrutor.map((t) => t.id);
-      if (turmasIds.length > 0) {
-        where.OR = [
-          { turmaId: { in: turmasIds } },
+      applyAndFilter({
+        OR: [
+          { CursosTurmas: { instrutorId: usuarioLogado.id } },
           { turmaId: null, instrutorId: usuarioLogado.id },
-        ];
-      } else {
-        where.turmaId = null;
-        where.instrutorId = usuarioLogado.id;
-      }
+        ],
+      });
     }
 
     // Filtro por cursoId (templates do curso ou avaliações das turmas do curso)
@@ -470,21 +464,34 @@ export const avaliacoesService = {
       });
     }
 
-    const total = await prisma.cursosTurmasProvas.count({ where });
+    const [total, avaliacoes] = await Promise.all([
+      prisma.cursosTurmasProvas.count({ where }),
+      prisma.cursosTurmasProvas.findMany({
+        where,
+        ...avaliacaoWithQuestoesInclude,
+        orderBy: { [orderBy]: order },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    ]);
+
     const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
     const safePage = totalPages === 0 ? 1 : Math.min(page, totalPages);
     const skip = (safePage - 1) * pageSize;
 
-    const avaliacoes = await prisma.cursosTurmasProvas.findMany({
-      where,
-      ...avaliacaoWithQuestoesInclude,
-      orderBy: { [orderBy]: order },
-      skip,
-      take: pageSize,
-    });
+    const avaliacoesPaginadas =
+      safePage === page
+        ? avaliacoes
+        : await prisma.cursosTurmasProvas.findMany({
+            where,
+            ...avaliacaoWithQuestoesInclude,
+            orderBy: { [orderBy]: order },
+            skip,
+            take: pageSize,
+          });
 
     // Buscar informações dos criadores em lote
-    const avaliacaoIds = avaliacoes.map((a) => a.id);
+    const avaliacaoIds = avaliacoesPaginadas.map((a) => a.id);
     const auditoriaLogs = await prisma.auditoriaLogs.findMany({
       where: {
         entidadeId: { in: avaliacaoIds },
@@ -530,7 +537,7 @@ export const avaliacoesService = {
     });
 
     return {
-      data: avaliacoes.map((a) => {
+      data: avaliacoesPaginadas.map((a) => {
         const mapped = mapAvaliacao(a as AvaliacaoWithQuestoes);
         const criadoPor = criadoresMap.get(a.id) ?? null;
 
@@ -565,11 +572,7 @@ export const avaliacoesService = {
     // Restrição extra para instrutor: apenas turmas dele (ou avaliações sem turma com instrutorId dele)
     if (usuarioLogado?.role === 'INSTRUTOR') {
       if (avaliacao.turmaId) {
-        const turma = await prisma.cursosTurmas.findUnique({
-          where: { id: avaliacao.turmaId },
-          select: { instrutorId: true },
-        });
-        if (turma?.instrutorId !== usuarioLogado.id) {
+        if (avaliacao.turma?.instrutorId !== usuarioLogado.id) {
           const error: any = new Error('Instrutor só pode acessar avaliações de suas turmas');
           error.code = 'FORBIDDEN';
           throw error;

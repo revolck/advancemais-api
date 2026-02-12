@@ -1,16 +1,19 @@
 import { WebsiteSlidersOrientations, WebsiteStatus } from '@prisma/client';
 import { prisma } from '@/config/prisma';
-import { getCache, setCache, invalidateCache } from '@/utils/cache';
+import { getCache, setCache, invalidateCacheByPrefix } from '@/utils/cache';
 import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
 
-const CACHE_KEY = 'website:slider:list';
+const CACHE_PREFIX = 'website:slider:list';
+const buildCacheKey = (status?: WebsiteStatus) => `${CACHE_PREFIX}:${status ?? 'ALL'}`;
 
 export const sliderService = {
-  list: async () => {
+  list: async (status?: WebsiteStatus) => {
+    const cacheKey = buildCacheKey(status);
     const cached =
-      await getCache<Awaited<ReturnType<typeof prisma.websiteSliderOrdem.findMany>>>(CACHE_KEY);
+      await getCache<Awaited<ReturnType<typeof prisma.websiteSliderOrdem.findMany>>>(cacheKey);
     if (cached) return cached;
     const result = await prisma.websiteSliderOrdem.findMany({
+      ...(status ? { where: { status } } : {}),
       orderBy: { ordem: 'asc' },
       take: 100,
       select: {
@@ -28,7 +31,7 @@ export const sliderService = {
         },
       },
     });
-    await setCache(CACHE_KEY, result, WEBSITE_CACHE_TTL);
+    await setCache(cacheKey, result, WEBSITE_CACHE_TTL);
     return result;
   },
 
@@ -93,7 +96,7 @@ export const sliderService = {
         },
       },
     });
-    await invalidateCache(CACHE_KEY);
+    await invalidateCacheByPrefix(CACHE_PREFIX);
     return result;
   },
 
@@ -193,7 +196,7 @@ export const sliderService = {
         },
       });
     });
-    await invalidateCache(CACHE_KEY);
+    await invalidateCacheByPrefix(CACHE_PREFIX);
     return result;
   },
 
@@ -262,7 +265,7 @@ export const sliderService = {
 
       return current;
     });
-    await invalidateCache(CACHE_KEY);
+    await invalidateCacheByPrefix(CACHE_PREFIX);
     return result;
   },
 
@@ -280,6 +283,6 @@ export const sliderService = {
         data: { ordem: { decrement: 1 } },
       });
     });
-    await invalidateCache(CACHE_KEY);
+    await invalidateCacheByPrefix(CACHE_PREFIX);
   },
 };

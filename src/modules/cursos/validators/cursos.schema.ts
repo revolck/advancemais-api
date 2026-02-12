@@ -6,6 +6,18 @@ const positiveInt = z.coerce
   .int('Valor deve ser um número inteiro')
   .positive('Valor deve ser maior que zero');
 
+const parseBooleanQuery = (value: unknown) => {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value === 1;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['true', '1', 'sim', 's', 'yes', 'y'].includes(normalized)) return true;
+    if (['false', '0', 'nao', 'não', 'n', 'no'].includes(normalized)) return false;
+  }
+  return value;
+};
+
 const statusPadraoSingle = z
   .string()
   .trim()
@@ -117,7 +129,7 @@ export const vincularTemplatesSchema = z
  */
 const paginationQueryBaseSchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
-  pageSize: z.coerce.number().int().min(1).max(100).optional(),
+  pageSize: z.coerce.number().int().min(1).max(200).optional(),
 });
 
 const withDefaultPaginationValues = <T extends { page?: number; pageSize?: number }>(values: T) =>
@@ -143,6 +155,8 @@ export const cursoHistoricoInscricoesQuerySchema = paginationQueryBaseSchema
       ])
       .optional(),
     turmaId: z.string().uuid().optional(),
+    statusPagamento: z.union([z.string(), z.array(z.string())]).optional(),
+    includeProgress: z.preprocess(parseBooleanQuery, z.boolean().optional()),
   })
   .transform(
     (data: {
@@ -150,6 +164,8 @@ export const cursoHistoricoInscricoesQuerySchema = paginationQueryBaseSchema
       pageSize?: number;
       status?: StatusInscricao | string | StatusInscricao[];
       turmaId?: string;
+      statusPagamento?: string | string[];
+      includeProgress?: boolean;
     }) => {
       // Normalizar paginação
       const pagination = withDefaultPaginationValues(data);
@@ -183,10 +199,30 @@ export const cursoHistoricoInscricoesQuerySchema = paginationQueryBaseSchema
         }
       }
 
+      // Normalizar statusPagamento: string única, CSV ou array
+      let statusPagamentoArray: string[] | undefined;
+      if (data.statusPagamento !== undefined) {
+        const raw = Array.isArray(data.statusPagamento)
+          ? data.statusPagamento
+          : data.statusPagamento.includes(',')
+            ? data.statusPagamento.split(',')
+            : [data.statusPagamento];
+
+        statusPagamentoArray = Array.from(
+          new Set(
+            raw.map((value) => value.trim().toUpperCase()).filter((value) => value.length > 0),
+          ),
+        );
+      }
+
       return {
         ...pagination,
         status: statusArray,
         turmaId: data.turmaId,
+        statusPagamento: statusPagamentoArray,
+        // Default otimizado para listagens grandes da aba de inscrições.
+        // O frontend pode solicitar explicitamente com includeProgress=true.
+        includeProgress: data.includeProgress ?? false,
       };
     },
   );

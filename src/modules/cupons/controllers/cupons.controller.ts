@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { ZodError } from 'zod';
 
 import { cuponsService, CupomNaoEncontradoError } from '@/modules/cupons/services/cupons.service';
+import { invalidateCuponsGetResponseCache } from '@/modules/cupons/middlewares/response-cache';
 import {
   createCupomDescontoSchema,
   updateCupomDescontoSchema,
@@ -63,6 +64,7 @@ export class CuponsController {
       }
 
       const cupom = await cuponsService.create(payload, usuarioId);
+      await invalidateCuponsGetResponseCache();
       res.status(201).json(cupom);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -105,6 +107,7 @@ export class CuponsController {
       }
 
       const cupom = await cuponsService.update(id, payload);
+      await invalidateCuponsGetResponseCache();
       res.json(cupom);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -145,6 +148,7 @@ export class CuponsController {
     try {
       const { id } = req.params;
       await cuponsService.remove(id);
+      await invalidateCuponsGetResponseCache();
       res.status(204).send();
     } catch (error: any) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {

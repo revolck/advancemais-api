@@ -1,16 +1,19 @@
 import { WebsiteStatus } from '@prisma/client';
 import { prisma } from '@/config/prisma';
-import { getCache, setCache, invalidateCache } from '@/utils/cache';
+import { getCache, setCache, invalidateCacheByPrefix } from '@/utils/cache';
 import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
 
-const CACHE_KEY = 'website:banner:list';
+const CACHE_PREFIX = 'website:banner:list';
+const buildCacheKey = (status?: WebsiteStatus) => `${CACHE_PREFIX}:${status ?? 'ALL'}`;
 
 export const bannerService = {
-  list: async () => {
+  list: async (status?: WebsiteStatus) => {
+    const cacheKey = buildCacheKey(status);
     const cached =
-      await getCache<Awaited<ReturnType<typeof prisma.websiteBannerOrdem.findMany>>>(CACHE_KEY);
+      await getCache<Awaited<ReturnType<typeof prisma.websiteBannerOrdem.findMany>>>(cacheKey);
     if (cached) return cached;
     const result = await prisma.websiteBannerOrdem.findMany({
+      ...(status ? { where: { status } } : {}),
       orderBy: { ordem: 'asc' },
       take: 100,
       select: {
@@ -27,7 +30,7 @@ export const bannerService = {
         },
       },
     });
-    await setCache(CACHE_KEY, result, WEBSITE_CACHE_TTL);
+    await setCache(cacheKey, result, WEBSITE_CACHE_TTL);
     return result;
   },
 
@@ -87,7 +90,7 @@ export const bannerService = {
         },
       });
     });
-    await invalidateCache(CACHE_KEY);
+    await invalidateCacheByPrefix(CACHE_PREFIX);
     return result;
   },
 
@@ -157,7 +160,7 @@ export const bannerService = {
         },
       });
     });
-    await invalidateCache(CACHE_KEY);
+    await invalidateCacheByPrefix(CACHE_PREFIX);
     return result;
   },
 
@@ -218,7 +221,7 @@ export const bannerService = {
 
       return current;
     });
-    await invalidateCache(CACHE_KEY);
+    await invalidateCacheByPrefix(CACHE_PREFIX);
     return result;
   },
 
@@ -236,6 +239,6 @@ export const bannerService = {
         data: { ordem: { decrement: 1 } },
       });
     });
-    await invalidateCache(CACHE_KEY);
+    await invalidateCacheByPrefix(CACHE_PREFIX);
   },
 };

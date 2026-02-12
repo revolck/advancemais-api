@@ -2057,7 +2057,7 @@ router.delete(
  *         schema:
  *           type: integer
  *           minimum: 1
- *           maximum: 100
+ *           maximum: 200
  *           default: 20
  *         description: Quantidade de registros por página
  *       - in: query
@@ -2075,6 +2075,22 @@ router.delete(
  *           format: uuid
  *         description: Filtrar por ID da turma (UUID)
  *         example: "80288180-a09c-4a2a-bade-022c7268e395"
+ *       - in: query
+ *         name: statusPagamento
+ *         schema:
+ *           type: string
+ *         description: |
+ *           Filtrar por status de pagamento. Aceita valor único ou múltiplos separados por vírgula.
+ *           Exemplos: `?statusPagamento=APROVADO` ou `?statusPagamento=APROVADO,PENDENTE`
+ *         example: "APROVADO"
+ *       - in: query
+ *         name: includeProgress
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: |
+ *           Quando `false` (padrão), não calcula progresso para reduzir latência da listagem.
+ *           Use `true` quando precisar do percentual no payload.
  *     responses:
  *       200:
  *         description: Histórico de inscrições retornado com sucesso
@@ -2096,15 +2112,20 @@ router.delete(
  *                         type: string
  *                         enum: [INSCRITO, EM_ANDAMENTO, CONCLUIDO, REPROVADO, EM_ESTAGIO, CANCELADO, TRANCADO]
  *                         description: Status da inscrição
+ *                       statusPagamento:
+ *                         type: string
+ *                         description: Status do pagamento da inscrição
+ *                         example: "APROVADO"
  *                       criadoEm:
  *                         type: string
  *                         format: date-time
  *                         description: Data de criação da inscrição
  *                       progresso:
  *                         type: integer
+ *                         nullable: true
  *                         minimum: 0
  *                         maximum: 100
- *                         description: Percentual de progresso do curso (0-100)
+ *                         description: Percentual de progresso do curso (0-100). Quando `includeProgress=false`, retorna `null`.
  *                       aluno:
  *                         type: object
  *                         properties:
@@ -2121,6 +2142,9 @@ router.delete(
  *                             type: string
  *                           status:
  *                             type: string
+ *                           avatarUrl:
+ *                             type: string
+ *                             nullable: true
  *                           cidade:
  *                             type: string
  *                             nullable: true
@@ -2183,6 +2207,7 @@ router.delete(
  *                   data:
  *                     - id: "f8a6c3b5-1234-4d9c-9a1b-abcdef123456"
  *                       statusInscricao: "CONCLUIDO"
+ *                       statusPagamento: "APROVADO"
  *                       criadoEm: "2024-01-15T10:30:00Z"
  *                       progresso: 100
  *                       aluno:
@@ -2192,6 +2217,7 @@ router.delete(
  *                         codigo: "MAT0001"
  *                         cpf: "123.123.123-12"
  *                         status: "ATIVO"
+ *                         avatarUrl: "https://example.com/avatar.jpg"
  *                         cidade: "São Paulo"
  *                         estado: "SP"
  *                       turma:
@@ -2558,6 +2584,22 @@ router.get('/:cursoId/turmas', publicCache, TurmasController.list);
  *         schema: { type: string, format: uuid }
  *         description: UUID da turma
  *         example: "80288180-a09c-4a2a-bade-022c7268e395"
+ *       - in: query
+ *         name: includeAlunos
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: |
+ *           Quando `true`, inclui a lista completa de alunos da turma no payload.
+ *           Para melhor performance, mantenha `false` e use a aba/rota de inscrições dedicada.
+ *       - in: query
+ *         name: includeEstrutura
+ *         schema:
+ *           type: boolean
+ *           default: true
+ *         description: |
+ *           Quando `false`, não carrega módulos/aulas/provas/itens da estrutura.
+ *           Use para otimizar o carregamento inicial quando a aba Estrutura não estiver ativa.
  *     responses:
  *       200:
  *         description: Dados completos da turma com contagem de inscrições
@@ -3090,6 +3132,100 @@ router.delete(
   '/:cursoId/turmas/:turmaId/inscricoes/:alunoId',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   TurmasController.unenroll,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/publicar:
+ *   patch:
+ *     summary: Publicar ou despublicar turma
+ *     description: >-
+ *       Controla a visibilidade da turma no site para os alunos.
+ *
+ *       **SOBRE STATUS DE PUBLICAÇÃO:**
+ *       - `publicar: true` → Status muda para **PUBLICADO** (turma visível no site para todos)
+ *       - `publicar: false` → Status muda para **RASCUNHO** (turma visível apenas para admin/moderador/pedagógico)
+ *
+ *       **IMPORTANTE:**
+ *       - Este controle é **independente** das datas de início/fim da turma
+ *       - Este controle é **independente** das datas de inscrição
+ *       - Uma turma em RASCUNHO NÃO aparece no site para alunos, mesmo que as datas estejam vigentes
+ *       - Uma turma PUBLICADA aparece no site, respeitando as demais regras de inscrição e datas
+ *
+ *       **VALIDAÇÕES:**
+ *       - Para publicar, a turma deve ter **pelo menos 1 aula** e **1 avaliação** cadastradas
+ *       - Se já estiver no status desejado, não faz nada (operação idempotente)
+ *
+ *       **PERMISSÕES:**
+ *       - Apenas ADMIN, MODERADOR e PEDAGÓGICO podem publicar/despublicar turmas
+ *     tags: ['Cursos']
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: ID do curso (UUID)
+ *         example: "123e4567-e89b-12d3-a456-426614174000"
+ *       - in: path
+ *         name: turmaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: ID da turma (UUID)
+ *         example: "8438a571-d7ca-4cf7-92d3-3cecf272c9a0"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - publicar
+ *             properties:
+ *               publicar:
+ *                 type: boolean
+ *                 description: true para publicar, false para despublicar (colocar em rascunho)
+ *                 example: true
+ *     responses:
+ *       200:
+ *         description: Turma publicada/despublicada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Turma publicada com sucesso"
+ *                 data:
+ *                   $ref: '#/components/schemas/CursoTurmaDetailed'
+ *       400:
+ *         description: Dados inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Turma ou curso não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       422:
+ *         description: Pré-requisitos não atendidos (ex. sem aulas ou avaliações cadastradas)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.patch(
+  '/:cursoId/turmas/:turmaId/publicar',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  TurmasController.togglePublicacao,
 );
 
 /**

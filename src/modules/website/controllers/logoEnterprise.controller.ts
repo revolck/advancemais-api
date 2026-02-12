@@ -38,7 +38,13 @@ async function uploadLogoImage(file: Express.Multer.File): Promise<string> {
 
 export class LogoEnterpriseController {
   static list = async (req: Request, res: Response) => {
-    const itens = await logoEnterpriseService.list();
+    let { status } = req.query as any;
+    if (typeof status === 'string') {
+      if (status === 'true') status = 'PUBLICADO';
+      else if (status === 'false') status = 'RASCUNHO';
+      else status = status.toUpperCase();
+    }
+    const itens = await logoEnterpriseService.list(status as WebsiteStatus | undefined);
     const response = itens.map(mapLogo);
 
     return respondWithCache(req, res, response);

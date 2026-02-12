@@ -2,6 +2,7 @@ import { Router } from 'express';
 
 import { supabaseAuthMiddleware } from '@/modules/usuarios/auth';
 import { CuponsController } from '@/modules/cupons/controllers/cupons.controller';
+import { cuponsGetResponseCache } from '@/modules/cupons/middlewares/response-cache';
 
 const router = Router();
 
@@ -48,7 +49,12 @@ const router = Router();
  *           curl -X GET "http://localhost:3000/api/v1/cupons" \
  *            -H "Authorization: Bearer <TOKEN>"
  */
-router.get('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), CuponsController.list);
+router.get(
+  '/',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  cuponsGetResponseCache,
+  CuponsController.list,
+);
 
 /**
  * @openapi
@@ -97,7 +103,12 @@ router.get('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), CuponsController
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/:id', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), CuponsController.get);
+router.get(
+  '/:id',
+  supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
+  cuponsGetResponseCache,
+  CuponsController.get,
+);
 
 /**
  * @openapi

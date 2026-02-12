@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { WebsiteStatus } from '@prisma/client';
 
 import { uploadImage } from '@/config/storage';
 import { sliderService } from '@/modules/website/services/slider.service';
@@ -32,7 +33,13 @@ async function uploadSlideImage(file: Express.Multer.File): Promise<string> {
 
 export class SliderController {
   static list = async (req: Request, res: Response) => {
-    const itens = await sliderService.list();
+    let { status } = req.query as any;
+    if (typeof status === 'string') {
+      if (status === 'true') status = 'PUBLICADO';
+      else if (status === 'false') status = 'RASCUNHO';
+      else status = status.toUpperCase();
+    }
+    const itens = await sliderService.list(status as WebsiteStatus | undefined);
     const response = itens.map(mapSlider);
 
     return respondWithCache(req, res, response);

@@ -386,7 +386,18 @@ export const createTurmaSchema = applyDateValidations(
   }
 });
 
-export const updateTurmaSchema = applyDateValidations(turmaBaseSchema.partial());
+/**
+ * Schema para atualização de turma
+ * IMPORTANTE: Após a criação da turma, modalidade (metodo) e estruturaTipo NÃO podem ser alterados
+ */
+export const updateTurmaSchema = applyDateValidations(
+  turmaBaseSchema
+    .omit({
+      // Campos que NÃO podem ser editados após criação
+      estruturaTipo: true, // Estrutura do curso não pode mudar após criação
+    })
+    .partial(),
+);
 
 export const turmaInscricaoSchema = z.object({
   alunoId: z.string().uuid(),
@@ -400,9 +411,20 @@ export const updateInscricaoStatusSchema = z.object({
 
 export const listTurmasQuerySchema = z.object({
   page: positiveInt.min(1).default(1),
-  pageSize: positiveInt.min(1).max(100).default(10),
+  pageSize: positiveInt.min(1).max(200).default(10),
   status: z.nativeEnum(CursoStatus).optional(),
   turno: z.nativeEnum(CursosTurnos).optional(),
   metodo: z.nativeEnum(CursosMetodos).optional(),
   instrutorId: z.string().uuid().optional(),
+});
+
+/**
+ * Schema para publicar/despublicar turma
+ * Controla a visibilidade da turma no site
+ */
+export const publicarTurmaSchema = z.object({
+  publicar: z.boolean({
+    required_error: 'Campo "publicar" é obrigatório',
+    invalid_type_error: 'Campo "publicar" deve ser true ou false',
+  }),
 });

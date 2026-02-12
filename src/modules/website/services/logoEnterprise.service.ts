@@ -1,18 +1,21 @@
 import { WebsiteStatus } from '@prisma/client';
 import { prisma } from '@/config/prisma';
-import { getCache, setCache, invalidateCache } from '@/utils/cache';
+import { getCache, setCache, invalidateCacheByPrefix } from '@/utils/cache';
 import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
 
-const CACHE_KEY = 'website:logoEnterprise:list';
+const CACHE_PREFIX = 'website:logoEnterprise:list';
+const buildCacheKey = (status?: WebsiteStatus) => `${CACHE_PREFIX}:${status ?? 'ALL'}`;
 
 export const logoEnterpriseService = {
-  list: async () => {
+  list: async (status?: WebsiteStatus) => {
+    const cacheKey = buildCacheKey(status);
     const cached =
       await getCache<Awaited<ReturnType<typeof prisma.websiteLogoEnterpriseOrdem.findMany>>>(
-        CACHE_KEY,
+        cacheKey,
       );
     if (cached) return cached;
     const result = await prisma.websiteLogoEnterpriseOrdem.findMany({
+      ...(status ? { where: { status } } : {}),
       orderBy: { ordem: 'asc' },
       take: 100,
       select: {
@@ -30,7 +33,7 @@ export const logoEnterpriseService = {
         },
       },
     });
-    await setCache(CACHE_KEY, result, WEBSITE_CACHE_TTL);
+    await setCache(cacheKey, result, WEBSITE_CACHE_TTL);
     return result;
   },
 
@@ -96,7 +99,7 @@ export const logoEnterpriseService = {
         },
       });
     });
-    await invalidateCache(CACHE_KEY);
+    await invalidateCacheByPrefix(CACHE_PREFIX);
     return result;
   },
 
@@ -172,7 +175,7 @@ export const logoEnterpriseService = {
         },
       });
     });
-    await invalidateCache(CACHE_KEY);
+    await invalidateCacheByPrefix(CACHE_PREFIX);
     return result;
   },
 
@@ -235,7 +238,7 @@ export const logoEnterpriseService = {
 
       return current;
     });
-    await invalidateCache(CACHE_KEY);
+    await invalidateCacheByPrefix(CACHE_PREFIX);
     return result;
   },
 
@@ -253,6 +256,6 @@ export const logoEnterpriseService = {
         data: { ordem: { decrement: 1 } },
       });
     });
-    await invalidateCache(CACHE_KEY);
+    await invalidateCacheByPrefix(CACHE_PREFIX);
   },
 };

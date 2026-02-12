@@ -2,6 +2,12 @@ import { Prisma } from '@prisma/client';
 
 export const aulaWithMateriaisInclude = Prisma.validator<Prisma.CursosTurmasAulasDefaultArgs>()({
   include: {
+    instrutor: {
+      select: {
+        id: true,
+        nomeCompleto: true,
+      },
+    },
     CursosTurmasAulasMateriais: {
       orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
     },

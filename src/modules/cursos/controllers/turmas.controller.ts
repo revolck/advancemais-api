@@ -4,12 +4,14 @@ import { ZodError } from 'zod';
 
 import { turmasService } from '../services/turmas.service';
 import { cursosService } from '../services/cursos.service';
+import { generateCacheKey, getCachedOrFetch, invalidateCacheByPrefix } from '@/utils/cache';
 import {
   createTurmaSchema,
   turmaInscricaoSchema,
   updateTurmaSchema,
   updateInscricaoStatusSchema,
   listTurmasQuerySchema,
+  publicarTurmaSchema,
 } from '../validators/turmas.schema';
 
 const parseCursoId = (raw: string) => {
@@ -35,6 +37,40 @@ const parseTurmaId = (raw: string) => {
   return raw;
 };
 
+const parseBooleanQuery = (value: unknown): boolean | null => {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['true', '1', 'sim', 's', 'yes', 'y'].includes(normalized)) return true;
+    if (['false', '0', 'nao', 'não', 'n', 'no'].includes(normalized)) return false;
+  }
+  return null;
+};
+
+const resolveTtl = (value: string | undefined, fallback: number) => {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
+  return parsed;
+};
+
+const TURMAS_LIST_CACHE_TTL = resolveTtl(process.env.CACHE_TTL_TURMAS_LIST, 45);
+const TURMAS_GET_CACHE_TTL = resolveTtl(process.env.CACHE_TTL_TURMAS_GET, 45);
+const TURMAS_INSCRICOES_CACHE_TTL = resolveTtl(process.env.CACHE_TTL_TURMAS_INSCRICOES, 30);
+
+const invalidateTurmasCache = async () => {
+  try {
+    await Promise.all([
+      invalidateCacheByPrefix('cursos:turmas:list:'),
+      invalidateCacheByPrefix('cursos:turmas:get:'),
+      invalidateCacheByPrefix('cursos:turmas:inscricoes:'),
+      invalidateCacheByPrefix('cursos:historico-inscricoes-curso:'),
+    ]);
+  } catch {
+    // Cache é best effort; não deve quebrar fluxo principal
+  }
+};
+
 export class TurmasController {
   static list = async (req: Request, res: Response) => {
     const cursoId = parseCursoId(req.params.cursoId);
@@ -48,15 +84,35 @@ export class TurmasController {
 
     try {
       const params = listTurmasQuerySchema.parse(req.query);
-      const result = await turmasService.list({
-        cursoId,
-        page: params.page,
-        pageSize: params.pageSize,
-        status: params.status,
-        turno: params.turno,
-        metodo: params.metodo,
-        instrutorId: params.instrutorId,
-      });
+      const cacheKey = generateCacheKey(
+        'cursos:turmas:list',
+        {
+          cursoId,
+          page: params.page,
+          pageSize: params.pageSize,
+          status: params.status ?? '',
+          turno: params.turno ?? '',
+          metodo: params.metodo ?? '',
+          instrutorId: params.instrutorId ?? '',
+          role: req.user?.role ?? '',
+        },
+        { excludeKeys: [] },
+      );
+
+      const result = await getCachedOrFetch(
+        cacheKey,
+        () =>
+          turmasService.list({
+            cursoId,
+            page: params.page,
+            pageSize: params.pageSize,
+            status: params.status,
+            turno: params.turno,
+            metodo: params.metodo,
+            instrutorId: params.instrutorId,
+          }),
+        TURMAS_LIST_CACHE_TTL,
+      );
 
       res.json(result);
     } catch (error: any) {
@@ -107,7 +163,27 @@ export class TurmasController {
     }
 
     try {
-      const turma = await turmasService.get(cursoId, turmaId);
+      const includeAlunos = parseBooleanQuery(req.query.includeAlunos) ?? false;
+      // Compatibilidade: por padrão manter estrutura no payload.
+      // Otimização permanece disponível via `?includeEstrutura=false`.
+      const includeEstrutura = parseBooleanQuery(req.query.includeEstrutura) ?? true;
+      const cacheKey = generateCacheKey(
+        'cursos:turmas:get',
+        {
+          cursoId,
+          turmaId,
+          includeAlunos: includeAlunos ? '1' : '0',
+          includeEstrutura: includeEstrutura ? '1' : '0',
+          role: req.user?.role ?? '',
+        },
+        { excludeKeys: [] },
+      );
+
+      const turma = await getCachedOrFetch(
+        cacheKey,
+        () => turmasService.get(cursoId, turmaId, { includeAlunos, includeEstrutura }),
+        TURMAS_GET_CACHE_TTL,
+      );
       res.json(turma);
     } catch (error: any) {
       if (error?.code === 'TURMA_NOT_FOUND' || error?.code === 'CURSO_NOT_FOUND') {
@@ -140,7 +216,21 @@ export class TurmasController {
     }
 
     try {
-      const inscricoes = await turmasService.listInscricoes(cursoId, turmaId);
+      const cacheKey = generateCacheKey(
+        'cursos:turmas:inscricoes',
+        {
+          cursoId,
+          turmaId,
+          role: req.user?.role ?? '',
+        },
+        { excludeKeys: [] },
+      );
+
+      const inscricoes = await getCachedOrFetch(
+        cacheKey,
+        () => turmasService.listInscricoes(cursoId, turmaId),
+        TURMAS_INSCRICOES_CACHE_TTL,
+      );
 
       // Log para depuração (apenas em desenvolvimento)
       if (process.env.NODE_ENV === 'development') {
@@ -237,6 +327,8 @@ export class TurmasController {
         { id: req.user?.id ?? null },
       );
 
+      await invalidateTurmasCache();
+
       res.status(201).json(turma);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -311,13 +403,20 @@ export class TurmasController {
         });
       }
 
-      const turma = await turmasService.update(cursoId, turmaId, {
-        ...data,
-        dataInicio: data.dataInicio ?? undefined,
-        dataFim: data.dataFim ?? undefined,
-        dataInscricaoInicio: data.dataInscricaoInicio ?? undefined,
-        dataInscricaoFim: data.dataInscricaoFim ?? undefined,
-      });
+      const turma = await turmasService.update(
+        cursoId,
+        turmaId,
+        {
+          ...data,
+          dataInicio: data.dataInicio ?? undefined,
+          dataFim: data.dataFim ?? undefined,
+          dataInscricaoInicio: data.dataInscricaoInicio ?? undefined,
+          dataInscricaoFim: data.dataInscricaoFim ?? undefined,
+        },
+        { id: req.user?.id ?? null },
+      );
+
+      await invalidateTurmasCache();
 
       res.json(turma);
     } catch (error: any) {
@@ -335,6 +434,24 @@ export class TurmasController {
           success: false,
           code: 'TURMA_NOT_FOUND',
           message: 'Turma não encontrada para o curso informado',
+        });
+      }
+
+      if (error?.code === 'CAMPO_NAO_EDITAVEL') {
+        return res.status(400).json({
+          success: false,
+          code: 'CAMPO_NAO_EDITAVEL',
+          message: error?.message,
+          field: error?.field,
+        });
+      }
+
+      if (error?.code === 'STATUS_NAO_EDITAVEL_APOS_INICIO') {
+        return res.status(400).json({
+          success: false,
+          code: 'STATUS_NAO_EDITAVEL_APOS_INICIO',
+          message: error?.message,
+          details: error?.details,
         });
       }
 
@@ -385,6 +502,8 @@ export class TurmasController {
         id: req.user?.id ?? null,
         role: actorRole,
       });
+
+      await invalidateTurmasCache();
       res.status(201).json(turma);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -476,6 +595,7 @@ export class TurmasController {
 
     try {
       const turma = await turmasService.unenroll(cursoId, turmaId, alunoId);
+      await invalidateTurmasCache();
       res.json(turma);
     } catch (error: any) {
       if (error?.code === 'TURMA_NOT_FOUND' || error?.code === 'CURSO_NOT_FOUND') {
@@ -525,6 +645,8 @@ export class TurmasController {
         payload.status,
       );
 
+      await invalidateTurmasCache();
+
       res.json({
         success: true,
         data: inscricao,
@@ -555,6 +677,69 @@ export class TurmasController {
         success: false,
         code: 'INSCRICAO_STATUS_UPDATE_ERROR',
         message: 'Erro ao atualizar status da inscrição',
+        error: error?.message,
+      });
+    }
+  };
+
+  static togglePublicacao = async (req: Request, res: Response) => {
+    const cursoId = parseCursoId(req.params.cursoId);
+    const turmaId = parseTurmaId(req.params.turmaId);
+
+    if (!cursoId || !turmaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificadores de curso ou turma inválidos',
+      });
+    }
+
+    try {
+      const payload = publicarTurmaSchema.parse(req.body);
+      const turma = await turmasService.togglePublicacao(cursoId, turmaId, payload.publicar);
+
+      await invalidateTurmasCache();
+
+      res.json({
+        success: true,
+        data: turma,
+        message: payload.publicar
+          ? 'Turma publicada com sucesso'
+          : 'Turma despublicada com sucesso',
+      });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Dados inválidos para publicação/despublicação',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'TURMA_NOT_FOUND' || error?.code === 'CURSO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'TURMA_NOT_FOUND',
+          message: 'Turma não encontrada para o curso informado',
+        });
+      }
+
+      if (error?.code === 'TURMA_PREREQUISITOS_NAO_ATENDIDOS') {
+        return res.status(422).json({
+          success: false,
+          code: 'TURMA_PREREQUISITOS_NAO_ATENDIDOS',
+          message:
+            error?.message ||
+            'Para publicar uma turma é necessário ter pelo menos 1 aula e 1 avaliação cadastradas.',
+          details: error?.details,
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'TURMA_PUBLICACAO_ERROR',
+        message: 'Erro ao publicar/despublicar turma',
         error: error?.message,
       });
     }

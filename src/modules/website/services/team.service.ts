@@ -1,31 +1,20 @@
 import { WebsiteStatus } from '@prisma/client';
 import { prisma } from '@/config/prisma';
-import { getCache, setCache, invalidateCache } from '@/utils/cache';
+import { getCache, setCache, invalidateCacheByPrefix } from '@/utils/cache';
 import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
 
-const CACHE_KEY = 'website:team:list';
+const CACHE_PREFIX = 'website:team:list';
+const buildCacheKey = (status?: WebsiteStatus) => `${CACHE_PREFIX}:${status ?? 'ALL'}`;
 
 export const teamService = {
   list: async (status?: WebsiteStatus) => {
-    if (status) {
-      return prisma.websiteTeamOrdem.findMany({
-        where: { status },
-        orderBy: { ordem: 'asc' },
-        take: 100,
-        select: {
-          id: true,
-          ordem: true,
-          status: true,
-          WebsiteTeam: {
-            select: { id: true, photoUrl: true, nome: true, cargo: true },
-          },
-        },
-      });
-    }
+    const cacheKey = buildCacheKey(status);
     const cached =
-      await getCache<Awaited<ReturnType<typeof prisma.websiteTeamOrdem.findMany>>>(CACHE_KEY);
+      await getCache<Awaited<ReturnType<typeof prisma.websiteTeamOrdem.findMany>>>(cacheKey);
     if (cached) return cached;
+
     const result = await prisma.websiteTeamOrdem.findMany({
+      ...(status ? { where: { status } } : {}),
       orderBy: { ordem: 'asc' },
       take: 100,
       select: {
@@ -37,7 +26,7 @@ export const teamService = {
         },
       },
     });
-    await setCache(CACHE_KEY, result, WEBSITE_CACHE_TTL);
+    await setCache(cacheKey, result, WEBSITE_CACHE_TTL);
     return result;
   },
   get: (id: string) =>
@@ -83,7 +72,7 @@ export const teamService = {
         },
       },
     });
-    await invalidateCache(CACHE_KEY);
+    await invalidateCacheByPrefix(CACHE_PREFIX);
     return result;
   },
   update: async (
@@ -145,7 +134,7 @@ export const teamService = {
         },
       });
     });
-    await invalidateCache(CACHE_KEY);
+    await invalidateCacheByPrefix(CACHE_PREFIX);
     return result;
   },
   reorder: async (ordemId: string, novaOrdem: number) => {
@@ -193,7 +182,7 @@ export const teamService = {
 
       return current;
     });
-    await invalidateCache(CACHE_KEY);
+    await invalidateCacheByPrefix(CACHE_PREFIX);
     return result;
   },
   remove: async (teamId: string) => {
@@ -210,6 +199,6 @@ export const teamService = {
         data: { ordem: { decrement: 1 } },
       });
     });
-    await invalidateCache(CACHE_KEY);
+    await invalidateCacheByPrefix(CACHE_PREFIX);
   },
 };

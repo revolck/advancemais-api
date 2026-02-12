@@ -26,9 +26,12 @@ export interface TestUser {
  * Gera um CPF válido para testes (apenas formato, não valida algoritmo)
  */
 function generateTestCPF(): string {
-  // Gera um CPF de 11 dígitos (formato válido para testes)
-  const digits = Array.from({ length: 11 }, () => Math.floor(Math.random() * 10)).join('');
-  return digits;
+  return generateUniqueNumeric(11);
+}
+
+function generateUniqueNumeric(length: number): string {
+  const seed = `${Date.now()}${randomUUID().replace(/\D/g, '')}${Math.floor(Math.random() * 1e9)}`;
+  return seed.padStart(length, '7').slice(-length);
 }
 
 /**
@@ -58,7 +61,7 @@ export async function createTestUser(
   const cpfLimpo = cpf ? limparDocumento(cpf) : null;
   const cnpj =
     tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
-      ? overrides.cnpj || String(Date.now()).padStart(14, '0').slice(0, 14)
+      ? overrides.cnpj || generateUniqueNumeric(14)
       : null;
 
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -74,7 +77,7 @@ export async function createTestUser(
         senha: hashedPassword,
         nomeCompleto,
         role,
-        codUsuario: `TEST${Date.now()}`,
+        codUsuario: `TEST${randomUUID().replace(/-/g, '').slice(0, 20).toUpperCase()}`,
         authId,
         status: 'ATIVO',
         tipoUsuario,

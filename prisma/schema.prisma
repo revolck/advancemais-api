@@ -423,6 +423,9 @@ model CursosTurmas {
   vagasTotais                 Int
   vagasDisponiveis            Int
   status                      CursoStatus                  @default(RASCUNHO)
+  // Auditoria de edição
+  editadoPorId                String?
+  editadoEm                   DateTime?
   criadoEm                    DateTime                     @default(now())
   atualizadoEm                DateTime                     @default(now())
   CursosEstagios              CursosEstagios[]
@@ -430,6 +433,7 @@ model CursosTurmas {
   CursosNotas                 CursosNotas[]
   Cursos                      Cursos                       @relation(fields: [cursoId], references: [id], onDelete: Cascade)
   Usuarios                    Usuarios?                    @relation(fields: [instrutorId], references: [id])
+  EditadoPor                  Usuarios?                    @relation("TurmasEditadoPor", fields: [editadoPorId], references: [id])
   CursosTurmasAgenda          CursosTurmasAgenda[]
   CursosTurmasAulas           CursosTurmasAulas[]
   CursosTurmasInscricoes      CursosTurmasInscricoes[]
@@ -441,18 +445,19 @@ model CursosTurmas {
   cursosAulasProgressos       CursosAulasProgresso[]
 
   @@index([cursoId])
+  @@index([cursoId, criadoEm(sort: Desc)], map: "cursos_turmas_curso_criadoem_desc_idx")
   @@index([instrutorId])
   @@index([status])
 }
 
 model CursosTurmasInstrutores {
-  id           String      @id @default(uuid())
+  id           String       @id @default(uuid())
   turmaId      String
   instrutorId  String
-  criadoEm     DateTime    @default(now())
-  atualizadoEm DateTime    @default(now())
+  criadoEm     DateTime     @default(now())
+  atualizadoEm DateTime     @default(now())
   CursosTurmas CursosTurmas @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  Instrutor    Usuarios    @relation("TurmasInstrutores", fields: [instrutorId], references: [id], onDelete: Cascade)
+  Instrutor    Usuarios     @relation("TurmasInstrutores", fields: [instrutorId], references: [id], onDelete: Cascade)
 
   @@unique([turmaId, instrutorId])
   @@index([turmaId])
@@ -682,6 +687,9 @@ model CursosTurmasInscricoes {
 
   @@unique([turmaId, alunoId])
   @@index([alunoId])
+  @@index([turmaId, criadoEm(sort: Desc)], map: "cti_turma_criadoem_desc_idx")
+  @@index([turmaId, status], map: "cti_turma_status_idx")
+  @@index([turmaId, statusPagamento], map: "cti_turma_status_pagamento_idx")
   @@index([status])
   @@index([statusPagamento])
   @@index([mpPaymentId])
@@ -1065,25 +1073,25 @@ enum EntrevistaStatus {
 }
 
 model EmpresasVagasEntrevistas {
-  id                String           @id @default(uuid())
-  vagaId            String
-  candidatoId       String
-  empresaUsuarioId  String
-  recrutadorId      String
-  titulo            String           @db.VarChar(255)
-  descricao         String?          @db.Text
-  dataInicio        DateTime
-  dataFim           DateTime
-  meetUrl           String           @db.Text
-  meetEventId       String?          @db.VarChar(255)
-  status            EntrevistaStatus @default(AGENDADA)
-  criadoEm          DateTime         @default(now())
-  atualizadoEm      DateTime         @default(now())
+  id               String           @id @default(uuid())
+  vagaId           String
+  candidatoId      String
+  empresaUsuarioId String
+  recrutadorId     String
+  titulo           String           @db.VarChar(255)
+  descricao        String?          @db.Text
+  dataInicio       DateTime
+  dataFim          DateTime
+  meetUrl          String           @db.Text
+  meetEventId      String?          @db.VarChar(255)
+  status           EntrevistaStatus @default(AGENDADA)
+  criadoEm         DateTime         @default(now())
+  atualizadoEm     DateTime         @default(now())
 
-  EmpresasVagas     EmpresasVagas    @relation(fields: [vagaId], references: [id], onDelete: Cascade)
-  candidato         Usuarios         @relation("EmpresasVagasEntrevistas_candidatoIdToUsuarios", fields: [candidatoId], references: [id], onDelete: Cascade)
-  empresa           Usuarios         @relation("EmpresasVagasEntrevistas_empresaUsuarioIdToUsuarios", fields: [empresaUsuarioId], references: [id], onDelete: Cascade)
-  recrutador        Usuarios         @relation("EmpresasVagasEntrevistas_recrutadorIdToUsuarios", fields: [recrutadorId], references: [id], onDelete: Cascade)
+  EmpresasVagas EmpresasVagas @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  candidato     Usuarios      @relation("EmpresasVagasEntrevistas_candidatoIdToUsuarios", fields: [candidatoId], references: [id], onDelete: Cascade)
+  empresa       Usuarios      @relation("EmpresasVagasEntrevistas_empresaUsuarioIdToUsuarios", fields: [empresaUsuarioId], references: [id], onDelete: Cascade)
+  recrutador    Usuarios      @relation("EmpresasVagasEntrevistas_recrutadorIdToUsuarios", fields: [recrutadorId], references: [id], onDelete: Cascade)
 
   @@index([candidatoId])
   @@index([empresaUsuarioId])
@@ -1179,81 +1187,82 @@ model PlanosEmpresariais {
 }
 
 model Usuarios {
-  id                                                               String                       @id @default(uuid())
-  nomeCompleto                                                     String
-  authId                                                           String                       @unique
-  cpf                                                              String?                      @unique
-  cnpj                                                             String?                      @unique
-  email                                                            String                       @unique
-  senha                                                            String
-  codUsuario                                                       String                       @unique
-  tipoUsuario                                                      TiposDeUsuarios
-  role                                                             Roles
-  status                                                           Status                       @default(ATIVO)
-  criadoEm                                                         DateTime                     @default(now())
-  atualizadoEm                                                     DateTime                     @default(now())
-  ultimoLogin                                                      DateTime?
-  refreshToken                                                     String?
+  id                                                                           String                       @id @default(uuid())
+  nomeCompleto                                                                 String
+  authId                                                                       String                       @unique
+  cpf                                                                          String?                      @unique
+  cnpj                                                                         String?                      @unique
+  email                                                                        String                       @unique
+  senha                                                                        String
+  codUsuario                                                                   String                       @unique
+  tipoUsuario                                                                  TiposDeUsuarios
+  role                                                                         Roles
+  status                                                                       Status                       @default(ATIVO)
+  criadoEm                                                                     DateTime                     @default(now())
+  atualizadoEm                                                                 DateTime                     @default(now())
+  ultimoLogin                                                                  DateTime?
+  refreshToken                                                                 String?
   // Google OAuth campos
-  googleAccessToken                                                String?                      @db.Text
-  googleRefreshToken                                               String?                      @db.Text
-  googleCalendarId                                                 String?                      @db.VarChar(255)
-  googleTokenExpiraEm                                              DateTime?
-  AuditoriaLogs                                                    AuditoriaLogs[]
-  AuditoriaScripts                                                 AuditoriaScripts[]
-  AuditoriaTransacoes_AuditoriaTransacoes_empresaIdToUsuarios      AuditoriaTransacoes[]        @relation("AuditoriaTransacoes_empresaIdToUsuarios")
-  AuditoriaTransacoes_AuditoriaTransacoes_usuarioIdToUsuarios      AuditoriaTransacoes[]        @relation("AuditoriaTransacoes_usuarioIdToUsuarios")
-  CuponsDesconto                                                   CuponsDesconto[]
-  CursosCertificadosEmitidos                                       CursosCertificadosEmitidos[]
-  CursosEstagios_CursosEstagios_alunoIdToUsuarios                  CursosEstagios[]             @relation("CursosEstagios_alunoIdToUsuarios")
-  CursosEstagios_CursosEstagios_atualizadoPorIdToUsuarios          CursosEstagios[]             @relation("CursosEstagios_atualizadoPorIdToUsuarios")
-  CursosEstagios_CursosEstagios_criadoPorIdToUsuarios              CursosEstagios[]             @relation("CursosEstagios_criadoPorIdToUsuarios")
-  CursosTurmas                                                     CursosTurmas[]
-  CursosTurmasInscricoes                                           CursosTurmasInscricoes[]
-  EmpresasAuditoria_EmpresasAuditoria_alteradoPorToUsuarios        EmpresasAuditoria[]          @relation("EmpresasAuditoria_alteradoPorToUsuarios")
-  EmpresasAuditoria_EmpresasAuditoria_empresaIdToUsuarios          EmpresasAuditoria[]          @relation("EmpresasAuditoria_empresaIdToUsuarios")
-  EmpresasCandidatos_EmpresasCandidatos_candidatoIdToUsuarios      EmpresasCandidatos[]         @relation("EmpresasCandidatos_candidatoIdToUsuarios")
-  EmpresasCandidatos_EmpresasCandidatos_empresaUsuarioIdToUsuarios EmpresasCandidatos[]         @relation("EmpresasCandidatos_empresaUsuarioIdToUsuarios")
-  EmpresasPlano                                                    EmpresasPlano[]
-  EmpresasVagas                                                    EmpresasVagas[]
-  EmpresasVagasProcesso                                            EmpresasVagasProcesso[]
-  UsuariosCandidatosLogs                                           UsuariosCandidatosLogs[]
-  UsuariosCurriculos                                               UsuariosCurriculos[]
-  UsuariosEmBloqueios_UsuariosEmBloqueios_aplicadoPorIdToUsuarios  UsuariosEmBloqueios[]        @relation("UsuariosEmBloqueios_aplicadoPorIdToUsuarios")
-  UsuariosEmBloqueios_UsuariosEmBloqueios_usuarioIdToUsuarios      UsuariosEmBloqueios[]        @relation("UsuariosEmBloqueios_usuarioIdToUsuarios")
-  UsuariosEmBloqueiosLogs                                          UsuariosEmBloqueiosLogs[]
-  UsuariosEnderecos                                                UsuariosEnderecos[]
-  UsuariosInformation                                              UsuariosInformation?
-  UsuariosRecuperacaoSenha                                         UsuariosRecuperacaoSenha?
-  UsuariosRedesSociais                                             UsuariosRedesSociais?
-  UsuariosSessoes                                                  UsuariosSessoes[]
-  UsuariosVerificacaoEmail                                         UsuariosVerificacaoEmail?
-  status_processo                                                  StatusProcessosCandidatos[]
+  googleAccessToken                                                            String?                      @db.Text
+  googleRefreshToken                                                           String?                      @db.Text
+  googleCalendarId                                                             String?                      @db.VarChar(255)
+  googleTokenExpiraEm                                                          DateTime?
+  AuditoriaLogs                                                                AuditoriaLogs[]
+  AuditoriaScripts                                                             AuditoriaScripts[]
+  AuditoriaTransacoes_AuditoriaTransacoes_empresaIdToUsuarios                  AuditoriaTransacoes[]        @relation("AuditoriaTransacoes_empresaIdToUsuarios")
+  AuditoriaTransacoes_AuditoriaTransacoes_usuarioIdToUsuarios                  AuditoriaTransacoes[]        @relation("AuditoriaTransacoes_usuarioIdToUsuarios")
+  CuponsDesconto                                                               CuponsDesconto[]
+  CursosCertificadosEmitidos                                                   CursosCertificadosEmitidos[]
+  CursosEstagios_CursosEstagios_alunoIdToUsuarios                              CursosEstagios[]             @relation("CursosEstagios_alunoIdToUsuarios")
+  CursosEstagios_CursosEstagios_atualizadoPorIdToUsuarios                      CursosEstagios[]             @relation("CursosEstagios_atualizadoPorIdToUsuarios")
+  CursosEstagios_CursosEstagios_criadoPorIdToUsuarios                          CursosEstagios[]             @relation("CursosEstagios_criadoPorIdToUsuarios")
+  CursosTurmas                                                                 CursosTurmas[]
+  CursosTurmasEditadas                                                         CursosTurmas[]               @relation("TurmasEditadoPor")
+  CursosTurmasInscricoes                                                       CursosTurmasInscricoes[]
+  EmpresasAuditoria_EmpresasAuditoria_alteradoPorToUsuarios                    EmpresasAuditoria[]          @relation("EmpresasAuditoria_alteradoPorToUsuarios")
+  EmpresasAuditoria_EmpresasAuditoria_empresaIdToUsuarios                      EmpresasAuditoria[]          @relation("EmpresasAuditoria_empresaIdToUsuarios")
+  EmpresasCandidatos_EmpresasCandidatos_candidatoIdToUsuarios                  EmpresasCandidatos[]         @relation("EmpresasCandidatos_candidatoIdToUsuarios")
+  EmpresasCandidatos_EmpresasCandidatos_empresaUsuarioIdToUsuarios             EmpresasCandidatos[]         @relation("EmpresasCandidatos_empresaUsuarioIdToUsuarios")
+  EmpresasPlano                                                                EmpresasPlano[]
+  EmpresasVagas                                                                EmpresasVagas[]
+  EmpresasVagasProcesso                                                        EmpresasVagasProcesso[]
+  UsuariosCandidatosLogs                                                       UsuariosCandidatosLogs[]
+  UsuariosCurriculos                                                           UsuariosCurriculos[]
+  UsuariosEmBloqueios_UsuariosEmBloqueios_aplicadoPorIdToUsuarios              UsuariosEmBloqueios[]        @relation("UsuariosEmBloqueios_aplicadoPorIdToUsuarios")
+  UsuariosEmBloqueios_UsuariosEmBloqueios_usuarioIdToUsuarios                  UsuariosEmBloqueios[]        @relation("UsuariosEmBloqueios_usuarioIdToUsuarios")
+  UsuariosEmBloqueiosLogs                                                      UsuariosEmBloqueiosLogs[]
+  UsuariosEnderecos                                                            UsuariosEnderecos[]
+  UsuariosInformation                                                          UsuariosInformation?
+  UsuariosRecuperacaoSenha                                                     UsuariosRecuperacaoSenha?
+  UsuariosRedesSociais                                                         UsuariosRedesSociais?
+  UsuariosSessoes                                                              UsuariosSessoes[]
+  UsuariosVerificacaoEmail                                                     UsuariosVerificacaoEmail?
+  status_processo                                                              StatusProcessosCandidatos[]
   // Requerimentos
-  Requerimentos_usuarioId                                          Requerimentos[]              @relation("Requerimentos_usuarioId")
-  Requerimentos_atribuidoParaId                                    Requerimentos[]              @relation("Requerimentos_atribuidoParaId")
-  RequerimentosHistorico                                           RequerimentosHistorico[]
+  Requerimentos_usuarioId                                                      Requerimentos[]              @relation("Requerimentos_usuarioId")
+  Requerimentos_atribuidoParaId                                                Requerimentos[]              @relation("Requerimentos_atribuidoParaId")
+  RequerimentosHistorico                                                       RequerimentosHistorico[]
   // Notificações
-  Notificacoes                                                     Notificacoes[]
-  Requerimentos                                                    Requerimentos[]
+  Notificacoes                                                                 Notificacoes[]
+  Requerimentos                                                                Requerimentos[]
   // Novos relacionamentos de aulas
-  AulasCriadas                                                     CursosTurmasAulas[]          @relation("AulasCriadas")
-  AulasInstrutor                                                   CursosTurmasAulas[]          @relation("AulasInstrutor")
-  AulasProgresso                                                   CursosAulasProgresso[]       @relation("AulasProgresso")
-  AulasHistorico                                                   CursosAulasHistorico[]       @relation("AulasHistorico")
-  NotificacoesEnviadas                                             NotificacoesEnviadas[]       @relation("NotificacoesEnviadas")
-  HistoricoInstrutorAulas                                          AulaInstrutorHistorico[]     @relation("HistoricoInstrutor")
-  HistoricoRemocaoInstrutor                                        AulaInstrutorHistorico[]     @relation("HistoricoRemovidoPor")
-  EmpresasVagasEntrevistas_EmpresasVagasEntrevistas_candidatoIdToUsuarios EmpresasVagasEntrevistas[] @relation("EmpresasVagasEntrevistas_candidatoIdToUsuarios")
-  EmpresasVagasEntrevistas_EmpresasVagasEntrevistas_empresaUsuarioIdToUsuarios EmpresasVagasEntrevistas[] @relation("EmpresasVagasEntrevistas_empresaUsuarioIdToUsuarios")
-  EmpresasVagasEntrevistas_EmpresasVagasEntrevistas_recrutadorIdToUsuarios EmpresasVagasEntrevistas[] @relation("EmpresasVagasEntrevistas_recrutadorIdToUsuarios")
+  AulasCriadas                                                                 CursosTurmasAulas[]          @relation("AulasCriadas")
+  AulasInstrutor                                                               CursosTurmasAulas[]          @relation("AulasInstrutor")
+  AulasProgresso                                                               CursosAulasProgresso[]       @relation("AulasProgresso")
+  AulasHistorico                                                               CursosAulasHistorico[]       @relation("AulasHistorico")
+  NotificacoesEnviadas                                                         NotificacoesEnviadas[]       @relation("NotificacoesEnviadas")
+  HistoricoInstrutorAulas                                                      AulaInstrutorHistorico[]     @relation("HistoricoInstrutor")
+  HistoricoRemocaoInstrutor                                                    AulaInstrutorHistorico[]     @relation("HistoricoRemovidoPor")
+  EmpresasVagasEntrevistas_EmpresasVagasEntrevistas_candidatoIdToUsuarios      EmpresasVagasEntrevistas[]   @relation("EmpresasVagasEntrevistas_candidatoIdToUsuarios")
+  EmpresasVagasEntrevistas_EmpresasVagasEntrevistas_empresaUsuarioIdToUsuarios EmpresasVagasEntrevistas[]   @relation("EmpresasVagasEntrevistas_empresaUsuarioIdToUsuarios")
+  EmpresasVagasEntrevistas_EmpresasVagasEntrevistas_recrutadorIdToUsuarios     EmpresasVagasEntrevistas[]   @relation("EmpresasVagasEntrevistas_recrutadorIdToUsuarios")
   // Vínculos RECRUTADOR -> EMPRESA (controle de acesso)
-  UsuariosEmpresasVinculos_UsuariosEmpresasVinculos_recrutadorIdToUsuarios UsuariosEmpresasVinculos[] @relation("UsuariosEmpresasVinculos_recrutadorIdToUsuarios")
-  UsuariosEmpresasVinculos_UsuariosEmpresasVinculos_empresaUsuarioIdToUsuarios UsuariosEmpresasVinculos[] @relation("UsuariosEmpresasVinculos_empresaUsuarioIdToUsuarios")
-  UsuariosVagasVinculos_UsuariosVagasVinculos_recrutadorIdToUsuarios UsuariosVagasVinculos[] @relation("UsuariosVagasVinculos_recrutadorIdToUsuarios")
+  UsuariosEmpresasVinculos_UsuariosEmpresasVinculos_recrutadorIdToUsuarios     UsuariosEmpresasVinculos[]   @relation("UsuariosEmpresasVinculos_recrutadorIdToUsuarios")
+  UsuariosEmpresasVinculos_UsuariosEmpresasVinculos_empresaUsuarioIdToUsuarios UsuariosEmpresasVinculos[]   @relation("UsuariosEmpresasVinculos_empresaUsuarioIdToUsuarios")
+  UsuariosVagasVinculos_UsuariosVagasVinculos_recrutadorIdToUsuarios           UsuariosVagasVinculos[]      @relation("UsuariosVagasVinculos_recrutadorIdToUsuarios")
   // Provas e Atividades como instrutor
-  CursosTurmasProvas                                                   CursosTurmasProvas[]
-  CursosTurmasInstrutores                                              CursosTurmasInstrutores[] @relation("TurmasInstrutores")
+  CursosTurmasProvas                                                           CursosTurmasProvas[]
+  CursosTurmasInstrutores                                                      CursosTurmasInstrutores[]    @relation("TurmasInstrutores")
 
   @@index([criadoEm])
   @@index([role])
@@ -1267,13 +1276,13 @@ model Usuarios {
 }
 
 model UsuariosEmpresasVinculos {
-  id                                                          String   @id @default(uuid())
+  id                                                           String   @id @default(uuid())
   recrutadorId                                                 String
   empresaUsuarioId                                             String
   criadoEm                                                     DateTime @default(now())
   atualizadoEm                                                 DateTime @default(now())
-  Usuarios_UsuariosEmpresasVinculos_recrutadorIdToUsuarios      Usuarios @relation("UsuariosEmpresasVinculos_recrutadorIdToUsuarios", fields: [recrutadorId], references: [id], onDelete: Cascade)
-  Usuarios_UsuariosEmpresasVinculos_empresaUsuarioIdToUsuarios  Usuarios @relation("UsuariosEmpresasVinculos_empresaUsuarioIdToUsuarios", fields: [empresaUsuarioId], references: [id], onDelete: Cascade)
+  Usuarios_UsuariosEmpresasVinculos_recrutadorIdToUsuarios     Usuarios @relation("UsuariosEmpresasVinculos_recrutadorIdToUsuarios", fields: [recrutadorId], references: [id], onDelete: Cascade)
+  Usuarios_UsuariosEmpresasVinculos_empresaUsuarioIdToUsuarios Usuarios @relation("UsuariosEmpresasVinculos_empresaUsuarioIdToUsuarios", fields: [empresaUsuarioId], references: [id], onDelete: Cascade)
 
   @@unique([recrutadorId, empresaUsuarioId])
   @@index([empresaUsuarioId])
@@ -1281,13 +1290,13 @@ model UsuariosEmpresasVinculos {
 }
 
 model UsuariosVagasVinculos {
-  id                                                     String       @id @default(uuid())
-  recrutadorId                                           String
-  vagaId                                                 String
-  criadoEm                                               DateTime     @default(now())
-  atualizadoEm                                           DateTime     @default(now())
-  Usuarios_UsuariosVagasVinculos_recrutadorIdToUsuarios   Usuarios     @relation("UsuariosVagasVinculos_recrutadorIdToUsuarios", fields: [recrutadorId], references: [id], onDelete: Cascade)
-  EmpresasVagas                                          EmpresasVagas @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  id                                                    String        @id @default(uuid())
+  recrutadorId                                          String
+  vagaId                                                String
+  criadoEm                                              DateTime      @default(now())
+  atualizadoEm                                          DateTime      @default(now())
+  Usuarios_UsuariosVagasVinculos_recrutadorIdToUsuarios Usuarios      @relation("UsuariosVagasVinculos_recrutadorIdToUsuarios", fields: [recrutadorId], references: [id], onDelete: Cascade)
+  EmpresasVagas                                         EmpresasVagas @relation(fields: [vagaId], references: [id], onDelete: Cascade)
 
   @@unique([recrutadorId, vagaId])
   @@index([recrutadorId])

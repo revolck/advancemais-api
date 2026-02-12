@@ -20,6 +20,11 @@ interface CacheEntry<T> {
   expiresAt: number;
 }
 
+const wildcardToRegex = (pattern: string) => {
+  const escaped = pattern.replace(/[|\\{}()[\]^$+?.]/g, '\\$&');
+  return new RegExp(`^${escaped.replace(/\*/g, '.*')}$`);
+};
+
 class InMemoryCache {
   private cache = new Map<string, CacheEntry<any>>();
 
@@ -42,6 +47,20 @@ class InMemoryCache {
 
   delete(key: string): void {
     this.cache.delete(key);
+  }
+
+  deleteByPattern(pattern: string): number {
+    const regex = wildcardToRegex(pattern);
+    let deleted = 0;
+
+    for (const key of this.cache.keys()) {
+      if (regex.test(key)) {
+        this.cache.delete(key);
+        deleted += 1;
+      }
+    }
+
+    return deleted;
   }
 
   clear(): void {
@@ -166,8 +185,8 @@ export async function deleteCacheByPattern(pattern: string): Promise<void> {
         await redis.del(...keys);
       }
     } else {
-      // Para in-memory, não temos padrão, mas podemos limpar tudo se necessário
-      cacheLogger.debug({ pattern }, 'Pattern delete não suportado em in-memory cache');
+      const deleted = inMemoryCache.deleteByPattern(pattern);
+      cacheLogger.debug({ pattern, deleted }, 'Pattern delete executado em in-memory cache');
     }
   } catch (error) {
     // Em ambiente de teste, não logar erros de cache
@@ -257,9 +276,7 @@ export function generateCacheKey(
     Object.entries(params).filter(([key]) => !excludeKeys.includes(key)),
   );
   const paramsString = JSON.stringify(filteredParams, Object.keys(filteredParams).sort());
-  const paramsHash = Buffer.from(paramsString)
-    .toString('base64')
-    .slice(0, 16)
-    .replace(/[^a-zA-Z0-9]/g, '');
+  // Usa hash criptográfico para evitar colisões de prefixo entre combinações de query diferentes.
+  const paramsHash = crypto.createHash('sha256').update(paramsString).digest('hex').slice(0, 24);
   return `${prefix}:${paramsHash}`;
 }

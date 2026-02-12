@@ -50,6 +50,14 @@ const normalizeDescricao = (value: unknown) => {
   return undefined;
 };
 
+const resolveTtl = (value: string | undefined, fallback: number) => {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
+  return parsed;
+};
+
+const CURSOS_INSCRICOES_CACHE_TTL = resolveTtl(process.env.CACHE_TTL_CURSOS_INSCRICOES, 30);
+
 /**
  * Calcula o progresso do curso baseado em aulas concluídas, provas realizadas e tempo decorrido
  * ⚠️ OTIMIZADO PARA SUPABASE FREE: Queries sequenciais para evitar saturação do pooler
@@ -132,6 +140,148 @@ const calcularProgressoCurso = async (
       '❌ Erro ao calcular progresso do curso',
     );
     return 0;
+  }
+};
+
+type InscricaoProgressoInput = {
+  id: string;
+  CursosTurmas: {
+    id: string;
+    dataInicio: Date | null;
+    dataFim: Date | null;
+  };
+};
+
+const calcularProgressoCursoBatch = async (inscricoes: InscricaoProgressoInput[]) => {
+  const progressoMap: Record<string, number> = {};
+
+  if (inscricoes.length === 0) {
+    return progressoMap;
+  }
+
+  const inscricaoIds = inscricoes.map((inscricao) => inscricao.id);
+  const turmaIds = Array.from(new Set(inscricoes.map((inscricao) => inscricao.CursosTurmas.id)));
+
+  try {
+    const [totalAulasPorTurma, totalProvasPorTurma, frequenciasPorInscricao, enviosPorInscricao] =
+      await Promise.all([
+        prisma.cursosTurmasAulas.groupBy({
+          by: ['turmaId'],
+          where: { turmaId: { in: turmaIds } },
+          _count: { _all: true },
+        }),
+        prisma.cursosTurmasProvas.groupBy({
+          by: ['turmaId'],
+          where: { turmaId: { in: turmaIds } },
+          _count: { _all: true },
+        }),
+        prisma.cursosFrequenciaAlunos.groupBy({
+          by: ['inscricaoId'],
+          where: {
+            inscricaoId: { in: inscricaoIds },
+            status: 'PRESENTE',
+          },
+          _count: { _all: true },
+        }),
+        prisma.cursosTurmasProvasEnvios.groupBy({
+          by: ['inscricaoId'],
+          where: { inscricaoId: { in: inscricaoIds } },
+          _count: { _all: true },
+        }),
+      ]);
+
+    const totalAulasMap = new Map<string, number>();
+    for (const item of totalAulasPorTurma) {
+      if (item.turmaId) {
+        totalAulasMap.set(item.turmaId, item._count._all);
+      }
+    }
+
+    const totalProvasMap = new Map<string, number>();
+    for (const item of totalProvasPorTurma) {
+      if (item.turmaId) {
+        totalProvasMap.set(item.turmaId, item._count._all);
+      }
+    }
+
+    const frequenciasMap = new Map<string, number>();
+    for (const item of frequenciasPorInscricao) {
+      frequenciasMap.set(item.inscricaoId, item._count._all);
+    }
+
+    const enviosMap = new Map<string, number>();
+    for (const item of enviosPorInscricao) {
+      enviosMap.set(item.inscricaoId, item._count._all);
+    }
+
+    for (const inscricao of inscricoes) {
+      const turmaId = inscricao.CursosTurmas.id;
+      const totalAulas = totalAulasMap.get(turmaId) ?? 0;
+      const totalProvas = totalProvasMap.get(turmaId) ?? 0;
+      const aulasComFrequencia = frequenciasMap.get(inscricao.id) ?? 0;
+      const provasComEnvio = enviosMap.get(inscricao.id) ?? 0;
+
+      if (totalAulas === 0 && totalProvas === 0) {
+        const { dataInicio, dataFim } = inscricao.CursosTurmas;
+        if (dataInicio && dataFim) {
+          const agora = Date.now();
+          const inicio = new Date(dataInicio).getTime();
+          const fim = new Date(dataFim).getTime();
+
+          if (fim > inicio) {
+            const progressoPorTempo = Math.min(
+              100,
+              Math.max(0, ((agora - inicio) / (fim - inicio)) * 100),
+            );
+            progressoMap[inscricao.id] = Math.round(progressoPorTempo);
+            continue;
+          }
+        }
+
+        progressoMap[inscricao.id] = 0;
+        continue;
+      }
+
+      let progressoAulas = 0;
+      let progressoProvas = 0;
+      let pesoAulas = 0.6;
+      let pesoProvas = 0.4;
+
+      if (totalAulas > 0) {
+        progressoAulas = (aulasComFrequencia / totalAulas) * 100;
+      }
+
+      if (totalProvas > 0) {
+        progressoProvas = (provasComEnvio / totalProvas) * 100;
+      }
+
+      if (totalAulas === 0 && totalProvas > 0) {
+        pesoAulas = 0;
+        pesoProvas = 1;
+      } else if (totalAulas > 0 && totalProvas === 0) {
+        pesoAulas = 1;
+        pesoProvas = 0;
+      }
+
+      const progressoTotal = progressoAulas * pesoAulas + progressoProvas * pesoProvas;
+      progressoMap[inscricao.id] = Math.round(Math.min(100, Math.max(0, progressoTotal)));
+    }
+
+    return progressoMap;
+  } catch (error) {
+    logger.error(
+      {
+        inscricoes: inscricoes.length,
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+      },
+      '❌ Erro ao calcular progresso em batch',
+    );
+
+    for (const inscricao of inscricoes) {
+      progressoMap[inscricao.id] = 0;
+    }
+
+    return progressoMap;
   }
 };
 
@@ -1188,112 +1338,133 @@ export class CursosController {
 
       // Validar e parsear query params
       const query = cursoHistoricoInscricoesQuerySchema.parse(req.query);
-      const { page, pageSize, status, turmaId } = query;
+      const { page, pageSize, status, turmaId, statusPagamento, includeProgress } = query;
       const skip = (page - 1) * pageSize;
-
-      // Verificar se curso existe
-      const cursoExiste = await prisma.cursos.findUnique({
-        where: { id: cursoIdValidado },
-        select: { id: true, nome: true },
-      });
-
-      if (!cursoExiste) {
-        return res.status(404).json({
-          success: false,
-          code: 'CURSO_NOT_FOUND',
-          message: 'Curso não encontrado.',
-        });
-      }
-
-      // Construir filtro
-      const where: any = {
-        CursosTurmas: {
+      const cacheKey = generateCacheKey(
+        'cursos:historico-inscricoes-curso',
+        {
           cursoId: cursoIdValidado,
+          page,
+          pageSize,
+          status: status?.join(',') || '',
+          statusPagamento: statusPagamento?.join(',') || '',
+          includeProgress: includeProgress ? '1' : '0',
+          turmaId: turmaId || '',
+          role: req.user?.role || '',
         },
-      };
+        { excludeKeys: [] },
+      );
 
-      // Filtro por turma se fornecido
-      if (turmaId) {
-        where.turmaId = turmaId;
-      }
-
-      // Filtro por status se fornecido
-      if (status && status.length > 0) {
-        where.status = { in: status };
-      }
-
-      // Buscar inscrições com paginação
-      const [total, inscricoes] = await Promise.all([
-        prisma.cursosTurmasInscricoes.count({ where }),
-        prisma.cursosTurmasInscricoes.findMany({
-          where,
-          skip,
-          take: pageSize,
-          orderBy: { criadoEm: 'desc' },
-          select: {
-            id: true,
-            status: true,
-            criadoEm: true,
-            alunoId: true,
+      const result = await getCachedOrFetch(
+        cacheKey,
+        async () => {
+          // Construir filtro
+          const where: any = {
             CursosTurmas: {
+              cursoId: cursoIdValidado,
+            },
+          };
+
+          // Filtro por turma se fornecido
+          if (turmaId) {
+            where.turmaId = turmaId;
+          }
+
+          // Filtro por status se fornecido
+          if (status && status.length > 0) {
+            where.status = { in: status };
+          }
+
+          // Filtro por status de pagamento se fornecido
+          if (statusPagamento && statusPagamento.length > 0) {
+            where.statusPagamento = { in: statusPagamento };
+          }
+
+          // Buscar inscrições com paginação
+          const [total, inscricoes] = await Promise.all([
+            prisma.cursosTurmasInscricoes.count({ where }),
+            prisma.cursosTurmasInscricoes.findMany({
+              where,
+              skip,
+              take: pageSize,
+              orderBy: { criadoEm: 'desc' },
               select: {
                 id: true,
-                nome: true,
-                codigo: true,
                 status: true,
-                dataInicio: true,
-                dataFim: true,
-                Cursos: {
+                statusPagamento: true,
+                criadoEm: true,
+                alunoId: true,
+                CursosTurmas: {
                   select: {
                     id: true,
                     nome: true,
                     codigo: true,
-                    descricao: true,
-                    cargaHoraria: true,
-                    imagemUrl: true,
+                    status: true,
+                    dataInicio: true,
+                    dataFim: true,
+                    Cursos: {
+                      select: {
+                        id: true,
+                        nome: true,
+                        codigo: true,
+                        descricao: true,
+                        cargaHoraria: true,
+                        imagemUrl: true,
+                      },
+                    },
                   },
                 },
-              },
-            },
-            Usuarios: {
-              select: {
-                id: true,
-                nomeCompleto: true,
-                email: true,
-                codUsuario: true,
-                cpf: true,
-                status: true,
-                UsuariosEnderecos: {
+                Usuarios: {
                   select: {
-                    cidade: true,
-                    estado: true,
-                  },
-                  take: 1,
-                  orderBy: {
-                    criadoEm: 'desc',
+                    id: true,
+                    nomeCompleto: true,
+                    email: true,
+                    codUsuario: true,
+                    cpf: true,
+                    status: true,
+                    UsuariosInformation: {
+                      select: {
+                        avatarUrl: true,
+                      },
+                    },
+                    UsuariosEnderecos: {
+                      select: {
+                        cidade: true,
+                        estado: true,
+                      },
+                      take: 1,
+                      orderBy: {
+                        criadoEm: 'desc',
+                      },
+                    },
                   },
                 },
               },
-            },
-          },
-        }),
-      ]);
+            }),
+          ]);
 
-      // Calcular progresso e formatar dados
-      const data = await Promise.all(
-        inscricoes.map(async (inscricao) => {
-          const progresso = await calcularProgressoCurso(
-            inscricao.id,
-            inscricao.CursosTurmas.id,
-            inscricao.CursosTurmas.dataInicio,
-            inscricao.CursosTurmas.dataFim,
-          );
+          // Só valida existência do curso quando não há inscrições
+          if (total === 0) {
+            const cursoExiste = await prisma.cursos.findUnique({
+              where: { id: cursoIdValidado },
+              select: { id: true },
+            });
 
-          return {
+            if (!cursoExiste) {
+              const error: any = new Error('Curso não encontrado.');
+              error.code = 'CURSO_NOT_FOUND';
+              throw error;
+            }
+          }
+
+          const progressoMap = includeProgress ? await calcularProgressoCursoBatch(inscricoes) : {};
+
+          const data = inscricoes.map((inscricao) => ({
             id: inscricao.id,
             statusInscricao: inscricao.status,
+            statusPagamento: inscricao.statusPagamento,
             criadoEm: inscricao.criadoEm,
-            progresso,
+            progresso: includeProgress ? (progressoMap[inscricao.id] ?? 0) : null,
             aluno: {
               id: inscricao.Usuarios.id,
               nomeCompleto: inscricao.Usuarios.nomeCompleto,
@@ -1301,6 +1472,7 @@ export class CursosController {
               codigo: inscricao.Usuarios.codUsuario,
               cpf: inscricao.Usuarios.cpf,
               status: inscricao.Usuarios.status,
+              avatarUrl: inscricao.Usuarios.UsuariosInformation?.avatarUrl || null,
               cidade: inscricao.Usuarios.UsuariosEnderecos?.[0]?.cidade || null,
               estado: inscricao.Usuarios.UsuariosEnderecos?.[0]?.estado || null,
             },
@@ -1320,19 +1492,22 @@ export class CursosController {
               cargaHoraria: inscricao.CursosTurmas.Cursos.cargaHoraria,
               imagemUrl: inscricao.CursosTurmas.Cursos.imagemUrl,
             },
+          }));
+
+          return {
+            data,
+            pagination: {
+              page,
+              pageSize,
+              total,
+              totalPages: Math.ceil(total / pageSize),
+            },
           };
-        }),
+        },
+        CURSOS_INSCRICOES_CACHE_TTL,
       );
 
-      res.json({
-        data,
-        pagination: {
-          page,
-          pageSize,
-          total,
-          totalPages: Math.ceil(total / pageSize),
-        },
-      });
+      res.json(result);
     } catch (error: any) {
       if (error instanceof ZodError) {
         return res.status(400).json({
@@ -1340,6 +1515,14 @@ export class CursosController {
           code: 'VALIDATION_ERROR',
           message: 'Parâmetros inválidos',
           issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'CURSO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'CURSO_NOT_FOUND',
+          message: 'Curso não encontrado.',
         });
       }
 

@@ -1,37 +1,20 @@
 import { WebsiteStatus } from '@prisma/client';
 import { prisma } from '@/config/prisma';
-import { getCache, setCache, invalidateCache } from '@/utils/cache';
+import { getCache, setCache, invalidateCacheByPrefix } from '@/utils/cache';
 import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
 
-const CACHE_KEY = 'website:depoimentos:list';
+const CACHE_PREFIX = 'website:depoimentos:list';
+const buildCacheKey = (status?: WebsiteStatus) => `${CACHE_PREFIX}:${status ?? 'ALL'}`;
 
 export const depoimentosService = {
   list: async (status?: WebsiteStatus) => {
-    if (status) {
-      return prisma.websiteDepoimentoOrdem.findMany({
-        where: { status },
-        orderBy: { ordem: 'asc' },
-        take: 100,
-        select: {
-          id: true,
-          ordem: true,
-          status: true,
-          WebsiteDepoimento: {
-            select: {
-              id: true,
-              depoimento: true,
-              nome: true,
-              cargo: true,
-              fotoUrl: true,
-            },
-          },
-        },
-      });
-    }
+    const cacheKey = buildCacheKey(status);
     const cached =
-      await getCache<Awaited<ReturnType<typeof prisma.websiteDepoimentoOrdem.findMany>>>(CACHE_KEY);
+      await getCache<Awaited<ReturnType<typeof prisma.websiteDepoimentoOrdem.findMany>>>(cacheKey);
     if (cached) return cached;
+
     const result = await prisma.websiteDepoimentoOrdem.findMany({
+      ...(status ? { where: { status } } : {}),
       orderBy: { ordem: 'asc' },
       take: 100,
       select: {
@@ -49,7 +32,7 @@ export const depoimentosService = {
         },
       },
     });
-    await setCache(CACHE_KEY, result, WEBSITE_CACHE_TTL);
+    await setCache(cacheKey, result, WEBSITE_CACHE_TTL);
     return result;
   },
   get: (id: string) =>
@@ -109,7 +92,7 @@ export const depoimentosService = {
         },
       },
     });
-    await invalidateCache(CACHE_KEY);
+    await invalidateCacheByPrefix(CACHE_PREFIX);
     return result;
   },
   update: async (
@@ -184,7 +167,7 @@ export const depoimentosService = {
         },
       });
     });
-    await invalidateCache(CACHE_KEY);
+    await invalidateCacheByPrefix(CACHE_PREFIX);
     return result;
   },
   reorder: async (ordemId: string, novaOrdem: number) => {
@@ -246,7 +229,7 @@ export const depoimentosService = {
 
       return current;
     });
-    await invalidateCache(CACHE_KEY);
+    await invalidateCacheByPrefix(CACHE_PREFIX);
     return result;
   },
   remove: async (depoimentoId: string) => {
@@ -263,6 +246,6 @@ export const depoimentosService = {
         data: { ordem: { decrement: 1 } },
       });
     });
-    await invalidateCache(CACHE_KEY);
+    await invalidateCacheByPrefix(CACHE_PREFIX);
   },
 };

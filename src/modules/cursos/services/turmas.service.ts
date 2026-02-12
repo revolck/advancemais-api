@@ -51,8 +51,12 @@ type TurmaEstruturaInput = {
 };
 
 /**
- * Conta inscrições ativas por turma usando agregação SQL eficiente
- * Inscrição ativa = status não é CANCELADO/TRANCADO E aluno está ATIVO e não deletado
+ * Conta inscrições ativas por turma usando agregação SQL eficiente.
+ * Inscrição ativa = status diferente de CANCELADO/TRANCADO.
+ *
+ * Nota:
+ * A contagem de ocupação de turma não deve depender do status atual do usuário.
+ * Isso evita JOIN extra e reduz latência no cold-path das rotas de turmas.
  */
 async function countInscricoesAtivasPorTurma(turmaIds: string[]): Promise<Record<string, number>> {
   if (turmaIds.length === 0) {
@@ -67,11 +71,9 @@ async function countInscricoesAtivasPorTurma(turmaIds: string[]): Promise<Record
       ti."turmaId"::text as "turmaId",
       COUNT(*)::int as count
     FROM "CursosTurmasInscricoes" ti
-    INNER JOIN "Usuarios" u ON ti."alunoId" = u.id
     WHERE 
       ti."turmaId"::text IN (${placeholders})
       AND ti.status NOT IN ('CANCELADO', 'TRANCADO')
-      AND u.status = 'ATIVO'
     GROUP BY ti."turmaId"`,
     ...turmaIds,
   );
@@ -109,11 +111,21 @@ const turmaSummarySelect = {
   dataInscricaoFim: true,
   instrutorId: true,
   cursoId: true,
+  editadoPorId: true,
+  editadoEm: true,
+  criadoEm: true,
   Cursos: {
     select: {
       id: true,
       nome: true,
       codigo: true,
+    },
+  },
+  EditadoPor: {
+    select: {
+      id: true,
+      nomeCompleto: true,
+      email: true,
     },
   },
 } as const;
@@ -152,6 +164,7 @@ const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()(
             id: true,
             nomeCompleto: true,
             email: true,
+            status: true,
             UsuariosInformation: {
               select: { inscricao: true, telefone: true, avatarUrl: true },
             },
@@ -171,6 +184,7 @@ const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()(
       },
     },
     CursosTurmasAulas: {
+      where: { moduloId: null },
       orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
       include: aulaWithMateriaisInclude.include,
     },
@@ -179,12 +193,249 @@ const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()(
       orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
     },
     CursosTurmasProvas: {
+      where: { moduloId: null },
       include: provaDefaultInclude.include,
       orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
     },
     CursosTurmasRegrasAvaliacao: { select: regrasAvaliacaoSelect },
   },
 });
+
+const turmaDetailedWithoutInscricoesInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
+  include: {
+    CursosTurmasInstrutores: {
+      include: {
+        Instrutor: {
+          select: {
+            id: true,
+            nomeCompleto: true,
+            email: true,
+            cpf: true,
+            codUsuario: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: [{ criadoEm: 'asc' }],
+    },
+    CursosTurmasAulas: {
+      where: { moduloId: null },
+      orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
+      include: aulaWithMateriaisInclude.include,
+    },
+    CursosTurmasModulos: {
+      include: moduloDetailedInclude.include,
+      orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
+    },
+    CursosTurmasProvas: {
+      where: { moduloId: null },
+      include: provaDefaultInclude.include,
+      orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
+    },
+    CursosTurmasRegrasAvaliacao: { select: regrasAvaliacaoSelect },
+  },
+});
+
+const turmaLightInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
+  include: {
+    CursosTurmasInstrutores: {
+      include: {
+        Instrutor: {
+          select: {
+            id: true,
+            nomeCompleto: true,
+            email: true,
+            cpf: true,
+            codUsuario: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: [{ criadoEm: 'asc' }],
+    },
+  },
+});
+
+const turmaLightWithInscricoesInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
+  include: {
+    CursosTurmasInstrutores: {
+      include: {
+        Instrutor: {
+          select: {
+            id: true,
+            nomeCompleto: true,
+            email: true,
+            cpf: true,
+            codUsuario: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: [{ criadoEm: 'asc' }],
+    },
+    CursosTurmasInscricoes: {
+      include: {
+        Usuarios: {
+          select: {
+            id: true,
+            nomeCompleto: true,
+            email: true,
+            status: true,
+            UsuariosInformation: {
+              select: { inscricao: true, telefone: true, avatarUrl: true },
+            },
+            UsuariosEnderecos: {
+              select: {
+                logradouro: true,
+                numero: true,
+                bairro: true,
+                cidade: true,
+                estado: true,
+                cep: true,
+              },
+              take: 1,
+            },
+          },
+        },
+      },
+    },
+  },
+});
+
+const turmaDetailedBaseSelect = {
+  id: true,
+  codigo: true,
+  cursoId: true,
+  instrutorId: true,
+  estruturaTipo: true,
+  nome: true,
+  turno: true,
+  metodo: true,
+  dataInicio: true,
+  dataFim: true,
+  dataInscricaoInicio: true,
+  dataInscricaoFim: true,
+  vagasIlimitadas: true,
+  vagasTotais: true,
+  vagasDisponiveis: true,
+  status: true,
+  editadoPorId: true,
+  editadoEm: true,
+  criadoEm: true,
+  atualizadoEm: true,
+} as const;
+
+const moduloBaseSelect = {
+  id: true,
+  turmaId: true,
+  nome: true,
+  descricao: true,
+  obrigatorio: true,
+  ordem: true,
+  criadoEm: true,
+  atualizadoEm: true,
+} as const;
+
+const turmaInstrutorInclude = {
+  Instrutor: {
+    select: {
+      id: true,
+      nomeCompleto: true,
+      email: true,
+      cpf: true,
+      codUsuario: true,
+      role: true,
+    },
+  },
+} as const;
+
+const fetchTurmaDetailedWithoutInscricoesParallel = async (cursoId: string, turmaId: string) => {
+  const turmaBase = await prisma.cursosTurmas.findFirst({
+    where: { id: turmaId, cursoId },
+    select: turmaDetailedBaseSelect,
+  });
+
+  if (!turmaBase) {
+    return null;
+  }
+
+  const [instrutores, regrasAvaliacao, modulos, aulasStandalone, provasStandalone] =
+    await Promise.all([
+      prisma.cursosTurmasInstrutores.findMany({
+        where: { turmaId },
+        include: turmaInstrutorInclude,
+        orderBy: [{ criadoEm: 'asc' }],
+      }),
+      prisma.cursosTurmasRegrasAvaliacao.findUnique({
+        where: { turmaId },
+        select: regrasAvaliacaoSelect,
+      }),
+      prisma.cursosTurmasModulos.findMany({
+        where: { turmaId },
+        select: moduloBaseSelect,
+        orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
+      }),
+      prisma.cursosTurmasAulas.findMany({
+        where: { turmaId, moduloId: null },
+        orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
+        include: aulaWithMateriaisInclude.include,
+      }),
+      prisma.cursosTurmasProvas.findMany({
+        where: { turmaId, moduloId: null },
+        include: provaDefaultInclude.include,
+        orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
+      }),
+    ]);
+
+  const moduloIds = modulos.map((modulo) => modulo.id);
+  const [aulasDosModulos, provasDosModulos] =
+    moduloIds.length > 0
+      ? await Promise.all([
+          prisma.cursosTurmasAulas.findMany({
+            where: { turmaId, moduloId: { in: moduloIds } },
+            orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
+            include: aulaWithMateriaisInclude.include,
+          }),
+          prisma.cursosTurmasProvas.findMany({
+            where: { turmaId, moduloId: { in: moduloIds } },
+            include: provaDefaultInclude.include,
+            orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
+          }),
+        ])
+      : [[], []];
+
+  const aulasPorModulo = new Map<string, typeof aulasDosModulos>();
+  for (const aula of aulasDosModulos) {
+    if (!aula.moduloId) continue;
+    const bucket = aulasPorModulo.get(aula.moduloId) ?? [];
+    bucket.push(aula);
+    aulasPorModulo.set(aula.moduloId, bucket);
+  }
+
+  const provasPorModulo = new Map<string, typeof provasDosModulos>();
+  for (const prova of provasDosModulos) {
+    if (!prova.moduloId) continue;
+    const bucket = provasPorModulo.get(prova.moduloId) ?? [];
+    bucket.push(prova);
+    provasPorModulo.set(prova.moduloId, bucket);
+  }
+
+  const modulosComItens = modulos.map((modulo) => ({
+    ...modulo,
+    CursosTurmasAulas: aulasPorModulo.get(modulo.id) ?? [],
+    CursosTurmasProvas: provasPorModulo.get(modulo.id) ?? [],
+  }));
+
+  return {
+    ...turmaBase,
+    CursosTurmasInstrutores: instrutores,
+    CursosTurmasInscricoes: [],
+    CursosTurmasAulas: aulasStandalone,
+    CursosTurmasModulos: modulosComItens,
+    CursosTurmasProvas: provasStandalone,
+    CursosTurmasRegrasAvaliacao: regrasAvaliacao,
+  };
+};
 
 const ensureCursoExists = async (cursoId: string) => {
   const curso = await prisma.cursos.findUnique({ where: { id: cursoId }, select: { id: true } });
@@ -664,8 +915,6 @@ export const turmasService = {
   async list(params: TurmaListParams) {
     const { cursoId, page, pageSize, status, turno, metodo, instrutorId } = params;
 
-    await ensureCursoExists(cursoId);
-
     const where: Prisma.CursosTurmasWhereInput = {
       cursoId,
     };
@@ -686,20 +935,40 @@ export const turmasService = {
       where.instrutorId = instrutorId;
     }
 
-    // Contar total de turmas com os filtros aplicados
-    const total = await prisma.cursosTurmas.count({ where });
+    const requestedPage = Math.max(page, 1);
+    const requestedSkip = (requestedPage - 1) * pageSize;
+
+    const [total, turmasRequestedPage] = await Promise.all([
+      prisma.cursosTurmas.count({ where }),
+      prisma.cursosTurmas.findMany({
+        where,
+        select: turmaSummarySelect,
+        orderBy: { criadoEm: 'desc' },
+        skip: requestedSkip,
+        take: pageSize,
+      }),
+    ]);
 
     const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
-    const safePage = totalPages === 0 ? 1 : Math.min(page, totalPages);
-    const skip = (safePage - 1) * pageSize;
+    const safePage = totalPages === 0 ? 1 : Math.min(requestedPage, totalPages);
 
-    const turmas = await prisma.cursosTurmas.findMany({
-      where,
-      select: turmaSummarySelect,
-      orderBy: { criadoEm: 'desc' },
-      skip,
-      take: pageSize,
-    });
+    let turmas = turmasRequestedPage;
+    if (totalPages > 0 && safePage !== requestedPage) {
+      const skip = (safePage - 1) * pageSize;
+      turmas = await prisma.cursosTurmas.findMany({
+        where,
+        select: turmaSummarySelect,
+        orderBy: { criadoEm: 'desc' },
+        skip,
+        take: pageSize,
+      });
+    }
+
+    // Evita query extra em cenários com dados:
+    // valida existência do curso apenas quando o resultado vem vazio.
+    if (total === 0) {
+      await ensureCursoExists(cursoId);
+    }
 
     // ✅ Otimização: Contar inscrições ativas em batch para todas as turmas
     const turmaIds = turmas.map((t) => t.id);
@@ -728,7 +997,7 @@ export const turmasService = {
       data,
       pagination: {
         page: safePage,
-        requestedPage: page,
+        requestedPage,
         pageSize,
         total,
         totalItems: total,
@@ -752,22 +1021,61 @@ export const turmasService = {
     };
   },
 
-  async get(cursoId: string, turmaId: string) {
-    await ensureTurmaBelongsToCurso(cursoId, turmaId);
-
+  async get(
+    cursoId: string,
+    turmaId: string,
+    options?: { includeAlunos?: boolean; includeEstrutura?: boolean },
+  ) {
+    const includeAlunos = options?.includeAlunos ?? false;
+    const includeEstrutura = options?.includeEstrutura ?? true;
     try {
-      const turma = await fetchTurmaDetailed(prisma, turmaId);
+      const useParallelDetailedFetch = includeEstrutura && !includeAlunos;
+      const includeArgs = includeEstrutura
+        ? includeAlunos
+          ? turmaDetailedInclude
+          : turmaDetailedWithoutInscricoesInclude
+        : includeAlunos
+          ? turmaLightWithInscricoesInclude
+          : turmaLightInclude;
+
+      const [turmaRaw, inscricoesCountMap] = await Promise.all([
+        useParallelDetailedFetch
+          ? fetchTurmaDetailedWithoutInscricoesParallel(cursoId, turmaId)
+          : prisma.cursosTurmas.findFirst({
+              where: { id: turmaId, cursoId },
+              ...includeArgs,
+            }),
+        includeAlunos
+          ? Promise.resolve<Record<string, number> | null>(null)
+          : countInscricoesAtivasPorTurma([turmaId]).catch((error) => {
+              turmasLogger.warn(
+                { error: error instanceof Error ? error.message : String(error), turmaId },
+                '⚠️ Erro ao calcular contagem de inscrições, usando 0 como fallback',
+              );
+              return { [turmaId]: 0 };
+            }),
+      ]);
+
+      if (!turmaRaw) {
+        const error = new Error('Turma não encontrada para o curso informado');
+        (error as any).code = 'TURMA_NOT_FOUND';
+        throw error;
+      }
+
+      const turma = cursosTurmasMapper.detailed(turmaRaw as any);
 
       // ✅ Otimização: Adicionar contagem de inscrições ativas com fallback seguro
       let inscricoesCount = 0;
-      try {
-        const inscricoesCountMap = await countInscricoesAtivasPorTurma([turmaId]);
-        inscricoesCount = inscricoesCountMap[turmaId] || 0;
-      } catch (error) {
-        turmasLogger.warn(
-          { error: error instanceof Error ? error.message : String(error), turmaId },
-          '⚠️ Erro ao calcular contagem de inscrições, usando 0 como fallback',
-        );
+      if (includeAlunos) {
+        const inscricoesRaw = (turmaRaw as any).CursosTurmasInscricoes || [];
+        inscricoesCount = inscricoesRaw.filter(
+          (inscricao: any) =>
+            inscricao?.status !== StatusInscricao.CANCELADO &&
+            inscricao?.status !== StatusInscricao.TRANCADO &&
+            inscricao?.Usuarios?.status === Status.ATIVO,
+        ).length;
+      } else {
+        inscricoesCount = inscricoesCountMap?.[turmaId] || 0;
       }
 
       return {
@@ -789,10 +1097,13 @@ export const turmasService = {
   },
 
   async listInscricoes(cursoId: string, turmaId: string) {
-    await ensureTurmaBelongsToCurso(cursoId, turmaId);
-
     const inscricoes = await prisma.cursosTurmasInscricoes.findMany({
-      where: { turmaId },
+      where: {
+        turmaId,
+        CursosTurmas: {
+          cursoId,
+        },
+      },
       include: {
         Usuarios: {
           select: {
@@ -819,6 +1130,12 @@ export const turmasService = {
       },
       orderBy: { criadoEm: 'desc' },
     });
+
+    // Evita query extra quando há dados:
+    // valida existência da turma apenas se a listagem vier vazia.
+    if (inscricoes.length === 0) {
+      await ensureTurmaBelongsToCurso(cursoId, turmaId);
+    }
 
     // Log para debug (apenas em desenvolvimento)
     if (process.env.NODE_ENV === 'development') {
@@ -891,7 +1208,7 @@ export const turmasService = {
     },
     actor?: { id?: string | null },
   ) {
-    return prisma.$transaction(async (tx) => {
+    const created = await prisma.$transaction(async (tx) => {
       const curso = await tx.cursos.findUnique({ where: { id: cursoId }, select: { id: true } });
       if (!curso) {
         const error = new Error('Curso não encontrado');
@@ -900,8 +1217,6 @@ export const turmasService = {
       }
 
       await ensureTemplatesExistForTurmaCreate(tx, cursoId, data.estrutura);
-
-      const UNLIMITED_VAGAS_TOTAL = 1_000_000;
 
       if (!data.vagasIlimitadas && (!data.vagasTotais || data.vagasTotais <= 0)) {
         const error: any = new Error('Informe o total de vagas');
@@ -1097,12 +1412,17 @@ export const turmasService = {
         }
       }
 
-      const turmaDetailed = await fetchTurmaDetailed(tx, created.id);
       return {
-        ...turmaDetailed,
+        turmaId: created.id,
         mapping,
       };
     });
+
+    const turmaDetailed = await fetchTurmaDetailed(prisma, created.turmaId);
+    return {
+      ...turmaDetailed,
+      mapping: created.mapping,
+    };
   },
 
   async update(
@@ -1112,9 +1432,7 @@ export const turmasService = {
       nome: string;
       instrutorId?: string;
       instrutorIds?: string[];
-      estruturaTipo?: 'MODULAR' | 'DINAMICA' | 'PADRAO';
       turno?: CursosTurnos;
-      metodo?: CursosMetodos;
       dataInicio?: Date | null;
       dataFim?: Date | null;
       dataInscricaoInicio?: Date | null;
@@ -1124,6 +1442,7 @@ export const turmasService = {
       vagasDisponiveis?: number;
       status?: CursoStatus;
     }>,
+    actor?: { id?: string | null },
   ) {
     return prisma.$transaction(async (tx) => {
       const turma = await tx.cursosTurmas.findUnique({
@@ -1132,6 +1451,8 @@ export const turmasService = {
           id: true,
           cursoId: true,
           status: true,
+          estruturaTipo: true,
+          metodo: true,
           vagasIlimitadas: true,
           vagasTotais: true,
           vagasDisponiveis: true,
@@ -1146,6 +1467,69 @@ export const turmasService = {
         const error = new Error('Turma não encontrada para o curso informado');
         (error as any).code = 'TURMA_NOT_FOUND';
         throw error;
+      }
+
+      // ============================================================================
+      // VALIDAÇÕES DE CAMPOS BLOQUEADOS APÓS CRIAÇÃO
+      // ============================================================================
+
+      // IMPORTANTE: metodo e estruturaTipo não devem estar no payload
+      // O schema de validação já bloqueia, mas validamos aqui por segurança
+      if ((data as any).metodo !== undefined) {
+        const error: any = new Error(
+          'A modalidade (método) não pode ser alterada após a criação da turma',
+        );
+        error.code = 'CAMPO_NAO_EDITAVEL';
+        error.field = 'metodo';
+        throw error;
+      }
+
+      if ((data as any).estruturaTipo !== undefined) {
+        const error: any = new Error(
+          'A estrutura do curso não pode ser alterada após a criação da turma',
+        );
+        error.code = 'CAMPO_NAO_EDITAVEL';
+        error.field = 'estruturaTipo';
+        throw error;
+      }
+
+      // ============================================================================
+      // VALIDAÇÕES BASEADAS NO PERÍODO DA TURMA
+      // ============================================================================
+
+      const agora = new Date();
+      const turmaIniciou = turma.dataInicio && turma.dataInicio <= agora;
+      const turmaFinalizou = turma.dataFim && turma.dataFim < agora;
+
+      // Se a turma já iniciou ou finalizou, não pode alterar o status manualmente
+      if (data.status !== undefined && (turmaIniciou || turmaFinalizou)) {
+        const error: any = new Error(
+          'Não é possível alterar o status manualmente de uma turma que já iniciou ou finalizou',
+        );
+        error.code = 'STATUS_NAO_EDITAVEL_APOS_INICIO';
+        error.details = {
+          turmaIniciou,
+          turmaFinalizou,
+          dataInicio: turma.dataInicio?.toISOString(),
+          dataFim: turma.dataFim?.toISOString(),
+        };
+        throw error;
+      }
+
+      // Se a turma finalizou, deve receber status CONCLUIDO automaticamente
+      let statusFinal = data.status;
+      if (turmaFinalizou && turma.status !== CursoStatus.CONCLUIDO) {
+        statusFinal = CursoStatus.CONCLUIDO;
+        turmasLogger.info(
+          {
+            turmaId,
+            cursoId,
+            statusAnterior: turma.status,
+            statusNovo: CursoStatus.CONCLUIDO,
+            motivo: 'TURMA_FINALIZADA_AUTOMATICAMENTE',
+          },
+          '✅ Turma finalizada automaticamente (dataFim atingida)',
+        );
       }
 
       const inscricoesAtivas = await tx.cursosTurmasInscricoes.count({
@@ -1258,14 +1642,17 @@ export const turmasService = {
         }
       }
 
+      // ============================================================================
+      // ATUALIZAR TURMA COM AUDITORIA
+      // ============================================================================
+
       await tx.cursosTurmas.update({
         where: { id: turmaId },
         data: {
           nome: data.nome,
           instrutorId: data.instrutorId ?? undefined,
-          estruturaTipo: data.estruturaTipo as any,
           turno: data.turno,
-          metodo: data.metodo,
+          // metodo e estruturaTipo NÃO são atualizados (bloqueados após criação)
           dataInicio: data.dataInicio,
           dataFim: data.dataFim,
           dataInscricaoInicio: data.dataInscricaoInicio,
@@ -1273,9 +1660,22 @@ export const turmasService = {
           vagasIlimitadas: data.vagasIlimitadas,
           vagasTotais,
           vagasDisponiveis,
-          status: data.status,
+          status: statusFinal,
+          // Auditoria
+          editadoPorId: actor?.id ?? null,
+          editadoEm: new Date(),
         },
       });
+
+      turmasLogger.info(
+        {
+          turmaId,
+          cursoId,
+          editadoPorId: actor?.id,
+          camposEditados: Object.keys(data),
+        },
+        '✅ Turma atualizada com sucesso',
+      );
 
       // Atualizar instrutores vinculados (quando instrutorIds é enviado)
       if (Array.isArray(data.instrutorIds)) {
@@ -1590,6 +1990,94 @@ export const turmasService = {
       await tx.cursosTurmasInscricoes.delete({
         where: { turmaId_alunoId: { turmaId, alunoId } },
       });
+
+      return fetchTurmaDetailed(tx, turmaId);
+    });
+  },
+
+  /**
+   * Publicar ou despublicar turma (controle de visibilidade no site)
+   * - PUBLICADO: turma visível no site para todos os usuários
+   * - RASCUNHO: turma visível apenas para administradores, moderadores e pedagógico
+   *
+   * Este controle é independente das datas de início/fim da turma e inscrições
+   */
+  async togglePublicacao(cursoId: string, turmaId: string, publicar: boolean) {
+    return prisma.$transaction(async (tx) => {
+      const turma = await tx.cursosTurmas.findUnique({
+        where: { id: turmaId },
+        select: {
+          id: true,
+          cursoId: true,
+          status: true,
+        },
+      });
+
+      if (!turma || turma.cursoId !== cursoId) {
+        const error = new Error('Turma não encontrada para o curso informado');
+        (error as any).code = 'TURMA_NOT_FOUND';
+        throw error;
+      }
+
+      const novoStatus = publicar ? CursoStatus.PUBLICADO : CursoStatus.RASCUNHO;
+
+      // Se já está no status desejado, não faz nada
+      if (turma.status === novoStatus) {
+        turmasLogger.info(
+          { cursoId, turmaId, status: novoStatus },
+          '✅ Turma já está no status desejado',
+        );
+        return fetchTurmaDetailed(tx, turmaId);
+      }
+
+      // Validar pré-requisitos se estiver publicando
+      if (publicar) {
+        const [aulasCount, avaliacoesCount] = await Promise.all([
+          tx.cursosTurmasAulas.count({
+            where: {
+              turmaId,
+              deletedAt: null,
+            },
+          }),
+          tx.cursosTurmasProvas.count({
+            where: {
+              turmaId,
+              ativo: true,
+            },
+          }),
+        ]);
+
+        if (aulasCount < 1 || avaliacoesCount < 1) {
+          const error: any = new Error(
+            'Para publicar uma turma é necessário ter pelo menos 1 aula e 1 avaliação cadastradas.',
+          );
+          error.code = 'TURMA_PREREQUISITOS_NAO_ATENDIDOS';
+          error.details = {
+            aulasCount,
+            avaliacoesCount,
+          };
+          throw error;
+        }
+      }
+
+      // Atualizar status
+      await tx.cursosTurmas.update({
+        where: { id: turmaId },
+        data: {
+          status: novoStatus,
+        },
+      });
+
+      turmasLogger.info(
+        {
+          cursoId,
+          turmaId,
+          statusAnterior: turma.status,
+          statusNovo: novoStatus,
+          acao: publicar ? 'PUBLICAR' : 'DESPUBLICAR',
+        },
+        `✅ Turma ${publicar ? 'publicada' : 'despublicada'} com sucesso`,
+      );
 
       return fetchTurmaDetailed(tx, turmaId);
     });

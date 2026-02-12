@@ -37,7 +37,13 @@ async function uploadBannerImage(file: Express.Multer.File): Promise<string> {
 
 export class BannerController {
   static list = async (req: Request, res: Response) => {
-    const itens = await bannerService.list();
+    let { status } = req.query as any;
+    if (typeof status === 'string') {
+      if (status === 'true') status = 'PUBLICADO';
+      else if (status === 'false') status = 'RASCUNHO';
+      else status = status.toUpperCase();
+    }
+    const itens = await bannerService.list(status as WebsiteStatus | undefined);
     const response = itens.map(mapBanner);
 
     return respondWithCache(req, res, response);

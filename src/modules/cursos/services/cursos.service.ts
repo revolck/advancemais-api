@@ -49,6 +49,9 @@ const turmaSummarySelect = {
   dataFim: true,
   dataInscricaoInicio: true,
   dataInscricaoFim: true,
+  editadoPorId: true,
+  editadoEm: true,
+  criadoEm: true,
 } as const;
 
 const regrasAvaliacaoSelect = {
@@ -104,6 +107,7 @@ const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()(
       },
     },
     CursosTurmasAulas: {
+      where: { moduloId: null },
       orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
       include: aulaWithMateriaisInclude.include,
     },
@@ -112,6 +116,7 @@ const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()(
       orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
     },
     CursosTurmasProvas: {
+      where: { moduloId: null },
       include: provaDefaultInclude.include,
       orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
     },
@@ -142,6 +147,7 @@ const turmaPublicInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
       orderBy: [{ criadoEm: 'asc' }],
     },
     CursosTurmasAulas: {
+      where: { moduloId: null },
       orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
       include: aulaWithMateriaisInclude.include,
     },
@@ -150,6 +156,7 @@ const turmaPublicInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
       orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
     },
     CursosTurmasProvas: {
+      where: { moduloId: null },
       include: provaDefaultInclude.include,
       orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
     },
@@ -205,6 +212,10 @@ const mapTurmaSummary = (
   dataFim: turma.dataFim?.toISOString() ?? null,
   dataInscricaoInicio: turma.dataInscricaoInicio?.toISOString() ?? null,
   dataInscricaoFim: turma.dataInscricaoFim?.toISOString() ?? null,
+  // Auditoria de edição
+  editadoPorId: (turma as any).editadoPorId ?? null,
+  editadoEm: (turma as any).editadoEm?.toISOString() ?? null,
+  criadoEm: (turma as any).criadoEm?.toISOString() ?? null,
 });
 
 /**
@@ -246,6 +257,163 @@ const mapRegrasAvaliacao = (
   };
 };
 
+const toIso = (value?: Date | null) => (value ? value.toISOString() : null);
+
+const mapAulaToEstruturaItem = (
+  aula: AulaWithMateriais,
+  instrutoresMap?: Map<string, { id: string; nome: string }>,
+) => {
+  const instrutorId = (aula as any).instrutorId ?? null;
+  const instrutorRel = (aula as any).instrutor;
+  const instrutor =
+    instrutorRel && instrutorRel.id
+      ? { id: instrutorRel.id, nome: instrutorRel.nomeCompleto ?? null }
+      : instrutorId
+        ? (instrutoresMap?.get(instrutorId) ?? null)
+        : null;
+  const materiais = ((aula as any).CursosTurmasAulasMateriais || []).map((material: any) => ({
+    id: material.id,
+    titulo: material.titulo ?? null,
+    descricao: material.descricao ?? null,
+    tipo: material.tipo ?? null,
+    tipoArquivo: material.tipoArquivo ?? null,
+    url: material.url ?? null,
+    duracaoEmSegundos: material.duracaoEmSegundos ?? null,
+    tamanhoEmBytes: material.tamanhoEmBytes ?? null,
+    ordem: material.ordem ?? null,
+  }));
+
+  return {
+    id: aula.id,
+    type: 'AULA' as const,
+    title: aula.nome,
+    templateId: (aula as any).templateId ?? null,
+    ordem: aula.ordem ?? null,
+    // Período completo
+    startDate: toIso((aula as any).dataInicio ?? null),
+    endDate: toIso((aula as any).dataFim ?? null),
+    horaInicio: (aula as any).horaInicio ?? null,
+    horaFim: (aula as any).horaFim ?? null,
+    // Instrutor
+    instrutorId: instrutorId,
+    instrutor,
+    instructorIds: instrutorId ? [instrutorId] : [],
+    // Configurações
+    modalidade: (aula as any).modalidade ?? null,
+    tipoLink: (aula as any).tipoLink ?? null,
+    obrigatoria: (aula as any).obrigatoria ?? true,
+    status: (aula as any).status ?? null,
+    duracaoMinutos: (aula as any).duracaoMinutos ?? null,
+    // URLs e links
+    urlVideo: aula.urlVideo ?? null,
+    urlMeet: aula.urlMeet ?? null,
+    sala: aula.sala ?? null,
+    meetEventId: (aula as any).meetEventId ?? null,
+    // Gravação
+    gravarAula: (aula as any).gravarAula ?? null,
+    linkGravacao: (aula as any).linkGravacao ?? null,
+    duracaoGravacao: (aula as any).duracaoGravacao ?? null,
+    statusGravacao: (aula as any).statusGravacao ?? null,
+    // Materiais
+    materiais,
+    apenasMateriaisComplementares: (aula as any).apenasMateriaisComplementares ?? false,
+    // Auditoria
+    criadoPorId: (aula as any).criadoPorId ?? null,
+    criadoEm: aula.criadoEm?.toISOString() ?? null,
+    atualizadoEm: aula.atualizadoEm?.toISOString() ?? null,
+    // Não é recuperação final (aulas não têm isso)
+    recuperacaoFinal: false,
+  };
+};
+
+const mapProvaToEstruturaItem = (
+  prova: ProvaWithRelations,
+  instrutoresMap?: Map<string, { id: string; nome: string }>,
+) => {
+  const instrutorId = (prova as any).instrutorId ?? null;
+  const instrutorRel = (prova as any).Usuarios;
+  const instrutor =
+    instrutorRel && instrutorRel.id
+      ? { id: instrutorRel.id, nome: instrutorRel.nomeCompleto ?? null }
+      : instrutorId
+        ? (instrutoresMap?.get(instrutorId) ?? null)
+        : null;
+
+  // Mapear questões se existirem
+  const questoes = ((prova as any).CursosTurmasProvasQuestoes || []).map((questao: any) => ({
+    id: questao.id,
+    enunciado: questao.enunciado ?? null,
+    tipo: questao.tipo ?? null,
+    ordem: questao.ordem ?? null,
+    peso: questao.peso ? Number(questao.peso) : null,
+    obrigatoria: questao.obrigatoria ?? true,
+    alternativas: (questao.CursosTurmasProvasQuestoesAlternativas || []).map((alt: any) => ({
+      id: alt.id,
+      texto: alt.texto ?? null,
+      ordem: alt.ordem ?? null,
+      correta: alt.correta ?? false,
+    })),
+  }));
+
+  return {
+    id: prova.id,
+    // Tipo diferencia PROVA vs ATIVIDADE
+    type: ((prova as any).tipo ?? 'PROVA') as 'PROVA' | 'ATIVIDADE',
+    tipoAvaliacao: (prova as any).tipo ?? 'PROVA', // PROVA ou ATIVIDADE
+    tipoAtividade: (prova as any).tipoAtividade ?? null, // QUESTOES ou PERGUNTA_RESPOSTA (apenas ATIVIDADE)
+    title: prova.titulo,
+    etiqueta: prova.etiqueta,
+    descricao: prova.descricao ?? null,
+    templateId: (prova as any).templateId ?? null,
+    ordem: prova.ordem ?? null,
+    // Período completo
+    startDate: toIso((prova as any).dataInicio ?? null),
+    endDate: toIso((prova as any).dataFim ?? null),
+    horaInicio: (prova as any).horaInicio ?? null,
+    horaTermino: (prova as any).horaTermino ?? null,
+    // Instrutor
+    instrutorId: instrutorId,
+    instrutor,
+    instructorIds: instrutorId ? [instrutorId] : [],
+    // Configurações
+    modalidade: (prova as any).modalidade ?? null,
+    localizacao: prova.localizacao ?? null,
+    obrigatoria: (prova as any).obrigatoria ?? true,
+    status: (prova as any).status ?? null,
+    ativo: prova.ativo ?? true,
+    // Pesos e pontuação
+    peso: prova.peso ? Number(prova.peso) : null,
+    valePonto: prova.valePonto ?? true,
+    // Recuperação
+    recuperacaoFinal: (prova as any).recuperacaoFinal ?? false,
+    // Questões (para ATIVIDADE tipo QUESTOES ou PROVA)
+    questoes: questoes,
+    totalQuestoes: questoes.length,
+    // Sem materiais (provas não têm materiais como aulas)
+    materiais: [],
+    // Auditoria
+    criadoEm: prova.criadoEm?.toISOString() ?? null,
+    atualizadoEm: prova.atualizadoEm?.toISOString() ?? null,
+  };
+};
+
+const sortEstruturaItems = <T extends { ordem?: number | null; type?: string }>(items: T[]) =>
+  [...items].sort((a, b) => {
+    const diff = (a.ordem ?? 0) - (b.ordem ?? 0);
+    return diff !== 0 ? diff : String(a.type ?? '').localeCompare(String(b.type ?? ''));
+  });
+
+const dedupeById = <T extends { id: string }>(items: T[]) => {
+  const seen = new Set<string>();
+  const result: T[] = [];
+  for (const item of items) {
+    if (!item?.id || seen.has(item.id)) continue;
+    seen.add(item.id);
+    result.push(item);
+  }
+  return result;
+};
+
 const mapTurmaDetailed = (turma: TurmaDetailedPayload) => {
   const modulos = (turma.CursosTurmasModulos ||
     (turma as any).modulos ||
@@ -256,6 +424,22 @@ const mapTurmaDetailed = (turma: TurmaDetailedPayload) => {
   const provas = (turma.CursosTurmasProvas ||
     (turma as any).provas ||
     []) as unknown as ProvaWithRelations[];
+
+  const aulasModulos = modulos.flatMap(
+    (modulo) =>
+      ((modulo as any).CursosTurmasAulas || (modulo as any).aulas || []) as unknown as
+        | AulaWithMateriais[]
+        | [],
+  );
+  const provasModulos = modulos.flatMap(
+    (modulo) =>
+      ((modulo as any).CursosTurmasProvas || (modulo as any).provas || []) as unknown as
+        | ProvaWithRelations[]
+        | [],
+  );
+
+  const allAulas = dedupeById([...aulas, ...aulasModulos]);
+  const allProvas = dedupeById([...provas, ...provasModulos]);
 
   const aulasStandalone = aulas.filter((aula) => aula.moduloId === null);
   const provasStandalone = provas.filter((prova) => prova.moduloId === null);
@@ -294,11 +478,68 @@ const mapTurmaDetailed = (turma: TurmaDetailedPayload) => {
     })
     .filter(Boolean);
 
+  const instrutoresMap = new Map<string, { id: string; nome: string }>(
+    instrutores
+      .filter((instrutor: any) => Boolean(instrutor?.id))
+      .map((instrutor: any): [string, { id: string; nome: string }] => [
+        String(instrutor.id),
+        { id: String(instrutor.id), nome: String(instrutor.nome ?? '') },
+      ]),
+  );
+
+  const estrutura = {
+    modules: modulos
+      .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))
+      .map((modulo) => {
+        const aulasModulo = ((modulo as any).CursosTurmasAulas ||
+          (modulo as any).aulas ||
+          []) as unknown as AulaWithMateriais[];
+        const provasModulo = ((modulo as any).CursosTurmasProvas ||
+          (modulo as any).provas ||
+          []) as unknown as ProvaWithRelations[];
+
+        const items = sortEstruturaItems([
+          ...aulasModulo.map((aula) => mapAulaToEstruturaItem(aula, instrutoresMap)),
+          ...provasModulo.map((prova) => mapProvaToEstruturaItem(prova, instrutoresMap)),
+        ]);
+
+        return {
+          id: modulo.id,
+          turmaId: modulo.turmaId,
+          title: modulo.nome,
+          nome: modulo.nome,
+          descricao: modulo.descricao ?? null,
+          obrigatorio: modulo.obrigatorio ?? true,
+          ordem: modulo.ordem,
+          criadoEm: modulo.criadoEm?.toISOString() ?? null,
+          atualizadoEm: modulo.atualizadoEm?.toISOString() ?? null,
+          items,
+          totalItems: items.length,
+          totalAulas: aulasModulo.length,
+          totalProvas: provasModulo.filter((p) => (p as any).tipo === 'PROVA').length,
+          totalAtividades: provasModulo.filter((p) => (p as any).tipo === 'ATIVIDADE').length,
+        };
+      }),
+    standaloneItems: sortEstruturaItems([
+      ...aulasStandalone.map((aula) => mapAulaToEstruturaItem(aula, instrutoresMap)),
+      ...provasStandalone.map((prova) => mapProvaToEstruturaItem(prova, instrutoresMap)),
+    ]),
+    // Estatísticas da estrutura
+    totalModulos: modulos.length,
+    totalStandaloneItems: aulasStandalone.length + provasStandalone.length,
+    totalAulas: allAulas.length,
+    totalProvas: allProvas.filter((p) => (p as any).tipo === 'PROVA').length,
+    totalAtividades: allProvas.filter((p) => (p as any).tipo === 'ATIVIDADE').length,
+    totalProvasRecuperacaoFinal: allProvas.filter((p) => (p as any).recuperacaoFinal === true)
+      .length,
+  };
+
   return {
     id: turma.id,
     codigo: turma.codigo,
     nome: turma.nome,
     estruturaTipo: (turma as any).estruturaTipo ?? 'PADRAO',
+    estrutura,
     turno: turma.turno,
     metodo: turma.metodo,
     status: turma.status,
@@ -309,6 +550,10 @@ const mapTurmaDetailed = (turma: TurmaDetailedPayload) => {
     dataFim: turma.dataFim?.toISOString() ?? null,
     dataInscricaoInicio: turma.dataInscricaoInicio?.toISOString() ?? null,
     dataInscricaoFim: turma.dataInscricaoFim?.toISOString() ?? null,
+    // Auditoria de edição
+    editadoPorId: (turma as any).editadoPorId ?? null,
+    editadoEm: (turma as any).editadoEm?.toISOString() ?? null,
+    criadoEm: (turma as any).criadoEm?.toISOString() ?? null,
     instrutores,
     alunos: (turma.CursosTurmasInscricoes || (turma as any).inscricoes || []).map(
       (inscricao: any) => {
@@ -355,6 +600,22 @@ const mapTurmaPublic = (turma: TurmaPublicPayload) => {
     (turma as any).provas ||
     []) as unknown as ProvaWithRelations[];
 
+  const aulasModulos = modulos.flatMap(
+    (modulo) =>
+      ((modulo as any).CursosTurmasAulas || (modulo as any).aulas || []) as unknown as
+        | AulaWithMateriais[]
+        | [],
+  );
+  const provasModulos = modulos.flatMap(
+    (modulo) =>
+      ((modulo as any).CursosTurmasProvas || (modulo as any).provas || []) as unknown as
+        | ProvaWithRelations[]
+        | [],
+  );
+
+  const allAulas = dedupeById([...aulas, ...aulasModulos]);
+  const allProvas = dedupeById([...provas, ...provasModulos]);
+
   const aulasStandalone = aulas.filter((aula) => aula.moduloId === null);
   const provasStandalone = provas.filter((prova) => prova.moduloId === null);
   const itens = [
@@ -412,6 +673,9 @@ const mapTurmaPublic = (turma: TurmaPublicPayload) => {
     aulas: aulasStandalone.map(mapAula),
     provas: provasStandalone.map((prova) => mapProva(prova, null)),
     itens,
+    totalAulas: allAulas.length,
+    totalProvas: allProvas.filter((p) => (p as any).tipo === 'PROVA').length,
+    totalAtividades: allProvas.filter((p) => (p as any).tipo === 'ATIVIDADE').length,
     regrasAvaliacao: mapRegrasAvaliacao(
       (turma as any).CursosTurmasRegrasAvaliacao || (turma as any).regrasAvaliacao || null,
     ),
@@ -1162,7 +1426,7 @@ export const cursosService = {
     ip?: string,
     userAgent?: string,
   ) {
-    return prisma.$transaction(async (tx) => {
+    const created = await prisma.$transaction(async (tx) => {
       const codigo = await generateUniqueCourseCode(tx, cursosLogger);
 
       // Processar campos de precificação
@@ -1174,7 +1438,7 @@ export const cursosService = {
       const valorFinal = gratuito ? 0 : valor;
       const valorPromocionalFinal = gratuito ? null : valorPromocional;
 
-      const created = await tx.cursos.create({
+      const createdCourse = await tx.cursos.create({
         data: {
           nome: data.nome,
           descricao: data.descricao ?? null,
@@ -1199,26 +1463,26 @@ export const cursosService = {
         },
       });
 
-      // Registrar auditoria de criação (após a transação)
-      if (criadoPor) {
-        // Usar require para evitar dependência circular
-
-        const { cursosAuditoriaService } = require('./cursos-auditoria.service');
-        await cursosAuditoriaService.registrarCriacaoCurso(
-          created.id,
-          criadoPor,
-          {
-            nome: data.nome,
-            codigo,
-            cargaHoraria: data.cargaHoraria,
-          },
-          ip,
-          userAgent,
-        );
-      }
-
-      return mapCourse(created);
+      return { createdCourse, codigo };
     });
+
+    // Registrar auditoria fora da transação (evita timeout em transações interativas)
+    if (criadoPor) {
+      const { cursosAuditoriaService } = require('./cursos-auditoria.service');
+      await cursosAuditoriaService.registrarCriacaoCurso(
+        created.createdCourse.id,
+        criadoPor,
+        {
+          nome: data.nome,
+          codigo: created.codigo,
+          cargaHoraria: data.cargaHoraria,
+        },
+        ip,
+        userAgent,
+      );
+    }
+
+    return mapCourse(created.createdCourse);
   },
 
   async update(
@@ -1240,8 +1504,7 @@ export const cursosService = {
     ip?: string,
     userAgent?: string,
   ) {
-    return prisma.$transaction(async (tx) => {
-      // Buscar dados anteriores para auditoria
+    const result = await prisma.$transaction(async (tx) => {
       const cursoAnterior = await tx.cursos.findUnique({
         where: { id },
         select: {
@@ -1310,186 +1573,187 @@ export const cursosService = {
         },
       });
 
-      // Registrar auditoria para cada campo alterado (após a transação)
-      if (alteradoPor && cursoAnterior) {
-        // Usar require para evitar dependência circular
+      return { updated, cursoAnterior };
+    });
 
-        const { cursosAuditoriaService } = require('./cursos-auditoria.service');
+    // Registrar auditoria fora da transação (evita timeout)
+    if (alteradoPor && result.cursoAnterior) {
+      const cursoAnterior = result.cursoAnterior;
+      const { cursosAuditoriaService } = require('./cursos-auditoria.service');
 
-        // Registrar alteração de nome
-        if (data.nome !== undefined && cursoAnterior.nome !== data.nome) {
+      // Registrar alteração de nome
+      if (data.nome !== undefined && cursoAnterior.nome !== data.nome) {
+        await cursosAuditoriaService.registrarAtualizacaoCurso(
+          id,
+          alteradoPor,
+          'nome',
+          cursoAnterior.nome,
+          data.nome,
+          `Nome do curso alterado de "${cursoAnterior.nome}" para "${data.nome}"`,
+          ip,
+          userAgent,
+        );
+      }
+
+      // Registrar alteração de descrição
+      if (data.descricao !== undefined && cursoAnterior.descricao !== data.descricao) {
+        await cursosAuditoriaService.registrarAtualizacaoCurso(
+          id,
+          alteradoPor,
+          'descricao',
+          cursoAnterior.descricao || '',
+          data.descricao || '',
+          `Descrição do curso alterada`,
+          ip,
+          userAgent,
+        );
+      }
+
+      // Registrar alteração de imagem
+      if (data.imagemUrl !== undefined && cursoAnterior.imagemUrl !== data.imagemUrl) {
+        const acao = data.imagemUrl ? 'alterada' : 'removida';
+        await cursosAuditoriaService.registrarAtualizacaoCurso(
+          id,
+          alteradoPor,
+          'imagemUrl',
+          cursoAnterior.imagemUrl || '',
+          data.imagemUrl || '',
+          `Imagem do curso ${acao}`,
+          ip,
+          userAgent,
+        );
+      }
+
+      // Registrar alteração de carga horária
+      if (data.cargaHoraria !== undefined && cursoAnterior.cargaHoraria !== data.cargaHoraria) {
+        await cursosAuditoriaService.registrarAtualizacaoCurso(
+          id,
+          alteradoPor,
+          'cargaHoraria',
+          cursoAnterior.cargaHoraria,
+          data.cargaHoraria,
+          `Carga horária alterada de ${cursoAnterior.cargaHoraria}h para ${data.cargaHoraria}h`,
+          ip,
+          userAgent,
+        );
+      }
+
+      // Registrar alteração de categoria
+      if (data.categoriaId !== undefined && cursoAnterior.categoriaId !== data.categoriaId) {
+        await cursosAuditoriaService.registrarAtualizacaoCurso(
+          id,
+          alteradoPor,
+          'categoriaId',
+          cursoAnterior.categoriaId || null,
+          data.categoriaId || null,
+          `Categoria do curso alterada`,
+          ip,
+          userAgent,
+        );
+      }
+
+      // Registrar alteração de subcategoria
+      if (
+        data.subcategoriaId !== undefined &&
+        cursoAnterior.subcategoriaId !== data.subcategoriaId
+      ) {
+        await cursosAuditoriaService.registrarAtualizacaoCurso(
+          id,
+          alteradoPor,
+          'subcategoriaId',
+          cursoAnterior.subcategoriaId || null,
+          data.subcategoriaId || null,
+          `Subcategoria do curso alterada`,
+          ip,
+          userAgent,
+        );
+      }
+
+      // Registrar alteração de status padrão
+      if (data.statusPadrao !== undefined && cursoAnterior.statusPadrao !== data.statusPadrao) {
+        await cursosAuditoriaService.registrarAtualizacaoCurso(
+          id,
+          alteradoPor,
+          'statusPadrao',
+          cursoAnterior.statusPadrao || '',
+          data.statusPadrao || '',
+          `Status padrão alterado de "${cursoAnterior.statusPadrao || 'não definido'}" para "${data.statusPadrao || 'não definido'}"`,
+          ip,
+          userAgent,
+        );
+      }
+
+      // Registrar alteração de estágio obrigatório
+      if (
+        data.estagioObrigatorio !== undefined &&
+        cursoAnterior.estagioObrigatorio !== data.estagioObrigatorio
+      ) {
+        await cursosAuditoriaService.registrarAtualizacaoCurso(
+          id,
+          alteradoPor,
+          'estagioObrigatorio',
+          cursoAnterior.estagioObrigatorio,
+          data.estagioObrigatorio,
+          `Estágio obrigatório alterado de ${cursoAnterior.estagioObrigatorio ? 'obrigatório' : 'não obrigatório'} para ${data.estagioObrigatorio ? 'obrigatório' : 'não obrigatório'}`,
+          ip,
+          userAgent,
+        );
+      }
+
+      // Registrar alteração de valor
+      if (data.valor !== undefined) {
+        const valorAnterior = Number(cursoAnterior.valor ?? 0);
+        const valorNovo = data.gratuito ? 0 : data.valor;
+        if (valorAnterior !== valorNovo) {
           await cursosAuditoriaService.registrarAtualizacaoCurso(
             id,
             alteradoPor,
-            'nome',
-            cursoAnterior.nome,
-            data.nome,
-            `Nome do curso alterado de "${cursoAnterior.nome}" para "${data.nome}"`,
-            ip,
-            userAgent,
-          );
-        }
-
-        // Registrar alteração de descrição
-        if (data.descricao !== undefined && cursoAnterior.descricao !== data.descricao) {
-          await cursosAuditoriaService.registrarAtualizacaoCurso(
-            id,
-            alteradoPor,
-            'descricao',
-            cursoAnterior.descricao || '',
-            data.descricao || '',
-            `Descrição do curso alterada`,
-            ip,
-            userAgent,
-          );
-        }
-
-        // Registrar alteração de imagem
-        if (data.imagemUrl !== undefined && cursoAnterior.imagemUrl !== data.imagemUrl) {
-          const acao = data.imagemUrl ? 'alterada' : 'removida';
-          await cursosAuditoriaService.registrarAtualizacaoCurso(
-            id,
-            alteradoPor,
-            'imagemUrl',
-            cursoAnterior.imagemUrl || '',
-            data.imagemUrl || '',
-            `Imagem do curso ${acao}`,
-            ip,
-            userAgent,
-          );
-        }
-
-        // Registrar alteração de carga horária
-        if (data.cargaHoraria !== undefined && cursoAnterior.cargaHoraria !== data.cargaHoraria) {
-          await cursosAuditoriaService.registrarAtualizacaoCurso(
-            id,
-            alteradoPor,
-            'cargaHoraria',
-            cursoAnterior.cargaHoraria,
-            data.cargaHoraria,
-            `Carga horária alterada de ${cursoAnterior.cargaHoraria}h para ${data.cargaHoraria}h`,
-            ip,
-            userAgent,
-          );
-        }
-
-        // Registrar alteração de categoria
-        if (data.categoriaId !== undefined && cursoAnterior.categoriaId !== data.categoriaId) {
-          await cursosAuditoriaService.registrarAtualizacaoCurso(
-            id,
-            alteradoPor,
-            'categoriaId',
-            cursoAnterior.categoriaId || null,
-            data.categoriaId || null,
-            `Categoria do curso alterada`,
-            ip,
-            userAgent,
-          );
-        }
-
-        // Registrar alteração de subcategoria
-        if (
-          data.subcategoriaId !== undefined &&
-          cursoAnterior.subcategoriaId !== data.subcategoriaId
-        ) {
-          await cursosAuditoriaService.registrarAtualizacaoCurso(
-            id,
-            alteradoPor,
-            'subcategoriaId',
-            cursoAnterior.subcategoriaId || null,
-            data.subcategoriaId || null,
-            `Subcategoria do curso alterada`,
-            ip,
-            userAgent,
-          );
-        }
-
-        // Registrar alteração de status padrão
-        if (data.statusPadrao !== undefined && cursoAnterior.statusPadrao !== data.statusPadrao) {
-          await cursosAuditoriaService.registrarAtualizacaoCurso(
-            id,
-            alteradoPor,
-            'statusPadrao',
-            cursoAnterior.statusPadrao || '',
-            data.statusPadrao || '',
-            `Status padrão alterado de "${cursoAnterior.statusPadrao || 'não definido'}" para "${data.statusPadrao || 'não definido'}"`,
-            ip,
-            userAgent,
-          );
-        }
-
-        // Registrar alteração de estágio obrigatório
-        if (
-          data.estagioObrigatorio !== undefined &&
-          cursoAnterior.estagioObrigatorio !== data.estagioObrigatorio
-        ) {
-          await cursosAuditoriaService.registrarAtualizacaoCurso(
-            id,
-            alteradoPor,
-            'estagioObrigatorio',
-            cursoAnterior.estagioObrigatorio,
-            data.estagioObrigatorio,
-            `Estágio obrigatório alterado de ${cursoAnterior.estagioObrigatorio ? 'obrigatório' : 'não obrigatório'} para ${data.estagioObrigatorio ? 'obrigatório' : 'não obrigatório'}`,
-            ip,
-            userAgent,
-          );
-        }
-
-        // Registrar alteração de valor
-        if (data.valor !== undefined) {
-          const valorAnterior = Number(cursoAnterior.valor ?? 0);
-          const valorNovo = data.gratuito ? 0 : data.valor;
-          if (valorAnterior !== valorNovo) {
-            await cursosAuditoriaService.registrarAtualizacaoCurso(
-              id,
-              alteradoPor,
-              'valor',
-              valorAnterior,
-              valorNovo,
-              `Valor do curso alterado de R$ ${valorAnterior.toFixed(2)} para R$ ${valorNovo.toFixed(2)}`,
-              ip,
-              userAgent,
-            );
-          }
-        }
-
-        // Registrar alteração de valor promocional
-        if (data.valorPromocional !== undefined) {
-          const valorPromocionalAnterior = cursoAnterior.valorPromocional
-            ? Number(cursoAnterior.valorPromocional)
-            : null;
-          const valorPromocionalNovo = data.valorPromocional;
-          if (valorPromocionalAnterior !== valorPromocionalNovo) {
-            await cursosAuditoriaService.registrarAtualizacaoCurso(
-              id,
-              alteradoPor,
-              'valorPromocional',
-              valorPromocionalAnterior,
-              valorPromocionalNovo,
-              `Valor promocional ${valorPromocionalNovo === null ? 'removido' : `alterado de R$ ${valorPromocionalAnterior?.toFixed(2) || 'não definido'} para R$ ${valorPromocionalNovo.toFixed(2)}`}`,
-              ip,
-              userAgent,
-            );
-          }
-        }
-
-        // Registrar alteração de gratuito
-        if (data.gratuito !== undefined && cursoAnterior.gratuito !== data.gratuito) {
-          await cursosAuditoriaService.registrarAtualizacaoCurso(
-            id,
-            alteradoPor,
-            'gratuito',
-            cursoAnterior.gratuito,
-            data.gratuito,
-            `Curso alterado de ${cursoAnterior.gratuito ? 'gratuito' : 'pago'} para ${data.gratuito ? 'gratuito' : 'pago'}`,
+            'valor',
+            valorAnterior,
+            valorNovo,
+            `Valor do curso alterado de R$ ${valorAnterior.toFixed(2)} para R$ ${valorNovo.toFixed(2)}`,
             ip,
             userAgent,
           );
         }
       }
 
-      return mapCourse(updated);
-    });
+      // Registrar alteração de valor promocional
+      if (data.valorPromocional !== undefined) {
+        const valorPromocionalAnterior = cursoAnterior.valorPromocional
+          ? Number(cursoAnterior.valorPromocional)
+          : null;
+        const valorPromocionalNovo = data.valorPromocional;
+        if (valorPromocionalAnterior !== valorPromocionalNovo) {
+          await cursosAuditoriaService.registrarAtualizacaoCurso(
+            id,
+            alteradoPor,
+            'valorPromocional',
+            valorPromocionalAnterior,
+            valorPromocionalNovo,
+            `Valor promocional ${valorPromocionalNovo === null ? 'removido' : `alterado de R$ ${valorPromocionalAnterior?.toFixed(2) || 'não definido'} para R$ ${valorPromocionalNovo.toFixed(2)}`}`,
+            ip,
+            userAgent,
+          );
+        }
+      }
+
+      // Registrar alteração de gratuito
+      if (data.gratuito !== undefined && cursoAnterior.gratuito !== data.gratuito) {
+        await cursosAuditoriaService.registrarAtualizacaoCurso(
+          id,
+          alteradoPor,
+          'gratuito',
+          cursoAnterior.gratuito,
+          data.gratuito,
+          `Curso alterado de ${cursoAnterior.gratuito ? 'gratuito' : 'pago'} para ${data.gratuito ? 'gratuito' : 'pago'}`,
+          ip,
+          userAgent,
+        );
+      }
+    }
+
+    return mapCourse(result.updated);
   },
 
   async archive(id: string) {

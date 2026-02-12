@@ -8,6 +8,12 @@ export const provaDefaultInclude = Prisma.validator<Prisma.CursosTurmasProvasDef
         nome: true,
       },
     },
+    Usuarios: {
+      select: {
+        id: true,
+        nomeCompleto: true,
+      },
+    },
   },
 });
 
@@ -17,6 +23,12 @@ export const provaWithEnviosInclude = Prisma.validator<Prisma.CursosTurmasProvas
       select: {
         id: true,
         nome: true,
+      },
+    },
+    Usuarios: {
+      select: {
+        id: true,
+        nomeCompleto: true,
       },
     },
     CursosTurmasProvasEnvios: {

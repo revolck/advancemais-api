@@ -43,10 +43,23 @@ if (datasourceUrl) {
 // - connection_limit: 2-50 (ajustar conforme necessidade)
 // - pool_timeout: 30s (tempo para aguardar conexão disponível)
 // - connect_timeout: 10s (tempo para estabelecer conexão)
-const DEFAULT_CONNECTION_LIMIT = process.env.DATABASE_CONNECTION_LIMIT || '2';
+const DEFAULT_CONNECTION_LIMIT = process.env.DATABASE_CONNECTION_LIMIT || '5';
 const DEFAULT_POOL_TIMEOUT = process.env.DATABASE_POOL_TIMEOUT || '30';
 const DEFAULT_CONNECT_TIMEOUT = process.env.DATABASE_CONNECT_TIMEOUT || '10';
-const DEFAULT_POOLER_CONNECTION_LIMIT = process.env.DATABASE_POOLER_CONNECTION_LIMIT || '1';
+const resolvePoolerConnectionLimit = () => {
+  const configured = Number(process.env.DATABASE_POOLER_CONNECTION_LIMIT);
+  if (process.env.NODE_ENV === 'test') {
+    return String(Number.isFinite(configured) && configured > 0 ? configured : 1);
+  }
+
+  // Em produção/desenvolvimento, usar piso mínimo para evitar fila excessiva.
+  const minimum = 5;
+  if (Number.isFinite(configured) && configured > 0) {
+    return String(Math.max(minimum, configured));
+  }
+  return String(minimum);
+};
+const DEFAULT_POOLER_CONNECTION_LIMIT = resolvePoolerConnectionLimit();
 
 function buildConnectionUrl(baseUrl: string): string {
   console.log('🔧 [BUILD URL] Função chamada');

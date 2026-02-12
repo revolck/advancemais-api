@@ -12,7 +12,11 @@ import { prisma } from '@/config/prisma';
 import { randomUUID } from 'crypto';
 import { CursosMetodos, CursosTurnos, CursoStatus } from '@prisma/client';
 
+const isoFuture = (daysAhead: number) =>
+  new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000).toISOString();
+
 describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', () => {
+  jest.setTimeout(60000);
   let app: Express;
   const testUsers: TestUser[] = [];
   let testAdmin: TestUser;
@@ -120,7 +124,6 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
       const aulaData = {
         titulo: 'Aula Template 1',
         descricao: 'Aula template de teste completo para validação',
-        cursoId: testCursoId,
         modalidade: 'ONLINE',
         obrigatoria: true,
         duracaoMinutos: 60,
@@ -136,7 +139,7 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
       expect(response.body).toHaveProperty('aula');
       expect(response.body.aula).toHaveProperty('id');
       expect(response.body.aula.titulo || response.body.aula.nome).toBe(aulaData.titulo);
-      expect(response.body.aula.cursoId).toBe(testCursoId);
+      expect(response.body.aula.cursoId).toBeNull();
       expect(response.body.aula.turmaId).toBeNull();
 
       testAulaTemplateIds.push(response.body.aula.id);
@@ -148,7 +151,7 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
       }
 
       const response = await request(app)
-        .get(`/api/v1/cursos/aulas?cursoId=${testCursoId}&semTurma=true&page=1&pageSize=10`)
+        .get('/api/v1/cursos/aulas?semTurma=true&includeSemCurso=true&page=1&pageSize=50')
         .set('Authorization', `Bearer ${testAdmin.token}`)
         .expect(200);
 
@@ -160,6 +163,7 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
       // Verificar que são templates (turmaId null)
       const templates = response.body.data.filter((a: any) => a.turmaId === null);
       expect(templates.length).toBeGreaterThan(0);
+      expect(templates.some((a: any) => a.id === testAulaTemplateIds[0])).toBe(true);
     });
   });
 
@@ -170,7 +174,6 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
       }
 
       const avaliacaoData = {
-        cursoId: testCursoId,
         tipo: 'PROVA',
         titulo: 'Prova Template 1',
         descricao: 'Prova template de teste',
@@ -179,8 +182,8 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
         valePonto: true,
         obrigatoria: true,
         modalidade: 'ONLINE',
-        dataInicio: '2099-01-27',
-        dataFim: '2099-01-31',
+        dataInicio: isoFuture(35),
+        dataFim: isoFuture(36),
         horaInicio: '10:00',
         horaTermino: '11:00',
         questoes: [
@@ -207,7 +210,7 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
       expect(response.body.avaliacao).toHaveProperty('id');
       expect(response.body.avaliacao.titulo).toBe(avaliacaoData.titulo);
       expect(response.body.avaliacao.tipo).toBe('PROVA');
-      expect(response.body.avaliacao.cursoId).toBe(testCursoId);
+      expect(response.body.avaliacao.cursoId).toBeNull();
       expect(response.body.avaliacao.turmaId).toBeNull();
 
       testAvaliacaoTemplateIds.push(response.body.avaliacao.id);
@@ -219,7 +222,6 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
       }
 
       const avaliacaoData = {
-        cursoId: testCursoId,
         tipo: 'ATIVIDADE',
         tipoAtividade: 'QUESTOES',
         titulo: 'Atividade Template 1',
@@ -229,8 +231,8 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
         valePonto: true,
         obrigatoria: true,
         modalidade: 'ONLINE',
-        dataInicio: '2099-01-27',
-        dataFim: '2099-01-31',
+        dataInicio: isoFuture(35),
+        dataFim: isoFuture(36),
         horaInicio: '10:00',
         horaTermino: '11:00',
         questoes: [
@@ -266,7 +268,9 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
       }
 
       const response = await request(app)
-        .get(`/api/v1/cursos/avaliacoes?cursoId=${testCursoId}&semTurma=true&page=1&pageSize=10`)
+        .get(
+          `/api/v1/cursos/avaliacoes?cursoId=${testCursoId}&semTurma=true&includeSemCurso=true&page=1&pageSize=50`,
+        )
         .set('Authorization', `Bearer ${testAdmin.token}`)
         .expect(200);
 
@@ -278,6 +282,29 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
       // Verificar que são templates (turmaId null)
       const templates = response.body.data.filter((a: any) => a.turmaId === null);
       expect(templates.length).toBeGreaterThanOrEqual(2);
+      expect(templates.some((a: any) => a.id === testAvaliacaoTemplateIds[0])).toBe(true);
+      expect(templates.some((a: any) => a.id === testAvaliacaoTemplateIds[1])).toBe(true);
+    });
+
+    it('deve vincular templates globais ao curso antes de criar turma', async () => {
+      if (!testCursoId || testAulaTemplateIds.length === 0 || testAvaliacaoTemplateIds.length < 2) {
+        throw new Error('Pré-requisitos de templates não atendidos');
+      }
+
+      const response = await request(app)
+        .post('/api/v1/cursos/templates/vincular')
+        .set('Authorization', `Bearer ${testAdmin.token}`)
+        .send({
+          cursoId: testCursoId,
+          aulaTemplateIds: testAulaTemplateIds,
+          avaliacaoTemplateIds: testAvaliacaoTemplateIds,
+        })
+        .expect(200);
+
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data.updatedAulas).toBeGreaterThanOrEqual(1);
+      expect(response.body.data.updatedAvaliacoes).toBeGreaterThanOrEqual(2);
     });
   });
 
@@ -329,8 +356,14 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
       expect(response.body).toHaveProperty('success', false);
       expect(response.body).toHaveProperty('code', 'TURMA_PREREQUISITOS_NAO_ATENDIDOS');
       expect(response.body).toHaveProperty('details');
-      expect(response.body.details).toHaveProperty('templatesAulasCount', 0);
-      expect(response.body.details).toHaveProperty('templatesAvaliacoesCount', 0);
+      expect(response.body.details).toHaveProperty('missingAulaTemplateIds');
+      expect(response.body.details).toHaveProperty('missingAvaliacaoTemplateIds');
+      expect(response.body.details.missingAulaTemplateIds).toContain(
+        '00000000-0000-0000-0000-000000000000',
+      );
+      expect(response.body.details.missingAvaliacaoTemplateIds).toContain(
+        '00000000-0000-0000-0000-000000000000',
+      );
 
       // Limpar curso temporário
       await prisma.cursos.delete({ where: { id: cursoSemTemplates.id } });
@@ -396,8 +429,9 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
       const response = await request(app)
         .post(`/api/v1/cursos/${testCursoId}/turmas`)
         .set('Authorization', `Bearer ${testAdmin.token}`)
-        .send(turmaData)
-        .expect(201);
+        .send(turmaData);
+
+      expect(response.status).toBe(201);
 
       expect(response.body).toHaveProperty('id');
       expect(response.body).toHaveProperty('nome', turmaData.nome);
@@ -437,7 +471,7 @@ describe('API - Cursos, Turmas, Aulas, Provas, Notas e Estágios (Completo)', ()
       }
 
       const response = await request(app)
-        .get(`/api/v1/cursos/${testCursoId}/turmas/${testTurmaId}`)
+        .get(`/api/v1/cursos/${testCursoId}/turmas/${testTurmaId}?includeEstrutura=true`)
         .set('Authorization', `Bearer ${testAdmin.token}`)
         .expect(200);
 

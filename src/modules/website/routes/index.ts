@@ -21,8 +21,15 @@ import { depoimentosRoutes } from './depoimentos';
 import { informacoesGeraisRoutes } from './informacoes-gerais';
 import { imagemLoginRoutes } from './imagem-login';
 import { websiteScriptsRoutes } from './scripts';
+import { websiteSiteDataRoutes } from './site-data';
+import {
+  invalidateWebsiteGetResponseCache,
+  websiteGetResponseCache,
+} from '@/modules/website/middlewares/response-cache';
+import { websiteSiteDataService } from '@/modules/website/services/site-data.service';
 
 const router = Router();
+router.use(websiteGetResponseCache);
 
 /**
  * @openapi
@@ -76,9 +83,24 @@ router.get('/', publicCache, (req, res) => {
       informacoesGerais: '/informacoes-gerais',
       imagemLogin: '/imagem-login',
       scripts: '/scripts',
+      siteData: '/site-data',
     },
     status: 'operational',
   });
+});
+
+router.use((req, res, next) => {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
+    return next();
+  }
+
+  res.on('finish', () => {
+    if (res.statusCode >= 200 && res.statusCode < 400) {
+      void Promise.all([websiteSiteDataService.invalidate(), invalidateWebsiteGetResponseCache()]);
+    }
+  });
+
+  return next();
 });
 
 router.use('/sobre', sobreRoutes);
@@ -102,5 +124,6 @@ router.use('/depoimentos', depoimentosRoutes);
 router.use('/informacoes-gerais', informacoesGeraisRoutes);
 router.use('/imagem-login', imagemLoginRoutes);
 router.use('/scripts', websiteScriptsRoutes);
+router.use('/site-data', websiteSiteDataRoutes);
 
 export { router as websiteRoutes };

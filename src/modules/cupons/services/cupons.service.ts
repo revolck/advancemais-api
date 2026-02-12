@@ -149,6 +149,30 @@ const carregarCupom = async (id: string) => {
   return cupom;
 };
 
+const buildCupomValidacaoSelect = (planosEmpresariaisId?: string): Prisma.CuponsDescontoSelect => ({
+  id: true,
+  codigo: true,
+  descricao: true,
+  tipoDesconto: true,
+  valorPorcentagem: true,
+  valorFixo: true,
+  aplicarEm: true,
+  aplicarEmTodosItens: true,
+  limiteUsoTotalTipo: true,
+  limiteUsoTotalQuantidade: true,
+  limitePorUsuarioTipo: true,
+  periodoTipo: true,
+  periodoInicio: true,
+  periodoFim: true,
+  usosTotais: true,
+  status: true,
+  CuponsDescontoPlanos: {
+    where: planosEmpresariaisId ? { planoId: planosEmpresariaisId } : undefined,
+    select: { planoId: true },
+    take: planosEmpresariaisId ? 1 : undefined,
+  },
+});
+
 export const cuponsService = {
   list: async () => {
     const cupons = await prisma.cuponsDesconto.findMany({
@@ -414,10 +438,7 @@ export const cuponsService = {
 
     const cupom = await prisma.cuponsDesconto.findUnique({
       where: { codigo: codigoNormalizado },
-      include: {
-        CuponsDescontoPlanos: true,
-        CuponsDescontoCursos: true,
-      },
+      select: buildCupomValidacaoSelect(planosEmpresariaisId),
     });
 
     if (!cupom) {
@@ -482,10 +503,7 @@ export const cuponsService = {
       cupom.aplicarEm === CuponsAplicarEm.APENAS_ASSINATURA &&
       !cupom.aplicarEmTodosItens
     ) {
-      const planoVinculado = cupom.CuponsDescontoPlanos.find(
-        (p) => p.planoId === planosEmpresariaisId,
-      );
-      if (!planoVinculado) {
+      if (cupom.CuponsDescontoPlanos.length === 0) {
         return {
           valido: false,
           erro: 'CUPOM_NAO_APLICAVEL_PLANO',
@@ -495,31 +513,20 @@ export const cuponsService = {
     }
 
     // Verificar limite por usuário (se usuarioId fornecido)
-    if (usuarioId && cupom.limitePorUsuarioTipo !== CuponsLimiteUsuario.ILIMITADO) {
-      // Contar quantas vezes o usuário já usou este cupom
-      const usosDoUsuario = await prisma.empresasPlano.count({
+    if (usuarioId && cupom.limitePorUsuarioTipo === CuponsLimiteUsuario.PRIMEIRA_COMPRA) {
+      // Verificar se é a primeira compra do usuário
+      const comprasAnteriores = await prisma.empresasPlano.count({
         where: {
           usuarioId,
-          // Aqui você pode adicionar lógica para verificar uso do cupom
-          // Por exemplo, se tiver um campo cupomId na tabela EmpresasPlano
+          statusPagamento: 'APROVADO',
         },
       });
-
-      if (cupom.limitePorUsuarioTipo === CuponsLimiteUsuario.PRIMEIRA_COMPRA) {
-        // Verificar se é a primeira compra do usuário
-        const comprasAnteriores = await prisma.empresasPlano.count({
-          where: {
-            usuarioId,
-            statusPagamento: 'APROVADO',
-          },
-        });
-        if (comprasAnteriores > 0) {
-          return {
-            valido: false,
-            erro: 'CUPOM_APENAS_PRIMEIRA_COMPRA',
-            mensagem: 'Este cupom é válido apenas para a primeira compra',
-          };
-        }
+      if (comprasAnteriores > 0) {
+        return {
+          valido: false,
+          erro: 'CUPOM_APENAS_PRIMEIRA_COMPRA',
+          mensagem: 'Este cupom é válido apenas para a primeira compra',
+        };
       }
     }
 

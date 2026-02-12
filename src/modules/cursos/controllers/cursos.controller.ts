@@ -57,6 +57,11 @@ const resolveTtl = (value: string | undefined, fallback: number) => {
 };
 
 const CURSOS_INSCRICOES_CACHE_TTL = resolveTtl(process.env.CACHE_TTL_CURSOS_INSCRICOES, 30);
+const CURSOS_VISAOGERAL_CACHE_TTL = resolveTtl(process.env.CACHE_TTL_CURSOS_VISAOGERAL, 30);
+const CURSOS_VISAOGERAL_FATURAMENTO_CACHE_TTL = resolveTtl(
+  process.env.CACHE_TTL_CURSOS_VISAOGERAL_FATURAMENTO,
+  30,
+);
 
 /**
  * Calcula o progresso do curso baseado em aulas concluídas, provas realizadas e tempo decorrido
@@ -1992,12 +1997,27 @@ export class CursosController {
 
   static visaogeral = async (req: Request, res: Response) => {
     try {
-      const visaoGeral = await buscarVisaoGeralCursos();
+      const cacheKey = generateCacheKey(
+        'cursos:visaogeral',
+        {
+          role: req.user?.role ?? '',
+        },
+        { excludeKeys: [] },
+      );
 
-      res.json({
-        success: true,
-        data: visaoGeral,
-      });
+      const response = await getCachedOrFetch(
+        cacheKey,
+        async () => {
+          const visaoGeral = await buscarVisaoGeralCursos();
+          return {
+            success: true,
+            data: visaoGeral,
+          };
+        },
+        CURSOS_VISAOGERAL_CACHE_TTL,
+      );
+
+      res.json(response);
     } catch (error: any) {
       // ✅ Tratar erros de conexão do Prisma (P1001) como 503 Service Unavailable
       const errorCode = (error as any)?.code;
@@ -2054,14 +2074,34 @@ export class CursosController {
       const endDate = pickFirst(req.query.endDate);
       const tz = pickFirst(req.query.tz);
       const top = pickFirst(req.query.top);
+      const parsedTop =
+        typeof top === 'string' ? Number(top) : typeof top === 'number' ? top : undefined;
 
-      const result = await buscarFaturamentoTendenciasCursos({
-        period: period as any,
-        startDate: typeof startDate === 'string' ? startDate : undefined,
-        endDate: typeof endDate === 'string' ? endDate : undefined,
-        tz: typeof tz === 'string' ? tz : undefined,
-        top: typeof top === 'string' ? Number(top) : typeof top === 'number' ? top : undefined,
-      });
+      const cacheKey = generateCacheKey(
+        'cursos:visaogeral:faturamento',
+        {
+          role: req.user?.role ?? '',
+          period,
+          startDate: typeof startDate === 'string' ? startDate : '',
+          endDate: typeof endDate === 'string' ? endDate : '',
+          tz: typeof tz === 'string' ? tz : '',
+          top: Number.isFinite(parsedTop) ? parsedTop : '',
+        },
+        { excludeKeys: [] },
+      );
+
+      const result = await getCachedOrFetch(
+        cacheKey,
+        () =>
+          buscarFaturamentoTendenciasCursos({
+            period: period as any,
+            startDate: typeof startDate === 'string' ? startDate : undefined,
+            endDate: typeof endDate === 'string' ? endDate : undefined,
+            tz: typeof tz === 'string' ? tz : undefined,
+            top: parsedTop,
+          }),
+        CURSOS_VISAOGERAL_FATURAMENTO_CACHE_TTL,
+      );
 
       res.json(result);
     } catch (error: any) {

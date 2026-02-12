@@ -9,7 +9,7 @@
  * - Processamento paralelo de queries independentes
  */
 
-import { Prisma, CursoStatus, TransacaoTipo, TransacaoStatus } from '@prisma/client';
+import { Prisma, CursoStatus } from '@prisma/client';
 import { prisma, retryOperation } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import { getCache, setCache } from '@/utils/cache';
@@ -335,158 +335,140 @@ async function buscarFaturamentoCursos(): Promise<{
 
   const agora = new Date();
   const inicioMesAtual = new Date(agora.getFullYear(), agora.getMonth(), 1);
-  const fimMesAtual = new Date(agora.getFullYear(), agora.getMonth() + 1, 0, 23, 59, 59);
   const inicioMesAnterior = new Date(agora.getFullYear(), agora.getMonth() - 1, 1);
-  const fimMesAnterior = new Date(agora.getFullYear(), agora.getMonth(), 0, 23, 59, 59);
+  const inicioProximoMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 1);
 
-  // ✅ OTIMIZADO: Usar query SQL direta para buscar apenas transações aprovadas
-  // que tenham cursoId no metadata, evitando trazer todas as transações
-  // ✅ Usar retryOperation para tratar erros de conexão automaticamente
-  const transacoesAprovadas = await retryOperation(
-    () =>
-      prisma.$queryRaw<
+  const [totaisRaw, topCursosRaw] = await retryOperation(
+    async () => {
+      const totaisPromise = prisma.$queryRaw<
         {
-          id: string;
-          valor: Prisma.Decimal;
-          status: TransacaoStatus;
-          metadata: Prisma.JsonValue;
-          criadoEm: Date;
+          total_faturamento: Prisma.Decimal | null;
+          faturamento_mes_atual: Prisma.Decimal | null;
+          faturamento_mes_anterior: Prisma.Decimal | null;
         }[]
-      >`
-        SELECT 
-          t.id,
-          t.valor,
-          t.status,
-          t.metadata,
-          t."criadoEm"
-        FROM "AuditoriaTransacoes" t
-        WHERE 
-          t.tipo IN ('PAGAMENTO', 'ASSINATURA')
-          AND t.status = 'APROVADA'
-          AND (
-            t.referencia ILIKE '%curso%' 
-            OR t.referencia ILIKE '%turma%'
-            OR (t.metadata::text LIKE '%cursoId%')
-            OR (t.metadata::text LIKE '%"curso"%')
-          )
-        ORDER BY t."criadoEm" DESC
-        LIMIT 10000
-      `,
-    3, // maxRetries
-    1000, // delayMs
-    20000, // timeoutMs - 20s para queries complexas
+      >(Prisma.sql`
+        WITH base AS (
+          SELECT t.valor, t.status, t."criadoEm"
+          FROM "AuditoriaTransacoes" t
+          WHERE
+            t.tipo IN ('PAGAMENTO', 'ASSINATURA')
+            AND (
+              t.referencia ILIKE '%curso%'
+              OR t.referencia ILIKE '%turma%'
+              OR (t.metadata::text LIKE '%cursoId%')
+              OR (t.metadata::text LIKE '%"curso"%')
+            )
+        )
+        SELECT
+          COALESCE(SUM(CASE WHEN status = 'APROVADA' THEN valor ELSE 0 END), 0) AS total_faturamento,
+          COALESCE(
+            SUM(
+              CASE
+                WHEN status = 'APROVADA'
+                  AND "criadoEm" >= ${inicioMesAtual}
+                  AND "criadoEm" < ${inicioProximoMes}
+                THEN valor
+                ELSE 0
+              END
+            ),
+            0
+          ) AS faturamento_mes_atual,
+          COALESCE(
+            SUM(
+              CASE
+                WHEN status = 'APROVADA'
+                  AND "criadoEm" >= ${inicioMesAnterior}
+                  AND "criadoEm" < ${inicioMesAtual}
+                THEN valor
+                ELSE 0
+              END
+            ),
+            0
+          ) AS faturamento_mes_anterior
+        FROM base
+      `);
+
+      const topCursosPromise = prisma.$queryRaw<
+        {
+          cursoId: string;
+          cursoNome: string;
+          cursoCodigo: string;
+          totalFaturamento: number;
+          totalTransacoes: number;
+          transacoesAprovadas: number;
+          transacoesPendentes: number;
+          ultimaTransacao: Date | null;
+        }[]
+      >(Prisma.sql`
+        WITH base AS (
+          SELECT
+            COALESCE(t.metadata->>'cursoId', t.metadata->'curso'->>'id') AS curso_id,
+            t.valor,
+            t.status,
+            t."criadoEm"
+          FROM "AuditoriaTransacoes" t
+          WHERE
+            t.tipo IN ('PAGAMENTO', 'ASSINATURA')
+            AND (
+              t.referencia ILIKE '%curso%'
+              OR t.referencia ILIKE '%turma%'
+              OR (t.metadata::text LIKE '%cursoId%')
+              OR (t.metadata::text LIKE '%"curso"%')
+            )
+        ),
+        agg AS (
+          SELECT
+            curso_id,
+            COALESCE(SUM(CASE WHEN status = 'APROVADA' THEN valor ELSE 0 END), 0)::float8 AS "totalFaturamento",
+            COUNT(*)::int AS "totalTransacoes",
+            COUNT(*) FILTER (WHERE status = 'APROVADA')::int AS "transacoesAprovadas",
+            COUNT(*) FILTER (WHERE status IN ('PENDENTE', 'PROCESSANDO'))::int AS "transacoesPendentes",
+            MAX("criadoEm") AS "ultimaTransacao"
+          FROM base
+          WHERE curso_id IS NOT NULL
+          GROUP BY curso_id
+          HAVING COUNT(*) FILTER (WHERE status = 'APROVADA') > 0
+        )
+        SELECT
+          a.curso_id AS "cursoId",
+          COALESCE(c.nome, 'Curso não identificado') AS "cursoNome",
+          COALESCE(c.codigo, '') AS "cursoCodigo",
+          a."totalFaturamento",
+          a."totalTransacoes",
+          a."transacoesAprovadas",
+          a."transacoesPendentes",
+          a."ultimaTransacao"
+        FROM agg a
+        LEFT JOIN "Cursos" c ON c.id = a.curso_id
+        ORDER BY a."totalFaturamento" DESC
+        LIMIT 10
+      `);
+
+      return Promise.all([totaisPromise, topCursosPromise]);
+    },
+    3,
+    1000,
+    20000,
   );
 
-  // Mapear faturamento por curso
-  const faturamentoPorCurso = new Map<string, CursoFaturamento>();
-  let totalFaturamento = 0;
-  let faturamentoMesAtual = 0;
-  let faturamentoMesAnterior = 0;
-
-  for (const transacao of transacoesAprovadas) {
-    const valor = Number(transacao.valor);
-    totalFaturamento += valor;
-
-    // Verificar se é do mês atual
-    if (transacao.criadoEm >= inicioMesAtual && transacao.criadoEm <= fimMesAtual) {
-      faturamentoMesAtual += valor;
-    }
-
-    // Verificar se é do mês anterior
-    if (transacao.criadoEm >= inicioMesAnterior && transacao.criadoEm <= fimMesAnterior) {
-      faturamentoMesAnterior += valor;
-    }
-
-    // Extrair cursoId do metadata
-    const metadata = transacao.metadata as any;
-    const cursoId = metadata?.cursoId || metadata?.curso?.id || null;
-
-    if (cursoId && typeof cursoId === 'string') {
-      const existente = faturamentoPorCurso.get(cursoId);
-      if (existente) {
-        existente.totalFaturamento += valor;
-        existente.totalTransacoes += 1;
-        if (transacao.criadoEm > (existente.ultimaTransacao || new Date(0))) {
-          existente.ultimaTransacao = transacao.criadoEm;
-        }
-      } else {
-        faturamentoPorCurso.set(cursoId, {
-          cursoId,
-          cursoNome: metadata?.curso?.nome || 'Curso não identificado',
-          cursoCodigo: metadata?.curso?.codigo || '',
-          totalFaturamento: valor,
-          totalTransacoes: 1,
-          transacoesAprovadas: 1,
-          transacoesPendentes: 0,
-          ultimaTransacao: transacao.criadoEm,
-        });
-      }
-    }
-  }
-
-  // ✅ OTIMIZADO: Buscar informações dos cursos em batch (uma única query)
-  const cursoIds = Array.from(faturamentoPorCurso.keys());
-  if (cursoIds.length > 0) {
-    const cursos = await prisma.cursos.findMany({
-      where: { id: { in: cursoIds } },
-      select: {
-        id: true,
-        nome: true,
-        codigo: true,
-      },
-    });
-
-    for (const curso of cursos) {
-      const faturamento = faturamentoPorCurso.get(curso.id);
-      if (faturamento) {
-        faturamento.cursoNome = curso.nome;
-        faturamento.cursoCodigo = curso.codigo;
-      }
-    }
-  }
-
-  // ✅ OTIMIZADO: Buscar transações pendentes apenas para cursos que já temos
-  // ao invés de buscar todas as transações novamente
-  if (cursoIds.length > 0) {
-    const transacoesPendentes = await prisma.auditoriaTransacoes.findMany({
-      where: {
-        tipo: { in: ['PAGAMENTO', 'ASSINATURA'] },
-        status: 'PENDENTE',
-        OR: [
-          { referencia: { contains: 'curso', mode: 'insensitive' } },
-          { referencia: { contains: 'turma', mode: 'insensitive' } },
-        ],
-      },
-      select: {
-        metadata: true,
-      },
-      take: 5000, // ✅ LIMIT: Máximo 5000 transações pendentes
-    });
-
-    for (const transacao of transacoesPendentes) {
-      const metadata = transacao.metadata as any;
-      const cursoId = metadata?.cursoId || metadata?.curso?.id || null;
-
-      if (cursoId && typeof cursoId === 'string' && faturamentoPorCurso.has(cursoId)) {
-        const faturamento = faturamentoPorCurso.get(cursoId);
-        if (faturamento) {
-          faturamento.transacoesPendentes += 1;
-        }
-      }
-    }
-  }
-
-  // Ordenar por faturamento e pegar top 10
-  const topCursos = Array.from(faturamentoPorCurso.values())
-    .sort((a, b) => b.totalFaturamento - a.totalFaturamento)
-    .slice(0, 10); // ✅ LIMIT: Top 10 cursos
+  const totais = totaisRaw[0];
+  const topCursos = topCursosRaw.map((curso) => ({
+    cursoId: curso.cursoId,
+    cursoNome: curso.cursoNome,
+    cursoCodigo: curso.cursoCodigo,
+    totalFaturamento: Number(curso.totalFaturamento ?? 0),
+    totalTransacoes: Number(curso.totalTransacoes ?? 0),
+    transacoesAprovadas: Number(curso.transacoesAprovadas ?? 0),
+    transacoesPendentes: Number(curso.transacoesPendentes ?? 0),
+    ultimaTransacao: curso.ultimaTransacao ? new Date(curso.ultimaTransacao) : null,
+  }));
 
   const cursoMaiorFaturamento = topCursos.length > 0 ? topCursos[0] : null;
 
   const result = {
-    totalFaturamento,
-    faturamentoMesAtual,
-    faturamentoMesAnterior,
+    totalFaturamento: Number(totais?.total_faturamento ?? 0),
+    faturamentoMesAtual: Number(totais?.faturamento_mes_atual ?? 0),
+    faturamentoMesAnterior: Number(totais?.faturamento_mes_anterior ?? 0),
     cursoMaiorFaturamento,
     topCursosFaturamento: topCursos,
   };
@@ -528,37 +510,92 @@ async function buscarPerformanceCursos(): Promise<{
     return cached;
   }
 
-  // ✅ OTIMIZADO: Usar agregação SQL para buscar cursos mais populares
-  // Uma única query ao invés de buscar todos os cursos e depois fazer N queries
-  // ✅ Usar retryOperation para tratar erros de conexão automaticamente
-  const cursosPopularesRaw = await retryOperation(
-    () =>
-      prisma.$queryRaw<
-        {
-          cursoId: string;
-          cursoNome: string;
-          cursoCodigo: string;
-          totalInscricoes: bigint;
-          totalTurmas: bigint;
-        }[]
-      >`
-        SELECT 
-          c.id as "cursoId",
-          c.nome as "cursoNome",
-          c.codigo as "cursoCodigo",
-          COUNT(DISTINCT ti.id)::bigint as "totalInscricoes",
-          COUNT(DISTINCT ct.id)::bigint as "totalTurmas"
-        FROM "Cursos" c
-        LEFT JOIN "CursosTurmas" ct ON ct."cursoId" = c.id
-        LEFT JOIN "CursosTurmasInscricoes" ti ON ti."turmaId" = ct.id
-        GROUP BY c.id, c.nome, c.codigo
-        ORDER BY "totalInscricoes" DESC
-        LIMIT 10
-      `,
-    3, // maxRetries
-    1000, // delayMs
-    20000, // timeoutMs - 20s para queries complexas
-  );
+  const [cursosPopularesRaw, taxaConclusaoRaw, cursosTaxaConclusaoRaw] = await Promise.all([
+    // ✅ OTIMIZADO: Usar agregação SQL para buscar cursos mais populares
+    // Uma única query ao invés de buscar todos os cursos e depois fazer N queries
+    retryOperation(
+      () =>
+        prisma.$queryRaw<
+          {
+            cursoId: string;
+            cursoNome: string;
+            cursoCodigo: string;
+            totalInscricoes: bigint;
+            totalTurmas: bigint;
+          }[]
+        >`
+          SELECT 
+            c.id as "cursoId",
+            c.nome as "cursoNome",
+            c.codigo as "cursoCodigo",
+            COUNT(DISTINCT ti.id)::bigint as "totalInscricoes",
+            COUNT(DISTINCT ct.id)::bigint as "totalTurmas"
+          FROM "Cursos" c
+          LEFT JOIN "CursosTurmas" ct ON ct."cursoId" = c.id
+          LEFT JOIN "CursosTurmasInscricoes" ti ON ti."turmaId" = ct.id
+          GROUP BY c.id, c.nome, c.codigo
+          ORDER BY "totalInscricoes" DESC
+          LIMIT 10
+        `,
+      3, // maxRetries
+      1000, // delayMs
+      20000, // timeoutMs - 20s para queries complexas
+    ),
+    // ✅ OTIMIZADO: Calcular taxa de conclusão geral em uma única query
+    retryOperation(
+      () =>
+        prisma.$queryRaw<
+          {
+            totalInscricoes: bigint;
+            totalConcluidos: bigint;
+          }[]
+        >`
+          SELECT 
+            COUNT(*)::bigint as "totalInscricoes",
+            COUNT(CASE WHEN status = 'CONCLUIDO' THEN 1 END)::bigint as "totalConcluidos"
+          FROM "CursosTurmasInscricoes"
+        `,
+      3, // maxRetries
+      1000, // delayMs
+      20000, // timeoutMs - 20s para queries complexas
+    ),
+    // ✅ OTIMIZADO: Usar agregação SQL para buscar cursos com maior taxa de conclusão
+    // Uma única query ao invés de N queries (uma por curso)
+    retryOperation(
+      () =>
+        prisma.$queryRaw<
+          {
+            cursoId: string;
+            cursoNome: string;
+            cursoCodigo: string;
+            totalInscricoes: bigint;
+            totalConcluidos: bigint;
+          }[]
+        >`
+          SELECT 
+            c.id as "cursoId",
+            c.nome as "cursoNome",
+            c.codigo as "cursoCodigo",
+            COUNT(ti.id)::bigint as "totalInscricoes",
+            COUNT(CASE WHEN ti.status = 'CONCLUIDO' THEN 1 END)::bigint as "totalConcluidos"
+          FROM "Cursos" c
+          INNER JOIN "CursosTurmas" ct ON ct."cursoId" = c.id
+          INNER JOIN "CursosTurmasInscricoes" ti ON ti."turmaId" = ct.id
+          GROUP BY c.id, c.nome, c.codigo
+          HAVING COUNT(ti.id) > 0
+          ORDER BY 
+            CASE 
+              WHEN COUNT(ti.id) > 0 
+              THEN (COUNT(CASE WHEN ti.status = 'CONCLUIDO' THEN 1 END)::float / COUNT(ti.id)::float) * 100
+              ELSE 0
+            END DESC
+          LIMIT 10
+        `,
+      3, // maxRetries
+      1000, // delayMs
+      20000, // timeoutMs - 20s para queries complexas
+    ),
+  ]);
 
   const cursosMaisPopulares = cursosPopularesRaw.map((curso) => ({
     cursoId: curso.cursoId,
@@ -568,70 +605,12 @@ async function buscarPerformanceCursos(): Promise<{
     totalTurmas: Number(curso.totalTurmas),
   }));
 
-  // ✅ OTIMIZADO: Calcular taxa de conclusão geral em uma única query
-  // ✅ Usar retryOperation para tratar erros de conexão automaticamente
-  const taxaConclusaoRaw = await retryOperation(
-    () =>
-      prisma.$queryRaw<
-        {
-          totalInscricoes: bigint;
-          totalConcluidos: bigint;
-        }[]
-      >`
-        SELECT 
-          COUNT(*)::bigint as "totalInscricoes",
-          COUNT(CASE WHEN status = 'CONCLUIDO' THEN 1 END)::bigint as "totalConcluidos"
-        FROM "CursosTurmasInscricoes"
-      `,
-    3, // maxRetries
-    1000, // delayMs
-    20000, // timeoutMs - 20s para queries complexas
-  );
-
   const taxaConclusao =
     taxaConclusaoRaw[0] && Number(taxaConclusaoRaw[0].totalInscricoes) > 0
       ? (Number(taxaConclusaoRaw[0].totalConcluidos) /
           Number(taxaConclusaoRaw[0].totalInscricoes)) *
         100
       : 0;
-
-  // ✅ OTIMIZADO: Usar agregação SQL para buscar cursos com maior taxa de conclusão
-  // Uma única query ao invés de N queries (uma por curso)
-  // ✅ Usar retryOperation para tratar erros de conexão automaticamente
-  const cursosTaxaConclusaoRaw = await retryOperation(
-    () =>
-      prisma.$queryRaw<
-        {
-          cursoId: string;
-          cursoNome: string;
-          cursoCodigo: string;
-          totalInscricoes: bigint;
-          totalConcluidos: bigint;
-        }[]
-      >`
-        SELECT 
-          c.id as "cursoId",
-          c.nome as "cursoNome",
-          c.codigo as "cursoCodigo",
-          COUNT(ti.id)::bigint as "totalInscricoes",
-          COUNT(CASE WHEN ti.status = 'CONCLUIDO' THEN 1 END)::bigint as "totalConcluidos"
-        FROM "Cursos" c
-        INNER JOIN "CursosTurmas" ct ON ct."cursoId" = c.id
-        INNER JOIN "CursosTurmasInscricoes" ti ON ti."turmaId" = ct.id
-        GROUP BY c.id, c.nome, c.codigo
-        HAVING COUNT(ti.id) > 0
-        ORDER BY 
-          CASE 
-            WHEN COUNT(ti.id) > 0 
-            THEN (COUNT(CASE WHEN ti.status = 'CONCLUIDO' THEN 1 END)::float / COUNT(ti.id)::float) * 100
-            ELSE 0
-          END DESC
-        LIMIT 10
-      `,
-    3, // maxRetries
-    1000, // delayMs
-    20000, // timeoutMs - 20s para queries complexas
-  );
 
   const cursosComMaiorTaxaConclusao = cursosTaxaConclusaoRaw.map((curso) => {
     const totalInscricoes = Number(curso.totalInscricoes);

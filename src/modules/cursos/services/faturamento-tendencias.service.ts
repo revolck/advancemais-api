@@ -105,6 +105,10 @@ export async function buscarFaturamentoTendenciasCursos(query: FaturamentoTenden
           end_local_exclusive: Date;
           prev_start_local: Date;
           prev_end_local_exclusive: Date;
+          start_utc: Date;
+          end_utc_exclusive: Date;
+          prev_start_utc: Date;
+          prev_end_utc_exclusive: Date;
           start_date: string;
           end_date: string;
         }[]
@@ -144,6 +148,10 @@ export async function buscarFaturamentoTendenciasCursos(query: FaturamentoTenden
               end_local_exclusive,
               (start_local - (end_local_exclusive - start_local)) AS prev_start_local,
               start_local AS prev_end_local_exclusive,
+              ((start_local) AT TIME ZONE (SELECT tz FROM inp)) AS start_utc,
+              ((end_local_exclusive) AT TIME ZONE (SELECT tz FROM inp)) AS end_utc_exclusive,
+              (((start_local - (end_local_exclusive - start_local))) AT TIME ZONE (SELECT tz FROM inp)) AS prev_start_utc,
+              ((start_local) AT TIME ZONE (SELECT tz FROM inp)) AS prev_end_utc_exclusive,
               to_char(start_local::date, 'YYYY-MM-DD') AS start_date,
               to_char((end_local_exclusive - interval '1 day')::date, 'YYYY-MM-DD') AS end_date
             FROM bounds
@@ -169,6 +177,10 @@ export async function buscarFaturamentoTendenciasCursos(query: FaturamentoTenden
               ${b.end_local_exclusive}::timestamp AS end_local_exclusive,
               ${b.prev_start_local}::timestamp AS prev_start_local,
               ${b.prev_end_local_exclusive}::timestamp AS prev_end_local_exclusive,
+              ${b.start_utc}::timestamptz AS start_utc,
+              ${b.end_utc_exclusive}::timestamptz AS end_utc_exclusive,
+              ${b.prev_start_utc}::timestamptz AS prev_start_utc,
+              ${b.prev_end_utc_exclusive}::timestamptz AS prev_end_utc_exclusive,
               ${tz}::text AS tz
           ),
           base AS (
@@ -184,6 +196,8 @@ export async function buscarFaturamentoTendenciasCursos(query: FaturamentoTenden
             FROM "AuditoriaTransacoes" t
             WHERE
               t.tipo IN ('PAGAMENTO', 'ASSINATURA')
+              AND t."criadoEm" >= (SELECT prev_start_utc FROM bounds)
+              AND t."criadoEm" < (SELECT end_utc_exclusive FROM bounds)
               AND (
                 t.referencia ILIKE '%curso%'
                 OR t.referencia ILIKE '%turma%'
@@ -218,6 +232,8 @@ export async function buscarFaturamentoTendenciasCursos(query: FaturamentoTenden
             SELECT
               ${b.start_local}::timestamp AS start_local,
               ${b.end_local_exclusive}::timestamp AS end_local_exclusive,
+              ${b.start_utc}::timestamptz AS start_utc,
+              ${b.end_utc_exclusive}::timestamptz AS end_utc_exclusive,
               ${period}::text AS period,
               ${tz}::text AS tz
           ),
@@ -230,6 +246,8 @@ export async function buscarFaturamentoTendenciasCursos(query: FaturamentoTenden
             FROM "AuditoriaTransacoes" t
             WHERE
               t.tipo IN ('PAGAMENTO', 'ASSINATURA')
+              AND t."criadoEm" >= (SELECT start_utc FROM bounds)
+              AND t."criadoEm" < (SELECT end_utc_exclusive FROM bounds)
               AND (
                 t.referencia ILIKE '%curso%'
                 OR t.referencia ILIKE '%turma%'
@@ -277,6 +295,8 @@ export async function buscarFaturamentoTendenciasCursos(query: FaturamentoTenden
             SELECT
               ${b.start_local}::timestamp AS start_local,
               ${b.end_local_exclusive}::timestamp AS end_local_exclusive,
+              ${b.start_utc}::timestamptz AS start_utc,
+              ${b.end_utc_exclusive}::timestamptz AS end_utc_exclusive,
               ${tz}::text AS tz
           ),
           base AS (
@@ -289,6 +309,8 @@ export async function buscarFaturamentoTendenciasCursos(query: FaturamentoTenden
             FROM "AuditoriaTransacoes" t
             WHERE
               t.tipo IN ('PAGAMENTO', 'ASSINATURA')
+              AND t."criadoEm" >= (SELECT start_utc FROM bounds)
+              AND t."criadoEm" < (SELECT end_utc_exclusive FROM bounds)
               AND (
                 t.referencia ILIKE '%curso%'
                 OR t.referencia ILIKE '%turma%'

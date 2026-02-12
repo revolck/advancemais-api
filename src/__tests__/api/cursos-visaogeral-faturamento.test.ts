@@ -4,6 +4,8 @@ import { getTestApp } from '../helpers/test-setup';
 import { createTestAdmin, cleanupTestUsers, type TestUser } from '../helpers/auth-helper';
 import { prisma } from '@/config/prisma';
 
+jest.setTimeout(30000);
+
 describe('API - Cursos (Tendências de Faturamento)', () => {
   let app: Express;
   const testUsers: TestUser[] = [];
@@ -12,7 +14,6 @@ describe('API - Cursos (Tendências de Faturamento)', () => {
   const createdTransacaoIds: string[] = [];
 
   beforeAll(async () => {
-    jest.setTimeout(30000);
     app = await getTestApp();
   });
 

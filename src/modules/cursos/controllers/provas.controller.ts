@@ -104,6 +104,22 @@ export class ProvasController {
       const prova = await provasService.get(cursoId, turmaId, provaId);
       res.json(prova);
     } catch (error: any) {
+      if (error?.code === 'PROVA_NOT_FOUND') {
+        try {
+          const template = await provasService.getTemplateForCurso(cursoId, provaId);
+          return res.json(template);
+        } catch (templateError: any) {
+          if (templateError?.code !== 'PROVA_NOT_FOUND') {
+            return res.status(500).json({
+              success: false,
+              code: 'PROVA_GET_ERROR',
+              message: 'Erro ao buscar prova da turma',
+              error: templateError?.message,
+            });
+          }
+        }
+      }
+
       if (error?.code === 'PROVA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
         return res.status(404).json({
           success: false,

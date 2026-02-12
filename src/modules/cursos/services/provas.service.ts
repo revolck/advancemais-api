@@ -107,6 +107,23 @@ const fetchCriadorInfo = async (provaId: string) => {
   return null;
 };
 
+const fetchTemplate = async (client: PrismaClientOrTx, provaId: string) => {
+  const prova = await client.cursosTurmasProvas.findUnique({
+    where: { id: provaId },
+    ...provaWithEnviosInclude,
+  });
+
+  if (!prova || prova.turmaId) {
+    const error = new Error('Template de prova não encontrado');
+    (error as any).code = 'PROVA_NOT_FOUND';
+    throw error;
+  }
+
+  const criadoPor = client === prisma ? await fetchCriadorInfo(provaId) : null;
+
+  return mapProva(prova, criadoPor);
+};
+
 const fetchProva = async (client: PrismaClientOrTx, provaId: string) => {
   const prova = await client.cursosTurmasProvas.findUnique({
     where: { id: provaId },
@@ -241,6 +258,28 @@ export const provasService = {
     await ensureProvaBelongsToTurma(prisma, cursoId, turmaId, provaId);
 
     return fetchProva(prisma, provaId);
+  },
+
+  async getTemplateForCurso(cursoId: string, provaId: string) {
+    let template: Awaited<ReturnType<typeof fetchTemplate>>;
+    try {
+      template = await fetchTemplate(prisma, provaId);
+    } catch (error: any) {
+      if (error?.code === 'AVALIACAO_NOT_FOUND' || error?.code === 'PROVA_NOT_FOUND') {
+        const notFoundError = new Error('Prova não encontrada para o curso informado');
+        (notFoundError as any).code = 'PROVA_NOT_FOUND';
+        throw notFoundError;
+      }
+      throw error;
+    }
+
+    if (template.cursoId && template.cursoId !== cursoId) {
+      const error = new Error('Prova não encontrada para o curso informado');
+      (error as any).code = 'PROVA_NOT_FOUND';
+      throw error;
+    }
+
+    return template;
   },
 
   async create(

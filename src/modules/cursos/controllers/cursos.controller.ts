@@ -27,6 +27,7 @@ import {
 import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
 import { getCachedOrFetch, generateCacheKey, invalidateCacheByPrefix } from '@/utils/cache';
 import { cursosAuditoriaService } from '../services/cursos-auditoria.service';
+import { invalidateCursosAlunosGetResponseCache } from '../middlewares/alunos-response-cache';
 
 const parseCourseId = (raw: string): string | null => {
   // Validar se é UUID válido
@@ -67,6 +68,19 @@ const CURSOS_GET_CACHE_TTL = resolveTtl(process.env.CACHE_TTL_CURSOS_GET, 45);
 const CURSOS_META_CACHE_TTL = resolveTtl(process.env.CACHE_TTL_CURSOS_META, 45);
 const CURSOS_AUDITORIA_CACHE_TTL = resolveTtl(process.env.CACHE_TTL_CURSOS_AUDITORIA, 30);
 
+const invalidateCursosAlunosCache = async () => {
+  try {
+    await Promise.all([
+      invalidateCacheByPrefix('cursos:alunos:list'),
+      invalidateCacheByPrefix('cursos:alunos:get'),
+      invalidateCacheByPrefix('cursos:alunos:inscricoes'),
+      invalidateCursosAlunosGetResponseCache(),
+    ]);
+  } catch {
+    // cache é best-effort
+  }
+};
+
 const invalidateCursosCache = async () => {
   try {
     await Promise.all([
@@ -76,94 +90,10 @@ const invalidateCursosCache = async () => {
       invalidateCacheByPrefix('cursos:auditoria:'),
       invalidateCacheByPrefix('cursos:historico-inscricoes-curso:'),
       invalidateCacheByPrefix('cursos:notas:list-curso:'),
+      invalidateCursosAlunosCache(),
     ]);
   } catch {
     // cache é best-effort
-  }
-};
-
-/**
- * Calcula o progresso do curso baseado em aulas concluídas, provas realizadas e tempo decorrido
- * ⚠️ OTIMIZADO PARA SUPABASE FREE: Queries sequenciais para evitar saturação do pooler
- */
-const calcularProgressoCurso = async (
-  inscricaoId: string,
-  turmaId: string,
-  dataInicio: Date | null,
-  dataFim: Date | null,
-): Promise<number> => {
-  try {
-    // ⚠️ SUPABASE FREE: Executar queries SEQUENCIALMENTE para não saturar o pooler
-    // Promise.all com múltiplas queries causa P1001 no plano Free
-    const totalAulas = await prisma.cursosTurmasAulas.count({
-      where: { turmaId },
-    });
-    const totalProvas = await prisma.cursosTurmasProvas.count({
-      where: { turmaId },
-    });
-    const aulasComFrequencia = await prisma.cursosFrequenciaAlunos.count({
-      where: { inscricaoId, status: 'PRESENTE' },
-    });
-    const provasComEnvio = await prisma.cursosTurmasProvasEnvios.count({
-      where: { inscricaoId },
-    });
-
-    // Se não há aulas nem provas, calcular por tempo decorrido
-    if (totalAulas === 0 && totalProvas === 0) {
-      if (dataInicio && dataFim) {
-        const agora = new Date();
-        const inicio = new Date(dataInicio).getTime();
-        const fim = new Date(dataFim).getTime();
-        const atual = agora.getTime();
-
-        if (fim > inicio) {
-          const progressoPorTempo = Math.min(
-            100,
-            Math.max(0, ((atual - inicio) / (fim - inicio)) * 100),
-          );
-          return Math.round(progressoPorTempo);
-        }
-      }
-      return 0;
-    }
-
-    // Calcular progresso baseado em aulas e provas
-    let progressoAulas = 0;
-    let progressoProvas = 0;
-    let pesoAulas = 0.6; // Peso padrão para aulas
-    let pesoProvas = 0.4; // Peso padrão para provas
-
-    if (totalAulas > 0) {
-      progressoAulas = (aulasComFrequencia / totalAulas) * 100;
-    }
-
-    if (totalProvas > 0) {
-      progressoProvas = (provasComEnvio / totalProvas) * 100;
-    }
-
-    // Ajustar pesos se um dos componentes não existe
-    if (totalAulas === 0 && totalProvas > 0) {
-      pesoAulas = 0;
-      pesoProvas = 1;
-    } else if (totalAulas > 0 && totalProvas === 0) {
-      pesoAulas = 1;
-      pesoProvas = 0;
-    }
-
-    const progressoTotal = progressoAulas * pesoAulas + progressoProvas * pesoProvas;
-
-    // Arredondar para número inteiro
-    return Math.round(Math.min(100, Math.max(0, progressoTotal)));
-  } catch (error) {
-    logger.error(
-      {
-        inscricaoId,
-        turmaId,
-        error: error instanceof Error ? error.message : 'Erro desconhecido',
-      },
-      '❌ Erro ao calcular progresso do curso',
-    );
-    return 0;
   }
 };
 
@@ -750,6 +680,7 @@ export class CursosController {
         cursoId: cursoIdParam || '',
         turmaId: turmaIdParam || '',
         search: search || '',
+        role: req.user?.role ?? '',
       });
 
       // Validar UUID do curso antes de buscar
@@ -1148,6 +1079,17 @@ export class CursosController {
         });
       }
 
+      const progressoMap = await calcularProgressoCursoBatch(
+        aluno.CursosTurmasInscricoes.map((inscricao) => ({
+          id: inscricao.id,
+          CursosTurmas: {
+            id: inscricao.CursosTurmas.id,
+            dataInicio: inscricao.CursosTurmas.dataInicio,
+            dataFim: inscricao.CursosTurmas.dataFim,
+          },
+        })),
+      );
+
       // Formatar resposta
       const response = {
         id: aluno.id,
@@ -1166,39 +1108,28 @@ export class CursosController {
         ultimoLogin: aluno.ultimoLogin,
         enderecos: (aluno as any).UsuariosEnderecos || [],
         redesSociais: mapSocialLinks((aluno as any).UsuariosRedesSociais),
-        inscricoes: await Promise.all(
-          aluno.CursosTurmasInscricoes.map(async (inscricao) => {
-            const progresso = await calcularProgressoCurso(
-              inscricao.id,
-              inscricao.CursosTurmas.id,
-              inscricao.CursosTurmas.dataInicio,
-              inscricao.CursosTurmas.dataFim,
-            );
-
-            return {
-              id: inscricao.id,
-              statusInscricao: inscricao.status,
-              criadoEm: inscricao.criadoEm,
-              progresso, // Percentual de 0 a 100
-              turma: {
-                id: inscricao.CursosTurmas.id,
-                nome: inscricao.CursosTurmas.nome,
-                codigo: inscricao.CursosTurmas.codigo,
-                status: inscricao.CursosTurmas.status,
-                dataInicio: inscricao.CursosTurmas.dataInicio,
-                dataFim: inscricao.CursosTurmas.dataFim,
-              },
-              curso: {
-                id: inscricao.CursosTurmas.Cursos.id,
-                nome: inscricao.CursosTurmas.Cursos.nome,
-                codigo: inscricao.CursosTurmas.Cursos.codigo,
-                descricao: inscricao.CursosTurmas.Cursos.descricao,
-                cargaHoraria: inscricao.CursosTurmas.Cursos.cargaHoraria,
-                imagemUrl: inscricao.CursosTurmas.Cursos.imagemUrl,
-              },
-            };
-          }),
-        ),
+        inscricoes: aluno.CursosTurmasInscricoes.map((inscricao) => ({
+          id: inscricao.id,
+          statusInscricao: inscricao.status,
+          criadoEm: inscricao.criadoEm,
+          progresso: progressoMap[inscricao.id] ?? 0,
+          turma: {
+            id: inscricao.CursosTurmas.id,
+            nome: inscricao.CursosTurmas.nome,
+            codigo: inscricao.CursosTurmas.codigo,
+            status: inscricao.CursosTurmas.status,
+            dataInicio: inscricao.CursosTurmas.dataInicio,
+            dataFim: inscricao.CursosTurmas.dataFim,
+          },
+          curso: {
+            id: inscricao.CursosTurmas.Cursos.id,
+            nome: inscricao.CursosTurmas.Cursos.nome,
+            codigo: inscricao.CursosTurmas.Cursos.codigo,
+            descricao: inscricao.CursosTurmas.Cursos.descricao,
+            cargaHoraria: inscricao.CursosTurmas.Cursos.cargaHoraria,
+            imagemUrl: inscricao.CursosTurmas.Cursos.imagemUrl,
+          },
+        })),
         totalInscricoes: aluno.CursosTurmasInscricoes.length,
         estatisticas: {
           cursosAtivos: aluno.CursosTurmasInscricoes.filter((i) =>
@@ -1321,40 +1252,39 @@ export class CursosController {
         }),
       ]);
 
-      // Calcular progresso para cada inscrição
-      const data = await Promise.all(
-        inscricoes.map(async (inscricao) => {
-          const progresso = await calcularProgressoCurso(
-            inscricao.id,
-            inscricao.CursosTurmas.id,
-            inscricao.CursosTurmas.dataInicio,
-            inscricao.CursosTurmas.dataFim,
-          );
-
-          return {
-            id: inscricao.id,
-            statusInscricao: inscricao.status,
-            criadoEm: inscricao.criadoEm,
-            progresso,
-            turma: {
-              id: inscricao.CursosTurmas.id,
-              nome: inscricao.CursosTurmas.nome,
-              codigo: inscricao.CursosTurmas.codigo,
-              status: inscricao.CursosTurmas.status,
-              dataInicio: inscricao.CursosTurmas.dataInicio,
-              dataFim: inscricao.CursosTurmas.dataFim,
-            },
-            curso: {
-              id: inscricao.CursosTurmas.Cursos.id,
-              nome: inscricao.CursosTurmas.Cursos.nome,
-              codigo: inscricao.CursosTurmas.Cursos.codigo,
-              descricao: inscricao.CursosTurmas.Cursos.descricao,
-              cargaHoraria: inscricao.CursosTurmas.Cursos.cargaHoraria,
-              imagemUrl: inscricao.CursosTurmas.Cursos.imagemUrl,
-            },
-          };
-        }),
+      const progressoMap = await calcularProgressoCursoBatch(
+        inscricoes.map((inscricao) => ({
+          id: inscricao.id,
+          CursosTurmas: {
+            id: inscricao.CursosTurmas.id,
+            dataInicio: inscricao.CursosTurmas.dataInicio,
+            dataFim: inscricao.CursosTurmas.dataFim,
+          },
+        })),
       );
+
+      const data = inscricoes.map((inscricao) => ({
+        id: inscricao.id,
+        statusInscricao: inscricao.status,
+        criadoEm: inscricao.criadoEm,
+        progresso: progressoMap[inscricao.id] ?? 0,
+        turma: {
+          id: inscricao.CursosTurmas.id,
+          nome: inscricao.CursosTurmas.nome,
+          codigo: inscricao.CursosTurmas.codigo,
+          status: inscricao.CursosTurmas.status,
+          dataInicio: inscricao.CursosTurmas.dataInicio,
+          dataFim: inscricao.CursosTurmas.dataFim,
+        },
+        curso: {
+          id: inscricao.CursosTurmas.Cursos.id,
+          nome: inscricao.CursosTurmas.Cursos.nome,
+          codigo: inscricao.CursosTurmas.Cursos.codigo,
+          descricao: inscricao.CursosTurmas.Cursos.descricao,
+          cargaHoraria: inscricao.CursosTurmas.Cursos.cargaHoraria,
+          imagemUrl: inscricao.CursosTurmas.Cursos.imagemUrl,
+        },
+      }));
 
       res.json({
         data,
@@ -1914,6 +1844,7 @@ export class CursosController {
 
       // Invalidar cache do usuário
       await invalidateUserCache(alunoAtualizado);
+      await invalidateCursosAlunosCache();
 
       logger.info(
         {

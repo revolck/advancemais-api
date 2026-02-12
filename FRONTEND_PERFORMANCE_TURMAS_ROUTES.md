@@ -57,7 +57,7 @@ Isso cobre mudanças de:
 
 ### 3) Paginação
 
-- usar `pageSize` inicial entre `20` e `50`
+- usar `pageSize` inicial entre `10` e `50`
 - evitar `200` no carregamento inicial de listas
 
 ### 4) Checklist rápido

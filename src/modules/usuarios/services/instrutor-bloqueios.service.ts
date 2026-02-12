@@ -331,7 +331,7 @@ export async function listarBloqueiosInstrutor(
 
   const skip = (page - 1) * pageSize;
 
-  const [total, bloqueios] = await prisma.$transaction([
+  const [total, bloqueios] = await Promise.all([
     prisma.usuariosEmBloqueios.count({ where: { usuarioId: instrutorId } }),
     prisma.usuariosEmBloqueios.findMany({
       where: { usuarioId: instrutorId },

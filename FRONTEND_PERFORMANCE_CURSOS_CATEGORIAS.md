@@ -70,7 +70,7 @@ Em `listSubcategorias`:
 
 ### 1) Lista de cursos
 
-- usar `pageSize` entre `20` e `50` no first load
+- usar `pageSize` entre `10` e `50` no first load
 - evitar `pageSize` muito alto por padrão
 
 ### 2) Auditoria

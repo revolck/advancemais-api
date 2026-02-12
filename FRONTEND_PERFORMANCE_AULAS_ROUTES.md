@@ -78,7 +78,7 @@ Agora:
 
 ### 1) Listagem de aulas
 
-- usar `pageSize` inicial entre `20` e `50`
+- usar `pageSize` inicial entre `10` e `50`
 - evitar `pageSize=200` no first load
 
 ### 2) Consultas por aba (lazy)
@@ -101,7 +101,7 @@ Agora:
 
 ```bash
 curl -sS -H "Authorization: Bearer <TOKEN>" \
-  "http://localhost:3000/api/v1/cursos/aulas?page=1&pageSize=20"
+  "http://localhost:3000/api/v1/cursos/aulas?page=1&pageSize=10"
 ```
 
 ```bash

@@ -65,6 +65,7 @@ export class InstrutorController {
         limit: limitNum,
         search,
         status,
+        role: req.user?.role ?? '',
       });
 
       const startTime = Date.now();
@@ -73,16 +74,18 @@ export class InstrutorController {
         async () => {
           return await retryOperation(
             async () => {
-              // Queries sequenciais para evitar saturar pool no Supabase Free
-              const instrutoresResult = await prisma.usuarios.findMany({
-                where,
-                select,
-                // ✅ Usar índice composto para melhor performance
-                orderBy: { criadoEm: 'desc' },
-                skip,
-                take: limitNum,
-              });
-              const totalResult = await prisma.usuarios.count({ where });
+              // No runtime atual (Neon), as duas leituras são independentes e podem rodar em paralelo.
+              const [instrutoresResult, totalResult] = await Promise.all([
+                prisma.usuarios.findMany({
+                  where,
+                  select,
+                  // ✅ Usar índice composto para melhor performance
+                  orderBy: { criadoEm: 'desc' },
+                  skip,
+                  take: limitNum,
+                }),
+                prisma.usuarios.count({ where }),
+              ]);
               return [instrutoresResult, totalResult] as const;
             },
             2, // Reduzir tentativas para fail-fast

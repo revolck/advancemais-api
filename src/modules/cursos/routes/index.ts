@@ -28,6 +28,10 @@ import {
   cursosTurmasGetResponseCache,
   cursosTurmasInvalidateCacheOnMutation,
 } from '../middlewares/turmas-response-cache';
+import {
+  cursosAlunosGetResponseCache,
+  cursosAlunosInvalidateCacheOnMutation,
+} from '../middlewares/alunos-response-cache';
 
 const router = Router();
 
@@ -849,6 +853,7 @@ router.delete(
 router.get(
   '/alunos',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  cursosAlunosGetResponseCache,
   CursosController.listAlunosComInscricoes,
 );
 
@@ -1103,6 +1108,7 @@ router.get(
 router.get(
   '/alunos/:alunoId',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  cursosAlunosGetResponseCache,
   CursosController.getAlunoById,
 );
 
@@ -1331,6 +1337,7 @@ router.get(
 router.get(
   '/alunos/:alunoId/inscricoes',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  cursosAlunosGetResponseCache,
   CursosController.listHistoricoInscricoes,
 );
 
@@ -1484,6 +1491,7 @@ router.get(
 router.put(
   '/alunos/:alunoId',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR]),
+  cursosAlunosInvalidateCacheOnMutation,
   CursosController.atualizarAlunoById,
 );
 

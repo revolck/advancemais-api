@@ -9,6 +9,10 @@ import { Router } from 'express';
 import { supabaseAuthMiddleware } from '../auth';
 import { AdminController } from '../controllers/admin-controller';
 import { InstrutorController } from '../controllers/instrutor-controller';
+import {
+  instrutoresGetResponseCache,
+  instrutoresInvalidateCacheOnMutation,
+} from '../middlewares/instrutores-response-cache';
 import { asyncHandler } from '../../../utils/asyncHandler';
 import { Roles } from '../enums/Roles';
 
@@ -1172,6 +1176,7 @@ router.post(
 router.get(
   '/instrutores',
   supabaseAuthMiddleware(adminRoles),
+  instrutoresGetResponseCache,
   asyncHandler(InstrutorController.listarInstrutores),
 );
 
@@ -1281,12 +1286,14 @@ router.get(
 router.get(
   '/instrutores/:instrutorId',
   supabaseAuthMiddleware(adminRoles),
+  instrutoresGetResponseCache,
   asyncHandler(InstrutorController.getInstrutorById),
 );
 
 router.put(
   '/instrutores/:instrutorId',
   supabaseAuthMiddleware(adminRoles),
+  instrutoresInvalidateCacheOnMutation,
   asyncHandler(InstrutorController.atualizarInstrutorById),
 );
 
@@ -1373,11 +1380,13 @@ router.put(
  */
 router.get(
   '/instrutores/:userId/bloqueios',
+  instrutoresGetResponseCache,
   asyncHandler(adminController.listarBloqueiosInstrutor),
 );
 
 router.post(
   '/instrutores/:userId/bloqueios',
+  instrutoresInvalidateCacheOnMutation,
   asyncHandler(adminController.aplicarBloqueioInstrutor),
 );
 
@@ -1414,6 +1423,7 @@ router.post(
  */
 router.post(
   '/instrutores/:userId/bloqueios/revogar',
+  instrutoresInvalidateCacheOnMutation,
   asyncHandler(adminController.revogarBloqueioInstrutor),
 );
 

@@ -21,6 +21,10 @@ import { EstagiosController } from '../controllers/estagios.controller';
 import cursosCheckoutRoutes from '../checkout/routes';
 import aulasRoutes, { agendaRoutes } from '../aulas/routes';
 import {
+  cursosAulasGetResponseCache,
+  cursosAulasInvalidateCacheOnMutation,
+} from '../aulas/middlewares/aulas-response-cache';
+import {
   cursosTurmasGetResponseCache,
   cursosTurmasInvalidateCacheOnMutation,
 } from '../middlewares/turmas-response-cache';
@@ -40,6 +44,7 @@ router.use('/', cursosCheckoutRoutes);
 // ROTAS DE GESTÃO DE AULAS
 // ========================================
 // Sistema completo de aulas (Online, Presencial, Ao Vivo, Semipresencial)
+router.use('/aulas', cursosAulasGetResponseCache, cursosAulasInvalidateCacheOnMutation);
 router.use('/aulas', aulasRoutes);
 
 // ========================================

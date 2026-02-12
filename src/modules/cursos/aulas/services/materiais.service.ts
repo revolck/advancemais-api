@@ -314,13 +314,15 @@ export const materiaisService = {
     const ordensAntigas = new Map(materiaisAntigos.map((m) => [m.id, m.ordem]));
     const materiaisMap = new Map(materiaisAntigos.map((m) => [m.id, m]));
 
-    // Atualizar ordem de cada material
-    for (const item of input.ordens) {
-      await prisma.cursosTurmasAulasMateriais.updateMany({
-        where: { id: item.id, aulaId },
-        data: { ordem: item.ordem },
-      });
-    }
+    // Atualizar ordens em lote para reduzir round-trips no banco.
+    await prisma.$transaction(
+      input.ordens.map((item) =>
+        prisma.cursosTurmasAulasMateriais.updateMany({
+          where: { id: item.id, aulaId },
+          data: { ordem: item.ordem },
+        }),
+      ),
+    );
 
     // Preparar informações de reordenação para histórico
     const materiaisReordenados = input.ordens

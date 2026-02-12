@@ -299,25 +299,14 @@ export const aulasService = {
     // Filtro por role: INSTRUTOR vê apenas suas turmas
     // IMPORTANTE: Aplicar ANTES dos filtros da query para não sobrescrever
     if (usuarioLogado.role === 'INSTRUTOR' && !turmaId) {
-      // Apenas aplicar filtro de INSTRUTOR se não houver filtro explícito de turmaId
-      const turmasDoInstrutor = await retryOperation(() =>
-        prisma.cursosTurmas.findMany({
-          where: { instrutorId: usuarioLogado.id },
-          select: { id: true },
-        }),
-      );
-      const turmasIds = turmasDoInstrutor.map((t) => t.id);
-      if (turmasIds.length > 0) {
-        // Incluir aulas das turmas do instrutor OU aulas sem turma mas do instrutor
-        where.OR = [
-          { turmaId: { in: turmasIds } },
+      // Apenas aplicar filtro de INSTRUTOR se não houver filtro explícito de turmaId.
+      // Evita query extra para buscar IDs de turmas e filtra direto por relação.
+      applyAndFilter({
+        OR: [
+          { CursosTurmas: { instrutorId: usuarioLogado.id } },
           { turmaId: null, instrutorId: usuarioLogado.id },
-        ];
-      } else {
-        // Se não tiver turmas, apenas aulas sem turma mas do instrutor
-        where.turmaId = null;
-        where.instrutorId = usuarioLogado.id;
-      }
+        ],
+      });
     }
 
     if (semTurma === true) {
@@ -928,6 +917,7 @@ export const aulasService = {
               nome: true,
               turno: true,
               metodo: true,
+              instrutorId: true,
               Cursos: {
                 select: {
                   id: true,
@@ -967,16 +957,10 @@ export const aulasService = {
 
     if (!aula) throw new Error('Aula não encontrada');
 
-    // Validar permissão do instrutor
+    // Validar permissão do instrutor sem query adicional.
     if (usuarioLogado.role === 'INSTRUTOR') {
-      const turma = await retryOperation(() =>
-        prisma.cursosTurmas.findUnique({
-          where: { id: aula.turmaId || undefined },
-          select: { instrutorId: true },
-        }),
-      );
-
-      if (turma?.instrutorId !== usuarioLogado.id) {
+      const instrutorDaTurma = aula.CursosTurmas?.instrutorId;
+      if (!aula.turmaId || instrutorDaTurma !== usuarioLogado.id) {
         throw new Error('Instrutor só pode acessar aulas de suas turmas');
       }
     }

@@ -25,7 +25,7 @@ import {
   mapSocialLinks,
 } from '@/modules/usuarios/utils/social-links';
 import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
-import { getCachedOrFetch, generateCacheKey } from '@/utils/cache';
+import { getCachedOrFetch, generateCacheKey, invalidateCacheByPrefix } from '@/utils/cache';
 import { cursosAuditoriaService } from '../services/cursos-auditoria.service';
 
 const parseCourseId = (raw: string): string | null => {
@@ -62,6 +62,25 @@ const CURSOS_VISAOGERAL_FATURAMENTO_CACHE_TTL = resolveTtl(
   process.env.CACHE_TTL_CURSOS_VISAOGERAL_FATURAMENTO,
   30,
 );
+const CURSOS_LIST_CACHE_TTL = resolveTtl(process.env.CACHE_TTL_CURSOS_LIST, 45);
+const CURSOS_GET_CACHE_TTL = resolveTtl(process.env.CACHE_TTL_CURSOS_GET, 45);
+const CURSOS_META_CACHE_TTL = resolveTtl(process.env.CACHE_TTL_CURSOS_META, 45);
+const CURSOS_AUDITORIA_CACHE_TTL = resolveTtl(process.env.CACHE_TTL_CURSOS_AUDITORIA, 30);
+
+const invalidateCursosCache = async () => {
+  try {
+    await Promise.all([
+      invalidateCacheByPrefix('cursos:list:'),
+      invalidateCacheByPrefix('cursos:get:'),
+      invalidateCacheByPrefix('cursos:meta:'),
+      invalidateCacheByPrefix('cursos:auditoria:'),
+      invalidateCacheByPrefix('cursos:historico-inscricoes-curso:'),
+      invalidateCacheByPrefix('cursos:notas:list-curso:'),
+    ]);
+  } catch {
+    // cache é best-effort
+  }
+};
 
 /**
  * Calcula o progresso do curso baseado em aulas concluídas, provas realizadas e tempo decorrido
@@ -316,7 +335,20 @@ export class CursosController {
     }
 
     try {
-      const meta = await cursosService.metaCurso(cursoId);
+      const cacheKey = generateCacheKey(
+        'cursos:meta',
+        {
+          cursoId,
+          role: req.user?.role ?? '',
+        },
+        { excludeKeys: [] },
+      );
+
+      const meta = await getCachedOrFetch(
+        cacheKey,
+        () => cursosService.metaCurso(cursoId),
+        CURSOS_META_CACHE_TTL,
+      );
       res.json({ success: true, data: meta });
     } catch (error: any) {
       if (error?.code === 'CURSO_NOT_FOUND') {
@@ -339,16 +371,37 @@ export class CursosController {
   static list = async (req: Request, res: Response) => {
     try {
       const params = listCoursesQuerySchema.parse(req.query);
-      const result = await cursosService.list({
-        page: params.page,
-        pageSize: params.pageSize,
-        search: params.search,
-        statusPadrao: params.statusPadrao,
-        categoriaId: params.categoriaId,
-        subcategoriaId: params.subcategoriaId,
-        instrutorId: params.instrutorId,
-        includeTurmas: params.includeTurmas,
-      });
+      const cacheKey = generateCacheKey(
+        'cursos:list',
+        {
+          page: params.page,
+          pageSize: params.pageSize,
+          search: params.search ?? '',
+          statusPadrao: params.statusPadrao?.join(',') ?? '',
+          categoriaId: params.categoriaId ?? '',
+          subcategoriaId: params.subcategoriaId ?? '',
+          instrutorId: params.instrutorId ?? '',
+          includeTurmas: params.includeTurmas ? '1' : '0',
+          role: req.user?.role ?? '',
+        },
+        { excludeKeys: [] },
+      );
+
+      const result = await getCachedOrFetch(
+        cacheKey,
+        () =>
+          cursosService.list({
+            page: params.page,
+            pageSize: params.pageSize,
+            search: params.search,
+            statusPadrao: params.statusPadrao,
+            categoriaId: params.categoriaId,
+            subcategoriaId: params.subcategoriaId,
+            instrutorId: params.instrutorId,
+            includeTurmas: params.includeTurmas,
+          }),
+        CURSOS_LIST_CACHE_TTL,
+      );
 
       res.json(result);
     } catch (error: any) {
@@ -374,6 +427,7 @@ export class CursosController {
     try {
       const payload = vincularTemplatesSchema.parse(req.body);
       const result = await cursosService.vincularTemplates(payload);
+      await invalidateCursosCache();
       res.json({ success: true, data: result });
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -436,7 +490,20 @@ export class CursosController {
     }
 
     try {
-      const course = await cursosService.getById(id);
+      const cacheKey = generateCacheKey(
+        'cursos:get',
+        {
+          cursoId: id,
+          role: req.user?.role ?? '',
+        },
+        { excludeKeys: [] },
+      );
+
+      const course = await getCachedOrFetch(
+        cacheKey,
+        () => cursosService.getById(id),
+        CURSOS_GET_CACHE_TTL,
+      );
       if (!course) {
         return res.status(404).json({
           success: false,
@@ -504,6 +571,7 @@ export class CursosController {
         userAgent,
       );
 
+      await invalidateCursosCache();
       res.status(201).json(course);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -576,6 +644,7 @@ export class CursosController {
         userAgent,
       );
 
+      await invalidateCursosCache();
       res.json(course);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -632,6 +701,7 @@ export class CursosController {
 
     try {
       const course = await cursosService.archive(id);
+      await invalidateCursosCache();
       res.json(course);
     } catch (error: any) {
       if (error?.code === 'P2025') {
@@ -1945,13 +2015,54 @@ export class CursosController {
         });
       }
 
-      // Verificar se curso existe
-      const cursoExiste = await prisma.cursos.findUnique({
-        where: { id: cursoIdValidado },
-        select: { id: true, nome: true },
-      });
+      const cacheKey = generateCacheKey(
+        'cursos:auditoria',
+        {
+          cursoId: cursoIdValidado,
+          page,
+          pageSize,
+          role: req.user?.role ?? '',
+        },
+        { excludeKeys: [] },
+      );
 
-      if (!cursoExiste) {
+      const response = await getCachedOrFetch(
+        cacheKey,
+        async () => {
+          const cursoExiste = await prisma.cursos.findUnique({
+            where: { id: cursoIdValidado },
+            select: { id: true, nome: true },
+          });
+
+          if (!cursoExiste) {
+            const error: any = new Error('Curso não encontrado');
+            error.code = 'CURSO_NOT_FOUND';
+            throw error;
+          }
+
+          const historico = await cursosAuditoriaService.obterHistoricoAlteracoes(
+            cursoIdValidado,
+            page,
+            pageSize,
+          );
+
+          return {
+            success: true,
+            data: historico.items,
+            pagination: {
+              page: historico.page,
+              pageSize: historico.pageSize,
+              total: historico.total,
+              totalPages: historico.totalPages,
+            },
+          };
+        },
+        CURSOS_AUDITORIA_CACHE_TTL,
+      );
+
+      res.json(response);
+    } catch (error: any) {
+      if (error?.code === 'CURSO_NOT_FOUND') {
         return res.status(404).json({
           success: false,
           code: 'CURSO_NOT_FOUND',
@@ -1959,24 +2070,6 @@ export class CursosController {
         });
       }
 
-      // Buscar histórico de auditoria
-      const historico = await cursosAuditoriaService.obterHistoricoAlteracoes(
-        cursoIdValidado,
-        page,
-        pageSize,
-      );
-
-      res.json({
-        success: true,
-        data: historico.items,
-        pagination: {
-          page: historico.page,
-          pageSize: historico.pageSize,
-          total: historico.total,
-          totalPages: historico.totalPages,
-        },
-      });
-    } catch (error: any) {
       logger.error(
         {
           cursoId: req.params.cursoId,

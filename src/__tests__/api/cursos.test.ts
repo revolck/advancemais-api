@@ -217,8 +217,9 @@ describe('API - Cursos', () => {
     });
 
     it('deve retornar erro 404 para curso inexistente', async () => {
+      const inexistenteId = randomUUID();
       const response = await request(app)
-        .get('/api/v1/cursos/999999')
+        .get(`/api/v1/cursos/${inexistenteId}`)
         .set('Authorization', `Bearer ${testAdmin.token}`)
         .expect(404);
 
@@ -448,8 +449,9 @@ describe('API - Cursos', () => {
     });
 
     it('deve retornar erro 404 ao deletar curso inexistente', async () => {
+      const inexistenteId = randomUUID();
       const response = await request(app)
-        .delete('/api/v1/cursos/999999')
+        .delete(`/api/v1/cursos/${inexistenteId}`)
         .set('Authorization', `Bearer ${testAdmin.token}`)
         .expect(404);
 

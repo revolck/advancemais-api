@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
 import { ZodError } from 'zod';
 
+import { generateCacheKey, getCachedOrFetch, invalidateCacheByPrefix } from '@/utils/cache';
 import { categoriasService } from '../services/categorias.service';
 import {
   createCategoriaSchema,
@@ -42,6 +43,28 @@ const isUniqueConstraintError = (error: unknown) =>
 const isForeignKeyConstraintError = (error: unknown) =>
   error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003';
 
+const resolveTtl = (value: string | undefined, fallback: number) => {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
+  return parsed;
+};
+
+const CURSOS_CATEGORIAS_CACHE_TTL = resolveTtl(process.env.CACHE_TTL_CURSOS_CATEGORIAS, 60);
+
+const invalidateCategoriasCache = async () => {
+  try {
+    await Promise.all([
+      invalidateCacheByPrefix('cursos:categorias:list:'),
+      invalidateCacheByPrefix('cursos:categorias:get:'),
+      invalidateCacheByPrefix('cursos:categorias:subcategorias:'),
+      invalidateCacheByPrefix('cursos:list:'),
+      invalidateCacheByPrefix('cursos:get:'),
+    ]);
+  } catch {
+    // cache é best-effort
+  }
+};
+
 const handleKnownErrors = (res: Response, error: any) => {
   if (error?.code === 'CATEGORIA_NOT_FOUND') {
     return res.status(404).json({
@@ -79,9 +102,21 @@ const handleKnownErrors = (res: Response, error: any) => {
 };
 
 export class CategoriasController {
-  static list = async (_req: Request, res: Response) => {
+  static list = async (req: Request, res: Response) => {
     try {
-      const data = await categoriasService.list();
+      const cacheKey = generateCacheKey(
+        'cursos:categorias:list',
+        {
+          role: req.user?.role ?? '',
+        },
+        { excludeKeys: [] },
+      );
+
+      const data = await getCachedOrFetch(
+        cacheKey,
+        () => categoriasService.list(),
+        CURSOS_CATEGORIAS_CACHE_TTL,
+      );
       res.json(data);
     } catch (error: any) {
       res.status(500).json({
@@ -104,7 +139,20 @@ export class CategoriasController {
     }
 
     try {
-      const categoria = await categoriasService.get(categoriaId);
+      const cacheKey = generateCacheKey(
+        'cursos:categorias:get',
+        {
+          categoriaId,
+          role: req.user?.role ?? '',
+        },
+        { excludeKeys: [] },
+      );
+
+      const categoria = await getCachedOrFetch(
+        cacheKey,
+        () => categoriasService.get(categoriaId),
+        CURSOS_CATEGORIAS_CACHE_TTL,
+      );
       res.json(categoria);
     } catch (error: any) {
       if (handleKnownErrors(res, error)) {
@@ -151,7 +199,22 @@ export class CategoriasController {
     const pageSize = Math.min(pageSizeRaw, 100);
 
     try {
-      const result = await categoriasService.listSubcategorias(categoriaId, { page, pageSize });
+      const cacheKey = generateCacheKey(
+        'cursos:categorias:subcategorias',
+        {
+          categoriaId,
+          page,
+          pageSize,
+          role: req.user?.role ?? '',
+        },
+        { excludeKeys: [] },
+      );
+
+      const result = await getCachedOrFetch(
+        cacheKey,
+        () => categoriasService.listSubcategorias(categoriaId, { page, pageSize }),
+        CURSOS_CATEGORIAS_CACHE_TTL,
+      );
       res.json(result);
     } catch (error: any) {
       if (handleKnownErrors(res, error)) {
@@ -171,6 +234,7 @@ export class CategoriasController {
     try {
       const payload = createCategoriaSchema.parse(req.body);
       const categoria = await categoriasService.create(payload);
+      await invalidateCategoriasCache();
       res.status(201).json(categoria);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -208,6 +272,7 @@ export class CategoriasController {
     try {
       const payload = updateCategoriaSchema.parse(req.body);
       const categoria = await categoriasService.update(categoriaId, payload);
+      await invalidateCategoriasCache();
       res.json(categoria);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -244,6 +309,7 @@ export class CategoriasController {
 
     try {
       await categoriasService.remove(categoriaId);
+      await invalidateCategoriasCache();
       res.status(204).send();
     } catch (error: any) {
       if (handleKnownErrors(res, error)) {
@@ -272,6 +338,7 @@ export class CategoriasController {
     try {
       const payload = createSubcategoriaSchema.parse(req.body);
       const subcategoria = await categoriasService.createSubcategoria(categoriaId, payload);
+      await invalidateCategoriasCache();
       res.status(201).json(subcategoria);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -309,6 +376,7 @@ export class CategoriasController {
     try {
       const payload = updateSubcategoriaSchema.parse(req.body);
       const subcategoria = await categoriasService.updateSubcategoria(subcategoriaId, payload);
+      await invalidateCategoriasCache();
       res.json(subcategoria);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -345,6 +413,7 @@ export class CategoriasController {
 
     try {
       await categoriasService.removeSubcategoria(subcategoriaId);
+      await invalidateCategoriasCache();
       res.status(204).send();
     } catch (error: any) {
       if (handleKnownErrors(res, error)) {

@@ -774,7 +774,8 @@ const mapCourse = async (course: RawCourse) => {
 
 /**
  * Conta inscrições ativas por turma usando agregação SQL eficiente
- * Reutiliza a mesma lógica do turmas.service.ts
+ * Reutiliza a mesma lógica do turmas.service.ts.
+ * Inscrição ativa = status diferente de CANCELADO/TRANCADO.
  */
 async function countInscricoesAtivasPorTurma(turmaIds: string[]): Promise<Record<string, number>> {
   if (turmaIds.length === 0) {
@@ -788,11 +789,9 @@ async function countInscricoesAtivasPorTurma(turmaIds: string[]): Promise<Record
       ti."turmaId"::text as "turmaId",
       COUNT(*)::int as count
     FROM "CursosTurmasInscricoes" ti
-    INNER JOIN "Usuarios" u ON ti."alunoId" = u.id
     WHERE 
       ti."turmaId"::text IN (${placeholders})
       AND ti.status NOT IN ('CANCELADO', 'TRANCADO')
-      AND u.status = 'ATIVO'
     GROUP BY ti."turmaId"`,
     ...turmaIds,
   );
@@ -1018,13 +1017,14 @@ export const cursosService = {
     };
     delete (statusAggregationWhere as any).statusPadrao;
 
-    // ⚠️ SUPABASE FREE: Queries sequenciais para evitar saturação do pooler
-    const total = await prisma.cursos.count({ where });
-    const statusAggregation = await prisma.cursos.groupBy({
-      by: ['statusPadrao'],
-      _count: { _all: true },
-      where: statusAggregationWhere,
-    });
+    const [total, statusAggregation] = await Promise.all([
+      prisma.cursos.count({ where }),
+      prisma.cursos.groupBy({
+        by: ['statusPadrao'],
+        _count: { _all: true },
+        where: statusAggregationWhere,
+      }),
+    ]);
 
     const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
     const safePage = totalPages === 0 ? 1 : Math.min(page, totalPages);

@@ -103,7 +103,7 @@ export const categoriasService = {
 
     const skip = (options.page - 1) * options.pageSize;
 
-    const [subcategorias, total] = await prisma.$transaction([
+    const [subcategorias, total] = await Promise.all([
       prisma.cursosSubcategorias.findMany({
         where: { categoriaId },
         orderBy: { nome: 'asc' },

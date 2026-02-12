@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { CursosNotasTipo } from '@prisma/client';
 import { ZodError } from 'zod';
 
+import { generateCacheKey, getCachedOrFetch, invalidateCacheByPrefix } from '@/utils/cache';
 import { notasService } from '../services/notas.service';
 import {
   clearNotasManuaisSchema,
@@ -43,6 +44,22 @@ const parseInscricaoId = (raw: unknown) => {
   return raw;
 };
 
+const resolveTtl = (value: string | undefined, fallback: number) => {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
+  return parsed;
+};
+
+const CURSOS_NOTAS_CACHE_TTL = resolveTtl(process.env.CACHE_TTL_CURSOS_NOTAS, 30);
+
+const invalidateCursoNotasCache = async () => {
+  try {
+    await invalidateCacheByPrefix('cursos:notas:list-curso:');
+  } catch {
+    // cache é best-effort
+  }
+};
+
 export class NotasController {
   static listCurso = async (req: Request, res: Response) => {
     const cursoId = parseCursoId(req.params.cursoId);
@@ -56,7 +73,26 @@ export class NotasController {
 
     try {
       const query = listCursoNotasQuerySchema.parse(req.query);
-      const result = await notasService.listCursoNotas(cursoId, query);
+      const cacheKey = generateCacheKey(
+        'cursos:notas:list-curso',
+        {
+          cursoId,
+          turmaIds: query.turmaIds.join(','),
+          search: query.search ?? '',
+          page: query.page,
+          pageSize: query.pageSize,
+          orderBy: query.orderBy,
+          order: query.order,
+          role: req.user?.role ?? '',
+        },
+        { excludeKeys: [] },
+      );
+
+      const result = await getCachedOrFetch(
+        cacheKey,
+        () => notasService.listCursoNotas(cursoId, query),
+        CURSOS_NOTAS_CACHE_TTL,
+      );
       res.json({ success: true, data: result });
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -184,6 +220,7 @@ export class NotasController {
           },
           req.user?.id,
         );
+        await invalidateCursoNotasCache();
         return res.status(201).json(nota);
       }
 
@@ -192,6 +229,7 @@ export class NotasController {
         ...parsed,
         tipo: parsed.tipo as CursosNotasTipo,
       });
+      await invalidateCursoNotasCache();
       res.status(201).json(nota);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -261,6 +299,7 @@ export class NotasController {
       const { alunoId } = clearNotasManuaisSchema.parse({ alunoId: alunoIdRaw });
 
       const result = await notasService.clearLancamentosManuais(cursoId, turmaId, alunoId);
+      await invalidateCursoNotasCache();
       res.json(result);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -325,6 +364,7 @@ export class NotasController {
         ...data,
         tipo: data.tipo as CursosNotasTipo | undefined,
       });
+      await invalidateCursoNotasCache();
       res.json(nota);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -384,6 +424,7 @@ export class NotasController {
 
     try {
       const result = await notasService.remove(cursoId, turmaId, notaId);
+      await invalidateCursoNotasCache();
       res.json(result);
     } catch (error: any) {
       if (error?.code === 'NOTA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {

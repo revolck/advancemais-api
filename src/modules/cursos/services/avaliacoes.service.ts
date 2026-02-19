@@ -69,6 +69,39 @@ const mapModalidadeFromDB = (modalidade: string | null | undefined) => {
   return modalidade === 'LIVE' ? 'AO_VIVO' : modalidade;
 };
 
+type AlternativaQuestaoDTO = {
+  id: string;
+  questaoId: string;
+  texto: string;
+  ordem: number;
+  correta: boolean;
+};
+
+const mapAlternativasNormalizadas = (
+  tipo: CursosTipoQuestao,
+  alternativas: AlternativaQuestaoDTO[],
+) => {
+  if (tipo !== CursosTipoQuestao.MULTIPLA_ESCOLHA) {
+    return [] as AlternativaQuestaoDTO[];
+  }
+
+  const ordenadas = [...alternativas].sort((a, b) => a.ordem - b.ordem);
+  let corretaIndex = ordenadas.findIndex((alt) => alt.correta);
+
+  // Contrato de edição: sempre 1 alternativa marcada como correta para objetivas
+  if (corretaIndex < 0 && ordenadas.length > 0) {
+    corretaIndex = 0;
+  }
+
+  return ordenadas.map((alt, index) => ({
+    id: alt.id,
+    questaoId: alt.questaoId,
+    texto: alt.texto,
+    ordem: alt.ordem,
+    correta: index === corretaIndex,
+  }));
+};
+
 const mapAvaliacao = (avaliacao: AvaliacaoWithQuestoes) => {
   const cursoRelacionado = avaliacao.CursosTurmas?.Cursos ?? avaliacao.Cursos ?? null;
   let modalidadeAvaliacao = mapModalidadeFromDB(avaliacao.modalidade) ?? null;
@@ -136,16 +169,10 @@ const mapAvaliacao = (avaliacao: AvaliacaoWithQuestoes) => {
       ordem: questao.ordem,
       peso: questao.peso ? normalizeDecimal(questao.peso) : null,
       obrigatoria: questao.obrigatoria,
-      alternativas:
-        questao.tipo === CursosTipoQuestao.MULTIPLA_ESCOLHA
-          ? questao.CursosTurmasProvasQuestoesAlternativas.map((alt) => ({
-              id: alt.id,
-              questaoId: alt.questaoId,
-              texto: alt.texto,
-              ordem: alt.ordem,
-              correta: alt.correta,
-            }))
-          : undefined,
+      alternativas: mapAlternativasNormalizadas(
+        questao.tipo,
+        questao.CursosTurmasProvasQuestoesAlternativas,
+      ),
     })),
   };
 };
@@ -587,6 +614,69 @@ export const avaliacoesService = {
     return avaliacao;
   },
 
+  async getQuestoes(avaliacaoId: string, usuarioLogado: any) {
+    const avaliacao = await prisma.cursosTurmasProvas.findUnique({
+      where: { id: avaliacaoId },
+      select: {
+        id: true,
+        tipo: true,
+        tipoAtividade: true,
+        turmaId: true,
+        instrutorId: true,
+        CursosTurmas: { select: { instrutorId: true } },
+      },
+    });
+
+    if (!avaliacao) {
+      const error: any = new Error('Avaliação não encontrada');
+      error.code = 'AVALIACAO_NOT_FOUND';
+      throw error;
+    }
+
+    if (usuarioLogado?.role === 'INSTRUTOR') {
+      if (avaliacao.turmaId) {
+        if (avaliacao.CursosTurmas?.instrutorId !== usuarioLogado.id) {
+          const error: any = new Error('Instrutor só pode acessar avaliações de suas turmas');
+          error.code = 'FORBIDDEN';
+          throw error;
+        }
+      } else if (avaliacao.instrutorId !== usuarioLogado.id) {
+        const error: any = new Error('Instrutor só pode acessar avaliações próprias');
+        error.code = 'FORBIDDEN';
+        throw error;
+      }
+    }
+
+    const questoes = await prisma.cursosTurmasProvasQuestoes.findMany({
+      where: { provaId: avaliacaoId },
+      orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
+      include: {
+        CursosTurmasProvasQuestoesAlternativas: {
+          orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
+        },
+      },
+    });
+
+    return {
+      avaliacaoId: avaliacao.id,
+      tipo: avaliacao.tipo,
+      tipoAtividade: avaliacao.tipoAtividade,
+      questoes: questoes.map((questao) => ({
+        id: questao.id,
+        provaId: questao.provaId,
+        enunciado: questao.enunciado,
+        tipo: questao.tipo,
+        ordem: questao.ordem,
+        peso: questao.peso ? normalizeDecimal(questao.peso) : null,
+        obrigatoria: questao.obrigatoria,
+        alternativas: mapAlternativasNormalizadas(
+          questao.tipo,
+          questao.CursosTurmasProvasQuestoesAlternativas,
+        ),
+      })),
+    };
+  },
+
   async create(data: CreateAvaliacaoInput) {
     return prisma.$transaction(async (tx) => {
       // ✅ Verificar se curso existe (APENAS se cursoId foi fornecido)
@@ -774,6 +864,16 @@ export const avaliacoesService = {
           error.code = 'FORBIDDEN';
           throw error;
         }
+      }
+
+      const isPublicadaComTurma =
+        Boolean(existente.turmaId) && existente.status === CursosAulaStatus.PUBLICADA;
+      if (isPublicadaComTurma) {
+        const error: any = new Error(
+          'Não é possível editar atividade/prova publicada vinculada a turma',
+        );
+        error.code = 'AVALIACAO_PUBLICADA_LOCKED';
+        throw error;
       }
 
       const turmaIdFinal = data.turmaId !== undefined ? data.turmaId : existente.turmaId;

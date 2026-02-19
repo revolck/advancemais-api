@@ -4,12 +4,18 @@ import { ZodError } from 'zod';
 import { prisma } from '@/config/prisma';
 
 import { avaliacoesService } from '../services/avaliacoes.service';
+import { avaliacoesRespostasService } from '../services/avaliacoes-respostas.service';
 import {
   clonarAvaliacaoSchema,
   createAvaliacaoSchema,
   listAvaliacoesQuerySchema,
   putUpdateAvaliacaoSchema,
 } from '../validators/avaliacoes.schema';
+import {
+  corrigirAvaliacaoRespostaSchema,
+  listAvaliacaoHistoricoQuerySchema,
+  listAvaliacaoRespostasQuerySchema,
+} from '../validators/avaliacoes-respostas.schema';
 
 const parseUuid = (raw: unknown) => {
   if (typeof raw !== 'string' || raw.trim().length === 0) return null;
@@ -61,7 +67,7 @@ export class AvaliacoesController {
     try {
       const usuarioLogado = req.user!;
       const avaliacao = await avaliacoesService.get(id, usuarioLogado);
-      res.json({ success: true, avaliacao });
+      res.json({ success: true, data: avaliacao, avaliacao });
     } catch (error: any) {
       if (error?.code === 'AVALIACAO_NOT_FOUND') {
         return res.status(404).json({
@@ -83,6 +89,273 @@ export class AvaliacoesController {
         success: false,
         code: 'AVALIACAO_GET_ERROR',
         message: 'Erro ao buscar avaliação',
+        error: error?.message,
+      });
+    }
+  };
+
+  static listQuestoes = async (req: Request, res: Response) => {
+    const id = parseUuid(req.params.id);
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificador de avaliação inválido',
+      });
+    }
+
+    try {
+      const usuarioLogado = req.user!;
+      const result = await avaliacoesService.getQuestoes(id, usuarioLogado);
+      res.json({ success: true, data: result.questoes });
+    } catch (error: any) {
+      if (error?.code === 'AVALIACAO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'AVALIACAO_NOT_FOUND',
+          message: 'Avaliação não encontrada',
+        });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para acessar esta avaliação',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'AVALIACAO_QUESTOES_LIST_ERROR',
+        message: 'Erro ao listar questões da avaliação',
+        error: error?.message,
+      });
+    }
+  };
+
+  static listRespostas = async (req: Request, res: Response) => {
+    const avaliacaoId = parseUuid(req.params.avaliacaoId);
+
+    if (!avaliacaoId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificador de avaliação inválido',
+      });
+    }
+
+    try {
+      const query = listAvaliacaoRespostasQuerySchema.parse(req.query);
+      const usuarioLogado = req.user!;
+      const result = await avaliacoesRespostasService.list(avaliacaoId, query, usuarioLogado);
+      res.json(result);
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos para listagem de respostas',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'AVALIACAO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'AVALIACAO_NOT_FOUND',
+          message: 'Avaliação não encontrada',
+        });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para acessar esta avaliação',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'AVALIACAO_RESPOSTAS_LIST_ERROR',
+        message: 'Erro ao listar respostas da avaliação',
+        error: error?.message,
+      });
+    }
+  };
+
+  static listHistorico = async (req: Request, res: Response) => {
+    try {
+      const query = listAvaliacaoHistoricoQuerySchema.parse(req.query);
+      const usuarioLogado = req.user!;
+      const result = await avaliacoesRespostasService.listHistorico(query, usuarioLogado);
+      res.json(result);
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos para listagem de histórico da avaliação',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'AVALIACAO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'AVALIACAO_NOT_FOUND',
+          message: 'Avaliação não encontrada',
+        });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para acessar esta avaliação',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'AVALIACAO_HISTORICO_LIST_ERROR',
+        message: 'Erro ao listar histórico da avaliação',
+        error: error?.message,
+      });
+    }
+  };
+
+  static getResposta = async (req: Request, res: Response) => {
+    const avaliacaoId = parseUuid(req.params.avaliacaoId);
+    const respostaId = parseUuid(req.params.respostaId);
+
+    if (!avaliacaoId || !respostaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificadores de avaliação ou resposta inválidos',
+      });
+    }
+
+    try {
+      const usuarioLogado = req.user!;
+      const result = await avaliacoesRespostasService.get(avaliacaoId, respostaId, usuarioLogado);
+      res.json(result);
+    } catch (error: any) {
+      if (error?.code === 'AVALIACAO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'AVALIACAO_NOT_FOUND',
+          message: 'Avaliação não encontrada',
+        });
+      }
+
+      if (error?.code === 'RESPOSTA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'RESPOSTA_NOT_FOUND',
+          message: 'Resposta não encontrada para a avaliação informada',
+        });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para acessar esta avaliação',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'AVALIACAO_RESPOSTA_GET_ERROR',
+        message: 'Erro ao buscar detalhe da resposta',
+        error: error?.message,
+      });
+    }
+  };
+
+  static corrigirResposta = async (req: Request, res: Response) => {
+    const avaliacaoId = parseUuid(req.params.avaliacaoId);
+    const respostaId = parseUuid(req.params.respostaId);
+
+    if (!avaliacaoId || !respostaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificadores de avaliação ou resposta inválidos',
+      });
+    }
+
+    try {
+      const payload = corrigirAvaliacaoRespostaSchema.parse(req.body);
+      const usuarioLogado = req.user!;
+      const ip = req.ip || req.socket.remoteAddress || undefined;
+      const userAgent = req.get('user-agent') || undefined;
+
+      const result = await avaliacoesRespostasService.corrigir(
+        avaliacaoId,
+        respostaId,
+        payload,
+        usuarioLogado,
+        { ip, userAgent },
+      );
+      res.json(result);
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Dados inválidos para correção da resposta',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'AVALIACAO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'AVALIACAO_NOT_FOUND',
+          message: 'Avaliação não encontrada',
+        });
+      }
+
+      if (error?.code === 'RESPOSTA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'RESPOSTA_NOT_FOUND',
+          message: 'Resposta não encontrada para a avaliação informada',
+        });
+      }
+
+      if (error?.code === 'VALIDATION_ERROR') {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: error?.message || 'Erro de validação da correção',
+        });
+      }
+
+      if (error?.code === 'PROVA_AUTO_CORRECAO') {
+        return res.status(400).json({
+          success: false,
+          code: 'PROVA_AUTO_CORRECAO',
+          message: error?.message,
+        });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para corrigir esta resposta',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'AVALIACAO_RESPOSTA_CORRECAO_ERROR',
+        message: 'Erro ao corrigir resposta da avaliação',
         error: error?.message,
       });
     }
@@ -263,6 +536,15 @@ export class AvaliacoesController {
           success: false,
           code: 'FORBIDDEN',
           message: error?.message || 'Sem permissão para editar esta avaliação',
+        });
+      }
+
+      if (error?.code === 'AVALIACAO_PUBLICADA_LOCKED') {
+        return res.status(409).json({
+          success: false,
+          code: 'AVALIACAO_PUBLICADA_LOCKED',
+          message:
+            error?.message || 'Não é possível editar atividade/prova publicada vinculada a turma',
         });
       }
 

@@ -67,6 +67,14 @@ export class QuestoesController {
         });
       }
 
+      if (error?.code === 'PROVA_PUBLICADA_LOCKED') {
+        return res.status(409).json({
+          success: false,
+          code: 'PROVA_PUBLICADA_LOCKED',
+          message: error.message,
+        });
+      }
+
       res.status(500).json({
         success: false,
         code: 'QUESTOES_LIST_ERROR',
@@ -204,6 +212,14 @@ export class QuestoesController {
         });
       }
 
+      if (error?.code === 'PROVA_PUBLICADA_LOCKED') {
+        return res.status(409).json({
+          success: false,
+          code: 'PROVA_PUBLICADA_LOCKED',
+          message: error.message,
+        });
+      }
+
       res.status(500).json({
         success: false,
         code: 'QUESTAO_UPDATE_ERROR',
@@ -239,6 +255,14 @@ export class QuestoesController {
         return res.status(404).json({
           success: false,
           code: error.code,
+          message: error.message,
+        });
+      }
+
+      if (error?.code === 'PROVA_PUBLICADA_LOCKED') {
+        return res.status(409).json({
+          success: false,
+          code: 'PROVA_PUBLICADA_LOCKED',
           message: error.message,
         });
       }
@@ -285,6 +309,11 @@ export class QuestoesController {
         questaoId,
         inscricaoId,
         data,
+        {
+          usuarioId: req.user?.id,
+          ip: req.ip || req.socket.remoteAddress || undefined,
+          userAgent: req.get('user-agent') || undefined,
+        },
       );
       res.status(200).json(resposta);
     } catch (error: any) {

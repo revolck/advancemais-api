@@ -113,10 +113,40 @@ router.post(
   AvaliacoesController.create,
 );
 router.get(
+  '/avaliacoes/historico',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  cursosAvaliacoesGetResponseCache,
+  AvaliacoesController.listHistorico,
+);
+router.get(
+  '/avaliacoes/:id/questoes',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  cursosAvaliacoesGetResponseCache,
+  AvaliacoesController.listQuestoes,
+);
+router.get(
   '/avaliacoes/:id',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   cursosAvaliacoesGetResponseCache,
   AvaliacoesController.get,
+);
+router.get(
+  '/avaliacoes/:avaliacaoId/respostas',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  cursosAvaliacoesGetResponseCache,
+  AvaliacoesController.listRespostas,
+);
+router.get(
+  '/avaliacoes/:avaliacaoId/respostas/:respostaId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  cursosAvaliacoesGetResponseCache,
+  AvaliacoesController.getResposta,
+);
+router.patch(
+  '/avaliacoes/:avaliacaoId/respostas/:respostaId/correcao',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  cursosAvaliacoesInvalidateCacheOnMutation,
+  AvaliacoesController.corrigirResposta,
 );
 router.put(
   '/avaliacoes/:id',
@@ -4593,6 +4623,7 @@ router.get(
 router.put(
   '/:cursoId/turmas/:turmaId/provas/:provaId/notas',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  cursosAvaliacoesInvalidateCacheOnMutation,
   ProvasController.registrarNota,
 );
 
@@ -4811,6 +4842,7 @@ router.delete(
 router.put(
   '/:cursoId/turmas/:turmaId/provas/:provaId/questoes/:questaoId/responder',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  cursosAvaliacoesInvalidateCacheOnMutation,
   QuestoesController.responder,
 );
 
@@ -4846,6 +4878,7 @@ router.put(
 router.put(
   '/:cursoId/turmas/:turmaId/provas/:provaId/questoes/:questaoId/corrigir',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  cursosAvaliacoesInvalidateCacheOnMutation,
   QuestoesController.corrigir,
 );
 

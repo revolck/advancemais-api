@@ -22,6 +22,7 @@ describe('API - Provas - Fallback para templates no GET por turma', () => {
   let templateGlobalId: string;
   let templateCursoAId: string;
   let templateCursoBId: string;
+  let provaTurmaAId: string;
   let provaTurmaBId: string;
 
   beforeAll(async () => {
@@ -79,62 +80,79 @@ describe('API - Provas - Fallback para templates no GET por turma', () => {
     turmaAId = turmaA.id;
     turmaBId = turmaB.id;
 
-    const [templateGlobal, templateCursoA, templateCursoB, provaTurmaB] = await Promise.all([
-      prisma.cursosTurmasProvas.create({
-        data: {
-          cursoId: null,
-          turmaId: null,
-          titulo: `Template global ${suffix}`,
-          etiqueta: `TG-${suffix}`,
-          tipo: 'ATIVIDADE',
-          peso: new Prisma.Decimal(1),
-          ativo: true,
-        },
-      }),
-      prisma.cursosTurmasProvas.create({
-        data: {
-          cursoId: cursoAId,
-          turmaId: null,
-          titulo: `Template curso A ${suffix}`,
-          etiqueta: `TA-${suffix}`,
-          tipo: 'PROVA',
-          peso: new Prisma.Decimal(2),
-          ativo: true,
-        },
-      }),
-      prisma.cursosTurmasProvas.create({
-        data: {
-          cursoId: cursoBId,
-          turmaId: null,
-          titulo: `Template curso B ${suffix}`,
-          etiqueta: `TB-${suffix}`,
-          tipo: 'PROVA',
-          peso: new Prisma.Decimal(2),
-          ativo: true,
-        },
-      }),
-      prisma.cursosTurmasProvas.create({
-        data: {
-          cursoId: cursoBId,
-          turmaId: turmaBId,
-          titulo: `Prova turma B ${suffix}`,
-          etiqueta: `PB-${suffix}`,
-          tipo: 'PROVA',
-          peso: new Prisma.Decimal(3),
-          ativo: true,
-        },
-      }),
-    ]);
+    const [templateGlobal, templateCursoA, templateCursoB, provaTurmaA, provaTurmaB] =
+      await Promise.all([
+        prisma.cursosTurmasProvas.create({
+          data: {
+            cursoId: null,
+            turmaId: null,
+            titulo: `Template global ${suffix}`,
+            etiqueta: `TG-${suffix}`,
+            tipo: 'ATIVIDADE',
+            peso: new Prisma.Decimal(1),
+            ativo: true,
+          },
+        }),
+        prisma.cursosTurmasProvas.create({
+          data: {
+            cursoId: cursoAId,
+            turmaId: null,
+            titulo: `Template curso A ${suffix}`,
+            etiqueta: `TA-${suffix}`,
+            tipo: 'PROVA',
+            peso: new Prisma.Decimal(2),
+            ativo: true,
+          },
+        }),
+        prisma.cursosTurmasProvas.create({
+          data: {
+            cursoId: cursoBId,
+            turmaId: null,
+            titulo: `Template curso B ${suffix}`,
+            etiqueta: `TB-${suffix}`,
+            tipo: 'PROVA',
+            peso: new Prisma.Decimal(2),
+            ativo: true,
+          },
+        }),
+        prisma.cursosTurmasProvas.create({
+          data: {
+            cursoId: cursoAId,
+            turmaId: turmaAId,
+            titulo: `Prova turma A ${suffix}`,
+            etiqueta: `PA-${suffix}`,
+            tipo: 'PROVA',
+            peso: new Prisma.Decimal(3),
+            ativo: true,
+          },
+        }),
+        prisma.cursosTurmasProvas.create({
+          data: {
+            cursoId: cursoBId,
+            turmaId: turmaBId,
+            titulo: `Prova turma B ${suffix}`,
+            etiqueta: `PB-${suffix}`,
+            tipo: 'PROVA',
+            peso: new Prisma.Decimal(3),
+            ativo: true,
+          },
+        }),
+      ]);
 
     templateGlobalId = templateGlobal.id;
     templateCursoAId = templateCursoA.id;
     templateCursoBId = templateCursoB.id;
+    provaTurmaAId = provaTurmaA.id;
     provaTurmaBId = provaTurmaB.id;
   });
 
   afterAll(async () => {
     await prisma.cursosTurmasProvas.deleteMany({
-      where: { id: { in: [templateGlobalId, templateCursoAId, templateCursoBId, provaTurmaBId] } },
+      where: {
+        id: {
+          in: [templateGlobalId, templateCursoAId, templateCursoBId, provaTurmaAId, provaTurmaBId],
+        },
+      },
     });
     await prisma.cursosTurmas.deleteMany({ where: { id: { in: [turmaAId, turmaBId] } } });
     await prisma.cursos.deleteMany({ where: { id: { in: [cursoAId, cursoBId] } } });
@@ -182,5 +200,27 @@ describe('API - Provas - Fallback para templates no GET por turma', () => {
       .expect(404);
 
     expect(response.body).toHaveProperty('code', 'PROVA_NOT_FOUND');
+  });
+
+  it('deve aceitar cursoId inválido (NaN) e buscar pela turma/prova', async () => {
+    const response = await request(app)
+      .get(`/api/v1/cursos/NaN/turmas/${turmaAId}/provas/${provaTurmaAId}`)
+      .set('Authorization', `Bearer ${testAdmin.token}`)
+      .expect(200);
+
+    expect(response.body).toHaveProperty('id', provaTurmaAId);
+    expect(response.body).toHaveProperty('turmaId', turmaAId);
+    expect(response.body).toHaveProperty('cursoId', cursoAId);
+  });
+
+  it('deve aceitar cursoId inválido (NaN) e resolver template global', async () => {
+    const response = await request(app)
+      .get(`/api/v1/cursos/NaN/turmas/${turmaAId}/provas/${templateGlobalId}`)
+      .set('Authorization', `Bearer ${testAdmin.token}`)
+      .expect(200);
+
+    expect(response.body).toHaveProperty('id', templateGlobalId);
+    expect(response.body).toHaveProperty('turmaId', null);
+    expect(response.body).toHaveProperty('cursoId', null);
   });
 });

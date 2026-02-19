@@ -31,6 +31,7 @@
     "prisma:fix:migration": "ts-node --transpile-only -r tsconfig-paths/register scripts/fix-migration-state.ts",
     "prisma:studio": "prisma studio",
     "seed": "ts-node -r tsconfig-paths/register prisma/seed.ts",
+    "seed:avaliacoes:submissoes": "ts-node --transpile-only -r tsconfig-paths/register scripts/seed-avaliacoes-submissoes.ts",
     "prisma:seed": "pnpm run seed",
     "db:setup": "pnpm run prisma:push && pnpm run prisma:generate",
     "lint": "eslint . --ext .ts",

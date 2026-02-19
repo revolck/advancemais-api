@@ -92,24 +92,30 @@ export class ProvasController {
     const turmaId = parseTurmaId(req.params.turmaId);
     const provaId = parseProvaId(req.params.provaId);
 
-    if (!cursoId || !turmaId || !provaId) {
+    if (!turmaId || !provaId) {
       return res.status(400).json({
         success: false,
         code: 'VALIDATION_ERROR',
-        message: 'Identificadores de curso, turma ou prova inválidos',
+        message: 'Identificadores de turma ou prova inválidos',
       });
     }
 
     try {
-      const prova = await provasService.get(cursoId, turmaId, provaId);
+      const prova = cursoId
+        ? await provasService.get(cursoId, turmaId, provaId)
+        : await provasService.getByTurma(turmaId, provaId);
       res.json(prova);
     } catch (error: any) {
       if (error?.code === 'PROVA_NOT_FOUND') {
         try {
-          const template = await provasService.getTemplateForCurso(cursoId, provaId);
+          const cursoParaTemplate = cursoId ?? (await provasService.getCursoIdByTurma(turmaId));
+          const template = await provasService.getTemplateForCurso(cursoParaTemplate, provaId);
           return res.json(template);
         } catch (templateError: any) {
-          if (templateError?.code !== 'PROVA_NOT_FOUND') {
+          if (
+            templateError?.code !== 'PROVA_NOT_FOUND' &&
+            templateError?.code !== 'TURMA_NOT_FOUND'
+          ) {
             return res.status(500).json({
               success: false,
               code: 'PROVA_GET_ERROR',
@@ -183,6 +189,14 @@ export class ProvasController {
         });
       }
 
+      if (error?.code === 'PROVA_PUBLICADA_LOCKED') {
+        return res.status(409).json({
+          success: false,
+          code: 'PROVA_PUBLICADA_LOCKED',
+          message: error?.message || 'Não é possível editar prova publicada vinculada a turma',
+        });
+      }
+
       res.status(500).json({
         success: false,
         code: 'PROVA_CREATE_ERROR',
@@ -241,6 +255,14 @@ export class ProvasController {
           success: false,
           code: 'MODULO_NOT_FOUND',
           message: 'Módulo não encontrado para a turma informada',
+        });
+      }
+
+      if (error?.code === 'PROVA_PUBLICADA_LOCKED') {
+        return res.status(409).json({
+          success: false,
+          code: 'PROVA_PUBLICADA_LOCKED',
+          message: error?.message || 'Não é possível editar prova publicada vinculada a turma',
         });
       }
 

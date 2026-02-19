@@ -6,11 +6,14 @@ Reduzir latência percebida no fluxo de avaliações em:
 
 - `GET /api/v1/cursos/avaliacoes`
 - `GET /api/v1/cursos/avaliacoes/:id`
+- `GET /api/v1/cursos/avaliacoes/:id/questoes`
 - `POST /api/v1/cursos/avaliacoes`
 - `PUT /api/v1/cursos/avaliacoes/:id`
 - `DELETE /api/v1/cursos/avaliacoes/:id`
 - `GET /api/v1/cursos/avaliacoes/instrutores`
 - `GET /api/v1/cursos/avaliacoes/turmas`
+- `GET /api/v1/cursos/avaliacoes/:avaliacaoId/respostas`
+- `GET /api/v1/cursos/avaliacoes/:avaliacaoId/respostas/:respostaId`
 
 ## Melhorias aplicadas no backend
 

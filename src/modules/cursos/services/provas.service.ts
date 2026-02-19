@@ -1,10 +1,21 @@
-import { Prisma, CursosLocalProva, CursosNotasTipo, AuditoriaCategoria } from '@prisma/client';
+import {
+  Prisma,
+  CursosLocalProva,
+  CursosNotasTipo,
+  AuditoriaCategoria,
+  CursosAulaStatus,
+} from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import { auditoriaService } from '@/modules/auditoria/services/auditoria.service';
 
-import { mapProva, provaDefaultInclude, provaWithEnviosInclude } from './provas.mapper';
+import {
+  mapProva,
+  provaDefaultInclude,
+  provaWithEnviosInclude,
+  provaWithEnviosAndQuestoesInclude,
+} from './provas.mapper';
 
 type PrismaClientOrTx = Prisma.TransactionClient | typeof prisma;
 
@@ -49,9 +60,33 @@ const ensureProvaBelongsToTurma = async (
   cursoId: string,
   turmaId: string,
   provaId: string,
+  options?: { forEdit?: boolean },
 ): Promise<void> => {
   const prova = await client.cursosTurmasProvas.findFirst({
     where: { id: provaId, turmaId, CursosTurmas: { cursoId } },
+    select: { id: true, status: true, turmaId: true },
+  });
+
+  if (!prova) {
+    const error = new Error('Prova não encontrada para a turma informada');
+    (error as any).code = 'PROVA_NOT_FOUND';
+    throw error;
+  }
+
+  if (options?.forEdit && prova.turmaId && prova.status === CursosAulaStatus.PUBLICADA) {
+    const error = new Error('Não é possível editar prova publicada vinculada a turma');
+    (error as any).code = 'PROVA_PUBLICADA_LOCKED';
+    throw error;
+  }
+};
+
+const ensureProvaBelongsToTurmaIgnoringCurso = async (
+  client: PrismaClientOrTx,
+  turmaId: string,
+  provaId: string,
+): Promise<void> => {
+  const prova = await client.cursosTurmasProvas.findFirst({
+    where: { id: provaId, turmaId },
     select: { id: true },
   });
 
@@ -110,7 +145,7 @@ const fetchCriadorInfo = async (provaId: string) => {
 const fetchTemplate = async (client: PrismaClientOrTx, provaId: string) => {
   const prova = await client.cursosTurmasProvas.findUnique({
     where: { id: provaId },
-    ...provaWithEnviosInclude,
+    ...provaWithEnviosAndQuestoesInclude,
   });
 
   if (!prova || prova.turmaId) {
@@ -127,7 +162,7 @@ const fetchTemplate = async (client: PrismaClientOrTx, provaId: string) => {
 const fetchProva = async (client: PrismaClientOrTx, provaId: string) => {
   const prova = await client.cursosTurmasProvas.findUnique({
     where: { id: provaId },
-    ...provaWithEnviosInclude,
+    ...provaWithEnviosAndQuestoesInclude,
   });
 
   if (!prova) {
@@ -260,6 +295,26 @@ export const provasService = {
     return fetchProva(prisma, provaId);
   },
 
+  async getByTurma(turmaId: string, provaId: string) {
+    await ensureProvaBelongsToTurmaIgnoringCurso(prisma, turmaId, provaId);
+    return fetchProva(prisma, provaId);
+  },
+
+  async getCursoIdByTurma(turmaId: string) {
+    const turma = await prisma.cursosTurmas.findUnique({
+      where: { id: turmaId },
+      select: { cursoId: true },
+    });
+
+    if (!turma) {
+      const error = new Error('Turma não encontrada');
+      (error as any).code = 'TURMA_NOT_FOUND';
+      throw error;
+    }
+
+    return turma.cursoId;
+  },
+
   async getTemplateForCurso(cursoId: string, provaId: string) {
     let template: Awaited<ReturnType<typeof fetchTemplate>>;
     try {
@@ -388,7 +443,7 @@ export const provasService = {
     },
   ) {
     return prisma.$transaction(async (tx) => {
-      await ensureProvaBelongsToTurma(tx, cursoId, turmaId, provaId);
+      await ensureProvaBelongsToTurma(tx, cursoId, turmaId, provaId, { forEdit: true });
 
       if (data.moduloId) {
         await ensureModuloBelongsToTurma(tx, turmaId, data.moduloId);

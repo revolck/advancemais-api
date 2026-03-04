@@ -739,6 +739,7 @@ const mapCourse = async (course: RawCourse) => {
     codigo: course.codigo,
     nome: course.nome,
     descricao: course.descricao ?? null,
+    conteudoProgramatico: course.conteudoProgramatico ?? null,
     imagemUrl: course.imagemUrl ?? null,
     cargaHoraria: course.cargaHoraria,
     estagioObrigatorio: course.estagioObrigatorio,
@@ -848,6 +849,7 @@ const mapPublicCourse = (
     codigo: course.codigo,
     nome: course.nome,
     descricao: course.descricao ?? null,
+    conteudoProgramatico: course.conteudoProgramatico ?? null,
     imagemUrl: course.imagemUrl ?? null,
     cargaHoraria: course.cargaHoraria,
     estagioObrigatorio: course.estagioObrigatorio,
@@ -1080,6 +1082,7 @@ export const cursosService = {
           codigo: course.codigo,
           nome: course.nome,
           descricao: course.descricao ?? null,
+          conteudoProgramatico: course.conteudoProgramatico ?? null,
           imagemUrl: course.imagemUrl ?? null,
           cargaHoraria: course.cargaHoraria,
           estagioObrigatorio: course.estagioObrigatorio,
@@ -1123,6 +1126,7 @@ export const cursosService = {
           codigo: course.codigo,
           nome: course.nome,
           descricao: course.descricao ?? null,
+          conteudoProgramatico: course.conteudoProgramatico ?? null,
           imagemUrl: course.imagemUrl ?? null,
           cargaHoraria: course.cargaHoraria,
           estagioObrigatorio: course.estagioObrigatorio,
@@ -1261,6 +1265,7 @@ export const cursosService = {
         codigo: true,
         nome: true,
         descricao: true,
+        conteudoProgramatico: true,
         imagemUrl: true,
         cargaHoraria: true,
         estagioObrigatorio: true,
@@ -1295,6 +1300,7 @@ export const cursosService = {
         codigo: curso.codigo,
         nome: curso.nome,
         descricao: curso.descricao,
+        conteudoProgramatico: curso.conteudoProgramatico ?? null,
         imagemUrl: curso.imagemUrl ?? null,
         cargaHoraria: curso.cargaHoraria,
         estagioObrigatorio: curso.estagioObrigatorio,
@@ -1412,6 +1418,7 @@ export const cursosService = {
     data: {
       nome: string;
       descricao?: string | null;
+      conteudoProgramatico?: string | null;
       imagemUrl?: string | null;
       cargaHoraria: number;
       categoriaId?: number | null;
@@ -1442,6 +1449,7 @@ export const cursosService = {
         data: {
           nome: data.nome,
           descricao: data.descricao ?? null,
+          conteudoProgramatico: data.conteudoProgramatico ?? null,
           imagemUrl: data.imagemUrl ?? null,
           cargaHoraria: data.cargaHoraria,
           categoriaId: data.categoriaId ?? null,
@@ -1490,6 +1498,7 @@ export const cursosService = {
     data: Partial<{
       nome: string;
       descricao?: string | null;
+      conteudoProgramatico?: string | null;
       imagemUrl?: string | null;
       cargaHoraria: number;
       categoriaId?: number | null;
@@ -1510,6 +1519,7 @@ export const cursosService = {
         select: {
           nome: true,
           descricao: true,
+          conteudoProgramatico: true,
           imagemUrl: true,
           cargaHoraria: true,
           categoriaId: true,
@@ -1528,6 +1538,8 @@ export const cursosService = {
 
       if (data.nome !== undefined) updateData.nome = data.nome;
       if (data.descricao !== undefined) updateData.descricao = data.descricao;
+      if (data.conteudoProgramatico !== undefined)
+        updateData.conteudoProgramatico = data.conteudoProgramatico;
       if (data.imagemUrl !== undefined) updateData.imagemUrl = data.imagemUrl;
       if (data.cargaHoraria !== undefined) updateData.cargaHoraria = data.cargaHoraria;
       if (data.categoriaId !== undefined) updateData.categoriaId = data.categoriaId;

@@ -6,6 +6,7 @@ import { adminEmpresasService } from '@/modules/empresas/admin/services/admin-em
 import {
   adminEmpresasBloqueioSchema,
   adminEmpresasCreateSchema,
+  adminEmpresasDetailQuerySchema,
   adminEmpresasDashboardListQuerySchema,
   adminEmpresasHistoryQuerySchema,
   adminEmpresasIdParamSchema,
@@ -359,7 +360,10 @@ export class AdminEmpresasController {
   static list = async (req: Request, res: Response) => {
     try {
       const filters = adminEmpresasListQuerySchema.parse(req.query);
-      const result = await adminEmpresasService.list(filters);
+      const result =
+        filters.context === 'AUTOFILL'
+          ? await adminEmpresasService.listAutofill(filters)
+          : await adminEmpresasService.list(filters);
       res.json(result);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -485,7 +489,11 @@ export class AdminEmpresasController {
   static get = async (req: Request, res: Response) => {
     try {
       const params = adminEmpresasIdParamSchema.parse(req.params);
-      const overview = await adminEmpresasService.getFullOverview(params.id);
+      const query = adminEmpresasDetailQuerySchema.parse(req.query);
+      const overview =
+        query.context === 'AUTOFILL'
+          ? await adminEmpresasService.getAutofill(params.id)
+          : await adminEmpresasService.getFullOverview(params.id);
 
       if (!overview) {
         return res.status(404).json({

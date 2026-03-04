@@ -3,6 +3,20 @@ import { Prisma } from '@prisma/client';
 export const frequenciaWithRelations = Prisma.validator<Prisma.CursosFrequenciaAlunosDefaultArgs>()(
   {
     include: {
+      CursosTurmas: {
+        select: {
+          id: true,
+          nome: true,
+          codigo: true,
+          cursoId: true,
+          Cursos: {
+            select: {
+              id: true,
+              nome: true,
+            },
+          },
+        },
+      },
       CursosTurmasInscricoes: {
         select: {
           id: true,
@@ -47,7 +61,11 @@ export type FrequenciaWithRelations = Prisma.CursosFrequenciaAlunosGetPayload<
 
 export const mapFrequencia = (frequencia: FrequenciaWithRelations) => ({
   id: frequencia.id,
+  cursoId: frequencia.CursosTurmas?.cursoId ?? null,
+  cursoNome: frequencia.CursosTurmas?.Cursos?.nome ?? null,
   turmaId: frequencia.turmaId,
+  turmaNome: frequencia.CursosTurmas?.nome ?? null,
+  turmaCodigo: frequencia.CursosTurmas?.codigo ?? null,
   inscricaoId: frequencia.inscricaoId,
   aulaId: frequencia.aulaId,
   dataReferencia: frequencia.dataReferencia.toISOString(),
@@ -56,6 +74,19 @@ export const mapFrequencia = (frequencia: FrequenciaWithRelations) => ({
   observacoes: frequencia.observacoes ?? null,
   criadoEm: frequencia.criadoEm.toISOString(),
   atualizadoEm: frequencia.atualizadoEm.toISOString(),
+  curso: frequencia.CursosTurmas?.Cursos
+    ? {
+        id: frequencia.CursosTurmas.Cursos.id,
+        nome: frequencia.CursosTurmas.Cursos.nome,
+      }
+    : null,
+  turma: frequencia.CursosTurmas
+    ? {
+        id: frequencia.CursosTurmas.id,
+        nome: frequencia.CursosTurmas.nome,
+        codigo: frequencia.CursosTurmas.codigo,
+      }
+    : null,
   aula: frequencia.CursosTurmasAulas
     ? {
         id: frequencia.CursosTurmasAulas.id,

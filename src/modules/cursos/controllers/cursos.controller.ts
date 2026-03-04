@@ -51,6 +51,19 @@ const normalizeDescricao = (value: unknown) => {
   return undefined;
 };
 
+const normalizeConteudoProgramatico = (value: unknown) => {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  if (value === null) {
+    return null;
+  }
+
+  return undefined;
+};
+
 const resolveTtl = (value: string | undefined, fallback: number) => {
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
@@ -495,6 +508,7 @@ export class CursosController {
         {
           ...data,
           descricao: normalizeDescricao(data.descricao),
+          conteudoProgramatico: normalizeConteudoProgramatico(data.conteudoProgramatico),
         },
         userId,
         ip,
@@ -568,6 +582,7 @@ export class CursosController {
         {
           ...data,
           descricao: normalizeDescricao(data.descricao),
+          conteudoProgramatico: normalizeConteudoProgramatico(data.conteudoProgramatico),
         },
         userId,
         ip,

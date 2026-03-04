@@ -33,6 +33,7 @@ import { EmailService } from '@/modules/brevo/services/email-service';
 import { EmailTemplates } from '@/modules/brevo/templates/email-templates';
 import { attachEnderecoResumo } from '@/modules/usuarios/utils/address';
 import type { UsuarioEnderecoDto } from '@/modules/usuarios/utils/address';
+import { getCachedOrFetch } from '@/utils/cache';
 import {
   mapUsuarioInformacoes,
   mergeUsuarioInformacoes,
@@ -147,6 +148,7 @@ const createUsuarioListSelect = () =>
     codUsuario: true,
     nomeCompleto: true,
     email: true,
+    tipoUsuario: true,
     cnpj: true,
     criadoEm: true,
     status: true,
@@ -218,6 +220,34 @@ const createUsuarioDashboardSelect = () =>
             status: StatusDeVagas.PUBLICADO,
           },
         },
+      },
+    },
+  }) satisfies Prisma.UsuariosSelect;
+
+const createUsuarioAutofillSelect = () =>
+  ({
+    id: true,
+    codUsuario: true,
+    nomeCompleto: true,
+    email: true,
+    tipoUsuario: true,
+    cnpj: true,
+    UsuariosInformation: {
+      select: {
+        telefone: true,
+        avatarUrl: true,
+      },
+    },
+    UsuariosEnderecos: {
+      orderBy: { criadoEm: 'asc' },
+      select: {
+        id: true,
+        logradouro: true,
+        numero: true,
+        bairro: true,
+        cidade: true,
+        estado: true,
+        cep: true,
       },
     },
   }) satisfies Prisma.UsuariosSelect;
@@ -323,6 +353,8 @@ const vagaSelect = {
 
 type UsuarioListSelect = ReturnType<typeof createUsuarioListSelect>;
 type UsuarioListResult = Prisma.UsuariosGetPayload<{ select: UsuarioListSelect }>;
+type UsuarioAutofillSelect = ReturnType<typeof createUsuarioAutofillSelect>;
+type UsuarioAutofillResult = Prisma.UsuariosGetPayload<{ select: UsuarioAutofillSelect }>;
 type PlanoResumoData = UsuarioListResult['EmpresasPlano'][number];
 type PlanoHistoricoRecord = Prisma.EmpresasPlanoGetPayload<{ select: typeof planoHistoricoSelect }>;
 type BloqueioResumoData = Prisma.UsuariosEmBloqueiosGetPayload<{
@@ -401,6 +433,7 @@ type AdminEmpresaListItem = {
   cidade: string | null;
   estado: string | null;
   enderecos: UsuarioEnderecoDto[];
+  enderecoPrincipal: UsuarioEnderecoDto | null;
   criadoEm: Date;
   ativa: boolean;
   parceira: boolean;
@@ -411,6 +444,20 @@ type AdminEmpresaListItem = {
   bloqueada: boolean;
   bloqueioAtivo: AdminUsuariosEmBloqueiosResumo | null;
   informacoes: ReturnType<typeof mapUsuarioInformacoes>;
+};
+
+type AdminEmpresaAutofillItem = {
+  id: string;
+  codUsuario: string;
+  nome: string;
+  email: string;
+  telefone: string;
+  avatarUrl: string | null;
+  cnpj: string | null;
+  cidade: string | null;
+  estado: string | null;
+  enderecos: UsuarioEnderecoDto[];
+  enderecoPrincipal: UsuarioEnderecoDto | null;
 };
 
 type AdminEmpresasDashboardListItem = {
@@ -537,6 +584,7 @@ type AdminEmpresaDetail = {
   cidade: string | null;
   estado: string | null;
   enderecos: UsuarioEnderecoDto[];
+  enderecoPrincipal: UsuarioEnderecoDto | null;
   criadoEm: Date;
   status: Status;
   ultimoLogin: Date | null;
@@ -1200,6 +1248,33 @@ const buildPagination = (page: number, pageSize: number, total: number) => ({
   total,
   totalPages: total === 0 ? 0 : Math.ceil(total / pageSize),
 });
+
+const EMPRESAS_AUTOFILL_CACHE_TTL_SECONDS = 120;
+const EMPRESAS_OVERVIEW_CACHE_TTL_SECONDS = 60;
+
+const buildEmpresasAutofillListCacheKey = (page: number, pageSize: number, search?: string) =>
+  `admin:empresas:autofill:list:p${page}:s${pageSize}:q:${(search ?? '').toLowerCase()}`;
+
+const buildEmpresasAutofillDetailCacheKey = (id: string) => `admin:empresas:autofill:detail:${id}`;
+const buildEmpresasOverviewCacheKey = (id: string) => `admin:empresas:overview:${id}`;
+
+const mapEmpresaAutofill = (empresaRaw: UsuarioAutofillResult): AdminEmpresaAutofillItem => {
+  const empresa = attachEnderecoResumo(mergeUsuarioInformacoes(empresaRaw))!;
+
+  return {
+    id: empresa.id,
+    codUsuario: empresa.codUsuario,
+    nome: empresa.nomeCompleto,
+    email: empresa.email,
+    telefone: empresa.telefone ?? '',
+    avatarUrl: empresa.avatarUrl ?? null,
+    cnpj: empresa.cnpj ?? null,
+    cidade: empresa.cidade ?? null,
+    estado: empresa.estado ?? null,
+    enderecos: empresa.enderecos,
+    enderecoPrincipal: empresa.enderecoPrincipal,
+  };
+};
 
 const listPagamentos = async (id: string, { page, pageSize }: AdminEmpresasHistoryQuery) => {
   await ensureEmpresaExiste(prisma, id);
@@ -2223,7 +2298,8 @@ export const adminEmpresasService = {
         cnpj: empresa.cnpj ?? null,
         cidade: empresa.cidade,
         estado: empresa.estado,
-        enderecos: empresa.UsuariosEnderecos,
+        enderecos: empresa.enderecos,
+        enderecoPrincipal: empresa.enderecoPrincipal,
         criadoEm: empresa.criadoEm,
         ativa: empresa.status === Status.ATIVO,
         parceira: Boolean(planoAtual && planoAtual.modo === EmpresasPlanoModo.PARCEIRO),
@@ -2241,6 +2317,39 @@ export const adminEmpresasService = {
       data,
       pagination: buildPagination(page, pageSize, total),
     };
+  },
+
+  listAutofill: async ({ page, pageSize, search }: AdminEmpresasListQuery) => {
+    const cacheKey = buildEmpresasAutofillListCacheKey(page, pageSize, search);
+
+    return getCachedOrFetch(
+      cacheKey,
+      async () => {
+        const where: Prisma.UsuariosWhereInput = {
+          tipoUsuario: TiposDeUsuarios.PESSOA_JURIDICA,
+          ...buildSearchFilter(search),
+        };
+
+        const skip = (page - 1) * pageSize;
+
+        const [total, empresas] = await prisma.$transaction([
+          prisma.usuarios.count({ where }),
+          prisma.usuarios.findMany({
+            where,
+            orderBy: { criadoEm: 'desc' },
+            skip,
+            take: pageSize,
+            select: createUsuarioAutofillSelect(),
+          }),
+        ]);
+
+        return {
+          data: empresas.map(mapEmpresaAutofill),
+          pagination: buildPagination(page, pageSize, total),
+        };
+      },
+      EMPRESAS_AUTOFILL_CACHE_TTL_SECONDS,
+    );
   },
 
   get: async (id: string): Promise<AdminEmpresaDetail | null> => {
@@ -2308,7 +2417,8 @@ export const adminEmpresasService = {
       socialLinks: mapSocialLinks(empresa.redesSociais),
       cidade: empresa.cidade,
       estado: empresa.estado,
-      enderecos: empresa.UsuariosEnderecos,
+      enderecos: empresa.enderecos,
+      enderecoPrincipal: empresa.enderecoPrincipal,
       criadoEm: empresa.criadoEm,
       status: empresa.status,
       ultimoLogin: empresa.ultimoLogin ?? null,
@@ -2333,173 +2443,202 @@ export const adminEmpresasService = {
     };
   },
 
+  getAutofill: async (id: string) => {
+    const cacheKey = buildEmpresasAutofillDetailCacheKey(id);
+
+    return getCachedOrFetch(
+      cacheKey,
+      async () => {
+        const empresaRecord = await prisma.usuarios.findUnique({
+          where: { id },
+          select: createUsuarioAutofillSelect(),
+        });
+
+        if (!empresaRecord) {
+          return null;
+        }
+
+        if (empresaRecord.tipoUsuario !== TiposDeUsuarios.PESSOA_JURIDICA) {
+          return null;
+        }
+
+        return {
+          empresa: mapEmpresaAutofill(empresaRecord),
+        };
+      },
+      EMPRESAS_AUTOFILL_CACHE_TTL_SECONDS,
+    );
+  },
+
   getFullOverview: async (id: string): Promise<AdminEmpresaOverview | null> => {
-    const empresa = await adminEmpresasService.get(id);
+    const cacheKey = buildEmpresasOverviewCacheKey(id);
 
-    if (!empresa) {
-      return null;
-    }
+    return getCachedOrFetch(
+      cacheKey,
+      async () => {
+        const empresa = await adminEmpresasService.get(id);
 
-    const referenceDate = new Date();
+        if (!empresa) {
+          return null;
+        }
 
-    const [
-      planosHistoricoRecords,
-      bloqueiosRecords,
-      vagasStatusCountsRaw,
-      candidaturasStatusCountsRaw,
-    ] = await prisma.$transaction([
-      prisma.empresasPlano.findMany({
-        where: { usuarioId: id },
-        orderBy: [{ inicio: 'desc' }, { criadoEm: 'desc' }],
-        select: planoHistoricoSelect,
-      }),
-      prisma.usuariosEmBloqueios.findMany({
-        where: { usuarioId: id },
-        orderBy: [{ criadoEm: 'desc' }],
-        select: bloqueioSelect,
-      }),
-      prisma.empresasVagas.groupBy({
-        by: ['status'],
-        where: { usuarioId: id },
-        orderBy: { status: 'asc' },
-        _count: { _all: true },
-      }),
-      prisma.empresasCandidatos.groupBy({
-        by: ['statusId'],
-        where: { empresaUsuarioId: id },
-        orderBy: { statusId: 'asc' },
-        _count: { _all: true },
-      }),
-    ]);
+        const referenceDate = new Date();
 
-    const vagasStatusCounts = vagasStatusCountsRaw.map((item) => ({
-      status: item.status,
-      _count: {
-        _all:
-          typeof item._count === 'object' && item._count !== null
-            ? ((item._count as { _all?: number })._all ?? 0)
-            : 0,
+        const [
+          planosHistoricoRecords,
+          bloqueiosRecords,
+          vagasStatusCountsRaw,
+          candidaturasStatusCountsRaw,
+        ] = await prisma.$transaction([
+          prisma.empresasPlano.findMany({
+            where: { usuarioId: id },
+            orderBy: [{ inicio: 'desc' }, { criadoEm: 'desc' }],
+            select: planoHistoricoSelect,
+          }),
+          prisma.usuariosEmBloqueios.findMany({
+            where: { usuarioId: id },
+            orderBy: [{ criadoEm: 'desc' }],
+            select: bloqueioSelect,
+          }),
+          prisma.empresasVagas.groupBy({
+            by: ['status'],
+            where: { usuarioId: id },
+            orderBy: { status: 'asc' },
+            _count: { _all: true },
+          }),
+          prisma.empresasCandidatos.groupBy({
+            by: ['statusId'],
+            where: { empresaUsuarioId: id },
+            orderBy: { statusId: 'asc' },
+            _count: { _all: true },
+          }),
+        ]);
+
+        const vagasStatusCounts = vagasStatusCountsRaw.map((item) => ({
+          status: item.status,
+          _count: {
+            _all:
+              typeof item._count === 'object' && item._count !== null
+                ? ((item._count as { _all?: number })._all ?? 0)
+                : 0,
+          },
+        }));
+
+        const candidaturasStatusCounts = candidaturasStatusCountsRaw.map((item) => ({
+          status: item.statusId,
+          _count: {
+            _all:
+              typeof item._count === 'object' && item._count !== null
+                ? ((item._count as { _all?: number })._all ?? 0)
+                : 0,
+          },
+        }));
+
+        const planosMapeados = planosHistoricoRecords.map((plano) =>
+          mapPlanoHistorico(plano, referenceDate),
+        );
+
+        const planosAtivos = planosMapeados.filter(
+          (plano) =>
+            plano.status === EmpresasPlanoStatus.ATIVO &&
+            (!plano.fim || plano.fim.getTime() > referenceDate.getTime()),
+        );
+
+        const planosHistorico = planosMapeados
+          .filter(
+            (plano) =>
+              plano.status !== EmpresasPlanoStatus.ATIVO ||
+              (plano.fim && plano.fim.getTime() <= referenceDate.getTime()),
+          )
+          .slice(0, 4);
+
+        const bloqueiosHistorico = bloqueiosRecords
+          .map((registro) => mapBloqueioResumo(registro))
+          .filter((bloqueio): bloqueio is AdminUsuariosEmBloqueiosResumo => Boolean(bloqueio));
+
+        const bloqueiosAtivos = bloqueiosHistorico.filter((bloqueio) => {
+          if (bloqueio.bloqueio.status !== StatusDeBloqueios.ATIVO) {
+            return false;
+          }
+
+          const fim = bloqueio.bloqueio.fim;
+          return !fim || fim.getTime() > referenceDate.getTime();
+        });
+
+        const vagasPorStatus = buildStatusCountMap(
+          Object.values(StatusDeVagas) as StatusDeVagas[],
+          vagasStatusCounts,
+        );
+        const totalVagas = Object.values(vagasPorStatus).reduce((acc, value) => acc + value, 0);
+
+        const candidaturasPorStatus = candidaturasStatusCounts.reduce<Record<string, number>>(
+          (acc, item) => {
+            acc[item.status] = item._count._all;
+            return acc;
+          },
+          {},
+        );
+        const totalCandidaturas = Object.values(candidaturasPorStatus).reduce(
+          (acc, value) => acc + value,
+          0,
+        );
+
+        const [pagamentosResumo, vagasResumo, auditoriaResumo] = await Promise.all([
+          listPagamentos(id, { page: 1, pageSize: 20 }),
+          listVagas(id, { page: 1, pageSize: 10 }),
+          empresasAuditoriaService.obterHistoricoAlteracoes(id, 20),
+        ]);
+
+        const {
+          plano: _plano,
+          vagas: _vagas,
+          pagamento: _pagamento,
+          historicoFinanceiro: _historicoFinanceiro,
+          ...UsuariosBase
+        } = empresa;
+
+        const overviewEmpresa: AdminEmpresaOverviewEmpresa = {
+          ...UsuariosBase,
+          informacoes: {
+            ...UsuariosBase.informacoes,
+            telefone: null,
+            descricao: null,
+            avatarUrl: null,
+          },
+          planoAtual: null,
+        };
+
+        return {
+          empresa: overviewEmpresa,
+          planos: {
+            ativos: planosAtivos,
+            historico: planosHistorico,
+          },
+          pagamentos: {
+            total: pagamentosResumo.pagination.total,
+            recentes: pagamentosResumo.data,
+          },
+          vagas: {
+            total: totalVagas,
+            porStatus: vagasPorStatus,
+            recentes: vagasResumo.data,
+          },
+          candidaturas: {
+            total: totalCandidaturas,
+            porStatus: candidaturasPorStatus,
+          },
+          bloqueios: {
+            ativos: bloqueiosAtivos,
+            historico: bloqueiosHistorico,
+          },
+          auditoria: {
+            total: auditoriaResumo.length,
+            recentes: auditoriaResumo,
+          },
+        } satisfies AdminEmpresaOverview;
       },
-    }));
-
-    const candidaturasStatusCounts = candidaturasStatusCountsRaw.map((item) => ({
-      status: item.statusId,
-      _count: {
-        _all:
-          typeof item._count === 'object' && item._count !== null
-            ? ((item._count as { _all?: number })._all ?? 0)
-            : 0,
-      },
-    }));
-
-    const planosMapeados = planosHistoricoRecords.map((plano) =>
-      mapPlanoHistorico(plano, referenceDate),
+      EMPRESAS_OVERVIEW_CACHE_TTL_SECONDS,
     );
-
-    // Separa planos ativos do histórico
-    const planosAtivos = planosMapeados.filter(
-      (plano) =>
-        plano.status === EmpresasPlanoStatus.ATIVO &&
-        (!plano.fim || plano.fim.getTime() > referenceDate.getTime()),
-    );
-
-    // Histórico: planos não ativos, limitado aos últimos 4
-    const planosHistorico = planosMapeados
-      .filter(
-        (plano) =>
-          plano.status !== EmpresasPlanoStatus.ATIVO ||
-          (plano.fim && plano.fim.getTime() <= referenceDate.getTime()),
-      )
-      .slice(0, 4); // Limita aos últimos 4 planos do histórico
-
-    const bloqueiosHistorico = bloqueiosRecords
-      .map((registro) => mapBloqueioResumo(registro))
-      .filter((bloqueio): bloqueio is AdminUsuariosEmBloqueiosResumo => Boolean(bloqueio));
-
-    const bloqueiosAtivos = bloqueiosHistorico.filter((bloqueio) => {
-      if (bloqueio.bloqueio.status !== StatusDeBloqueios.ATIVO) {
-        return false;
-      }
-
-      const fim = bloqueio.bloqueio.fim;
-      return !fim || fim.getTime() > referenceDate.getTime();
-    });
-
-    const vagasPorStatus = buildStatusCountMap(
-      Object.values(StatusDeVagas) as StatusDeVagas[],
-      vagasStatusCounts,
-    );
-    const totalVagas = Object.values(vagasPorStatus).reduce((acc, value) => acc + value, 0);
-
-    const candidaturasPorStatus = candidaturasStatusCounts.reduce<Record<string, number>>(
-      (acc, item) => {
-        acc[item.status] = item._count._all;
-        return acc;
-      },
-      {},
-    );
-    const totalCandidaturas = Object.values(candidaturasPorStatus).reduce(
-      (acc, value) => acc + value,
-      0,
-    );
-
-    const [pagamentosResumo, vagasResumo, auditoriaResumo] = await Promise.all([
-      listPagamentos(id, { page: 1, pageSize: 20 }),
-      listVagas(id, { page: 1, pageSize: 10 }),
-      empresasAuditoriaService.obterHistoricoAlteracoes(id, 20),
-    ]);
-
-    const {
-      plano: _plano,
-      vagas: _vagas,
-      pagamento: _pagamento,
-      historicoFinanceiro: _historicoFinanceiro,
-      ...UsuariosBase
-    } = empresa;
-
-    const overviewEmpresa: AdminEmpresaOverviewEmpresa = {
-      ...UsuariosBase,
-      // Remove campos duplicados das informacoes, mantendo apenas aceitarTermos
-      informacoes: {
-        ...UsuariosBase.informacoes,
-        // Remove campos que já estão no nível principal da empresa
-        telefone: null,
-        descricao: null,
-        avatarUrl: null,
-      },
-      // Mantém planoAtual para compatibilidade com o tipo, mas será null
-      // pois o plano atual será incluído em planos.atual
-      planoAtual: null,
-    };
-
-    return {
-      empresa: overviewEmpresa,
-      planos: {
-        ativos: planosAtivos,
-        historico: planosHistorico,
-      },
-      pagamentos: {
-        total: pagamentosResumo.pagination.total,
-        recentes: pagamentosResumo.data,
-      },
-      vagas: {
-        total: totalVagas,
-        porStatus: vagasPorStatus,
-        recentes: vagasResumo.data,
-      },
-      candidaturas: {
-        total: totalCandidaturas,
-        porStatus: candidaturasPorStatus,
-      },
-      bloqueios: {
-        ativos: bloqueiosAtivos,
-        historico: bloqueiosHistorico,
-      },
-      auditoria: {
-        total: auditoriaResumo.length,
-        recentes: auditoriaResumo,
-      },
-    } satisfies AdminEmpresaOverview;
   },
 
   listPagamentos: (id: string, query: AdminEmpresasHistoryQuery) => listPagamentos(id, query),

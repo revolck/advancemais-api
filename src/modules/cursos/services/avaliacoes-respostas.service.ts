@@ -309,10 +309,10 @@ export const avaliacoesRespostasService = {
         ? codigoInscricaoPorEntidade.get(log.entidadeId)
         : null;
       const codigoInscricao =
-        ((metadata.codigoInscricao as string | undefined) ??
-          (dadosNovos.codigoInscricao as string | undefined) ??
-          (dadosAnteriores.codigoInscricao as string | undefined) ??
-          codigoInscricaoEntidade) ??
+        (metadata.codigoInscricao as string | undefined) ??
+        (dadosNovos.codigoInscricao as string | undefined) ??
+        (dadosAnteriores.codigoInscricao as string | undefined) ??
+        codigoInscricaoEntidade ??
         null;
 
       if (
@@ -329,9 +329,8 @@ export const avaliacoesRespostasService = {
       }
 
       if (log.acao === 'RESPOSTA_REGISTRADA') {
-        const hasUuidInDescricao = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(
-          descricao,
-        );
+        const hasUuidInDescricao =
+          /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(descricao);
         const hasLegacyRespostaDescricao =
           /envio de resposta na avalia[cç][aã]o/i.test(descricao) ||
           /resposta enviada/i.test(descricao);

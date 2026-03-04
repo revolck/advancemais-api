@@ -151,8 +151,15 @@ const notaOrigemSchema = z
     id: uuid.nullish(),
     titulo: z.string().trim().max(255).nullish(),
   })
-  .optional()
-  .nullable();
+  .superRefine((value, ctx) => {
+    if (value.tipo !== 'OUTRO' && !value.id) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['id'],
+        message: 'Item da origem é obrigatório para PROVA, ATIVIDADE e AULA',
+      });
+    }
+  });
 
 export const createNotaManualSchema = z.object({
   alunoId: uuid,
@@ -183,7 +190,29 @@ export const listCursoNotasQuerySchema = z.object({
   ),
   search: z.string().trim().optional(),
   page: z.coerce.number().int().positive().default(1),
-  pageSize: z.coerce.number().int().positive().max(100).default(10),
+  pageSize: z.coerce.number().int().positive().max(200).default(10),
+  orderBy: z.enum(['alunoNome', 'nota', 'atualizadoEm']).optional().default('alunoNome'),
+  order: z.enum(['asc', 'desc']).optional().default('asc'),
+});
+
+export const listNotasGeralQuerySchema = z.object({
+  cursoId: uuid.optional(),
+  turmaIds: z.preprocess((value) => {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+      return value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+    return value;
+  }, z.array(uuid).min(1, 'turmaIds inválido').optional()),
+  search: z.string().trim().optional(),
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().positive().max(200).default(10),
   orderBy: z.enum(['alunoNome', 'nota', 'atualizadoEm']).optional().default('alunoNome'),
   order: z.enum(['asc', 'desc']).optional().default('asc'),
 });
@@ -192,3 +221,4 @@ export type CreateNotaManualInput = z.infer<typeof createNotaManualSchema>;
 export type CreateNotaV2Input = z.infer<typeof createNotaV2Schema>;
 export type ClearNotasManuaisInput = z.infer<typeof clearNotasManuaisSchema>;
 export type ListCursoNotasQuery = z.infer<typeof listCursoNotasQuerySchema>;
+export type ListNotasGeralQuery = z.infer<typeof listNotasGeralQuerySchema>;

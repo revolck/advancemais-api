@@ -20,6 +20,10 @@ interface UsuarioSeed {
   descricao?: string;
   cidade?: string;
   estado?: string;
+  logradouro?: string;
+  numero?: string;
+  bairro?: string;
+  cep?: string;
 }
 
 const usuarios: UsuarioSeed[] = [
@@ -150,6 +154,10 @@ const usuarios: UsuarioSeed[] = [
     descricao: 'Empresa de tecnologia e inovação',
     cidade: 'São Paulo',
     estado: 'SP',
+    logradouro: 'Avenida Paulista',
+    numero: '1000',
+    bairro: 'Bela Vista',
+    cep: '01310-100',
   },
   {
     nomeCompleto: 'Consultoria RH Plus',
@@ -162,6 +170,10 @@ const usuarios: UsuarioSeed[] = [
     descricao: 'Consultoria em recursos humanos',
     cidade: 'Rio de Janeiro',
     estado: 'RJ',
+    logradouro: 'Rua Manoel Pedro de Oliveira',
+    numero: '245',
+    bairro: 'Benedito Bentes',
+    cep: '57084-028',
   },
 
   // ALUNOS/CANDIDATOS
@@ -243,6 +255,52 @@ export async function seedUsuarios(prisma?: PrismaClient) {
 
   const usuariosCriados: any[] = [];
 
+  const syncUsuarioEndereco = async (usuarioId: string, usuario: UsuarioSeed) => {
+    const hasEndereco =
+      Boolean(usuario.cidade) ||
+      Boolean(usuario.estado) ||
+      Boolean(usuario.cep) ||
+      Boolean(usuario.logradouro) ||
+      Boolean(usuario.numero) ||
+      Boolean(usuario.bairro);
+
+    if (!hasEndereco) {
+      return;
+    }
+
+    const enderecoExistente = await client.usuariosEnderecos.findFirst({
+      where: { usuarioId },
+      orderBy: { criadoEm: 'asc' },
+      select: { id: true },
+    });
+
+    const enderecoData = {
+      cidade: usuario.cidade ?? null,
+      estado: usuario.estado ?? null,
+      cep: usuario.cep ?? null,
+      logradouro: usuario.logradouro ?? null,
+      numero: usuario.numero ?? null,
+      bairro: usuario.bairro ?? null,
+      atualizadoEm: new Date(),
+    };
+
+    if (enderecoExistente) {
+      await client.usuariosEnderecos.update({
+        where: { id: enderecoExistente.id },
+        data: enderecoData,
+      });
+      return;
+    }
+
+    await client.usuariosEnderecos.create({
+      data: {
+        id: randomUUID(),
+        usuarioId,
+        ...enderecoData,
+      },
+    });
+  };
+
   for (const usuario of usuarios) {
     try {
       console.log(`  📝 Criando usuário: ${usuario.email}`);
@@ -253,6 +311,7 @@ export async function seedUsuarios(prisma?: PrismaClient) {
       });
 
       if (existingDbUser) {
+        await syncUsuarioEndereco(existingDbUser.id, usuario);
         console.log(`  ✅ Usuário já existe no banco: ${usuario.email}`);
         usuariosCriados.push(existingDbUser);
         continue;
@@ -328,18 +387,7 @@ export async function seedUsuarios(prisma?: PrismaClient) {
         },
       });
 
-      // Criar endereço se houver cidade/estado
-      if (usuario.cidade && usuario.estado) {
-        await client.usuariosEnderecos.create({
-          data: {
-            id: randomUUID(),
-            usuarioId: dbUser.id,
-            cidade: usuario.cidade,
-            estado: usuario.estado,
-            atualizadoEm: new Date(),
-          },
-        });
-      }
+      await syncUsuarioEndereco(dbUser.id, usuario);
 
       // Criar registro de verificação de email como VERIFICADO
       await client.usuariosVerificacaoEmail.create({

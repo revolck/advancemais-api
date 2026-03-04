@@ -76,6 +76,7 @@ export const listCoursesQuerySchema = z.object({
 export const createCourseSchema = z.object({
   nome: z.string().trim().min(3).max(255),
   descricao: z.string().trim().max(2000).nullish(),
+  conteudoProgramatico: z.string().trim().max(12000).nullish(),
   imagemUrl: z
     .union([
       z.string().trim().url('URL da imagem inválida'),

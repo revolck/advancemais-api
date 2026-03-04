@@ -1,11 +1,17 @@
 import { Request, Response } from 'express';
 import { ZodError } from 'zod';
 
+import { Roles } from '@/modules/usuarios/enums/Roles';
+
 import { certificadosService } from '../services/certificados.service';
 import {
+  certificadoIdSchema,
   codigoCertificadoSchema,
+  emitirCertificadoGlobalSchema,
   emitirCertificadoSchema,
+  listarCertificadosGlobaisQuerySchema,
   listarCertificadosQuerySchema,
+  listarMeCertificadosQuerySchema,
 } from '../validators/certificados.schema';
 
 const parseCursoId = (raw: unknown): string | null => {
@@ -44,7 +50,278 @@ const ensureSingleValue = (value: unknown) => {
   return value;
 };
 
+const parseCertificadoId = (raw: unknown) => {
+  if (typeof raw !== 'string' || raw.trim().length === 0) {
+    return null;
+  }
+  return raw;
+};
+
 export class CertificadosController {
+  static listarGlobal = async (req: Request, res: Response) => {
+    const parsedQuery = listarCertificadosGlobaisQuerySchema.safeParse(req.query);
+
+    if (!parsedQuery.success) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Parâmetros de consulta inválidos',
+        issues: parsedQuery.error.flatten().fieldErrors,
+      });
+    }
+
+    try {
+      const result = await certificadosService.listarGlobal(parsedQuery.data);
+      return res.json(result);
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        code: 'CERTIFICADO_LIST_GLOBAL_ERROR',
+        message: 'Erro ao listar certificados',
+        error: error?.message,
+      });
+    }
+  };
+
+  static emitirGlobal = async (req: Request, res: Response) => {
+    const parsedBody = emitirCertificadoGlobalSchema.safeParse(req.body);
+
+    if (!parsedBody.success) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Dados inválidos para emissão do certificado',
+        issues: parsedBody.error.flatten().fieldErrors,
+      });
+    }
+
+    try {
+      const result = await certificadosService.emitirGlobal(parsedBody.data, req.user?.id);
+      return res.status(201).json(result);
+    } catch (error: any) {
+      if (error?.code === 'ALUNO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'ALUNO_NOT_FOUND',
+          message: 'Aluno não encontrado',
+        });
+      }
+
+      if (error?.code === 'TURMA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'TURMA_NOT_FOUND',
+          message: 'Turma não encontrada para o curso informado',
+        });
+      }
+
+      if (error?.code === 'ALUNO_FORA_DA_TURMA') {
+        return res.status(400).json({
+          success: false,
+          code: 'ALUNO_FORA_DA_TURMA',
+          message: 'Aluno não possui vínculo ativo com o curso/turma informados',
+        });
+      }
+
+      if (error?.code === 'MODELO_CERTIFICADO_INVALIDO') {
+        return res.status(400).json({
+          success: false,
+          code: 'MODELO_CERTIFICADO_INVALIDO',
+          message: 'Modelo de certificado inválido',
+        });
+      }
+
+      if (error?.code === 'CERTIFICADO_JA_EXISTE') {
+        return res.status(409).json({
+          success: false,
+          code: 'CERTIFICADO_JA_EXISTE',
+          message: 'Já existe certificado emitido para esta inscrição',
+          data: error?.data ?? null,
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        code: 'CERTIFICADO_EMITIR_GLOBAL_ERROR',
+        message: 'Erro ao emitir certificado',
+        error: error?.message,
+      });
+    }
+  };
+
+  static getById = async (req: Request, res: Response) => {
+    const parsedCertificadoId = certificadoIdSchema.safeParse(
+      parseCertificadoId(req.params.certificadoId),
+    );
+
+    if (!parsedCertificadoId.success) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificador de certificado inválido',
+        issues: parsedCertificadoId.error.flatten().fieldErrors,
+      });
+    }
+
+    try {
+      const result = await certificadosService.getById(parsedCertificadoId.data);
+
+      if (req.user?.role === Roles.ALUNO_CANDIDATO && result.data.aluno.id !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: 'Você não possui acesso a este certificado',
+        });
+      }
+
+      return res.json(result);
+    } catch (error: any) {
+      if (error?.code === 'MODELO_CERTIFICADO_INVALIDO') {
+        return res.status(400).json({
+          success: false,
+          code: 'MODELO_CERTIFICADO_INVALIDO',
+          message: 'Modelo de certificado inválido',
+        });
+      }
+
+      if (error?.code === 'CERTIFICADO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'CERTIFICADO_NOT_FOUND',
+          message: 'Certificado não encontrado',
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        code: 'CERTIFICADO_GET_ERROR',
+        message: 'Erro ao buscar certificado',
+        error: error?.message,
+      });
+    }
+  };
+
+  static previewById = async (req: Request, res: Response) => {
+    const parsedCertificadoId = certificadoIdSchema.safeParse(
+      parseCertificadoId(req.params.certificadoId),
+    );
+
+    if (!parsedCertificadoId.success) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificador de certificado inválido',
+        issues: parsedCertificadoId.error.flatten().fieldErrors,
+      });
+    }
+
+    try {
+      const scoped = await certificadosService.getById(parsedCertificadoId.data);
+      if (req.user?.role === Roles.ALUNO_CANDIDATO && scoped.data.aluno.id !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: 'Você não possui acesso a este certificado',
+        });
+      }
+
+      const html = await certificadosService.getPreviewHtml(parsedCertificadoId.data);
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      return res.type('text/html; charset=utf-8').send(html);
+    } catch (error: any) {
+      if (error?.code === 'MODELO_CERTIFICADO_INVALIDO') {
+        return res.status(400).json({
+          success: false,
+          code: 'MODELO_CERTIFICADO_INVALIDO',
+          message: 'Modelo de certificado inválido',
+        });
+      }
+
+      if (error?.code === 'CERTIFICADO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'CERTIFICADO_NOT_FOUND',
+          message: 'Certificado não encontrado',
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        code: 'CERTIFICADO_PREVIEW_ERROR',
+        message: 'Erro ao gerar preview do certificado',
+        error: error?.message,
+      });
+    }
+  };
+
+  static pdfById = async (req: Request, res: Response) => {
+    const parsedCertificadoId = certificadoIdSchema.safeParse(
+      parseCertificadoId(req.params.certificadoId),
+    );
+
+    if (!parsedCertificadoId.success) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificador de certificado inválido',
+        issues: parsedCertificadoId.error.flatten().fieldErrors,
+      });
+    }
+
+    try {
+      const scoped = await certificadosService.getById(parsedCertificadoId.data);
+      if (req.user?.role === Roles.ALUNO_CANDIDATO && scoped.data.aluno.id !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: 'Você não possui acesso a este certificado',
+        });
+      }
+
+      const pdfBuffer = await certificadosService.getPdfBuffer(parsedCertificadoId.data);
+      const binaryPdf = Buffer.isBuffer(pdfBuffer) ? pdfBuffer : Buffer.from(pdfBuffer);
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Length', String(binaryPdf.length));
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="certificado-${parsedCertificadoId.data}.pdf"`,
+      );
+      return res.send(binaryPdf);
+    } catch (error: any) {
+      if (error?.code === 'MODELO_CERTIFICADO_INVALIDO') {
+        return res.status(400).json({
+          success: false,
+          code: 'MODELO_CERTIFICADO_INVALIDO',
+          message: 'Modelo de certificado inválido',
+        });
+      }
+
+      if (error?.code === 'CERTIFICADO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'CERTIFICADO_NOT_FOUND',
+          message: 'Certificado não encontrado',
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        code: 'CERTIFICADO_PDF_ERROR',
+        message: 'Erro ao gerar PDF do certificado',
+        error: error?.message,
+      });
+    }
+  };
+
+  static listarModelos = async (_req: Request, res: Response) => {
+    return res.json(certificadosService.listarModelos());
+  };
+
   static emitir = async (req: Request, res: Response) => {
     const cursoId = parseCursoId(req.params.cursoId);
     const turmaId = parseTurmaId(req.params.turmaId);
@@ -250,9 +527,22 @@ export class CertificadosController {
       });
     }
 
+    const parsedQuery = listarMeCertificadosQuerySchema.safeParse(req.query);
+    if (!parsedQuery.success) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Parâmetros de consulta inválidos',
+        issues: parsedQuery.error.flatten().fieldErrors,
+      });
+    }
+
     try {
-      const certificados = await certificadosService.listarDoAluno(usuarioId);
-      res.json({ data: certificados });
+      const certificados = await certificadosService.listarDoAlunoPaginado(
+        usuarioId,
+        parsedQuery.data,
+      );
+      res.json(certificados);
     } catch (error: any) {
       res.status(500).json({
         success: false,
@@ -276,7 +566,7 @@ export class CertificadosController {
     }
 
     try {
-      const certificado = await certificadosService.verificarPorCodigo(parsedCodigo.data);
+      const certificado = await certificadosService.verificarPorCodigoPublico(parsedCodigo.data);
 
       if (!certificado) {
         return res.status(404).json({

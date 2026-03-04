@@ -1,9 +1,17 @@
 import { Request, Response } from 'express';
-import { CursosFrequenciaStatus } from '@prisma/client';
 import { ZodError } from 'zod';
 
 import { frequenciaService } from '../services/frequencia.service';
-import { createFrequenciaSchema, updateFrequenciaSchema } from '../validators/frequencia.schema';
+import {
+  createFrequenciaSchema,
+  listFrequenciaHistoricoAlunoNaturalQuerySchema,
+  listFrequenciaHistoricoNaturalQuerySchema,
+  listFrequenciaGeralQuerySchema,
+  listFrequenciaQuerySchema,
+  upsertFrequenciaAlunoLancamentoSchema,
+  upsertFrequenciaLancamentoSchema,
+  updateFrequenciaSchema,
+} from '../validators/frequencia.schema';
 
 const parseCursoId = (raw: string): string | null => {
   if (!raw || typeof raw !== 'string') {
@@ -31,6 +39,21 @@ const parseFrequenciaId = (raw: string) => {
   return raw;
 };
 
+const parseSyntheticFrequenciaId = (raw: string) => {
+  if (!raw.startsWith('pendente:')) return null;
+  const parts = raw.split(':');
+  if (parts.length !== 5) return null;
+  const [, turmaId, inscricaoId, tipoOrigem, origemId] = parts;
+  if (!turmaId || !inscricaoId || !tipoOrigem || !origemId) return null;
+  if (!['AULA', 'PROVA', 'ATIVIDADE'].includes(tipoOrigem)) return null;
+  return {
+    turmaId,
+    inscricaoId,
+    tipoOrigem: tipoOrigem as 'AULA' | 'PROVA' | 'ATIVIDADE',
+    origemId,
+  };
+};
+
 const parseInscricaoId = (raw: unknown) => {
   if (typeof raw !== 'string' || raw.trim().length === 0) {
     return null;
@@ -38,16 +61,15 @@ const parseInscricaoId = (raw: unknown) => {
   return raw;
 };
 
-const parseAulaId = (raw: unknown) => {
-  if (raw === undefined || raw === null) {
-    return undefined;
-  }
-
-  if (typeof raw !== 'string' || raw.trim().length === 0) {
+const parseAlunoId = (raw: string): string | null => {
+  if (!raw || typeof raw !== 'string') {
     return null;
   }
-
-  return raw;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(raw.trim())) {
+    return null;
+  }
+  return raw.trim();
 };
 
 const parseDateQuery = (raw: unknown) => {
@@ -63,23 +85,198 @@ const parseDateQuery = (raw: unknown) => {
   return date;
 };
 
-const parseStatusQuery = (raw: unknown): CursosFrequenciaStatus | undefined | null => {
-  if (raw === undefined || raw === null || raw === '') {
-    return undefined;
+const canManageFrequencia = (role?: string) =>
+  ['ADMIN', 'MODERADOR', 'PEDAGOGICO', 'INSTRUTOR'].includes(role ?? '');
+
+const buildAcaoFrequencia = (item: any, role?: string) => {
+  const canManage = canManageFrequencia(role);
+  let bloqueado = !canManage;
+  let motivoBloqueio: string | null = canManage
+    ? null
+    : 'Usuário sem permissão para lançar ou editar frequência.';
+
+  if (!bloqueado && !item?.isPersisted && !item?.naturalKey?.origemId) {
+    bloqueado = true;
+    motivoBloqueio = 'Origem da frequência indisponível para lançamento.';
   }
 
-  if (typeof raw !== 'string') {
-    return null;
+  return {
+    podeMarcarPresente: canManage && !bloqueado,
+    podeMarcarAusente: canManage && !bloqueado,
+    podeEditar: canManage && !bloqueado,
+    podeVerHistorico: canManage && (!bloqueado || !!item?.id || !!item?.naturalKey?.origemId),
+    bloqueado,
+    motivoBloqueio,
+  };
+};
+
+const withAcaoFrequencia = (payload: any, role?: string) => {
+  if (!payload || !Array.isArray(payload.items)) {
+    return payload;
   }
 
-  const normalized = raw.toUpperCase();
-  const values = Object.values(CursosFrequenciaStatus);
-  return values.includes(normalized as CursosFrequenciaStatus)
-    ? (normalized as CursosFrequenciaStatus)
-    : null;
+  return {
+    ...payload,
+    items: payload.items.map((item: any) => ({
+      ...item,
+      acaoFrequencia: item?.acaoFrequencia ?? buildAcaoFrequencia(item, role),
+    })),
+  };
 };
 
 export class FrequenciaController {
+  static listGeral = async (req: Request, res: Response) => {
+    try {
+      const query = listFrequenciaGeralQuerySchema.parse({
+        ...req.query,
+        origemId: req.query.origemId ?? req.query.aulaId,
+      });
+
+      const frequencias = await frequenciaService.listGeral(
+        {
+          cursoId: query.cursoId ?? undefined,
+          turmaIds: query.turmaIds ?? undefined,
+          inscricaoId: query.inscricaoId ?? undefined,
+          tipoOrigem: query.tipoOrigem ?? undefined,
+          origemId: query.origemId ?? undefined,
+          status: query.status ?? undefined,
+          search: query.search ?? undefined,
+          page: query.page,
+          pageSize: query.pageSize,
+          orderBy: query.orderBy ?? undefined,
+          order: query.order ?? undefined,
+          dataInicio: query.dataInicio ?? undefined,
+          dataFim: query.dataFim ?? undefined,
+        },
+        {
+          userId: req.user?.id,
+          role: req.user?.role,
+        },
+      );
+
+      res.json({ success: true, data: withAcaoFrequencia(frequencias, req.user?.role) });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos para listagem geral de frequências',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'INVALID_TURMA_FILTER') {
+        return res.status(400).json({
+          success: false,
+          code: 'INVALID_TURMA_FILTER',
+          message: 'Uma ou mais turmas são inválidas para o curso informado.',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'FREQUENCIA_GERAL_LIST_ERROR',
+        message: 'Erro ao listar frequências',
+        error: error?.message,
+      });
+    }
+  };
+
+  static listAluno = async (req: Request, res: Response) => {
+    const alunoId = parseAlunoId(req.params.alunoId);
+    if (!alunoId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificador de aluno inválido',
+      });
+    }
+
+    const cursoIdRaw = typeof req.query.cursoId === 'string' ? req.query.cursoId.trim() : '';
+    const turmaIdsRaw = req.query.turmaIds;
+    const hasTurmaIds =
+      (typeof turmaIdsRaw === 'string' && turmaIdsRaw.trim().length > 0) ||
+      (Array.isArray(turmaIdsRaw) && turmaIdsRaw.some((item) => String(item).trim().length > 0));
+
+    if (!cursoIdRaw || !hasTurmaIds) {
+      return res.status(400).json({
+        success: false,
+        code: 'TURMA_FILTER_REQUIRED',
+        message: 'Selecione curso e ao menos uma turma para listar frequências.',
+        data: {
+          requires: ['cursoId', 'turmaIds'],
+        },
+      });
+    }
+
+    try {
+      const query = listFrequenciaGeralQuerySchema.parse({
+        ...req.query,
+        origemId: req.query.origemId ?? req.query.aulaId,
+      });
+
+      if (!query.cursoId || !query.turmaIds || query.turmaIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          code: 'TURMA_FILTER_REQUIRED',
+          message: 'Selecione curso e ao menos uma turma para listar frequências.',
+          data: {
+            requires: ['cursoId', 'turmaIds'],
+          },
+        });
+      }
+
+      const frequencias = await frequenciaService.listGeral(
+        {
+          cursoId: query.cursoId,
+          turmaIds: query.turmaIds,
+          alunoId,
+          inscricaoId: query.inscricaoId ?? undefined,
+          tipoOrigem: query.tipoOrigem ?? undefined,
+          origemId: query.origemId ?? undefined,
+          status: query.status ?? undefined,
+          search: query.search ?? undefined,
+          page: query.page,
+          pageSize: query.pageSize,
+          orderBy: query.orderBy ?? undefined,
+          order: query.order ?? undefined,
+          dataInicio: query.dataInicio ?? undefined,
+          dataFim: query.dataFim ?? undefined,
+        },
+        {
+          userId: req.user?.id,
+          role: req.user?.role,
+        },
+      );
+
+      return res.json({ success: true, data: withAcaoFrequencia(frequencias, req.user?.role) });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos para listagem de frequências do aluno',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'INVALID_TURMA_FILTER') {
+        return res.status(400).json({
+          success: false,
+          code: 'INVALID_TURMA_FILTER',
+          message: 'Uma ou mais turmas são inválidas para o curso informado.',
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        code: 'FREQUENCIA_ALUNO_LIST_ERROR',
+        message: 'Erro ao listar frequências do aluno',
+        error: error?.message,
+      });
+    }
+  };
+
   static list = async (req: Request, res: Response) => {
     const cursoId = parseCursoId(req.params.cursoId);
     const turmaId = parseTurmaId(req.params.turmaId);
@@ -92,55 +289,54 @@ export class FrequenciaController {
       });
     }
 
-    const inscricaoId = parseInscricaoId(req.query.inscricaoId);
-    if (inscricaoId === null && req.query.inscricaoId !== undefined) {
-      return res.status(400).json({
-        success: false,
-        code: 'VALIDATION_ERROR',
-        message: 'Identificador da inscrição inválido',
-      });
-    }
-
-    const aulaId = parseAulaId(req.query.aulaId);
-    if (aulaId === null) {
-      return res.status(400).json({
-        success: false,
-        code: 'VALIDATION_ERROR',
-        message: 'Identificador da aula inválido',
-      });
-    }
-
-    const status = parseStatusQuery(req.query.status);
-    if (status === null) {
-      return res.status(400).json({
-        success: false,
-        code: 'VALIDATION_ERROR',
-        message: 'Status de frequência inválido',
-      });
-    }
-
-    const dataInicio = parseDateQuery(req.query.dataInicio);
-    const dataFim = parseDateQuery(req.query.dataFim);
-
-    if (dataInicio === null || dataFim === null) {
-      return res.status(400).json({
-        success: false,
-        code: 'VALIDATION_ERROR',
-        message: 'Período informado é inválido',
-      });
-    }
-
     try {
-      const frequencias = await frequenciaService.list(cursoId, turmaId, {
-        inscricaoId: inscricaoId ?? undefined,
-        aulaId,
-        status,
-        dataInicio,
-        dataFim,
+      const query = listFrequenciaQuerySchema.parse({
+        ...req.query,
+        // compat legado
+        origemId: req.query.origemId ?? req.query.aulaId,
       });
 
-      res.json({ data: frequencias });
+      const frequencias = await frequenciaService.list(cursoId, turmaId, {
+        inscricaoId: query.inscricaoId ?? undefined,
+        tipoOrigem: query.tipoOrigem ?? undefined,
+        origemId: query.origemId ?? undefined,
+        status: query.status ?? undefined,
+        search: query.search ?? undefined,
+        page: query.page,
+        pageSize: query.pageSize,
+        dataInicio: query.dataInicio ?? undefined,
+        dataFim: query.dataFim ?? undefined,
+      });
+
+      const isLegacyRequest =
+        req.query.page === undefined &&
+        req.query.pageSize === undefined &&
+        req.query.search === undefined &&
+        req.query.tipoOrigem === undefined &&
+        req.query.origemId === undefined &&
+        req.query.aulaId === undefined;
+
+      if (isLegacyRequest) {
+        return res.json({
+          data: withAcaoFrequencia({ items: frequencias.items }, req.user?.role).items,
+        });
+      }
+
+      const dataWithActions = withAcaoFrequencia(
+        { items: frequencias.items, pagination: frequencias.pagination },
+        req.user?.role,
+      );
+      res.json({ data: dataWithActions.items, pagination: dataWithActions.pagination });
     } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos para listagem de frequências',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
       if (error?.code === 'TURMA_NOT_FOUND') {
         return res.status(404).json({
           success: false,
@@ -160,8 +356,16 @@ export class FrequenciaController {
       if (error?.code === 'AULA_NOT_FOUND') {
         return res.status(404).json({
           success: false,
-          code: 'AULA_NOT_FOUND',
+          code: 'ORIGEM_NOT_FOUND',
           message: 'Aula não encontrada para a turma informada',
+        });
+      }
+
+      if (error?.code === 'PROVA_NOT_FOUND' || error?.code === 'ATIVIDADE_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'ORIGEM_NOT_FOUND',
+          message: 'Origem não encontrada para a turma informada',
         });
       }
 
@@ -222,13 +426,30 @@ export class FrequenciaController {
 
     try {
       const data = createFrequenciaSchema.parse(req.body);
-      const frequencia = await frequenciaService.create(cursoId, turmaId, {
-        ...data,
-        aulaId: data.aulaId ?? null,
-        dataReferencia: data.dataReferencia ?? undefined,
-        justificativa: data.justificativa ?? null,
-        observacoes: data.observacoes ?? null,
-      });
+      const frequencia = await frequenciaService.create(
+        cursoId,
+        turmaId,
+        {
+          ...data,
+          aulaId: data.aulaId ?? null,
+          tipoOrigem: data.tipoOrigem,
+          origemId: data.origemId ?? undefined,
+          origemTitulo: data.origemTitulo ?? undefined,
+          modoLancamento: data.modoLancamento,
+          minutosPresenca: data.minutosPresenca,
+          minimoMinutosParaPresenca: data.minimoMinutosParaPresenca,
+          dataReferencia: data.dataReferencia ?? undefined,
+          justificativa: data.justificativa ?? null,
+          observacoes: data.observacoes ?? null,
+        },
+        {
+          lancadoPorId: req.user?.id,
+          ip: req.ip,
+          userAgent: Array.isArray(req.headers['user-agent'])
+            ? req.headers['user-agent'].join(' | ')
+            : req.headers['user-agent'],
+        },
+      );
       res.status(201).json(frequencia);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -259,15 +480,23 @@ export class FrequenciaController {
       if (error?.code === 'AULA_NOT_FOUND') {
         return res.status(404).json({
           success: false,
-          code: 'AULA_NOT_FOUND',
+          code: 'ORIGEM_NOT_FOUND',
           message: 'Aula não encontrada para a turma informada',
         });
       }
 
-      if (error?.code === 'DUPLICATE_FREQUENCIA') {
+      if (error?.code === 'PROVA_NOT_FOUND' || error?.code === 'ATIVIDADE_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'ORIGEM_NOT_FOUND',
+          message: 'Origem não encontrada para a turma informada',
+        });
+      }
+
+      if (error?.code === 'DUPLICATE_FREQUENCIA' || error?.code === 'FREQUENCIA_JA_LANCADA') {
         return res.status(409).json({
           success: false,
-          code: 'DUPLICATE_FREQUENCIA',
+          code: 'FREQUENCIA_JA_LANCADA',
           message: 'Já existe uma frequência registrada para os parâmetros informados',
         });
       }
@@ -289,6 +518,434 @@ export class FrequenciaController {
     }
   };
 
+  static upsertLancamento = async (req: Request, res: Response) => {
+    const cursoId = parseCursoId(req.params.cursoId);
+    const turmaId = parseTurmaId(req.params.turmaId);
+
+    if (!cursoId || !turmaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificadores de curso ou turma inválidos',
+      });
+    }
+
+    try {
+      const data = upsertFrequenciaLancamentoSchema.parse(req.body);
+      const frequencia = await frequenciaService.upsertLancamento(
+        cursoId,
+        turmaId,
+        {
+          inscricaoId: data.inscricaoId,
+          tipoOrigem: data.tipoOrigem,
+          origemId: data.origemId,
+          origemTitulo: data.origemTitulo ?? null,
+          status: data.status,
+          modoLancamento: data.modoLancamento,
+          minutosPresenca: data.minutosPresenca,
+          minimoMinutosParaPresenca: data.minimoMinutosParaPresenca,
+          justificativa: data.justificativa ?? null,
+          observacoes: data.observacoes ?? null,
+        },
+        {
+          lancadoPorId: req.user?.id,
+          ip: req.ip,
+          userAgent: Array.isArray(req.headers['user-agent'])
+            ? req.headers['user-agent'].join(' | ')
+            : req.headers['user-agent'],
+        },
+      );
+      res.json({
+        success: true,
+        data: {
+          ...frequencia,
+          acaoFrequencia: buildAcaoFrequencia(frequencia, req.user?.role),
+        },
+      });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Dados inválidos para lançamento de frequência',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'TURMA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'TURMA_NOT_FOUND',
+          message: 'Turma não encontrada para o curso informado',
+        });
+      }
+
+      if (error?.code === 'INSCRICAO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'INSCRICAO_NOT_FOUND',
+          message: 'Inscrição não encontrada para a turma informada',
+        });
+      }
+
+      if (error?.code === 'AULA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'ORIGEM_NOT_FOUND',
+          message: 'Aula não encontrada para a turma informada',
+        });
+      }
+
+      if (error?.code === 'PROVA_NOT_FOUND' || error?.code === 'ATIVIDADE_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'ORIGEM_NOT_FOUND',
+          message: 'Origem não encontrada para a turma informada',
+        });
+      }
+
+      if (error?.code === 'VALIDATION_ERROR') {
+        const isJustificativa =
+          typeof error?.message === 'string' &&
+          error.message.toLowerCase().includes('justificativa');
+        return res.status(400).json({
+          success: false,
+          code: isJustificativa ? 'JUSTIFICATIVA_OBRIGATORIA' : 'VALIDATION_ERROR',
+          message: error.message,
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'FREQUENCIA_UPSERT_ERROR',
+        message: 'Erro ao lançar frequência para a turma',
+        error: error?.message,
+      });
+    }
+  };
+
+  static upsertLancamentoAluno = async (req: Request, res: Response) => {
+    const alunoId = parseAlunoId(req.params.alunoId);
+    if (!alunoId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificador de aluno inválido',
+      });
+    }
+
+    try {
+      const data = upsertFrequenciaAlunoLancamentoSchema.parse(req.body);
+      const frequencia = await frequenciaService.upsertLancamentoByAluno(
+        alunoId,
+        {
+          cursoId: data.cursoId,
+          turmaId: data.turmaId,
+          inscricaoId: data.inscricaoId,
+          tipoOrigem: data.tipoOrigem,
+          origemId: data.origemId,
+          origemTitulo: data.origemTitulo ?? null,
+          status: data.status,
+          modoLancamento: data.modoLancamento,
+          minutosPresenca: data.minutosPresenca,
+          minimoMinutosParaPresenca: data.minimoMinutosParaPresenca,
+          justificativa: data.justificativa ?? null,
+          observacoes: data.observacoes ?? null,
+        },
+        {
+          lancadoPorId: req.user?.id,
+          ip: req.ip,
+          userAgent: Array.isArray(req.headers['user-agent'])
+            ? req.headers['user-agent'].join(' | ')
+            : req.headers['user-agent'],
+        },
+      );
+
+      return res.json({
+        success: true,
+        data: {
+          ...frequencia,
+          acaoFrequencia: buildAcaoFrequencia(frequencia, req.user?.role),
+        },
+      });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Dados inválidos para lançamento de frequência no contexto do aluno',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'TURMA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'TURMA_NOT_FOUND',
+          message: 'Turma não encontrada para o curso informado',
+        });
+      }
+
+      if (error?.code === 'INSCRICAO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'INSCRICAO_NOT_FOUND',
+          message: 'Inscrição não encontrada para o aluno na turma informada',
+        });
+      }
+
+      if (error?.code === 'AULA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'ORIGEM_NOT_FOUND',
+          message: 'Aula não encontrada para a turma informada',
+        });
+      }
+
+      if (error?.code === 'PROVA_NOT_FOUND' || error?.code === 'ATIVIDADE_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'ORIGEM_NOT_FOUND',
+          message: 'Origem não encontrada para a turma informada',
+        });
+      }
+
+      if (error?.code === 'VALIDATION_ERROR') {
+        const isJustificativa =
+          typeof error?.message === 'string' &&
+          error.message.toLowerCase().includes('justificativa');
+        return res.status(400).json({
+          success: false,
+          code: isJustificativa ? 'JUSTIFICATIVA_OBRIGATORIA' : 'VALIDATION_ERROR',
+          message: error.message,
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        code: 'FREQUENCIA_UPSERT_ALUNO_ERROR',
+        message: 'Erro ao lançar frequência no contexto do aluno',
+        error: error?.message,
+      });
+    }
+  };
+
+  static listHistorico = async (req: Request, res: Response) => {
+    const cursoId = parseCursoId(req.params.cursoId);
+    const turmaId = parseTurmaId(req.params.turmaId);
+    const frequenciaId = parseFrequenciaId(req.params.frequenciaId);
+
+    if (!cursoId || !turmaId || !frequenciaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificadores de curso, turma ou frequência inválidos',
+      });
+    }
+
+    try {
+      const historico = await frequenciaService.listHistoricoByFrequencia(
+        cursoId,
+        turmaId,
+        frequenciaId,
+      );
+      res.json({ success: true, data: historico });
+    } catch (error: any) {
+      if (error?.code === 'FREQUENCIA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'FREQUENCIA_NOT_FOUND',
+          message: 'Registro de frequência não encontrado para a turma informada',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'FREQUENCIA_HISTORICO_ERROR',
+        message: 'Erro ao consultar histórico de frequência',
+        error: error?.message,
+      });
+    }
+  };
+
+  static listHistoricoAluno = async (req: Request, res: Response) => {
+    const alunoId = parseAlunoId(req.params.alunoId);
+    const frequenciaId = parseFrequenciaId(req.params.frequenciaId);
+
+    if (!alunoId || !frequenciaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificadores de aluno ou frequência inválidos',
+      });
+    }
+
+    try {
+      const historico = await frequenciaService.listHistoricoByFrequenciaForAluno(
+        alunoId,
+        frequenciaId,
+      );
+      return res.json({ success: true, data: historico });
+    } catch (error: any) {
+      if (error?.code === 'FREQUENCIA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'FREQUENCIA_NOT_FOUND',
+          message: 'Registro de frequência não encontrado para o aluno informado',
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        code: 'FREQUENCIA_HISTORICO_ALUNO_ERROR',
+        message: 'Erro ao consultar histórico de frequência no contexto do aluno',
+        error: error?.message,
+      });
+    }
+  };
+
+  static listHistoricoByNaturalKey = async (req: Request, res: Response) => {
+    const cursoId = parseCursoId(req.params.cursoId);
+    const turmaId = parseTurmaId(req.params.turmaId);
+
+    if (!cursoId || !turmaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificadores de curso ou turma inválidos',
+      });
+    }
+
+    try {
+      const query = listFrequenciaHistoricoNaturalQuerySchema.parse(req.query);
+      const historico = await frequenciaService.listHistoricoByNaturalKey(cursoId, turmaId, {
+        inscricaoId: query.inscricaoId,
+        tipoOrigem: query.tipoOrigem,
+        origemId: query.origemId,
+      });
+      res.json({ success: true, data: historico });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos para histórico de frequência',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'TURMA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'TURMA_NOT_FOUND',
+          message: 'Turma não encontrada para o curso informado',
+        });
+      }
+
+      if (error?.code === 'INSCRICAO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'INSCRICAO_NOT_FOUND',
+          message: 'Inscrição não encontrada para a turma informada',
+        });
+      }
+
+      if (error?.code === 'AULA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'ORIGEM_NOT_FOUND',
+          message: 'Aula não encontrada para a turma informada',
+        });
+      }
+
+      if (error?.code === 'PROVA_NOT_FOUND' || error?.code === 'ATIVIDADE_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'ORIGEM_NOT_FOUND',
+          message: 'Origem não encontrada para a turma informada',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'FREQUENCIA_HISTORICO_ERROR',
+        message: 'Erro ao consultar histórico de frequência',
+        error: error?.message,
+      });
+    }
+  };
+
+  static listHistoricoByNaturalKeyAluno = async (req: Request, res: Response) => {
+    const alunoId = parseAlunoId(req.params.alunoId);
+    if (!alunoId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificador de aluno inválido',
+      });
+    }
+
+    try {
+      const query = listFrequenciaHistoricoAlunoNaturalQuerySchema.parse(req.query);
+      const historico = await frequenciaService.listHistoricoByNaturalKeyForAluno(alunoId, {
+        cursoId: query.cursoId,
+        turmaId: query.turmaId,
+        inscricaoId: query.inscricaoId,
+        tipoOrigem: query.tipoOrigem,
+        origemId: query.origemId,
+      });
+      return res.json({ success: true, data: historico });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos para histórico de frequência no contexto do aluno',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'TURMA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'TURMA_NOT_FOUND',
+          message: 'Turma não encontrada para o curso informado',
+        });
+      }
+
+      if (error?.code === 'INSCRICAO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'INSCRICAO_NOT_FOUND',
+          message: 'Inscrição não encontrada para o aluno na turma informada',
+        });
+      }
+
+      if (error?.code === 'AULA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'ORIGEM_NOT_FOUND',
+          message: 'Aula não encontrada para a turma informada',
+        });
+      }
+
+      if (error?.code === 'PROVA_NOT_FOUND' || error?.code === 'ATIVIDADE_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'ORIGEM_NOT_FOUND',
+          message: 'Origem não encontrada para a turma informada',
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        code: 'FREQUENCIA_HISTORICO_ALUNO_ERROR',
+        message: 'Erro ao consultar histórico de frequência no contexto do aluno',
+        error: error?.message,
+      });
+    }
+  };
+
   static update = async (req: Request, res: Response) => {
     const cursoId = parseCursoId(req.params.cursoId);
     const turmaId = parseTurmaId(req.params.turmaId);
@@ -304,13 +961,75 @@ export class FrequenciaController {
 
     try {
       const data = updateFrequenciaSchema.parse(req.body);
-      const frequencia = await frequenciaService.update(cursoId, turmaId, frequenciaId, {
-        aulaId: data.aulaId === undefined ? undefined : data.aulaId,
-        dataReferencia: data.dataReferencia ?? undefined,
-        status: data.status,
-        justificativa: data.justificativa === undefined ? undefined : data.justificativa,
-        observacoes: data.observacoes === undefined ? undefined : data.observacoes,
-      });
+      const syntheticId = parseSyntheticFrequenciaId(frequenciaId);
+
+      if (syntheticId) {
+        if (syntheticId.turmaId !== turmaId) {
+          return res.status(400).json({
+            success: false,
+            code: 'VALIDATION_ERROR',
+            message: 'Identificador de frequência temporário inválido para a turma informada',
+          });
+        }
+
+        if (!data.status) {
+          return res.status(400).json({
+            success: false,
+            code: 'VALIDATION_ERROR',
+            message: 'status é obrigatório para lançar frequência pendente',
+          });
+        }
+
+        const frequencia = await frequenciaService.upsertLancamento(
+          cursoId,
+          turmaId,
+          {
+            inscricaoId: syntheticId.inscricaoId,
+            tipoOrigem: syntheticId.tipoOrigem,
+            origemId: syntheticId.origemId,
+            status: data.status,
+            modoLancamento: data.modoLancamento ?? 'MANUAL',
+            minutosPresenca: data.minutosPresenca,
+            minimoMinutosParaPresenca: data.minimoMinutosParaPresenca,
+            justificativa: data.justificativa ?? null,
+            observacoes: data.observacoes ?? null,
+          },
+          {
+            lancadoPorId: req.user?.id,
+            ip: req.ip,
+            userAgent: Array.isArray(req.headers['user-agent'])
+              ? req.headers['user-agent'].join(' | ')
+              : req.headers['user-agent'],
+          },
+        );
+        return res.json(frequencia);
+      }
+
+      const frequencia = await frequenciaService.update(
+        cursoId,
+        turmaId,
+        frequenciaId,
+        {
+          aulaId: data.aulaId === undefined ? undefined : data.aulaId,
+          tipoOrigem: data.tipoOrigem,
+          origemId: data.origemId,
+          origemTitulo: data.origemTitulo,
+          modoLancamento: data.modoLancamento,
+          minutosPresenca: data.minutosPresenca,
+          minimoMinutosParaPresenca: data.minimoMinutosParaPresenca,
+          dataReferencia: data.dataReferencia ?? undefined,
+          status: data.status,
+          justificativa: data.justificativa === undefined ? undefined : data.justificativa,
+          observacoes: data.observacoes === undefined ? undefined : data.observacoes,
+        },
+        {
+          lancadoPorId: req.user?.id,
+          ip: req.ip,
+          userAgent: Array.isArray(req.headers['user-agent'])
+            ? req.headers['user-agent'].join(' | ')
+            : req.headers['user-agent'],
+        },
+      );
       res.json(frequencia);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -333,15 +1052,26 @@ export class FrequenciaController {
       if (error?.code === 'AULA_NOT_FOUND') {
         return res.status(404).json({
           success: false,
-          code: 'AULA_NOT_FOUND',
+          code: 'ORIGEM_NOT_FOUND',
           message: 'Aula não encontrada para a turma informada',
         });
       }
 
+      if (error?.code === 'PROVA_NOT_FOUND' || error?.code === 'ATIVIDADE_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'ORIGEM_NOT_FOUND',
+          message: 'Origem não encontrada para a turma informada',
+        });
+      }
+
       if (error?.code === 'VALIDATION_ERROR') {
+        const isJustificativa =
+          typeof error?.message === 'string' &&
+          error.message.toLowerCase().includes('justificativa');
         return res.status(400).json({
           success: false,
-          code: 'VALIDATION_ERROR',
+          code: isJustificativa ? 'JUSTIFICATIVA_OBRIGATORIA' : 'VALIDATION_ERROR',
           message: error.message,
         });
       }

@@ -1155,6 +1155,146 @@ router.get(
 );
 
 /**
+ * Listagem de estágios no contexto do aluno
+ * GET /api/v1/cursos/alunos/:alunoId/estagios
+ */
+router.get(
+  '/alunos/:alunoId/estagios',
+  supabaseAuthMiddleware([
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.PEDAGOGICO,
+    Roles.INSTRUTOR,
+    Roles.ALUNO_CANDIDATO,
+  ]),
+  EstagiosController.listAluno,
+);
+
+/**
+ * Detalhe de estágio no contexto do aluno
+ * GET /api/v1/cursos/alunos/:alunoId/estagios/:estagioId
+ */
+router.get(
+  '/alunos/:alunoId/estagios/:estagioId',
+  supabaseAuthMiddleware([
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.PEDAGOGICO,
+    Roles.INSTRUTOR,
+    Roles.ALUNO_CANDIDATO,
+  ]),
+  EstagiosController.getAlunoById,
+);
+
+/**
+ * Listagem de frequência do estágio no contexto do aluno
+ * GET /api/v1/cursos/alunos/:alunoId/estagios/:estagioId/frequencias
+ */
+router.get(
+  '/alunos/:alunoId/estagios/:estagioId/frequencias',
+  supabaseAuthMiddleware([
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.PEDAGOGICO,
+    Roles.INSTRUTOR,
+    Roles.ALUNO_CANDIDATO,
+  ]),
+  EstagiosController.listFrequenciasProgramaAluno,
+);
+
+/**
+ * Listagem agregada de frequência por período no contexto do aluno
+ * GET /api/v1/cursos/alunos/:alunoId/estagios/:estagioId/frequencias/periodo
+ */
+router.get(
+  '/alunos/:alunoId/estagios/:estagioId/frequencias/periodo',
+  supabaseAuthMiddleware([
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.PEDAGOGICO,
+    Roles.INSTRUTOR,
+    Roles.ALUNO_CANDIDATO,
+  ]),
+  EstagiosController.listFrequenciasPeriodoProgramaAluno,
+);
+
+/**
+ * Upsert de frequência no contexto do aluno
+ * POST /api/v1/cursos/alunos/:alunoId/estagios/:estagioId/frequencias/lancamentos
+ */
+router.post(
+  '/alunos/:alunoId/estagios/:estagioId/frequencias/lancamentos',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  EstagiosController.upsertFrequenciaProgramaAluno,
+);
+
+/**
+ * Histórico de frequência no contexto do aluno
+ * GET /api/v1/cursos/alunos/:alunoId/estagios/:estagioId/frequencias/:frequenciaId/historico
+ */
+router.get(
+  '/alunos/:alunoId/estagios/:estagioId/frequencias/:frequenciaId/historico',
+  supabaseAuthMiddleware([
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.PEDAGOGICO,
+    Roles.INSTRUTOR,
+    Roles.ALUNO_CANDIDATO,
+  ]),
+  EstagiosController.listFrequenciaHistoricoProgramaAluno,
+);
+
+/**
+ * Listagem de notas por aluno (com filtro obrigatório de curso + turma)
+ * GET /api/v1/cursos/alunos/:alunoId/notas
+ */
+router.get(
+  '/alunos/:alunoId/notas',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  NotasController.listAluno,
+);
+
+/**
+ * Listagem de frequência por aluno (com filtro obrigatório de curso + turma)
+ * GET /api/v1/cursos/alunos/:alunoId/frequencias
+ */
+router.get(
+  '/alunos/:alunoId/frequencias',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  FrequenciaController.listAluno,
+);
+
+/**
+ * Upsert de lançamento de frequência no contexto do aluno (cria/atualiza por chave natural)
+ * POST /api/v1/cursos/alunos/:alunoId/frequencias/lancamentos
+ */
+router.post(
+  '/alunos/:alunoId/frequencias/lancamentos',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  FrequenciaController.upsertLancamentoAluno,
+);
+
+/**
+ * Histórico de frequência por chave natural no contexto do aluno
+ * GET /api/v1/cursos/alunos/:alunoId/frequencias/historico?cursoId=...&turmaId=...&inscricaoId=...&tipoOrigem=...&origemId=...
+ */
+router.get(
+  '/alunos/:alunoId/frequencias/historico',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  FrequenciaController.listHistoricoByNaturalKeyAluno,
+);
+
+/**
+ * Histórico de frequência por ID persistido no contexto do aluno
+ * GET /api/v1/cursos/alunos/:alunoId/frequencias/:frequenciaId/historico
+ */
+router.get(
+  '/alunos/:alunoId/frequencias/:frequenciaId/historico',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  FrequenciaController.listHistoricoAluno,
+);
+
+/**
  * @openapi
  * /api/v1/cursos/alunos/{alunoId}/inscricoes:
  *   get:
@@ -1643,12 +1783,22 @@ router.get('/', publicCache, CursosController.list);
 // Rotas específicas de estágios (devem vir ANTES das rotas parametrizadas /:cursoId para evitar conflito)
 /**
  * Listar estágios (dashboard)
- * GET /api/v1/cursos/estagios?cursoId=...&turmaId?&status?&search?&page&pageSize
+ * GET /api/v1/cursos/estagios?cursoId?&turmaIds?&status?&search?&page&pageSize
  */
 router.get(
   '/estagios',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   EstagiosController.list,
+);
+
+/**
+ * Cadastrar estágio (visão geral de estágios)
+ * POST /api/v1/cursos/estagios
+ */
+router.post(
+  '/estagios',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  EstagiosController.createPrograma,
 );
 
 /**
@@ -1661,12 +1811,122 @@ router.patch(
   EstagiosController.updateStatus,
 );
 
+/**
+ * Detalhar estágio
+ * GET /api/v1/cursos/estagios/:estagioId
+ */
+router.get(
+  '/estagios/:estagioId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  EstagiosController.getPrograma,
+);
+
+/**
+ * Editar estágio
+ * PUT /api/v1/cursos/estagios/:estagioId
+ */
+router.put(
+  '/estagios/:estagioId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  EstagiosController.updatePrograma,
+);
+
+/**
+ * Vincular alunos ao estágio
+ * POST /api/v1/cursos/estagios/:estagioId/alunos/vincular
+ */
+router.post(
+  '/estagios/:estagioId/alunos/vincular',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  EstagiosController.vincularAlunosPrograma,
+);
+
+/**
+ * Alocar aluno em grupo de estágio
+ * PUT /api/v1/cursos/estagios/:estagioId/alunos/:estagioAlunoId/grupo
+ */
+router.put(
+  '/estagios/:estagioId/alunos/:estagioAlunoId/grupo',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  EstagiosController.alocarAlunoGrupoPrograma,
+);
+
+/**
+ * Listar frequência por estágio
+ * GET /api/v1/cursos/estagios/:estagioId/frequencias
+ */
+router.get(
+  '/estagios/:estagioId/frequencias',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  EstagiosController.listFrequenciasPrograma,
+);
+
+/**
+ * Listar frequência agregada por período (evita N chamadas por data)
+ * GET /api/v1/cursos/estagios/:estagioId/frequencias/periodo
+ */
+router.get(
+  '/estagios/:estagioId/frequencias/periodo',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  EstagiosController.listFrequenciasPeriodoPrograma,
+);
+
+/**
+ * Upsert de frequência do estágio
+ * POST /api/v1/cursos/estagios/:estagioId/frequencias/lancamentos
+ */
+router.post(
+  '/estagios/:estagioId/frequencias/lancamentos',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  EstagiosController.upsertFrequenciaPrograma,
+);
+
+/**
+ * Histórico de alterações da frequência de estágio
+ * GET /api/v1/cursos/estagios/:estagioId/frequencias/:frequenciaId/historico
+ */
+router.get(
+  '/estagios/:estagioId/frequencias/:frequenciaId/historico',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  EstagiosController.listFrequenciaHistoricoPrograma,
+);
+
+/**
+ * Concluir participação do aluno no estágio
+ * POST /api/v1/cursos/estagios/:estagioId/alunos/:estagioAlunoId/concluir
+ */
+router.post(
+  '/estagios/:estagioId/alunos/:estagioAlunoId/concluir',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  EstagiosController.concluirAlunoPrograma,
+);
+
+/**
+ * Listagem consolidada de notas (todos os cursos, com filtros opcionais)
+ * GET /api/v1/cursos/notas
+ */
+router.get(
+  '/notas',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  NotasController.listGeral,
+);
+
+/**
+ * Listagem consolidada de frequências (todos os cursos/turmas acessíveis, com filtros opcionais)
+ * GET /api/v1/cursos/frequencias
+ */
+router.get(
+  '/frequencias',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  FrequenciaController.listGeral,
+);
+
 router.get(
   '/:cursoId/meta',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   CursosController.metaCurso,
 );
-router.get('/:cursoId', publicCache, CursosController.get);
+router.get('/:cursoId([0-9a-fA-F-]{36})', publicCache, CursosController.get);
 
 /**
  * @openapi
@@ -3898,6 +4158,16 @@ router.post(
 );
 
 /**
+ * Upsert de lançamento de frequência pela modal (cria ou atualiza por chave natural)
+ * POST /api/v1/cursos/:cursoId/turmas/:turmaId/frequencias/lancamentos
+ */
+router.post(
+  '/:cursoId/turmas/:turmaId/frequencias/lancamentos',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  FrequenciaController.upsertLancamento,
+);
+
+/**
  * @openapi
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/frequencias/resumo:
  *   get:
@@ -3974,6 +4244,26 @@ router.get(
   '/:cursoId/turmas/:turmaId/frequencias/resumo',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   FrequenciaController.resumo,
+);
+
+/**
+ * Histórico de frequência por chave natural (fallback para itens não persistidos no front)
+ * GET /api/v1/cursos/:cursoId/turmas/:turmaId/frequencias/historico?inscricaoId=...&tipoOrigem=...&origemId=...
+ */
+router.get(
+  '/:cursoId/turmas/:turmaId/frequencias/historico',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  FrequenciaController.listHistoricoByNaturalKey,
+);
+
+/**
+ * Histórico de frequência por ID persistido
+ * GET /api/v1/cursos/:cursoId/turmas/:turmaId/frequencias/:frequenciaId/historico
+ */
+router.get(
+  '/:cursoId/turmas/:turmaId/frequencias/:frequenciaId/historico',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  FrequenciaController.listHistorico,
 );
 
 /**
@@ -5095,6 +5385,106 @@ router.get(
   '/me/inscricoes/:inscricaoId/notas',
   supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
   AvaliacaoController.getMyGrades,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/certificados:
+ *   get:
+ *     summary: Listagem global de certificados
+ *     tags: ['Cursos']
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get(
+  '/certificados',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  CertificadosController.listarGlobal,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/certificados:
+ *   post:
+ *     summary: Emitir certificado por curso/turma/aluno
+ *     tags: ['Cursos']
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post(
+  '/certificados',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  CertificadosController.emitirGlobal,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/certificados/modelos:
+ *   get:
+ *     summary: Listar modelos disponíveis de certificado
+ *     tags: ['Cursos']
+ */
+router.get(
+  '/certificados/modelos',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  CertificadosController.listarModelos,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/certificados/{certificadoId}:
+ *   get:
+ *     summary: Detalhe de certificado
+ *     tags: ['Cursos']
+ */
+router.get(
+  '/certificados/:certificadoId',
+  supabaseAuthMiddleware([
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.PEDAGOGICO,
+    Roles.INSTRUTOR,
+    Roles.ALUNO_CANDIDATO,
+  ]),
+  CertificadosController.getById,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/certificados/{certificadoId}/preview:
+ *   get:
+ *     summary: Preview HTML de certificado
+ *     tags: ['Cursos']
+ */
+router.get(
+  '/certificados/:certificadoId/preview',
+  supabaseAuthMiddleware([
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.PEDAGOGICO,
+    Roles.INSTRUTOR,
+    Roles.ALUNO_CANDIDATO,
+  ]),
+  CertificadosController.previewById,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/certificados/{certificadoId}/pdf:
+ *   get:
+ *     summary: Download PDF de certificado
+ *     tags: ['Cursos']
+ */
+router.get(
+  '/certificados/:certificadoId/pdf',
+  supabaseAuthMiddleware([
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.PEDAGOGICO,
+    Roles.INSTRUTOR,
+    Roles.ALUNO_CANDIDATO,
+  ]),
+  CertificadosController.pdfById,
 );
 
 /**

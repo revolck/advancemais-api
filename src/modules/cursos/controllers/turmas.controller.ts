@@ -113,8 +113,19 @@ export class TurmasController {
           }),
         TURMAS_LIST_CACHE_TTL,
       );
+      const defaultTurmaId =
+        Array.isArray((result as any)?.data) && (result as any).data.length > 0
+          ? ((result as any).data[0]?.id ?? null)
+          : null;
 
-      res.json(result);
+      res.json({
+        ...result,
+        meta: {
+          ...((result as any)?.meta ?? {}),
+          defaultTurmaId,
+        },
+        defaultTurmaId,
+      });
     } catch (error: any) {
       if (error instanceof ZodError) {
         return res.status(400).json({

@@ -9,6 +9,7 @@ import { seedAreasInteresse } from './seeds/seed-areas-interesse';
 import { seedVagas } from './seeds/seed-vagas';
 import { seedCurriculosCandidaturas } from './seeds/seed-curriculos-candidaturas';
 import { seedCursos } from './seeds/seed-cursos';
+import { seedCursosOperacional } from './seeds/seed-cursos-operacional';
 import { seedStatusProcesso } from './seeds/seed-status-processo';
 
 // Usar DIRECT_URL para seeds (conexão direta, sem pooler)
@@ -23,34 +24,39 @@ async function main() {
 
   try {
     // 1. Usuários (todas as roles)
-    console.log('👥 ETAPA 1/6: Usuários');
+    console.log('👥 ETAPA 1/7: Usuários');
     console.log('───────────────────────────────────────────────────');
     await seedUsuarios(prisma);
 
     // 2. Status Processo
-    console.log('\n📊 ETAPA 2/6: Status Processo');
+    console.log('\n📊 ETAPA 2/7: Status Processo');
     console.log('───────────────────────────────────────────────────');
     await seedStatusProcesso(prisma);
 
     // 3. Áreas de Interesse
-    console.log('\n🏷️  ETAPA 3/6: Áreas de Interesse');
+    console.log('\n🏷️  ETAPA 3/7: Áreas de Interesse');
     console.log('───────────────────────────────────────────────────');
     await seedAreasInteresse(prisma);
 
     // 4. Vagas
-    console.log('\n💼 ETAPA 4/6: Vagas');
+    console.log('\n💼 ETAPA 4/7: Vagas');
     console.log('───────────────────────────────────────────────────');
     await seedVagas(prisma);
 
     // 5. Currículos e Candidaturas
-    console.log('\n📄 ETAPA 5/6: Currículos e Candidaturas');
+    console.log('\n📄 ETAPA 5/7: Currículos e Candidaturas');
     console.log('───────────────────────────────────────────────────');
     await seedCurriculosCandidaturas(prisma);
 
     // 6. Cursos e Turmas
-    console.log('\n📚 ETAPA 6/6: Cursos e Turmas');
+    console.log('\n📚 ETAPA 6/7: Cursos e Turmas');
     console.log('───────────────────────────────────────────────────');
     await seedCursos(prisma);
+
+    // 7. Operacional de cursos (aulas, agenda, avaliações, notas, frequência)
+    console.log('\n🧪 ETAPA 7/7: Operacional de Cursos');
+    console.log('───────────────────────────────────────────────────');
+    await seedCursosOperacional(prisma);
 
     console.log('\n═══════════════════════════════════════════════════');
     console.log('✨ Seed completo finalizado com sucesso!');
@@ -71,6 +77,11 @@ async function main() {
     console.log(`  📮 Candidaturas: ${stats.candidaturas}`);
     console.log(`  📚 Cursos: ${stats.cursos}`);
     console.log(`  🎓 Turmas: ${stats.turmas}`);
+    console.log(`  🧩 Aulas: ${stats.aulas}`);
+    console.log(`  📝 Avaliações/Provas: ${stats.avaliacoes}`);
+    console.log(`  📈 Notas: ${stats.notas}`);
+    console.log(`  ✅ Frequências: ${stats.frequencias}`);
+    console.log(`  📅 Itens de Agenda: ${stats.agendas}`);
     console.log('───────────────────────────────────────────────────\n');
 
     console.log('📝 CREDENCIAIS DE ACESSO:');
@@ -115,6 +126,11 @@ async function getStats() {
     candidaturas,
     cursos,
     turmas,
+    aulas,
+    avaliacoes,
+    notas,
+    frequencias,
+    agendas,
   ] = await Promise.all([
     prisma.usuarios.count(),
     prisma.usuarios.count({ where: { role: { in: ['ADMIN', 'MODERADOR'] } } }),
@@ -133,6 +149,11 @@ async function getStats() {
     prisma.empresasCandidatos.count(),
     prisma.cursos.count(),
     prisma.cursosTurmas.count(),
+    prisma.cursosTurmasAulas.count(),
+    prisma.cursosTurmasProvas.count(),
+    prisma.cursosNotas.count(),
+    prisma.cursosFrequenciaAlunos.count(),
+    prisma.cursosTurmasAgenda.count(),
   ]);
 
   return {
@@ -147,6 +168,11 @@ async function getStats() {
     candidaturas,
     cursos,
     turmas,
+    aulas,
+    avaliacoes,
+    notas,
+    frequencias,
+    agendas,
   };
 }
 

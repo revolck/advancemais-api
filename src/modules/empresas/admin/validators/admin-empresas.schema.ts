@@ -235,6 +235,7 @@ export const adminEmpresasListQuerySchema = z
   .object({
     page: z.coerce.number().int().min(1).optional(),
     pageSize: z.coerce.number().int().min(1).max(100).optional(),
+    context: z.enum(['DEFAULT', 'AUTOFILL']).optional(),
     search: z
       .string()
       .trim()
@@ -247,10 +248,21 @@ export const adminEmpresasListQuerySchema = z
   .transform((values) => ({
     page: values.page ?? 1,
     pageSize: values.pageSize ?? 20,
+    context: values.context ?? 'DEFAULT',
     search: values.search,
   }));
 
 export type AdminEmpresasListQuery = z.infer<typeof adminEmpresasListQuerySchema>;
+
+export const adminEmpresasDetailQuerySchema = z
+  .object({
+    context: z.enum(['DEFAULT', 'AUTOFILL']).optional(),
+  })
+  .transform((values) => ({
+    context: values.context ?? 'DEFAULT',
+  }));
+
+export type AdminEmpresasDetailQuery = z.infer<typeof adminEmpresasDetailQuerySchema>;
 
 export const adminEmpresasDashboardListQuerySchema = z
   .object({

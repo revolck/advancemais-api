@@ -9,10 +9,16 @@ import type {
   EstagioConfirmacaoInput,
   EstagioCreateInput,
   EstagioLocalInput,
-  EstagioStatusInput,
   EstagioUpdateInput,
   ListEstagiosQuery,
 } from '../validators/estagios.schema';
+
+type LegacyEstagioStatusInput = {
+  status: CursosEstagioStatus;
+  reprovadoMotivo?: string | null;
+  concluidoEm?: Date;
+  observacoes?: string | null;
+};
 
 const estagiosLogger = logger.child({ module: 'CursosEstagiosService' });
 
@@ -500,7 +506,7 @@ export const estagiosService = {
     });
   },
 
-  async updateStatus(estagioId: string, data: EstagioStatusInput, usuarioId?: string) {
+  async updateStatus(estagioId: string, data: LegacyEstagioStatusInput, usuarioId?: string) {
     return prisma.$transaction(async (tx) => {
       const estagioExistente = await tx.cursosEstagios.findUnique({
         where: { id: estagioId },

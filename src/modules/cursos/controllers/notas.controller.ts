@@ -7,6 +7,7 @@ import { notasService } from '../services/notas.service';
 import {
   clearNotasManuaisSchema,
   createNotaV2Schema,
+  listNotasGeralQuerySchema,
   listCursoNotasQuerySchema,
   updateNotaSchema,
 } from '../validators/notas.schema';
@@ -44,6 +45,17 @@ const parseInscricaoId = (raw: unknown) => {
   return raw;
 };
 
+const parseAlunoId = (raw: string) => {
+  if (!raw || typeof raw !== 'string') {
+    return null;
+  }
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(raw.trim())) {
+    return null;
+  }
+  return raw.trim();
+};
+
 const resolveTtl = (value: string | undefined, fallback: number) => {
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
@@ -54,13 +66,159 @@ const CURSOS_NOTAS_CACHE_TTL = resolveTtl(process.env.CACHE_TTL_CURSOS_NOTAS, 30
 
 const invalidateCursoNotasCache = async () => {
   try {
-    await invalidateCacheByPrefix('cursos:notas:list-curso:');
+    await Promise.all([
+      invalidateCacheByPrefix('cursos:notas:list-curso:'),
+      invalidateCacheByPrefix('cursos:notas:list-geral:'),
+      invalidateCacheByPrefix('cursos:notas:list-aluno:'),
+    ]);
   } catch {
     // cache é best-effort
   }
 };
 
 export class NotasController {
+  static listGeral = async (req: Request, res: Response) => {
+    try {
+      const query = listNotasGeralQuerySchema.parse(req.query);
+      const cacheKey = generateCacheKey(
+        'cursos:notas:list-geral',
+        {
+          cursoId: query.cursoId ?? '',
+          turmaIds: query.turmaIds?.join(',') ?? '',
+          search: query.search ?? '',
+          page: query.page,
+          pageSize: query.pageSize,
+          orderBy: query.orderBy,
+          order: query.order,
+          role: req.user?.role ?? '',
+        },
+        { excludeKeys: [] },
+      );
+
+      const result = await getCachedOrFetch(
+        cacheKey,
+        () => notasService.listNotasGeral(query),
+        CURSOS_NOTAS_CACHE_TTL,
+      );
+
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos para listagem geral de notas',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'INVALID_TURMA_FILTER') {
+        return res.status(400).json({
+          success: false,
+          code: 'INVALID_TURMA_FILTER',
+          message: 'Uma ou mais turmas são inválidas para o curso informado.',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'NOTAS_GERAL_LIST_ERROR',
+        message: 'Erro ao listar notas',
+        error: error?.message,
+      });
+    }
+  };
+
+  static listAluno = async (req: Request, res: Response) => {
+    const alunoId = parseAlunoId(req.params.alunoId);
+    if (!alunoId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificador de aluno inválido',
+      });
+    }
+
+    const cursoIdRaw = typeof req.query.cursoId === 'string' ? req.query.cursoId.trim() : '';
+    const turmaIdsRaw = req.query.turmaIds;
+    const hasTurmaIds =
+      (typeof turmaIdsRaw === 'string' && turmaIdsRaw.trim().length > 0) ||
+      (Array.isArray(turmaIdsRaw) && turmaIdsRaw.some((item) => String(item).trim().length > 0));
+
+    if (!cursoIdRaw || !hasTurmaIds) {
+      return res.status(400).json({
+        success: false,
+        code: 'TURMA_FILTER_REQUIRED',
+        message: 'Selecione curso e ao menos uma turma para listar notas.',
+        data: {
+          requires: ['cursoId', 'turmaIds'],
+        },
+      });
+    }
+
+    try {
+      const query = listNotasGeralQuerySchema.parse(req.query);
+      if (!query.cursoId || !query.turmaIds || query.turmaIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          code: 'TURMA_FILTER_REQUIRED',
+          message: 'Selecione curso e ao menos uma turma para listar notas.',
+          data: {
+            requires: ['cursoId', 'turmaIds'],
+          },
+        });
+      }
+
+      const cacheKey = generateCacheKey(
+        'cursos:notas:list-aluno',
+        {
+          alunoId,
+          cursoId: query.cursoId,
+          turmaIds: query.turmaIds.join(','),
+          search: query.search ?? '',
+          page: query.page,
+          pageSize: query.pageSize,
+          orderBy: query.orderBy,
+          order: query.order,
+          role: req.user?.role ?? '',
+        },
+        { excludeKeys: [] },
+      );
+
+      const result = await getCachedOrFetch(
+        cacheKey,
+        () => notasService.listNotasGeral(query, { alunoId }),
+        CURSOS_NOTAS_CACHE_TTL,
+      );
+
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos para listagem de notas do aluno',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'INVALID_TURMA_FILTER') {
+        return res.status(400).json({
+          success: false,
+          code: 'INVALID_TURMA_FILTER',
+          message: 'Uma ou mais turmas são inválidas para o curso informado.',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'NOTAS_ALUNO_LIST_ERROR',
+        message: 'Erro ao listar notas do aluno',
+        error: error?.message,
+      });
+    }
+  };
+
   static listCurso = async (req: Request, res: Response) => {
     const cursoId = parseCursoId(req.params.cursoId);
     if (!cursoId) {
@@ -104,11 +262,11 @@ export class NotasController {
         });
       }
 
-      if (error?.code === 'TURMA_NOT_FOUND') {
-        return res.status(404).json({
+      if (error?.code === 'INVALID_TURMA_FILTER') {
+        return res.status(400).json({
           success: false,
-          code: 'TURMA_NOT_FOUND',
-          message: 'Uma ou mais turmas não foram encontradas para o curso informado',
+          code: 'INVALID_TURMA_FILTER',
+          message: 'Uma ou mais turmas são inválidas para o curso informado.',
         });
       }
 
@@ -209,6 +367,11 @@ export class NotasController {
 
       // Novo contrato: lançamento manual por alunoId
       if ('alunoId' in parsed) {
+        const userAgentHeader = req.headers['user-agent'];
+        const userAgent = Array.isArray(userAgentHeader)
+          ? userAgentHeader.join(' | ')
+          : userAgentHeader;
+
         const nota = await notasService.createManualLancamento(
           cursoId,
           turmaId,
@@ -216,9 +379,13 @@ export class NotasController {
             alunoId: parsed.alunoId,
             nota: parsed.nota,
             motivo: parsed.motivo,
-            origem: parsed.origem ?? null,
+            origem: parsed.origem,
           },
-          req.user?.id,
+          {
+            criadoPorId: req.user?.id,
+            ip: req.ip,
+            userAgent,
+          },
         );
         await invalidateCursoNotasCache();
         return res.status(201).json(nota);
@@ -262,6 +429,31 @@ export class NotasController {
           success: false,
           code: 'PROVA_NOT_FOUND',
           message: 'Prova não encontrada para a turma informada',
+        });
+      }
+
+      if (error?.code === 'ATIVIDADE_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'ATIVIDADE_NOT_FOUND',
+          message: 'Atividade não encontrada para a turma informada',
+        });
+      }
+
+      if (error?.code === 'AULA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'AULA_NOT_FOUND',
+          message: 'Aula não encontrada para a turma informada',
+        });
+      }
+
+      if (error?.code === 'NOTA_MAXIMA_ATINGIDA' || error?.code === 'NOTA_EXCEDE_LIMITE') {
+        return res.status(409).json({
+          success: false,
+          code: error.code,
+          message: error.message,
+          data: error.data ?? undefined,
         });
       }
 
@@ -392,6 +584,23 @@ export class NotasController {
         });
       }
 
+      if (error?.code === 'NOTA_SYSTEM_LOCKED') {
+        return res.status(409).json({
+          success: false,
+          code: 'NOTA_SYSTEM_LOCKED',
+          message: error.message,
+        });
+      }
+
+      if (error?.code === 'NOTA_EXCEDE_LIMITE') {
+        return res.status(409).json({
+          success: false,
+          code: 'NOTA_EXCEDE_LIMITE',
+          message: error.message,
+          data: error.data ?? undefined,
+        });
+      }
+
       if (error?.code === 'VALIDATION_ERROR') {
         return res.status(400).json({
           success: false,
@@ -432,6 +641,14 @@ export class NotasController {
           success: false,
           code: 'NOTA_NOT_FOUND',
           message: 'Nota não encontrada para a turma informada',
+        });
+      }
+
+      if (error?.code === 'NOTA_SYSTEM_LOCKED') {
+        return res.status(409).json({
+          success: false,
+          code: 'NOTA_SYSTEM_LOCKED',
+          message: error.message,
         });
       }
 

@@ -77,4 +77,9 @@ agendaRoutes.use(
     Roles.ALUNO_CANDIDATO,
   ]),
 );
+agendaRoutes.get(
+  '/aniversariantes',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  AgendaController.getAniversariantes,
+);
 agendaRoutes.get('/', AgendaController.getEventos);

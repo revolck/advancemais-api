@@ -70,7 +70,8 @@ export const listCoursesQuerySchema = z.object({
   categoriaId: positiveInt.optional(),
   subcategoriaId: positiveInt.optional(),
   instrutorId: z.string().uuid().optional(),
-  includeTurmas: z.coerce.boolean().optional(),
+  includeTurmas: z.preprocess(parseBooleanQuery, z.boolean().optional()),
+  includeExcluidos: z.preprocess(parseBooleanQuery, z.boolean().optional()),
 });
 
 export const createCourseSchema = z.object({

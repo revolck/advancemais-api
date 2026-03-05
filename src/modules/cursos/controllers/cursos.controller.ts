@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ZodError } from 'zod';
 import bcrypt from 'bcrypt';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { Roles } from '@prisma/client';
 
 import { prisma, retryOperation } from '@/config/prisma';
 import { logger } from '@/utils/logger';
@@ -325,10 +326,15 @@ export class CursosController {
           subcategoriaId: params.subcategoriaId ?? '',
           instrutorId: params.instrutorId ?? '',
           includeTurmas: params.includeTurmas ? '1' : '0',
+          includeExcluidos: params.includeExcluidos ? '1' : '0',
           role: req.user?.role ?? '',
         },
         { excludeKeys: [] },
       );
+
+      const canViewDeletedRoles: Roles[] = [Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO];
+      const canViewDeleted = canViewDeletedRoles.includes(req.user?.role as Roles);
+      const includeExcluidos = canViewDeleted && params.includeExcluidos === true;
 
       const result = await getCachedOrFetch(
         cacheKey,
@@ -342,6 +348,7 @@ export class CursosController {
             subcategoriaId: params.subcategoriaId,
             instrutorId: params.instrutorId,
             includeTurmas: params.includeTurmas,
+            includeExcluidos,
           }),
         CURSOS_LIST_CACHE_TTL,
       );
@@ -657,10 +664,65 @@ export class CursosController {
         });
       }
 
+      if (error?.code === 'CURSO_DESPUBLICAR_TURMAS_NAO_CONCLUIDAS') {
+        return res.status(409).json({
+          success: false,
+          code: 'CURSO_DESPUBLICAR_TURMAS_NAO_CONCLUIDAS',
+          message:
+            'Não é possível despublicar curso com turmas não concluídas. Conclua todas as turmas antes de despublicar.',
+          details: error?.details ?? [],
+        });
+      }
+
       res.status(500).json({
         success: false,
         code: 'CURSO_ARCHIVE_ERROR',
         message: 'Erro ao despublicar curso',
+        error: error?.message,
+      });
+    }
+  };
+
+  static deleteDefinitivo = async (req: Request, res: Response) => {
+    const id = parseCourseId(req.params.cursoId ?? req.params.id);
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificador de curso inválido',
+      });
+    }
+
+    try {
+      const userId = req.user?.id;
+      const ip = req.ip || req.socket.remoteAddress || undefined;
+      const userAgent = req.get('user-agent') || undefined;
+
+      const result = await cursosService.deleteDefinitivo(id, userId, ip, userAgent);
+      await invalidateCursosCache();
+      return res.json(result);
+    } catch (error: any) {
+      if (error?.code === 'P2025') {
+        return res.status(404).json({
+          success: false,
+          code: 'CURSO_NOT_FOUND',
+          message: 'Curso não encontrado',
+        });
+      }
+
+      if (error?.code === 'CURSO_EXCLUSAO_BLOQUEADA_TURMAS_VINCULADAS') {
+        return res.status(409).json({
+          success: false,
+          code: 'CURSO_EXCLUSAO_BLOQUEADA_TURMAS_VINCULADAS',
+          message: 'Não é possível excluir curso com turmas vinculadas. Use despublicar/arquivar.',
+          details: error?.details ?? [],
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        code: 'CURSO_DELETE_ERROR',
+        message: 'Erro ao excluir curso',
         error: error?.message,
       });
     }

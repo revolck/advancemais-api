@@ -193,6 +193,7 @@ type CourseListParams = {
   subcategoriaId?: number;
   instrutorId?: string;
   includeTurmas?: boolean;
+  includeExcluidos?: boolean;
 };
 
 const mapTurmaSummary = (
@@ -898,7 +899,10 @@ export const cursosService = {
     );
 
     return prisma.$transaction(async (tx) => {
-      const curso = await tx.cursos.findUnique({ where: { id: cursoId }, select: { id: true } });
+      const curso = await tx.cursos.findFirst({
+        where: { id: cursoId, deletedAt: null },
+        select: { id: true },
+      });
       if (!curso) {
         const error: any = new Error('Curso não encontrado');
         error.code = 'CURSO_NOT_FOUND';
@@ -987,9 +991,14 @@ export const cursosService = {
       subcategoriaId,
       instrutorId,
       includeTurmas,
+      includeExcluidos,
     } = params;
 
     const where: Prisma.CursosWhereInput = {};
+
+    if (!includeExcluidos) {
+      where.deletedAt = null;
+    }
 
     if (statusPadrao?.length) {
       where.statusPadrao = { in: statusPadrao };
@@ -1193,8 +1202,8 @@ export const cursosService = {
   },
 
   async getById(id: string) {
-    const course = await prisma.cursos.findUnique({
-      where: { id },
+    const course = await prisma.cursos.findFirst({
+      where: { id, deletedAt: null },
       include: {
         CursosCategorias: { select: categoriaSelect },
         CursosSubcategorias: { select: subcategoriaSelect },
@@ -1257,6 +1266,7 @@ export const cursosService = {
 
     const cursos = await prisma.cursos.findMany({
       where: {
+        deletedAt: null,
         statusPadrao: { in: publicCursoStatuses },
         CursosTurmas: { some: buildPublicTurmaWhere(referenceDate) },
       },
@@ -1339,6 +1349,7 @@ export const cursosService = {
     const curso = await prisma.cursos.findFirst({
       where: {
         id,
+        deletedAt: null,
         statusPadrao: { in: publicCursoStatuses },
         CursosTurmas: { some: buildPublicTurmaWhere(referenceDate) },
       },
@@ -1514,8 +1525,8 @@ export const cursosService = {
     userAgent?: string,
   ) {
     const result = await prisma.$transaction(async (tx) => {
-      const cursoAnterior = await tx.cursos.findUnique({
-        where: { id },
+      const cursoAnterior = await tx.cursos.findFirst({
+        where: { id, deletedAt: null },
         select: {
           nome: true,
           descricao: true,
@@ -1531,6 +1542,12 @@ export const cursosService = {
           gratuito: true,
         },
       });
+
+      if (!cursoAnterior) {
+        const error = new Error('Curso não encontrado');
+        (error as any).code = 'P2025';
+        throw error;
+      }
 
       const updateData: Prisma.CursosUncheckedUpdateInput = {
         atualizadoEm: new Date(),
@@ -1770,13 +1787,42 @@ export const cursosService = {
 
   async archive(id: string) {
     // Verificar se o curso existe primeiro
-    const existing = await prisma.cursos.findUnique({
-      where: { id },
+    const existing = await prisma.cursos.findFirst({
+      where: { id, deletedAt: null },
+      select: {
+        id: true,
+        CursosTurmas: {
+          select: {
+            id: true,
+            codigo: true,
+            nome: true,
+            status: true,
+          },
+        },
+      },
     });
 
     if (!existing) {
       const error = new Error('Curso não encontrado');
       (error as any).code = 'P2025';
+      throw error;
+    }
+
+    const turmasNaoConcluidas = existing.CursosTurmas.filter(
+      (turma) => turma.status !== CursoStatus.CONCLUIDO,
+    );
+
+    if (turmasNaoConcluidas.length > 0) {
+      const error = new Error(
+        'Não é possível despublicar curso com turmas não concluídas. Conclua todas as turmas antes de despublicar.',
+      );
+      (error as any).code = 'CURSO_DESPUBLICAR_TURMAS_NAO_CONCLUIDAS';
+      (error as any).details = turmasNaoConcluidas.map((turma) => ({
+        id: turma.id,
+        codigo: turma.codigo,
+        nome: turma.nome,
+        status: turma.status,
+      }));
       throw error;
     }
 
@@ -1789,8 +1835,8 @@ export const cursosService = {
     });
 
     // Buscar o curso atualizado com todos os relacionamentos
-    const updated = await prisma.cursos.findUnique({
-      where: { id },
+    const updated = await prisma.cursos.findFirst({
+      where: { id, deletedAt: null },
       include: {
         CursosCategorias: { select: categoriaSelect },
         CursosSubcategorias: { select: subcategoriaSelect },
@@ -1808,8 +1854,86 @@ export const cursosService = {
     return mapCourse(updated);
   },
 
+  async deleteDefinitivo(id: string, deletedById?: string, ip?: string, userAgent?: string) {
+    const existing = await prisma.cursos.findFirst({
+      where: { id, deletedAt: null },
+      select: {
+        id: true,
+        nome: true,
+        codigo: true,
+        CursosTurmas: {
+          select: {
+            id: true,
+            codigo: true,
+            nome: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    if (!existing) {
+      const error = new Error('Curso não encontrado');
+      (error as any).code = 'P2025';
+      throw error;
+    }
+
+    if (existing.CursosTurmas.length > 0) {
+      const error = new Error(
+        'Não é possível excluir curso com turmas vinculadas. Use despublicar/arquivar.',
+      );
+      (error as any).code = 'CURSO_EXCLUSAO_BLOQUEADA_TURMAS_VINCULADAS';
+      (error as any).details = existing.CursosTurmas.map((turma) => ({
+        id: turma.id,
+        codigo: turma.codigo,
+        nome: turma.nome,
+        status: turma.status,
+      }));
+      throw error;
+    }
+
+    const deletedAt = new Date();
+
+    await prisma.cursos.update({
+      where: { id },
+      data: {
+        deletedAt,
+        deletedById: deletedById ?? null,
+        statusPadrao: CursosStatusPadrao.RASCUNHO,
+        atualizadoEm: deletedAt,
+      },
+    });
+
+    if (deletedById) {
+      const { cursosAuditoriaService } = require('./cursos-auditoria.service');
+      await cursosAuditoriaService.registrarExclusaoLogicaCurso(
+        id,
+        deletedById,
+        {
+          nome: existing.nome,
+          codigo: existing.codigo,
+          motivo: 'Exclusão lógica solicitada via endpoint',
+        },
+        ip,
+        userAgent,
+      );
+    }
+
+    return {
+      success: true,
+      data: {
+        id,
+        excluidoEm: deletedAt.toISOString(),
+        excluidoPorId: deletedById ?? null,
+      },
+    };
+  },
+
   async metaCurso(cursoId: string) {
-    const curso = await prisma.cursos.findUnique({ where: { id: cursoId }, select: { id: true } });
+    const curso = await prisma.cursos.findFirst({
+      where: { id: cursoId, deletedAt: null },
+      select: { id: true },
+    });
     if (!curso) {
       const error: any = new Error('Curso não encontrado');
       error.code = 'CURSO_NOT_FOUND';

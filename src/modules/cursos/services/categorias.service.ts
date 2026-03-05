@@ -166,6 +166,36 @@ export const categoriasService = {
   },
 
   async remove(id: number) {
+    const categoria = await prisma.cursosCategorias.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!categoria) {
+      const error = new Error('Categoria não encontrada');
+      (error as any).code = 'CATEGORIA_NOT_FOUND';
+      throw error;
+    }
+
+    const cursosVinculados = await prisma.cursos.count({
+      where: {
+        OR: [
+          { categoriaId: id },
+          {
+            CursosSubcategorias: {
+              categoriaId: id,
+            },
+          },
+        ],
+      },
+    });
+
+    if (cursosVinculados > 0) {
+      const error = new Error('Não é possível remover categoria com cursos vinculados');
+      (error as any).code = 'CATEGORIA_IN_USE';
+      throw error;
+    }
+
     try {
       await prisma.cursosCategorias.delete({ where: { id } });
 
@@ -234,6 +264,27 @@ export const categoriasService = {
   },
 
   async removeSubcategoria(subcategoriaId: number) {
+    const subcategoria = await prisma.cursosSubcategorias.findUnique({
+      where: { id: subcategoriaId },
+      select: { id: true },
+    });
+
+    if (!subcategoria) {
+      const error = new Error('Subcategoria não encontrada');
+      (error as any).code = 'SUBCATEGORIA_NOT_FOUND';
+      throw error;
+    }
+
+    const cursosVinculados = await prisma.cursos.count({
+      where: { subcategoriaId },
+    });
+
+    if (cursosVinculados > 0) {
+      const error = new Error('Não é possível remover subcategoria com cursos vinculados');
+      (error as any).code = 'SUBCATEGORIA_IN_USE';
+      throw error;
+    }
+
     try {
       await prisma.cursosSubcategorias.delete({ where: { id: subcategoriaId } });
 

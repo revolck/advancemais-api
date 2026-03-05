@@ -82,6 +82,22 @@ const handleKnownErrors = (res: Response, error: any) => {
     });
   }
 
+  if (error?.code === 'CATEGORIA_IN_USE') {
+    return res.status(409).json({
+      success: false,
+      code: 'CATEGORIA_IN_USE',
+      message: 'Não é possível remover a categoria pois existem cursos vinculados',
+    });
+  }
+
+  if (error?.code === 'SUBCATEGORIA_IN_USE') {
+    return res.status(409).json({
+      success: false,
+      code: 'SUBCATEGORIA_IN_USE',
+      message: 'Não é possível remover a subcategoria pois existem cursos vinculados',
+    });
+  }
+
   if (isUniqueConstraintError(error)) {
     return res.status(409).json({
       success: false,

@@ -2155,6 +2155,33 @@ router.put(
 
 /**
  * @openapi
+ * /api/v1/cursos/{cursoId}/exclusao-definitiva:
+ *   delete:
+ *     summary: Exclusão lógica de curso (somente sem turmas vinculadas)
+ *     tags: [Cursos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: cursoId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Curso excluído logicamente
+ *       404:
+ *         description: Curso não encontrado
+ *       409:
+ *         description: Curso possui turmas vinculadas e não pode ser excluído
+ */
+router.delete(
+  '/:cursoId/exclusao-definitiva',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  CursosController.deleteDefinitivo,
+);
+
+/**
+ * @openapi
  * /api/v1/cursos/{cursoId}:
  *   delete:
  *     summary: Despublicar um curso (status padrão)

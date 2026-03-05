@@ -1,6 +1,6 @@
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
-import type { Usuarios } from '@prisma/client';
+import { Roles, Status } from '@prisma/client';
 
 const agendaLogger = logger.child({ module: 'AgendaService' });
 
@@ -22,10 +22,169 @@ type AgendaEvento = {
   [key: string]: any;
 };
 
+const EXCLUDED_BIRTHDAY_ROLES = new Set<Roles>([Roles.ALUNO_CANDIDATO, Roles.EMPRESA]);
+
+const DEFAULT_INTERNAL_BIRTHDAY_ROLES: Roles[] = [
+  Roles.ADMIN,
+  Roles.MODERADOR,
+  Roles.FINANCEIRO,
+  Roles.INSTRUTOR,
+  Roles.PEDAGOGICO,
+  Roles.SETOR_DE_VAGAS,
+  Roles.RECRUTADOR,
+];
+
+const normalizeStartOfUtcDay = (value: Date) =>
+  new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate(), 0, 0, 0, 0));
+
+const normalizeEndOfUtcDay = (value: Date) =>
+  new Date(
+    Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate(), 23, 59, 59, 999),
+  );
+
+const createBirthdayOccurrenceUtc = (year: number, month: number, day: number) => {
+  const candidate = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+  if (candidate.getUTCMonth() === month && candidate.getUTCDate() === day) {
+    return candidate;
+  }
+
+  // Em anos não bissextos, aniversários de 29/02 aparecem em 28/02.
+  if (month === 1 && day === 29) {
+    return new Date(Date.UTC(year, 1, 28, 0, 0, 0, 0));
+  }
+
+  return null;
+};
+
+const isRoleEnumValue = (value: string): value is Roles =>
+  (Object.values(Roles) as Roles[]).includes(value as Roles);
+
 /**
  * Service da agenda unificada
  */
 export const agendaService = {
+  async getAniversariantes(params: {
+    dataInicio: Date;
+    dataFim: Date;
+    roles?: string[];
+    incluirInativos?: boolean;
+  }): Promise<{
+    eventos: {
+      id: string;
+      tipo: 'ANIVERSARIO';
+      titulo: string;
+      descricao: string;
+      data: string;
+      cor: string;
+      usuario: {
+        id: string;
+        nome: string;
+        role: Roles;
+        avatarUrl: string | null;
+      };
+    }[];
+    resumo: { total: number };
+  }> {
+    const start = normalizeStartOfUtcDay(params.dataInicio);
+    const end = normalizeEndOfUtcDay(params.dataFim);
+
+    const normalizedRequestedRoles = (params.roles ?? [])
+      .map((role) => role.trim().toUpperCase())
+      .filter(Boolean)
+      .filter(isRoleEnumValue);
+
+    const rolesSource =
+      normalizedRequestedRoles.length > 0
+        ? normalizedRequestedRoles
+        : DEFAULT_INTERNAL_BIRTHDAY_ROLES;
+
+    const rolesToQuery = rolesSource.filter((role) => !EXCLUDED_BIRTHDAY_ROLES.has(role));
+
+    if (rolesToQuery.length === 0) {
+      return { eventos: [], resumo: { total: 0 } };
+    }
+
+    const usuarios = await prisma.usuarios.findMany({
+      where: {
+        role: { in: rolesToQuery },
+        ...(params.incluirInativos ? {} : { status: Status.ATIVO }),
+        UsuariosInformation: { dataNasc: { not: null } },
+      },
+      select: {
+        id: true,
+        nomeCompleto: true,
+        role: true,
+        UsuariosInformation: {
+          select: {
+            dataNasc: true,
+            avatarUrl: true,
+          },
+        },
+      },
+    });
+
+    const startYear = start.getUTCFullYear();
+    const endYear = end.getUTCFullYear();
+
+    const eventos = usuarios.flatMap((usuario) => {
+      const dataNasc = usuario.UsuariosInformation?.dataNasc;
+      if (!dataNasc) return [];
+
+      const month = dataNasc.getUTCMonth();
+      const day = dataNasc.getUTCDate();
+      const ocorrencias: {
+        id: string;
+        tipo: 'ANIVERSARIO';
+        titulo: string;
+        descricao: string;
+        data: string;
+        cor: string;
+        usuario: {
+          id: string;
+          nome: string;
+          role: Roles;
+          avatarUrl: string | null;
+        };
+      }[] = [];
+
+      for (let year = startYear; year <= endYear; year += 1) {
+        const aniversario = createBirthdayOccurrenceUtc(year, month, day);
+        if (!aniversario || aniversario < start || aniversario > end) {
+          continue;
+        }
+
+        const isoDate = aniversario.toISOString().slice(0, 10);
+        ocorrencias.push({
+          id: `birthday-${usuario.id}-${isoDate}`,
+          tipo: 'ANIVERSARIO',
+          titulo: `Aniversário - ${usuario.nomeCompleto}`,
+          descricao: usuario.role,
+          data: aniversario.toISOString(),
+          cor: '#10B981',
+          usuario: {
+            id: usuario.id,
+            nome: usuario.nomeCompleto,
+            role: usuario.role,
+            avatarUrl: usuario.UsuariosInformation?.avatarUrl ?? null,
+          },
+        });
+      }
+
+      return ocorrencias;
+    });
+
+    eventos.sort((a, b) => {
+      const compare = new Date(a.data).getTime() - new Date(b.data).getTime();
+      if (compare !== 0) return compare;
+      return a.usuario.nome.localeCompare(b.usuario.nome, 'pt-BR');
+    });
+
+    return {
+      eventos,
+      resumo: { total: eventos.length },
+    };
+  },
+
   /**
    * Buscar eventos da agenda
    */

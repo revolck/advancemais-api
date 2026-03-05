@@ -156,36 +156,39 @@ model CuponsDescontoPlanos {
 }
 
 model Cursos {
-  id                   String                 @id @default(uuid())
-  codigo               String                 @unique @db.VarChar(12)
-  nome                 String                 @db.VarChar(255)
-  descricao            String?
-  conteudoProgramatico String?                @db.Text
-  imagemUrl            String?                @db.VarChar(2048)
-  cargaHoraria         Int
-  statusPadrao         CursosStatusPadrao     @default(RASCUNHO)
-  categoriaId          Int?
-  subcategoriaId       Int?
-  estagioObrigatorio   Boolean                @default(false)
+  id                      String                    @id @default(uuid())
+  codigo                  String                    @unique @db.VarChar(12)
+  nome                    String                    @db.VarChar(255)
+  descricao               String?
+  conteudoProgramatico    String?                   @db.Text
+  imagemUrl               String?                   @db.VarChar(2048)
+  cargaHoraria            Int
+  statusPadrao            CursosStatusPadrao        @default(RASCUNHO)
+  categoriaId             Int?
+  subcategoriaId          Int?
+  estagioObrigatorio      Boolean                   @default(false)
   // Campos de precificação (apenas o essencial)
-  valor                Decimal                @default(0.00) @db.Decimal(10, 2)
-  valorPromocional     Decimal?               @db.Decimal(10, 2)
-  gratuito             Boolean                @default(false)
-  criadoEm             DateTime               @default(now())
-  atualizadoEm         DateTime               @default(now())
-  CuponsDescontoCursos CuponsDescontoCursos[]
-  CursosCategorias     CursosCategorias?      @relation(fields: [categoriaId], references: [id])
-  CursosSubcategorias  CursosSubcategorias?   @relation(fields: [subcategoriaId], references: [id])
-  CursosEstagios       CursosEstagios[]
+  valor                   Decimal                   @default(0.00) @db.Decimal(10, 2)
+  valorPromocional        Decimal?                  @db.Decimal(10, 2)
+  gratuito                Boolean                   @default(false)
+  deletedAt               DateTime?
+  deletedById             String?                   @db.VarChar(191)
+  criadoEm                DateTime                  @default(now())
+  atualizadoEm            DateTime                  @default(now())
+  CuponsDescontoCursos    CuponsDescontoCursos[]
+  CursosCategorias        CursosCategorias?         @relation(fields: [categoriaId], references: [id])
+  CursosSubcategorias     CursosSubcategorias?      @relation(fields: [subcategoriaId], references: [id])
+  CursosEstagios          CursosEstagios[]
   CursosEstagiosProgramas CursosEstagiosProgramas[]
-  CursosTurmasAulas    CursosTurmasAulas[]
-  CursosTurmas         CursosTurmas[]
-  CursosTurmasProvas   CursosTurmasProvas[]
+  CursosTurmasAulas       CursosTurmasAulas[]
+  CursosTurmas            CursosTurmas[]
+  CursosTurmasProvas      CursosTurmasProvas[]
 
   @@index([categoriaId])
   @@index([subcategoriaId])
   @@index([statusPadrao])
   @@index([gratuito])
+  @@index([deletedAt])
 }
 
 model CursosCategorias {
@@ -202,23 +205,23 @@ model CursosCategorias {
 }
 
 model CursosCertificadosEmitidos {
-  id                     String                   @id @default(uuid())
-  inscricaoId            String
-  codigo                 String                   @unique @db.VarChar(20)
-  tipo                   CursosCertificados
-  formato                CursosCertificadosTipos
-  cargaHoraria           Int
-  assinaturaUrl          String?                  @db.VarChar(2048)
-  alunoNome              String                   @db.VarChar(255)
-  alunoCpf               String?                  @db.VarChar(14)
-  cursoNome              String                   @db.VarChar(255)
-  turmaNome              String                   @db.VarChar(255)
-  emitidoPorId           String?
-  emitidoEm              DateTime                 @default(now())
-  observacoes            String?                  @db.VarChar(500)
-  Usuarios               Usuarios?                @relation(fields: [emitidoPorId], references: [id])
-  CursosTurmasInscricoes CursosTurmasInscricoes   @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
-  CursosCertificadosLogs CursosCertificadosLogs[]
+  id                                     String                                  @id @default(uuid())
+  inscricaoId                            String
+  codigo                                 String                                  @unique @db.VarChar(20)
+  tipo                                   CursosCertificados
+  formato                                CursosCertificadosTipos
+  cargaHoraria                           Int
+  assinaturaUrl                          String?                                 @db.VarChar(2048)
+  alunoNome                              String                                  @db.VarChar(255)
+  alunoCpf                               String?                                 @db.VarChar(14)
+  cursoNome                              String                                  @db.VarChar(255)
+  turmaNome                              String                                  @db.VarChar(255)
+  emitidoPorId                           String?
+  emitidoEm                              DateTime                                @default(now())
+  observacoes                            String?                                 @db.VarChar(500)
+  Usuarios                               Usuarios?                               @relation(fields: [emitidoPorId], references: [id])
+  CursosTurmasInscricoes                 CursosTurmasInscricoes                  @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
+  CursosCertificadosLogs                 CursosCertificadosLogs[]
   CursosCertificadosConteudoProgramatico CursosCertificadosConteudoProgramatico?
 
   @@index([emitidoEm])
@@ -358,43 +361,43 @@ model CursosEstagiosNotificacoes {
 }
 
 model CursosEstagiosProgramas {
-  id                                                      String                         @id @default(uuid())
-  cursoId                                                 String
-  turmaId                                                 String
-  titulo                                                  String                         @db.VarChar(255)
-  descricao                                               String?
-  obrigatorio                                             Boolean                        @default(false)
-  modoAlocacao                                            CursosEstagioModoAlocacao      @default(TODOS)
-  usarGrupos                                              Boolean                        @default(false)
-  periodicidade                                           CursosEstagioPeriodicidade
-  diasSemana                                              String[]                       @default([])
-  dataInicio                                              DateTime
-  dataFim                                                 DateTime
-  incluirSabados                                          Boolean                        @default(false)
-  horarioPadraoInicio                                     String?                        @db.VarChar(5)
-  horarioPadraoFim                                        String?                        @db.VarChar(5)
-  diasObrigatorios                                        Int                            @default(0)
-  cargaHorariaMinutos                                     Int?
-  empresaVinculoModo                                      CursosEstagioEmpresaVinculoModo?
-  empresaId                                               String?
-  empresaNome                                             String?                        @db.VarChar(255)
-  empresaCnpj                                             String?                        @db.VarChar(20)
-  empresaTelefone                                         String?                        @db.VarChar(20)
-  empresaEmail                                            String?                        @db.VarChar(255)
-  empresaEndereco                                         Json?
-  status                                                  CursosEstagioProgramaStatus    @default(PLANEJADO)
-  criadoPorId                                             String?
-  atualizadoPorId                                         String?
-  criadoEm                                                DateTime                       @default(now())
-  atualizadoEm                                            DateTime                       @default(now())
-  Cursos                                                  Cursos                         @relation(fields: [cursoId], references: [id], onDelete: Cascade)
-  CursosTurmas                                            CursosTurmas                   @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  Usuarios_CursosEstagiosProgramas_criadoPorIdToUsuarios Usuarios?                      @relation("CursosEstagiosProgramas_criadoPorIdToUsuarios", fields: [criadoPorId], references: [id])
-  Usuarios_CursosEstagiosProgramas_atualizadoPorIdToUsuarios Usuarios?                   @relation("CursosEstagiosProgramas_atualizadoPorIdToUsuarios", fields: [atualizadoPorId], references: [id])
-  CursosEstagiosProgramasGrupos                           CursosEstagiosProgramasGrupos[]
-  CursosEstagiosProgramasAlunos                           CursosEstagiosProgramasAlunos[]
-  CursosEstagiosProgramasFrequencias                      CursosEstagiosProgramasFrequencias[]
-  CursosEstagiosProgramasFrequenciasHistorico             CursosEstagiosProgramasFrequenciasHistorico[]
+  id                                                         String                                        @id @default(uuid())
+  cursoId                                                    String
+  turmaId                                                    String
+  titulo                                                     String                                        @db.VarChar(255)
+  descricao                                                  String?
+  obrigatorio                                                Boolean                                       @default(false)
+  modoAlocacao                                               CursosEstagioModoAlocacao                     @default(TODOS)
+  usarGrupos                                                 Boolean                                       @default(false)
+  periodicidade                                              CursosEstagioPeriodicidade
+  diasSemana                                                 String[]                                      @default([])
+  dataInicio                                                 DateTime
+  dataFim                                                    DateTime
+  incluirSabados                                             Boolean                                       @default(false)
+  horarioPadraoInicio                                        String?                                       @db.VarChar(5)
+  horarioPadraoFim                                           String?                                       @db.VarChar(5)
+  diasObrigatorios                                           Int                                           @default(0)
+  cargaHorariaMinutos                                        Int?
+  empresaVinculoModo                                         CursosEstagioEmpresaVinculoModo?
+  empresaId                                                  String?
+  empresaNome                                                String?                                       @db.VarChar(255)
+  empresaCnpj                                                String?                                       @db.VarChar(20)
+  empresaTelefone                                            String?                                       @db.VarChar(20)
+  empresaEmail                                               String?                                       @db.VarChar(255)
+  empresaEndereco                                            Json?
+  status                                                     CursosEstagioProgramaStatus                   @default(PLANEJADO)
+  criadoPorId                                                String?
+  atualizadoPorId                                            String?
+  criadoEm                                                   DateTime                                      @default(now())
+  atualizadoEm                                               DateTime                                      @default(now())
+  Cursos                                                     Cursos                                        @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+  CursosTurmas                                               CursosTurmas                                  @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  Usuarios_CursosEstagiosProgramas_criadoPorIdToUsuarios     Usuarios?                                     @relation("CursosEstagiosProgramas_criadoPorIdToUsuarios", fields: [criadoPorId], references: [id])
+  Usuarios_CursosEstagiosProgramas_atualizadoPorIdToUsuarios Usuarios?                                     @relation("CursosEstagiosProgramas_atualizadoPorIdToUsuarios", fields: [atualizadoPorId], references: [id])
+  CursosEstagiosProgramasGrupos                              CursosEstagiosProgramasGrupos[]
+  CursosEstagiosProgramasAlunos                              CursosEstagiosProgramasAlunos[]
+  CursosEstagiosProgramasFrequencias                         CursosEstagiosProgramasFrequencias[]
+  CursosEstagiosProgramasFrequenciasHistorico                CursosEstagiosProgramasFrequenciasHistorico[]
 
   @@index([cursoId])
   @@index([turmaId])
@@ -405,52 +408,52 @@ model CursosEstagiosProgramas {
 }
 
 model CursosEstagiosProgramasGrupos {
-  id                                                        String                          @id @default(uuid())
-  estagioId                                                 String
-  nome                                                      String                          @db.VarChar(120)
-  turno                                                     CursosEstagioGrupoTurno         @default(PERSONALIZADO)
-  capacidade                                                Int?
-  horaInicio                                                String?                         @db.VarChar(5)
-  horaFim                                                   String?                         @db.VarChar(5)
-  empresaId                                                 String?
-  empresaNome                                               String?                         @db.VarChar(255)
-  supervisorNome                                            String?                         @db.VarChar(120)
-  contatoSupervisor                                         String?                         @db.VarChar(120)
-  criadoEm                                                  DateTime                        @default(now())
-  atualizadoEm                                              DateTime                        @default(now())
-  CursosEstagiosProgramas                                   CursosEstagiosProgramas         @relation(fields: [estagioId], references: [id], onDelete: Cascade)
-  Usuarios_CursosEstagiosProgramasGrupos_empresaIdToUsuarios Usuarios?                     @relation("CursosEstagiosProgramasGrupos_empresaIdToUsuarios", fields: [empresaId], references: [id], onDelete: SetNull)
-  CursosEstagiosProgramasAlunos                             CursosEstagiosProgramasAlunos[]
+  id                                                         String                          @id @default(uuid())
+  estagioId                                                  String
+  nome                                                       String                          @db.VarChar(120)
+  turno                                                      CursosEstagioGrupoTurno         @default(PERSONALIZADO)
+  capacidade                                                 Int?
+  horaInicio                                                 String?                         @db.VarChar(5)
+  horaFim                                                    String?                         @db.VarChar(5)
+  empresaId                                                  String?
+  empresaNome                                                String?                         @db.VarChar(255)
+  supervisorNome                                             String?                         @db.VarChar(120)
+  contatoSupervisor                                          String?                         @db.VarChar(120)
+  criadoEm                                                   DateTime                        @default(now())
+  atualizadoEm                                               DateTime                        @default(now())
+  CursosEstagiosProgramas                                    CursosEstagiosProgramas         @relation(fields: [estagioId], references: [id], onDelete: Cascade)
+  Usuarios_CursosEstagiosProgramasGrupos_empresaIdToUsuarios Usuarios?                       @relation("CursosEstagiosProgramasGrupos_empresaIdToUsuarios", fields: [empresaId], references: [id], onDelete: SetNull)
+  CursosEstagiosProgramasAlunos                              CursosEstagiosProgramasAlunos[]
 
   @@index([estagioId])
   @@index([empresaId])
 }
 
 model CursosEstagiosProgramasAlunos {
-  id                                                      String                               @id @default(uuid())
-  estagioId                                               String
-  grupoId                                                 String?
-  inscricaoId                                             String
-  alunoId                                                 String
-  tipoParticipacao                                        CursosEstagioTipoParticipacao        @default(INICIAL)
-  status                                                  CursosEstagioParticipanteStatus      @default(PENDENTE)
-  conclusaoEm                                             DateTime?
-  validadeAte                                             DateTime?
-  percentualFrequencia                                    Decimal?                             @db.Decimal(5, 2)
-  diasObrigatorios                                        Int                                  @default(0)
-  diasPresentes                                           Int                                  @default(0)
-  diasAusentes                                            Int                                  @default(0)
-  criadoPorId                                             String?
-  atualizadoPorId                                         String?
-  criadoEm                                                DateTime                             @default(now())
-  atualizadoEm                                            DateTime                             @default(now())
-  CursosEstagiosProgramas                                 CursosEstagiosProgramas              @relation(fields: [estagioId], references: [id], onDelete: Cascade)
-  CursosEstagiosProgramasGrupos                           CursosEstagiosProgramasGrupos?       @relation(fields: [grupoId], references: [id], onDelete: SetNull)
-  CursosTurmasInscricoes                                  CursosTurmasInscricoes               @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
-  Usuarios_CursosEstagiosProgramasAlunos_alunoIdToUsuarios Usuarios                            @relation("CursosEstagiosProgramasAlunos_alunoIdToUsuarios", fields: [alunoId], references: [id], onDelete: Cascade)
-  Usuarios_CursosEstagiosProgramasAlunos_criadoPorIdToUsuarios Usuarios?                       @relation("CursosEstagiosProgramasAlunos_criadoPorIdToUsuarios", fields: [criadoPorId], references: [id])
-  Usuarios_CursosEstagiosProgramasAlunos_atualizadoPorIdToUsuarios Usuarios?                   @relation("CursosEstagiosProgramasAlunos_atualizadoPorIdToUsuarios", fields: [atualizadoPorId], references: [id])
-  CursosEstagiosProgramasFrequencias                      CursosEstagiosProgramasFrequencias[]
+  id                                                               String                               @id @default(uuid())
+  estagioId                                                        String
+  grupoId                                                          String?
+  inscricaoId                                                      String
+  alunoId                                                          String
+  tipoParticipacao                                                 CursosEstagioTipoParticipacao        @default(INICIAL)
+  status                                                           CursosEstagioParticipanteStatus      @default(PENDENTE)
+  conclusaoEm                                                      DateTime?
+  validadeAte                                                      DateTime?
+  percentualFrequencia                                             Decimal?                             @db.Decimal(5, 2)
+  diasObrigatorios                                                 Int                                  @default(0)
+  diasPresentes                                                    Int                                  @default(0)
+  diasAusentes                                                     Int                                  @default(0)
+  criadoPorId                                                      String?
+  atualizadoPorId                                                  String?
+  criadoEm                                                         DateTime                             @default(now())
+  atualizadoEm                                                     DateTime                             @default(now())
+  CursosEstagiosProgramas                                          CursosEstagiosProgramas              @relation(fields: [estagioId], references: [id], onDelete: Cascade)
+  CursosEstagiosProgramasGrupos                                    CursosEstagiosProgramasGrupos?       @relation(fields: [grupoId], references: [id], onDelete: SetNull)
+  CursosTurmasInscricoes                                           CursosTurmasInscricoes               @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
+  Usuarios_CursosEstagiosProgramasAlunos_alunoIdToUsuarios         Usuarios                             @relation("CursosEstagiosProgramasAlunos_alunoIdToUsuarios", fields: [alunoId], references: [id], onDelete: Cascade)
+  Usuarios_CursosEstagiosProgramasAlunos_criadoPorIdToUsuarios     Usuarios?                            @relation("CursosEstagiosProgramasAlunos_criadoPorIdToUsuarios", fields: [criadoPorId], references: [id])
+  Usuarios_CursosEstagiosProgramasAlunos_atualizadoPorIdToUsuarios Usuarios?                            @relation("CursosEstagiosProgramasAlunos_atualizadoPorIdToUsuarios", fields: [atualizadoPorId], references: [id])
+  CursosEstagiosProgramasFrequencias                               CursosEstagiosProgramasFrequencias[]
 
   @@unique([estagioId, inscricaoId])
   @@index([alunoId])
@@ -460,21 +463,21 @@ model CursosEstagiosProgramasAlunos {
 }
 
 model CursosEstagiosProgramasFrequencias {
-  id                                                         String                                         @id @default(uuid())
-  estagioId                                                  String
-  estagioAlunoId                                             String
-  dataReferencia                                             DateTime
-  status                                                     CursosEstagioFrequenciaStatus
-  motivo                                                     String?                                        @db.VarChar(500)
-  lancadoPorId                                               String?
-  lancadoEm                                                  DateTime                                       @default(now())
-  atualizadoPorId                                            String?
-  atualizadoEm                                               DateTime                                       @default(now())
-  CursosEstagiosProgramas                                    CursosEstagiosProgramas                        @relation(fields: [estagioId], references: [id], onDelete: Cascade)
-  CursosEstagiosProgramasAlunos                              CursosEstagiosProgramasAlunos                  @relation(fields: [estagioAlunoId], references: [id], onDelete: Cascade)
-  Usuarios_CursosEstagiosProgramasFrequencias_lancadoPorIdToUsuarios Usuarios?                              @relation("CursosEstagiosProgramasFrequencias_lancadoPorIdToUsuarios", fields: [lancadoPorId], references: [id])
-  Usuarios_CursosEstagiosProgramasFrequencias_atualizadoPorIdToUsuarios Usuarios?                           @relation("CursosEstagiosProgramasFrequencias_atualizadoPorIdToUsuarios", fields: [atualizadoPorId], references: [id])
-  CursosEstagiosProgramasFrequenciasHistorico                CursosEstagiosProgramasFrequenciasHistorico[]
+  id                                                                    String                                        @id @default(uuid())
+  estagioId                                                             String
+  estagioAlunoId                                                        String
+  dataReferencia                                                        DateTime
+  status                                                                CursosEstagioFrequenciaStatus
+  motivo                                                                String?                                       @db.VarChar(500)
+  lancadoPorId                                                          String?
+  lancadoEm                                                             DateTime                                      @default(now())
+  atualizadoPorId                                                       String?
+  atualizadoEm                                                          DateTime                                      @default(now())
+  CursosEstagiosProgramas                                               CursosEstagiosProgramas                       @relation(fields: [estagioId], references: [id], onDelete: Cascade)
+  CursosEstagiosProgramasAlunos                                         CursosEstagiosProgramasAlunos                 @relation(fields: [estagioAlunoId], references: [id], onDelete: Cascade)
+  Usuarios_CursosEstagiosProgramasFrequencias_lancadoPorIdToUsuarios    Usuarios?                                     @relation("CursosEstagiosProgramasFrequencias_lancadoPorIdToUsuarios", fields: [lancadoPorId], references: [id])
+  Usuarios_CursosEstagiosProgramasFrequencias_atualizadoPorIdToUsuarios Usuarios?                                     @relation("CursosEstagiosProgramasFrequencias_atualizadoPorIdToUsuarios", fields: [atualizadoPorId], references: [id])
+  CursosEstagiosProgramasFrequenciasHistorico                           CursosEstagiosProgramasFrequenciasHistorico[]
 
   @@unique([estagioAlunoId, dataReferencia])
   @@index([estagioId, dataReferencia])
@@ -482,18 +485,18 @@ model CursosEstagiosProgramasFrequencias {
 }
 
 model CursosEstagiosProgramasFrequenciasHistorico {
-  id                                                           String                              @id @default(uuid())
-  estagioId                                                    String
-  frequenciaId                                                 String
-  fromStatus                                                   CursosEstagioFrequenciaStatus?
-  toStatus                                                     CursosEstagioFrequenciaStatus
-  motivo                                                       String?                             @db.VarChar(500)
-  actorId                                                      String?
-  changedAt                                                    DateTime                            @default(now())
-  metadata                                                     Json?
-  CursosEstagiosProgramas                                      CursosEstagiosProgramas             @relation(fields: [estagioId], references: [id], onDelete: Cascade)
-  CursosEstagiosProgramasFrequencias                           CursosEstagiosProgramasFrequencias  @relation(fields: [frequenciaId], references: [id], onDelete: Cascade)
-  Usuarios_CursosEstagiosProgramasFrequenciasHistorico_actorIdToUsuarios Usuarios?                 @relation("CursosEstagiosProgramasFrequenciasHistorico_actorIdToUsuarios", fields: [actorId], references: [id])
+  id                                                                     String                             @id @default(uuid())
+  estagioId                                                              String
+  frequenciaId                                                           String
+  fromStatus                                                             CursosEstagioFrequenciaStatus?
+  toStatus                                                               CursosEstagioFrequenciaStatus
+  motivo                                                                 String?                            @db.VarChar(500)
+  actorId                                                                String?
+  changedAt                                                              DateTime                           @default(now())
+  metadata                                                               Json?
+  CursosEstagiosProgramas                                                CursosEstagiosProgramas            @relation(fields: [estagioId], references: [id], onDelete: Cascade)
+  CursosEstagiosProgramasFrequencias                                     CursosEstagiosProgramasFrequencias @relation(fields: [frequenciaId], references: [id], onDelete: Cascade)
+  Usuarios_CursosEstagiosProgramasFrequenciasHistorico_actorIdToUsuarios Usuarios?                          @relation("CursosEstagiosProgramasFrequenciasHistorico_actorIdToUsuarios", fields: [actorId], references: [id])
 
   @@index([estagioId])
   @@index([frequenciaId])
@@ -807,42 +810,42 @@ model NotificacoesEnviadas {
 }
 
 model CursosTurmasInscricoes {
-  id                          String                        @id @default(uuid())
-  turmaId                     String
-  alunoId                     String
-  criadoEm                    DateTime                      @default(now())
-  status                      StatusInscricao               @default(INSCRITO)
+  id                            String                          @id @default(uuid())
+  turmaId                       String
+  alunoId                       String
+  criadoEm                      DateTime                        @default(now())
+  status                        StatusInscricao                 @default(INSCRITO)
   // Campos de pagamento e token de acesso
-  codigo                      String?                       @unique @db.VarChar(20)
-  statusPagamento             String                        @default("PENDENTE") @db.VarChar(50)
-  mpPaymentId                 String?                       @db.VarChar(255)
-  tokenAcesso                 String?                       @unique @db.VarChar(500)
-  tokenAcessoExpiraEm         DateTime?
-  valorPago                   Decimal?                      @db.Decimal(10, 2)
-  metodoPagamento             String?                       @db.VarChar(50)
+  codigo                        String?                         @unique @db.VarChar(20)
+  statusPagamento               String                          @default("PENDENTE") @db.VarChar(50)
+  mpPaymentId                   String?                         @db.VarChar(255)
+  tokenAcesso                   String?                         @unique @db.VarChar(500)
+  tokenAcessoExpiraEm           DateTime?
+  valorPago                     Decimal?                        @db.Decimal(10, 2)
+  metodoPagamento               String?                         @db.VarChar(50)
   // Aceite de termos
-  aceitouTermos               Boolean                       @default(false)
-  aceitouTermosIp             String?                       @db.VarChar(45)
-  aceitouTermosUserAgent      String?                       @db.VarChar(500)
-  aceitouTermosEm             DateTime?
+  aceitouTermos                 Boolean                         @default(false)
+  aceitouTermosIp               String?                         @db.VarChar(45)
+  aceitouTermosUserAgent        String?                         @db.VarChar(500)
+  aceitouTermosEm               DateTime?
   // Cupom de desconto
-  cupomDescontoId             String?
-  cupomDescontoCodigo         String?                       @db.VarChar(40)
-  valorOriginal               Decimal?                      @db.Decimal(10, 2)
-  valorDesconto               Decimal?                      @db.Decimal(10, 2)
-  valorFinal                  Decimal?                      @db.Decimal(10, 2)
-  CursosCertificadosEmitidos  CursosCertificadosEmitidos[]
-  CursosEstagios              CursosEstagios[]
+  cupomDescontoId               String?
+  cupomDescontoCodigo           String?                         @db.VarChar(40)
+  valorOriginal                 Decimal?                        @db.Decimal(10, 2)
+  valorDesconto                 Decimal?                        @db.Decimal(10, 2)
+  valorFinal                    Decimal?                        @db.Decimal(10, 2)
+  CursosCertificadosEmitidos    CursosCertificadosEmitidos[]
+  CursosEstagios                CursosEstagios[]
   CursosEstagiosProgramasAlunos CursosEstagiosProgramasAlunos[]
-  CursosFrequenciaAlunos      CursosFrequenciaAlunos[]
-  CursosNotas                 CursosNotas[]
-  Usuarios                    Usuarios                      @relation(fields: [alunoId], references: [id], onDelete: Cascade)
-  CursosTurmas                CursosTurmas                  @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  CursosTurmasProvasEnvios    CursosTurmasProvasEnvios[]
-  CursosTurmasRecuperacoes    CursosTurmasRecuperacoes[]
-  CursosTurmasProvasRespostas CursosTurmasProvasRespostas[]
-  CuponsDesconto              CuponsDesconto?               @relation(fields: [cupomDescontoId], references: [id])
-  CursosAulasProgresso        CursosAulasProgresso[]
+  CursosFrequenciaAlunos        CursosFrequenciaAlunos[]
+  CursosNotas                   CursosNotas[]
+  Usuarios                      Usuarios                        @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+  CursosTurmas                  CursosTurmas                    @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  CursosTurmasProvasEnvios      CursosTurmasProvasEnvios[]
+  CursosTurmasRecuperacoes      CursosTurmasRecuperacoes[]
+  CursosTurmasProvasRespostas   CursosTurmasProvasRespostas[]
+  CuponsDesconto                CuponsDesconto?                 @relation(fields: [cupomDescontoId], references: [id])
+  CursosAulasProgresso          CursosAulasProgresso[]
 
   @@unique([turmaId, alunoId])
   @@index([alunoId])
@@ -1346,91 +1349,91 @@ model PlanosEmpresariais {
 }
 
 model Usuarios {
-  id                                                                           String                       @id @default(uuid())
-  nomeCompleto                                                                 String
-  authId                                                                       String                       @unique
-  cpf                                                                          String?                      @unique
-  cnpj                                                                         String?                      @unique
-  email                                                                        String                       @unique
-  senha                                                                        String
-  codUsuario                                                                   String                       @unique
-  tipoUsuario                                                                  TiposDeUsuarios
-  role                                                                         Roles
-  status                                                                       Status                       @default(ATIVO)
-  criadoEm                                                                     DateTime                     @default(now())
-  atualizadoEm                                                                 DateTime                     @default(now())
-  ultimoLogin                                                                  DateTime?
-  refreshToken                                                                 String?
+  id                                                                                                        String                                        @id @default(uuid())
+  nomeCompleto                                                                                              String
+  authId                                                                                                    String                                        @unique
+  cpf                                                                                                       String?                                       @unique
+  cnpj                                                                                                      String?                                       @unique
+  email                                                                                                     String                                        @unique
+  senha                                                                                                     String
+  codUsuario                                                                                                String                                        @unique
+  tipoUsuario                                                                                               TiposDeUsuarios
+  role                                                                                                      Roles
+  status                                                                                                    Status                                        @default(ATIVO)
+  criadoEm                                                                                                  DateTime                                      @default(now())
+  atualizadoEm                                                                                              DateTime                                      @default(now())
+  ultimoLogin                                                                                               DateTime?
+  refreshToken                                                                                              String?
   // Google OAuth campos
-  googleAccessToken                                                            String?                      @db.Text
-  googleRefreshToken                                                           String?                      @db.Text
-  googleCalendarId                                                             String?                      @db.VarChar(255)
-  googleTokenExpiraEm                                                          DateTime?
-  AuditoriaLogs                                                                AuditoriaLogs[]
-  AuditoriaScripts                                                             AuditoriaScripts[]
-  AuditoriaTransacoes_AuditoriaTransacoes_empresaIdToUsuarios                  AuditoriaTransacoes[]        @relation("AuditoriaTransacoes_empresaIdToUsuarios")
-  AuditoriaTransacoes_AuditoriaTransacoes_usuarioIdToUsuarios                  AuditoriaTransacoes[]        @relation("AuditoriaTransacoes_usuarioIdToUsuarios")
-  CuponsDesconto                                                               CuponsDesconto[]
-  CursosCertificadosEmitidos                                                   CursosCertificadosEmitidos[]
-  CursosEstagios_CursosEstagios_alunoIdToUsuarios                              CursosEstagios[]             @relation("CursosEstagios_alunoIdToUsuarios")
-  CursosEstagios_CursosEstagios_atualizadoPorIdToUsuarios                      CursosEstagios[]             @relation("CursosEstagios_atualizadoPorIdToUsuarios")
-  CursosEstagios_CursosEstagios_criadoPorIdToUsuarios                          CursosEstagios[]             @relation("CursosEstagios_criadoPorIdToUsuarios")
-  CursosEstagiosProgramas_CursosEstagiosProgramas_criadoPorIdToUsuarios        CursosEstagiosProgramas[]    @relation("CursosEstagiosProgramas_criadoPorIdToUsuarios")
-  CursosEstagiosProgramas_CursosEstagiosProgramas_atualizadoPorIdToUsuarios    CursosEstagiosProgramas[]    @relation("CursosEstagiosProgramas_atualizadoPorIdToUsuarios")
-  CursosEstagiosProgramasGrupos_CursosEstagiosProgramasGrupos_empresaIdToUsuarios CursosEstagiosProgramasGrupos[] @relation("CursosEstagiosProgramasGrupos_empresaIdToUsuarios")
-  CursosEstagiosProgramasAlunos_CursosEstagiosProgramasAlunos_alunoIdToUsuarios CursosEstagiosProgramasAlunos[] @relation("CursosEstagiosProgramasAlunos_alunoIdToUsuarios")
-  CursosEstagiosProgramasAlunos_CursosEstagiosProgramasAlunos_criadoPorIdToUsuarios CursosEstagiosProgramasAlunos[] @relation("CursosEstagiosProgramasAlunos_criadoPorIdToUsuarios")
-  CursosEstagiosProgramasAlunos_CursosEstagiosProgramasAlunos_atualizadoPorIdToUsuarios CursosEstagiosProgramasAlunos[] @relation("CursosEstagiosProgramasAlunos_atualizadoPorIdToUsuarios")
-  CursosEstagiosProgramasFrequencias_CursosEstagiosProgramasFrequencias_lancadoPorIdToUsuarios CursosEstagiosProgramasFrequencias[] @relation("CursosEstagiosProgramasFrequencias_lancadoPorIdToUsuarios")
-  CursosEstagiosProgramasFrequencias_CursosEstagiosProgramasFrequencias_atualizadoPorIdToUsuarios CursosEstagiosProgramasFrequencias[] @relation("CursosEstagiosProgramasFrequencias_atualizadoPorIdToUsuarios")
+  googleAccessToken                                                                                         String?                                       @db.Text
+  googleRefreshToken                                                                                        String?                                       @db.Text
+  googleCalendarId                                                                                          String?                                       @db.VarChar(255)
+  googleTokenExpiraEm                                                                                       DateTime?
+  AuditoriaLogs                                                                                             AuditoriaLogs[]
+  AuditoriaScripts                                                                                          AuditoriaScripts[]
+  AuditoriaTransacoes_AuditoriaTransacoes_empresaIdToUsuarios                                               AuditoriaTransacoes[]                         @relation("AuditoriaTransacoes_empresaIdToUsuarios")
+  AuditoriaTransacoes_AuditoriaTransacoes_usuarioIdToUsuarios                                               AuditoriaTransacoes[]                         @relation("AuditoriaTransacoes_usuarioIdToUsuarios")
+  CuponsDesconto                                                                                            CuponsDesconto[]
+  CursosCertificadosEmitidos                                                                                CursosCertificadosEmitidos[]
+  CursosEstagios_CursosEstagios_alunoIdToUsuarios                                                           CursosEstagios[]                              @relation("CursosEstagios_alunoIdToUsuarios")
+  CursosEstagios_CursosEstagios_atualizadoPorIdToUsuarios                                                   CursosEstagios[]                              @relation("CursosEstagios_atualizadoPorIdToUsuarios")
+  CursosEstagios_CursosEstagios_criadoPorIdToUsuarios                                                       CursosEstagios[]                              @relation("CursosEstagios_criadoPorIdToUsuarios")
+  CursosEstagiosProgramas_CursosEstagiosProgramas_criadoPorIdToUsuarios                                     CursosEstagiosProgramas[]                     @relation("CursosEstagiosProgramas_criadoPorIdToUsuarios")
+  CursosEstagiosProgramas_CursosEstagiosProgramas_atualizadoPorIdToUsuarios                                 CursosEstagiosProgramas[]                     @relation("CursosEstagiosProgramas_atualizadoPorIdToUsuarios")
+  CursosEstagiosProgramasGrupos_CursosEstagiosProgramasGrupos_empresaIdToUsuarios                           CursosEstagiosProgramasGrupos[]               @relation("CursosEstagiosProgramasGrupos_empresaIdToUsuarios")
+  CursosEstagiosProgramasAlunos_CursosEstagiosProgramasAlunos_alunoIdToUsuarios                             CursosEstagiosProgramasAlunos[]               @relation("CursosEstagiosProgramasAlunos_alunoIdToUsuarios")
+  CursosEstagiosProgramasAlunos_CursosEstagiosProgramasAlunos_criadoPorIdToUsuarios                         CursosEstagiosProgramasAlunos[]               @relation("CursosEstagiosProgramasAlunos_criadoPorIdToUsuarios")
+  CursosEstagiosProgramasAlunos_CursosEstagiosProgramasAlunos_atualizadoPorIdToUsuarios                     CursosEstagiosProgramasAlunos[]               @relation("CursosEstagiosProgramasAlunos_atualizadoPorIdToUsuarios")
+  CursosEstagiosProgramasFrequencias_CursosEstagiosProgramasFrequencias_lancadoPorIdToUsuarios              CursosEstagiosProgramasFrequencias[]          @relation("CursosEstagiosProgramasFrequencias_lancadoPorIdToUsuarios")
+  CursosEstagiosProgramasFrequencias_CursosEstagiosProgramasFrequencias_atualizadoPorIdToUsuarios           CursosEstagiosProgramasFrequencias[]          @relation("CursosEstagiosProgramasFrequencias_atualizadoPorIdToUsuarios")
   CursosEstagiosProgramasFrequenciasHistorico_CursosEstagiosProgramasFrequenciasHistorico_actorIdToUsuarios CursosEstagiosProgramasFrequenciasHistorico[] @relation("CursosEstagiosProgramasFrequenciasHistorico_actorIdToUsuarios")
-  CursosTurmas                                                                 CursosTurmas[]
-  CursosTurmasEditadas                                                         CursosTurmas[]               @relation("TurmasEditadoPor")
-  CursosTurmasInscricoes                                                       CursosTurmasInscricoes[]
-  EmpresasAuditoria_EmpresasAuditoria_alteradoPorToUsuarios                    EmpresasAuditoria[]          @relation("EmpresasAuditoria_alteradoPorToUsuarios")
-  EmpresasAuditoria_EmpresasAuditoria_empresaIdToUsuarios                      EmpresasAuditoria[]          @relation("EmpresasAuditoria_empresaIdToUsuarios")
-  EmpresasCandidatos_EmpresasCandidatos_candidatoIdToUsuarios                  EmpresasCandidatos[]         @relation("EmpresasCandidatos_candidatoIdToUsuarios")
-  EmpresasCandidatos_EmpresasCandidatos_empresaUsuarioIdToUsuarios             EmpresasCandidatos[]         @relation("EmpresasCandidatos_empresaUsuarioIdToUsuarios")
-  EmpresasPlano                                                                EmpresasPlano[]
-  EmpresasVagas                                                                EmpresasVagas[]
-  EmpresasVagasProcesso                                                        EmpresasVagasProcesso[]
-  UsuariosCandidatosLogs                                                       UsuariosCandidatosLogs[]
-  UsuariosCurriculos                                                           UsuariosCurriculos[]
-  UsuariosEmBloqueios_UsuariosEmBloqueios_aplicadoPorIdToUsuarios              UsuariosEmBloqueios[]        @relation("UsuariosEmBloqueios_aplicadoPorIdToUsuarios")
-  UsuariosEmBloqueios_UsuariosEmBloqueios_usuarioIdToUsuarios                  UsuariosEmBloqueios[]        @relation("UsuariosEmBloqueios_usuarioIdToUsuarios")
-  UsuariosEmBloqueiosLogs                                                      UsuariosEmBloqueiosLogs[]
-  UsuariosEnderecos                                                            UsuariosEnderecos[]
-  UsuariosInformation                                                          UsuariosInformation?
-  UsuariosRecuperacaoSenha                                                     UsuariosRecuperacaoSenha?
-  UsuariosRedesSociais                                                         UsuariosRedesSociais?
-  UsuariosSessoes                                                              UsuariosSessoes[]
-  UsuariosVerificacaoEmail                                                     UsuariosVerificacaoEmail?
-  status_processo                                                              StatusProcessosCandidatos[]
+  CursosTurmas                                                                                              CursosTurmas[]
+  CursosTurmasEditadas                                                                                      CursosTurmas[]                                @relation("TurmasEditadoPor")
+  CursosTurmasInscricoes                                                                                    CursosTurmasInscricoes[]
+  EmpresasAuditoria_EmpresasAuditoria_alteradoPorToUsuarios                                                 EmpresasAuditoria[]                           @relation("EmpresasAuditoria_alteradoPorToUsuarios")
+  EmpresasAuditoria_EmpresasAuditoria_empresaIdToUsuarios                                                   EmpresasAuditoria[]                           @relation("EmpresasAuditoria_empresaIdToUsuarios")
+  EmpresasCandidatos_EmpresasCandidatos_candidatoIdToUsuarios                                               EmpresasCandidatos[]                          @relation("EmpresasCandidatos_candidatoIdToUsuarios")
+  EmpresasCandidatos_EmpresasCandidatos_empresaUsuarioIdToUsuarios                                          EmpresasCandidatos[]                          @relation("EmpresasCandidatos_empresaUsuarioIdToUsuarios")
+  EmpresasPlano                                                                                             EmpresasPlano[]
+  EmpresasVagas                                                                                             EmpresasVagas[]
+  EmpresasVagasProcesso                                                                                     EmpresasVagasProcesso[]
+  UsuariosCandidatosLogs                                                                                    UsuariosCandidatosLogs[]
+  UsuariosCurriculos                                                                                        UsuariosCurriculos[]
+  UsuariosEmBloqueios_UsuariosEmBloqueios_aplicadoPorIdToUsuarios                                           UsuariosEmBloqueios[]                         @relation("UsuariosEmBloqueios_aplicadoPorIdToUsuarios")
+  UsuariosEmBloqueios_UsuariosEmBloqueios_usuarioIdToUsuarios                                               UsuariosEmBloqueios[]                         @relation("UsuariosEmBloqueios_usuarioIdToUsuarios")
+  UsuariosEmBloqueiosLogs                                                                                   UsuariosEmBloqueiosLogs[]
+  UsuariosEnderecos                                                                                         UsuariosEnderecos[]
+  UsuariosInformation                                                                                       UsuariosInformation?
+  UsuariosRecuperacaoSenha                                                                                  UsuariosRecuperacaoSenha?
+  UsuariosRedesSociais                                                                                      UsuariosRedesSociais?
+  UsuariosSessoes                                                                                           UsuariosSessoes[]
+  UsuariosVerificacaoEmail                                                                                  UsuariosVerificacaoEmail?
+  status_processo                                                                                           StatusProcessosCandidatos[]
   // Requerimentos
-  Requerimentos_usuarioId                                                      Requerimentos[]              @relation("Requerimentos_usuarioId")
-  Requerimentos_atribuidoParaId                                                Requerimentos[]              @relation("Requerimentos_atribuidoParaId")
-  RequerimentosHistorico                                                       RequerimentosHistorico[]
+  Requerimentos_usuarioId                                                                                   Requerimentos[]                               @relation("Requerimentos_usuarioId")
+  Requerimentos_atribuidoParaId                                                                             Requerimentos[]                               @relation("Requerimentos_atribuidoParaId")
+  RequerimentosHistorico                                                                                    RequerimentosHistorico[]
   // Notificações
-  Notificacoes                                                                 Notificacoes[]
-  Requerimentos                                                                Requerimentos[]
+  Notificacoes                                                                                              Notificacoes[]
+  Requerimentos                                                                                             Requerimentos[]
   // Novos relacionamentos de aulas
-  AulasCriadas                                                                 CursosTurmasAulas[]          @relation("AulasCriadas")
-  AulasInstrutor                                                               CursosTurmasAulas[]          @relation("AulasInstrutor")
-  AulasProgresso                                                               CursosAulasProgresso[]       @relation("AulasProgresso")
-  AulasHistorico                                                               CursosAulasHistorico[]       @relation("AulasHistorico")
-  NotificacoesEnviadas                                                         NotificacoesEnviadas[]       @relation("NotificacoesEnviadas")
-  HistoricoInstrutorAulas                                                      AulaInstrutorHistorico[]     @relation("HistoricoInstrutor")
-  HistoricoRemocaoInstrutor                                                    AulaInstrutorHistorico[]     @relation("HistoricoRemovidoPor")
-  EmpresasVagasEntrevistas_EmpresasVagasEntrevistas_candidatoIdToUsuarios      EmpresasVagasEntrevistas[]   @relation("EmpresasVagasEntrevistas_candidatoIdToUsuarios")
-  EmpresasVagasEntrevistas_EmpresasVagasEntrevistas_empresaUsuarioIdToUsuarios EmpresasVagasEntrevistas[]   @relation("EmpresasVagasEntrevistas_empresaUsuarioIdToUsuarios")
-  EmpresasVagasEntrevistas_EmpresasVagasEntrevistas_recrutadorIdToUsuarios     EmpresasVagasEntrevistas[]   @relation("EmpresasVagasEntrevistas_recrutadorIdToUsuarios")
+  AulasCriadas                                                                                              CursosTurmasAulas[]                           @relation("AulasCriadas")
+  AulasInstrutor                                                                                            CursosTurmasAulas[]                           @relation("AulasInstrutor")
+  AulasProgresso                                                                                            CursosAulasProgresso[]                        @relation("AulasProgresso")
+  AulasHistorico                                                                                            CursosAulasHistorico[]                        @relation("AulasHistorico")
+  NotificacoesEnviadas                                                                                      NotificacoesEnviadas[]                        @relation("NotificacoesEnviadas")
+  HistoricoInstrutorAulas                                                                                   AulaInstrutorHistorico[]                      @relation("HistoricoInstrutor")
+  HistoricoRemocaoInstrutor                                                                                 AulaInstrutorHistorico[]                      @relation("HistoricoRemovidoPor")
+  EmpresasVagasEntrevistas_EmpresasVagasEntrevistas_candidatoIdToUsuarios                                   EmpresasVagasEntrevistas[]                    @relation("EmpresasVagasEntrevistas_candidatoIdToUsuarios")
+  EmpresasVagasEntrevistas_EmpresasVagasEntrevistas_empresaUsuarioIdToUsuarios                              EmpresasVagasEntrevistas[]                    @relation("EmpresasVagasEntrevistas_empresaUsuarioIdToUsuarios")
+  EmpresasVagasEntrevistas_EmpresasVagasEntrevistas_recrutadorIdToUsuarios                                  EmpresasVagasEntrevistas[]                    @relation("EmpresasVagasEntrevistas_recrutadorIdToUsuarios")
   // Vínculos RECRUTADOR -> EMPRESA (controle de acesso)
-  UsuariosEmpresasVinculos_UsuariosEmpresasVinculos_recrutadorIdToUsuarios     UsuariosEmpresasVinculos[]   @relation("UsuariosEmpresasVinculos_recrutadorIdToUsuarios")
-  UsuariosEmpresasVinculos_UsuariosEmpresasVinculos_empresaUsuarioIdToUsuarios UsuariosEmpresasVinculos[]   @relation("UsuariosEmpresasVinculos_empresaUsuarioIdToUsuarios")
-  UsuariosVagasVinculos_UsuariosVagasVinculos_recrutadorIdToUsuarios           UsuariosVagasVinculos[]      @relation("UsuariosVagasVinculos_recrutadorIdToUsuarios")
+  UsuariosEmpresasVinculos_UsuariosEmpresasVinculos_recrutadorIdToUsuarios                                  UsuariosEmpresasVinculos[]                    @relation("UsuariosEmpresasVinculos_recrutadorIdToUsuarios")
+  UsuariosEmpresasVinculos_UsuariosEmpresasVinculos_empresaUsuarioIdToUsuarios                              UsuariosEmpresasVinculos[]                    @relation("UsuariosEmpresasVinculos_empresaUsuarioIdToUsuarios")
+  UsuariosVagasVinculos_UsuariosVagasVinculos_recrutadorIdToUsuarios                                        UsuariosVagasVinculos[]                       @relation("UsuariosVagasVinculos_recrutadorIdToUsuarios")
   // Provas e Atividades como instrutor
-  CursosTurmasProvas                                                           CursosTurmasProvas[]
-  CursosTurmasInstrutores                                                      CursosTurmasInstrutores[]    @relation("TurmasInstrutores")
+  CursosTurmasProvas                                                                                        CursosTurmasProvas[]
+  CursosTurmasInstrutores                                                                                   CursosTurmasInstrutores[]                     @relation("TurmasInstrutores")
 
   @@index([criadoEm])
   @@index([role])

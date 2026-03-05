@@ -153,6 +153,56 @@ class CursosAuditoriaService {
   }
 
   /**
+   * Registra exclusão lógica de curso
+   */
+  async registrarExclusaoLogicaCurso(
+    cursoId: string,
+    alteradoPor: string,
+    dadosCurso: {
+      nome: string;
+      codigo?: string;
+      motivo?: string;
+    },
+    ip?: string,
+    userAgent?: string,
+  ): Promise<void> {
+    try {
+      await auditoriaService.registrarLog({
+        categoria: AuditoriaCategoria.CURSO,
+        tipo: 'CURSO_EXCLUSAO_LOGICA',
+        acao: 'CURSO_EXCLUIDO_LOGICAMENTE',
+        usuarioId: alteradoPor,
+        entidadeId: cursoId,
+        entidadeTipo: 'CURSO',
+        descricao: `Curso excluído logicamente: ${dadosCurso.nome}`,
+        dadosAnteriores: {
+          nome: dadosCurso.nome,
+          codigo: dadosCurso.codigo,
+        },
+        dadosNovos: {
+          status: 'EXCLUIDO_LOGICO',
+        },
+        metadata: {
+          cursoId,
+          ...dadosCurso,
+        },
+        ip,
+        userAgent,
+      });
+
+      cursosAuditoriaLogger.info(
+        { cursoId, alteradoPor },
+        'Exclusão lógica de curso registrada na auditoria',
+      );
+    } catch (error) {
+      cursosAuditoriaLogger.error(
+        { err: error, cursoId, alteradoPor },
+        'Erro ao registrar exclusão lógica de curso na auditoria',
+      );
+    }
+  }
+
+  /**
    * Obtém histórico de alterações de um curso
    */
   async obterHistoricoAlteracoes(

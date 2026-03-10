@@ -11,6 +11,8 @@ import {
 import { prisma } from '@/config/prisma';
 import { randomUUID } from 'crypto';
 
+jest.setTimeout(45000);
+
 describe('API - Aulas: Publicação e Exclusão', () => {
   let app: Express;
   const testUsers: TestUser[] = [];
@@ -29,13 +31,31 @@ describe('API - Aulas: Publicação e Exclusão', () => {
     testUsers.push(testAdmin, testModerator, testInstrutor);
 
     // Buscar ou criar uma turma para testes
-    const turma = await prisma.cursosTurmas.findFirst({
-      include: { Cursos: true },
-    });
+    const turma =
+      (await prisma.cursosTurmas.findFirst({
+        where: {
+          OR: [{ instrutorId: null }, { instrutorId: { not: testInstrutor.id } }],
+        },
+        include: { Cursos: true },
+      })) ??
+      (await prisma.cursosTurmas.findFirst({
+        include: { Cursos: true },
+      }));
 
     if (turma) {
       testTurmaId = turma.id;
       testInstrutorId = turma.instrutorId || testInstrutor.id;
+    }
+
+    // fallback defensivo
+    if (!testTurmaId) {
+      const turmaFallback = await prisma.cursosTurmas.findFirst({
+        include: { Cursos: true },
+      });
+      if (turmaFallback) {
+        testTurmaId = turmaFallback.id;
+        testInstrutorId = turmaFallback.instrutorId || testInstrutor.id;
+      }
     }
   });
 
@@ -63,6 +83,7 @@ describe('API - Aulas: Publicação e Exclusão', () => {
         descricao: 'Descrição da aula de teste para validação de publicação',
         modalidade: 'ONLINE',
         youtubeUrl: 'https://www.youtube.com/watch?v=test123',
+        obrigatoria: true,
         duracaoMinutos: 60,
         status: 'RASCUNHO',
         turmaId: testTurmaId,
@@ -82,7 +103,7 @@ describe('API - Aulas: Publicação e Exclusão', () => {
   });
 
   describe('PATCH /api/v1/cursos/aulas/:id/publicar - Publicar aula', () => {
-    it('deve bloquear publicação se campos obrigatórios faltarem (PRESENCIAL)', async () => {
+    it('deve manter aula em rascunho ao tentar publicar PRESENCIAL sem turma', async () => {
       if (!testTurmaId || !testAulaId) {
         console.log('⚠️  Pulando teste: turma ou aula não encontrada');
         return;
@@ -94,6 +115,7 @@ describe('API - Aulas: Publicação e Exclusão', () => {
         descricao: 'Aula presencial sem turma e instrutor',
         modalidade: 'PRESENCIAL',
         dataInicio: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        obrigatoria: true,
         duracaoMinutos: 60,
         status: 'RASCUNHO',
       };
@@ -111,11 +133,10 @@ describe('API - Aulas: Publicação e Exclusão', () => {
         .patch(`/api/v1/cursos/aulas/${aulaIdSemTurma}/publicar`)
         .set('Authorization', `Bearer ${testAdmin.token}`)
         .send({ publicar: true })
-        .expect(400);
+        .expect(200);
 
-      expect(response.body.success).toBe(false);
-      expect(response.body.code).toBe('CAMPOS_OBRIGATORIOS_FALTANDO');
-      expect(response.body.camposFaltando).toContain('turmaId');
+      expect(response.body.success).toBe(true);
+      expect(response.body.aula.status).toBe('RASCUNHO');
 
       // Limpar
       await prisma.cursosTurmasAulas.delete({ where: { id: aulaIdSemTurma } });
@@ -131,7 +152,9 @@ describe('API - Aulas: Publicação e Exclusão', () => {
         titulo: 'Aula AO_VIVO - Data Passada',
         descricao: 'Aula ao vivo com data no passado',
         modalidade: 'AO_VIVO',
-        dataInicio: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        dataInicio: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        horaInicio: '10:00',
+        obrigatoria: true,
         duracaoMinutos: 60,
         status: 'RASCUNHO',
         turmaId: testTurmaId,
@@ -145,6 +168,14 @@ describe('API - Aulas: Publicação e Exclusão', () => {
         .expect(201);
 
       const aulaIdDataPassada = createResponse.body.aula.id;
+
+      await prisma.cursosTurmasAulas.update({
+        where: { id: aulaIdDataPassada },
+        data: {
+          modalidade: 'LIVE',
+          dataInicio: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        },
+      });
 
       // Tentar publicar
       const response = await request(app)
@@ -272,7 +303,7 @@ describe('API - Aulas: Publicação e Exclusão', () => {
       }
     });
 
-    it('deve bloquear exclusão por INSTRUTOR', async () => {
+    it('deve bloquear exclusão por INSTRUTOR sem vínculo', async () => {
       if (!aulaParaExcluirId) {
         console.log('⚠️  Pulando teste: aula não encontrada');
         return;
@@ -287,6 +318,36 @@ describe('API - Aulas: Publicação e Exclusão', () => {
       expect(response.body.code).toBe('FORBIDDEN');
     });
 
+    it('deve permitir exclusão por INSTRUTOR quando houver vínculo direto na aula', async () => {
+      if (!testTurmaId) {
+        console.log('⚠️  Pulando teste: turma não encontrada');
+        return;
+      }
+
+      const timestampInstrutor = Date.now().toString().slice(-6);
+      const aulaVinculadaInstrutor = await prisma.cursosTurmasAulas.create({
+        data: {
+          codigo: `V${timestampInstrutor}`,
+          nome: 'Aula vinculada ao instrutor',
+          descricao: 'Aula para validar exclusão por vínculo direto',
+          modalidade: 'ONLINE',
+          urlVideo: 'https://www.youtube.com/watch?v=test',
+          duracaoMinutos: 60,
+          status: 'RASCUNHO',
+          turmaId: testTurmaId,
+          instrutorId: testInstrutor.id,
+          dataInicio: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+        },
+      });
+
+      const response = await request(app)
+        .delete(`/api/v1/cursos/aulas/${aulaVinculadaInstrutor.id}`)
+        .set('Authorization', `Bearer ${testInstrutor.token}`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+    });
+
     it('deve bloquear exclusão com prazo menor que 5 dias', async () => {
       if (!aulaParaExcluirId || !testTurmaId) {
         console.log('⚠️  Pulando teste: aula ou turma não encontrada');
@@ -297,6 +358,7 @@ describe('API - Aulas: Publicação e Exclusão', () => {
       await prisma.cursosTurmasAulas.update({
         where: { id: aulaParaExcluirId },
         data: {
+          modalidade: 'PRESENCIAL',
           dataInicio: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
         },
       });

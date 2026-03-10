@@ -334,9 +334,14 @@ function createPrismaClient() {
     prismaLogger.info('🔄 Lazy connection habilitado (conectará na primeira query)');
   }
 
+  let lastClosedConnectionWarnAt = 0;
+  const CLOSED_CONNECTION_WARN_COOLDOWN_MS = 30000;
+
   client.$on('error', (e) => {
     // Se for erro de conexão, logar como warning ao invés de error
     const errorMessage = e.message?.toLowerCase() || '';
+    const isClosedConnection =
+      errorMessage.includes('kind: closed') || errorMessage.includes('connector::postgres::native');
     const isConnectionError =
       errorMessage.includes('tenant or user not found') ||
       errorMessage.includes('connection') ||
@@ -344,6 +349,18 @@ function createPrismaClient() {
       errorMessage.includes('fatal') ||
       errorMessage.includes('timeout') ||
       errorMessage.includes('econnrefused');
+
+    if (isClosedConnection) {
+      const now = Date.now();
+      if (now - lastClosedConnectionWarnAt >= CLOSED_CONNECTION_WARN_COOLDOWN_MS) {
+        lastClosedConnectionWarnAt = now;
+        prismaLogger.warn(
+          { err: e, cooldownMs: CLOSED_CONNECTION_WARN_COOLDOWN_MS },
+          '⚠️ Prisma: conexão encerrada pelo pooler/banco (tentará reconectar na próxima query)',
+        );
+      }
+      return;
+    }
 
     if (isConnectionError) {
       prismaLogger.warn({ err: e }, '⚠️ Prisma: Erro de conexão com banco de dados');

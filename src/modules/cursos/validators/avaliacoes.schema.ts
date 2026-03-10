@@ -548,8 +548,13 @@ export const clonarAvaliacaoSchema = z.object({
   etiqueta: z.string().trim().min(1).max(30).optional(),
 });
 
+export const publicarAvaliacaoSchema = z.object({
+  publicar: z.preprocess(parseBooleanBody, z.boolean()),
+});
+
 export type ListAvaliacoesQuery = z.infer<typeof listAvaliacoesQuerySchema>;
 export type CreateAvaliacaoInput = z.infer<typeof createAvaliacaoSchema>;
 export type UpdateAvaliacaoInput = z.infer<typeof updateAvaliacaoSchema>;
 export type PutUpdateAvaliacaoInput = z.infer<typeof putUpdateAvaliacaoSchema>;
 export type ClonarAvaliacaoInput = z.infer<typeof clonarAvaliacaoSchema>;
+export type PublicarAvaliacaoInput = z.infer<typeof publicarAvaliacaoSchema>;

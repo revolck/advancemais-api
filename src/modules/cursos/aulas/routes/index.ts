@@ -26,11 +26,7 @@ router.get('/:id', supabaseAuthMiddleware(rolesGestaoAulas), AulasController.get
 router.post('/', supabaseAuthMiddleware(rolesGestaoAulas), AulasController.create);
 router.put('/:id', supabaseAuthMiddleware(rolesGestaoAulas), AulasController.update);
 router.patch('/:id/publicar', supabaseAuthMiddleware(rolesGestaoAulas), AulasController.publicar); // Publicar/despublicar (antes de :id para evitar conflito)
-router.delete(
-  '/:id',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
-  AulasController.delete,
-);
+router.delete('/:id', supabaseAuthMiddleware(rolesGestaoAulas), AulasController.delete);
 
 // Histórico de alterações
 router.get(

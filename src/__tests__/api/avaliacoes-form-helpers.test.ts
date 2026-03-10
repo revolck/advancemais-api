@@ -343,4 +343,367 @@ describe('Avaliacoes - Form Helpers', () => {
       expect(res.body.avaliacao.turmaId).toBe(turmaNaoVinculadaId);
     });
   });
+
+  describe('Autorização e ciclo de vida (INSTRUTOR)', () => {
+    const inicioFuturo = () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const fimFuturo = () => new Date(Date.now() + 8 * 24 * 60 * 60 * 1000);
+
+    const createAvaliacao = async (params: {
+      turmaId: string;
+      instrutorId: string;
+      titulo: string;
+      etiqueta: string;
+    }) =>
+      prisma.cursosTurmasProvas.create({
+        data: {
+          cursoId,
+          turmaId: params.turmaId,
+          instrutorId: params.instrutorId,
+          tipo: 'PROVA',
+          titulo: params.titulo,
+          etiqueta: params.etiqueta,
+          peso: 5,
+          valePonto: true,
+          modalidade: 'ONLINE',
+          obrigatoria: true,
+          status: 'RASCUNHO',
+          dataInicio: inicioFuturo(),
+          dataFim: fimFuturo(),
+          horaInicio: '10:00',
+          horaTermino: '12:00',
+          ativo: true,
+        },
+      });
+
+    it('❌ INSTRUTOR com turmaId sem vínculo deve receber 403 na listagem', async () => {
+      const res = await request(app)
+        .get('/api/v1/cursos/avaliacoes')
+        .query({ turmaId: turmaNaoVinculadaId })
+        .set('Authorization', `Bearer ${instrutorToken}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe('FORBIDDEN');
+    });
+
+    it('❌ INSTRUTOR não pode acessar detalhe de avaliação sem vínculo', async () => {
+      const suffix = Date.now().toString().slice(-6);
+      const avaliacao = await createAvaliacao({
+        turmaId: turmaNaoVinculadaId,
+        instrutorId: instrutor2Id,
+        titulo: `Prova sem vínculo ${suffix}`,
+        etiqueta: `PSV-${suffix}`,
+      });
+
+      const res = await request(app)
+        .get(`/api/v1/cursos/avaliacoes/${avaliacao.id}`)
+        .set('Authorization', `Bearer ${instrutorToken}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe('FORBIDDEN');
+    });
+
+    it('❌ INSTRUTOR não pode editar avaliação sem vínculo', async () => {
+      const suffix = Date.now().toString().slice(-6);
+      const avaliacao = await createAvaliacao({
+        turmaId: turmaNaoVinculadaId,
+        instrutorId: instrutor2Id,
+        titulo: `Prova editar sem vínculo ${suffix}`,
+        etiqueta: `PESV-${suffix}`,
+      });
+
+      const res = await request(app)
+        .put(`/api/v1/cursos/avaliacoes/${avaliacao.id}`)
+        .set('Authorization', `Bearer ${instrutorToken}`)
+        .send({
+          tipo: 'PROVA',
+          titulo: `Atualizada ${suffix}`,
+          modalidade: 'ONLINE',
+          obrigatoria: true,
+          valePonto: true,
+          peso: 5,
+          status: 'RASCUNHO',
+          cursoId,
+          turmaId: turmaNaoVinculadaId,
+          instrutorId: instrutor2Id,
+          recuperacaoFinal: false,
+          tipoAtividade: null,
+          etiqueta: `PESVU-${suffix}`,
+          descricao: 'Teste',
+          dataInicio: inicioFuturo().toISOString(),
+          dataFim: fimFuturo().toISOString(),
+          horaInicio: '10:00',
+          horaTermino: '12:00',
+          questoes: [
+            {
+              enunciado: 'Questão',
+              tipo: 'TEXTO',
+              ordem: 1,
+              peso: 1,
+              obrigatoria: true,
+            },
+          ],
+        });
+
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe('FORBIDDEN');
+    });
+
+    it('❌ INSTRUTOR não pode excluir avaliação sem vínculo', async () => {
+      const suffix = Date.now().toString().slice(-6);
+      const avaliacao = await createAvaliacao({
+        turmaId: turmaNaoVinculadaId,
+        instrutorId: instrutor2Id,
+        titulo: `Prova excluir sem vínculo ${suffix}`,
+        etiqueta: `PXSV-${suffix}`,
+      });
+
+      const res = await request(app)
+        .delete(`/api/v1/cursos/avaliacoes/${avaliacao.id}`)
+        .set('Authorization', `Bearer ${instrutorToken}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe('FORBIDDEN');
+    });
+
+    it('✅ INSTRUTOR pode editar avaliação vinculada futura', async () => {
+      const suffix = Date.now().toString().slice(-6);
+      const avaliacao = await createAvaliacao({
+        turmaId: turmaVinculadaId,
+        instrutorId,
+        titulo: `Prova vinculada editar ${suffix}`,
+        etiqueta: `PVED-${suffix}`,
+      });
+
+      const res = await request(app)
+        .put(`/api/v1/cursos/avaliacoes/${avaliacao.id}`)
+        .set('Authorization', `Bearer ${instrutorToken}`)
+        .send({
+          tipo: 'PROVA',
+          titulo: `Atualizada vinculada ${suffix}`,
+          modalidade: 'ONLINE',
+          obrigatoria: true,
+          valePonto: true,
+          peso: 5,
+          status: 'RASCUNHO',
+          cursoId,
+          turmaId: turmaVinculadaId,
+          instrutorId,
+          recuperacaoFinal: false,
+          tipoAtividade: null,
+          etiqueta: `PVEDU-${suffix}`,
+          descricao: 'Teste vinculado',
+          dataInicio: inicioFuturo().toISOString(),
+          dataFim: fimFuturo().toISOString(),
+          horaInicio: '10:00',
+          horaTermino: '12:00',
+          questoes: [
+            {
+              enunciado: 'Questão',
+              tipo: 'TEXTO',
+              ordem: 1,
+              peso: 1,
+              obrigatoria: true,
+            },
+          ],
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.avaliacao.id).toBe(avaliacao.id);
+    });
+
+    it('✅ INSTRUTOR pode excluir avaliação vinculada futura sem envios', async () => {
+      const suffix = Date.now().toString().slice(-6);
+      const avaliacao = await createAvaliacao({
+        turmaId: turmaVinculadaId,
+        instrutorId,
+        titulo: `Prova vinculada excluir ${suffix}`,
+        etiqueta: `PVEX-${suffix}`,
+      });
+
+      const res = await request(app)
+        .delete(`/api/v1/cursos/avaliacoes/${avaliacao.id}`)
+        .set('Authorization', `Bearer ${instrutorToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+
+      const deleted = await prisma.cursosTurmasProvas.findUnique({
+        where: { id: avaliacao.id },
+        select: { status: true, ativo: true },
+      });
+
+      expect(deleted).toBeTruthy();
+      expect(deleted?.status).toBe('CANCELADA');
+      expect(deleted?.ativo).toBe(false);
+    });
+
+    it('❌ ADMIN não pode excluir avaliação com envios', async () => {
+      const suffix = Date.now().toString().slice(-6);
+      const aluno = await createTestUser({
+        nomeCompleto: `Aluno Avaliação ${suffix}`,
+        email: `aluno.avaliacao.${suffix}@test.com`,
+        role: Roles.ALUNO_CANDIDATO,
+      });
+      testUsers.push(aluno);
+
+      const avaliacao = await createAvaliacao({
+        turmaId: turmaVinculadaId,
+        instrutorId,
+        titulo: `Prova com envio ${suffix}`,
+        etiqueta: `PCEN-${suffix}`,
+      });
+
+      const inscricao = await prisma.cursosTurmasInscricoes.create({
+        data: {
+          turmaId: turmaVinculadaId,
+          alunoId: aluno.id,
+        },
+      });
+
+      await prisma.cursosTurmasProvasEnvios.create({
+        data: {
+          provaId: avaliacao.id,
+          inscricaoId: inscricao.id,
+        },
+      });
+
+      const res = await request(app)
+        .delete(`/api/v1/cursos/avaliacoes/${avaliacao.id}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe('AVALIACAO_JA_INICIADA_OU_REALIZADA');
+    });
+
+    it('✅ PATCH publicar/despublicar funciona para avaliação vinculada futura', async () => {
+      const suffix = Date.now().toString().slice(-6);
+      const avaliacao = await createAvaliacao({
+        turmaId: turmaVinculadaId,
+        instrutorId,
+        titulo: `Prova publicar ${suffix}`,
+        etiqueta: `PPUB-${suffix}`,
+      });
+
+      await prisma.cursosTurmasProvasQuestoes.create({
+        data: {
+          provaId: avaliacao.id,
+          enunciado: 'Questão para publicação',
+          tipo: 'TEXTO',
+          ordem: 1,
+          peso: 1,
+          obrigatoria: true,
+        },
+      });
+
+      const publicarRes = await request(app)
+        .patch(`/api/v1/cursos/avaliacoes/${avaliacao.id}/publicar`)
+        .set('Authorization', `Bearer ${instrutorToken}`)
+        .send({ publicar: true });
+
+      expect(publicarRes.status).toBe(200);
+      expect(publicarRes.body.success).toBe(true);
+      expect(publicarRes.body.avaliacao.status).toBe('PUBLICADA');
+
+      const despublicarRes = await request(app)
+        .patch(`/api/v1/cursos/avaliacoes/${avaliacao.id}/publicar`)
+        .set('Authorization', `Bearer ${instrutorToken}`)
+        .send({ publicar: false });
+
+      expect(despublicarRes.status).toBe(200);
+      expect(despublicarRes.body.success).toBe(true);
+      expect(despublicarRes.body.avaliacao.status).toBe('RASCUNHO');
+    });
+
+    it('❌ não pode publicar avaliação sem turma vinculada', async () => {
+      const suffix = Date.now().toString().slice(-6);
+      const avaliacao = await prisma.cursosTurmasProvas.create({
+        data: {
+          cursoId,
+          turmaId: null,
+          instrutorId,
+          tipo: 'PROVA',
+          titulo: `Sem turma ${suffix}`,
+          etiqueta: `ST-${suffix}`,
+          peso: 5,
+          valePonto: true,
+          modalidade: 'ONLINE',
+          obrigatoria: true,
+          status: 'RASCUNHO',
+          dataInicio: inicioFuturo(),
+          dataFim: fimFuturo(),
+          horaInicio: '10:00',
+          horaTermino: '12:00',
+          ativo: true,
+        },
+      });
+
+      const res = await request(app)
+        .patch(`/api/v1/cursos/avaliacoes/${avaliacao.id}/publicar`)
+        .set('Authorization', `Bearer ${instrutorToken}`)
+        .send({ publicar: true });
+
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe('AVALIACAO_PUBLICACAO_EXIGE_TURMA_VINCULADA');
+
+      const persisted = await prisma.cursosTurmasProvas.findUniqueOrThrow({
+        where: { id: avaliacao.id },
+        select: { status: true, turmaId: true },
+      });
+
+      expect(persisted.turmaId).toBeNull();
+      expect(persisted.status).toBe('RASCUNHO');
+    });
+
+    it('✅ registro legado PUBLICADA sem turma é normalizado para RASCUNHO no detalhe e na listagem', async () => {
+      const suffix = Date.now().toString().slice(-6);
+      const titulo = `Legado sem turma ${suffix}`;
+      const avaliacao = await prisma.cursosTurmasProvas.create({
+        data: {
+          cursoId,
+          turmaId: null,
+          instrutorId,
+          tipo: 'PROVA',
+          titulo,
+          etiqueta: `LST-${suffix}`,
+          peso: 5,
+          valePonto: true,
+          modalidade: 'ONLINE',
+          obrigatoria: true,
+          status: 'PUBLICADA',
+          dataInicio: inicioFuturo(),
+          dataFim: fimFuturo(),
+          horaInicio: '10:00',
+          horaTermino: '12:00',
+          ativo: true,
+        },
+      });
+
+      const detalheRes = await request(app)
+        .get(`/api/v1/cursos/avaliacoes/${avaliacao.id}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(detalheRes.status).toBe(200);
+      expect(detalheRes.body.data.status).toBe('RASCUNHO');
+      expect(detalheRes.body.data.turmaId).toBeNull();
+
+      const listPublicadaRes = await request(app)
+        .get('/api/v1/cursos/avaliacoes')
+        .query({ search: titulo, status: 'PUBLICADA' })
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(listPublicadaRes.status).toBe(200);
+      expect(listPublicadaRes.body.data.some((item: any) => item.id === avaliacao.id)).toBe(false);
+
+      const listRascunhoRes = await request(app)
+        .get('/api/v1/cursos/avaliacoes')
+        .query({ search: titulo, status: 'RASCUNHO' })
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(listRascunhoRes.status).toBe(200);
+      const legado = listRascunhoRes.body.data.find((item: any) => item.id === avaliacao.id);
+      expect(legado).toBeDefined();
+      expect(legado.status).toBe('RASCUNHO');
+    });
+  });
 });

@@ -9,6 +9,7 @@ import {
   clonarAvaliacaoSchema,
   createAvaliacaoSchema,
   listAvaliacoesQuerySchema,
+  publicarAvaliacaoSchema,
   putUpdateAvaliacaoSchema,
 } from '../validators/avaliacoes.schema';
 import {
@@ -42,6 +43,14 @@ export class AvaliacoesController {
           code: 'VALIDATION_ERROR',
           message: 'Parâmetros inválidos para listagem de avaliações',
           issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para listar avaliações desta turma',
         });
       }
 
@@ -548,6 +557,31 @@ export class AvaliacoesController {
         });
       }
 
+      if (error?.code === 'AVALIACAO_JA_INICIADA_OU_REALIZADA') {
+        return res.status(409).json({
+          success: false,
+          code: 'AVALIACAO_JA_INICIADA_OU_REALIZADA',
+          message: error?.message || 'Não é possível editar avaliação que já aconteceu',
+        });
+      }
+
+      if (error?.code === 'CAMPOS_OBRIGATORIOS_FALTANDO') {
+        return res.status(400).json({
+          success: false,
+          code: 'CAMPOS_OBRIGATORIOS_FALTANDO',
+          message: error?.message || 'Campos obrigatórios faltando para publicação',
+          camposFaltando: error?.camposFaltando ?? [],
+        });
+      }
+
+      if (error?.code === 'DATA_INVALIDA') {
+        return res.status(400).json({
+          success: false,
+          code: 'DATA_INVALIDA',
+          message: error?.message || 'Data inválida para publicação',
+        });
+      }
+
       if (error?.code === 'TURMA_NOT_FOUND') {
         return res.status(404).json({
           success: false,
@@ -604,10 +638,111 @@ export class AvaliacoesController {
         });
       }
 
+      if (error?.code === 'AVALIACAO_JA_INICIADA_OU_REALIZADA') {
+        return res.status(409).json({
+          success: false,
+          code: 'AVALIACAO_JA_INICIADA_OU_REALIZADA',
+          message: error?.message || 'Não é possível excluir avaliação que já aconteceu',
+        });
+      }
+
       res.status(500).json({
         success: false,
         code: 'AVALIACAO_DELETE_ERROR',
         message: 'Erro ao remover avaliação',
+        error: error?.message,
+      });
+    }
+  };
+
+  static publicar = async (req: Request, res: Response) => {
+    const id = parseUuid(req.params.id);
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificador de avaliação inválido',
+      });
+    }
+
+    try {
+      const payload = publicarAvaliacaoSchema.parse(req.body);
+      const usuarioLogado = req.user!;
+      const avaliacao = await avaliacoesService.publicar(id, payload.publicar, usuarioLogado);
+      res.json({ success: true, data: avaliacao, avaliacao });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Dados inválidos para publicar/despublicar avaliação',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'AVALIACAO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'AVALIACAO_NOT_FOUND',
+          message: 'Avaliação não encontrada',
+        });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para publicar/despublicar esta avaliação',
+        });
+      }
+
+      if (error?.code === 'CAMPOS_OBRIGATORIOS_FALTANDO') {
+        return res.status(400).json({
+          success: false,
+          code: 'CAMPOS_OBRIGATORIOS_FALTANDO',
+          message: error?.message || 'Campos obrigatórios faltando para publicação',
+          camposFaltando: error?.camposFaltando ?? [],
+        });
+      }
+
+      if (error?.code === 'DATA_INVALIDA') {
+        return res.status(400).json({
+          success: false,
+          code: 'DATA_INVALIDA',
+          message: error?.message || 'Data inválida para publicação',
+        });
+      }
+
+      if (error?.code === 'STATUS_INVALIDO') {
+        return res.status(400).json({
+          success: false,
+          code: 'STATUS_INVALIDO',
+          message: error?.message || 'Status inválido para publicação/despublicação',
+        });
+      }
+
+      if (error?.code === 'AVALIACAO_PUBLICACAO_EXIGE_TURMA_VINCULADA') {
+        return res.status(409).json({
+          success: false,
+          code: 'AVALIACAO_PUBLICACAO_EXIGE_TURMA_VINCULADA',
+          message: error?.message || 'Vincule uma turma antes de publicar esta avaliação.',
+        });
+      }
+
+      if (error?.code === 'AVALIACAO_JA_INICIADA_OU_REALIZADA') {
+        return res.status(409).json({
+          success: false,
+          code: 'AVALIACAO_JA_INICIADA_OU_REALIZADA',
+          message:
+            error?.message ||
+            'Não é possível publicar/despublicar avaliação que já foi iniciada ou já possui envios',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'AVALIACAO_PUBLICAR_ERROR',
+        message: 'Erro ao publicar/despublicar avaliação',
         error: error?.message,
       });
     }

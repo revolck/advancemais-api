@@ -9,7 +9,7 @@ import { getTestApp } from '../helpers/test-setup';
 
 jest.setTimeout(60000);
 
-describe('API - Avaliações/Provas - Regras de edição (RASCUNHO vs PUBLICADA)', () => {
+describe('API - Avaliações/Provas - Regras de edição (já iniciada/realizada)', () => {
   let app: Express;
   const testUsers: TestUser[] = [];
   let admin: TestUser;
@@ -25,8 +25,10 @@ describe('API - Avaliações/Provas - Regras de edição (RASCUNHO vs PUBLICADA)
     testUsers.push(admin);
 
     const suffix = Date.now().toString().slice(-6);
-    const inicio = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const fim = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const inicioFuturo = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const fimFuturo = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    const inicioPassado = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const fimPassado = new Date(Date.now() - 2 * 60 * 60 * 1000);
 
     const curso = await prisma.cursos.create({
       data: {
@@ -63,8 +65,8 @@ describe('API - Avaliações/Provas - Regras de edição (RASCUNHO vs PUBLICADA)
           status: 'RASCUNHO',
           modalidade: 'ONLINE',
           obrigatoria: true,
-          dataInicio: inicio,
-          dataFim: fim,
+          dataInicio: inicioFuturo,
+          dataFim: fimFuturo,
           horaInicio: '08:00',
           horaTermino: '18:00',
           ativo: true,
@@ -82,8 +84,8 @@ describe('API - Avaliações/Provas - Regras de edição (RASCUNHO vs PUBLICADA)
           status: 'PUBLICADA',
           modalidade: 'ONLINE',
           obrigatoria: true,
-          dataInicio: inicio,
-          dataFim: fim,
+          dataInicio: inicioPassado,
+          dataFim: fimPassado,
           horaInicio: '08:00',
           horaTermino: '18:00',
           ativo: true,
@@ -119,20 +121,22 @@ describe('API - Avaliações/Provas - Regras de edição (RASCUNHO vs PUBLICADA)
   });
 
   afterAll(async () => {
+    const provaIds = [provaRascunhoId, provaPublicadaId].filter(Boolean);
+
     await prisma.cursosTurmasProvasQuestoes.deleteMany({
-      where: { provaId: { in: [provaRascunhoId, provaPublicadaId] } },
+      where: { provaId: { in: provaIds } },
     });
     await prisma.cursosTurmasProvas.deleteMany({
-      where: { id: { in: [provaRascunhoId, provaPublicadaId] } },
+      where: { id: { in: provaIds } },
     });
     await prisma.cursosTurmas.deleteMany({ where: { id: turmaId } });
     await prisma.cursos.deleteMany({ where: { id: cursoId } });
     await cleanupTestUsers(testUsers.map((user) => user.id));
   });
 
-  it('deve permitir editar avaliação RASCUNHO vinculada, mesmo com período iniciado', async () => {
-    const inicio = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const fim = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  it('deve permitir editar avaliação futura vinculada à turma', async () => {
+    const inicio = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const fim = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
 
     const response = await request(app)
       .put(`/api/v1/cursos/avaliacoes/${provaRascunhoId}`)
@@ -173,7 +177,7 @@ describe('API - Avaliações/Provas - Regras de edição (RASCUNHO vs PUBLICADA)
     expect(response.body.avaliacao).toHaveProperty('status', 'RASCUNHO');
   });
 
-  it('deve bloquear edição de avaliação PUBLICADA vinculada à turma', async () => {
+  it('deve bloquear edição de avaliação que já aconteceu', async () => {
     const inicio = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const fim = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
@@ -213,7 +217,7 @@ describe('API - Avaliações/Provas - Regras de edição (RASCUNHO vs PUBLICADA)
 
     expect(response.body).toMatchObject({
       success: false,
-      code: 'AVALIACAO_PUBLICADA_LOCKED',
+      code: 'AVALIACAO_JA_INICIADA_OU_REALIZADA',
     });
   });
 

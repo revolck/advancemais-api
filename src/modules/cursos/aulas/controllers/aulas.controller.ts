@@ -36,6 +36,14 @@ export class AulasController {
         });
       }
 
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para visualizar aulas',
+        });
+      }
+
       // ✅ Tratar erros de conexão do Prisma (P1001/P2024) como 503 Service Unavailable
       const errorCode = (error as any)?.code;
       const errorMessage = String((error as any)?.message || '').toLowerCase();
@@ -82,6 +90,14 @@ export class AulasController {
         aula,
       });
     } catch (error: any) {
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para visualizar esta aula',
+        });
+      }
+
       res.status(404).json({
         success: false,
         code: 'AULA_NOT_FOUND',

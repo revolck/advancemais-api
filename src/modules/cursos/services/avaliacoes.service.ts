@@ -69,6 +69,132 @@ const mapModalidadeFromDB = (modalidade: string | null | undefined) => {
   return modalidade === 'LIVE' ? 'AO_VIVO' : modalidade;
 };
 
+const isInstrutorVinculadoAAvaliacao = (params: {
+  usuarioId: string;
+  avaliacaoInstrutorId?: string | null;
+  turmaInstrutorId?: string | null;
+}) => {
+  return (
+    params.avaliacaoInstrutorId === params.usuarioId || params.turmaInstrutorId === params.usuarioId
+  );
+};
+
+const mergeDataHora = (dataInicio?: Date | null, horaInicio?: string | null) => {
+  if (!dataInicio) return null;
+  const merged = new Date(dataInicio);
+  if (horaInicio && /^([01]\d|2[0-3]):([0-5]\d)$/.test(horaInicio)) {
+    const [hora, minuto] = horaInicio.split(':').map(Number);
+    merged.setHours(hora, minuto, 0, 0);
+  } else {
+    merged.setHours(0, 0, 0, 0);
+  }
+  return merged;
+};
+
+const normalizeAvaliacaoStatus = (
+  status: CursosAulaStatus,
+  turmaId?: string | null,
+): CursosAulaStatus => {
+  if (status === CursosAulaStatus.PUBLICADA && !turmaId) {
+    return CursosAulaStatus.RASCUNHO;
+  }
+
+  return status;
+};
+
+const buildStatusFilter = (parts: CursosAulaStatus[]): Prisma.CursosTurmasProvasWhereInput => {
+  const or: Prisma.CursosTurmasProvasWhereInput[] = [];
+
+  for (const status of parts) {
+    if (status === CursosAulaStatus.RASCUNHO) {
+      or.push({ status: CursosAulaStatus.RASCUNHO });
+      or.push({ status: CursosAulaStatus.PUBLICADA, turmaId: null });
+      continue;
+    }
+
+    if (status === CursosAulaStatus.PUBLICADA) {
+      or.push({ status: CursosAulaStatus.PUBLICADA, turmaId: { not: null } });
+      continue;
+    }
+
+    or.push({ status });
+  }
+
+  if (or.length === 1) {
+    return or[0] ?? {};
+  }
+
+  return { OR: or };
+};
+
+const avaliacaoJaAconteceu = (params: {
+  status: CursosAulaStatus;
+  dataInicio?: Date | null;
+  horaInicio?: string | null;
+  enviosCount: number;
+}) => {
+  if (
+    params.status === CursosAulaStatus.EM_ANDAMENTO ||
+    params.status === CursosAulaStatus.CONCLUIDA
+  ) {
+    return true;
+  }
+
+  if (params.enviosCount > 0) {
+    return true;
+  }
+
+  const inicio = mergeDataHora(params.dataInicio, params.horaInicio);
+  return inicio ? inicio.getTime() <= Date.now() : false;
+};
+
+const validarCamposPublicacao = (params: {
+  titulo?: string | null;
+  modalidade?: string | null;
+  dataInicio?: Date | null;
+  dataFim?: Date | null;
+  horaInicio?: string | null;
+  horaTermino?: string | null;
+  tipo?: CursosAvaliacaoTipo;
+  tipoAtividade?: CursosAtividadeTipo | null;
+  questoesCount: number;
+}) => {
+  const camposFaltando: string[] = [];
+
+  if (!params.titulo?.trim()) camposFaltando.push('titulo');
+  if (!params.modalidade) camposFaltando.push('modalidade');
+  if (!params.dataInicio) camposFaltando.push('dataInicio');
+  if (!params.dataFim) camposFaltando.push('dataFim');
+  if (!params.horaInicio) camposFaltando.push('horaInicio');
+  if (!params.horaTermino) camposFaltando.push('horaTermino');
+
+  if (
+    params.tipo === CursosAvaliacaoTipo.PROVA ||
+    (params.tipo === CursosAvaliacaoTipo.ATIVIDADE &&
+      params.tipoAtividade === CursosAtividadeTipo.QUESTOES)
+  ) {
+    if (params.questoesCount <= 0) {
+      camposFaltando.push('questoes');
+    }
+  }
+
+  if (camposFaltando.length > 0) {
+    const error: any = new Error(
+      `Não é possível publicar a avaliação. Campos obrigatórios faltando: ${camposFaltando.join(', ')}`,
+    );
+    error.code = 'CAMPOS_OBRIGATORIOS_FALTANDO';
+    error.camposFaltando = camposFaltando;
+    throw error;
+  }
+
+  const inicio = mergeDataHora(params.dataInicio, params.horaInicio);
+  if (inicio && inicio.getTime() <= Date.now()) {
+    const error: any = new Error('Data/hora de início deve ser futura para publicar a avaliação');
+    error.code = 'DATA_INVALIDA';
+    throw error;
+  }
+};
+
 type AlternativaQuestaoDTO = {
   id: string;
   questaoId: string;
@@ -105,6 +231,7 @@ const mapAlternativasNormalizadas = (
 const mapAvaliacao = (avaliacao: AvaliacaoWithQuestoes) => {
   const cursoRelacionado = avaliacao.CursosTurmas?.Cursos ?? avaliacao.Cursos ?? null;
   let modalidadeAvaliacao = mapModalidadeFromDB(avaliacao.modalidade) ?? null;
+  const statusNormalizado = normalizeAvaliacaoStatus(avaliacao.status, avaliacao.turmaId);
 
   // Se há turma vinculada, modalidade deve seguir método da turma
   if (avaliacao.CursosTurmas?.metodo) {
@@ -126,7 +253,7 @@ const mapAvaliacao = (avaliacao: AvaliacaoWithQuestoes) => {
     peso: normalizeDecimal(avaliacao.peso) ?? 0,
     valePonto: avaliacao.valePonto ?? true,
     ativo: avaliacao.ativo,
-    status: avaliacao.status,
+    status: statusNormalizado,
     modalidade: modalidadeAvaliacao,
     obrigatoria: avaliacao.obrigatoria,
     dataInicio: avaliacao.dataInicio?.toISOString() ?? null,
@@ -335,12 +462,37 @@ export const avaliacoesService = {
       where.AND = [filter];
     };
 
-    // Filtro por role: INSTRUTOR vê apenas avaliações das suas turmas (ou sem turma, próprias)
-    if (usuarioLogado?.role === 'INSTRUTOR' && !turmaId) {
+    // Filtro por role: INSTRUTOR vê apenas avaliações vinculadas
+    if (usuarioLogado?.role === 'INSTRUTOR') {
+      if (turmaId) {
+        const [turma, possuiAvaliacaoVinculada] = await Promise.all([
+          prisma.cursosTurmas.findUnique({
+            where: { id: turmaId },
+            select: { instrutorId: true },
+          }),
+          prisma.cursosTurmasProvas.count({
+            where: {
+              turmaId,
+              instrutorId: usuarioLogado.id,
+            },
+          }),
+        ]);
+
+        const possuiVinculoTurma = turma?.instrutorId === usuarioLogado.id;
+        const possuiVinculoAvaliacao = possuiAvaliacaoVinculada > 0;
+
+        if (!possuiVinculoTurma && !possuiVinculoAvaliacao) {
+          const error: any = new Error('Instrutor só pode listar avaliações de turmas vinculadas');
+          error.code = 'FORBIDDEN';
+          throw error;
+        }
+      }
+
       applyAndFilter({
         OR: [
           { CursosTurmas: { instrutorId: usuarioLogado.id } },
           { turmaId: null, instrutorId: usuarioLogado.id },
+          { turmaId: { not: null }, instrutorId: usuarioLogado.id },
         ],
       });
     }
@@ -393,6 +545,7 @@ export const avaliacoesService = {
     }
 
     // status (compat): "ATIVO|INATIVO" -> boolean ativo; caso contrário -> CursosAulaStatus CSV
+    let statusFilterApplied = false;
     if (status) {
       const parts = String(status)
         .split(',')
@@ -402,8 +555,13 @@ export const avaliacoesService = {
       if (onlyAtivo) {
         if (parts.length === 1) where.ativo = parts[0] === 'ATIVO';
       } else {
-        where.status = { in: parts as any };
+        applyAndFilter(buildStatusFilter(parts as CursosAulaStatus[]));
+        statusFilterApplied = true;
       }
+    }
+
+    if (!statusFilterApplied) {
+      applyAndFilter({ status: { not: CursosAulaStatus.CANCELADA } });
     }
 
     const searchTerm = (search ?? titulo)?.trim();
@@ -596,16 +754,21 @@ export const avaliacoesService = {
   async get(avaliacaoId: string, usuarioLogado: any) {
     const avaliacao = await fetchAny(prisma, avaliacaoId);
 
-    // Restrição extra para instrutor: apenas turmas dele (ou avaliações sem turma com instrutorId dele)
+    if (avaliacao.status === CursosAulaStatus.CANCELADA) {
+      const error: any = new Error('Avaliação não encontrada');
+      error.code = 'AVALIACAO_NOT_FOUND';
+      throw error;
+    }
+
     if (usuarioLogado?.role === 'INSTRUTOR') {
-      if (avaliacao.turmaId) {
-        if (avaliacao.turma?.instrutorId !== usuarioLogado.id) {
-          const error: any = new Error('Instrutor só pode acessar avaliações de suas turmas');
-          error.code = 'FORBIDDEN';
-          throw error;
-        }
-      } else if (avaliacao.instrutorId !== usuarioLogado.id) {
-        const error: any = new Error('Instrutor só pode acessar avaliações próprias');
+      const vinculado = isInstrutorVinculadoAAvaliacao({
+        usuarioId: usuarioLogado.id,
+        avaliacaoInstrutorId: avaliacao.instrutorId,
+        turmaInstrutorId: avaliacao.turma?.instrutorId,
+      });
+
+      if (!vinculado) {
+        const error: any = new Error('Instrutor só pode acessar avaliações vinculadas');
         error.code = 'FORBIDDEN';
         throw error;
       }
@@ -621,6 +784,7 @@ export const avaliacoesService = {
         id: true,
         tipo: true,
         tipoAtividade: true,
+        status: true,
         turmaId: true,
         instrutorId: true,
         CursosTurmas: { select: { instrutorId: true } },
@@ -633,15 +797,21 @@ export const avaliacoesService = {
       throw error;
     }
 
+    if (avaliacao.status === CursosAulaStatus.CANCELADA) {
+      const error: any = new Error('Avaliação não encontrada');
+      error.code = 'AVALIACAO_NOT_FOUND';
+      throw error;
+    }
+
     if (usuarioLogado?.role === 'INSTRUTOR') {
-      if (avaliacao.turmaId) {
-        if (avaliacao.CursosTurmas?.instrutorId !== usuarioLogado.id) {
-          const error: any = new Error('Instrutor só pode acessar avaliações de suas turmas');
-          error.code = 'FORBIDDEN';
-          throw error;
-        }
-      } else if (avaliacao.instrutorId !== usuarioLogado.id) {
-        const error: any = new Error('Instrutor só pode acessar avaliações próprias');
+      const vinculado = isInstrutorVinculadoAAvaliacao({
+        usuarioId: usuarioLogado.id,
+        avaliacaoInstrutorId: avaliacao.instrutorId,
+        turmaInstrutorId: avaliacao.CursosTurmas?.instrutorId,
+      });
+
+      if (!vinculado) {
+        const error: any = new Error('Instrutor só pode acessar avaliações vinculadas');
         error.code = 'FORBIDDEN';
         throw error;
       }
@@ -838,6 +1008,27 @@ export const avaliacoesService = {
           cursoId: true,
           instrutorId: true,
           status: true,
+          titulo: true,
+          modalidade: true,
+          dataInicio: true,
+          dataFim: true,
+          horaInicio: true,
+          horaTermino: true,
+          tipo: true,
+          tipoAtividade: true,
+          CursosTurmas: {
+            select: {
+              instrutorId: true,
+              cursoId: true,
+              metodo: true,
+            },
+          },
+          _count: {
+            select: {
+              CursosTurmasProvasEnvios: true,
+              CursosTurmasProvasQuestoes: true,
+            },
+          },
         },
       });
 
@@ -847,32 +1038,31 @@ export const avaliacoesService = {
         throw error;
       }
 
-      // Permissão: instrutor só edita avaliações de suas turmas (ou sem turma mas dele)
       if (usuarioLogado?.role === 'INSTRUTOR') {
-        if (existente.turmaId) {
-          const turmaDoInstrutor = await tx.cursosTurmas.findFirst({
-            where: { id: existente.turmaId, instrutorId: usuarioLogado.id },
-            select: { id: true },
-          });
-          if (!turmaDoInstrutor) {
-            const error: any = new Error('Instrutor só pode editar avaliações de suas turmas');
-            error.code = 'FORBIDDEN';
-            throw error;
-          }
-        } else if (existente.instrutorId !== usuarioLogado.id) {
-          const error: any = new Error('Instrutor só pode editar avaliações próprias');
+        const vinculado = isInstrutorVinculadoAAvaliacao({
+          usuarioId: usuarioLogado.id,
+          avaliacaoInstrutorId: existente.instrutorId,
+          turmaInstrutorId: existente.CursosTurmas?.instrutorId,
+        });
+
+        if (!vinculado) {
+          const error: any = new Error('Instrutor só pode editar avaliações vinculadas');
           error.code = 'FORBIDDEN';
           throw error;
         }
       }
 
-      const isPublicadaComTurma =
-        Boolean(existente.turmaId) && existente.status === CursosAulaStatus.PUBLICADA;
-      if (isPublicadaComTurma) {
+      const jaAconteceu = avaliacaoJaAconteceu({
+        status: existente.status,
+        dataInicio: existente.dataInicio,
+        horaInicio: existente.horaInicio,
+        enviosCount: existente._count.CursosTurmasProvasEnvios,
+      });
+      if (jaAconteceu) {
         const error: any = new Error(
-          'Não é possível editar atividade/prova publicada vinculada a turma',
+          'Não é possível editar avaliação que já foi iniciada ou já possui envios',
         );
-        error.code = 'AVALIACAO_PUBLICADA_LOCKED';
+        error.code = 'AVALIACAO_JA_INICIADA_OU_REALIZADA';
         throw error;
       }
 
@@ -889,7 +1079,7 @@ export const avaliacoesService = {
       if (turmaIdFinal) {
         const turmaDb = await tx.cursosTurmas.findUnique({
           where: { id: turmaIdFinal },
-          select: { cursoId: true, metodo: true },
+          select: { cursoId: true, metodo: true, instrutorId: true },
         });
 
         if (!turmaDb) {
@@ -907,6 +1097,22 @@ export const avaliacoesService = {
 
         cursoIdFinal = turmaDb.cursoId;
         modalidadeFinal = turmaDb.metodo as any;
+      }
+
+      if (statusFinal === CursosAulaStatus.PUBLICADA) {
+        validarCamposPublicacao({
+          titulo: data.titulo ?? existente.titulo,
+          modalidade: modalidadeFinal ?? existente.modalidade,
+          dataInicio: data.dataInicio ?? existente.dataInicio,
+          dataFim: data.dataFim ?? existente.dataFim,
+          horaInicio: data.horaInicio ?? existente.horaInicio,
+          horaTermino: data.horaTermino ?? existente.horaTermino,
+          tipo: data.tipo ?? existente.tipo,
+          tipoAtividade: data.tipoAtividade ?? existente.tipoAtividade,
+          questoesCount: data.questoes
+            ? data.questoes.length
+            : existente._count.CursosTurmasProvasQuestoes,
+        });
       }
 
       // Peso: se não vale ponto, peso = 0
@@ -960,11 +1166,36 @@ export const avaliacoesService = {
     });
   },
 
-  async remove(avaliacaoId: string, usuarioLogado: any) {
+  async publicar(avaliacaoId: string, publicar: boolean, usuarioLogado: any) {
     return prisma.$transaction(async (tx) => {
       const existente = await tx.cursosTurmasProvas.findUnique({
         where: { id: avaliacaoId },
-        select: { id: true, turmaId: true, instrutorId: true },
+        select: {
+          id: true,
+          status: true,
+          titulo: true,
+          modalidade: true,
+          dataInicio: true,
+          dataFim: true,
+          horaInicio: true,
+          horaTermino: true,
+          tipo: true,
+          tipoAtividade: true,
+          instrutorId: true,
+          turmaId: true,
+          CursosTurmas: {
+            select: {
+              instrutorId: true,
+              metodo: true,
+            },
+          },
+          _count: {
+            select: {
+              CursosTurmasProvasEnvios: true,
+              CursosTurmasProvasQuestoes: true,
+            },
+          },
+        },
       });
 
       if (!existente) {
@@ -974,25 +1205,135 @@ export const avaliacoesService = {
       }
 
       if (usuarioLogado?.role === 'INSTRUTOR') {
-        if (existente.turmaId) {
-          const turmaDoInstrutor = await tx.cursosTurmas.findFirst({
-            where: { id: existente.turmaId, instrutorId: usuarioLogado.id },
-            select: { id: true },
-          });
-          if (!turmaDoInstrutor) {
-            const error: any = new Error('Instrutor só pode remover avaliações de suas turmas');
-            error.code = 'FORBIDDEN';
-            throw error;
-          }
-        } else if (existente.instrutorId !== usuarioLogado.id) {
-          const error: any = new Error('Instrutor só pode remover avaliações próprias');
+        const vinculado = isInstrutorVinculadoAAvaliacao({
+          usuarioId: usuarioLogado.id,
+          avaliacaoInstrutorId: existente.instrutorId,
+          turmaInstrutorId: existente.CursosTurmas?.instrutorId,
+        });
+
+        if (!vinculado) {
+          const error: any = new Error(
+            'Instrutor só pode publicar/despublicar avaliações vinculadas',
+          );
           error.code = 'FORBIDDEN';
           throw error;
         }
       }
 
-      await tx.cursosTurmasProvas.delete({ where: { id: avaliacaoId } });
-      avaliacoesLogger.info({ avaliacaoId }, 'Avaliação template removida');
+      if (existente.status === CursosAulaStatus.CANCELADA) {
+        const error: any = new Error('Avaliação cancelada não pode ser publicada/despublicada');
+        error.code = 'STATUS_INVALIDO';
+        throw error;
+      }
+
+      const jaAconteceu = avaliacaoJaAconteceu({
+        status: existente.status,
+        dataInicio: existente.dataInicio,
+        horaInicio: existente.horaInicio,
+        enviosCount: existente._count.CursosTurmasProvasEnvios,
+      });
+      if (jaAconteceu) {
+        const error: any = new Error(
+          'Não é possível publicar/despublicar avaliação que já foi iniciada ou já possui envios',
+        );
+        error.code = 'AVALIACAO_JA_INICIADA_OU_REALIZADA';
+        throw error;
+      }
+
+      if (publicar) {
+        if (!existente.turmaId) {
+          const error: any = new Error('Vincule uma turma antes de publicar esta avaliação.');
+          error.code = 'AVALIACAO_PUBLICACAO_EXIGE_TURMA_VINCULADA';
+          throw error;
+        }
+
+        validarCamposPublicacao({
+          titulo: existente.titulo,
+          modalidade: existente.CursosTurmas?.metodo ?? existente.modalidade,
+          dataInicio: existente.dataInicio,
+          dataFim: existente.dataFim,
+          horaInicio: existente.horaInicio,
+          horaTermino: existente.horaTermino,
+          tipo: existente.tipo,
+          tipoAtividade: existente.tipoAtividade,
+          questoesCount: existente._count.CursosTurmasProvasQuestoes,
+        });
+      }
+
+      await tx.cursosTurmasProvas.update({
+        where: { id: avaliacaoId },
+        data: {
+          status: publicar ? CursosAulaStatus.PUBLICADA : CursosAulaStatus.RASCUNHO,
+          ativo: true,
+        },
+      });
+
+      return fetchAny(tx, avaliacaoId);
+    });
+  },
+
+  async remove(avaliacaoId: string, usuarioLogado: any) {
+    return prisma.$transaction(async (tx) => {
+      const existente = await tx.cursosTurmasProvas.findUnique({
+        where: { id: avaliacaoId },
+        select: {
+          id: true,
+          turmaId: true,
+          instrutorId: true,
+          status: true,
+          dataInicio: true,
+          horaInicio: true,
+          CursosTurmas: { select: { instrutorId: true } },
+          _count: { select: { CursosTurmasProvasEnvios: true } },
+        },
+      });
+
+      if (!existente) {
+        const error: any = new Error('Avaliação não encontrada');
+        error.code = 'AVALIACAO_NOT_FOUND';
+        throw error;
+      }
+
+      if (usuarioLogado?.role === 'INSTRUTOR') {
+        const vinculado = isInstrutorVinculadoAAvaliacao({
+          usuarioId: usuarioLogado.id,
+          avaliacaoInstrutorId: existente.instrutorId,
+          turmaInstrutorId: existente.CursosTurmas?.instrutorId,
+        });
+
+        if (!vinculado) {
+          const error: any = new Error('Instrutor só pode excluir avaliações vinculadas');
+          error.code = 'FORBIDDEN';
+          throw error;
+        }
+      }
+
+      if (existente.status === CursosAulaStatus.CANCELADA) {
+        return { success: true } as const;
+      }
+
+      const jaAconteceu = avaliacaoJaAconteceu({
+        status: existente.status,
+        dataInicio: existente.dataInicio,
+        horaInicio: existente.horaInicio,
+        enviosCount: existente._count.CursosTurmasProvasEnvios,
+      });
+      if (jaAconteceu) {
+        const error: any = new Error(
+          'Não é possível excluir avaliação que já foi iniciada ou já possui envios',
+        );
+        error.code = 'AVALIACAO_JA_INICIADA_OU_REALIZADA';
+        throw error;
+      }
+
+      await tx.cursosTurmasProvas.update({
+        where: { id: avaliacaoId },
+        data: {
+          status: CursosAulaStatus.CANCELADA,
+          ativo: false,
+        },
+      });
+      avaliacoesLogger.info({ avaliacaoId }, 'Avaliação cancelada logicamente');
       return { success: true } as const;
     });
   },

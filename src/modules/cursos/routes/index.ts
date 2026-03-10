@@ -154,6 +154,12 @@ router.put(
   cursosAvaliacoesInvalidateCacheOnMutation,
   AvaliacoesController.update,
 );
+router.patch(
+  '/avaliacoes/:id/publicar',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  cursosAvaliacoesInvalidateCacheOnMutation,
+  AvaliacoesController.publicar,
+);
 router.delete(
   '/avaliacoes/:id',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),

@@ -46,6 +46,16 @@ function mapMetodoTurmaToModalidadeAula(metodo: string): string {
   return map[metodo] || metodo;
 }
 
+function isInstrutorVinculadoAAula(params: {
+  usuarioId: string;
+  aulaInstrutorId?: string | null;
+  turmaInstrutorId?: string | null;
+}) {
+  return (
+    params.aulaInstrutorId === params.usuarioId || params.turmaInstrutorId === params.usuarioId
+  );
+}
+
 /**
  * Validar campos obrigatórios para publicação por modalidade
  */
@@ -120,10 +130,10 @@ function validarExclusaoAula(
   usuarioLogado: any,
 ): { valido: boolean; erro?: string; codigo?: string; diasRestantes?: number } {
   // 1. Validar role
-  if (!['ADMIN', 'MODERADOR', 'PEDAGOGICO'].includes(usuarioLogado.role)) {
+  if (!['ADMIN', 'MODERADOR', 'PEDAGOGICO', 'INSTRUTOR'].includes(usuarioLogado.role)) {
     return {
       valido: false,
-      erro: 'Apenas administradores, moderadores e equipe pedagógica podem excluir aulas',
+      erro: 'Sem permissão para excluir aulas',
       codigo: 'FORBIDDEN',
     };
   }
@@ -296,6 +306,30 @@ export const aulasService = {
       where.AND = [filter];
     };
 
+    if (usuarioLogado.role === 'INSTRUTOR' && turmaId) {
+      const [turma, aulasComInstrutor] = await Promise.all([
+        prisma.cursosTurmas.findUnique({
+          where: { id: turmaId },
+          select: { instrutorId: true },
+        }),
+        prisma.cursosTurmasAulas.count({
+          where: {
+            turmaId,
+            instrutorId: usuarioLogado.id,
+            deletedAt: null,
+          },
+        }),
+      ]);
+
+      const instrutorVinculadoTurma =
+        turma?.instrutorId === usuarioLogado.id || aulasComInstrutor > 0;
+      if (!instrutorVinculadoTurma) {
+        const error: any = new Error('Instrutor só pode visualizar aulas vinculadas a ele');
+        error.code = 'FORBIDDEN';
+        throw error;
+      }
+    }
+
     // Filtro por role: INSTRUTOR vê apenas suas turmas
     // IMPORTANTE: Aplicar ANTES dos filtros da query para não sobrescrever
     if (usuarioLogado.role === 'INSTRUTOR' && !turmaId) {
@@ -304,7 +338,7 @@ export const aulasService = {
       applyAndFilter({
         OR: [
           { CursosTurmas: { instrutorId: usuarioLogado.id } },
-          { turmaId: null, instrutorId: usuarioLogado.id },
+          { instrutorId: usuarioLogado.id },
         ],
       });
     }
@@ -955,13 +989,24 @@ export const aulasService = {
       }),
     );
 
-    if (!aula) throw new Error('Aula não encontrada');
+    if (!aula) {
+      const error: any = new Error('Aula não encontrada');
+      error.code = 'AULA_NOT_FOUND';
+      throw error;
+    }
 
     // Validar permissão do instrutor sem query adicional.
     if (usuarioLogado.role === 'INSTRUTOR') {
-      const instrutorDaTurma = aula.CursosTurmas?.instrutorId;
-      if (!aula.turmaId || instrutorDaTurma !== usuarioLogado.id) {
-        throw new Error('Instrutor só pode acessar aulas de suas turmas');
+      const vinculado = isInstrutorVinculadoAAula({
+        usuarioId: usuarioLogado.id,
+        aulaInstrutorId: aula.instrutorId,
+        turmaInstrutorId: aula.CursosTurmas?.instrutorId,
+      });
+
+      if (!vinculado) {
+        const error: any = new Error('Instrutor só pode acessar aulas vinculadas a ele');
+        error.code = 'FORBIDDEN';
+        throw error;
       }
     }
 
@@ -1076,9 +1121,23 @@ export const aulasService = {
     }
 
     // Validar permissão
+    let turmaInstrutorId: string | null = null;
+    if (usuarioLogado.role === 'INSTRUTOR' && aulaDbAnterior.turmaId) {
+      const turma = await prisma.cursosTurmas.findUnique({
+        where: { id: aulaDbAnterior.turmaId },
+        select: { instrutorId: true },
+      });
+      turmaInstrutorId = turma?.instrutorId ?? null;
+    }
+
     const podeEditar =
       ['ADMIN', 'MODERADOR', 'PEDAGOGICO'].includes(usuarioLogado.role) ||
-      (usuarioLogado.role === 'INSTRUTOR' && aulaAnterior.criadoPor?.id === usuarioLogado.id);
+      (usuarioLogado.role === 'INSTRUTOR' &&
+        isInstrutorVinculadoAAula({
+          usuarioId: usuarioLogado.id,
+          aulaInstrutorId: aulaDbAnterior.instrutorId,
+          turmaInstrutorId,
+        }));
 
     if (!podeEditar) {
       const error: any = new Error('Sem permissão para editar esta aula');
@@ -1725,7 +1784,7 @@ export const aulasService = {
           select: { id: true },
         },
         CursosTurmas: {
-          select: { status: true },
+          select: { status: true, instrutorId: true },
         },
         CursosTurmasAulasMateriais: {
           select: { id: true },
@@ -1749,6 +1808,20 @@ export const aulasService = {
         error.dataAula = aula.dataInicio;
       }
       throw error;
+    }
+
+    if (usuarioLogado.role === 'INSTRUTOR') {
+      const vinculado = isInstrutorVinculadoAAula({
+        usuarioId: usuarioLogado.id,
+        aulaInstrutorId: aula.instrutorId,
+        turmaInstrutorId: aula.CursosTurmas?.instrutorId,
+      });
+
+      if (!vinculado) {
+        const error: any = new Error('Instrutor só pode excluir aulas vinculadas a ele');
+        error.code = 'FORBIDDEN';
+        throw error;
+      }
     }
 
     // Aula obrigatória com progresso: só Admin/Moderador

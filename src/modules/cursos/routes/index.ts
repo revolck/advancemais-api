@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { Roles } from '@prisma/client';
 
 import { publicCache } from '@/middlewares/cache-control';
-import { supabaseAuthMiddleware } from '@/modules/usuarios/auth';
+import { optionalSupabaseAuth, supabaseAuthMiddleware } from '@/modules/usuarios/auth';
 
 import { CursosController } from '../controllers/cursos.controller';
 import { CategoriasController } from '../controllers/categorias.controller';
@@ -2902,7 +2902,7 @@ router.get(
   CursosController.getHistoricoAuditoria,
 );
 
-router.get('/:cursoId/turmas', publicCache, TurmasController.list);
+router.get('/:cursoId/turmas', optionalSupabaseAuth(), publicCache, TurmasController.list);
 
 /**
  * @openapi
@@ -2995,7 +2995,7 @@ router.get('/:cursoId/turmas', publicCache, TurmasController.list);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/:cursoId/turmas/:turmaId', publicCache, TurmasController.get);
+router.get('/:cursoId/turmas/:turmaId', optionalSupabaseAuth(), publicCache, TurmasController.get);
 
 /**
  * @openapi
@@ -3125,7 +3125,11 @@ router.get('/:cursoId/turmas/:turmaId', publicCache, TurmasController.get);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/:cursoId/turmas/:turmaId/inscricoes', TurmasController.listInscricoes);
+router.get(
+  '/:cursoId/turmas/:turmaId/inscricoes',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  TurmasController.listInscricoes,
+);
 
 /**
  * @openapi
@@ -3201,7 +3205,7 @@ router.post(
  */
 router.put(
   '/:cursoId/turmas/:turmaId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
   TurmasController.update,
 );
 
@@ -3317,7 +3321,7 @@ router.put(
  */
 router.post(
   '/:cursoId/turmas/:turmaId/inscricoes',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
   TurmasController.enroll,
 );
 
@@ -3583,6 +3587,12 @@ router.patch(
   TurmasController.togglePublicacao,
 );
 
+router.delete(
+  '/:cursoId/turmas/:turmaId',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  TurmasController.delete,
+);
+
 /**
  * @openapi
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/aulas:
@@ -3613,7 +3623,12 @@ router.patch(
  *       404:
  *         description: Turma não encontrada para o curso informado
  */
-router.get('/:cursoId/turmas/:turmaId/aulas', publicCache, AulasController.list);
+router.get(
+  '/:cursoId/turmas/:turmaId/aulas',
+  optionalSupabaseAuth(),
+  publicCache,
+  AulasController.list,
+);
 
 /**
  * @openapi
@@ -3644,7 +3659,12 @@ router.get('/:cursoId/turmas/:turmaId/aulas', publicCache, AulasController.list)
  *       404:
  *         description: Aula ou turma não encontrada
  */
-router.get('/:cursoId/turmas/:turmaId/aulas/:aulaId', publicCache, AulasController.get);
+router.get(
+  '/:cursoId/turmas/:turmaId/aulas/:aulaId',
+  optionalSupabaseAuth(),
+  publicCache,
+  AulasController.get,
+);
 
 /**
  * @openapi

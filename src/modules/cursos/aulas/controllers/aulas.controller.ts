@@ -80,7 +80,7 @@ export class AulasController {
    */
   static get = async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = req.params.id ?? req.params.aulaId;
       const usuarioLogado = req.user!;
 
       const aula = await aulasService.getById(id, usuarioLogado);
@@ -112,7 +112,11 @@ export class AulasController {
    */
   static create = async (req: Request, res: Response) => {
     try {
-      const payload = createAulaSchema.parse(req.body);
+      const payload = createAulaSchema.parse({
+        ...req.body,
+        cursoId: req.params.cursoId ?? req.body?.cursoId,
+        turmaId: req.params.turmaId ?? req.body?.turmaId,
+      });
       const usuarioLogado = req.user!;
 
       const aula = await aulasService.create(payload, usuarioLogado);
@@ -146,6 +150,14 @@ export class AulasController {
         });
       }
 
+      if (error?.code === 'INSTRUTOR_NAO_PODE_CRIAR_CONTEUDO_EM_TURMA_INICIADA') {
+        return res.status(409).json({
+          success: false,
+          code: 'INSTRUTOR_NAO_PODE_CRIAR_CONTEUDO_EM_TURMA_INICIADA',
+          message: error?.message,
+        });
+      }
+
       logger.error('[AULAS_CREATE_ERROR]', { error: error?.message });
       res.status(500).json({
         success: false,
@@ -161,7 +173,7 @@ export class AulasController {
    */
   static update = async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = req.params.id ?? req.params.aulaId;
       const payload = putUpdateAulaSchema.parse(req.body);
       const usuarioLogado = req.user!;
 
@@ -245,7 +257,7 @@ export class AulasController {
    */
   static delete = async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = req.params.id ?? req.params.aulaId;
       const usuarioLogado = req.user!;
 
       const result = await aulasService.delete(id, usuarioLogado);
@@ -309,7 +321,7 @@ export class AulasController {
    */
   static publicar = async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = req.params.id ?? req.params.aulaId;
       const { publicar } = req.body; // true = publicar, false = despublicar
       const usuarioLogado = req.user!;
 
@@ -412,7 +424,7 @@ export class AulasController {
    */
   static updateProgresso = async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = req.params.id ?? req.params.aulaId;
       const payload = updateProgressoSchema.parse(req.body);
       const alunoId = req.user!.id;
 
@@ -448,7 +460,7 @@ export class AulasController {
    */
   static registrarPresenca = async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = req.params.id ?? req.params.aulaId;
       const payload = registrarPresencaSchema.parse(req.body);
       const usuarioLogado = req.user!;
 
@@ -491,7 +503,7 @@ export class AulasController {
    */
   static getHistorico = async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = req.params.id ?? req.params.aulaId;
       const usuarioLogado = req.user!;
 
       const historico = await aulasService.getHistorico(id, usuarioLogado);
@@ -528,7 +540,10 @@ export class AulasController {
       }
 
       // Erro genérico
-      logger.error('[AULAS_HISTORICO_ERROR]', { error: error?.message, aulaId: req.params.id });
+      logger.error('[AULAS_HISTORICO_ERROR]', {
+        error: error?.message,
+        aulaId: req.params.id ?? req.params.aulaId,
+      });
       res.status(500).json({
         success: false,
         code: 'INTERNAL_ERROR',
@@ -543,7 +558,7 @@ export class AulasController {
    */
   static getProgresso = async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = req.params.id ?? req.params.aulaId;
       const { alunoId } = req.query;
       const usuarioLogado = req.user!;
 
@@ -568,7 +583,7 @@ export class AulasController {
    */
   static getPresencas = async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const id = req.params.id ?? req.params.aulaId;
       const usuarioLogado = req.user!;
 
       const presencas = await aulasService.getPresencas(id, usuarioLogado);

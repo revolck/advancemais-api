@@ -125,6 +125,7 @@ const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()(
 });
 
 const buildPublicTurmaWhere = (referenceDate: Date): Prisma.CursosTurmasWhereInput => ({
+  deletedAt: null,
   status: { in: publicTurmaStatuses },
   OR: [{ dataInscricaoFim: { equals: null } }, { dataInscricaoFim: { gte: referenceDate } }],
 });
@@ -1208,6 +1209,7 @@ export const cursosService = {
         CursosCategorias: { select: categoriaSelect },
         CursosSubcategorias: { select: subcategoriaSelect },
         CursosTurmas: {
+          where: { deletedAt: null },
           include: {
             CursosTurmasInscricoes: {
               include: {
@@ -1477,7 +1479,7 @@ export const cursosService = {
         include: {
           CursosCategorias: { select: categoriaSelect },
           CursosSubcategorias: { select: subcategoriaSelect },
-          CursosTurmas: { select: turmaSummarySelect },
+          CursosTurmas: { select: turmaSummarySelect, where: { deletedAt: null } },
           _count: { select: { CursosTurmas: true } },
         },
       });
@@ -1597,7 +1599,7 @@ export const cursosService = {
         include: {
           CursosCategorias: { select: categoriaSelect },
           CursosSubcategorias: { select: subcategoriaSelect },
-          CursosTurmas: { select: turmaSummarySelect },
+          CursosTurmas: { select: turmaSummarySelect, where: { deletedAt: null } },
           _count: { select: { CursosTurmas: true } },
         },
       });
@@ -1792,6 +1794,7 @@ export const cursosService = {
       select: {
         id: true,
         CursosTurmas: {
+          where: { deletedAt: null },
           select: {
             id: true,
             codigo: true,
@@ -1840,7 +1843,7 @@ export const cursosService = {
       include: {
         CursosCategorias: { select: categoriaSelect },
         CursosSubcategorias: { select: subcategoriaSelect },
-        CursosTurmas: { select: turmaSummarySelect },
+        CursosTurmas: { select: turmaSummarySelect, where: { deletedAt: null } },
         _count: { select: { CursosTurmas: true } },
       },
     });
@@ -1955,10 +1958,10 @@ export const cursosService = {
             turmaId: null,
           },
         }),
-        prisma.cursosTurmas.count({ where: { cursoId } }),
+        prisma.cursosTurmas.count({ where: { cursoId, deletedAt: null } }),
         prisma.cursosTurmasInscricoes.count({
           where: {
-            CursosTurmas: { cursoId },
+            CursosTurmas: { cursoId, deletedAt: null },
             status: {
               in: ['INSCRITO', 'EM_ANDAMENTO', 'EM_ESTAGIO'],
             },

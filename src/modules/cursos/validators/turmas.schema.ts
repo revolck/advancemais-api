@@ -401,6 +401,7 @@ export const updateTurmaSchema = applyDateValidations(
 
 export const turmaInscricaoSchema = z.object({
   alunoId: z.string().uuid(),
+  prazoAdaptacaoDias: z.number().int().min(1).max(90).optional(),
 });
 
 export const updateInscricaoStatusSchema = z.object({

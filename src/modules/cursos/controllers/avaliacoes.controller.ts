@@ -383,7 +383,13 @@ export class AvaliacoesController {
         // Validar que a turma (se fornecida) pertence ao instrutor
         if (payload.turmaId) {
           const turma = await prisma.cursosTurmas.findFirst({
-            where: { id: payload.turmaId, instrutorId: userId },
+            where: {
+              id: payload.turmaId,
+              OR: [
+                { instrutorId: userId },
+                { CursosTurmasInstrutores: { some: { instrutorId: userId } } },
+              ],
+            },
           });
 
           if (!turma) {
@@ -396,7 +402,10 @@ export class AvaliacoesController {
         }
       }
 
-      const avaliacao = await avaliacoesService.create(payload);
+      const avaliacao = await avaliacoesService.create(payload, {
+        id: userId ?? null,
+        role: (userRole as any) ?? null,
+      });
       res.status(201).json({ success: true, avaliacao });
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -420,6 +429,20 @@ export class AvaliacoesController {
           success: false,
           code: 'TURMA_NOT_FOUND',
           message: 'Turma não encontrada',
+        });
+      }
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para criar avaliação nesta turma',
+        });
+      }
+      if (error?.code === 'INSTRUTOR_NAO_PODE_CRIAR_CONTEUDO_EM_TURMA_INICIADA') {
+        return res.status(409).json({
+          success: false,
+          code: 'INSTRUTOR_NAO_PODE_CRIAR_CONTEUDO_EM_TURMA_INICIADA',
+          message: error?.message,
         });
       }
       if (error?.code === 'TURMA_NOT_BELONGS_TO_CURSO') {

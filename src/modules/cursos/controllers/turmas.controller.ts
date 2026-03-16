@@ -95,6 +95,7 @@ export class TurmasController {
           metodo: params.metodo ?? '',
           instrutorId: params.instrutorId ?? '',
           role: req.user?.role ?? '',
+          userId: req.user?.id ?? '',
         },
         { excludeKeys: [] },
       );
@@ -110,6 +111,10 @@ export class TurmasController {
             turno: params.turno,
             metodo: params.metodo,
             instrutorId: params.instrutorId,
+            usuarioLogado: {
+              id: req.user?.id ?? null,
+              role: (req.user?.role as Roles | undefined) ?? null,
+            },
           }),
         TURMAS_LIST_CACHE_TTL,
       );
@@ -141,6 +146,14 @@ export class TurmasController {
           success: false,
           code: 'CURSO_NOT_FOUND',
           message: 'Curso não encontrado',
+        });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para listar turmas deste curso',
         });
       }
 
@@ -186,17 +199,35 @@ export class TurmasController {
           includeAlunos: includeAlunos ? '1' : '0',
           includeEstrutura: includeEstrutura ? '1' : '0',
           role: req.user?.role ?? '',
+          userId: req.user?.id ?? '',
         },
         { excludeKeys: [] },
       );
 
       const turma = await getCachedOrFetch(
         cacheKey,
-        () => turmasService.get(cursoId, turmaId, { includeAlunos, includeEstrutura }),
+        () =>
+          turmasService.get(
+            cursoId,
+            turmaId,
+            { includeAlunos, includeEstrutura },
+            {
+              id: req.user?.id ?? null,
+              role: (req.user?.role as Roles | undefined) ?? null,
+            },
+          ),
         TURMAS_GET_CACHE_TTL,
       );
       res.json(turma);
     } catch (error: any) {
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para acessar esta turma',
+        });
+      }
+
       if (error?.code === 'TURMA_NOT_FOUND' || error?.code === 'CURSO_NOT_FOUND') {
         return res.status(404).json({
           success: false,
@@ -233,13 +264,18 @@ export class TurmasController {
           cursoId,
           turmaId,
           role: req.user?.role ?? '',
+          userId: req.user?.id ?? '',
         },
         { excludeKeys: [] },
       );
 
       const inscricoes = await getCachedOrFetch(
         cacheKey,
-        () => turmasService.listInscricoes(cursoId, turmaId),
+        () =>
+          turmasService.listInscricoes(cursoId, turmaId, {
+            id: req.user?.id ?? null,
+            role: (req.user?.role as Roles | undefined) ?? null,
+          }),
         TURMAS_INSCRICOES_CACHE_TTL,
       );
 
@@ -264,6 +300,14 @@ export class TurmasController {
 
       res.json(response);
     } catch (error: any) {
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para visualizar inscrições desta turma',
+        });
+      }
+
       if (error?.code === 'TURMA_NOT_FOUND' || error?.code === 'CURSO_NOT_FOUND') {
         return res.status(404).json({
           success: false,
@@ -335,7 +379,10 @@ export class TurmasController {
           dataInscricaoInicio: data.dataInscricaoInicio ?? undefined,
           dataInscricaoFim: data.dataInscricaoFim ?? undefined,
         },
-        { id: req.user?.id ?? null },
+        {
+          id: req.user?.id ?? null,
+          role: (req.user?.role as Roles | undefined) ?? null,
+        },
       );
 
       await invalidateTurmasCache();
@@ -424,7 +471,10 @@ export class TurmasController {
           dataInscricaoInicio: data.dataInscricaoInicio ?? undefined,
           dataInscricaoFim: data.dataInscricaoFim ?? undefined,
         },
-        { id: req.user?.id ?? null },
+        {
+          id: req.user?.id ?? null,
+          role: (req.user?.role as Roles | undefined) ?? null,
+        },
       );
 
       await invalidateTurmasCache();
@@ -454,6 +504,33 @@ export class TurmasController {
           code: 'CAMPO_NAO_EDITAVEL',
           message: error?.message,
           field: error?.field,
+        });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para editar a turma',
+        });
+      }
+
+      if (error?.code === 'TURMA_EDICAO_BLOQUEADA_JA_INICIADA') {
+        return res.status(409).json({
+          success: false,
+          code: 'TURMA_EDICAO_BLOQUEADA_JA_INICIADA',
+          message: error?.message || 'Somente o setor pedagógico pode alterar turma iniciada',
+        });
+      }
+
+      if (error?.code === 'TURMA_PERIODO_BLOQUEADO_APOS_INICIO') {
+        return res.status(409).json({
+          success: false,
+          code: 'TURMA_PERIODO_BLOQUEADO_APOS_INICIO',
+          message:
+            error?.message ||
+            'Não é possível alterar o período de inscrição ou o período da turma após o início.',
+          details: error?.details,
         });
       }
 
@@ -512,6 +589,7 @@ export class TurmasController {
       const turma = await turmasService.enroll(cursoId, turmaId, data.alunoId, {
         id: req.user?.id ?? null,
         role: actorRole,
+        prazoAdaptacaoDias: data.prazoAdaptacaoDias,
       });
 
       await invalidateTurmasCache();
@@ -747,10 +825,68 @@ export class TurmasController {
         });
       }
 
+      if (
+        error?.code === 'TURMA_DESPUBLICACAO_BLOQUEADA_EM_ANDAMENTO' ||
+        error?.code === 'TURMA_DESPUBLICACAO_BLOQUEADA_COM_INSCRITOS'
+      ) {
+        return res.status(409).json({
+          success: false,
+          code: error.code,
+          message: error?.message,
+        });
+      }
+
       res.status(500).json({
         success: false,
         code: 'TURMA_PUBLICACAO_ERROR',
         message: 'Erro ao publicar/despublicar turma',
+        error: error?.message,
+      });
+    }
+  };
+
+  static delete = async (req: Request, res: Response) => {
+    const cursoId = parseCursoId(req.params.cursoId);
+    const turmaId = parseTurmaId(req.params.turmaId);
+
+    if (!cursoId || !turmaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificadores de curso ou turma inválidos',
+      });
+    }
+
+    try {
+      const result = await turmasService.remove(cursoId, turmaId, {
+        id: req.user?.id ?? null,
+      });
+      await invalidateTurmasCache();
+      return res.json(result);
+    } catch (error: any) {
+      if (error?.code === 'TURMA_NOT_FOUND' || error?.code === 'CURSO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'TURMA_NOT_FOUND',
+          message: 'Turma não encontrada para o curso informado',
+        });
+      }
+
+      if (
+        error?.code === 'TURMA_EXCLUSAO_BLOQUEADA_JA_INICIADA' ||
+        error?.code === 'TURMA_EXCLUSAO_BLOQUEADA_COM_INSCRITOS'
+      ) {
+        return res.status(409).json({
+          success: false,
+          code: error.code,
+          message: error?.message,
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        code: 'TURMA_DELETE_ERROR',
+        message: 'Erro ao excluir turma',
         error: error?.message,
       });
     }

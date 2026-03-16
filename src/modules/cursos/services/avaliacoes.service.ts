@@ -6,10 +6,13 @@ import {
   Prisma,
   CursosTipoQuestao,
   CursosMetodos,
+  CursoStatus,
+  Roles,
 } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
+import { notificacoesHelper } from '../aulas/services/notificacoes-helper.service';
 
 import type {
   CreateAvaliacaoInput,
@@ -21,6 +24,20 @@ import type {
 const avaliacoesLogger = logger.child({ module: 'CursosAvaliacoesService' });
 
 type PrismaClientOrTx = Prisma.TransactionClient | typeof prisma;
+
+const turmaJaFoiIniciada = (turma: {
+  status?: CursoStatus | null;
+  dataInicio?: Date | null;
+  dataFim?: Date | null;
+}) => {
+  const agora = new Date();
+  return (
+    turma.status === CursoStatus.EM_ANDAMENTO ||
+    turma.status === CursoStatus.CONCLUIDO ||
+    Boolean(turma.dataInicio && turma.dataInicio <= agora) ||
+    Boolean(turma.dataFim && turma.dataFim < agora)
+  );
+};
 
 const avaliacaoWithQuestoesInclude = Prisma.validator<Prisma.CursosTurmasProvasDefaultArgs>()({
   include: {
@@ -319,7 +336,7 @@ const ensureTurmaBelongsToCurso = async (
   turmaId: string,
 ) => {
   const turma = await client.cursosTurmas.findFirst({
-    where: { id: turmaId, cursoId },
+    where: { id: turmaId, cursoId, deletedAt: null },
     select: { id: true },
   });
 
@@ -847,7 +864,10 @@ export const avaliacoesService = {
     };
   },
 
-  async create(data: CreateAvaliacaoInput) {
+  async create(
+    data: CreateAvaliacaoInput,
+    usuarioLogado?: { id?: string | null; role?: Roles | null },
+  ) {
     return prisma.$transaction(async (tx) => {
       // ✅ Verificar se curso existe (APENAS se cursoId foi fornecido)
       if (data.cursoId) {
@@ -870,6 +890,14 @@ export const avaliacoesService = {
             cursoId: true,
             metodo: true,
             instrutorId: true,
+            status: true,
+            dataInicio: true,
+            dataFim: true,
+            CursosTurmasInstrutores: {
+              where: usuarioLogado?.id ? { instrutorId: usuarioLogado.id } : undefined,
+              select: { id: true },
+              take: 1,
+            },
           },
         });
 
@@ -892,6 +920,32 @@ export const avaliacoesService = {
         // Se instrutor não foi informado, pegar da turma
         if (!instrutorIdFinal && turma.instrutorId) {
           instrutorIdFinal = turma.instrutorId;
+        }
+
+        if (usuarioLogado?.role === Roles.INSTRUTOR) {
+          if (!usuarioLogado.id) {
+            const error: any = new Error('Instrutor sem contexto de autenticação válido');
+            error.code = 'FORBIDDEN';
+            throw error;
+          }
+
+          const vinculado =
+            turma.instrutorId === usuarioLogado.id ||
+            (turma.CursosTurmasInstrutores?.length ?? 0) > 0;
+
+          if (!vinculado) {
+            const error: any = new Error('Você não está vinculado a esta turma');
+            error.code = 'FORBIDDEN';
+            throw error;
+          }
+
+          if (turmaJaFoiIniciada(turma)) {
+            const error: any = new Error(
+              'Instrutor não pode criar atividade ou prova em turma já iniciada',
+            );
+            error.code = 'INSTRUTOR_NAO_PODE_CRIAR_CONTEUDO_EM_TURMA_INICIADA';
+            throw error;
+          }
         }
       }
 
@@ -993,6 +1047,42 @@ export const avaliacoesService = {
         },
         'Avaliação criada',
       );
+
+      if (usuarioLogado?.role === Roles.PEDAGOGICO && data.turmaId) {
+        const turma = await tx.cursosTurmas.findUnique({
+          where: { id: data.turmaId },
+          select: {
+            id: true,
+            status: true,
+            dataInicio: true,
+            dataFim: true,
+          },
+        });
+
+        if (turma && turmaJaFoiIniciada(turma)) {
+          try {
+            await notificacoesHelper.notificarAlunosDaTurma(data.turmaId, {
+              tipo: 'SISTEMA',
+              titulo:
+                data.tipo === CursosAvaliacaoTipo.ATIVIDADE
+                  ? `Nova atividade: ${data.titulo}`
+                  : `Nova prova: ${data.titulo}`,
+              mensagem:
+                data.tipo === CursosAvaliacaoTipo.ATIVIDADE
+                  ? 'Foi adicionada uma nova atividade na turma.'
+                  : 'Foi adicionada uma nova prova na turma.',
+              prioridade: 'NORMAL',
+              linkAcao: `/turmas/${data.turmaId}`,
+              eventoId: avaliacao.id,
+            });
+          } catch (error) {
+            avaliacoesLogger.warn(
+              { err: error, avaliacaoId: avaliacao.id, turmaId: data.turmaId },
+              'Falha ao notificar alunos após criação pedagógica de avaliação',
+            );
+          }
+        }
+      }
 
       return fetchAny(tx, avaliacao.id);
     });

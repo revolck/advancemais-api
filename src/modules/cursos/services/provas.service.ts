@@ -4,11 +4,14 @@ import {
   CursosNotasTipo,
   AuditoriaCategoria,
   CursosAulaStatus,
+  CursoStatus,
+  Roles,
 } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import { auditoriaService } from '@/modules/auditoria/services/auditoria.service';
+import { notificacoesHelper } from '../aulas/services/notificacoes-helper.service';
 
 import {
   mapProva,
@@ -21,13 +24,111 @@ type PrismaClientOrTx = Prisma.TransactionClient | typeof prisma;
 
 const provasLogger = logger.child({ module: 'CursosProvasService' });
 
+const turmaJaFoiIniciada = (turma: {
+  status?: CursoStatus | null;
+  dataInicio?: Date | null;
+  dataFim?: Date | null;
+}) => {
+  const agora = new Date();
+  return (
+    turma.status === CursoStatus.EM_ANDAMENTO ||
+    turma.status === CursoStatus.CONCLUIDO ||
+    Boolean(turma.dataInicio && turma.dataInicio <= agora) ||
+    Boolean(turma.dataFim && turma.dataFim < agora)
+  );
+};
+
+const buildInstrutorTurmaProvasWhere = (usuarioId: string): Prisma.CursosTurmasWhereInput => ({
+  OR: [
+    {
+      CursosTurmasProvas: {
+        some: {
+          instrutorId: usuarioId,
+        },
+      },
+    },
+    {
+      CursosTurmasAulas: {
+        some: {
+          instrutorId: usuarioId,
+          deletedAt: null,
+        },
+      },
+    },
+  ],
+});
+
+const ensureInstrutorPodeAcessarTurma = async (
+  client: PrismaClientOrTx,
+  cursoId: string,
+  turmaId: string,
+  usuarioId: string,
+) => {
+  const turma = await client.cursosTurmas.findFirst({
+    where: {
+      id: turmaId,
+      cursoId,
+      ...buildInstrutorTurmaProvasWhere(usuarioId),
+    },
+    select: { id: true },
+  });
+
+  if (!turma) {
+    const error = new Error('Instrutor só pode acessar provas de turmas vinculadas a ele');
+    (error as any).code = 'FORBIDDEN';
+    throw error;
+  }
+};
+
+const ensureInstrutorPodeAcessarProva = async (
+  client: PrismaClientOrTx,
+  provaId: string,
+  usuarioId: string,
+) => {
+  const prova = await client.cursosTurmasProvas.findUnique({
+    where: { id: provaId },
+    select: {
+      id: true,
+      instrutorId: true,
+      CursosTurmas: {
+        select: {
+          instrutorId: true,
+          CursosTurmasInstrutores: {
+            where: { instrutorId: usuarioId },
+            select: { id: true },
+            take: 1,
+          },
+        },
+      },
+    },
+  });
+
+  if (!prova) {
+    const error = new Error('Prova não encontrada');
+    (error as any).code = 'PROVA_NOT_FOUND';
+    throw error;
+  }
+
+  const vinculado =
+    prova.instrutorId === usuarioId ||
+    (!prova.instrutorId &&
+      (prova.CursosTurmas?.instrutorId === usuarioId ||
+        (prova.CursosTurmas?.CursosTurmasInstrutores?.length ?? 0) > 0));
+
+  if (!vinculado) {
+    const error = new Error('Instrutor só pode acessar provas vinculadas a ele');
+    (error as any).code = 'FORBIDDEN';
+    throw error;
+  }
+};
+
 const ensureTurmaBelongsToCurso = async (
   client: PrismaClientOrTx,
   cursoId: string,
   turmaId: string,
 ): Promise<void> => {
   const turma = await client.cursosTurmas.findFirst({
-    where: { id: turmaId, cursoId },
+    where: { id: turmaId, cursoId, deletedAt: null },
     select: { id: true },
   });
 
@@ -204,12 +305,25 @@ export const provasService = {
       status?: 'ATIVO' | 'INATIVO';
       tipo?: 'PROVA' | 'ATIVIDADE';
     },
+    usuarioLogado?: { id?: string | null; role?: Roles | null },
   ) {
     await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
 
+    const turmaIdFiltro = filters?.turmaId || turmaId;
+
+    if (usuarioLogado?.role === Roles.INSTRUTOR) {
+      if (!usuarioLogado.id) {
+        const error = new Error('Instrutor sem contexto de autenticação válido');
+        (error as any).code = 'FORBIDDEN';
+        throw error;
+      }
+
+      await ensureInstrutorPodeAcessarTurma(prisma, cursoId, turmaIdFiltro, usuarioLogado.id);
+    }
+
     // Construir where clause com filtros
     const where: Prisma.CursosTurmasProvasWhereInput = {
-      turmaId: filters?.turmaId || turmaId,
+      turmaId: turmaIdFiltro,
     };
 
     // Filtro de busca por título
@@ -228,6 +342,21 @@ export const provasService = {
     // Filtro de tipo (PROVA ou ATIVIDADE)
     if (filters?.tipo) {
       where.tipo = filters.tipo as any;
+    }
+
+    if (usuarioLogado?.role === Roles.INSTRUTOR && usuarioLogado.id) {
+      where.OR = [
+        { instrutorId: usuarioLogado.id },
+        {
+          instrutorId: null,
+          CursosTurmas: {
+            OR: [
+              { instrutorId: usuarioLogado.id },
+              { CursosTurmasInstrutores: { some: { instrutorId: usuarioLogado.id } } },
+            ],
+          },
+        },
+      ];
     }
 
     const provas = await prisma.cursosTurmasProvas.findMany({
@@ -289,14 +418,44 @@ export const provasService = {
     });
   },
 
-  async get(cursoId: string, turmaId: string, provaId: string) {
+  async get(
+    cursoId: string,
+    turmaId: string,
+    provaId: string,
+    usuarioLogado?: { id?: string | null; role?: Roles | null },
+  ) {
     await ensureProvaBelongsToTurma(prisma, cursoId, turmaId, provaId);
+
+    if (usuarioLogado?.role === Roles.INSTRUTOR) {
+      if (!usuarioLogado.id) {
+        const error = new Error('Instrutor sem contexto de autenticação válido');
+        (error as any).code = 'FORBIDDEN';
+        throw error;
+      }
+
+      await ensureInstrutorPodeAcessarProva(prisma, provaId, usuarioLogado.id);
+    }
 
     return fetchProva(prisma, provaId);
   },
 
-  async getByTurma(turmaId: string, provaId: string) {
+  async getByTurma(
+    turmaId: string,
+    provaId: string,
+    usuarioLogado?: { id?: string | null; role?: Roles | null },
+  ) {
     await ensureProvaBelongsToTurmaIgnoringCurso(prisma, turmaId, provaId);
+
+    if (usuarioLogado?.role === Roles.INSTRUTOR) {
+      if (!usuarioLogado.id) {
+        const error = new Error('Instrutor sem contexto de autenticação válido');
+        (error as any).code = 'FORBIDDEN';
+        throw error;
+      }
+
+      await ensureInstrutorPodeAcessarProva(prisma, provaId, usuarioLogado.id);
+    }
+
     return fetchProva(prisma, provaId);
   },
 
@@ -354,9 +513,56 @@ export const provasService = {
     criadoPor?: string,
     ip?: string,
     userAgent?: string,
+    usuarioLogado?: { id?: string | null; role?: Roles | null },
   ) {
     return prisma.$transaction(async (tx) => {
-      await ensureTurmaBelongsToCurso(tx, cursoId, turmaId);
+      const turma = await tx.cursosTurmas.findFirst({
+        where: { id: turmaId, cursoId, deletedAt: null },
+        select: {
+          id: true,
+          status: true,
+          dataInicio: true,
+          dataFim: true,
+          instrutorId: true,
+          CursosTurmasInstrutores: {
+            where: usuarioLogado?.id ? { instrutorId: usuarioLogado.id } : undefined,
+            select: { id: true },
+            take: 1,
+          },
+        },
+      });
+
+      if (!turma) {
+        const error = new Error('Turma não encontrada para o curso informado');
+        (error as any).code = 'TURMA_NOT_FOUND';
+        throw error;
+      }
+
+      if (usuarioLogado?.role === Roles.INSTRUTOR) {
+        if (!usuarioLogado.id) {
+          const error = new Error('Instrutor sem contexto de autenticação válido');
+          (error as any).code = 'FORBIDDEN';
+          throw error;
+        }
+
+        const vinculado =
+          turma.instrutorId === usuarioLogado.id ||
+          (turma.CursosTurmasInstrutores?.length ?? 0) > 0;
+
+        if (!vinculado) {
+          const error = new Error('Você não está vinculado a esta turma');
+          (error as any).code = 'FORBIDDEN';
+          throw error;
+        }
+
+        if (turmaJaFoiIniciada(turma)) {
+          const error: any = new Error(
+            'Instrutor não pode criar prova ou atividade em turma já iniciada',
+          );
+          error.code = 'INSTRUTOR_NAO_PODE_CRIAR_CONTEUDO_EM_TURMA_INICIADA';
+          throw error;
+        }
+      }
 
       if (data.moduloId) {
         await ensureModuloBelongsToTurma(tx, turmaId, data.moduloId);
@@ -423,6 +629,30 @@ export const provasService = {
       // Buscar informações do criador para retornar
       const criadoPorInfo = criadoPor ? await fetchCriadorInfo(prova.id) : null;
 
+      if (usuarioLogado?.role === Roles.PEDAGOGICO && turmaJaFoiIniciada(turma)) {
+        try {
+          await notificacoesHelper.notificarAlunosDaTurma(turmaId, {
+            tipo: 'SISTEMA',
+            titulo:
+              tipo === 'ATIVIDADE'
+                ? `Nova atividade: ${data.titulo}`
+                : `Nova prova: ${data.titulo}`,
+            mensagem:
+              tipo === 'ATIVIDADE'
+                ? `Foi adicionada uma nova atividade na turma.`
+                : `Foi adicionada uma nova prova na turma.`,
+            prioridade: 'NORMAL',
+            linkAcao: `/turmas/${turmaId}`,
+            eventoId: prova.id,
+          });
+        } catch (error) {
+          provasLogger.warn(
+            { err: error, provaId: prova.id, turmaId },
+            'Falha ao notificar alunos após criação pedagógica de prova/atividade',
+          );
+        }
+      }
+
       return mapProva(prova, criadoPorInfo);
     });
   },
@@ -441,9 +671,20 @@ export const provasService = {
       ativo?: boolean;
       ordem?: number | null;
     },
+    usuarioLogado?: { id?: string | null; role?: Roles | null },
   ) {
     return prisma.$transaction(async (tx) => {
       await ensureProvaBelongsToTurma(tx, cursoId, turmaId, provaId, { forEdit: true });
+
+      if (usuarioLogado?.role === Roles.INSTRUTOR) {
+        if (!usuarioLogado.id) {
+          const error = new Error('Instrutor sem contexto de autenticação válido');
+          (error as any).code = 'FORBIDDEN';
+          throw error;
+        }
+
+        await ensureInstrutorPodeAcessarProva(tx, provaId, usuarioLogado.id);
+      }
 
       if (data.moduloId) {
         await ensureModuloBelongsToTurma(tx, turmaId, data.moduloId);
@@ -475,9 +716,24 @@ export const provasService = {
     });
   },
 
-  async remove(cursoId: string, turmaId: string, provaId: string) {
+  async remove(
+    cursoId: string,
+    turmaId: string,
+    provaId: string,
+    usuarioLogado?: { id?: string | null; role?: Roles | null },
+  ) {
     return prisma.$transaction(async (tx) => {
       await ensureProvaBelongsToTurma(tx, cursoId, turmaId, provaId);
+
+      if (usuarioLogado?.role === Roles.INSTRUTOR) {
+        if (!usuarioLogado.id) {
+          const error = new Error('Instrutor sem contexto de autenticação válido');
+          (error as any).code = 'FORBIDDEN';
+          throw error;
+        }
+
+        await ensureInstrutorPodeAcessarProva(tx, provaId, usuarioLogado.id);
+      }
 
       await tx.cursosTurmasProvas.delete({ where: { id: provaId } });
 

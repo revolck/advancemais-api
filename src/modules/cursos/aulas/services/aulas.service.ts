@@ -7,11 +7,26 @@ import type {
   UpdateProgressoInput,
 } from '../validators/aulas.schema';
 import type { Prisma, Usuarios } from '@prisma/client';
+import { CursoStatus, Roles } from '@prisma/client';
 import { googleCalendarService } from './google-calendar.service';
 import { notificacoesHelper } from './notificacoes-helper.service';
 import { montarCamposAlteradosMaterial } from './historico-materiais.helper';
 
 const aulasLogger = logger.child({ module: 'AulasService' });
+
+const turmaJaFoiIniciada = (turma: {
+  status?: CursoStatus | null;
+  dataInicio?: Date | null;
+  dataFim?: Date | null;
+}) => {
+  const agora = new Date();
+  return (
+    turma.status === CursoStatus.EM_ANDAMENTO ||
+    turma.status === CursoStatus.CONCLUIDO ||
+    Boolean(turma.dataInicio && turma.dataInicio <= agora) ||
+    Boolean(turma.dataFim && turma.dataFim < agora)
+  );
+};
 
 // Mapear modalidade do input para enum do banco (API → Banco)
 function mapModalidade(modalidade: string): any {
@@ -51,9 +66,11 @@ function isInstrutorVinculadoAAula(params: {
   aulaInstrutorId?: string | null;
   turmaInstrutorId?: string | null;
 }) {
-  return (
-    params.aulaInstrutorId === params.usuarioId || params.turmaInstrutorId === params.usuarioId
-  );
+  if (params.aulaInstrutorId) {
+    return params.aulaInstrutorId === params.usuarioId;
+  }
+
+  return params.turmaInstrutorId === params.usuarioId;
 }
 
 /**
@@ -712,14 +729,22 @@ export const aulasService = {
       }
     }
 
+    let turmaEmAndamento = false;
+
     // 2. Validar permissão do instrutor (se turma foi fornecida)
     if (usuarioLogado.role === 'INSTRUTOR' && input.turmaId) {
-      const turmasDoInstrutor = await prisma.cursosTurmas.findMany({
-        where: { instrutorId: usuarioLogado.id },
+      const turmaDoInstrutor = await prisma.cursosTurmas.findFirst({
+        where: {
+          id: input.turmaId,
+          OR: [
+            { instrutorId: usuarioLogado.id },
+            { CursosTurmasInstrutores: { some: { instrutorId: usuarioLogado.id } } },
+          ],
+        },
         select: { id: true },
       });
 
-      if (!turmasDoInstrutor.some((t) => t.id === input.turmaId)) {
+      if (!turmaDoInstrutor) {
         throw new Error('Instrutor só pode criar aulas para turmas às quais está vinculado');
       }
     }
@@ -746,6 +771,7 @@ export const aulasService = {
       }
 
       cursoIdFinal = turma.cursoId;
+      turmaEmAndamento = turmaJaFoiIniciada(turma);
 
       if (dataInicioCompleta && turma.dataInicio && dataInicioCompleta < turma.dataInicio) {
         const error: any = new Error('Aula não pode começar antes do início da turma');
@@ -756,6 +782,12 @@ export const aulasService = {
       if (dataFimCompleta && turma.dataFim && dataFimCompleta > turma.dataFim) {
         const error: any = new Error('Aula não pode terminar após o fim da turma');
         error.code = 'DATA_INVALIDA';
+        throw error;
+      }
+
+      if (usuarioLogado.role === Roles.INSTRUTOR && turmaEmAndamento) {
+        const error: any = new Error('Instrutor não pode criar aula em turma já iniciada');
+        error.code = 'INSTRUTOR_NAO_PODE_CRIAR_CONTEUDO_EM_TURMA_INICIADA';
         throw error;
       }
 
@@ -925,6 +957,37 @@ export const aulasService = {
       titulo: aula.nome,
       turmaId: input.turmaId,
     });
+
+    if (input.turmaId && usuarioLogado.role === Roles.PEDAGOGICO && turmaEmAndamento) {
+      try {
+        const dataLabel = input.dataInicio
+          ? new Intl.DateTimeFormat('pt-BR', {
+              timeZone: 'America/Maceio',
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+            }).format(new Date(input.dataInicio))
+          : null;
+        const horaLabel = input.horaInicio ?? null;
+        const instrutorLabel = aula.instrutorId ? ` com o instrutor vinculado` : '';
+
+        await notificacoesHelper.notificarAlunosDaTurma(input.turmaId, {
+          tipo: 'NOVA_AULA',
+          titulo: `Nova aula: ${aula.nome}`,
+          mensagem: dataLabel
+            ? `Foi adicionada uma nova aula para a data ${dataLabel}${horaLabel ? ` às ${horaLabel}` : ''}${instrutorLabel}.`
+            : `Foi adicionada uma nova aula para a turma${instrutorLabel}.`,
+          prioridade: 'NORMAL',
+          linkAcao: `/turmas/${input.turmaId}`,
+          eventoId: aula.id,
+        });
+      } catch (error: any) {
+        aulasLogger.warn(
+          { err: error, aulaId: aula.id, turmaId: input.turmaId },
+          'Falha ao notificar alunos após criação pedagógica de aula',
+        );
+      }
+    }
 
     return aula;
   },

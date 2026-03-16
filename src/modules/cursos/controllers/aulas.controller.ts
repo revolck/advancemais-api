@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { Roles } from '@prisma/client';
 import { ZodError } from 'zod';
 
 import { aulasService } from '../services/aulas.service';
@@ -8,11 +9,12 @@ const parseCursoId = (raw: string): string | null => {
   if (!raw || typeof raw !== 'string') {
     return null;
   }
-  // Cursos.id agora é UUID (String), não mais Int
+
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!uuidRegex.test(raw.trim())) {
     return null;
   }
+
   return raw.trim();
 };
 
@@ -32,6 +34,11 @@ const parseAulaId = (raw: string) => {
   return raw;
 };
 
+const actorFromRequest = (req: Request) => ({
+  id: req.user?.id ?? null,
+  role: (req.user?.role as Roles | undefined) ?? null,
+});
+
 export class AulasController {
   static list = async (req: Request, res: Response) => {
     const cursoId = parseCursoId(req.params.cursoId);
@@ -46,9 +53,17 @@ export class AulasController {
     }
 
     try {
-      const aulas = await aulasService.list(cursoId, turmaId);
+      const aulas = await aulasService.list(cursoId, turmaId, actorFromRequest(req));
       res.json({ data: aulas });
     } catch (error: any) {
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para listar aulas desta turma',
+        });
+      }
+
       if (error?.code === 'TURMA_NOT_FOUND') {
         return res.status(404).json({
           success: false,
@@ -57,7 +72,7 @@ export class AulasController {
         });
       }
 
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         code: 'AULAS_LIST_ERROR',
         message: 'Erro ao listar aulas da turma',
@@ -80,9 +95,17 @@ export class AulasController {
     }
 
     try {
-      const aula = await aulasService.get(cursoId, turmaId, aulaId);
+      const aula = await aulasService.get(cursoId, turmaId, aulaId, actorFromRequest(req));
       res.json(aula);
     } catch (error: any) {
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para acessar esta aula',
+        });
+      }
+
       if (error?.code === 'AULA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
         return res.status(404).json({
           success: false,
@@ -91,7 +114,7 @@ export class AulasController {
         });
       }
 
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         code: 'AULA_GET_ERROR',
         message: 'Erro ao buscar aula da turma',
@@ -114,7 +137,7 @@ export class AulasController {
 
     try {
       const data = createAulaSchema.parse(req.body);
-      const aula = await aulasService.create(cursoId, turmaId, data);
+      const aula = await aulasService.create(cursoId, turmaId, data, actorFromRequest(req));
       res.status(201).json(aula);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -123,6 +146,22 @@ export class AulasController {
           code: 'VALIDATION_ERROR',
           message: 'Dados inválidos para criação da aula',
           issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para criar aula nesta turma',
+        });
+      }
+
+      if (error?.code === 'INSTRUTOR_NAO_PODE_CRIAR_CONTEUDO_EM_TURMA_INICIADA') {
+        return res.status(409).json({
+          success: false,
+          code: 'INSTRUTOR_NAO_PODE_CRIAR_CONTEUDO_EM_TURMA_INICIADA',
+          message: error?.message,
         });
       }
 
@@ -150,7 +189,7 @@ export class AulasController {
         });
       }
 
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         code: 'AULA_CREATE_ERROR',
         message: 'Erro ao criar aula para a turma',
@@ -183,7 +222,7 @@ export class AulasController {
         });
       }
 
-      const aula = await aulasService.update(cursoId, turmaId, aulaId, data);
+      const aula = await aulasService.update(cursoId, turmaId, aulaId, data, actorFromRequest(req));
       res.json(aula);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -192,6 +231,14 @@ export class AulasController {
           code: 'VALIDATION_ERROR',
           message: 'Dados inválidos para atualização da aula',
           issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para editar esta aula',
         });
       }
 
@@ -219,7 +266,7 @@ export class AulasController {
         });
       }
 
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         code: 'AULA_UPDATE_ERROR',
         message: 'Erro ao atualizar aula da turma',
@@ -242,9 +289,17 @@ export class AulasController {
     }
 
     try {
-      await aulasService.remove(cursoId, turmaId, aulaId);
+      await aulasService.remove(cursoId, turmaId, aulaId, actorFromRequest(req));
       res.json({ success: true });
     } catch (error: any) {
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para excluir esta aula',
+        });
+      }
+
       if (error?.code === 'AULA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
         return res.status(404).json({
           success: false,
@@ -253,7 +308,7 @@ export class AulasController {
         });
       }
 
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         code: 'AULA_DELETE_ERROR',
         message: 'Erro ao remover aula da turma',

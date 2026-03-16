@@ -90,7 +90,7 @@ const formatHorario = (inicio?: string | null, fim?: string | null) => {
 
 const normalizeCursoTurma = async (client: PrismaClientOrTx, cursoId: string, turmaId: string) => {
   const turma = await client.cursosTurmas.findFirst({
-    where: { id: turmaId, cursoId },
+    where: { id: turmaId, cursoId, deletedAt: null },
     select: {
       id: true,
       nome: true,

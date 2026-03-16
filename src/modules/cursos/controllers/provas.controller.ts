@@ -52,12 +52,20 @@ export class ProvasController {
       // Validar e parsear query parameters
       const queryParams = listProvasQuerySchema.parse(req.query);
 
-      const provas = await provasService.list(cursoId, turmaId, {
-        search: queryParams.search,
-        turmaId: queryParams.turmaId,
-        status: queryParams.status,
-        tipo: queryParams.tipo,
-      });
+      const provas = await provasService.list(
+        cursoId,
+        turmaId,
+        {
+          search: queryParams.search,
+          turmaId: queryParams.turmaId,
+          status: queryParams.status,
+          tipo: queryParams.tipo,
+        },
+        {
+          id: req.user?.id ?? null,
+          role: (req.user?.role as any) ?? null,
+        },
+      );
 
       res.json({ data: provas });
     } catch (error: any) {
@@ -75,6 +83,14 @@ export class ProvasController {
           success: false,
           code: 'TURMA_NOT_FOUND',
           message: 'Turma não encontrada para o curso informado',
+        });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para listar provas desta turma',
         });
       }
 
@@ -102,10 +118,24 @@ export class ProvasController {
 
     try {
       const prova = cursoId
-        ? await provasService.get(cursoId, turmaId, provaId)
-        : await provasService.getByTurma(turmaId, provaId);
+        ? await provasService.get(cursoId, turmaId, provaId, {
+            id: req.user?.id ?? null,
+            role: (req.user?.role as any) ?? null,
+          })
+        : await provasService.getByTurma(turmaId, provaId, {
+            id: req.user?.id ?? null,
+            role: (req.user?.role as any) ?? null,
+          });
       res.json(prova);
     } catch (error: any) {
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para acessar esta prova',
+        });
+      }
+
       if (error?.code === 'PROVA_NOT_FOUND') {
         try {
           const cursoParaTemplate = cursoId ?? (await provasService.getCursoIdByTurma(turmaId));
@@ -158,10 +188,14 @@ export class ProvasController {
     try {
       const data = createProvaSchema.parse(req.body);
       const usuarioId = req.user?.id;
+      const usuarioRole = req.user?.role;
       const ip = req.ip || req.socket.remoteAddress || undefined;
       const userAgent = req.get('user-agent') || undefined;
 
-      const prova = await provasService.create(cursoId, turmaId, data, usuarioId, ip, userAgent);
+      const prova = await provasService.create(cursoId, turmaId, data, usuarioId, ip, userAgent, {
+        id: usuarioId ?? null,
+        role: (usuarioRole as any) ?? null,
+      });
       res.status(201).json(prova);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -194,6 +228,22 @@ export class ProvasController {
           success: false,
           code: 'PROVA_PUBLICADA_LOCKED',
           message: error?.message || 'Não é possível editar prova publicada vinculada a turma',
+        });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para criar prova nesta turma',
+        });
+      }
+
+      if (error?.code === 'INSTRUTOR_NAO_PODE_CRIAR_CONTEUDO_EM_TURMA_INICIADA') {
+        return res.status(409).json({
+          success: false,
+          code: 'INSTRUTOR_NAO_PODE_CRIAR_CONTEUDO_EM_TURMA_INICIADA',
+          message: error?.message,
         });
       }
 
@@ -230,7 +280,10 @@ export class ProvasController {
         });
       }
 
-      const prova = await provasService.update(cursoId, turmaId, provaId, data);
+      const prova = await provasService.update(cursoId, turmaId, provaId, data, {
+        id: req.user?.id ?? null,
+        role: (req.user?.role as any) ?? null,
+      });
       res.json(prova);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -266,6 +319,14 @@ export class ProvasController {
         });
       }
 
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para editar esta prova',
+        });
+      }
+
       res.status(500).json({
         success: false,
         code: 'PROVA_UPDATE_ERROR',
@@ -289,9 +350,20 @@ export class ProvasController {
     }
 
     try {
-      const result = await provasService.remove(cursoId, turmaId, provaId);
+      const result = await provasService.remove(cursoId, turmaId, provaId, {
+        id: req.user?.id ?? null,
+        role: (req.user?.role as any) ?? null,
+      });
       res.json(result);
     } catch (error: any) {
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para remover esta prova',
+        });
+      }
+
       if (error?.code === 'PROVA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
         return res.status(404).json({
           success: false,

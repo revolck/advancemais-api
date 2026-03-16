@@ -8,10 +8,12 @@ import {
   Status,
 } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { randomUUID } from 'crypto';
 
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 
+import { notificacoesHelper } from '../aulas/services/notificacoes-helper.service';
 import { generateUniqueInscricaoCode, generateUniqueTurmaCode } from '../utils/code-generator';
 import { aulaWithMateriaisInclude } from './aulas.mapper';
 import { moduloDetailedInclude } from './modulos.mapper';
@@ -351,7 +353,7 @@ const turmaInstrutorInclude = {
 
 const fetchTurmaDetailedWithoutInscricoesParallel = async (cursoId: string, turmaId: string) => {
   const turmaBase = await prisma.cursosTurmas.findFirst({
-    where: { id: turmaId, cursoId },
+    where: { id: turmaId, cursoId, deletedAt: null },
     select: turmaDetailedBaseSelect,
   });
 
@@ -447,12 +449,12 @@ const ensureCursoExists = async (cursoId: string) => {
 };
 
 const ensureTurmaBelongsToCurso = async (cursoId: string, turmaId: string) => {
-  const turma = await prisma.cursosTurmas.findUnique({
-    where: { id: turmaId },
-    select: { id: true, cursoId: true },
+  const turma = await prisma.cursosTurmas.findFirst({
+    where: { id: turmaId, cursoId, deletedAt: null },
+    select: { id: true },
   });
 
-  if (!turma || turma.cursoId !== cursoId) {
+  if (!turma) {
     const error = new Error('Turma não encontrada para o curso informado');
     (error as any).code = 'TURMA_NOT_FOUND';
     throw error;
@@ -462,8 +464,8 @@ const ensureTurmaBelongsToCurso = async (cursoId: string, turmaId: string) => {
 type PrismaClientOrTx = Prisma.TransactionClient | typeof prisma;
 
 const fetchTurmaDetailed = async (client: PrismaClientOrTx, turmaId: string) => {
-  const turma = await client.cursosTurmas.findUnique({
-    where: { id: turmaId },
+  const turma = await client.cursosTurmas.findFirst({
+    where: { id: turmaId, deletedAt: null },
     ...turmaDetailedInclude,
   });
 
@@ -909,14 +911,335 @@ type TurmaListParams = {
   turno?: CursosTurnos;
   metodo?: CursosMetodos;
   instrutorId?: string;
+  usuarioLogado?: { id?: string | null; role?: Roles | null };
+};
+
+const rolesGestaoTurmas = new Set<Roles>([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]);
+
+const turmaJaFoiIniciada = (turma: {
+  status?: CursoStatus | null;
+  dataInicio?: Date | null;
+  dataFim?: Date | null;
+}) => {
+  const agora = new Date();
+  return (
+    turma.status === CursoStatus.EM_ANDAMENTO ||
+    turma.status === CursoStatus.CONCLUIDO ||
+    Boolean(turma.dataInicio && turma.dataInicio <= agora) ||
+    Boolean(turma.dataFim && turma.dataFim < agora)
+  );
+};
+
+const sameDateValue = (incoming: Date | null | undefined, current: Date | null | undefined) => {
+  if (incoming === undefined) return true;
+  if (incoming === null && (current === null || current === undefined)) return true;
+  if (incoming === null || current === null || current === undefined) return false;
+  return incoming.getTime() === current.getTime();
+};
+
+const getBlockedPeriodFieldsAfterStart = (
+  incoming: {
+    dataInicio?: Date | null;
+    dataFim?: Date | null;
+    dataInscricaoInicio?: Date | null;
+    dataInscricaoFim?: Date | null;
+  },
+  current: {
+    dataInicio?: Date | null;
+    dataFim?: Date | null;
+    dataInscricaoInicio?: Date | null;
+    dataInscricaoFim?: Date | null;
+  },
+) => {
+  const blockedFields: string[] = [];
+
+  if (!sameDateValue(incoming.dataInicio, current.dataInicio)) blockedFields.push('dataInicio');
+  if (!sameDateValue(incoming.dataFim, current.dataFim)) blockedFields.push('dataFim');
+  if (!sameDateValue(incoming.dataInscricaoInicio, current.dataInscricaoInicio)) {
+    blockedFields.push('dataInscricaoInicio');
+  }
+  if (!sameDateValue(incoming.dataInscricaoFim, current.dataInscricaoFim)) {
+    blockedFields.push('dataInscricaoFim');
+  }
+
+  return blockedFields;
+};
+
+const buildInstrutorTurmaAccessWhere = (usuarioId: string): Prisma.CursosTurmasWhereInput => ({
+  OR: [
+    {
+      CursosTurmasAulas: {
+        some: {
+          instrutorId: usuarioId,
+          deletedAt: null,
+        },
+      },
+    },
+    {
+      CursosTurmasProvas: {
+        some: {
+          instrutorId: usuarioId,
+          ativo: true,
+        },
+      },
+    },
+  ],
+});
+
+const ensureInstrutorPodeAcessarTurma = async (
+  client: PrismaClientOrTx,
+  cursoId: string,
+  turmaId: string,
+  usuarioId: string,
+) => {
+  const turma = await client.cursosTurmas.findFirst({
+    where: {
+      id: turmaId,
+      cursoId,
+      ...buildInstrutorTurmaAccessWhere(usuarioId),
+    },
+    select: { id: true },
+  });
+
+  if (!turma) {
+    const error = new Error('Instrutor só pode acessar turmas vinculadas a conteúdos seus');
+    (error as any).code = 'FORBIDDEN';
+    throw error;
+  }
+};
+
+const hasActiveInscricoes = async (client: PrismaClientOrTx, turmaId: string) => {
+  const count = await client.cursosTurmasInscricoes.count({
+    where: {
+      turmaId,
+      status: {
+        notIn: [StatusInscricao.CANCELADO, StatusInscricao.TRANCADO],
+      },
+    },
+  });
+
+  return count > 0;
+};
+
+const DEFAULT_PRAZO_ADAPTACAO_DIAS = 7;
+
+const calculateLateEnrollmentDeadline = (
+  enrolledAt: Date,
+  turmaDataFim?: Date | null,
+  prazoAdaptacaoDias?: number | null,
+) => {
+  const prazoBase = new Date(enrolledAt);
+  prazoBase.setDate(prazoBase.getDate() + (prazoAdaptacaoDias ?? DEFAULT_PRAZO_ADAPTACAO_DIAS));
+
+  if (turmaDataFim && turmaDataFim < prazoBase) {
+    return turmaDataFim;
+  }
+
+  return prazoBase;
+};
+
+const createLateEnrollmentAccessRecords = async (
+  tx: Prisma.TransactionClient,
+  params: {
+    turmaId: string;
+    inscricaoId: string;
+    enrolledAt: Date;
+    turmaDataFim?: Date | null;
+    prazoAdaptacaoDias?: number | null;
+    criadoPorId?: string | null;
+  },
+) => {
+  const [aulas, provas] = await Promise.all([
+    tx.cursosTurmasAulas.findMany({
+      where: {
+        turmaId: params.turmaId,
+        deletedAt: null,
+        status: { not: 'CANCELADA' as any },
+      },
+      select: {
+        id: true,
+        dataInicio: true,
+        dataFim: true,
+      },
+    }),
+    tx.cursosTurmasProvas.findMany({
+      where: {
+        turmaId: params.turmaId,
+        ativo: true,
+        status: { not: 'CANCELADA' as any },
+      },
+      select: {
+        id: true,
+        dataInicio: true,
+        dataFim: true,
+      },
+    }),
+  ]);
+
+  const fallbackDeadline = calculateLateEnrollmentDeadline(
+    params.enrolledAt,
+    params.turmaDataFim,
+    params.prazoAdaptacaoDias,
+  );
+
+  if (aulas.length > 0) {
+    await tx.cursosTurmasInscricoesAulasAcesso.createMany({
+      data: aulas.map((aula) => ({
+        inscricaoId: params.inscricaoId,
+        aulaId: aula.id,
+        liberadoEm:
+          aula.dataInicio && aula.dataInicio > params.enrolledAt
+            ? aula.dataInicio
+            : params.enrolledAt,
+        disponivelAte: aula.dataFim ?? params.turmaDataFim ?? fallbackDeadline,
+        origem: 'ENTRADA_TARDIA',
+        criadoPorId: params.criadoPorId ?? null,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  if (provas.length > 0) {
+    await tx.cursosTurmasInscricoesProvasAcesso.createMany({
+      data: provas.map((prova) => {
+        const prazoGlobal = prova.dataFim ?? params.turmaDataFim ?? null;
+        const expirouAntesDaEntrada = Boolean(prazoGlobal && prazoGlobal < params.enrolledAt);
+
+        return {
+          inscricaoId: params.inscricaoId,
+          provaId: prova.id,
+          liberadoEm:
+            prova.dataInicio && prova.dataInicio > params.enrolledAt
+              ? prova.dataInicio
+              : params.enrolledAt,
+          disponivelAte: expirouAntesDaEntrada
+            ? fallbackDeadline
+            : (prazoGlobal ?? fallbackDeadline),
+          origem: 'ENTRADA_TARDIA',
+          criadoPorId: params.criadoPorId ?? null,
+        };
+      }),
+      skipDuplicates: true,
+    });
+  }
+
+  return {
+    aulasLiberadas: aulas.length,
+    provasLiberadas: provas.length,
+    prazoAdaptacaoAte: fallbackDeadline.toISOString(),
+  };
+};
+
+const isInstrutorLinkedToEstruturaItem = (item: any, usuarioId: string) => {
+  if (!item) return false;
+
+  if (item.instrutorId && item.instrutorId === usuarioId) return true;
+  if (item.instrutor?.id && item.instrutor.id === usuarioId) return true;
+  if (Array.isArray(item.instructorIds) && item.instructorIds.includes(usuarioId)) return true;
+
+  return false;
+};
+
+const summarizeEstruturaItemForInstrutor = (item: any) => ({
+  id: item.id,
+  type: item.type,
+  tipoAvaliacao: item.tipoAvaliacao ?? null,
+  tipoAtividade: item.tipoAtividade ?? null,
+  title: item.title ?? null,
+  nome: item.nome ?? item.title ?? null,
+  templateId: item.templateId ?? null,
+  ordem: item.ordem ?? null,
+  startDate: item.startDate ?? null,
+  endDate: item.endDate ?? null,
+  horaInicio: item.horaInicio ?? null,
+  horaFim: item.horaFim ?? item.horaTermino ?? null,
+  horaTermino: item.horaTermino ?? null,
+  instrutorId: item.instrutorId ?? null,
+  instrutor: item.instrutor ?? null,
+  instructorIds: Array.isArray(item.instructorIds) ? item.instructorIds : [],
+  modalidade: item.modalidade ?? null,
+  localizacao: item.localizacao ?? null,
+  obrigatoria: item.obrigatoria ?? true,
+  status: item.status ?? null,
+  ativo: item.ativo ?? null,
+  recuperacaoFinal: item.recuperacaoFinal ?? false,
+  acessoDetalhePermitido: false,
+});
+
+const filterTurmaForInstrutor = (turma: any, usuarioId: string) => {
+  const estrutura = turma.estrutura
+    ? {
+        ...turma.estrutura,
+        modules: (turma.estrutura.modules ?? []).map((module: any) => ({
+          ...module,
+          items: (module.items ?? []).map((item: any) =>
+            isInstrutorLinkedToEstruturaItem(item, usuarioId)
+              ? { ...item, acessoDetalhePermitido: true }
+              : summarizeEstruturaItemForInstrutor(item),
+          ),
+        })),
+        standaloneItems: (turma.estrutura.standaloneItems ?? []).map((item: any) =>
+          isInstrutorLinkedToEstruturaItem(item, usuarioId)
+            ? { ...item, acessoDetalhePermitido: true }
+            : summarizeEstruturaItemForInstrutor(item),
+        ),
+      }
+    : null;
+
+  const aulas = (turma.aulas ?? [])
+    .filter((item: any) => isInstrutorLinkedToEstruturaItem(item, usuarioId))
+    .map((item: any) => ({ ...item, acessoDetalhePermitido: true }));
+
+  const provas = (turma.provas ?? [])
+    .filter((item: any) => isInstrutorLinkedToEstruturaItem(item, usuarioId))
+    .map((item: any) => ({ ...item, acessoDetalhePermitido: true }));
+
+  const itens = (turma.itens ?? []).filter((item: any) => {
+    if (item.aula) return isInstrutorLinkedToEstruturaItem(item.aula, usuarioId);
+    if (item.avaliacao) return isInstrutorLinkedToEstruturaItem(item.avaliacao, usuarioId);
+    return false;
+  });
+
+  const modulos = (turma.modulos ?? []).map((module: any) => {
+    const aulasModulo = (module.aulas ?? [])
+      .filter((item: any) => isInstrutorLinkedToEstruturaItem(item, usuarioId))
+      .map((item: any) => ({ ...item, acessoDetalhePermitido: true }));
+
+    const provasModulo = (module.provas ?? [])
+      .filter((item: any) => isInstrutorLinkedToEstruturaItem(item, usuarioId))
+      .map((item: any) => ({ ...item, acessoDetalhePermitido: true }));
+
+    const itensModulo = (module.itens ?? []).filter((item: any) => {
+      if (item.aula) return isInstrutorLinkedToEstruturaItem(item.aula, usuarioId);
+      if (item.avaliacao) return isInstrutorLinkedToEstruturaItem(item.avaliacao, usuarioId);
+      return false;
+    });
+
+    return {
+      ...module,
+      aulas: aulasModulo,
+      provas: provasModulo,
+      itens: itensModulo,
+    };
+  });
+
+  return {
+    ...turma,
+    estrutura,
+    aulas,
+    provas,
+    itens,
+    modulos,
+  };
 };
 
 export const turmasService = {
   async list(params: TurmaListParams) {
-    const { cursoId, page, pageSize, status, turno, metodo, instrutorId } = params;
+    const { cursoId, page, pageSize, status, turno, metodo, instrutorId, usuarioLogado } = params;
 
     const where: Prisma.CursosTurmasWhereInput = {
       cursoId,
+      deletedAt: null,
     };
 
     if (status) {
@@ -933,6 +1256,24 @@ export const turmasService = {
 
     if (instrutorId) {
       where.instrutorId = instrutorId;
+    }
+
+    if (usuarioLogado?.role === Roles.INSTRUTOR) {
+      if (!usuarioLogado.id) {
+        const error = new Error('Instrutor sem contexto de autenticação válido');
+        (error as any).code = 'FORBIDDEN';
+        throw error;
+      }
+
+      if (instrutorId && instrutorId !== usuarioLogado.id) {
+        const error = new Error(
+          'Instrutor só pode listar turmas vinculadas aos próprios conteúdos',
+        );
+        (error as any).code = 'FORBIDDEN';
+        throw error;
+      }
+
+      Object.assign(where, buildInstrutorTurmaAccessWhere(usuarioLogado.id));
     }
 
     const requestedPage = Math.max(page, 1);
@@ -1025,6 +1366,7 @@ export const turmasService = {
     cursoId: string,
     turmaId: string,
     options?: { includeAlunos?: boolean; includeEstrutura?: boolean },
+    usuarioLogado?: { id?: string | null; role?: Roles | null },
   ) {
     const includeAlunos = options?.includeAlunos ?? false;
     const includeEstrutura = options?.includeEstrutura ?? true;
@@ -1042,7 +1384,7 @@ export const turmasService = {
         useParallelDetailedFetch
           ? fetchTurmaDetailedWithoutInscricoesParallel(cursoId, turmaId)
           : prisma.cursosTurmas.findFirst({
-              where: { id: turmaId, cursoId },
+              where: { id: turmaId, cursoId, deletedAt: null },
               ...includeArgs,
             }),
         includeAlunos
@@ -1062,6 +1404,16 @@ export const turmasService = {
         throw error;
       }
 
+      if (usuarioLogado?.role === Roles.INSTRUTOR) {
+        if (!usuarioLogado.id) {
+          const error = new Error('Instrutor sem contexto de autenticação válido');
+          (error as any).code = 'FORBIDDEN';
+          throw error;
+        }
+
+        await ensureInstrutorPodeAcessarTurma(prisma, cursoId, turmaId, usuarioLogado.id);
+      }
+
       const turma = cursosTurmasMapper.detailed(turmaRaw as any);
 
       // ✅ Otimização: Adicionar contagem de inscrições ativas com fallback seguro
@@ -1078,7 +1430,7 @@ export const turmasService = {
         inscricoesCount = inscricoesCountMap?.[turmaId] || 0;
       }
 
-      return {
+      const turmaComMetricas = {
         ...turma,
         inscricoesCount: inscricoesCount ?? 0,
         vagasOcupadas: inscricoesCount ?? 0,
@@ -1087,6 +1439,12 @@ export const turmasService = {
             ? null
             : (turma.vagasTotais ?? 0) - (inscricoesCount ?? 0),
       };
+
+      if (usuarioLogado?.role === Roles.INSTRUTOR && usuarioLogado.id) {
+        return filterTurmaForInstrutor(turmaComMetricas, usuarioLogado.id);
+      }
+
+      return turmaComMetricas;
     } catch (error: any) {
       turmasLogger.error(
         { error: error?.message, stack: error?.stack, cursoId, turmaId },
@@ -1096,12 +1454,27 @@ export const turmasService = {
     }
   },
 
-  async listInscricoes(cursoId: string, turmaId: string) {
+  async listInscricoes(
+    cursoId: string,
+    turmaId: string,
+    usuarioLogado?: { id?: string | null; role?: Roles | null },
+  ) {
+    if (usuarioLogado?.role === Roles.INSTRUTOR) {
+      if (!usuarioLogado.id) {
+        const error = new Error('Instrutor sem contexto de autenticação válido');
+        (error as any).code = 'FORBIDDEN';
+        throw error;
+      }
+
+      await ensureInstrutorPodeAcessarTurma(prisma, cursoId, turmaId, usuarioLogado.id);
+    }
+
     const inscricoes = await prisma.cursosTurmasInscricoes.findMany({
       where: {
         turmaId,
         CursosTurmas: {
           cursoId,
+          deletedAt: null,
         },
       },
       include: {
@@ -1206,7 +1579,7 @@ export const turmasService = {
       status?: CursoStatus;
       estrutura: TurmaEstruturaInput;
     },
-    actor?: { id?: string | null },
+    actor?: { id?: string | null; role?: Roles | null },
   ) {
     const created = await prisma.$transaction(async (tx) => {
       const curso = await tx.cursos.findUnique({ where: { id: cursoId }, select: { id: true } });
@@ -1442,14 +1815,13 @@ export const turmasService = {
       vagasDisponiveis?: number;
       status?: CursoStatus;
     }>,
-    actor?: { id?: string | null },
+    actor?: { id?: string | null; role?: Roles | null },
   ) {
-    return prisma.$transaction(async (tx) => {
-      const turma = await tx.cursosTurmas.findUnique({
-        where: { id: turmaId },
+    const { turmaDetailed, notificacaoPendente } = await prisma.$transaction(async (tx) => {
+      const turma = await tx.cursosTurmas.findFirst({
+        where: { id: turmaId, cursoId, deletedAt: null },
         select: {
           id: true,
-          cursoId: true,
           status: true,
           estruturaTipo: true,
           metodo: true,
@@ -1463,9 +1835,15 @@ export const turmasService = {
         },
       });
 
-      if (!turma || turma.cursoId !== cursoId) {
+      if (!turma) {
         const error = new Error('Turma não encontrada para o curso informado');
         (error as any).code = 'TURMA_NOT_FOUND';
+        throw error;
+      }
+
+      if (actor?.role && !rolesGestaoTurmas.has(actor.role)) {
+        const error = new Error('Sem permissão para editar a turma');
+        (error as any).code = 'FORBIDDEN';
         throw error;
       }
 
@@ -1500,6 +1878,46 @@ export const turmasService = {
       const agora = new Date();
       const turmaIniciou = turma.dataInicio && turma.dataInicio <= agora;
       const turmaFinalizou = turma.dataFim && turma.dataFim < agora;
+
+      if (turmaIniciou && actor?.role && actor.role !== Roles.PEDAGOGICO) {
+        const error: any = new Error(
+          'Somente o setor pedagógico pode alterar uma turma após o início',
+        );
+        error.code = 'TURMA_EDICAO_BLOQUEADA_JA_INICIADA';
+        throw error;
+      }
+
+      if (turmaIniciou) {
+        const blockedPeriodFields = getBlockedPeriodFieldsAfterStart(
+          {
+            dataInicio: data.dataInicio,
+            dataFim: data.dataFim,
+            dataInscricaoInicio: data.dataInscricaoInicio,
+            dataInscricaoFim: data.dataInscricaoFim,
+          },
+          {
+            dataInicio: turma.dataInicio,
+            dataFim: turma.dataFim,
+            dataInscricaoInicio: turma.dataInscricaoInicio,
+            dataInscricaoFim: turma.dataInscricaoFim,
+          },
+        );
+
+        if (blockedPeriodFields.length > 0) {
+          const error: any = new Error(
+            'Não é possível alterar o período de inscrição ou o período da turma após o início.',
+          );
+          error.code = 'TURMA_PERIODO_BLOQUEADO_APOS_INICIO';
+          error.details = {
+            fields: blockedPeriodFields,
+            dataInicio: turma.dataInicio?.toISOString() ?? null,
+            dataFim: turma.dataFim?.toISOString() ?? null,
+            dataInscricaoInicio: turma.dataInscricaoInicio?.toISOString() ?? null,
+            dataInscricaoFim: turma.dataInscricaoFim?.toISOString() ?? null,
+          };
+          throw error;
+        }
+      }
 
       // Se a turma já iniciou ou finalizou, não pode alterar o status manualmente
       if (data.status !== undefined && (turmaIniciou || turmaFinalizou)) {
@@ -1689,30 +2107,64 @@ export const turmasService = {
         }
       }
 
-      return fetchTurmaDetailed(tx, turmaId);
+      const notificacaoPendente =
+        actor?.role === Roles.PEDAGOGICO &&
+        turmaIniciou &&
+        Object.keys(data).length > 0 &&
+        (await hasActiveInscricoes(tx, turmaId))
+          ? {
+              tipo: 'SISTEMA' as const,
+              titulo: `Atualização na turma ${data.nome ?? 'sua turma'}`,
+              mensagem:
+                'A coordenação pedagógica atualizou informações da turma. Revise o cronograma e os próximos conteúdos disponíveis.',
+              prioridade: 'NORMAL' as const,
+              linkAcao: `/turmas/${turmaId}`,
+              eventoId: randomUUID(),
+            }
+          : null;
+
+      return {
+        turmaDetailed: await fetchTurmaDetailed(tx, turmaId),
+        notificacaoPendente,
+      };
     });
+
+    if (notificacaoPendente) {
+      try {
+        await notificacoesHelper.notificarAlunosDaTurma(turmaId, notificacaoPendente);
+      } catch (error) {
+        turmasLogger.warn(
+          { err: error, turmaId },
+          'Falha ao notificar alunos após atualização pedagógica da turma',
+        );
+      }
+    }
+
+    return turmaDetailed;
   },
 
   async enroll(
     cursoId: string,
     turmaId: string,
     alunoId: string,
-    actor?: { id?: string | null; role?: Roles | null },
+    actor?: { id?: string | null; role?: Roles | null; prazoAdaptacaoDias?: number | null },
   ) {
     return prisma.$transaction(async (tx) => {
-      const turma = await tx.cursosTurmas.findUnique({
-        where: { id: turmaId },
+      const turma = await tx.cursosTurmas.findFirst({
+        where: { id: turmaId, cursoId, deletedAt: null },
         select: {
           id: true,
-          cursoId: true,
           vagasDisponiveis: true,
           vagasTotais: true,
           vagasIlimitadas: true,
           dataInscricaoFim: true,
+          dataInicio: true,
+          dataFim: true,
+          status: true,
         },
       });
 
-      if (!turma || turma.cursoId !== cursoId) {
+      if (!turma) {
         const error = new Error('Turma não encontrada para o curso informado');
         (error as any).code = 'TURMA_NOT_FOUND';
         throw error;
@@ -1720,7 +2172,10 @@ export const turmasService = {
 
       const agora = new Date();
       if (turma.dataInscricaoFim && turma.dataInscricaoFim < agora) {
-        const canOverrideDeadline = actor?.role === Roles.ADMIN || actor?.role === Roles.MODERADOR;
+        const canOverrideDeadline =
+          actor?.role === Roles.ADMIN ||
+          actor?.role === Roles.MODERADOR ||
+          actor?.role === Roles.PEDAGOGICO;
 
         if (canOverrideDeadline) {
           turmasLogger.info(
@@ -1754,7 +2209,10 @@ export const turmasService = {
         turma.vagasTotais > 0 &&
         inscricoesAtivas >= turma.vagasTotais
       ) {
-        const canOverrideVagas = actor?.role === Roles.ADMIN || actor?.role === Roles.MODERADOR;
+        const canOverrideVagas =
+          actor?.role === Roles.ADMIN ||
+          actor?.role === Roles.MODERADOR ||
+          actor?.role === Roles.PEDAGOGICO;
 
         if (canOverrideVagas) {
           turmasLogger.info(
@@ -1826,12 +2284,24 @@ export const turmasService = {
         });
       }
 
-      await tx.cursosTurmasInscricoes.create({
+      const inscricao = await tx.cursosTurmasInscricoes.create({
         data: {
           turmaId,
           alunoId,
         },
+        select: { id: true },
       });
+
+      if (turmaJaFoiIniciada(turma)) {
+        await createLateEnrollmentAccessRecords(tx, {
+          turmaId,
+          inscricaoId: inscricao.id,
+          enrolledAt: agora,
+          turmaDataFim: turma.dataFim ?? null,
+          prazoAdaptacaoDias: actor?.prazoAdaptacaoDias ?? null,
+          criadoPorId: actor?.id ?? null,
+        });
+      }
 
       // Sincronizar agenda do aluno com Google Calendar (em background, não bloqueia)
       setImmediate(async () => {
@@ -1965,12 +2435,12 @@ export const turmasService = {
 
   async unenroll(cursoId: string, turmaId: string, alunoId: string) {
     return prisma.$transaction(async (tx) => {
-      const turma = await tx.cursosTurmas.findUnique({
-        where: { id: turmaId },
-        select: { id: true, cursoId: true },
+      const turma = await tx.cursosTurmas.findFirst({
+        where: { id: turmaId, cursoId, deletedAt: null },
+        select: { id: true },
       });
 
-      if (!turma || turma.cursoId !== cursoId) {
+      if (!turma) {
         const error = new Error('Turma não encontrada para o curso informado');
         (error as any).code = 'TURMA_NOT_FOUND';
         throw error;
@@ -2004,16 +2474,17 @@ export const turmasService = {
    */
   async togglePublicacao(cursoId: string, turmaId: string, publicar: boolean) {
     return prisma.$transaction(async (tx) => {
-      const turma = await tx.cursosTurmas.findUnique({
-        where: { id: turmaId },
+      const turma = await tx.cursosTurmas.findFirst({
+        where: { id: turmaId, cursoId, deletedAt: null },
         select: {
           id: true,
-          cursoId: true,
           status: true,
+          dataInicio: true,
+          dataFim: true,
         },
       });
 
-      if (!turma || turma.cursoId !== cursoId) {
+      if (!turma) {
         const error = new Error('Turma não encontrada para o curso informado');
         (error as any).code = 'TURMA_NOT_FOUND';
         throw error;
@@ -2058,6 +2529,22 @@ export const turmasService = {
           };
           throw error;
         }
+      } else {
+        if (turmaJaFoiIniciada(turma)) {
+          const error: any = new Error(
+            'Não é possível despublicar uma turma que já está em andamento ou iniciada',
+          );
+          error.code = 'TURMA_DESPUBLICACAO_BLOQUEADA_EM_ANDAMENTO';
+          throw error;
+        }
+
+        if (await hasActiveInscricoes(tx, turmaId)) {
+          const error: any = new Error(
+            'Não é possível despublicar uma turma com alunos inscritos ativos',
+          );
+          error.code = 'TURMA_DESPUBLICACAO_BLOQUEADA_COM_INSCRITOS';
+          throw error;
+        }
       }
 
       // Atualizar status
@@ -2080,6 +2567,63 @@ export const turmasService = {
       );
 
       return fetchTurmaDetailed(tx, turmaId);
+    });
+  },
+
+  async remove(cursoId: string, turmaId: string, actor?: { id?: string | null }) {
+    return prisma.$transaction(async (tx) => {
+      const turma = await tx.cursosTurmas.findFirst({
+        where: { id: turmaId, cursoId, deletedAt: null },
+        select: {
+          id: true,
+          status: true,
+          dataInicio: true,
+          dataFim: true,
+        },
+      });
+
+      if (!turma) {
+        const error = new Error('Turma não encontrada para o curso informado');
+        (error as any).code = 'TURMA_NOT_FOUND';
+        throw error;
+      }
+
+      if (turmaJaFoiIniciada(turma)) {
+        const error: any = new Error('Não é possível excluir turma que já foi iniciada');
+        error.code = 'TURMA_EXCLUSAO_BLOQUEADA_JA_INICIADA';
+        throw error;
+      }
+
+      const inscricoesCount = await tx.cursosTurmasInscricoes.count({
+        where: { turmaId },
+      });
+
+      if (inscricoesCount > 0) {
+        const error: any = new Error('Não é possível excluir turma com alunos inscritos');
+        error.code = 'TURMA_EXCLUSAO_BLOQUEADA_COM_INSCRITOS';
+        throw error;
+      }
+
+      const removidoEm = new Date();
+
+      await tx.cursosTurmas.update({
+        where: { id: turmaId },
+        data: {
+          deletedAt: removidoEm,
+          deletedById: actor?.id ?? null,
+          status: CursoStatus.CANCELADO,
+          atualizadoEm: removidoEm,
+        },
+      });
+
+      return {
+        success: true,
+        data: {
+          id: turmaId,
+          removidoEm: removidoEm.toISOString(),
+          removidoPorId: actor?.id ?? null,
+        },
+      } as const;
     });
   },
 };

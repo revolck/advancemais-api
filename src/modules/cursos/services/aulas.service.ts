@@ -1,12 +1,104 @@
-import { CursosMateriais, CursosMetodos, Prisma, TiposDeArquivos } from '@prisma/client';
+import {
+  CursoStatus,
+  CursosMateriais,
+  CursosMetodos,
+  Prisma,
+  Roles,
+  StatusInscricao,
+  TiposDeArquivos,
+} from '@prisma/client';
 import { randomUUID } from 'crypto';
 
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 
+import { notificacoesHelper } from '../aulas/services/notificacoes-helper.service';
 import { AulaWithMateriais, aulaWithMateriaisInclude, mapAula } from './aulas.mapper';
 
 const aulasLogger = logger.child({ module: 'CursosAulasService' });
+
+const turmaJaFoiIniciada = (turma: { status?: CursoStatus | null; dataInicio?: Date | null }) => {
+  if (turma.status === CursoStatus.EM_ANDAMENTO || turma.status === CursoStatus.CONCLUIDO) {
+    return true;
+  }
+
+  return Boolean(turma.dataInicio && turma.dataInicio <= new Date());
+};
+
+const hasActiveInscricoes = async (client: PrismaClientOrTx, turmaId: string) => {
+  const count = await client.cursosTurmasInscricoes.count({
+    where: {
+      turmaId,
+      status: {
+        notIn: [StatusInscricao.CANCELADO, StatusInscricao.TRANCADO],
+      },
+    },
+  });
+
+  return count > 0;
+};
+
+const ensureInstrutorPodeAcessarTurma = async (
+  client: PrismaClientOrTx,
+  cursoId: string,
+  turmaId: string,
+  usuarioId: string,
+) => {
+  const turma = await client.cursosTurmas.findFirst({
+    where: {
+      id: turmaId,
+      cursoId,
+      OR: [
+        { CursosTurmasAulas: { some: { instrutorId: usuarioId } } },
+        { CursosTurmasProvas: { some: { instrutorId: usuarioId, ativo: true } } },
+      ],
+    },
+    select: { id: true },
+  });
+
+  if (!turma) {
+    const error = new Error('Instrutor só pode acessar conteúdos vinculados às próprias turmas');
+    (error as any).code = 'FORBIDDEN';
+    throw error;
+  }
+};
+
+const ensureInstrutorPodeAcessarAula = async (
+  client: PrismaClientOrTx,
+  cursoId: string,
+  turmaId: string,
+  aulaId: string,
+  usuarioId: string,
+) => {
+  const aula = await client.cursosTurmasAulas.findFirst({
+    where: {
+      id: aulaId,
+      turmaId,
+      CursosTurmas: { cursoId },
+    },
+    select: {
+      id: true,
+      instrutorId: true,
+      CursosTurmas: { select: { instrutorId: true } },
+    },
+  });
+
+  if (!aula) {
+    const error = new Error('Aula não encontrada para a turma informada');
+    (error as any).code = 'AULA_NOT_FOUND';
+    throw error;
+  }
+
+  const vinculado = aula.instrutorId
+    ? aula.instrutorId === usuarioId
+    : aula.CursosTurmas?.instrutorId === usuarioId;
+
+  if (!vinculado) {
+    const error = new Error('Instrutor só pode acessar aulas vinculadas a ele');
+    (error as any).code = 'FORBIDDEN';
+    throw error;
+  }
+};
 
 type PrismaClientOrTx = Prisma.TransactionClient | typeof prisma;
 
@@ -38,7 +130,7 @@ const ensureTurmaBelongsToCurso = async (
   turmaId: string,
 ): Promise<{ id: string; metodo: CursosMetodos }> => {
   const turma = await client.cursosTurmas.findFirst({
-    where: { id: turmaId, cursoId },
+    where: { id: turmaId, cursoId, deletedAt: null },
     select: { id: true, metodo: true },
   });
 
@@ -145,6 +237,36 @@ const generateMeetUrl = () => {
   return `https://meet.google.com/${segments.join('-')}`;
 };
 
+const generateUniqueAulaCodigo = async (client: PrismaClientOrTx) => {
+  const ultimaAula = await client.cursosTurmasAulas.findFirst({
+    where: { codigo: { startsWith: 'AUL-' } },
+    orderBy: { codigo: 'desc' },
+    select: { codigo: true },
+  });
+
+  let numero = 1;
+  if (ultimaAula?.codigo) {
+    const match = ultimaAula.codigo.match(/AUL-(\d+)/);
+    if (match) {
+      numero = parseInt(match[1], 10) + 1;
+    }
+  }
+
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    const candidate = `AUL-${(numero + attempt).toString().padStart(6, '0')}`;
+    const existing = await client.cursosTurmasAulas.findFirst({
+      where: { codigo: candidate },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return candidate;
+    }
+  }
+
+  return `AUL-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 10)}`;
+};
+
 const resolveDeliveryFieldsOnCreate = (
   metodo: CursosMetodos,
   data: AulaInput & { nome: string },
@@ -246,11 +368,22 @@ const resolveDeliveryFieldsOnUpdate = (
 };
 
 export const aulasService = {
-  async list(cursoId: string, turmaId: string) {
+  async list(
+    cursoId: string,
+    turmaId: string,
+    actor?: { id?: string | null; role?: Roles | null },
+  ) {
     await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
 
+    if (actor?.role === Roles.INSTRUTOR && actor.id) {
+      await ensureInstrutorPodeAcessarTurma(prisma, cursoId, turmaId, actor.id);
+    }
+
     const aulas = await prisma.cursosTurmasAulas.findMany({
-      where: { turmaId },
+      where: {
+        turmaId,
+        ...(actor?.role === Roles.INSTRUTOR && actor.id ? { instrutorId: actor.id } : {}),
+      },
       orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
       ...aulaWithMateriaisInclude,
     });
@@ -258,15 +391,66 @@ export const aulasService = {
     return (aulas as AulaWithMateriais[]).map(mapAula);
   },
 
-  async get(cursoId: string, turmaId: string, aulaId: string) {
+  async get(
+    cursoId: string,
+    turmaId: string,
+    aulaId: string,
+    actor?: { id?: string | null; role?: Roles | null },
+  ) {
     await ensureAulaBelongsToTurma(prisma, cursoId, turmaId, aulaId);
+
+    if (actor?.role === Roles.INSTRUTOR && actor.id) {
+      await ensureInstrutorPodeAcessarAula(prisma, cursoId, turmaId, aulaId, actor.id);
+    }
 
     return fetchAula(prisma, aulaId);
   },
 
-  async create(cursoId: string, turmaId: string, data: AulaInput & { nome: string }) {
-    return prisma.$transaction(async (tx) => {
-      const turma = await ensureTurmaBelongsToCurso(tx, cursoId, turmaId);
+  async create(
+    cursoId: string,
+    turmaId: string,
+    data: AulaInput & { nome: string },
+    actor?: { id?: string | null; role?: Roles | null },
+  ) {
+    const { aula, notificarAlunos } = await prisma.$transaction(async (tx) => {
+      const turma = await tx.cursosTurmas.findFirst({
+        where: { id: turmaId, cursoId, deletedAt: null },
+        select: {
+          id: true,
+          metodo: true,
+          status: true,
+          dataInicio: true,
+          instrutorId: true,
+          CursosTurmasInstrutores: {
+            where: actor?.id ? { instrutorId: actor.id } : undefined,
+            select: { instrutorId: true },
+          },
+        },
+      });
+
+      if (!turma) {
+        const error = new Error('Turma não encontrada para o curso informado');
+        (error as any).code = 'TURMA_NOT_FOUND';
+        throw error;
+      }
+
+      const turmaIniciada = turmaJaFoiIniciada(turma);
+      const actorLinked = Boolean(
+        actor?.id &&
+          (turma.instrutorId === actor.id || (turma.CursosTurmasInstrutores?.length ?? 0) > 0),
+      );
+
+      if (actor?.role === Roles.INSTRUTOR && !actorLinked) {
+        const error = new Error('Instrutor só pode criar aulas em turmas vinculadas a ele');
+        (error as any).code = 'FORBIDDEN';
+        throw error;
+      }
+
+      if (actor?.role === Roles.INSTRUTOR && turmaIniciada) {
+        const error = new Error('Instrutor não pode criar aula em turma já iniciada');
+        (error as any).code = 'INSTRUTOR_NAO_PODE_CRIAR_CONTEUDO_EM_TURMA_INICIADA';
+        throw error;
+      }
 
       if (data.moduloId) {
         await ensureModuloBelongsToTurma(tx, turmaId, data.moduloId);
@@ -275,20 +459,7 @@ export const aulasService = {
       const ordem = data.ordem ?? (await tx.cursosTurmasAulas.count({ where: { turmaId } })) + 1;
       const deliveryFields = resolveDeliveryFieldsOnCreate(turma.metodo, data);
 
-      // Gerar código único para a aula
-      const ultimaAula = await tx.cursosTurmasAulas.findFirst({
-        where: { turmaId },
-        orderBy: { criadoEm: 'desc' },
-        select: { codigo: true },
-      });
-
-      let numero = 1;
-      if (ultimaAula?.codigo) {
-        const match = ultimaAula.codigo.match(/AUL-(\d+)/);
-        if (match) numero = parseInt(match[1], 10) + 1;
-      }
-
-      const codigo = `AUL-${numero.toString().padStart(6, '0')}`;
+      const codigo = await generateUniqueAulaCodigo(tx);
 
       const aula = await tx.cursosTurmasAulas.create({
         data: {
@@ -298,6 +469,7 @@ export const aulasService = {
           nome: data.nome,
           descricao: data.descricao ?? null,
           ordem,
+          instrutorId: actor?.role === Roles.INSTRUTOR ? (actor.id ?? null) : undefined,
           ...deliveryFields,
         },
       });
@@ -313,13 +485,51 @@ export const aulasService = {
 
       aulasLogger.info({ turmaId, aulaId: aula.id }, 'Aula criada com sucesso');
 
-      return fetchAula(tx, aula.id);
+      return {
+        aula: await fetchAula(tx, aula.id),
+        notificarAlunos:
+          actor?.role === Roles.PEDAGOGICO &&
+          turmaIniciada &&
+          (await hasActiveInscricoes(tx, turmaId))
+            ? { aulaId: aula.id, nome: aula.nome }
+            : null,
+      };
     });
+
+    if (notificarAlunos) {
+      try {
+        await notificacoesHelper.notificarAlunosDaTurma(turmaId, {
+          tipo: 'NOVA_AULA',
+          titulo: `Nova aula: ${notificarAlunos.nome}`,
+          mensagem: 'Foi adicionada uma nova aula à turma em andamento.',
+          prioridade: 'NORMAL',
+          linkAcao: `/turmas/${turmaId}`,
+          eventoId: notificarAlunos.aulaId,
+        });
+      } catch (error) {
+        aulasLogger.warn(
+          { err: error, turmaId, aulaId: notificarAlunos.aulaId },
+          'Falha ao notificar alunos após criação pedagógica da aula',
+        );
+      }
+    }
+
+    return aula;
   },
 
-  async update(cursoId: string, turmaId: string, aulaId: string, data: AulaInput) {
+  async update(
+    cursoId: string,
+    turmaId: string,
+    aulaId: string,
+    data: AulaInput,
+    actor?: { id?: string | null; role?: Roles | null },
+  ) {
     return prisma.$transaction(async (tx) => {
       const aulaInfo = await ensureAulaBelongsToTurma(tx, cursoId, turmaId, aulaId);
+
+      if (actor?.role === Roles.INSTRUTOR && actor.id) {
+        await ensureInstrutorPodeAcessarAula(tx, cursoId, turmaId, aulaId, actor.id);
+      }
 
       if (data.moduloId) {
         await ensureModuloBelongsToTurma(tx, turmaId, data.moduloId);
@@ -357,9 +567,18 @@ export const aulasService = {
     });
   },
 
-  async remove(cursoId: string, turmaId: string, aulaId: string) {
+  async remove(
+    cursoId: string,
+    turmaId: string,
+    aulaId: string,
+    actor?: { id?: string | null; role?: Roles | null },
+  ) {
     return prisma.$transaction(async (tx) => {
       await ensureAulaBelongsToTurma(tx, cursoId, turmaId, aulaId);
+
+      if (actor?.role === Roles.INSTRUTOR && actor.id) {
+        await ensureInstrutorPodeAcessarAula(tx, cursoId, turmaId, aulaId, actor.id);
+      }
 
       await tx.cursosTurmasAulas.delete({ where: { id: aulaId } });
 

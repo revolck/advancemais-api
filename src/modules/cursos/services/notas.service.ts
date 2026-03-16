@@ -26,7 +26,7 @@ const ensureTurmaBelongsToCurso = async (
   turmaId: string,
 ) => {
   const turma = await client.cursosTurmas.findFirst({
-    where: { id: turmaId, cursoId },
+    where: { id: turmaId, cursoId, deletedAt: null },
     select: { id: true },
   });
 

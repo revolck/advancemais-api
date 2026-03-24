@@ -1578,16 +1578,18 @@ export class AdminService {
       userAgent?: string | null;
     },
   ) {
-    // Validações
     if (!userId || !role) {
-      throw new Error('ID do usuário e role são obrigatórios');
+      throw this.createServiceError(
+        'ID do usuário e role são obrigatórios',
+        400,
+        'VALIDATION_ERROR',
+      );
     }
 
-    const roleEnum = role.trim();
+    const roleEnum = role.trim() as Roles;
 
-    // Prevenir auto-demoção de ADMIN
-    if (adminId === userId && roleEnum !== Roles.ADMIN) {
-      throw new Error('Você não pode alterar sua própria role para uma função não-administrativa');
+    if (!(roleEnum in Roles)) {
+      throw this.createServiceError('Role inválida', 400, 'VALIDATION_ERROR');
     }
 
     const usuarioAntes = await prisma.usuarios.findUnique({
@@ -1598,11 +1600,55 @@ export class AdminService {
         nomeCompleto: true,
         role: true,
         status: true,
+        UsuariosVerificacaoEmail: {
+          select: UsuariosVerificacaoEmailSelect,
+        },
       },
     });
 
     if (!usuarioAntes) {
-      throw new Error('Usuário não encontrado');
+      throw this.createServiceError('Usuário não encontrado', 404, 'USER_NOT_FOUND');
+    }
+
+    if (adminId && adminId === userId) {
+      throw this.createServiceError(
+        'Você não pode alterar sua própria função.',
+        403,
+        'FORBIDDEN_SELF_ROLE_CHANGE',
+      );
+    }
+
+    if (options?.actorRole === Roles.PEDAGOGICO) {
+      const pedagogicoAllowedRoles: Roles[] = [Roles.ALUNO_CANDIDATO, Roles.INSTRUTOR];
+      if (
+        !pedagogicoAllowedRoles.includes(usuarioAntes.role) ||
+        !pedagogicoAllowedRoles.includes(roleEnum)
+      ) {
+        throw this.createServiceError(
+          'PEDAGOGICO só pode alterar função entre ALUNO_CANDIDATO e INSTRUTOR.',
+          403,
+          'FORBIDDEN_USER_ROLE',
+        );
+      }
+    }
+
+    if (options?.actorRole === Roles.MODERADOR) {
+      const restrictedRoles: Roles[] = [Roles.ADMIN, Roles.MODERADOR];
+      if (restrictedRoles.includes(usuarioAntes.role) || restrictedRoles.includes(roleEnum)) {
+        throw this.createServiceError(
+          'MODERADOR não pode alterar usuários ADMIN/MODERADOR nem promover para essas funções.',
+          403,
+          'FORBIDDEN_USER_ROLE',
+        );
+      }
+    }
+
+    if (usuarioAntes.role === roleEnum) {
+      throw this.createServiceError(
+        'A função informada já está aplicada ao usuário.',
+        409,
+        'USER_ROLE_UPDATE_BLOCKED',
+      );
     }
 
     const usuario = await prisma.usuarios.update({
@@ -1613,12 +1659,16 @@ export class AdminService {
         email: true,
         nomeCompleto: true,
         role: true,
+        status: true,
         atualizadoEm: true,
-        authId: true,
+        UsuariosVerificacaoEmail: {
+          select: UsuariosVerificacaoEmailSelect,
+        },
       },
     });
 
     await invalidateUserCache(usuario);
+    await this.invalidateListCache();
 
     if (adminId) {
       await recordUserAuditEvent({
@@ -1654,8 +1704,16 @@ export class AdminService {
     );
 
     return {
-      message: 'Role do usuário atualizada com sucesso',
-      usuario,
+      id: usuario.id,
+      nomeCompleto: usuario.nomeCompleto,
+      email: usuario.email,
+      roleAnterior: usuarioAntes.role,
+      role: usuario.role,
+      status: usuario.status,
+      emailVerificado: normalizeEmailVerification(usuario.UsuariosVerificacaoEmail).emailVerificado,
+      emailVerificadoEm: normalizeEmailVerification(usuario.UsuariosVerificacaoEmail)
+        .emailVerificadoEm,
+      atualizadoEm: usuario.atualizadoEm,
     };
   }
 

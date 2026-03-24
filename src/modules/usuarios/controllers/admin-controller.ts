@@ -340,11 +340,22 @@ export class AdminController {
     const log = this.getLogger(req);
     try {
       const { userId } = req.params;
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(userId)) {
+        return res.status(400).json({
+          success: false,
+          code: 'INVALID_ID',
+          message: 'ID do usuário inválido. Deve ser um UUID válido.',
+        });
+      }
+
       const validation = updateRoleSchema.safeParse(req.body);
       if (!validation.success) {
         const errors = formatZodErrors(validation.error);
         log.warn({ errors }, 'Erro de validação ao atualizar role');
         return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
           message: 'Dados inválidos para atualização de role',
           errors,
         });
@@ -358,9 +369,35 @@ export class AdminController {
         ip: req.ip ?? null,
         userAgent: req.get('user-agent') ?? null,
       });
-      res.json(result);
+
+      return res.json({
+        success: true,
+        code: 'USER_ROLE_UPDATED',
+        message: 'Função do usuário alterada com sucesso.',
+        data: result,
+      });
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
+      const statusCode = (error as any)?.statusCode;
+      const code = (error as any)?.code;
+
+      if (code === 'USER_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code,
+          message: 'Usuário não encontrado',
+        });
+      }
+
+      if (typeof statusCode === 'number' && statusCode >= 400 && statusCode < 500) {
+        log.warn({ err }, 'Falha ao atualizar role');
+        return res.status(statusCode).json({
+          success: false,
+          code: code ?? 'USER_ROLE_UPDATE_ERROR',
+          message: err.message,
+        });
+      }
+
       log.error({ err }, 'Erro ao atualizar role');
       return next(err);
     }

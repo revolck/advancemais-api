@@ -1133,7 +1133,7 @@ router.patch(
  * @openapi
  * /api/v1/usuarios/usuarios/{userId}/role:
  *   patch:
- *     summary: Atualizar role de usuário
+ *     summary: Alterar função principal de usuário
  *     tags: [Usuários]
  *     security:
  *       - bearerAuth: []
@@ -1162,12 +1162,16 @@ router.patch(
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Sem permissão para alterar a função do usuário
  *       404:
  *         description: Usuário não encontrado
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: Fluxo de alteração de função bloqueado por regra de negócio
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
@@ -1175,11 +1179,11 @@ router.patch(
  *           curl -X PATCH "http://localhost:3000/api/v1/usuarios/usuarios/{userId}/role" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -H "Content-Type: application/json" \\
- *            -d '{"role":"MODERADOR"}'
+ *            -d '{"role":"INSTRUTOR","motivo":"Ajuste administrativo pelo painel"}'
  */
 router.patch(
   '/usuarios/:userId/role',
-  supabaseAuthMiddleware(['ADMIN']),
+  supabaseAuthMiddleware(adminRoles),
   asyncHandler(adminController.atualizarRole),
 );
 

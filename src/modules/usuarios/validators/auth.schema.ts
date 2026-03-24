@@ -116,7 +116,12 @@ export const updateRoleSchema = z.object({
     required_error: 'Role é obrigatória',
     invalid_type_error: 'Role inválida',
   }),
-  motivo: z.string().max(500).optional(),
+  motivo: z
+    .string({ invalid_type_error: 'Motivo deve ser um texto' })
+    .trim()
+    .min(3, 'Motivo deve ter pelo menos 3 caracteres')
+    .max(500, 'Motivo deve ter no máximo 500 caracteres')
+    .optional(),
 });
 
 export const bypassEmailVerificationSchema = z.object({

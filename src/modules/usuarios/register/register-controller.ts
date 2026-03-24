@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';
+import { prisma } from '@/config/prisma';
 import { invalidateCacheByPrefix } from '../../../utils/cache';
 import { invalidateUserCache } from '../utils/cache';
 import { TiposDeUsuarios, Roles } from '../enums';
@@ -13,6 +14,8 @@ import {
   extractAdminSocialLinks,
   processUserTypeSpecificData,
 } from './user-creation-helpers';
+import { buildUserProfileSnapshot, recordUserAuditEvent } from '../utils/user-history';
+import { UsuariosVerificacaoEmailSelect } from '../utils/email-verification';
 
 /**
  * Controller para criação de novos usuários
@@ -149,6 +152,76 @@ export const criarUsuario = async (req: Request, res: Response, next: NextFuncti
     const usuario = await createUserWithTransaction(userData, {
       logger: createCorrelationLogger(correlationId, 'createUserWithTransaction'),
     });
+
+    const usuarioHistorico = await prisma.usuarios.findUnique({
+      where: { id: usuario.id },
+      select: {
+        id: true,
+        nomeCompleto: true,
+        email: true,
+        cpf: true,
+        cnpj: true,
+        role: true,
+        status: true,
+        tipoUsuario: true,
+        criadoEm: true,
+        atualizadoEm: true,
+        UsuariosInformation: {
+          select: {
+            telefone: true,
+            genero: true,
+            dataNasc: true,
+            descricao: true,
+            avatarUrl: true,
+            inscricao: true,
+          },
+        },
+        UsuariosRedesSociais: {
+          select: {
+            linkedin: true,
+            instagram: true,
+            facebook: true,
+            youtube: true,
+            twitter: true,
+            tiktok: true,
+          },
+        },
+        UsuariosEnderecos: {
+          orderBy: { criadoEm: 'asc' },
+          select: {
+            logradouro: true,
+            numero: true,
+            bairro: true,
+            cidade: true,
+            estado: true,
+            cep: true,
+          },
+        },
+        UsuariosVerificacaoEmail: {
+          select: UsuariosVerificacaoEmailSelect,
+        },
+      },
+    });
+
+    if (usuarioHistorico) {
+      await recordUserAuditEvent({
+        client: prisma,
+        actorId: usuario.id,
+        actorRole: usuario.role,
+        targetUserId: usuario.id,
+        action: 'USUARIO_CRIADO',
+        descricao: 'Conta criada via cadastro público.',
+        dadosNovos: buildUserProfileSnapshot({
+          ...usuarioHistorico,
+          emailVerificado: usuarioHistorico.UsuariosVerificacaoEmail?.emailVerificado ?? false,
+          emailVerificadoEm: usuarioHistorico.UsuariosVerificacaoEmail?.emailVerificadoEm ?? null,
+        }),
+        meta: {
+          origem: 'CADASTRO_PUBLICO',
+        },
+      });
+    }
+
     await invalidateUserCache(usuario);
     try {
       await invalidateCacheByPrefix('dashboard:');

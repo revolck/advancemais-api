@@ -12,9 +12,11 @@ import { logger } from '../../../utils/logger';
 import {
   adminCreateUserSchema,
   adminAlunoBloqueioSchema,
+  bypassEmailVerificationSchema,
   formatZodErrors,
   updateRoleSchema,
   updateStatusSchema,
+  userHistoryQuerySchema,
 } from '../validators/auth.schema';
 import {
   aplicarBloqueioAluno,
@@ -197,6 +199,68 @@ export class AdminController {
     }
   };
 
+  public buscarHistoricoUsuario = async (req: Request, res: Response, next: NextFunction) => {
+    const log = this.getLogger(req);
+    try {
+      const { userId } = req.params;
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(userId)) {
+        return res.status(400).json({
+          success: false,
+          code: 'INVALID_ID',
+          message: 'ID do usuário inválido. Deve ser um UUID válido.',
+        });
+      }
+
+      const validation = userHistoryQuerySchema.safeParse(req.query);
+      if (!validation.success) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Filtros inválidos para histórico do usuário',
+          errors: formatZodErrors(validation.error),
+        });
+      }
+
+      const result = await this.adminService.buscarHistoricoUsuario(userId, validation.data, {
+        userRole: req.user?.role,
+      });
+
+      return res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      const statusCode = (error as any)?.statusCode;
+      const code = (error as any)?.code;
+
+      if (code === 'USER_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code,
+          message: 'Usuário não encontrado',
+        });
+      }
+
+      if (typeof statusCode === 'number' && statusCode >= 400 && statusCode < 500) {
+        log.warn({ err }, 'Falha ao buscar histórico do usuário');
+        return res.status(statusCode).json({
+          success: false,
+          code: code ?? 'USER_HISTORY_ERROR',
+          message: err.message,
+        });
+      }
+
+      log.error({ err }, 'Erro ao buscar histórico do usuário');
+      return res.status(500).json({
+        success: false,
+        code: 'USER_HISTORY_ERROR',
+        message: 'Erro ao obter histórico do usuário',
+      });
+    }
+  };
+
   /**
    * Busca candidato específico
    */
@@ -255,7 +319,12 @@ export class AdminController {
 
       const { status, motivo } = validation.data;
 
-      const result = await this.adminService.atualizarStatus(userId, status, motivo);
+      const result = await this.adminService.atualizarStatus(userId, status, motivo, {
+        actorId: req.user?.id,
+        actorRole: req.user?.role,
+        ip: req.ip ?? null,
+        userAgent: req.get('user-agent') ?? null,
+      });
       res.json(result);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
@@ -284,7 +353,11 @@ export class AdminController {
       const { role, motivo } = validation.data;
       const adminId = req.user?.id;
 
-      const result = await this.adminService.atualizarRole(userId, role, motivo, adminId);
+      const result = await this.adminService.atualizarRole(userId, role, motivo, adminId, {
+        actorRole: req.user?.role,
+        ip: req.ip ?? null,
+        userAgent: req.get('user-agent') ?? null,
+      });
       res.json(result);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
@@ -647,7 +720,13 @@ export class AdminController {
       }
 
       const userRole = req.user?.role;
-      const result = await this.adminService.atualizarUsuario(userId, req.body, { userRole });
+      const result = await this.adminService.atualizarUsuario(userId, req.body, {
+        userRole,
+        actorId: req.user?.id,
+        actorRole: req.user?.role,
+        ip: req.ip ?? null,
+        userAgent: req.get('user-agent') ?? null,
+      });
 
       res.json({
         success: true,
@@ -696,6 +775,138 @@ export class AdminController {
           success: false,
           code: (error as any)?.code,
           message: err.message,
+        });
+      }
+
+      return next(err);
+    }
+  };
+
+  public liberarValidacaoEmail = async (req: Request, res: Response, next: NextFunction) => {
+    const log = this.getLogger(req);
+    try {
+      const { userId } = req.params;
+
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(userId)) {
+        return res.status(400).json({
+          success: false,
+          code: 'INVALID_ID',
+          message: 'ID do usuário inválido. Deve ser um UUID válido.',
+        });
+      }
+
+      const validation = bypassEmailVerificationSchema.safeParse(req.body ?? {});
+      if (!validation.success) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Dados inválidos para liberação da validação de email',
+          errors: formatZodErrors(validation.error),
+        });
+      }
+
+      const result = await this.adminService.liberarValidacaoEmail(userId, {
+        actorId: req.user?.id,
+        actorRole: req.user?.role,
+        motivo: validation.data.motivo,
+        ip: req.ip ?? null,
+        userAgent: req.get('user-agent') ?? null,
+      });
+
+      return res.json({
+        success: true,
+        code: 'EMAIL_VALIDATION_BYPASSED',
+        message: result.alreadyVerified
+          ? 'O usuário já estava com a validação de email liberada.'
+          : 'Validação de email liberada manualmente com sucesso.',
+        data: result,
+      });
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      const statusCode = (error as any)?.statusCode;
+      const code = (error as any)?.code;
+
+      if (code === 'USER_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code,
+          message: 'Usuário não encontrado',
+        });
+      }
+
+      if (typeof statusCode === 'number' && statusCode >= 400 && statusCode < 500) {
+        log.warn({ err }, 'Falha ao liberar validação de email');
+        return res.status(statusCode).json({
+          success: false,
+          code: code ?? 'ADMIN_EMAIL_BYPASS_ERROR',
+          message: err.message,
+        });
+      }
+
+      return next(err);
+    }
+  };
+
+  public liberarAcessoUsuario = async (req: Request, res: Response, next: NextFunction) => {
+    const log = this.getLogger(req);
+    try {
+      const { userId } = req.params;
+
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(userId)) {
+        return res.status(400).json({
+          success: false,
+          code: 'INVALID_ID',
+          message: 'ID do usuário inválido. Deve ser um UUID válido.',
+        });
+      }
+
+      const validation = bypassEmailVerificationSchema.safeParse(req.body ?? {});
+      if (!validation.success) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Dados inválidos para liberação completa de acesso',
+          errors: formatZodErrors(validation.error),
+        });
+      }
+
+      const result = await this.adminService.liberarAcessoUsuario(userId, {
+        actorId: req.user?.id,
+        actorRole: req.user?.role,
+        motivo: validation.data.motivo,
+        ip: req.ip ?? null,
+        userAgent: req.get('user-agent') ?? null,
+      });
+
+      return res.json({
+        success: true,
+        code: 'USER_ACCESS_RELEASED',
+        message: 'Acesso do usuário liberado com sucesso.',
+        data: result,
+      });
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      const statusCode = (error as any)?.statusCode;
+      const code = (error as any)?.code;
+
+      if (code === 'USER_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code,
+          message: 'Usuário não encontrado',
+        });
+      }
+
+      if (typeof statusCode === 'number' && statusCode >= 400 && statusCode < 500) {
+        log.warn({ err }, 'Falha ao liberar acesso do usuário');
+        const details = (error as any)?.details;
+        return res.status(statusCode).json({
+          success: false,
+          code: code ?? 'USER_ACCESS_RELEASE_ERROR',
+          message: err.message,
+          ...(details ? { details } : {}),
         });
       }
 

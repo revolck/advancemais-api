@@ -13,6 +13,7 @@ import {
   limparDocumento,
 } from '../utils/validation';
 import { invalidateUserCache } from '../utils/cache';
+import { recordUserAuditEvent } from '../utils/user-history';
 
 /**
  * Interface para solicitação de recuperação de senha
@@ -484,15 +485,16 @@ export class PasswordRecoveryController {
       const novaSenhaHash = await bcrypt.hash(novaSenha, 12);
 
       // Atualiza senha e remove token
-      await prisma.$transaction([
-        prisma.usuarios.update({
+      await prisma.$transaction(async (tx) => {
+        await tx.usuarios.update({
           where: { id: recuperacao.Usuarios.id },
           data: {
             senha: novaSenhaHash,
             atualizadoEm: new Date(),
           },
-        }),
-        prisma.usuariosRecuperacaoSenha.update({
+        });
+
+        await tx.usuariosRecuperacaoSenha.update({
           where: { usuarioId: recuperacao.Usuarios.id },
           data: {
             tokenRecuperacao: null,
@@ -500,8 +502,20 @@ export class PasswordRecoveryController {
             tentativasRecuperacao: 0,
             ultimaTentativaRecuperacao: null,
           },
-        }),
-      ]);
+        });
+
+        await recordUserAuditEvent({
+          client: tx,
+          actorId: recuperacao.Usuarios.id,
+          targetUserId: recuperacao.Usuarios.id,
+          action: 'USUARIO_SENHA_RESETADA',
+          descricao: 'Senha redefinida com sucesso via recuperação de senha.',
+          meta: {
+            modo: 'TOKEN_RECUPERACAO',
+            origem: 'RECUPERACAO_SENHA',
+          },
+        });
+      });
 
       await invalidateUserCache(recuperacao.Usuarios);
 

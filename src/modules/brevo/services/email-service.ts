@@ -9,6 +9,7 @@ import {
   UsuariosVerificacaoEmailSelect,
   normalizeEmailVerification,
 } from '@/modules/usuarios/utils/email-verification';
+import { recordUserAuditEvent } from '@/modules/usuarios/utils/user-history';
 
 export interface EmailResult {
   success: boolean;
@@ -362,21 +363,45 @@ export class EmailService {
         return { valid: false, expired: true, userId: verification.usuarioId, deleted: true };
       }
 
-      await prisma.$transaction([
-        prisma.usuariosVerificacaoEmail.update({
+      const verifiedAt = new Date();
+
+      await prisma.$transaction(async (tx) => {
+        await tx.usuariosVerificacaoEmail.update({
           where: { usuarioId: verification.usuarioId },
           data: {
             emailVerificado: true,
-            emailVerificadoEm: new Date(),
+            emailVerificadoEm: verifiedAt,
             emailVerificationToken: null,
             emailVerificationTokenExp: null,
           },
-        }),
-        prisma.usuarios.update({
+        });
+
+        await tx.usuarios.update({
           where: { id: verification.usuarioId },
           data: { status: 'ATIVO' },
-        }),
-      ]);
+        });
+
+        await recordUserAuditEvent({
+          client: tx,
+          actorId: verification.usuarioId,
+          targetUserId: verification.usuarioId,
+          action: 'USUARIO_EMAIL_VERIFICADO',
+          descricao: 'Email verificado com sucesso pelo link de confirmação.',
+          dadosAnteriores: {
+            emailVerificado: false,
+            emailVerificadoEm: null,
+            status: verification.Usuarios.status,
+          },
+          dadosNovos: {
+            emailVerificado: true,
+            emailVerificadoEm: verifiedAt.toISOString(),
+            status: 'ATIVO',
+          },
+          meta: {
+            origem: 'EMAIL_TOKEN',
+          },
+        });
+      });
 
       await invalidateUserCache({ id: verification.usuarioId });
 

@@ -27,11 +27,13 @@ describe('API - Notas visão geral (/cursos/:cursoId/notas e /cursos/notas)', ()
   let alunoSemPermissao: TestUser;
   let alunoA: TestUser;
   let alunoB: TestUser;
+  let alunoC: TestUser;
 
   let cursoId: string;
   let turmaId: string;
   let inscricaoAId: string;
   let inscricaoBId: string;
+  let inscricaoCId: string;
   let provaId: string;
   let atividadeId: string;
   let aulaId: string;
@@ -68,8 +70,22 @@ describe('API - Notas visão geral (/cursos/:cursoId/notas e /cursos/notas)', ()
       email: `aluno-b-${randomUUID()}@test.com`,
       nomeCompleto: 'Aluno B',
     });
+    alunoC = await createTestUser({
+      role: Roles.ALUNO_CANDIDATO,
+      email: `aluno-c-${randomUUID()}@test.com`,
+      nomeCompleto: 'Aluno C',
+    });
 
-    testUsers.push(admin, moderador, pedagogico, instrutor, alunoSemPermissao, alunoA, alunoB);
+    testUsers.push(
+      admin,
+      moderador,
+      pedagogico,
+      instrutor,
+      alunoSemPermissao,
+      alunoA,
+      alunoB,
+      alunoC,
+    );
 
     const suffix = Date.now().toString().slice(-6);
 
@@ -130,7 +146,7 @@ describe('API - Notas visão geral (/cursos/:cursoId/notas e /cursos/notas)', ()
     atividadeId = atividade.id;
     aulaId = aula.id;
 
-    const [inscricaoA, inscricaoB] = await Promise.all([
+    const [inscricaoA, inscricaoB, inscricaoC] = await Promise.all([
       prisma.cursosTurmasInscricoes.create({
         data: {
           turmaId,
@@ -147,10 +163,19 @@ describe('API - Notas visão geral (/cursos/:cursoId/notas e /cursos/notas)', ()
           statusPagamento: 'APROVADO',
         },
       }),
+      prisma.cursosTurmasInscricoes.create({
+        data: {
+          turmaId,
+          alunoId: alunoC.id,
+          codigo: `INSC-NTC-${suffix}`,
+          statusPagamento: 'APROVADO',
+        },
+      }),
     ]);
 
     inscricaoAId = inscricaoA.id;
     inscricaoBId = inscricaoB.id;
+    inscricaoCId = inscricaoC.id;
 
     await prisma.cursosNotas.createMany({
       data: [
@@ -212,7 +237,9 @@ describe('API - Notas visão geral (/cursos/:cursoId/notas e /cursos/notas)', ()
       await prisma.auditoriaLogs.deleteMany({
         where: {
           entidadeId: { in: notasCriadasViaApi },
-          acao: 'NOTA_MANUAL_ADICIONADA',
+          acao: {
+            in: ['NOTA_MANUAL_ADICIONADA', 'NOTA_MANUAL_ATUALIZADA', 'NOTA_MANUAL_EXCLUIDA'],
+          },
         },
       });
     }
@@ -224,10 +251,10 @@ describe('API - Notas visão geral (/cursos/:cursoId/notas e /cursos/notas)', ()
       where: { id: { in: [provaId, atividadeId] } },
     });
     await prisma.cursosNotas.deleteMany({
-      where: { inscricaoId: { in: [inscricaoAId, inscricaoBId] } },
+      where: { inscricaoId: { in: [inscricaoAId, inscricaoBId, inscricaoCId] } },
     });
     await prisma.cursosTurmasInscricoes.deleteMany({
-      where: { id: { in: [inscricaoAId, inscricaoBId] } },
+      where: { id: { in: [inscricaoAId, inscricaoBId, inscricaoCId] } },
     });
     await prisma.cursosTurmas.deleteMany({ where: { id: turmaId } });
     await prisma.cursos.deleteMany({ where: { id: cursoId } });
@@ -298,6 +325,9 @@ describe('API - Notas visão geral (/cursos/:cursoId/notas e /cursos/notas)', ()
         alunoNome: expect.any(String),
         nota: expect.any(Number),
         atualizadoEm: expect.anything(),
+        notaId: expect.anything(),
+        historicoNotaId: expect.anything(),
+        historicoDisponivel: expect.any(Boolean),
         origem: expect.objectContaining({
           tipo: expect.any(String),
           id: expect.anything(),
@@ -564,31 +594,53 @@ describe('API - Notas visão geral (/cursos/:cursoId/notas e /cursos/notas)', ()
         }),
       }),
     );
+
+    const historicoResponse = await request(app)
+      .get(`/api/v1/cursos/${cursoId}/turmas/${turmaId}/notas/${notaId}/historico`)
+      .set('Authorization', `Bearer ${admin.token}`)
+      .expect(200);
+
+    expect(historicoResponse.body).toMatchObject({
+      success: true,
+      data: {
+        notaId,
+      },
+    });
+    expect(historicoResponse.body.data.items[0]).toEqual(
+      expect.objectContaining({
+        acao: 'NOTA_MANUAL_ADICIONADA',
+        ator: expect.objectContaining({
+          id: admin.id,
+          nome: admin.nomeCompleto,
+          role: Roles.ADMIN,
+          roleLabel: 'Administrador',
+        }),
+      }),
+    );
   });
 
   it('deve criar nota manual com origem ATIVIDADE e AULA', async () => {
-    const [resAtividade, resAula] = await Promise.all([
-      request(app)
-        .post(`/api/v1/cursos/${cursoId}/turmas/${turmaId}/notas`)
-        .set('Authorization', `Bearer ${admin.token}`)
-        .send({
-          alunoId: alunoB.id,
-          nota: 6.5,
-          motivo: 'Atividade extra',
-          origem: { tipo: 'ATIVIDADE', id: atividadeId },
-        })
-        .expect(201),
-      request(app)
-        .post(`/api/v1/cursos/${cursoId}/turmas/${turmaId}/notas`)
-        .set('Authorization', `Bearer ${admin.token}`)
-        .send({
-          alunoId: alunoB.id,
-          nota: 1,
-          motivo: 'Participação em aula',
-          origem: { tipo: 'AULA', id: aulaId },
-        })
-        .expect(201),
-    ]);
+    const resAtividade = await request(app)
+      .post(`/api/v1/cursos/${cursoId}/turmas/${turmaId}/notas`)
+      .set('Authorization', `Bearer ${admin.token}`)
+      .send({
+        alunoId: alunoB.id,
+        nota: 6.5,
+        motivo: 'Atividade extra',
+        origem: { tipo: 'ATIVIDADE', id: atividadeId },
+      })
+      .expect(201);
+
+    const resAula = await request(app)
+      .post(`/api/v1/cursos/${cursoId}/turmas/${turmaId}/notas`)
+      .set('Authorization', `Bearer ${admin.token}`)
+      .send({
+        alunoId: alunoB.id,
+        nota: 1,
+        motivo: 'Participação em aula',
+        origem: { tipo: 'AULA', id: aulaId },
+      })
+      .expect(201);
 
     notasCriadasViaApi.push(resAtividade.body.id as string, resAula.body.id as string);
     expect(resAtividade.body.referenciaExterna).toBe(`ATIVIDADE:${atividadeId}`);
@@ -648,6 +700,10 @@ describe('API - Notas visão geral (/cursos/:cursoId/notas e /cursos/notas)', ()
         notaAtual: 10,
         disponivelParaAdicionar: 0,
       }),
+    });
+
+    await prisma.cursosNotas.delete({
+      where: { id: reachMax.body.id as string },
     });
   });
 
@@ -732,5 +788,216 @@ describe('API - Notas visão geral (/cursos/:cursoId/notas e /cursos/notas)', ()
       .expect(200);
 
     expect(deleteResponse.body).toMatchObject({ success: true });
+  });
+
+  it('deve registrar histórico de edição da nota manual', async () => {
+    const createResponse = await request(app)
+      .post(`/api/v1/cursos/${cursoId}/turmas/${turmaId}/notas`)
+      .set('Authorization', `Bearer ${admin.token}`)
+      .send({
+        alunoId: alunoA.id,
+        nota: 0.1,
+        motivo: 'Ajuste para histórico',
+        origem: { tipo: 'OUTRO', titulo: 'Histórico' },
+      })
+      .expect(201);
+
+    const notaManualId = createResponse.body.id as string;
+    notasCriadasViaApi.push(notaManualId);
+
+    await request(app)
+      .put(`/api/v1/cursos/${cursoId}/turmas/${turmaId}/notas/${notaManualId}`)
+      .set('Authorization', `Bearer ${admin.token}`)
+      .send({
+        nota: 0.2,
+        observacoes: 'Ajuste confirmado',
+      })
+      .expect(200);
+
+    const historicoResponse = await request(app)
+      .get(`/api/v1/cursos/${cursoId}/turmas/${turmaId}/notas/${notaManualId}/historico`)
+      .set('Authorization', `Bearer ${admin.token}`)
+      .expect(200);
+
+    expect(historicoResponse.body.data.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          acao: 'NOTA_MANUAL_ATUALIZADA',
+          dadosAnteriores: expect.objectContaining({ nota: 0.1 }),
+          dadosNovos: expect.objectContaining({ nota: 0.2, observacoes: 'Ajuste confirmado' }),
+        }),
+        expect.objectContaining({
+          acao: 'NOTA_MANUAL_ADICIONADA',
+        }),
+      ]),
+    );
+
+    await prisma.cursosNotas.delete({
+      where: { id: notaManualId },
+    });
+  });
+
+  it('deve manter histórico disponível após exclusão da nota manual', async () => {
+    const createResponse = await request(app)
+      .post(`/api/v1/cursos/${cursoId}/turmas/${turmaId}/notas`)
+      .set('Authorization', `Bearer ${admin.token}`)
+      .send({
+        alunoId: alunoA.id,
+        nota: 0.2,
+        motivo: 'Nota para exclusão auditada',
+        origem: { tipo: 'OUTRO', titulo: 'Exclusão' },
+      })
+      .expect(201);
+
+    const notaManualId = createResponse.body.id as string;
+    notasCriadasViaApi.push(notaManualId);
+
+    await request(app)
+      .delete(`/api/v1/cursos/${cursoId}/turmas/${turmaId}/notas/${notaManualId}`)
+      .set('Authorization', `Bearer ${admin.token}`)
+      .expect(200);
+
+    const historicoResponse = await request(app)
+      .get(`/api/v1/cursos/${cursoId}/turmas/${turmaId}/notas/${notaManualId}/historico`)
+      .set('Authorization', `Bearer ${admin.token}`)
+      .expect(200);
+
+    expect(historicoResponse.body.data.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          acao: 'NOTA_MANUAL_EXCLUIDA',
+          dadosAnteriores: expect.objectContaining({ notaId: notaManualId, nota: 0.2 }),
+          dadosNovos: null,
+        }),
+        expect.objectContaining({
+          acao: 'NOTA_MANUAL_ADICIONADA',
+        }),
+      ]),
+    );
+  });
+
+  it('deve registrar histórico individual ao limpar lançamentos manuais em lote', async () => {
+    const [nota1, nota2] = await Promise.all([
+      request(app)
+        .post(`/api/v1/cursos/${cursoId}/turmas/${turmaId}/notas`)
+        .set('Authorization', `Bearer ${admin.token}`)
+        .send({
+          alunoId: alunoB.id,
+          nota: 0.1,
+          motivo: 'Lote 1',
+          origem: { tipo: 'OUTRO', titulo: 'Lote' },
+        })
+        .expect(201),
+      request(app)
+        .post(`/api/v1/cursos/${cursoId}/turmas/${turmaId}/notas`)
+        .set('Authorization', `Bearer ${admin.token}`)
+        .send({
+          alunoId: alunoB.id,
+          nota: 0.1,
+          motivo: 'Lote 2',
+          origem: { tipo: 'OUTRO', titulo: 'Lote' },
+        })
+        .expect(201),
+    ]);
+
+    const nota1Id = nota1.body.id as string;
+    const nota2Id = nota2.body.id as string;
+    notasCriadasViaApi.push(nota1Id, nota2Id);
+
+    const clearResponse = await request(app)
+      .delete(`/api/v1/cursos/${cursoId}/turmas/${turmaId}/notas?alunoId=${alunoB.id}`)
+      .set('Authorization', `Bearer ${admin.token}`)
+      .expect(200);
+
+    expect(clearResponse.body).toMatchObject({
+      success: true,
+      deletedCount: expect.any(Number),
+    });
+    expect(clearResponse.body.deletedCount).toBeGreaterThanOrEqual(2);
+
+    const historicoResponse = await request(app)
+      .get(`/api/v1/cursos/${cursoId}/turmas/${turmaId}/notas/${nota1Id}/historico`)
+      .set('Authorization', `Bearer ${admin.token}`)
+      .expect(200);
+
+    expect(historicoResponse.body.data.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          acao: 'NOTA_MANUAL_EXCLUIDA',
+          descricao: expect.stringContaining('em lote'),
+        }),
+      ]),
+    );
+
+    const logExclusao = await prisma.auditoriaLogs.findFirst({
+      where: {
+        entidadeId: nota2Id,
+        acao: 'NOTA_MANUAL_EXCLUIDA',
+      },
+      orderBy: { criadoEm: 'desc' },
+    });
+
+    expect(logExclusao).not.toBeNull();
+  });
+
+  it('deve expor historicoNotaId na listagem mesmo após exclusão da nota manual', async () => {
+    const createResponse = await request(app)
+      .post(`/api/v1/cursos/${cursoId}/turmas/${turmaId}/notas`)
+      .set('Authorization', `Bearer ${admin.token}`)
+      .send({
+        alunoId: alunoC.id,
+        nota: 0.4,
+        motivo: 'Nota temporária com histórico',
+        origem: { tipo: 'OUTRO', titulo: 'Histórico oficial' },
+      })
+      .expect(201);
+
+    const notaManualId = createResponse.body.id as string;
+    notasCriadasViaApi.push(notaManualId);
+
+    await request(app)
+      .delete(`/api/v1/cursos/${cursoId}/turmas/${turmaId}/notas/${notaManualId}`)
+      .set('Authorization', `Bearer ${admin.token}`)
+      .expect(200);
+
+    const listResponse = await request(app)
+      .get('/api/v1/cursos/notas')
+      .set('Authorization', `Bearer ${admin.token}`)
+      .query({
+        cursoId,
+        turmaIds: turmaId,
+        search: 'Aluno C',
+        page: 1,
+        pageSize: 10,
+      })
+      .expect(200);
+
+    const itemAlunoC = (listResponse.body.data.items as any[]).find(
+      (item) => item.alunoId === alunoC.id,
+    );
+
+    expect(itemAlunoC).toEqual(
+      expect.objectContaining({
+        alunoId: alunoC.id,
+        notaId: null,
+        historicoNotaId: notaManualId,
+        historicoDisponivel: true,
+      }),
+    );
+
+    const historicoResponse = await request(app)
+      .get(
+        `/api/v1/cursos/${cursoId}/turmas/${turmaId}/notas/${itemAlunoC.historicoNotaId}/historico`,
+      )
+      .set('Authorization', `Bearer ${admin.token}`)
+      .expect(200);
+
+    expect(historicoResponse.body.data.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          acao: 'NOTA_MANUAL_EXCLUIDA',
+        }),
+      ]),
+    );
   });
 });

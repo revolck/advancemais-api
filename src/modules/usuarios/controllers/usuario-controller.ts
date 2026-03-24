@@ -36,6 +36,11 @@ import {
   UsuariosVerificacaoEmailSelect,
   normalizeEmailVerification,
 } from '../utils/email-verification';
+import {
+  buildUserProfileSnapshot,
+  diffSnapshot,
+  recordUserAuditEvent,
+} from '../utils/user-history';
 
 /**
  * Controllers para autenticação e gestão de usuários
@@ -569,6 +574,25 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
       500,
     );
 
+    await prisma.auditoriaLogs.create({
+      data: {
+        categoria: 'SEGURANCA',
+        tipo: 'USUARIO_LOGIN',
+        acao: 'USUARIO_LOGIN',
+        usuarioId: usuario.id,
+        entidadeId: usuario.id,
+        entidadeTipo: 'USUARIO',
+        descricao: 'Login realizado com sucesso.',
+        metadata: {
+          rememberMe,
+          sessionId: session.id,
+          origem: 'PLATAFORMA',
+        },
+        ip: req.ip ?? null,
+        userAgent: req.get('user-agent')?.slice(0, 500) ?? null,
+      },
+    });
+
     setRefreshTokenCookie(res, tokens.refreshToken, rememberMe);
 
     // ✅ Cache: Limpar tentativas de login e cache de bloqueio ao fazer login bem-sucedido
@@ -711,6 +735,24 @@ export const logoutUsuario = async (req: Request, res: Response, next: NextFunct
       data: {
         refreshToken: null,
         atualizadoEm: new Date(),
+      },
+    });
+
+    await prisma.auditoriaLogs.create({
+      data: {
+        categoria: 'SEGURANCA',
+        tipo: 'USUARIO_LOGOUT',
+        acao: 'USUARIO_LOGOUT',
+        usuarioId: userId,
+        entidadeId: userId,
+        entidadeTipo: 'USUARIO',
+        descricao: 'Logout realizado com sucesso.',
+        metadata: {
+          revokedSessions,
+          origem: 'PLATAFORMA',
+        },
+        ip: req.ip ?? null,
+        userAgent: req.get('user-agent')?.slice(0, 500) ?? null,
       },
     });
 
@@ -1282,6 +1324,56 @@ export const atualizarPerfil = async (req: Request, res: Response, next: NextFun
     }
 
     log.info({ userId }, '👤 Iniciando atualização de perfil');
+
+    const snapshotAntesUsuario = await prisma.usuarios.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        nomeCompleto: true,
+        email: true,
+        cpf: true,
+        cnpj: true,
+        role: true,
+        status: true,
+        tipoUsuario: true,
+        criadoEm: true,
+        atualizadoEm: true,
+        UsuariosInformation: {
+          select: {
+            telefone: true,
+            genero: true,
+            dataNasc: true,
+            descricao: true,
+            avatarUrl: true,
+            inscricao: true,
+          },
+        },
+        UsuariosRedesSociais: {
+          select: {
+            linkedin: true,
+            instagram: true,
+            facebook: true,
+            youtube: true,
+            twitter: true,
+            tiktok: true,
+          },
+        },
+        UsuariosEnderecos: {
+          orderBy: { criadoEm: 'asc' },
+          select: {
+            logradouro: true,
+            numero: true,
+            bairro: true,
+            cidade: true,
+            estado: true,
+            cep: true,
+          },
+        },
+        UsuariosVerificacaoEmail: {
+          select: UsuariosVerificacaoEmailSelect,
+        },
+      },
+    });
 
     const parseResult = updateProfileSchema.safeParse(req.body);
     if (!parseResult.success) {
@@ -2037,6 +2129,121 @@ export const atualizarPerfil = async (req: Request, res: Response, next: NextFun
 
     // Formata resposta removendo redundâncias (mesma formatação do GET)
     const usuarioResponse = formatUsuarioResponse(usuario);
+
+    if (snapshotAntesUsuario) {
+      const snapshotAntes = buildUserProfileSnapshot({
+        ...snapshotAntesUsuario,
+        emailVerificado: snapshotAntesUsuario.UsuariosVerificacaoEmail?.emailVerificado ?? false,
+        emailVerificadoEm: snapshotAntesUsuario.UsuariosVerificacaoEmail?.emailVerificadoEm ?? null,
+      });
+      const snapshotDepois = buildUserProfileSnapshot({
+        ...usuarioAtualizado,
+        emailVerificado: usuarioAtualizado.UsuariosVerificacaoEmail?.emailVerificado ?? false,
+        emailVerificadoEm: usuarioAtualizado.UsuariosVerificacaoEmail?.emailVerificadoEm ?? null,
+      });
+
+      const eventos: {
+        action: string;
+        descricao: string;
+        before: Record<string, unknown> | null;
+        after: Record<string, unknown> | null;
+      }[] = [];
+
+      const perfilDiff = diffSnapshot(
+        {
+          nomeCompleto: snapshotAntes.nomeCompleto,
+          email: snapshotAntes.email,
+          descricao: snapshotAntes.descricao,
+          genero: snapshotAntes.genero,
+          dataNasc: snapshotAntes.dataNasc,
+        },
+        {
+          nomeCompleto: snapshotDepois.nomeCompleto,
+          email: snapshotDepois.email,
+          descricao: snapshotDepois.descricao,
+          genero: snapshotDepois.genero,
+          dataNasc: snapshotDepois.dataNasc,
+        },
+      );
+      if (perfilDiff.before || perfilDiff.after) {
+        eventos.push({
+          action: 'USUARIO_ATUALIZADO',
+          descricao: 'Perfil atualizado pelo próprio usuário.',
+          before: perfilDiff.before,
+          after: perfilDiff.after,
+        });
+      }
+
+      const telefoneDiff = diffSnapshot(
+        { telefone: snapshotAntes.telefone },
+        { telefone: snapshotDepois.telefone },
+      );
+      if (telefoneDiff.before || telefoneDiff.after) {
+        eventos.push({
+          action: 'USUARIO_TELEFONE_ATUALIZADO',
+          descricao: 'Telefone atualizado pelo próprio usuário.',
+          before: telefoneDiff.before,
+          after: telefoneDiff.after,
+        });
+      }
+
+      const enderecoDiff = diffSnapshot(
+        { endereco: snapshotAntes.endereco },
+        { endereco: snapshotDepois.endereco },
+      );
+      if (enderecoDiff.before || enderecoDiff.after) {
+        eventos.push({
+          action: 'USUARIO_ENDERECO_ATUALIZADO',
+          descricao: 'Endereço atualizado pelo próprio usuário.',
+          before: enderecoDiff.before,
+          after: enderecoDiff.after,
+        });
+      }
+
+      const redesDiff = diffSnapshot(
+        { redesSociais: snapshotAntes.redesSociais },
+        { redesSociais: snapshotDepois.redesSociais },
+      );
+      if (redesDiff.before || redesDiff.after) {
+        eventos.push({
+          action: 'USUARIO_SOCIAL_LINK_ATUALIZADO',
+          descricao: 'Redes sociais atualizadas pelo próprio usuário.',
+          before: redesDiff.before,
+          after: redesDiff.after,
+        });
+      }
+
+      const avatarDiff = diffSnapshot(
+        { avatarUrl: snapshotAntes.avatarUrl },
+        { avatarUrl: snapshotDepois.avatarUrl },
+      );
+      if (avatarDiff.before || avatarDiff.after) {
+        eventos.push({
+          action: 'USUARIO_AVATAR_ATUALIZADO',
+          descricao: 'Avatar atualizado pelo próprio usuário.',
+          before: avatarDiff.before,
+          after: avatarDiff.after,
+        });
+      }
+
+      for (const evento of eventos) {
+        await recordUserAuditEvent({
+          client: prisma,
+          actorId: userId,
+          actorRole: req.user?.role,
+          targetUserId: userId,
+          action: evento.action,
+          descricao: evento.descricao,
+          dadosAnteriores: evento.before,
+          dadosNovos: evento.after,
+          meta: {
+            origem: 'PERFIL_USUARIO',
+          },
+          ip: req.ip ?? null,
+          userAgent: req.get('user-agent') ?? null,
+        });
+      }
+    }
 
     log.info({ userId }, '✅ Perfil atualizado com sucesso');
 

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { CursosNotasTipo } from '@prisma/client';
+import { CursosNotasTipo, Roles } from '@prisma/client';
 import { ZodError } from 'zod';
 
 import { generateCacheKey, getCachedOrFetch, invalidateCacheByPrefix } from '@/utils/cache';
@@ -382,7 +382,8 @@ export class NotasController {
             origem: parsed.origem,
           },
           {
-            criadoPorId: req.user?.id,
+            actorId: req.user?.id,
+            actorRole: (req.user?.role as Roles | undefined) ?? null,
             ip: req.ip,
             userAgent,
           },
@@ -490,7 +491,17 @@ export class NotasController {
       const alunoIdRaw = (req.body?.alunoId ?? req.query?.alunoId) as unknown;
       const { alunoId } = clearNotasManuaisSchema.parse({ alunoId: alunoIdRaw });
 
-      const result = await notasService.clearLancamentosManuais(cursoId, turmaId, alunoId);
+      const userAgentHeader = req.headers['user-agent'];
+      const userAgent = Array.isArray(userAgentHeader)
+        ? userAgentHeader.join(' | ')
+        : userAgentHeader;
+
+      const result = await notasService.clearLancamentosManuais(cursoId, turmaId, alunoId, {
+        actorId: req.user?.id,
+        actorRole: (req.user?.role as Roles | undefined) ?? null,
+        ip: req.ip,
+        userAgent,
+      });
       await invalidateCursoNotasCache();
       res.json(result);
     } catch (error: any) {
@@ -552,10 +563,26 @@ export class NotasController {
         });
       }
 
-      const nota = await notasService.update(cursoId, turmaId, notaId, {
-        ...data,
-        tipo: data.tipo as CursosNotasTipo | undefined,
-      });
+      const userAgentHeader = req.headers['user-agent'];
+      const userAgent = Array.isArray(userAgentHeader)
+        ? userAgentHeader.join(' | ')
+        : userAgentHeader;
+
+      const nota = await notasService.update(
+        cursoId,
+        turmaId,
+        notaId,
+        {
+          ...data,
+          tipo: data.tipo as CursosNotasTipo | undefined,
+        },
+        {
+          actorId: req.user?.id,
+          actorRole: (req.user?.role as Roles | undefined) ?? null,
+          ip: req.ip,
+          userAgent,
+        },
+      );
       await invalidateCursoNotasCache();
       res.json(nota);
     } catch (error: any) {
@@ -632,7 +659,17 @@ export class NotasController {
     }
 
     try {
-      const result = await notasService.remove(cursoId, turmaId, notaId);
+      const userAgentHeader = req.headers['user-agent'];
+      const userAgent = Array.isArray(userAgentHeader)
+        ? userAgentHeader.join(' | ')
+        : userAgentHeader;
+
+      const result = await notasService.remove(cursoId, turmaId, notaId, {
+        actorId: req.user?.id,
+        actorRole: (req.user?.role as Roles | undefined) ?? null,
+        ip: req.ip,
+        userAgent,
+      });
       await invalidateCursoNotasCache();
       res.json(result);
     } catch (error: any) {
@@ -656,6 +693,40 @@ export class NotasController {
         success: false,
         code: 'NOTA_DELETE_ERROR',
         message: 'Erro ao remover nota da turma',
+        error: error?.message,
+      });
+    }
+  };
+
+  static historico = async (req: Request, res: Response) => {
+    const cursoId = parseCursoId(req.params.cursoId);
+    const turmaId = parseTurmaId(req.params.turmaId);
+    const notaId = parseNotaId(req.params.notaId);
+
+    if (!cursoId || !turmaId || !notaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificadores de curso, turma ou nota inválidos',
+      });
+    }
+
+    try {
+      const historico = await notasService.listHistorico(cursoId, turmaId, notaId);
+      res.json({ success: true, data: historico });
+    } catch (error: any) {
+      if (error?.code === 'NOTA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'NOTA_NOT_FOUND',
+          message: 'Nota não encontrada para a turma informada',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'NOTA_HISTORICO_ERROR',
+        message: 'Erro ao consultar histórico da nota',
         error: error?.message,
       });
     }

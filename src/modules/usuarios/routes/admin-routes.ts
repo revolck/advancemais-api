@@ -636,6 +636,81 @@ router.get('/usuarios/:userId', asyncHandler(adminController.buscarUsuario));
 
 /**
  * @openapi
+ * /api/v1/usuarios/usuarios/{userId}/historico:
+ *   get:
+ *     summary: Obter histórico completo do usuário no painel
+ *     description: |
+ *       Retorna a timeline auditável do usuário com filtros, paginação e dados completos de ator.
+ *
+ *       **ACESSO:** mesmas permissões do detalhe de usuário no painel.
+ *     tags: [Usuários]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           maximum: 50
+ *       - in: query
+ *         name: tipos
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: categorias
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: atorId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: atorRole
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: dataInicio
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - in: query
+ *         name: dataFim
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Histórico do usuário
+ *       400:
+ *         description: ID ou filtros inválidos
+ *       403:
+ *         description: Sem permissão para acessar o histórico
+ *       404:
+ *         description: Usuário não encontrado
+ *       500:
+ *         description: Erro ao obter histórico do usuário
+ */
+router.get('/usuarios/:userId/historico', asyncHandler(adminController.buscarHistoricoUsuario));
+
+/**
+ * @openapi
  * /api/v1/usuarios/usuarios/{userId}:
  *   put:
  *     summary: Atualizar usuário
@@ -747,6 +822,124 @@ router.put(
   '/usuarios/:userId',
   supabaseAuthMiddleware(adminRoles),
   asyncHandler(adminController.atualizarUsuario),
+);
+
+/**
+ * @openapi
+ * /api/v1/usuarios/usuarios/{userId}/liberar-email:
+ *   patch:
+ *     summary: Liberar acesso sem validação de email
+ *     description: |
+ *       Libera manualmente a validação de email de um usuário pelo painel administrativo.
+ *
+ *       **ACESSO:** ADMIN, MODERADOR e PEDAGOGICO.
+ *
+ *       **RESTRIÇÕES PARA PEDAGOGICO:**
+ *       - PEDAGOGICO só pode liberar usuários com role ALUNO_CANDIDATO ou INSTRUTOR.
+ *
+ *       **OBSERVAÇÃO:**
+ *       - Esta ação libera apenas a pendência de verificação de email.
+ *       - Ela não substitui bloqueios por status (`BLOQUEADO`, `INATIVO`, etc.).
+ *     tags: [Usuários]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               motivo:
+ *                 type: string
+ *                 maxLength: 500
+ *     responses:
+ *       200:
+ *         description: Validação de email liberada com sucesso
+ *       400:
+ *         description: ID inválido ou payload inválido
+ *       403:
+ *         description: Sem permissão para a ação
+ *       404:
+ *         description: Usuário não encontrado
+ *     x-codeSamples:
+ *       - lang: cURL
+ *         label: Exemplo
+ *         source: |
+ *           curl -X PATCH "http://localhost:3000/api/v1/usuarios/usuarios/{userId}/liberar-email" \\
+ *            -H "Authorization: Bearer <TOKEN>" \\
+ *            -H "Content-Type: application/json" \\
+ *            -d '{"motivo":"Liberacao manual pelo painel"}'
+ */
+router.patch(
+  '/usuarios/:userId/liberar-email',
+  supabaseAuthMiddleware(adminRoles),
+  asyncHandler(adminController.liberarValidacaoEmail),
+);
+
+/**
+ * @openapi
+ * /api/v1/usuarios/usuarios/{userId}/liberar-acesso:
+ *   patch:
+ *     summary: Liberar acesso completo de usuário pendente
+ *     description: |
+ *       Libera manualmente o acesso completo de um usuário pelo painel administrativo.
+ *
+ *       **ACESSO:** ADMIN, MODERADOR e PEDAGOGICO.
+ *
+ *       **COMPORTAMENTO:**
+ *       - marca o email como verificado
+ *       - limpa token pendente de verificação
+ *       - se o usuário estiver `PENDENTE`, altera o status para `ATIVO`
+ *
+ *       **RESTRIÇÕES PARA PEDAGOGICO:**
+ *       - PEDAGOGICO só pode liberar usuários com role ALUNO_CANDIDATO ou INSTRUTOR.
+ *
+ *       **BLOQUEIOS:**
+ *       - usuários `BLOQUEADO`, `INATIVO` ou `SUSPENSO` retornam erro de negócio.
+ *     tags: [Usuários]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               motivo:
+ *                 type: string
+ *                 maxLength: 500
+ *     responses:
+ *       200:
+ *         description: Acesso liberado com sucesso
+ *       400:
+ *         description: ID inválido ou payload inválido
+ *       403:
+ *         description: Sem permissão para a ação
+ *       404:
+ *         description: Usuário não encontrado
+ *       409:
+ *         description: Status do usuário impede a liberação completa de acesso
+ */
+router.patch(
+  '/usuarios/:userId/liberar-acesso',
+  supabaseAuthMiddleware(adminRoles),
+  asyncHandler(adminController.liberarAcessoUsuario),
 );
 
 /**

@@ -211,6 +211,13 @@ const EPSILON = 0.000001;
 
 const normalizeNumber = (value: unknown) => Number(value ?? 0);
 const roundOneDecimal = (value: number) => Number(value.toFixed(1));
+const normalizeDecimal = (value: Prisma.Decimal | number | null | undefined) => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  return Number(value);
+};
 
 const getConsolidatedNotaContext = async (
   client: PrismaClientOrTx,
@@ -359,6 +366,144 @@ type NotaHistoryEntry = {
   };
 };
 
+type NotaAuditContext = {
+  actorId?: string | null;
+  actorRole?: Roles | null;
+  ip?: string | null;
+  userAgent?: string | null;
+};
+
+const buildNotaAuditSnapshot = (
+  nota: Pick<
+    NotaWithRelations,
+    | 'id'
+    | 'turmaId'
+    | 'inscricaoId'
+    | 'tipo'
+    | 'provaId'
+    | 'referenciaExterna'
+    | 'titulo'
+    | 'descricao'
+    | 'nota'
+    | 'peso'
+    | 'valorMaximo'
+    | 'dataReferencia'
+    | 'observacoes'
+    | 'criadoEm'
+    | 'atualizadoEm'
+    | 'CursosTurmasInscricoes'
+  >,
+  cursoId: string,
+) => ({
+  notaId: nota.id,
+  cursoId,
+  turmaId: nota.turmaId,
+  inscricaoId: nota.inscricaoId,
+  alunoId: nota.CursosTurmasInscricoes?.alunoId ?? null,
+  tipo: nota.tipo,
+  provaId: nota.provaId ?? null,
+  referenciaExterna: nota.referenciaExterna ?? null,
+  titulo: nota.titulo,
+  descricao: nota.descricao ?? null,
+  nota: normalizeDecimal(nota.nota),
+  peso: normalizeDecimal(nota.peso),
+  valorMaximo: normalizeDecimal(nota.valorMaximo),
+  dataReferencia: nota.dataReferencia?.toISOString() ?? null,
+  observacoes: nota.observacoes ?? null,
+  criadoEm: nota.criadoEm.toISOString(),
+  atualizadoEm: nota.atualizadoEm.toISOString(),
+});
+
+const registerNotaAuditLog = async (
+  tx: Prisma.TransactionClient,
+  params: {
+    cursoId: string;
+    turmaId: string;
+    notaId: string;
+    action: 'NOTA_MANUAL_ADICIONADA' | 'NOTA_MANUAL_ATUALIZADA' | 'NOTA_MANUAL_EXCLUIDA';
+    description: string;
+    before: Prisma.JsonObject | null;
+    after: Prisma.JsonObject | null;
+    context?: NotaAuditContext;
+    metadata?: Prisma.JsonObject;
+  },
+) => {
+  if (!params.context?.actorId) {
+    return;
+  }
+
+  await tx.auditoriaLogs.create({
+    data: {
+      categoria: AuditoriaCategoria.CURSO,
+      tipo: 'CURSO_NOTA',
+      acao: params.action,
+      usuarioId: params.context.actorId,
+      entidadeId: params.notaId,
+      entidadeTipo: 'CURSO_NOTA',
+      descricao: params.description,
+      dadosAnteriores: params.before ?? Prisma.JsonNull,
+      dadosNovos: params.after ?? Prisma.JsonNull,
+      metadata: {
+        cursoId: params.cursoId,
+        turmaId: params.turmaId,
+        actorRole: params.context.actorRole ?? null,
+        ip: params.context.ip ?? null,
+        userAgent: params.context.userAgent ?? null,
+        ...(params.metadata ?? {}),
+      },
+      ip: params.context.ip ?? null,
+      userAgent: params.context.userAgent ?? null,
+    },
+  });
+};
+
+const readNotaAuditScope = (log: {
+  metadata: Prisma.JsonValue | null;
+  dadosAnteriores: Prisma.JsonValue | null;
+  dadosNovos: Prisma.JsonValue | null;
+}) => {
+  const fromObject = (value: Prisma.JsonValue | null) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const objectValue = value as Prisma.JsonObject;
+    const cursoId =
+      typeof objectValue.cursoId === 'string'
+        ? objectValue.cursoId
+        : typeof objectValue['cursoId'] === 'string'
+          ? (objectValue['cursoId'] as string)
+          : null;
+    const turmaId =
+      typeof objectValue.turmaId === 'string'
+        ? objectValue.turmaId
+        : typeof objectValue['turmaId'] === 'string'
+          ? (objectValue['turmaId'] as string)
+          : null;
+
+    if (!cursoId && !turmaId) return null;
+    return { cursoId, turmaId };
+  };
+
+  return fromObject(log.metadata) ?? fromObject(log.dadosNovos) ?? fromObject(log.dadosAnteriores);
+};
+
+const buildNotaHistoryActor = (log: {
+  usuarioId: string | null;
+  metadata: Prisma.JsonValue | null;
+  Usuarios: { id: string; nomeCompleto: string; role: Roles | null } | null;
+}) => {
+  const metadataRole =
+    log.metadata && typeof log.metadata === 'object' && !Array.isArray(log.metadata)
+      ? (((log.metadata as Prisma.JsonObject).actorRole as Roles | null | undefined) ?? null)
+      : null;
+  const role = log.Usuarios?.role ?? metadataRole ?? null;
+
+  return {
+    id: log.Usuarios?.id ?? log.usuarioId ?? null,
+    nome: log.Usuarios?.nomeCompleto ?? 'Sistema',
+    role,
+    roleLabel: formatRoleLabel(role),
+  };
+};
+
 const resolveManualNotaActors = async (notaIds: string[]) => {
   const map = new Map<
     string,
@@ -461,6 +606,63 @@ const buildManualNotasPayload = async (manuais: ManualNotaRow[]) => {
     historicoPorInscricao,
     ultimaOrigemManualPorInscricao,
   };
+};
+
+const resolveNotaHistoryReferences = async (
+  inscricaoIds: string[],
+  turmaIds: string[],
+  manuais: ManualNotaRow[],
+) => {
+  const notaAtualIdPorInscricao = new Map<string, string>();
+  const historicoNotaIdPorInscricao = new Map<string, string>();
+
+  for (const manual of manuais) {
+    if (!notaAtualIdPorInscricao.has(manual.inscricaoId)) {
+      notaAtualIdPorInscricao.set(manual.inscricaoId, manual.id);
+    }
+
+    if (!historicoNotaIdPorInscricao.has(manual.inscricaoId)) {
+      historicoNotaIdPorInscricao.set(manual.inscricaoId, manual.id);
+    }
+  }
+
+  if (inscricaoIds.length === 0 || turmaIds.length === 0) {
+    return { notaAtualIdPorInscricao, historicoNotaIdPorInscricao };
+  }
+
+  const uniqueInscricaoIds = Array.from(new Set(inscricaoIds));
+  const uniqueTurmaIds = Array.from(new Set(turmaIds));
+
+  const historicoRows = await prisma.$queryRaw<
+    {
+      nota_id: string;
+      inscricao_id: string;
+      turma_id: string;
+      criado_em: Date;
+    }[]
+  >(Prisma.sql`
+    SELECT
+      l."entidadeId" AS nota_id,
+      COALESCE(l."dadosNovos"->>'inscricaoId', l."dadosAnteriores"->>'inscricaoId') AS inscricao_id,
+      COALESCE(l."dadosNovos"->>'turmaId', l."dadosAnteriores"->>'turmaId') AS turma_id,
+      l."criadoEm" AS criado_em
+    FROM "AuditoriaLogs" l
+    WHERE l."entidadeTipo" = 'CURSO_NOTA'
+      AND l.acao IN ('NOTA_MANUAL_ADICIONADA', 'NOTA_MANUAL_ATUALIZADA', 'NOTA_MANUAL_EXCLUIDA')
+      AND COALESCE(l."dadosNovos"->>'inscricaoId', l."dadosAnteriores"->>'inscricaoId') IN (${Prisma.join(uniqueInscricaoIds)})
+      AND COALESCE(l."dadosNovos"->>'turmaId', l."dadosAnteriores"->>'turmaId') IN (${Prisma.join(uniqueTurmaIds)})
+    ORDER BY l."criadoEm" DESC
+  `);
+
+  for (const row of historicoRows) {
+    if (!row.inscricao_id || !row.nota_id || historicoNotaIdPorInscricao.has(row.inscricao_id)) {
+      continue;
+    }
+
+    historicoNotaIdPorInscricao.set(row.inscricao_id, row.nota_id);
+  }
+
+  return { notaAtualIdPorInscricao, historicoNotaIdPorInscricao };
 };
 
 export const notasService = {
@@ -581,10 +783,22 @@ export const notasService = {
       dataReferencia?: Date | null;
       observacoes?: string | null;
     },
+    context?: NotaAuditContext,
   ) {
     return prisma.$transaction(async (tx) => {
       const notaAtual = await ensureNotaBelongsToTurma(tx, cursoId, turmaId, notaId);
       ensureNotaIsManual(notaAtual);
+
+      const notaAnteriorCompleta = await tx.cursosNotas.findFirst({
+        where: { id: notaId, turmaId, CursosTurmas: { cursoId } },
+        include: notaWithRelations.include,
+      });
+
+      if (!notaAnteriorCompleta) {
+        const error = new Error('Nota não encontrada para a turma informada');
+        (error as any).code = 'NOTA_NOT_FOUND';
+        throw error;
+      }
 
       if (data.nota !== undefined) {
         const consolidadoSemNotaEditada = await getConsolidatedNotaContext(
@@ -672,14 +886,47 @@ export const notasService = {
 
       notasLogger.info({ turmaId, notaId }, 'Nota atualizada');
 
+      await registerNotaAuditLog(tx, {
+        cursoId,
+        turmaId,
+        notaId,
+        action: 'NOTA_MANUAL_ATUALIZADA',
+        description: `Nota manual atualizada para inscrição ${nota.inscricaoId}`,
+        before: buildNotaAuditSnapshot(notaAnteriorCompleta, cursoId) as Prisma.JsonObject,
+        after: buildNotaAuditSnapshot(nota, cursoId) as Prisma.JsonObject,
+        context,
+      });
+
       return mapNota(nota);
     });
   },
 
-  async remove(cursoId: string, turmaId: string, notaId: string) {
+  async remove(cursoId: string, turmaId: string, notaId: string, context?: NotaAuditContext) {
     return prisma.$transaction(async (tx) => {
       const notaAtual = await ensureNotaBelongsToTurma(tx, cursoId, turmaId, notaId);
       ensureNotaIsManual(notaAtual);
+
+      const notaCompleta = await tx.cursosNotas.findFirst({
+        where: { id: notaId, turmaId, CursosTurmas: { cursoId } },
+        include: notaWithRelations.include,
+      });
+
+      if (!notaCompleta) {
+        const error = new Error('Nota não encontrada para a turma informada');
+        (error as any).code = 'NOTA_NOT_FOUND';
+        throw error;
+      }
+
+      await registerNotaAuditLog(tx, {
+        cursoId,
+        turmaId,
+        notaId,
+        action: 'NOTA_MANUAL_EXCLUIDA',
+        description: `Nota manual removida da inscrição ${notaCompleta.inscricaoId}`,
+        before: buildNotaAuditSnapshot(notaCompleta, cursoId) as Prisma.JsonObject,
+        after: null,
+        context,
+      });
 
       await tx.cursosNotas.delete({ where: { id: notaId } });
 
@@ -753,11 +1000,7 @@ export const notasService = {
     cursoId: string,
     turmaId: string,
     data: CreateNotaManualInput,
-    context?: {
-      criadoPorId?: string;
-      ip?: string;
-      userAgent?: string;
-    },
+    context?: NotaAuditContext,
   ) {
     return prisma.$transaction(async (tx) => {
       await ensureTurmaBelongsToCurso(tx, cursoId, turmaId);
@@ -796,44 +1039,34 @@ export const notasService = {
         include: notaWithRelations.include,
       });
 
-      if (context?.criadoPorId) {
-        await tx.auditoriaLogs.create({
-          data: {
-            categoria: AuditoriaCategoria.CURSO,
-            tipo: 'CURSO_NOTA',
-            acao: 'NOTA_MANUAL_ADICIONADA',
-            usuarioId: context.criadoPorId,
-            entidadeId: nota.id,
-            entidadeTipo: 'CURSO_NOTA',
-            descricao: `Nota manual adicionada (${data.origem.tipo}) para inscrição ${inscricao.id}`,
-            dadosNovos: {
-              notaId: nota.id,
-              nota: data.nota,
-              motivo: data.motivo,
-              origem: data.origem,
-              cursoId,
-              turmaId,
-              alunoId: data.alunoId,
-              inscricaoId: inscricao.id,
-            },
-            metadata: {
-              createdBy: context.criadoPorId,
-              createdAt: nota.criadoEm.toISOString(),
-              ip: context.ip ?? null,
-              userAgent: context.userAgent ?? null,
-            },
-            ip: context.ip ?? null,
-            userAgent: context.userAgent ?? null,
-          },
-        });
-      }
+      await registerNotaAuditLog(tx, {
+        cursoId,
+        turmaId,
+        notaId: nota.id,
+        action: 'NOTA_MANUAL_ADICIONADA',
+        description: `Nota manual adicionada (${data.origem.tipo}) para inscrição ${inscricao.id}`,
+        before: null,
+        after: buildNotaAuditSnapshot(nota, cursoId) as Prisma.JsonObject,
+        context,
+        metadata: {
+          origem: data.origem,
+          motivo: data.motivo,
+          alunoId: data.alunoId,
+          inscricaoId: inscricao.id,
+        },
+      });
 
       notasLogger.info({ turmaId, notaId: nota.id }, 'Lançamento manual de nota criado');
       return mapNota(nota);
     });
   },
 
-  async clearLancamentosManuais(cursoId: string, turmaId: string, alunoId: string) {
+  async clearLancamentosManuais(
+    cursoId: string,
+    turmaId: string,
+    alunoId: string,
+    context?: NotaAuditContext,
+  ) {
     return prisma.$transaction(async (tx) => {
       await ensureTurmaBelongsToCurso(tx, cursoId, turmaId);
 
@@ -848,6 +1081,33 @@ export const notasService = {
         throw error;
       }
 
+      const notasParaExcluir = await tx.cursosNotas.findMany({
+        where: {
+          turmaId,
+          inscricaoId: inscricao.id,
+          provaId: null,
+        },
+        include: notaWithRelations.include,
+      });
+
+      for (const nota of notasParaExcluir) {
+        await registerNotaAuditLog(tx, {
+          cursoId,
+          turmaId,
+          notaId: nota.id,
+          action: 'NOTA_MANUAL_EXCLUIDA',
+          description: `Nota manual removida em lote da inscrição ${inscricao.id}`,
+          before: buildNotaAuditSnapshot(nota, cursoId) as Prisma.JsonObject,
+          after: null,
+          context,
+          metadata: {
+            bulkDelete: true,
+            alunoId,
+            inscricaoId: inscricao.id,
+          },
+        });
+      }
+
       const deleted = await tx.cursosNotas.deleteMany({
         where: {
           turmaId,
@@ -858,6 +1118,69 @@ export const notasService = {
 
       return { success: true, deletedCount: deleted.count } as const;
     });
+  },
+
+  async listHistorico(cursoId: string, turmaId: string, notaId: string) {
+    await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
+
+    const [notaAtual, logs] = await Promise.all([
+      prisma.cursosNotas.findFirst({
+        where: { id: notaId, turmaId, CursosTurmas: { cursoId } },
+        select: { id: true },
+      }),
+      prisma.auditoriaLogs.findMany({
+        where: {
+          entidadeId: notaId,
+          entidadeTipo: 'CURSO_NOTA',
+          tipo: 'CURSO_NOTA',
+          acao: {
+            in: ['NOTA_MANUAL_ADICIONADA', 'NOTA_MANUAL_ATUALIZADA', 'NOTA_MANUAL_EXCLUIDA'],
+          },
+        },
+        orderBy: { criadoEm: 'desc' },
+        select: {
+          id: true,
+          acao: true,
+          descricao: true,
+          usuarioId: true,
+          dadosAnteriores: true,
+          dadosNovos: true,
+          metadata: true,
+          criadoEm: true,
+          Usuarios: {
+            select: {
+              id: true,
+              nomeCompleto: true,
+              role: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const scopedLogs = logs.filter((log) => {
+      const scope = readNotaAuditScope(log);
+      return scope?.cursoId === cursoId && scope?.turmaId === turmaId;
+    });
+
+    if (!notaAtual && scopedLogs.length === 0) {
+      const error = new Error('Nota não encontrada para a turma informada');
+      (error as any).code = 'NOTA_NOT_FOUND';
+      throw error;
+    }
+
+    return {
+      notaId,
+      items: scopedLogs.map((log) => ({
+        id: log.id,
+        acao: log.acao,
+        dataHora: log.criadoEm.toISOString(),
+        ator: buildNotaHistoryActor(log),
+        descricao: log.descricao,
+        dadosAnteriores: log.dadosAnteriores ?? null,
+        dadosNovos: log.dadosNovos ?? null,
+      })),
+    };
   },
 
   async listCursoNotas(cursoId: string, query: ListCursoNotasQuery) {
@@ -1048,6 +1371,8 @@ export const notasService = {
 
     const { historicoPorInscricao, ultimaOrigemManualPorInscricao } =
       await buildManualNotasPayload(manuais);
+    const { notaAtualIdPorInscricao, historicoNotaIdPorInscricao } =
+      await resolveNotaHistoryReferences(inscricaoIds, turmaIds, manuais);
 
     return {
       items: rows.map((row) => {
@@ -1083,6 +1408,9 @@ export const notasService = {
             'Nota consolidada automaticamente pelo sistema',
           origem: origemPayload,
           isManual: hasManual,
+          notaId: notaAtualIdPorInscricao.get(row.inscricao_id) ?? null,
+          historicoNotaId: historicoNotaIdPorInscricao.get(row.inscricao_id) ?? null,
+          historicoDisponivel: historicoNotaIdPorInscricao.has(row.inscricao_id),
           history: historicoPorInscricao.get(row.inscricao_id) ?? [],
 
           // Campos legados (mantidos por compatibilidade)
@@ -1362,6 +1690,12 @@ export const notasService = {
 
     const { historicoPorInscricao, ultimaOrigemManualPorInscricao } =
       await buildManualNotasPayload(manuais);
+    const { notaAtualIdPorInscricao, historicoNotaIdPorInscricao } =
+      await resolveNotaHistoryReferences(
+        inscricaoIds,
+        rows.map((row) => row.turma_id),
+        manuais,
+      );
 
     return {
       items: rows.map((row) => {
@@ -1396,6 +1730,9 @@ export const notasService = {
             'Nota consolidada automaticamente pelo sistema',
           origem: origemPayload,
           isManual: hasManual,
+          notaId: notaAtualIdPorInscricao.get(row.inscricao_id) ?? null,
+          historicoNotaId: historicoNotaIdPorInscricao.get(row.inscricao_id) ?? null,
+          historicoDisponivel: historicoNotaIdPorInscricao.has(row.inscricao_id),
           history: historicoPorInscricao.get(row.inscricao_id) ?? [],
           alunoCodigo: row.aluno_codigo,
           alunoCpf: row.aluno_cpf,

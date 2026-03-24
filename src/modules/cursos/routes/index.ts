@@ -4531,6 +4531,16 @@ router.delete(
 );
 
 /**
+ * Histórico de auditoria da nota
+ * GET /api/v1/cursos/:cursoId/turmas/:turmaId/notas/:notaId/historico
+ */
+router.get(
+  '/:cursoId/turmas/:turmaId/notas/:notaId/historico',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  NotasController.historico,
+);
+
+/**
  * @openapi
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/notas/{notaId}:
  *   get:

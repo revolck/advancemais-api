@@ -5,7 +5,14 @@
  * @author Sistema Advance+
  * @version 3.0.0
  */
-import { Prisma, Roles, Status, TiposDeUsuarios, CandidatoLogTipo } from '@prisma/client';
+import {
+  AuditoriaCategoria,
+  Prisma,
+  Roles,
+  Status,
+  TiposDeUsuarios,
+  CandidatoLogTipo,
+} from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
@@ -38,6 +45,20 @@ import {
   processUserTypeSpecificData,
 } from '../register/user-creation-helpers';
 import type { AdminCreateUserInput } from '../validators/auth.schema';
+import {
+  buildEmailVerificationSummary,
+  normalizeEmailVerification,
+  UsuariosVerificacaoEmailSelect,
+} from '../utils/email-verification';
+import {
+  buildUserProfileSnapshot,
+  diffSnapshot,
+  getUserHistoryConfig,
+  getUserRoleLabel,
+  recordUserAuditEvent,
+  type UserHistoryCategoria,
+  type UserHistoryTipo,
+} from '../utils/user-history';
 
 type AdminEnderecoInput = {
   logradouro?: string | null;
@@ -94,6 +115,84 @@ const sanitizeAdminEnderecoInput = (
     atualizadoEm: new Date(),
   };
 };
+
+const serializeEmailVerificationAudit = (
+  verification: ReturnType<typeof normalizeEmailVerification>,
+): Prisma.JsonObject => ({
+  emailVerificado: verification.emailVerificado,
+  emailVerificadoEm: verification.emailVerificadoEm?.toISOString() ?? null,
+  emailVerificationToken: verification.emailVerificationToken,
+  emailVerificationTokenExp: verification.emailVerificationTokenExp?.toISOString() ?? null,
+  emailVerificationAttempts: verification.emailVerificationAttempts,
+  ultimaTentativaVerificacao: verification.ultimaTentativaVerificacao?.toISOString() ?? null,
+});
+
+const userHistoryActorSelect = {
+  id: true,
+  nomeCompleto: true,
+  role: true,
+  UsuariosInformation: {
+    select: {
+      avatarUrl: true,
+    },
+  },
+} satisfies Prisma.UsuariosSelect;
+
+const userHistoryTargetSelect = {
+  id: true,
+  nomeCompleto: true,
+  email: true,
+  role: true,
+  status: true,
+  criadoEm: true,
+  tipoUsuario: true,
+  cpf: true,
+  cnpj: true,
+  UsuariosInformation: {
+    select: {
+      telefone: true,
+      genero: true,
+      dataNasc: true,
+      descricao: true,
+      avatarUrl: true,
+      inscricao: true,
+    },
+  },
+  UsuariosRedesSociais: {
+    select: {
+      linkedin: true,
+      instagram: true,
+      facebook: true,
+      youtube: true,
+      twitter: true,
+      tiktok: true,
+    },
+  },
+  UsuariosEnderecos: {
+    orderBy: { criadoEm: 'asc' },
+    select: {
+      logradouro: true,
+      numero: true,
+      bairro: true,
+      cidade: true,
+      estado: true,
+      cep: true,
+    },
+  },
+  UsuariosVerificacaoEmail: {
+    select: UsuariosVerificacaoEmailSelect,
+  },
+} satisfies Prisma.UsuariosSelect;
+
+type UserHistoryTarget = Prisma.UsuariosGetPayload<{ select: typeof userHistoryTargetSelect }>;
+
+type UserHistoryAuditRow = Prisma.AuditoriaLogsGetPayload<{
+  include: {
+    Usuarios: {
+      select: typeof userHistoryActorSelect;
+    };
+  };
+}>;
 
 export class AdminService {
   private readonly log = logger.child({ module: 'AdminService' });
@@ -458,6 +557,166 @@ export class AdminService {
     }
   }
 
+  private assertPedagogicoCanManageUser(
+    actingRole: string | undefined,
+    targetRole: Roles,
+    action: 'visualizar' | 'editar' | 'liberar validacao de email' | 'liberar acesso',
+  ) {
+    if (actingRole !== Roles.PEDAGOGICO) {
+      return;
+    }
+
+    if (targetRole !== Roles.ALUNO_CANDIDATO && targetRole !== Roles.INSTRUTOR) {
+      throw Object.assign(
+        new Error(`PEDAGOGICO só pode ${action} usuários com role ALUNO_CANDIDATO ou INSTRUTOR`),
+        {
+          code: 'FORBIDDEN_USER_ROLE',
+          statusCode: 403,
+        },
+      );
+    }
+  }
+
+  private getHistoryTargetSummary(
+    usuario: Pick<UserHistoryTarget, 'id' | 'nomeCompleto' | 'email' | 'role' | 'status'>,
+  ) {
+    return {
+      id: usuario.id,
+      nomeCompleto: usuario.nomeCompleto,
+      email: usuario.email,
+      role: usuario.role,
+      status: usuario.status,
+    };
+  }
+
+  private async ensureHistoryTarget(userId: string, userRole?: string) {
+    const usuario = await prisma.usuarios.findUnique({
+      where: { id: userId },
+      select: userHistoryTargetSelect,
+    });
+
+    if (!usuario) {
+      throw this.createServiceError('Usuário não encontrado', 404, 'USER_NOT_FOUND');
+    }
+
+    this.assertPedagogicoCanManageUser(userRole, usuario.role, 'visualizar');
+
+    return usuario;
+  }
+
+  private normalizeHistoryAuditItem(log: UserHistoryAuditRow, alvo: UserHistoryTarget) {
+    const config = getUserHistoryConfig(log.acao || log.tipo);
+    const metadata = (log.metadata as Record<string, unknown> | null) ?? null;
+
+    return {
+      id: log.id,
+      tipo: config.tipo,
+      categoria: config.categoria,
+      titulo: config.titulo,
+      descricao: log.descricao,
+      dataHora: log.criadoEm.toISOString(),
+      ator: log.Usuarios
+        ? {
+            id: log.Usuarios.id,
+            nome: log.Usuarios.nomeCompleto,
+            role: log.Usuarios.role,
+            roleLabel: getUserRoleLabel(log.Usuarios.role),
+            avatarUrl: log.Usuarios.UsuariosInformation?.avatarUrl ?? null,
+          }
+        : null,
+      alvo: this.getHistoryTargetSummary(alvo),
+      contexto: {
+        ip: log.ip ?? (metadata?.ip as string | null) ?? null,
+        userAgent: log.userAgent ?? (metadata?.userAgent as string | null) ?? null,
+        origem: (metadata?.origem as string | null) ?? null,
+      },
+      dadosAnteriores: (log.dadosAnteriores as Record<string, unknown> | null) ?? null,
+      dadosNovos: (log.dadosNovos as Record<string, unknown> | null) ?? null,
+      meta: metadata,
+    };
+  }
+
+  private normalizeHistoryBlockItem(
+    log: Prisma.UsuariosEmBloqueiosLogsGetPayload<{
+      include: {
+        Usuarios: {
+          select: typeof userHistoryActorSelect;
+        };
+        UsuariosEmBloqueios: {
+          select: {
+            id: true;
+            tipo: true;
+            motivo: true;
+            observacoes: true;
+            status: true;
+            inicio: true;
+            fim: true;
+          };
+        };
+      };
+    }>,
+    alvo: UserHistoryTarget,
+  ) {
+    const isRevogacao = log.acao === 'REVOGACAO';
+    const action = isRevogacao ? 'USUARIO_DESBLOQUEADO' : 'USUARIO_BLOQUEADO';
+    const config = getUserHistoryConfig(action);
+
+    return {
+      id: `bloqueio-${log.id}`,
+      tipo: config.tipo,
+      categoria: config.categoria,
+      titulo: config.titulo,
+      descricao:
+        log.descricao ??
+        (isRevogacao
+          ? 'Bloqueio revogado pelo painel administrativo.'
+          : 'Bloqueio aplicado pelo painel administrativo.'),
+      dataHora: log.criadoEm.toISOString(),
+      ator: log.Usuarios
+        ? {
+            id: log.Usuarios.id,
+            nome: log.Usuarios.nomeCompleto,
+            role: log.Usuarios.role,
+            roleLabel: getUserRoleLabel(log.Usuarios.role),
+            avatarUrl: log.Usuarios.UsuariosInformation?.avatarUrl ?? null,
+          }
+        : null,
+      alvo: this.getHistoryTargetSummary(alvo),
+      contexto: {
+        ip: null,
+        userAgent: null,
+        origem: 'PAINEL_ADMIN',
+      },
+      dadosAnteriores: isRevogacao
+        ? {
+            status: Status.BLOQUEADO,
+            bloqueioId: log.UsuariosEmBloqueios.id,
+            tipoBloqueio: log.UsuariosEmBloqueios.tipo,
+          }
+        : {
+            status: Status.ATIVO,
+          },
+      dadosNovos: isRevogacao
+        ? {
+            status: Status.ATIVO,
+          }
+        : {
+            status: Status.BLOQUEADO,
+            bloqueioId: log.UsuariosEmBloqueios.id,
+            tipoBloqueio: log.UsuariosEmBloqueios.tipo,
+            motivo: log.UsuariosEmBloqueios.motivo,
+          },
+      meta: {
+        motivo: log.UsuariosEmBloqueios.motivo,
+        tipoBloqueio: log.UsuariosEmBloqueios.tipo,
+        observacoes: log.UsuariosEmBloqueios.observacoes ?? null,
+        inicio: log.UsuariosEmBloqueios.inicio.toISOString(),
+        fim: log.UsuariosEmBloqueios.fim?.toISOString() ?? null,
+        statusBloqueio: log.UsuariosEmBloqueios.status,
+      },
+    };
+  }
+
   /**
    * Lista candidatos (role ALUNO_CANDIDATO) com filtros e paginação
    */
@@ -605,6 +864,9 @@ export class AdminService {
         UsuariosInformation: {
           select: usuarioInformacoesSelect,
         },
+        UsuariosVerificacaoEmail: {
+          select: UsuariosVerificacaoEmailSelect,
+        },
         UsuariosEnderecos: {
           orderBy: { criadoEm: 'asc' },
           select: {
@@ -624,18 +886,7 @@ export class AdminService {
       return null;
     }
 
-    // Validação para PEDAGOGICO: só pode ver usuários com role ALUNO_CANDIDATO ou INSTRUTOR
-    if (options?.userRole === Roles.PEDAGOGICO) {
-      if (usuario.role !== Roles.ALUNO_CANDIDATO && usuario.role !== Roles.INSTRUTOR) {
-        throw Object.assign(
-          new Error('PEDAGOGICO só pode visualizar usuários com role ALUNO_CANDIDATO ou INSTRUTOR'),
-          {
-            code: 'FORBIDDEN_USER_ROLE',
-            statusCode: 403,
-          },
-        );
-      }
-    }
+    this.assertPedagogicoCanManageUser(options?.userRole, usuario.role, 'visualizar');
 
     const usuarioComInformacoes = mergeUsuarioInformacoes(usuario);
     const usuarioNormalizado = attachEnderecoResumo(usuarioComInformacoes);
@@ -643,6 +894,8 @@ export class AdminService {
     if (!usuarioNormalizado) {
       return null;
     }
+
+    const verificationSummary = buildEmailVerificationSummary(usuario.UsuariosVerificacaoEmail);
 
     // Buscar relações adicionais baseadas na role
     let relacoesAdicionais: any = {};
@@ -811,6 +1064,15 @@ export class AdminService {
       ...usuarioNormalizado,
       redesSociais: mapSocialLinks(usuarioComInformacoes.redesSociais),
       informacoes: usuarioComInformacoes.informacoes,
+      emailVerificado: verificationSummary.verified,
+      emailVerificadoEm: verificationSummary.verifiedAt,
+      UsuariosVerificacaoEmail: {
+        verified: verificationSummary.verified,
+        verifiedAt: verificationSummary.verifiedAt,
+        tokenExpiration: verificationSummary.tokenExpiration,
+        attempts: verificationSummary.attempts,
+        lastAttemptAt: verificationSummary.lastAttemptAt,
+      },
       ...relacoesAdicionais,
     };
   }
@@ -939,10 +1201,247 @@ export class AdminService {
     };
   }
 
+  async buscarHistoricoUsuario(
+    userId: string,
+    query: {
+      page: number;
+      pageSize: number;
+      tipos?: string[];
+      categorias?: string[];
+      atorId?: string;
+      atorRole?: Roles;
+      dataInicio?: string;
+      dataFim?: string;
+      search?: string;
+    },
+    options?: { userRole?: string },
+  ) {
+    if (!userId || userId.trim() === '') {
+      throw this.createServiceError('ID do usuário é obrigatório', 400, 'INVALID_ID');
+    }
+
+    const alvo = await this.ensureHistoryTarget(userId, options?.userRole);
+
+    const auditWhere: Prisma.AuditoriaLogsWhereInput = {
+      entidadeId: userId,
+      entidadeTipo: 'USUARIO',
+    };
+
+    if (query.atorId) {
+      auditWhere.usuarioId = query.atorId;
+    }
+
+    if (query.atorRole) {
+      auditWhere.Usuarios = {
+        is: {
+          role: query.atorRole,
+        },
+      };
+    }
+
+    if (query.dataInicio || query.dataFim) {
+      auditWhere.criadoEm = {};
+      if (query.dataInicio) {
+        auditWhere.criadoEm.gte = new Date(query.dataInicio);
+      }
+      if (query.dataFim) {
+        auditWhere.criadoEm.lte = new Date(query.dataFim);
+      }
+    }
+
+    if (query.search) {
+      auditWhere.OR = [
+        {
+          descricao: {
+            contains: query.search,
+            mode: 'insensitive',
+          },
+        },
+        {
+          acao: {
+            contains: query.search,
+            mode: 'insensitive',
+          },
+        },
+        {
+          tipo: {
+            contains: query.search,
+            mode: 'insensitive',
+          },
+        },
+      ];
+    }
+
+    const [auditLogs, bloqueioLogs] = await Promise.all([
+      prisma.auditoriaLogs.findMany({
+        where: auditWhere,
+        include: {
+          Usuarios: {
+            select: userHistoryActorSelect,
+          },
+        },
+        orderBy: {
+          criadoEm: 'desc',
+        },
+      }),
+      prisma.usuariosEmBloqueiosLogs.findMany({
+        where: {
+          UsuariosEmBloqueios: {
+            usuarioId: userId,
+          },
+          ...(query.atorId ? { criadoPorId: query.atorId } : {}),
+          ...(query.dataInicio || query.dataFim
+            ? {
+                criadoEm: {
+                  ...(query.dataInicio ? { gte: new Date(query.dataInicio) } : {}),
+                  ...(query.dataFim ? { lte: new Date(query.dataFim) } : {}),
+                },
+              }
+            : {}),
+          ...(query.search
+            ? {
+                descricao: {
+                  contains: query.search,
+                  mode: 'insensitive',
+                },
+              }
+            : {}),
+        },
+        include: {
+          Usuarios: {
+            select: userHistoryActorSelect,
+          },
+          UsuariosEmBloqueios: {
+            select: {
+              id: true,
+              tipo: true,
+              motivo: true,
+              observacoes: true,
+              status: true,
+              inicio: true,
+              fim: true,
+            },
+          },
+        },
+        orderBy: {
+          criadoEm: 'desc',
+        },
+      }),
+    ]);
+
+    const auditItems = auditLogs.map((log) => this.normalizeHistoryAuditItem(log, alvo));
+    const bloqueioItems = bloqueioLogs
+      .filter((log) => !query.atorRole || log.Usuarios?.role === query.atorRole)
+      .map((log) => this.normalizeHistoryBlockItem(log, alvo));
+
+    const hasCreatedEvent = auditItems.some((item) => item.tipo === 'USUARIO_CRIADO');
+    const syntheticCreatedEvent = hasCreatedEvent
+      ? []
+      : [
+          {
+            id: `synthetic-user-created-${alvo.id}`,
+            tipo: 'USUARIO_CRIADO' as UserHistoryTipo,
+            categoria: 'CADASTRO' as UserHistoryCategoria,
+            titulo: 'Conta criada',
+            descricao: 'Conta criada no sistema.',
+            dataHora: alvo.criadoEm.toISOString(),
+            ator: null,
+            alvo: this.getHistoryTargetSummary(alvo),
+            contexto: {
+              ip: null,
+              userAgent: null,
+              origem: 'SISTEMA',
+            },
+            dadosAnteriores: null,
+            dadosNovos: buildUserProfileSnapshot({
+              ...alvo,
+              emailVerificado: alvo.UsuariosVerificacaoEmail?.emailVerificado ?? false,
+              emailVerificadoEm: alvo.UsuariosVerificacaoEmail?.emailVerificadoEm ?? null,
+            }),
+            meta: {
+              synthetic: true,
+            },
+          },
+        ];
+
+    const filteredItems = [...auditItems, ...bloqueioItems, ...syntheticCreatedEvent]
+      .filter((item) => {
+        if (query.tipos?.length && !query.tipos.includes(item.tipo)) {
+          return false;
+        }
+
+        if (query.categorias?.length && !query.categorias.includes(item.categoria)) {
+          return false;
+        }
+
+        if (query.atorId && item.ator?.id !== query.atorId) {
+          return false;
+        }
+
+        if (query.atorRole && item.ator?.role !== query.atorRole) {
+          return false;
+        }
+
+        if (query.search) {
+          const haystacks = [
+            item.titulo,
+            item.descricao,
+            item.tipo,
+            item.categoria,
+            item.ator?.nome,
+            item.ator?.roleLabel,
+            item.alvo.nomeCompleto,
+            item.alvo.email,
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
+
+          if (!haystacks.includes(query.search.toLowerCase())) {
+            return false;
+          }
+        }
+
+        return true;
+      })
+      .sort(
+        (left, right) => new Date(right.dataHora).getTime() - new Date(left.dataHora).getTime(),
+      );
+
+    const total = filteredItems.length;
+    const totalPages = total === 0 ? 0 : Math.ceil(total / query.pageSize);
+    const skip = (query.page - 1) * query.pageSize;
+    const items = filteredItems.slice(skip, skip + query.pageSize);
+
+    return {
+      items,
+      pagination: {
+        page: query.page,
+        pageSize: query.pageSize,
+        total,
+        totalPages,
+      },
+      resumo: {
+        total,
+        ultimoEventoEm: filteredItems[0]?.dataHora ?? null,
+      },
+    };
+  }
+
   /**
    * Atualiza status do usuário - TIPAGEM CORRETA
    */
-  async atualizarStatus(userId: string, status: string, motivo?: string) {
+  async atualizarStatus(
+    userId: string,
+    status: string,
+    motivo?: string,
+    options?: {
+      actorId?: string;
+      actorRole?: string;
+      ip?: string | null;
+      userAgent?: string | null;
+    },
+  ) {
     // Validações
     if (!userId || userId.trim() === '') {
       throw new Error('ID do usuário é obrigatório');
@@ -954,7 +1453,7 @@ export class AdminService {
     // Buscar dados antes da atualização
     const usuarioAntes = await prisma.usuarios.findUnique({
       where: { id: userId },
-      select: { status: true, email: true, nomeCompleto: true },
+      select: { status: true, email: true, nomeCompleto: true, role: true },
     });
 
     if (!usuarioAntes) {
@@ -977,6 +1476,30 @@ export class AdminService {
     });
 
     await invalidateUserCache(usuario);
+
+    if (options?.actorId) {
+      await recordUserAuditEvent({
+        client: prisma,
+        actorId: options.actorId,
+        actorRole: options.actorRole,
+        targetUserId: usuario.id,
+        action: 'USUARIO_STATUS_ALTERADO',
+        descricao: `Status alterado de ${usuarioAntes.status} para ${statusEnum}.`,
+        dadosAnteriores: {
+          status: usuarioAntes.status,
+        },
+        dadosNovos: {
+          status: usuario.status,
+        },
+        meta: {
+          motivo: motivo ?? null,
+          origem: 'PAINEL_ADMIN',
+          targetRole: usuario.role,
+        },
+        ip: options.ip ?? null,
+        userAgent: options.userAgent ?? null,
+      });
+    }
 
     if (
       usuario.role === Roles.ALUNO_CANDIDATO &&
@@ -1044,7 +1567,17 @@ export class AdminService {
   /**
    * Atualiza role do usuário - TIPAGEM CORRETA
    */
-  async atualizarRole(userId: string, role: string, motivo?: string, adminId?: string) {
+  async atualizarRole(
+    userId: string,
+    role: string,
+    motivo?: string,
+    adminId?: string,
+    options?: {
+      actorRole?: string;
+      ip?: string | null;
+      userAgent?: string | null;
+    },
+  ) {
     // Validações
     if (!userId || !role) {
       throw new Error('ID do usuário e role são obrigatórios');
@@ -1055,6 +1588,21 @@ export class AdminService {
     // Prevenir auto-demoção de ADMIN
     if (adminId === userId && roleEnum !== Roles.ADMIN) {
       throw new Error('Você não pode alterar sua própria role para uma função não-administrativa');
+    }
+
+    const usuarioAntes = await prisma.usuarios.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        nomeCompleto: true,
+        role: true,
+        status: true,
+      },
+    });
+
+    if (!usuarioAntes) {
+      throw new Error('Usuário não encontrado');
     }
 
     const usuario = await prisma.usuarios.update({
@@ -1071,6 +1619,30 @@ export class AdminService {
     });
 
     await invalidateUserCache(usuario);
+
+    if (adminId) {
+      await recordUserAuditEvent({
+        client: prisma,
+        actorId: adminId,
+        actorRole: options?.actorRole,
+        targetUserId: usuario.id,
+        action: 'USUARIO_ROLE_ALTERADA',
+        descricao: `Role alterada de ${usuarioAntes.role} para ${usuario.role}.`,
+        dadosAnteriores: {
+          role: usuarioAntes.role,
+        },
+        dadosNovos: {
+          role: usuario.role,
+        },
+        meta: {
+          motivo: motivo ?? null,
+          origem: 'PAINEL_ADMIN',
+          statusAtual: usuarioAntes.status,
+        },
+        ip: options?.ip ?? null,
+        userAgent: options?.userAgent ?? null,
+      });
+    }
 
     this.log.info(
       {
@@ -1209,6 +1781,35 @@ export class AdminService {
       });
     }
 
+    if (options?.adminId) {
+      const usuarioHistorico = await prisma.usuarios.findUnique({
+        where: { id: usuario.id },
+        select: userHistoryTargetSelect,
+      });
+
+      if (usuarioHistorico) {
+        await recordUserAuditEvent({
+          client: prisma,
+          actorId: options.adminId,
+          actorRole: options.userRole,
+          targetUserId: usuario.id,
+          action: 'USUARIO_CRIADO',
+          descricao: 'Conta criada pelo painel administrativo.',
+          dadosNovos: buildUserProfileSnapshot({
+            ...usuarioHistorico,
+            emailVerificado: usuarioHistorico.UsuariosVerificacaoEmail?.emailVerificado ?? true,
+            emailVerificadoEm:
+              usuarioHistorico.UsuariosVerificacaoEmail?.emailVerificadoEm ?? new Date(),
+          }),
+          meta: {
+            origem: 'PAINEL_ADMIN',
+            criadoVia: 'ADMIN',
+            bypassValidacaoEmail: true,
+          },
+        });
+      }
+    }
+
     await invalidateUserCache(usuario);
 
     try {
@@ -1277,7 +1878,13 @@ export class AdminService {
       confirmarSenha?: string;
       role?: string;
     },
-    options?: { userRole?: string },
+    options?: {
+      userRole?: string;
+      actorId?: string;
+      actorRole?: string;
+      ip?: string | null;
+      userAgent?: string | null;
+    },
   ) {
     // Validar senha se fornecida
     if (dados.senha !== undefined || dados.confirmarSenha !== undefined) {
@@ -1313,6 +1920,16 @@ export class AdminService {
     // Sanitizar redes sociais
     const redesSociaisSanitizado = sanitizeSocialLinks(dados.redesSociais);
     const redesSociaisUpdate = buildSocialLinksUpdateData(redesSociaisSanitizado);
+    const snapshotAntesUsuario = await prisma.usuarios.findUnique({
+      where: { id: userId },
+      select: userHistoryTargetSelect,
+    });
+
+    if (!snapshotAntesUsuario) {
+      throw Object.assign(new Error('Usuário não encontrado'), {
+        code: 'USER_NOT_FOUND',
+      });
+    }
 
     const usuarioAtualizado = await prisma.$transaction(async (tx) => {
       // Verificar se usuário existe
@@ -1334,19 +1951,7 @@ export class AdminService {
 
       // Validação para PEDAGOGICO: só pode editar usuários com role ALUNO_CANDIDATO ou INSTRUTOR
       if (options?.userRole === Roles.PEDAGOGICO) {
-        if (
-          usuarioExistente.role !== Roles.ALUNO_CANDIDATO &&
-          usuarioExistente.role !== Roles.INSTRUTOR
-        ) {
-          throw Object.assign(
-            new Error('PEDAGOGICO só pode editar usuários com role ALUNO_CANDIDATO ou INSTRUTOR'),
-            {
-              code: 'FORBIDDEN_USER_ROLE',
-              statusCode: 403,
-            },
-          );
-        }
-
+        this.assertPedagogicoCanManageUser(options.userRole, usuarioExistente.role, 'editar');
         // PEDAGOGICO não pode alterar a role do usuário
         if (dados.role !== undefined && dados.role !== usuarioExistente.role) {
           throw Object.assign(new Error('PEDAGOGICO não pode alterar a role de um usuário'), {
@@ -1528,6 +2133,9 @@ export class AdminService {
               criadoEm: 'desc',
             },
           },
+          UsuariosVerificacaoEmail: {
+            select: UsuariosVerificacaoEmailSelect,
+          },
         },
       });
 
@@ -1553,7 +2161,428 @@ export class AdminService {
       '✅ Informações do usuário atualizadas com sucesso',
     );
 
+    if (options?.actorId) {
+      const snapshotDepois = buildUserProfileSnapshot({
+        ...usuarioAtualizado,
+        emailVerificado: usuarioAtualizado.UsuariosVerificacaoEmail?.emailVerificado ?? null,
+        emailVerificadoEm: usuarioAtualizado.UsuariosVerificacaoEmail?.emailVerificadoEm ?? null,
+      });
+      const snapshotAntes = buildUserProfileSnapshot({
+        ...snapshotAntesUsuario,
+        emailVerificado: snapshotAntesUsuario.UsuariosVerificacaoEmail?.emailVerificado ?? null,
+        emailVerificadoEm: snapshotAntesUsuario.UsuariosVerificacaoEmail?.emailVerificadoEm ?? null,
+      });
+
+      const payloads: {
+        action: string;
+        descricao: string;
+        before: Record<string, unknown> | null;
+        after: Record<string, unknown> | null;
+        meta?: Record<string, unknown>;
+      }[] = [];
+
+      if (dados.senha !== undefined) {
+        payloads.push({
+          action: 'USUARIO_SENHA_RESETADA',
+          descricao: 'Senha redefinida manualmente pelo painel administrativo.',
+          before: null,
+          after: null,
+          meta: {
+            modo: 'MANUAL',
+            origem: 'PAINEL_ADMIN',
+          },
+        });
+      }
+
+      const perfilDiff = diffSnapshot(
+        {
+          nomeCompleto: snapshotAntes.nomeCompleto,
+          email: snapshotAntes.email,
+          descricao: snapshotAntes.descricao,
+          genero: snapshotAntes.genero,
+          dataNasc: snapshotAntes.dataNasc,
+        },
+        {
+          nomeCompleto: snapshotDepois.nomeCompleto,
+          email: snapshotDepois.email,
+          descricao: snapshotDepois.descricao,
+          genero: snapshotDepois.genero,
+          dataNasc: snapshotDepois.dataNasc,
+        },
+      );
+
+      if (perfilDiff.before || perfilDiff.after) {
+        payloads.push({
+          action: 'USUARIO_ATUALIZADO',
+          descricao: 'Perfil atualizado pelo painel administrativo.',
+          before: perfilDiff.before,
+          after: perfilDiff.after,
+        });
+      }
+
+      const telefoneDiff = diffSnapshot(
+        { telefone: snapshotAntes.telefone },
+        { telefone: snapshotDepois.telefone },
+      );
+      if (telefoneDiff.before || telefoneDiff.after) {
+        payloads.push({
+          action: 'USUARIO_TELEFONE_ATUALIZADO',
+          descricao: 'Telefone atualizado pelo painel administrativo.',
+          before: telefoneDiff.before,
+          after: telefoneDiff.after,
+        });
+      }
+
+      const avatarDiff = diffSnapshot(
+        { avatarUrl: snapshotAntes.avatarUrl },
+        { avatarUrl: snapshotDepois.avatarUrl },
+      );
+      if (avatarDiff.before || avatarDiff.after) {
+        payloads.push({
+          action: 'USUARIO_AVATAR_ATUALIZADO',
+          descricao: 'Avatar atualizado pelo painel administrativo.',
+          before: avatarDiff.before,
+          after: avatarDiff.after,
+        });
+      }
+
+      const enderecoDiff = diffSnapshot(
+        { endereco: snapshotAntes.endereco },
+        { endereco: snapshotDepois.endereco },
+      );
+      if (enderecoDiff.before || enderecoDiff.after) {
+        payloads.push({
+          action: 'USUARIO_ENDERECO_ATUALIZADO',
+          descricao: 'Endereço atualizado pelo painel administrativo.',
+          before: enderecoDiff.before,
+          after: enderecoDiff.after,
+        });
+      }
+
+      const redesDiff = diffSnapshot(
+        { redesSociais: snapshotAntes.redesSociais },
+        { redesSociais: snapshotDepois.redesSociais },
+      );
+      if (redesDiff.before || redesDiff.after) {
+        payloads.push({
+          action: 'USUARIO_SOCIAL_LINK_ATUALIZADO',
+          descricao: 'Redes sociais atualizadas pelo painel administrativo.',
+          before: redesDiff.before,
+          after: redesDiff.after,
+        });
+      }
+
+      for (const payload of payloads) {
+        await recordUserAuditEvent({
+          client: prisma,
+          actorId: options.actorId,
+          actorRole: options.actorRole,
+          targetUserId: userId,
+          action: payload.action,
+          descricao: payload.descricao,
+          dadosAnteriores: payload.before,
+          dadosNovos: payload.after,
+          meta: payload.meta ?? {
+            origem: 'PAINEL_ADMIN',
+          },
+          ip: options.ip ?? null,
+          userAgent: options.userAgent ?? null,
+        });
+      }
+    }
+
     return usuarioNormalizado;
+  }
+
+  async liberarValidacaoEmail(
+    userId: string,
+    options?: {
+      actorId?: string;
+      actorRole?: string;
+      motivo?: string;
+      ip?: string | null;
+      userAgent?: string | null;
+    },
+  ) {
+    if (!userId || userId.trim() === '') {
+      throw Object.assign(new Error('ID do usuário é obrigatório'), {
+        code: 'INVALID_ID',
+        statusCode: 400,
+      });
+    }
+
+    const now = new Date();
+
+    const result = await prisma.$transaction(async (tx) => {
+      const usuario = await tx.usuarios.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          nomeCompleto: true,
+          role: true,
+          status: true,
+          UsuariosVerificacaoEmail: {
+            select: UsuariosVerificacaoEmailSelect,
+          },
+        },
+      });
+
+      if (!usuario) {
+        throw Object.assign(new Error('Usuário não encontrado'), {
+          code: 'USER_NOT_FOUND',
+          statusCode: 404,
+        });
+      }
+
+      this.assertPedagogicoCanManageUser(
+        options?.actorRole,
+        usuario.role,
+        'liberar validacao de email',
+      );
+
+      const before = normalizeEmailVerification(usuario.UsuariosVerificacaoEmail);
+
+      const verification = await tx.usuariosVerificacaoEmail.upsert({
+        where: { usuarioId: usuario.id },
+        update: {
+          emailVerificado: true,
+          emailVerificadoEm: before.emailVerificadoEm ?? now,
+          emailVerificationToken: null,
+          emailVerificationTokenExp: null,
+          emailVerificationAttempts: 0,
+          ultimaTentativaVerificacao: null,
+        },
+        create: {
+          usuarioId: usuario.id,
+          emailVerificado: true,
+          emailVerificadoEm: now,
+          emailVerificationToken: null,
+          emailVerificationTokenExp: null,
+          emailVerificationAttempts: 0,
+          ultimaTentativaVerificacao: null,
+        },
+      });
+
+      const after = normalizeEmailVerification(verification);
+
+      if (options?.actorId) {
+        await recordUserAuditEvent({
+          client: tx,
+          actorId: options.actorId,
+          actorRole: options.actorRole,
+          targetUserId: usuario.id,
+          action: 'USUARIO_EMAIL_LIBERADO_MANUALMENTE',
+          descricao: `Validação de email liberada manualmente para ${usuario.email}.`,
+          dadosAnteriores: serializeEmailVerificationAudit(before),
+          dadosNovos: serializeEmailVerificationAudit(after),
+          meta: {
+            motivo: options?.motivo ?? null,
+            targetStatus: usuario.status,
+            targetRole: usuario.role,
+            origem: 'PAINEL_ADMIN',
+          },
+          ip: options?.ip ?? null,
+          userAgent: options?.userAgent ?? null,
+        });
+      }
+
+      return {
+        id: usuario.id,
+        email: usuario.email,
+        nomeCompleto: usuario.nomeCompleto,
+        role: usuario.role,
+        status: usuario.status,
+        emailVerificado: after.emailVerificado,
+        emailVerificadoEm: after.emailVerificadoEm,
+        alreadyVerified: before.emailVerificado,
+        statusPermiteLogin: usuario.status === Status.ATIVO,
+      };
+    });
+
+    await invalidateUserCache(userId);
+    await this.invalidateListCache();
+
+    this.log.info(
+      {
+        actorId: options?.actorId,
+        actorRole: options?.actorRole,
+        userId,
+        alreadyVerified: result.alreadyVerified,
+      },
+      'Validacao de email liberada manualmente via painel',
+    );
+
+    return result;
+  }
+
+  async liberarAcessoUsuario(
+    userId: string,
+    options?: {
+      actorId?: string;
+      actorRole?: string;
+      motivo?: string;
+      ip?: string | null;
+      userAgent?: string | null;
+    },
+  ) {
+    if (!userId || userId.trim() === '') {
+      throw Object.assign(new Error('ID do usuário é obrigatório'), {
+        code: 'INVALID_ID',
+        statusCode: 400,
+      });
+    }
+
+    const now = new Date();
+
+    const result = await prisma.$transaction(async (tx) => {
+      const usuario = await tx.usuarios.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          nomeCompleto: true,
+          role: true,
+          status: true,
+          UsuariosVerificacaoEmail: {
+            select: UsuariosVerificacaoEmailSelect,
+          },
+        },
+      });
+
+      if (!usuario) {
+        throw Object.assign(new Error('Usuário não encontrado'), {
+          code: 'USER_NOT_FOUND',
+          statusCode: 404,
+        });
+      }
+
+      this.assertPedagogicoCanManageUser(options?.actorRole, usuario.role, 'liberar acesso');
+
+      if (
+        usuario.status === Status.BLOQUEADO ||
+        usuario.status === Status.INATIVO ||
+        usuario.status === Status.SUSPENSO
+      ) {
+        throw this.createServiceError(
+          'Não é possível liberar acesso para usuários bloqueados, inativos ou suspensos.',
+          409,
+          'USER_ACCESS_RELEASE_BLOCKED_BY_STATUS',
+          {
+            statusAtual: usuario.status,
+          },
+        );
+      }
+
+      const beforeVerification = normalizeEmailVerification(usuario.UsuariosVerificacaoEmail);
+      const beforeSnapshot = {
+        status: usuario.status,
+        emailVerificado: beforeVerification.emailVerificado,
+        emailVerificadoEm: beforeVerification.emailVerificadoEm?.toISOString() ?? null,
+      };
+
+      const verification = await tx.usuariosVerificacaoEmail.upsert({
+        where: { usuarioId: usuario.id },
+        update: {
+          emailVerificado: true,
+          emailVerificadoEm: beforeVerification.emailVerificadoEm ?? now,
+          emailVerificationToken: null,
+          emailVerificationTokenExp: null,
+          emailVerificationAttempts: 0,
+          ultimaTentativaVerificacao: null,
+        },
+        create: {
+          usuarioId: usuario.id,
+          emailVerificado: true,
+          emailVerificadoEm: now,
+          emailVerificationToken: null,
+          emailVerificationTokenExp: null,
+          emailVerificationAttempts: 0,
+          ultimaTentativaVerificacao: null,
+        },
+      });
+
+      const afterVerification = normalizeEmailVerification(verification);
+      const statusAnterior = usuario.status;
+      let statusFinal: Status = usuario.status;
+
+      if (usuario.status === Status.PENDENTE) {
+        const usuarioAtualizado = await tx.usuarios.update({
+          where: { id: usuario.id },
+          data: {
+            status: Status.ATIVO,
+            atualizadoEm: now,
+          },
+          select: {
+            status: true,
+          },
+        });
+
+        statusFinal = usuarioAtualizado.status;
+      }
+
+      const afterSnapshot = {
+        status: statusFinal,
+        emailVerificado: afterVerification.emailVerificado,
+        emailVerificadoEm: afterVerification.emailVerificadoEm?.toISOString() ?? null,
+      };
+
+      const houveMudanca =
+        beforeSnapshot.status !== afterSnapshot.status ||
+        beforeSnapshot.emailVerificado !== afterSnapshot.emailVerificado ||
+        beforeSnapshot.emailVerificadoEm !== afterSnapshot.emailVerificadoEm;
+
+      if (options?.actorId && houveMudanca) {
+        await recordUserAuditEvent({
+          client: tx,
+          actorId: options.actorId,
+          actorRole: options.actorRole,
+          targetUserId: usuario.id,
+          action: 'USUARIO_ACESSO_LIBERADO',
+          descricao: `Acesso liberado manualmente para ${usuario.email}.`,
+          dadosAnteriores: beforeSnapshot,
+          dadosNovos: afterSnapshot,
+          meta: {
+            motivo: options?.motivo ?? null,
+            targetRole: usuario.role,
+            origem: 'PAINEL_ADMIN',
+          },
+          ip: options?.ip ?? null,
+          userAgent: options?.userAgent ?? null,
+        });
+      }
+
+      return {
+        id: usuario.id,
+        email: usuario.email,
+        nomeCompleto: usuario.nomeCompleto,
+        role: usuario.role,
+        statusAnterior,
+        status: statusFinal,
+        emailVerificado: afterVerification.emailVerificado,
+        emailVerificadoEm: afterVerification.emailVerificadoEm,
+        alreadyVerified: beforeVerification.emailVerificado,
+        statusPermiteLogin: statusFinal === Status.ATIVO,
+        acessoLiberado: statusFinal === Status.ATIVO && afterVerification.emailVerificado,
+      };
+    });
+
+    await invalidateUserCache(userId);
+    await this.invalidateListCache();
+
+    this.log.info(
+      {
+        actorId: options?.actorId,
+        actorRole: options?.actorRole,
+        userId,
+        statusAnterior: result.statusAnterior,
+        statusAtual: result.status,
+        alreadyVerified: result.alreadyVerified,
+      },
+      'Acesso do usuário liberado manualmente via painel',
+    );
+
+    return result;
   }
 
   async buscarCurriculoPorId(curriculoId: string) {

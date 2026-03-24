@@ -119,6 +119,54 @@ export const updateRoleSchema = z.object({
   motivo: z.string().max(500).optional(),
 });
 
+export const bypassEmailVerificationSchema = z.object({
+  motivo: z
+    .string({ invalid_type_error: 'Motivo deve ser um texto' })
+    .trim()
+    .min(3, 'Motivo deve ter pelo menos 3 caracteres')
+    .max(500, 'Motivo deve ter no máximo 500 caracteres')
+    .optional(),
+});
+
+const csvStringToArray = (value: unknown) => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .flatMap((item) =>
+        typeof item === 'string'
+          ? item.split(',').map((part) => part.trim())
+          : String(item)
+              .split(',')
+              .map((part) => part.trim()),
+      )
+      .filter(Boolean);
+  }
+
+  if (typeof value === 'string') {
+    return value
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean);
+  }
+
+  return undefined;
+};
+
+export const userHistoryQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(10),
+  tipos: z.preprocess(csvStringToArray, z.array(z.string().min(1)).optional()),
+  categorias: z.preprocess(csvStringToArray, z.array(z.string().min(1)).optional()),
+  atorId: z.string().uuid('atorId deve ser um UUID válido').optional(),
+  atorRole: z.nativeEnum(Roles).optional(),
+  dataInicio: z.string().datetime('dataInicio deve ser um ISO datetime válido').optional(),
+  dataFim: z.string().datetime('dataFim deve ser um ISO datetime válido').optional(),
+  search: z.string().trim().max(200, 'search deve ter no máximo 200 caracteres').optional(),
+});
+
 export const adminAlunoBloqueioSchema = z
   .object({
     tipo: z.nativeEnum(TiposDeBloqueios, { required_error: 'Tipo de bloqueio é obrigatório' }),
@@ -155,6 +203,8 @@ export type RegisterPessoaFisicaInput = z.infer<typeof pessoaFisicaRegisterSchem
 export type RegisterPessoaJuridicaInput = z.infer<typeof pessoaJuridicaRegisterSchema>;
 export type UpdateStatusInput = z.infer<typeof updateStatusSchema>;
 export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
+export type BypassEmailVerificationInput = z.infer<typeof bypassEmailVerificationSchema>;
+export type UserHistoryQueryInput = z.infer<typeof userHistoryQuerySchema>;
 export type AdminCreateUserInput = z.infer<typeof adminCreateUserSchema>;
 export type AdminAlunoBloqueioInput = z.infer<typeof adminAlunoBloqueioSchema>;
 

@@ -212,65 +212,15 @@ describe('API - Histórico global de auditoria', () => {
     );
   });
 
-  it('MODERADOR deve conseguir buscar por label amigável e nome do alvo', async () => {
+  it('MODERADOR não deve acessar a auditoria global', async () => {
     const moderador = await registerUser({
       role: Roles.MODERADOR,
       nomeCompleto: 'Carlos Moderador',
     });
-    const target = await registerUser({
-      role: Roles.ALUNO_CANDIDATO,
-      nomeCompleto: 'Fernanda Pessoa Teste',
-    });
-
-    await registerLog({
-      categoria: AuditoriaCategoria.USUARIO,
-      tipo: 'USUARIO_ATUALIZADO',
-      acao: 'USUARIO_ROLE_ALTERADA',
-      usuarioId: moderador.id,
-      entidadeId: target.id,
-      entidadeTipo: 'USUARIO',
-      descricao: 'Role alterada de ALUNO_CANDIDATO para INSTRUTOR.',
-      dadosAnteriores: { role: 'ALUNO_CANDIDATO' },
-      dadosNovos: { role: 'INSTRUTOR' },
-      metadata: {
-        actorRole: Roles.MODERADOR,
-        origem: 'PAINEL_ADMIN',
-      },
-      criadoEm: new Date('2026-03-24T16:00:00.000Z'),
-    });
-
-    const byFriendlyLabel = await request(app)
-      .get(
-        `/api/v1/auditoria/logs?search=função&categorias=USUARIO&tipos=USUARIO_ROLE_ALTERADA&atorId=${moderador.id}`,
-      )
-      .set('Authorization', `Bearer ${moderador.token}`)
-      .expect(200);
-
-    expect(byFriendlyLabel.body.data.items).toHaveLength(1);
-    expect(byFriendlyLabel.body.data.items[0]).toEqual(
-      expect.objectContaining({
-        tipo: 'USUARIO_ROLE_ALTERADA',
-        entidade: expect.objectContaining({
-          id: target.id,
-        }),
-      }),
-    );
-
-    const byEntityName = await request(app)
-      .get(`/api/v1/auditoria/logs?search=${encodeURIComponent('Fernanda Pessoa')}`)
-      .set('Authorization', `Bearer ${moderador.token}`)
-      .expect(200);
-
-    expect(byEntityName.body.data.items).toHaveLength(1);
-    expect(byEntityName.body.data.items[0].entidade.nomeExibicao).toBe(target.nomeCompleto);
-  });
-
-  it('PEDAGOGICO não deve acessar a auditoria global', async () => {
-    const pedagogico = await registerUser({ role: Roles.PEDAGOGICO });
 
     const response = await request(app)
       .get('/api/v1/auditoria/logs')
-      .set('Authorization', `Bearer ${pedagogico.token}`)
+      .set('Authorization', `Bearer ${moderador.token}`)
       .expect(403);
 
     expect(response.body).toEqual({
@@ -278,6 +228,34 @@ describe('API - Histórico global de auditoria', () => {
       code: 'AUDITORIA_ACCESS_DENIED',
       message: 'Sem permissão para acessar o histórico de auditoria.',
     });
+  });
+
+  it('deve bloquear rotas sensíveis do módulo de auditoria para perfis não ADMIN', async () => {
+    const moderador = await registerUser({
+      role: Roles.MODERADOR,
+      nomeCompleto: 'Carlos Moderador',
+    });
+
+    const endpoints = [
+      '/api/v1/auditoria/logs',
+      `/api/v1/auditoria/usuarios/${moderador.id}/historico`,
+      '/api/v1/auditoria/assinaturas',
+      '/api/v1/auditoria/transacoes',
+      '/api/v1/auditoria/scripts',
+    ];
+
+    for (const endpoint of endpoints) {
+      const response = await request(app)
+        .get(endpoint)
+        .set('Authorization', `Bearer ${moderador.token}`)
+        .expect(403);
+
+      expect(response.body).toEqual({
+        success: false,
+        code: 'AUDITORIA_ACCESS_DENIED',
+        message: 'Sem permissão para acessar o histórico de auditoria.',
+      });
+    }
   });
 
   it('deve rejeitar filtros inválidos com erro de negócio explícito', async () => {

@@ -21,7 +21,12 @@ Essa rota substitui o uso de mock e entrega paginação, busca, filtros e payloa
 Perfis com acesso:
 
 - `ADMIN`
-- `MODERADOR`
+
+Restrição aplicada também nas rotas sensíveis do módulo de auditoria:
+
+- `GET /api/v1/auditoria/usuarios/:usuarioId/historico`
+- `GET /api/v1/auditoria/assinaturas`
+- `GET /api/v1/auditoria/transacoes`
 
 Sem permissão:
 
@@ -253,5 +258,6 @@ Exemplo de filtro inválido:
 - [ ] Usar `data.items` como fonte da tabela
 - [ ] Usar `data.pagination` para paginação real
 - [ ] Usar `data.filtrosDisponiveis` para filtros dinâmicos
+- [ ] Exibir a tela apenas para `ADMIN`
 - [ ] Renderizar `ator.nome` e `ator.roleLabel` sem depender de UUID bruto
 - [ ] Exibir `dadosAnteriores` e `dadosNovos` em drawer/modal futuro, se necessário

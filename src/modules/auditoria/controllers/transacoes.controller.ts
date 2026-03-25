@@ -4,9 +4,13 @@
  */
 
 import { Request, Response } from 'express';
+import { ZodError } from 'zod';
 import { logger } from '@/utils/logger';
 import { transacoesService } from '../services/transacoes.service';
-import { auditoriaTransacaoInputSchema } from '../validators/auditoria.validators';
+import {
+  auditoriaTransacaoInputSchema,
+  auditoriaTransacoesDashboardFiltersSchema,
+} from '../validators/auditoria.validators';
 
 const transacoesControllerLogger = logger.child({ module: 'TransacoesController' });
 
@@ -101,21 +105,37 @@ export const transacoesController = {
    */
   list: async (req: Request, res: Response) => {
     try {
-      const filters = req.query;
-      const result = await transacoesService.listarTransacoes(filters);
+      const filters = auditoriaTransacoesDashboardFiltersSchema.parse(req.query);
+      const result = await transacoesService.listarTransacoesDashboard(filters);
 
       transacoesControllerLogger.info(
-        { filters, total: result.total },
-        'Transações listadas com sucesso',
+        { filters, total: result.pagination.total },
+        'Transações de auditoria listadas com sucesso',
       );
 
-      res.json(result);
+      res.json({
+        success: true,
+        data: result,
+      });
     } catch (error: any) {
-      transacoesControllerLogger.error({ err: error }, 'Erro ao listar transações');
-      res.status(500).json({
+      transacoesControllerLogger.error({ err: error }, 'Erro ao listar transações de auditoria');
+
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'AUDITORIA_INVALID_FILTERS',
+          message: 'Os filtros informados para as transações de auditoria são inválidos.',
+          errors: error.issues.map((issue) => ({
+            path: issue.path.join('.'),
+            message: issue.message,
+          })),
+        });
+      }
+
+      return res.status(error?.statusCode || 500).json({
         success: false,
-        message: 'Erro ao listar transações',
-        error: error.message,
+        code: error?.code || 'AUDITORIA_TRANSACOES_ERROR',
+        message: error?.message || 'Não foi possível carregar as transações de auditoria.',
       });
     }
   },

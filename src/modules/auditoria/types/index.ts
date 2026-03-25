@@ -212,6 +212,97 @@ export interface AuditoriaTransacaoResponse {
   };
 }
 
+export interface AuditoriaTransacaoDashboardUsuario {
+  id: string;
+  nome: string;
+  email: string | null;
+  codigo: string | null;
+}
+
+export interface AuditoriaTransacaoDashboardEmpresa {
+  id: string;
+  nomeExibicao: string;
+  codigo: string | null;
+}
+
+export interface AuditoriaTransacaoDashboardContexto {
+  cursoNome: string | null;
+  cursoId: string | null;
+  planoNome: string | null;
+  planoId: string | null;
+  origem: string | null;
+  metodoPagamento: string | null;
+}
+
+export interface AuditoriaTransacaoDashboardItem {
+  id: string;
+  codigoExibicao: string;
+  tipo: TransacaoTipo;
+  tipoLabel: string;
+  status: TransacaoStatus;
+  statusLabel: string;
+  valor: number;
+  moeda: string;
+  valorFormatado: string;
+  gateway: string | null;
+  gatewayLabel: string | null;
+  gatewayReferencia: string | null;
+  descricao: string;
+  usuario: AuditoriaTransacaoDashboardUsuario | null;
+  empresa: AuditoriaTransacaoDashboardEmpresa | null;
+  contexto: AuditoriaTransacaoDashboardContexto;
+  meta: Record<string, unknown> | null;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+export interface AuditoriaTransacoesDashboardFilters {
+  page: number;
+  pageSize: number;
+  search?: string;
+  tipos: TransacaoTipo[];
+  status: TransacaoStatus[];
+  usuarioId?: string;
+  empresaId?: string;
+  gateway?: string;
+  dataInicio?: string;
+  dataFim?: string;
+  sortBy: 'criadoEm' | 'tipo' | 'status' | 'valor' | 'gateway';
+  sortDir: 'asc' | 'desc';
+}
+
+export interface AuditoriaTransacoesDashboardListResponse {
+  items: AuditoriaTransacaoDashboardItem[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+  resumo: {
+    total: number;
+    valorTotal: number;
+    ultimoEventoEm: string | null;
+  };
+  filtrosDisponiveis: {
+    tipos: {
+      value: TransacaoTipo;
+      label: string;
+      count: number;
+    }[];
+    status: {
+      value: TransacaoStatus;
+      label: string;
+      count: number;
+    }[];
+    gateways: {
+      value: string;
+      label: string;
+      count: number;
+    }[];
+  };
+}
+
 export interface AuditoriaStats {
   totalLogs: number;
   logsPorCategoria: Record<AuditoriaCategoria, number>;

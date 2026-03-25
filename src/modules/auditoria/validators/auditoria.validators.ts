@@ -4,7 +4,13 @@
  */
 
 import { z } from 'zod';
-import { AuditoriaCategoria, Roles, ScriptTipo, TransacaoTipo } from '@prisma/client';
+import {
+  AuditoriaCategoria,
+  Roles,
+  ScriptTipo,
+  TransacaoStatus,
+  TransacaoTipo,
+} from '@prisma/client';
 
 const parseCsv = (value: unknown) => {
   if (value === undefined || value === null || value === '') {
@@ -101,6 +107,36 @@ export const auditoriaTransacaoInputSchema = z.object({
   metadata: z.record(z.any()).optional(),
 });
 
+export const auditoriaTransacoesDashboardFiltersSchema = z
+  .object({
+    page: z.coerce.number().int().min(1).default(1),
+    pageSize: z.coerce.number().int().min(1).max(100).default(10),
+    search: z.string().trim().min(1).max(200).optional(),
+    tipos: z.preprocess(parseCsv, z.array(z.nativeEnum(TransacaoTipo)).default([])),
+    status: z.preprocess(parseCsv, z.array(z.nativeEnum(TransacaoStatus)).default([])),
+    usuarioId: z.string().uuid().optional(),
+    empresaId: z.string().uuid().optional(),
+    gateway: z.string().trim().min(1).max(80).optional(),
+    dataInicio: z.string().datetime().optional(),
+    dataFim: z.string().datetime().optional(),
+    sortBy: z.enum(['criadoEm', 'tipo', 'status', 'valor', 'gateway']).default('criadoEm'),
+    sortDir: z.enum(['asc', 'desc']).default('desc'),
+  })
+  .superRefine((value, ctx) => {
+    if (value.dataInicio && value.dataFim) {
+      const start = new Date(value.dataInicio);
+      const end = new Date(value.dataFim);
+
+      if (start.getTime() > end.getTime()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['dataFim'],
+          message: 'dataFim deve ser maior ou igual a dataInicio',
+        });
+      }
+    }
+  });
+
 export const auditoriaStatsFiltersSchema = z.object({
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
@@ -113,4 +149,7 @@ export type AuditoriaFilters = z.infer<typeof auditoriaFiltersSchema>;
 export type AuditoriaDashboardFilters = z.infer<typeof auditoriaDashboardFiltersSchema>;
 export type AuditoriaScriptInput = z.infer<typeof auditoriaScriptInputSchema>;
 export type AuditoriaTransacaoInput = z.infer<typeof auditoriaTransacaoInputSchema>;
+export type AuditoriaTransacoesDashboardFilters = z.infer<
+  typeof auditoriaTransacoesDashboardFiltersSchema
+>;
 export type AuditoriaStatsFilters = z.infer<typeof auditoriaStatsFiltersSchema>;

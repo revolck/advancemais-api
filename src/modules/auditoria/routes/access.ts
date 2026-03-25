@@ -10,7 +10,7 @@ const requireAuditoriaAdminAccess = (req: Request, res: Response, next: NextFunc
     return res.status(403).json({
       success: false,
       code: 'AUDITORIA_ACCESS_DENIED',
-      message: 'Sem permissão para acessar o histórico de auditoria.',
+      message: 'Sem permissão para acessar os dados de auditoria.',
     });
   }
 

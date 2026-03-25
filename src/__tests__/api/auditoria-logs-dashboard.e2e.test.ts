@@ -226,7 +226,7 @@ describe('API - Histórico global de auditoria', () => {
     expect(response.body).toEqual({
       success: false,
       code: 'AUDITORIA_ACCESS_DENIED',
-      message: 'Sem permissão para acessar o histórico de auditoria.',
+      message: 'Sem permissão para acessar os dados de auditoria.',
     });
   });
 
@@ -253,7 +253,7 @@ describe('API - Histórico global de auditoria', () => {
       expect(response.body).toEqual({
         success: false,
         code: 'AUDITORIA_ACCESS_DENIED',
-        message: 'Sem permissão para acessar o histórico de auditoria.',
+        message: 'Sem permissão para acessar os dados de auditoria.',
       });
     }
   });

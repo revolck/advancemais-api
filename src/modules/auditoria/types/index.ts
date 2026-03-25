@@ -66,6 +66,84 @@ export interface AuditoriaFilters {
   search?: string;
 }
 
+export interface AuditoriaDashboardActor {
+  id: string | null;
+  nome: string;
+  role: string | null;
+  roleLabel: string;
+  avatarUrl: string | null;
+}
+
+export interface AuditoriaDashboardEntity {
+  id: string;
+  tipo: string;
+  codigo: string | null;
+  nomeExibicao: string | null;
+}
+
+export interface AuditoriaDashboardContexto {
+  ip: string | null;
+  userAgent: string | null;
+  origem: string | null;
+}
+
+export interface AuditoriaDashboardItem {
+  id: string;
+  categoria: AuditoriaCategoria;
+  tipo: string;
+  acao: string;
+  descricao: string;
+  dataHora: string;
+  ator: AuditoriaDashboardActor;
+  entidade: AuditoriaDashboardEntity | null;
+  contexto: AuditoriaDashboardContexto;
+  dadosAnteriores: unknown | null;
+  dadosNovos: unknown | null;
+  meta: Record<string, unknown> | null;
+}
+
+export interface AuditoriaDashboardFilters {
+  categorias: AuditoriaCategoria[];
+  tipos: string[];
+  page: number;
+  pageSize: number;
+  search?: string;
+  atorId?: string;
+  atorRole?: Roles | 'SISTEMA';
+  entidadeTipo?: string;
+  entidadeId?: string;
+  dataInicio?: string;
+  dataFim?: string;
+  sortBy: 'dataHora' | 'categoria' | 'tipo' | 'acao';
+  sortDir: 'asc' | 'desc';
+}
+
+export interface AuditoriaDashboardListResponse {
+  items: AuditoriaDashboardItem[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+  resumo: {
+    total: number;
+    ultimoEventoEm: string | null;
+  };
+  filtrosDisponiveis: {
+    categorias: {
+      value: AuditoriaCategoria;
+      label: string;
+      count: number;
+    }[];
+    tipos: {
+      value: string;
+      label: string;
+      count: number;
+    }[];
+  };
+}
+
 export interface AuditoriaScriptInput {
   nome: string;
   descricao?: string;

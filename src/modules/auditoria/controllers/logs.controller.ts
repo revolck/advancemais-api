@@ -4,9 +4,13 @@
  */
 
 import { Request, Response } from 'express';
+import { ZodError } from 'zod';
 import { logger } from '@/utils/logger';
 import { logsService } from '../services/logs.service';
-import { auditoriaFiltersSchema } from '../validators/auditoria.validators';
+import {
+  auditoriaDashboardFiltersSchema,
+  auditoriaFiltersSchema,
+} from '../validators/auditoria.validators';
 
 const logsControllerLogger = logger.child({ module: 'LogsController' });
 
@@ -110,18 +114,37 @@ export const logsController = {
    */
   list: async (req: Request, res: Response) => {
     try {
-      const filters = auditoriaFiltersSchema.parse(req.query);
-      const result = await logsService.listarLogs(filters);
+      const filters = auditoriaDashboardFiltersSchema.parse(req.query);
+      const result = await logsService.listarLogsDashboard(filters);
 
-      logsControllerLogger.info({ filters, total: result.total }, 'Logs listados com sucesso');
+      logsControllerLogger.info(
+        { filters, total: result.pagination.total },
+        'Histórico global de auditoria listado com sucesso',
+      );
 
-      res.json(result);
+      res.json({
+        success: true,
+        data: result,
+      });
     } catch (error: any) {
-      logsControllerLogger.error({ err: error }, 'Erro ao listar logs');
-      res.status(400).json({
+      logsControllerLogger.error({ err: error }, 'Erro ao listar logs globais de auditoria');
+
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'AUDITORIA_INVALID_FILTERS',
+          message: 'Os filtros informados para o histórico de auditoria são inválidos.',
+          errors: error.issues.map((issue) => ({
+            path: issue.path.join('.'),
+            message: issue.message,
+          })),
+        });
+      }
+
+      return res.status(error?.statusCode || 500).json({
         success: false,
-        message: 'Erro ao listar logs',
-        error: error.message,
+        code: error?.code || 'AUDITORIA_LOGS_ERROR',
+        message: error?.message || 'Erro ao buscar histórico global de auditoria.',
       });
     }
   },

@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { supabaseAuthMiddleware } from '@/modules/usuarios/auth';
 import { Roles } from '@/modules/usuarios/enums/Roles';
 import { MetricasController } from '@/modules/empresas/vagas-solicitacoes/controllers/metricas.controller';
+import { auditoriaAdminOnlyMiddleware } from '@/modules/auditoria/routes/access';
+import { financeiroController } from '../controllers/financeiro.controller';
 
 const router = Router();
 
@@ -79,5 +81,8 @@ router.get(
   supabaseAuthMiddleware(allowedRoles),
   MetricasController.getMetricas,
 );
+
+router.get('/financeiro', ...auditoriaAdminOnlyMiddleware, financeiroController.getResumo);
+router.get('/financeiro/filtros', ...auditoriaAdminOnlyMiddleware, financeiroController.getFiltros);
 
 export default router;

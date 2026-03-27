@@ -19,6 +19,25 @@ const metricasLogger = logger.child({ module: 'MetricasSetorVagasService' });
 // TTL de cache (em segundos)
 const CACHE_TTL_METRICAS = 120; // 2 minutos - métricas mudam com frequência moderada
 
+const emptyMetricasGerais = {
+  totalEmpresas: 0,
+  empresasAtivas: 0,
+  totalVagas: 0,
+  vagasAbertas: 0,
+  vagasPendentes: 0,
+  vagasEncerradas: 0,
+  totalCandidatos: 0,
+  candidatosEmProcesso: 0,
+  candidatosContratados: 0,
+  solicitacoesPendentes: 0,
+  solicitacoesAprovadasHoje: 0,
+  solicitacoesRejeitadasHoje: 0,
+};
+
+const buildEmptyMetricasResponse = () => ({
+  metricasGerais: { ...emptyMetricasGerais },
+});
+
 export const metricasService = {
   /**
    * Retorna métricas consolidadas para o dashboard do Setor de Vagas
@@ -47,20 +66,7 @@ export const metricasService = {
 
     // Tentar buscar do cache primeiro
     const cached = await getCache<{
-      metricasGerais: {
-        totalEmpresas: number;
-        empresasAtivas: number;
-        totalVagas: number;
-        vagasAbertas: number;
-        vagasPendentes: number;
-        vagasEncerradas: number;
-        totalCandidatos: number;
-        candidatosEmProcesso: number;
-        candidatosContratados: number;
-        solicitacoesPendentes: number;
-        solicitacoesAprovadasHoje: number;
-        solicitacoesRejeitadasHoje: number;
-      };
+      metricasGerais: typeof emptyMetricasGerais;
     }>(cacheKey);
 
     if (cached) {
@@ -86,70 +92,70 @@ export const metricasService = {
           (SELECT COUNT(*) FROM "Usuarios" 
             WHERE "role" = 'EMPRESA' 
             AND "tipoUsuario" = 'PESSOA_JURIDICA'
-            AND ($3::uuid[] IS NULL OR "id" = ANY($3::uuid[]))
+            AND ($3::text[] IS NULL OR "id" = ANY($3::text[]))
           ) AS "totalEmpresas",
           (SELECT COUNT(*) FROM "Usuarios" 
             WHERE "role" = 'EMPRESA' 
             AND "tipoUsuario" = 'PESSOA_JURIDICA' 
             AND "status" = 'ATIVO'
-            AND ($3::uuid[] IS NULL OR "id" = ANY($3::uuid[]))
+            AND ($3::text[] IS NULL OR "id" = ANY($3::text[]))
           ) AS "empresasAtivas",
           
           -- Vagas
           (SELECT COUNT(*) FROM "EmpresasVagas"
             WHERE (
-              $4::uuid[] IS NOT NULL AND "id" = ANY($4::uuid[])
+              $4::text[] IS NOT NULL AND "id" = ANY($4::text[])
             ) OR (
-              $4::uuid[] IS NULL AND ($3::uuid[] IS NULL OR "usuarioId" = ANY($3::uuid[]))
+              $4::text[] IS NULL AND ($3::text[] IS NULL OR "usuarioId" = ANY($3::text[]))
             )
           ) AS "totalVagas",
           (SELECT COUNT(*) FROM "EmpresasVagas" 
             WHERE "status" = 'PUBLICADO'
             AND ((
-              $4::uuid[] IS NOT NULL AND "id" = ANY($4::uuid[])
+              $4::text[] IS NOT NULL AND "id" = ANY($4::text[])
             ) OR (
-              $4::uuid[] IS NULL AND ($3::uuid[] IS NULL OR "usuarioId" = ANY($3::uuid[]))
+              $4::text[] IS NULL AND ($3::text[] IS NULL OR "usuarioId" = ANY($3::text[]))
             ))
           ) AS "vagasAbertas",
           (SELECT COUNT(*) FROM "EmpresasVagas" 
             WHERE "status" = 'EM_ANALISE'
             AND ((
-              $4::uuid[] IS NOT NULL AND "id" = ANY($4::uuid[])
+              $4::text[] IS NOT NULL AND "id" = ANY($4::text[])
             ) OR (
-              $4::uuid[] IS NULL AND ($3::uuid[] IS NULL OR "usuarioId" = ANY($3::uuid[]))
+              $4::text[] IS NULL AND ($3::text[] IS NULL OR "usuarioId" = ANY($3::text[]))
             ))
           ) AS "vagasPendentes",
           (SELECT COUNT(*) FROM "EmpresasVagas" 
             WHERE "status" IN ('ENCERRADA', 'EXPIRADO', 'DESPUBLICADA')
             AND ((
-              $4::uuid[] IS NOT NULL AND "id" = ANY($4::uuid[])
+              $4::text[] IS NOT NULL AND "id" = ANY($4::text[])
             ) OR (
-              $4::uuid[] IS NULL AND ($3::uuid[] IS NULL OR "usuarioId" = ANY($3::uuid[]))
+              $4::text[] IS NULL AND ($3::text[] IS NULL OR "usuarioId" = ANY($3::text[]))
             ))
           ) AS "vagasEncerradas",
           
           -- Candidatos
           (CASE 
-            WHEN $4::uuid[] IS NOT NULL THEN (SELECT COUNT(DISTINCT "candidatoId") FROM "EmpresasCandidatos" WHERE "vagaId" = ANY($4::uuid[]))
-            WHEN $3::uuid[] IS NOT NULL THEN (SELECT COUNT(DISTINCT "candidatoId") FROM "EmpresasCandidatos" WHERE "empresaUsuarioId" = ANY($3::uuid[]))
+            WHEN $4::text[] IS NOT NULL THEN (SELECT COUNT(DISTINCT "candidatoId") FROM "EmpresasCandidatos" WHERE "vagaId" = ANY($4::text[]))
+            WHEN $3::text[] IS NOT NULL THEN (SELECT COUNT(DISTINCT "candidatoId") FROM "EmpresasCandidatos" WHERE "empresaUsuarioId" = ANY($3::text[]))
             ELSE (SELECT COUNT(*) FROM "Usuarios" WHERE "role" = 'ALUNO_CANDIDATO')
           END) AS "totalCandidatos",
           (SELECT COUNT(*) FROM "EmpresasCandidatos" ec
             INNER JOIN "StatusProcessosCandidatos" sp ON ec."statusId" = sp."id"
             WHERE sp."nome" IN ('EM_ANALISE', 'ENTREVISTA', 'DESAFIO', 'DOCUMENTACAO')
             AND ((
-              $4::uuid[] IS NOT NULL AND ec."vagaId" = ANY($4::uuid[])
+              $4::text[] IS NOT NULL AND ec."vagaId" = ANY($4::text[])
             ) OR (
-              $4::uuid[] IS NULL AND ($3::uuid[] IS NULL OR ec."empresaUsuarioId" = ANY($3::uuid[]))
+              $4::text[] IS NULL AND ($3::text[] IS NULL OR ec."empresaUsuarioId" = ANY($3::text[]))
             ))
           ) AS "candidatosEmProcesso",
           (SELECT COUNT(*) FROM "EmpresasCandidatos" ec
             INNER JOIN "StatusProcessosCandidatos" sp ON ec."statusId" = sp."id"
             WHERE sp."nome" = 'CONTRATADO'
             AND ((
-              $4::uuid[] IS NOT NULL AND ec."vagaId" = ANY($4::uuid[])
+              $4::text[] IS NOT NULL AND ec."vagaId" = ANY($4::text[])
             ) OR (
-              $4::uuid[] IS NULL AND ($3::uuid[] IS NULL OR ec."empresaUsuarioId" = ANY($3::uuid[]))
+              $4::text[] IS NULL AND ($3::text[] IS NULL OR ec."empresaUsuarioId" = ANY($3::text[]))
             ))
           ) AS "candidatosContratados",
           
@@ -157,9 +163,9 @@ export const metricasService = {
           (SELECT COUNT(*) FROM "EmpresasVagas" 
             WHERE "status" = 'EM_ANALISE'
             AND ((
-              $4::uuid[] IS NOT NULL AND "id" = ANY($4::uuid[])
+              $4::text[] IS NOT NULL AND "id" = ANY($4::text[])
             ) OR (
-              $4::uuid[] IS NULL AND ($3::uuid[] IS NULL OR "usuarioId" = ANY($3::uuid[]))
+              $4::text[] IS NULL AND ($3::text[] IS NULL OR "usuarioId" = ANY($3::text[]))
             ))
           ) AS "solicitacoesPendentes",
           (SELECT COUNT(*) FROM "EmpresasVagas" 
@@ -167,9 +173,9 @@ export const metricasService = {
             AND "atualizadoEm" >= $1::timestamp 
             AND "atualizadoEm" < $2::timestamp
             AND ((
-              $4::uuid[] IS NOT NULL AND "id" = ANY($4::uuid[])
+              $4::text[] IS NOT NULL AND "id" = ANY($4::text[])
             ) OR (
-              $4::uuid[] IS NULL AND ($3::uuid[] IS NULL OR "usuarioId" = ANY($3::uuid[]))
+              $4::text[] IS NULL AND ($3::text[] IS NULL OR "usuarioId" = ANY($3::text[]))
             ))
           ) AS "solicitacoesAprovadasHoje",
           (SELECT COUNT(*) FROM "EmpresasVagas" 
@@ -177,9 +183,9 @@ export const metricasService = {
             AND "atualizadoEm" >= $1::timestamp 
             AND "atualizadoEm" < $2::timestamp
             AND ((
-              $4::uuid[] IS NOT NULL AND "id" = ANY($4::uuid[])
+              $4::text[] IS NOT NULL AND "id" = ANY($4::text[])
             ) OR (
-              $4::uuid[] IS NULL AND ($3::uuid[] IS NULL OR "usuarioId" = ANY($3::uuid[]))
+              $4::text[] IS NULL AND ($3::text[] IS NULL OR "usuarioId" = ANY($3::text[]))
             ))
           ) AS "solicitacoesRejeitadasHoje"
       `;
@@ -206,6 +212,12 @@ export const metricasService = {
         empresaUsuarioIds.length > 0 ? empresaUsuarioIds : null,
         vagaIds.length > 0 ? vagaIds : null,
       );
+
+      if (!result) {
+        const emptyResponse = buildEmptyMetricasResponse();
+        await setCache(cacheKey, emptyResponse, CACHE_TTL_METRICAS);
+        return emptyResponse;
+      }
 
       // Converter bigint para number
       const metricasGerais = {
@@ -236,4 +248,5 @@ export const metricasService = {
       throw error;
     }
   },
+  buildEmptyMetricasResponse,
 };

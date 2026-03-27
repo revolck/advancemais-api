@@ -25,22 +25,7 @@ export class MetricasController {
         : undefined;
 
       if (isRecruiter && vagaIds && vagaIds.length === 0) {
-        return res.json({
-          metricasGerais: {
-            totalEmpresas: 0,
-            empresasAtivas: 0,
-            totalVagas: 0,
-            vagasAbertas: 0,
-            vagasPendentes: 0,
-            vagasEncerradas: 0,
-            totalCandidatos: 0,
-            candidatosEmProcesso: 0,
-            candidatosContratados: 0,
-            solicitacoesPendentes: 0,
-            solicitacoesAprovadasHoje: 0,
-            solicitacoesRejeitadasHoje: 0,
-          },
-        });
+        return res.json(metricasService.buildEmptyMetricasResponse());
       }
 
       const empresaUsuarioIds = isRecruiter

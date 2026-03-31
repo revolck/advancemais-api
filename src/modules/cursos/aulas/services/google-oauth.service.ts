@@ -51,6 +51,32 @@ function decryptToken(encryptedToken: string): string {
  * Service de integração Google OAuth
  */
 export const googleOAuthService = {
+  async getConnectionSnapshot(usuarioId: string) {
+    const usuario = await prisma.usuarios.findUnique({
+      where: { id: usuarioId },
+      select: {
+        googleAccessToken: true,
+        googleRefreshToken: true,
+        googleCalendarId: true,
+        googleTokenExpiraEm: true,
+      },
+    });
+
+    const conectado = Boolean(
+      usuario?.googleCalendarId && usuario.googleAccessToken && usuario.googleRefreshToken,
+    );
+    const expirado = usuario?.googleTokenExpiraEm
+      ? new Date() > usuario.googleTokenExpiraEm
+      : false;
+
+    return {
+      conectado,
+      expirado,
+      calendarId: usuario?.googleCalendarId ?? null,
+      expiraEm: usuario?.googleTokenExpiraEm?.toISOString() || null,
+    };
+  },
+
   /**
    * Gerar URL de autorização Google
    */
@@ -142,25 +168,7 @@ export const googleOAuthService = {
    * Verificar status da conexão
    */
   async getStatus(usuarioId: string) {
-    const usuario = await prisma.usuarios.findUnique({
-      where: { id: usuarioId },
-      select: {
-        googleCalendarId: true,
-        googleTokenExpiraEm: true,
-      },
-    });
-
-    const conectado = !!usuario?.googleCalendarId;
-    const expirado = usuario?.googleTokenExpiraEm
-      ? new Date() > usuario.googleTokenExpiraEm
-      : false;
-
-    return {
-      conectado,
-      expirado,
-      calendarId: usuario?.googleCalendarId,
-      expiraEm: usuario?.googleTokenExpiraEm?.toISOString() || null,
-    };
+    return this.getConnectionSnapshot(usuarioId);
   },
 
   /**

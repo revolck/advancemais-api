@@ -1,3 +1,4 @@
+import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
 import {
   EntrevistaStatus,
@@ -13,7 +14,11 @@ import {
 } from '@prisma/client';
 import { randomUUID } from 'crypto';
 
+import { googleCalendarService } from '@/modules/cursos/aulas/services/google-calendar.service';
 import { encodeInterviewChannel } from '@/modules/entrevistas/utils/presentation';
+
+dotenv.config({ path: '.env' });
+dotenv.config({ path: '.env.local', override: true });
 
 const prisma = new PrismaClient();
 
@@ -471,6 +476,10 @@ async function main() {
   }
 
   const statusProcessoId = await ensureStatusProcessoId();
+  const googleMeetSystemUserId =
+    process.env.GOOGLE_MEET_SYSTEM_USER_ID?.trim() ||
+    process.env.GOOGLE_CALENDAR_SYSTEM_USER_ID?.trim() ||
+    null;
 
   const candidaturas = await Promise.all(
     candidates.map((candidate, index) =>
@@ -503,6 +512,8 @@ async function main() {
 
     if (modeIndex === 1) {
       return {
+        mode: 'ONLINE_MEET' as const,
+        candidateEmail: candidate.email,
         vagaId: candidatura.vagaId,
         candidatoId: candidatura.candidatoId,
         empresaUsuarioId: company.id,
@@ -511,14 +522,18 @@ async function main() {
         descricao: `${MARKER} | Entrevista online com Meet para ${candidate.nomeCompleto} na vaga ${vaga.titulo}.`,
         dataInicio,
         dataFim,
-        meetUrl: `https://meet.google.com/front-demo-${String(sequence).padStart(2, '0')}`,
-        meetEventId: `front-demo-event-${String(sequence).padStart(2, '0')}`,
+        meetUrl: encodeInterviewChannel({
+          modalidade: 'ONLINE',
+        }),
+        meetEventId: null,
         status,
       };
     }
 
     if (modeIndex === 2) {
       return {
+        mode: 'PRESENCIAL' as const,
+        candidateEmail: candidate.email,
         vagaId: candidatura.vagaId,
         candidatoId: candidatura.candidatoId,
         empresaUsuarioId: company.id,
@@ -546,6 +561,8 @@ async function main() {
     }
 
     return {
+      mode: 'ONLINE_INTERNAL' as const,
+      candidateEmail: candidate.email,
       vagaId: candidatura.vagaId,
       candidatoId: candidatura.candidatoId,
       empresaUsuarioId: company.id,
@@ -563,13 +580,59 @@ async function main() {
   });
 
   const entrevistas = await Promise.all(
-    interviewsToCreate.map((data) =>
+    interviewsToCreate.map(async ({ mode: _mode, candidateEmail: _candidateEmail, ...data }) =>
       prisma.empresasVagasEntrevistas.create({
         data,
         select: { id: true, status: true },
       }),
     ),
   );
+
+  let entrevistasComMeetReal = 0;
+
+  if (googleMeetSystemUserId) {
+    for (const [index, entrevista] of entrevistas.entries()) {
+      const interviewSeed = interviewsToCreate[index];
+      if (!interviewSeed || interviewSeed.mode !== 'ONLINE_MEET') {
+        continue;
+      }
+
+      if (entrevista.status !== EntrevistaStatus.AGENDADA) {
+        continue;
+      }
+
+      try {
+        const meet = await googleCalendarService.createMeetEvent({
+          titulo: interviewSeed.titulo,
+          descricao: interviewSeed.descricao,
+          dataInicio: interviewSeed.dataInicio,
+          dataFim: interviewSeed.dataFim,
+          instrutorId: googleMeetSystemUserId,
+          alunoEmails: interviewSeed.candidateEmail ? [interviewSeed.candidateEmail] : [],
+          requestId: entrevista.id,
+          externalReferenceId: entrevista.id,
+        });
+
+        await prisma.empresasVagasEntrevistas.update({
+          where: { id: entrevista.id },
+          data: {
+            meetUrl: meet.meetUrl,
+            meetEventId: meet.eventId,
+          },
+        });
+
+        entrevistasComMeetReal++;
+      } catch (error: any) {
+        console.warn(
+          `  ⚠️ Não foi possível criar Meet real para a entrevista ${entrevista.id}: ${error?.message ?? error}`,
+        );
+      }
+    }
+  } else {
+    console.warn(
+      '  ⚠️ GOOGLE_MEET_SYSTEM_USER_ID/GOOGLE_CALENDAR_SYSTEM_USER_ID não configurado. Entrevistas online permanecerão com agenda interna.',
+    );
+  }
 
   const entrevistasAgendadas = entrevistas.filter(
     (entrevista) => entrevista.status === EntrevistaStatus.AGENDADA,
@@ -611,6 +674,7 @@ async function main() {
   console.log(`  entrevistas criadas: ${entrevistas.length}`);
   console.log(`  entrevistas agendadas: ${entrevistasAgendadas}`);
   console.log(`  entrevistas canceladas: ${entrevistasCanceladas}`);
+  console.log(`  entrevistas online com Meet real: ${entrevistasComMeetReal}`);
   console.log(`  candidaturas sem entrevista ativa: ${candidaturasSemEntrevistaAtiva.length}`);
   console.log(
     `    exemplos: ${candidaturasSemEntrevistaAtiva

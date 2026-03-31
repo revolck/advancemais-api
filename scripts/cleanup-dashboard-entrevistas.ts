@@ -1,4 +1,10 @@
+import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
+
+import { googleCalendarService } from '@/modules/cursos/aulas/services/google-calendar.service';
+
+dotenv.config({ path: '.env' });
+dotenv.config({ path: '.env.local', override: true });
 
 const prisma = new PrismaClient();
 
@@ -7,6 +13,10 @@ const SEEDED_VAGA_CODES = ['F92001', 'F92002'] as const;
 
 async function main() {
   console.log(`🧹 Limpando dados do dashboard de entrevistas (${MARKER})...\n`);
+  const googleMeetSystemUserId =
+    process.env.GOOGLE_MEET_SYSTEM_USER_ID?.trim() ||
+    process.env.GOOGLE_CALENDAR_SYSTEM_USER_ID?.trim() ||
+    null;
 
   const users = await prisma.usuarios.findMany({
     where: {
@@ -40,6 +50,44 @@ async function main() {
   });
 
   const candidaturaIds = candidaturas.map((item) => item.id);
+
+  const entrevistas = await prisma.empresasVagasEntrevistas.findMany({
+    where: {
+      OR: [
+        { empresaUsuarioId: { in: userIds } },
+        { recrutadorId: { in: userIds } },
+        { candidatoId: { in: userIds } },
+        {
+          titulo: {
+            startsWith: MARKER,
+          },
+        },
+      ],
+    },
+    select: {
+      id: true,
+      meetEventId: true,
+    },
+  });
+
+  let deletedCalendarEvents = 0;
+
+  if (googleMeetSystemUserId) {
+    for (const entrevista of entrevistas) {
+      if (!entrevista.meetEventId) {
+        continue;
+      }
+
+      try {
+        await googleCalendarService.deleteEvent(entrevista.meetEventId, googleMeetSystemUserId);
+        deletedCalendarEvents++;
+      } catch (error: any) {
+        console.warn(
+          `  ⚠️ Não foi possível remover o evento do Google Calendar ${entrevista.meetEventId}: ${error?.message ?? error}`,
+        );
+      }
+    }
+  }
 
   await prisma.notificacoes.deleteMany({
     where: {
@@ -128,6 +176,7 @@ async function main() {
 
   console.log('✅ Limpeza concluída.\n');
   console.log(`  entrevistas removidas: ${entrevistasResult.count}`);
+  console.log(`  eventos do Google Calendar removidos: ${deletedCalendarEvents}`);
   console.log(`  candidaturas removidas: ${candidaturasResult.count}`);
   console.log(`  vínculos recrutador/empresa removidos: ${empresaVinculosResult.count}`);
   console.log(`  vínculos recrutador/vaga removidos: ${vagaVinculosResult.count}`);

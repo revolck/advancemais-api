@@ -1,5 +1,41 @@
 import { z } from 'zod';
 
+const parseCsvQueryList = (value: unknown) => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  const raw = Array.isArray(value) ? value : [value];
+  const parsed = raw
+    .flatMap((item) => String(item).split(','))
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  return parsed.length > 0 ? parsed : undefined;
+};
+
+const normalizeListNotificacoesQuery = (value: unknown) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return value;
+  }
+
+  const query = { ...(value as Record<string, unknown>) };
+
+  if (query.status === undefined && query['status[]'] !== undefined) {
+    query.status = query['status[]'];
+  }
+
+  if (query.tipo === undefined && query['tipo[]'] !== undefined) {
+    query.tipo = query['tipo[]'];
+  }
+
+  if (query.prioridade === undefined && query['prioridade[]'] !== undefined) {
+    query.prioridade = query['prioridade[]'];
+  }
+
+  return query;
+};
+
 // Enum de tipos de notificação (espelhando o Prisma)
 export const NotificacaoTipoEnum = z.enum([
   // Notificações para EMPRESA
@@ -46,14 +82,17 @@ export const NotificacaoStatusEnum = z.enum(['NAO_LIDA', 'LIDA', 'ARQUIVADA']);
 export const NotificacaoPrioridadeEnum = z.enum(['BAIXA', 'NORMAL', 'ALTA', 'URGENTE']);
 
 // Schema para listar notificações
-export const listNotificacoesSchema = z.object({
-  page: z.coerce.number().min(1).default(1),
-  pageSize: z.coerce.number().min(1).max(100).default(20),
-  status: z.array(NotificacaoStatusEnum).optional(),
-  tipo: z.array(NotificacaoTipoEnum).optional(),
-  prioridade: z.array(NotificacaoPrioridadeEnum).optional(),
-  apenasNaoLidas: z.coerce.boolean().optional(),
-});
+export const listNotificacoesSchema = z.preprocess(
+  normalizeListNotificacoesQuery,
+  z.object({
+    page: z.coerce.number().min(1).default(1),
+    pageSize: z.coerce.number().min(1).max(100).default(20),
+    status: z.preprocess(parseCsvQueryList, z.array(NotificacaoStatusEnum).optional()),
+    tipo: z.preprocess(parseCsvQueryList, z.array(NotificacaoTipoEnum).optional()),
+    prioridade: z.preprocess(parseCsvQueryList, z.array(NotificacaoPrioridadeEnum).optional()),
+    apenasNaoLidas: z.coerce.boolean().optional(),
+  }),
+);
 
 export type ListNotificacoesQuery = z.infer<typeof listNotificacoesSchema>;
 

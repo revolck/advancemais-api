@@ -1,0 +1,1 @@
+export { entrevistasRoutes } from './routes';

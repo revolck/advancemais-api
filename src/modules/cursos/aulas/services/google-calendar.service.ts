@@ -5,6 +5,31 @@ import { googleOAuthService } from './google-oauth.service';
 import crypto from 'crypto';
 
 const calendarLogger = logger.child({ module: 'GoogleCalendar' });
+const GOOGLE_MEET_URI_REGEX =
+  /^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}(?:[/?#].*)?$/i;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const extractMeetUrlFromEvent = (event: any): string | null => {
+  const hangoutLink = event?.hangoutLink?.trim();
+  if (hangoutLink && GOOGLE_MEET_URI_REGEX.test(hangoutLink)) {
+    return hangoutLink;
+  }
+
+  const entryPoints = event?.conferenceData?.entryPoints;
+  if (!Array.isArray(entryPoints)) {
+    return null;
+  }
+
+  const videoEntryPoint = entryPoints.find(
+    (entry: any) =>
+      entry?.entryPointType === 'video' &&
+      typeof entry?.uri === 'string' &&
+      GOOGLE_MEET_URI_REGEX.test(entry.uri.trim()),
+  );
+
+  return videoEntryPoint?.uri?.trim() ?? null;
+};
 
 /**
  * Service de integração Google Calendar + Meet
@@ -20,6 +45,8 @@ export const googleCalendarService = {
     dataFim: Date;
     instrutorId: string;
     alunoEmails?: string[];
+    requestId?: string;
+    externalReferenceId?: string;
   }): Promise<{ eventId: string; meetUrl: string }> {
     const oauth2Client = await googleOAuthService.getOAuth2Client(params.instrutorId);
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
@@ -41,10 +68,18 @@ export const googleCalendarService = {
           },
           conferenceData: {
             createRequest: {
-              requestId: crypto.randomUUID(),
+              requestId: params.requestId?.trim() || crypto.randomUUID(),
               conferenceSolutionKey: { type: 'hangoutsMeet' },
             },
           },
+          extendedProperties: params.externalReferenceId
+            ? {
+                private: {
+                  source: 'advancemais-entrevista',
+                  externalReferenceId: params.externalReferenceId,
+                },
+              }
+            : undefined,
           attendees: params.alunoEmails?.map((email) => ({ email })),
           reminders: {
             useDefault: false,
@@ -60,7 +95,27 @@ export const googleCalendarService = {
       });
 
       const eventId = event.data.id!;
-      const meetUrl = event.data.hangoutLink!;
+      let meetUrl = extractMeetUrlFromEvent(event.data);
+
+      if (!meetUrl) {
+        for (let attempt = 0; attempt < 5; attempt++) {
+          await sleep(500);
+
+          const refreshedEvent = await calendar.events.get({
+            calendarId: 'primary',
+            eventId,
+          });
+
+          meetUrl = extractMeetUrlFromEvent(refreshedEvent.data);
+          if (meetUrl) {
+            break;
+          }
+        }
+      }
+
+      if (!meetUrl) {
+        throw new Error('Google não retornou uma URL válida do Meet para o evento criado.');
+      }
 
       calendarLogger.info('[MEET_CRIADO]', {
         eventId,

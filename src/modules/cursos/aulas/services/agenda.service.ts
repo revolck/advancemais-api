@@ -1,6 +1,11 @@
 import { prisma } from '@/config/prisma';
+import { recrutadorVagasService } from '@/modules/usuarios/services/recrutador-vagas.service';
 import { logger } from '@/utils/logger';
 import { Roles, Status } from '@prisma/client';
+import {
+  buildInterviewAgendaPayload,
+  parseInterviewChannel,
+} from '@/modules/entrevistas/utils/presentation';
 
 const agendaLogger = logger.child({ module: 'AgendaService' });
 
@@ -58,6 +63,36 @@ const createBirthdayOccurrenceUtc = (year: number, month: number, day: number) =
 
 const isRoleEnumValue = (value: string): value is Roles =>
   (Object.values(Roles) as Roles[]).includes(value as Roles);
+
+const ACADEMIC_ROLES = new Set<Roles>([
+  Roles.ADMIN,
+  Roles.MODERADOR,
+  Roles.PEDAGOGICO,
+  Roles.INSTRUTOR,
+  Roles.ALUNO_CANDIDATO,
+]);
+const RECRUITMENT_GLOBAL_ROLES = new Set<Roles>([
+  Roles.ADMIN,
+  Roles.MODERADOR,
+  Roles.SETOR_DE_VAGAS,
+]);
+const RECRUITMENT_ROLES = new Set<Roles>([
+  Roles.ADMIN,
+  Roles.MODERADOR,
+  Roles.SETOR_DE_VAGAS,
+  Roles.EMPRESA,
+  Roles.RECRUTADOR,
+  Roles.ALUNO_CANDIDATO,
+]);
+const BIRTHDAY_ROLES = new Set<Roles>([
+  Roles.ADMIN,
+  Roles.MODERADOR,
+  Roles.PEDAGOGICO,
+  Roles.SETOR_DE_VAGAS,
+  Roles.RECRUTADOR,
+  Roles.INSTRUTOR,
+]);
+const TURMA_QUERY_TYPES = new Set(['TURMA', 'TURMA_INICIO', 'TURMA_FIM']);
 
 /**
  * Service da agenda unificada
@@ -190,20 +225,17 @@ export const agendaService = {
    */
   async getEventos(params: {
     usuarioId: string;
-    role: string;
+    role: Roles;
     dataInicio: Date;
     dataFim: Date;
     tipos?: string[];
   }): Promise<{ eventos: AgendaEvento[] }> {
     const eventos: AgendaEvento[] = [];
-    const tipos = params.tipos || [
-      'AULA',
-      'PROVA',
-      'ATIVIDADE',
-      'ENTREVISTA',
-      'ANIVERSARIO',
-      'TURMA',
-    ];
+    const requestedTipos = params.tipos ?? [];
+    const tipos =
+      requestedTipos.length > 0
+        ? requestedTipos
+        : ['AULA', 'PROVA', 'ATIVIDADE', 'ENTREVISTA', 'ANIVERSARIO', 'TURMA_INICIO', 'TURMA_FIM'];
 
     // 1. AULAS AO VIVO
     if (tipos.includes('AULA')) {
@@ -236,13 +268,22 @@ export const agendaService = {
     }
 
     // 6. INÍCIO/FIM DE TURMAS
-    if (tipos.includes('TURMA')) {
+    if (tipos.some((tipo) => TURMA_QUERY_TYPES.has(tipo))) {
       const turmas = await this.getTurmasAgenda(params);
       eventos.push(...turmas);
     }
 
+    const allowedTipos = new Set(tipos);
+
     // Ordenar por data
-    eventos.sort((a, b) => {
+    const eventosFiltrados = eventos.filter((evento) => {
+      if (evento.tipo === 'TURMA_INICIO' || evento.tipo === 'TURMA_FIM') {
+        return allowedTipos.has(evento.tipo) || allowedTipos.has('TURMA');
+      }
+      return allowedTipos.has(evento.tipo);
+    });
+
+    eventosFiltrados.sort((a, b) => {
       const dataA = a.dataInicio || a.data || new Date(0);
       const dataB = b.dataInicio || b.data || new Date(0);
       return dataA.getTime() - dataB.getTime();
@@ -250,10 +291,11 @@ export const agendaService = {
 
     agendaLogger.info('[AGENDA] Eventos carregados', {
       usuarioId: params.usuarioId,
-      total: eventos.length,
+      role: params.role,
+      total: eventosFiltrados.length,
     });
 
-    return { eventos };
+    return { eventos: eventosFiltrados };
   },
 
   /**
@@ -261,10 +303,14 @@ export const agendaService = {
    */
   async getAulasAgenda(params: {
     usuarioId: string;
-    role: string;
+    role: Roles;
     dataInicio: Date;
     dataFim: Date;
   }): Promise<AgendaEvento[]> {
+    if (!ACADEMIC_ROLES.has(params.role)) {
+      return [];
+    }
+
     const where: any = {
       modalidade: { in: ['LIVE', 'SEMIPRESENCIAL'] },
       tipoLink: 'MEET',
@@ -322,10 +368,14 @@ export const agendaService = {
    */
   async getProvasAgenda(params: {
     usuarioId: string;
-    role: string;
+    role: Roles;
     dataInicio: Date;
     dataFim: Date;
   }): Promise<AgendaEvento[]> {
+    if (!ACADEMIC_ROLES.has(params.role)) {
+      return [];
+    }
+
     const where: any = {
       tipo: 'PROVA',
       ativo: true,
@@ -380,10 +430,14 @@ export const agendaService = {
    */
   async getAtividadesAgenda(params: {
     usuarioId: string;
-    role: string;
+    role: Roles;
     dataInicio: Date;
     dataFim: Date;
   }): Promise<AgendaEvento[]> {
+    if (!ACADEMIC_ROLES.has(params.role)) {
+      return [];
+    }
+
     const where: any = {
       tipo: 'ATIVIDADE',
       ativo: true,
@@ -438,10 +492,14 @@ export const agendaService = {
    */
   async getEntrevistasAgenda(params: {
     usuarioId: string;
-    role: string;
+    role: Roles;
     dataInicio: Date;
     dataFim: Date;
   }): Promise<AgendaEvento[]> {
+    if (!RECRUITMENT_ROLES.has(params.role)) {
+      return [];
+    }
+
     const where: any = {
       status: 'AGENDADA',
       dataInicio: {
@@ -451,47 +509,94 @@ export const agendaService = {
     };
 
     // Filtrar por role
-    if (params.role === 'RECRUTADOR' || params.role === 'SETOR_DE_VAGAS') {
-      where.recrutadorId = params.usuarioId;
-    } else if (params.role === 'ALUNO_CANDIDATO') {
+    if (RECRUITMENT_GLOBAL_ROLES.has(params.role)) {
+      // visão global de entrevistas
+    } else if (params.role === Roles.ALUNO_CANDIDATO) {
       where.candidatoId = params.usuarioId;
-    } else if (params.role === 'EMPRESA') {
+    } else if (params.role === Roles.EMPRESA) {
       where.empresaUsuarioId = params.usuarioId;
-    } else {
-      // Outras roles não veem entrevistas
-      return [];
+    } else if (params.role === Roles.RECRUTADOR) {
+      const allowedVagaIds = await recrutadorVagasService.listVagaIds(params.usuarioId);
+
+      if (allowedVagaIds.length === 0) {
+        return [];
+      }
+
+      where.vagaId = { in: allowedVagaIds };
     }
 
     const entrevistas = await prisma.empresasVagasEntrevistas.findMany({
       where,
       include: {
-        EmpresasVagas: { select: { titulo: true } },
+        EmpresasVagas: { select: { id: true, titulo: true } },
         candidato: { select: { nomeCompleto: true } },
-        recrutador: { select: { nomeCompleto: true } },
+        recrutador: {
+          select: {
+            id: true,
+            nomeCompleto: true,
+            role: true,
+            email: true,
+            googleCalendarId: true,
+          },
+        },
+        empresa: { select: { id: true, nomeCompleto: true } },
       },
     });
 
-    return entrevistas.map((e) => ({
-      id: e.id,
-      tipo: 'ENTREVISTA' as const,
-      titulo: e.titulo,
-      dataInicio: e.dataInicio,
-      dataFim: e.dataFim,
-      vaga: {
-        id: e.vagaId,
-        titulo: e.EmpresasVagas.titulo,
-      },
-      candidato: {
-        id: e.candidatoId,
-        nome: e.candidato.nomeCompleto,
-      },
-      recrutador: {
-        id: e.recrutadorId,
-        nome: e.recrutador.nomeCompleto,
-      },
-      meetUrl: e.meetUrl,
-      cor: '#8b5cf6', // Roxo
-    }));
+    return entrevistas.map((entrevista) => {
+      const channel = parseInterviewChannel(entrevista.meetUrl);
+      const agenda = buildInterviewAgendaPayload({
+        entrevistaId: entrevista.id,
+        modalidade: channel.modalidade,
+        meetEventId: entrevista.meetEventId,
+        meetUrl: channel.meetUrl,
+        organizerSource:
+          entrevista.meetEventId && entrevista.recrutador.googleCalendarId
+            ? 'USER_OAUTH'
+            : 'SYSTEM',
+        organizerUserId:
+          entrevista.meetEventId && entrevista.recrutador.googleCalendarId
+            ? entrevista.recrutador.id
+            : null,
+        organizerEmail:
+          entrevista.meetEventId && entrevista.recrutador.googleCalendarId
+            ? entrevista.recrutador.email
+            : null,
+      });
+
+      return {
+        id: entrevista.id,
+        tipo: 'ENTREVISTA' as const,
+        titulo: `Entrevista — ${entrevista.candidato.nomeCompleto}`,
+        descricao: entrevista.EmpresasVagas.titulo,
+        dataInicio: entrevista.dataInicio,
+        dataFim: entrevista.dataFim,
+        cor: '#0F172A',
+        modalidade: channel.modalidade,
+        modalidadeLabel: channel.modalidadeLabel,
+        meetUrl: channel.meetUrl,
+        local: channel.local,
+        enderecoPresencial: channel.enderecoPresencial,
+        usuario: {
+          id: entrevista.recrutador.id,
+          nome: entrevista.recrutador.nomeCompleto,
+          role: entrevista.recrutador.role,
+        },
+        empresa: {
+          id: entrevista.empresa.id,
+          nomeExibicao: entrevista.empresa.nomeCompleto,
+        },
+        vaga: {
+          id: entrevista.EmpresasVagas.id,
+          titulo: entrevista.EmpresasVagas.titulo,
+        },
+        candidato: {
+          id: entrevista.candidatoId,
+          nome: entrevista.candidato.nomeCompleto,
+        },
+        agenda,
+      };
+    });
   },
 
   /**
@@ -499,10 +604,14 @@ export const agendaService = {
    */
   async getAniversariosAgenda(params: {
     usuarioId: string;
-    role: string;
+    role: Roles;
     dataInicio: Date;
     dataFim: Date;
   }): Promise<AgendaEvento[]> {
+    if (!BIRTHDAY_ROLES.has(params.role)) {
+      return [];
+    }
+
     const { usuarioId, role } = params;
 
     const where: any = {
@@ -524,6 +633,13 @@ export const agendaService = {
       case 'PEDAGOGICO':
         // Vê próprio + instrutores
         where.OR = [{ id: usuarioId }, { role: 'INSTRUTOR' }];
+        break;
+
+      case 'SETOR_DE_VAGAS':
+      case 'RECRUTADOR':
+        where.role = {
+          in: ['ADMIN', 'MODERADOR', 'SETOR_DE_VAGAS', 'RECRUTADOR'],
+        };
         break;
 
       case 'INSTRUTOR':
@@ -586,10 +702,14 @@ export const agendaService = {
    */
   async getTurmasAgenda(params: {
     usuarioId: string;
-    role: string;
+    role: Roles;
     dataInicio: Date;
     dataFim: Date;
   }): Promise<AgendaEvento[]> {
+    if (!ACADEMIC_ROLES.has(params.role)) {
+      return [];
+    }
+
     const where: any = {
       OR: [
         {

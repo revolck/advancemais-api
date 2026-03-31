@@ -932,20 +932,36 @@ describe('API - Ambiente Completo de Cursos (Gratuito, Pago, Recuperação, Cert
       });
       notificacaoIds.push(notificacao.id);
 
+      const notificacaoSistema = await prisma.notificacoes.create({
+        data: {
+          id: randomUUID(),
+          usuarioId: alunoRecuperacao.id,
+          tipo: 'SISTEMA',
+          titulo: 'Aviso genérico',
+          mensagem: 'Notificação de outro tipo para validar o filtro da rota.',
+          prioridade: 'NORMAL',
+        },
+      });
+      notificacaoIds.push(notificacaoSistema.id);
+
       expect(notificacao.tipo).toBe('RECUPERACAO_FINAL_PAGAMENTO_PENDENTE');
     });
 
     it('deve buscar notificações de recuperação do aluno', async () => {
-      // O parâmetro `tipo` espera um array, então usar sintaxe de query string para array
       const response = await request(app)
         .get('/api/v1/notificacoes')
-        .query({ 'tipo[]': 'RECUPERACAO_FINAL_PAGAMENTO_PENDENTE', apenasNaoLidas: 'true' })
+        .query({ tipo: 'RECUPERACAO_FINAL_PAGAMENTO_PENDENTE', apenasNaoLidas: 'true' })
         .set('Authorization', `Bearer ${alunoRecuperacao.token}`)
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      // O retorno é { success, data: [...], pagination: {...} }
       expect(response.body.data).toBeInstanceOf(Array);
+      expect(response.body.data.length).toBeGreaterThan(0);
+      expect(
+        response.body.data.every(
+          (item: { tipo: string }) => item.tipo === 'RECUPERACAO_FINAL_PAGAMENTO_PENDENTE',
+        ),
+      ).toBe(true);
     });
   });
 

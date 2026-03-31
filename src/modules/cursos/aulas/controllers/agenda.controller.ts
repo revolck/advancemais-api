@@ -2,6 +2,18 @@ import { Request, Response } from 'express';
 import { agendaService } from '../services/agenda.service';
 import { logger } from '@/utils/logger';
 import { z } from 'zod';
+import { Roles } from '@prisma/client';
+
+const agendaTipoValues = [
+  'AULA',
+  'PROVA',
+  'ATIVIDADE',
+  'ENTREVISTA',
+  'ANIVERSARIO',
+  'TURMA',
+  'TURMA_INICIO',
+  'TURMA_FIM',
+] as const;
 
 const parseBooleanQueryParam = (value: unknown) => {
   if (typeof value === 'boolean') return value;
@@ -13,11 +25,34 @@ const parseBooleanQueryParam = (value: unknown) => {
   return value;
 };
 
-const agendaQuerySchema = z.object({
-  dataInicio: z.coerce.date(),
-  dataFim: z.coerce.date(),
-  tipos: z.string().optional(), // AULA,PROVA,ANIVERSARIO,TURMA (CSV)
-});
+const parseAgendaTipos = (value: unknown) => {
+  if (value === undefined || value === null || value === '') {
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .flatMap((item) => String(item).split(','))
+      .map((item) => item.trim().toUpperCase())
+      .filter(Boolean);
+  }
+
+  return String(value)
+    .split(',')
+    .map((item) => item.trim().toUpperCase())
+    .filter(Boolean);
+};
+
+const agendaQuerySchema = z
+  .object({
+    dataInicio: z.coerce.date(),
+    dataFim: z.coerce.date(),
+    tipos: z.preprocess(parseAgendaTipos, z.array(z.enum(agendaTipoValues)).default([])),
+  })
+  .refine((value) => value.dataInicio <= value.dataFim, {
+    message: 'dataInicio deve ser menor ou igual a dataFim',
+    path: ['dataInicio'],
+  });
 
 const agendaAniversariantesQuerySchema = z
   .object({
@@ -41,14 +76,12 @@ export class AgendaController {
       const query = agendaQuerySchema.parse(req.query);
       const usuarioLogado = req.user!;
 
-      const tipos = query.tipos?.split(',');
-
       const result = await agendaService.getEventos({
         usuarioId: usuarioLogado.id,
-        role: usuarioLogado.role,
+        role: usuarioLogado.role as Roles,
         dataInicio: query.dataInicio,
         dataFim: query.dataFim,
-        tipos,
+        tipos: query.tipos,
       });
 
       res.json({
@@ -56,6 +89,18 @@ export class AgendaController {
         ...result,
       });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'AGENDA_INVALID_FILTERS',
+          message: 'Os filtros informados para a agenda são inválidos.',
+          errors: error.issues.map((issue) => ({
+            path: issue.path.join('.'),
+            message: issue.message,
+          })),
+        });
+      }
+
       logger.error('[AGENDA_ERROR]', { error: error?.message });
       res.status(500).json({
         success: false,

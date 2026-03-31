@@ -13,6 +13,7 @@ import { websiteRoutes } from '@/modules/website';
 import { empresasRoutes } from '@/modules/empresas';
 import { candidatosRoutes } from '@/modules/candidatos';
 import { cursosRoutes } from '@/modules/cursos';
+import { agendaRoutes } from '@/modules/cursos/aulas';
 import { cuponsRoutes } from '@/modules/cupons';
 import { auditoriaRoutes } from '@/modules/auditoria';
 import { statusProcessoRoutes } from '@/modules/status-processo/routes';
@@ -21,6 +22,7 @@ import { vagasSolicitacoesRoutes } from '@/modules/empresas/vagas-solicitacoes/r
 import { requerimentosRoutes } from '@/modules/requerimentos/routes';
 import { notificacoesRoutes } from '@/modules/notificacoes/routes';
 import { recrutadorRoutes } from '@/modules/recrutador';
+import { entrevistasRoutes } from '@/modules/entrevistas';
 import { setCacheHeaders, DEFAULT_TTL } from '@/utils/cache';
 import { logger } from '@/utils/logger';
 import { checkDatabaseHealth } from '@/utils/database-health';
@@ -91,6 +93,7 @@ router.get('/', publicCache, (req, res) => {
       empresas: '/api/v1/empresas',
       candidatos: '/api/v1/candidatos',
       cursos: '/api/v1/cursos',
+      agenda: '/api/v1/agenda',
       cursosTurmasAulas: '/api/v1/cursos/{cursoId}/turmas/{turmaId}/aulas',
       candidatosAreasInteresse: '/api/v1/candidatos/areas-interesse',
       cuponsDesconto: '/api/v1/cupons',
@@ -1189,6 +1192,7 @@ if (candidatosRoutes) {
 if (cursosRoutes) {
   try {
     router.use('/api/v1/cursos', cursosRoutes);
+    router.use('/api/v1/agenda', agendaRoutes);
     routesLogger.info({ feature: 'CursosModule' }, '✅ Módulo Cursos registrado com sucesso');
   } catch (error) {
     routesLogger.error({ feature: 'CursosModule', err: error }, '❌ ERRO - Módulo Cursos');
@@ -1282,6 +1286,27 @@ if (recrutadorRoutes) {
   }
 } else {
   routesLogger.error({ feature: 'RecrutadorModule' }, '❌ recrutadorRoutes não está definido');
+}
+
+/**
+ * Módulo Entrevistas
+ * /api/v1/entrevistas
+ */
+if (entrevistasRoutes) {
+  try {
+    router.use('/api/v1/entrevistas', entrevistasRoutes);
+    routesLogger.info(
+      { feature: 'EntrevistasModule' },
+      '✅ Módulo Entrevistas registrado com sucesso',
+    );
+  } catch (error) {
+    routesLogger.error(
+      { feature: 'EntrevistasModule', err: error },
+      '❌ ERRO - Módulo Entrevistas',
+    );
+  }
+} else {
+  routesLogger.error({ feature: 'EntrevistasModule' }, '❌ entrevistasRoutes não está definido');
 }
 
 /**

@@ -10,13 +10,18 @@ import {
 import { recrutadorVagasService } from '@/modules/usuarios/services/recrutador-vagas.service';
 import { recrutadorVagasDashboardService } from '../services/vagas.service';
 import {
+  recrutadorAtualizarCandidaturaStatusBodySchema,
+  recrutadorVagaCandidaturaStatusParamSchema,
   recrutadorVagaCandidatosQuerySchema,
   recrutadorVagaIdParamSchema,
   recrutadorVagasListQuerySchema,
 } from '../validators/vagas.schema';
 import {
+  RecrutadorVagaCandidaturaConflictError,
+  RecrutadorVagaCandidaturaNotFoundError,
   RecrutadorVagaCandidatesNotFoundError,
   RecrutadorVagaCandidatosForbiddenError,
+  RecrutadorVagaStatusNotFoundError,
   recrutadorVagaCandidatosService,
 } from '../services/vaga-candidatos.service';
 
@@ -188,6 +193,99 @@ export class RecrutadorVagasController {
         success: false,
         code: 'RECRUITER_SCOPE_ERROR',
         message: 'Erro ao listar candidatos da vaga do recrutador.',
+        error: error?.message,
+      });
+    }
+  };
+
+  static updateCandidateStatus = async (req: Request, res: Response) => {
+    try {
+      const recruiterId = (req as any).user?.id as string | undefined;
+      if (!recruiterId) {
+        return res.status(401).json({ success: false, code: 'UNAUTHORIZED' });
+      }
+
+      const { vagaId, candidaturaId } = recrutadorVagaCandidaturaStatusParamSchema.parse(
+        req.params,
+      );
+      const { statusId } = recrutadorAtualizarCandidaturaStatusBodySchema.parse(req.body);
+
+      const result = await recrutadorVagaCandidatosService.updateStatus({
+        recrutadorId: recruiterId,
+        vagaId,
+        candidaturaId,
+        statusId,
+      });
+
+      return res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos para atualizar o status da candidatura.',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (
+        error instanceof RecrutadorVagaCandidatesNotFoundError ||
+        error?.code === 'VAGA_NOT_FOUND'
+      ) {
+        return res.status(404).json({
+          success: false,
+          code: 'VAGA_NOT_FOUND',
+          message: 'Vaga não encontrada.',
+        });
+      }
+
+      if (
+        error instanceof RecrutadorVagaCandidaturaNotFoundError ||
+        error?.code === 'CANDIDATURA_NOT_FOUND'
+      ) {
+        return res.status(404).json({
+          success: false,
+          code: 'CANDIDATURA_NOT_FOUND',
+          message: 'Candidatura não encontrada.',
+        });
+      }
+
+      if (
+        error instanceof RecrutadorVagaStatusNotFoundError ||
+        error?.code === 'STATUS_NOT_FOUND'
+      ) {
+        return res.status(404).json({
+          success: false,
+          code: 'STATUS_NOT_FOUND',
+          message: 'Status não encontrado.',
+        });
+      }
+
+      if (error instanceof RecrutadorVagaCandidaturaConflictError || error?.status === 409) {
+        return res.status(409).json({
+          success: false,
+          code: 'RECRUITER_SCOPE_CONFLICT',
+          message:
+            error?.message ??
+            'A candidatura informada não corresponde à vaga selecionada no escopo do recrutador.',
+        });
+      }
+
+      if (error instanceof RecrutadorVagaCandidatosForbiddenError || error?.status === 403) {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: 'Você não possui acesso para alterar o status desta candidatura.',
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        code: 'RECRUITER_CANDIDATURA_STATUS_ERROR',
+        message: 'Erro ao atualizar o status da candidatura da vaga do recrutador.',
         error: error?.message,
       });
     }

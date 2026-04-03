@@ -104,6 +104,23 @@ export const recrutadorVagaIdParamSchema = z.object({
 
 export type RecrutadorVagaIdParam = z.infer<typeof recrutadorVagaIdParamSchema>;
 
+export const recrutadorVagaCandidaturaStatusParamSchema = z.object({
+  vagaId: z.string().uuid(),
+  candidaturaId: z.string().uuid(),
+});
+
+export type RecrutadorVagaCandidaturaStatusParam = z.infer<
+  typeof recrutadorVagaCandidaturaStatusParamSchema
+>;
+
+export const recrutadorAtualizarCandidaturaStatusBodySchema = z.object({
+  statusId: z.string().uuid(),
+});
+
+export type RecrutadorAtualizarCandidaturaStatusBody = z.infer<
+  typeof recrutadorAtualizarCandidaturaStatusBodySchema
+>;
+
 export const recrutadorVagaCandidatosQuerySchema = z
   .object({
     search: normalizeOptionalString,

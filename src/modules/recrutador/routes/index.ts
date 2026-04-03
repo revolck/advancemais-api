@@ -191,6 +191,51 @@ router.get('/vagas/:vagaId/candidatos', RecrutadorVagasController.listCandidates
 
 /**
  * @openapi
+ * /api/v1/recrutador/vagas/{vagaId}/candidaturas/{candidaturaId}/status:
+ *   patch:
+ *     summary: Atualizar o status de uma candidatura da vaga no escopo do recrutador
+ *     tags: [Recrutador]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: vagaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: candidaturaId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [statusId]
+ *             properties:
+ *               statusId: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Status atualizado com sucesso
+ *       400:
+ *         description: Parâmetros inválidos
+ *       401:
+ *         description: Token inválido ou ausente
+ *       403:
+ *         description: Recrutador não possui acesso à candidatura
+ *       404:
+ *         description: Vaga, candidatura ou status não encontrados
+ *       409:
+ *         description: Candidatura não pertence à vaga informada
+ */
+router.patch(
+  '/vagas/:vagaId/candidaturas/:candidaturaId/status',
+  RecrutadorVagasController.updateCandidateStatus,
+);
+
+/**
+ * @openapi
  * /api/v1/recrutador/vagas/{id}:
  *   get:
  *     summary: Obter detalhes de uma vaga vinculada ao recrutador

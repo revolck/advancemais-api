@@ -19,6 +19,10 @@ Nessa condição, o frontend deve consumir:
 - `GET /api/v1/recrutador/vagas/:vagaId`
 - `GET /api/v1/recrutador/vagas/:vagaId/candidatos`
 
+Para a ação de alteração de status na grade, ver também:
+
+- `FRONTEND_DASHBOARD_RECRUTADOR_VAGA_CANDIDATOS_STATUS.md`
+
 ---
 
 ## Regra de escopo

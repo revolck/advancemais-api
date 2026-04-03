@@ -2,8 +2,22 @@ import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import { EmailService } from '@/modules/brevo/services/email-service';
 import type { NotificacaoTipo, NotificacaoPrioridade } from '@prisma/client';
+import { createHash } from 'crypto';
 
 const notifLogger = logger.child({ module: 'NotificacoesHelper' });
+
+const NOTIFICACAO_EVENTO_ID_MAX_LENGTH = 36;
+
+const normalizeEventoId = (eventoId: string) => {
+  if (eventoId.length <= NOTIFICACAO_EVENTO_ID_MAX_LENGTH) {
+    return eventoId;
+  }
+
+  return createHash('sha1')
+    .update(eventoId)
+    .digest('hex')
+    .slice(0, NOTIFICACAO_EVENTO_ID_MAX_LENGTH);
+};
 
 /**
  * Helper para criar notificações (sininho + email quando necessário)
@@ -22,13 +36,15 @@ export const notificacoesHelper = {
     dados?: any;
     eventoId?: string; // Para deduplicação (aulaId, provaId, etc)
   }) {
+    const eventoId = params.eventoId ? normalizeEventoId(params.eventoId) : undefined;
+
     // Verificar se já foi enviada (deduplicação)
-    if (params.eventoId) {
+    if (eventoId) {
       const jaEnviada = await prisma.notificacoesEnviadas.findUnique({
         where: {
           tipo_eventoId_usuarioId: {
             tipo: params.tipo,
-            eventoId: params.eventoId,
+            eventoId,
             usuarioId: params.usuarioId,
           },
         },
@@ -37,7 +53,7 @@ export const notificacoesHelper = {
       if (jaEnviada) {
         notifLogger.debug('[NOTIF] Já enviada, pulando', {
           tipo: params.tipo,
-          eventoId: params.eventoId,
+          eventoId,
         });
         return null;
       }
@@ -57,11 +73,11 @@ export const notificacoesHelper = {
     });
 
     // Registrar como enviada
-    if (params.eventoId) {
+    if (eventoId) {
       await prisma.notificacoesEnviadas.create({
         data: {
           tipo: params.tipo,
-          eventoId: params.eventoId,
+          eventoId,
           usuarioId: params.usuarioId,
         },
       });

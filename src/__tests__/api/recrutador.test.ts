@@ -19,6 +19,7 @@ jest.mock('@/modules/cursos/aulas/services/google-calendar.service', () => ({
       eventId: 'evt_test_123',
       meetUrl: 'https://meet.google.com/test-meet',
     })),
+    sincronizarEntrevista: jest.fn(async () => undefined),
   },
 }));
 
@@ -86,6 +87,21 @@ async function getActiveStatusId() {
   return status.id;
 }
 
+async function getTwoActiveStatuses() {
+  const statuses = await prisma.statusProcessosCandidatos.findMany({
+    where: { ativo: true },
+    orderBy: { nome: 'asc' },
+    take: 2,
+    select: { id: true, nome: true },
+  });
+
+  if (statuses.length < 2) {
+    throw new Error('São necessários ao menos dois status ativos para testar atualização');
+  }
+
+  return statuses;
+}
+
 describe('API - Recrutador (escopo por empresas vinculadas)', () => {
   let app: Express;
   const testUsers: TestUser[] = [];
@@ -96,12 +112,18 @@ describe('API - Recrutador (escopo por empresas vinculadas)', () => {
   const createdVinculos: string[] = [];
   const createdVagaVinculos: string[] = [];
   const createdEntrevistas: string[] = [];
+  const createdNotificacoes: string[] = [];
 
   beforeAll(async () => {
     app = await getTestApp();
   });
 
   afterAll(async () => {
+    if (createdNotificacoes.length > 0) {
+      await prisma.notificacoes.deleteMany({
+        where: { id: { in: createdNotificacoes } },
+      });
+    }
     if (createdEntrevistas.length > 0) {
       await prisma.empresasVagasEntrevistas.deleteMany({
         where: { id: { in: createdEntrevistas } },
@@ -610,6 +632,350 @@ describe('API - Recrutador (escopo por empresas vinculadas)', () => {
         success: false,
         code: 'VAGA_NOT_FOUND',
         message: 'Vaga não encontrada.',
+      }),
+    );
+  });
+
+  it('atualiza o status da candidatura da vaga dentro do escopo por vínculo de empresa', async () => {
+    const recruiter = await createTestUser({ role: Roles.RECRUTADOR });
+    const empresa = await createTestUser({
+      role: Roles.EMPRESA,
+      tipoUsuario: TiposDeUsuarios.PESSOA_JURIDICA,
+      cnpj: `8${String(Date.now()).padStart(13, '0').slice(0, 13)}`,
+    });
+    const candidato = await createTestUser({ role: Roles.ALUNO_CANDIDATO });
+    testUsers.push(recruiter, empresa, candidato);
+
+    const vinculo = await prisma.usuariosEmpresasVinculos.create({
+      data: { recrutadorId: recruiter.id, empresaUsuarioId: empresa.id },
+      select: { id: true },
+    });
+    createdVinculos.push(vinculo.id);
+
+    const vaga = await createVaga({
+      empresaUsuarioId: empresa.id,
+      status: StatusDeVagas.PUBLICADO,
+      titulo: 'Vaga Status Empresa',
+    });
+    createdVagas.push(vaga.id);
+
+    const [currentStatus, nextStatus] = await getTwoActiveStatuses();
+
+    const candidatura = await prisma.empresasCandidatos.create({
+      data: {
+        vagaId: vaga.id,
+        candidatoId: candidato.id,
+        empresaUsuarioId: empresa.id,
+        statusId: currentStatus.id,
+      },
+      select: { id: true },
+    });
+    createdCandidaturas.push(candidatura.id);
+
+    const response = await request(app)
+      .patch(`/api/v1/recrutador/vagas/${vaga.id}/candidaturas/${candidatura.id}/status`)
+      .set('Authorization', `Bearer ${recruiter.token}`)
+      .send({ statusId: nextStatus.id })
+      .expect(200);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        success: true,
+        data: expect.objectContaining({
+          candidaturaId: candidatura.id,
+          vagaId: vaga.id,
+          statusId: nextStatus.id,
+          status: nextStatus.nome,
+          statusLabel: expect.any(String),
+          atualizadoEm: expect.any(String),
+        }),
+      }),
+    );
+
+    const candidaturaAtualizada = await prisma.empresasCandidatos.findUnique({
+      where: { id: candidatura.id },
+      select: {
+        statusId: true,
+        atualizadaEm: true,
+      },
+    });
+
+    expect(candidaturaAtualizada?.statusId).toBe(nextStatus.id);
+    expect(candidaturaAtualizada?.atualizadaEm.toISOString()).toBe(response.body.data.atualizadoEm);
+
+    const notificacao = await prisma.notificacoes.findFirst({
+      where: {
+        usuarioId: candidato.id,
+        candidaturaId: candidatura.id,
+      },
+      orderBy: { criadoEm: 'desc' },
+      select: {
+        id: true,
+        tipo: true,
+        titulo: true,
+        mensagem: true,
+        vagaId: true,
+        candidaturaId: true,
+        dados: true,
+      },
+    });
+
+    expect(notificacao).toEqual(
+      expect.objectContaining({
+        id: expect.any(String),
+        tipo: 'SISTEMA',
+        titulo: 'Status da candidatura atualizado',
+        vagaId: vaga.id,
+        candidaturaId: candidatura.id,
+      }),
+    );
+    expect(notificacao?.mensagem).toContain('Vaga Status Empresa');
+    expect(notificacao?.mensagem).toContain('foi atualizada para');
+    expect(notificacao?.dados).toEqual(
+      expect.objectContaining({
+        evento: 'CANDIDATURA_STATUS_ATUALIZADO',
+        origem: 'PAINEL_RECRUTADOR',
+        candidaturaId: candidatura.id,
+        vagaId: vaga.id,
+        empresaUsuarioId: empresa.id,
+        vagaTitulo: 'Vaga Status Empresa',
+        statusIdAnterior: currentStatus.id,
+        statusAnterior: currentStatus.nome,
+        statusIdNovo: nextStatus.id,
+        statusNovo: nextStatus.nome,
+      }),
+    );
+
+    if (notificacao) {
+      createdNotificacoes.push(notificacao.id);
+    }
+
+    const notificacoesResponse = await request(app)
+      .get('/api/v1/notificacoes?pageSize=10')
+      .set('Authorization', `Bearer ${candidato.token}`)
+      .expect(200);
+
+    expect(notificacoesResponse.body.data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: notificacao?.id,
+          tipo: 'SISTEMA',
+          titulo: 'Status da candidatura atualizado',
+          mensagem: expect.stringContaining('Vaga Status Empresa'),
+          vaga: expect.objectContaining({
+            id: vaga.id,
+            titulo: 'Vaga Status Empresa',
+          }),
+          dados: expect.objectContaining({
+            candidaturaId: candidatura.id,
+            vagaId: vaga.id,
+            evento: 'CANDIDATURA_STATUS_ATUALIZADO',
+          }),
+        }),
+      ]),
+    );
+  });
+
+  it('atualiza o status da candidatura da vaga dentro do escopo por vínculo de vaga', async () => {
+    const recruiter = await createTestUser({ role: Roles.RECRUTADOR });
+    const empresa = await createTestUser({
+      role: Roles.EMPRESA,
+      tipoUsuario: TiposDeUsuarios.PESSOA_JURIDICA,
+      cnpj: `9${String(Date.now()).padStart(13, '0').slice(0, 13)}`,
+    });
+    const candidato = await createTestUser({ role: Roles.ALUNO_CANDIDATO });
+    testUsers.push(recruiter, empresa, candidato);
+
+    const vaga = await createVaga({
+      empresaUsuarioId: empresa.id,
+      status: StatusDeVagas.PUBLICADO,
+      titulo: 'Vaga Status Restrita',
+    });
+    createdVagas.push(vaga.id);
+
+    const vinculoVaga = await prisma.usuariosVagasVinculos.create({
+      data: { recrutadorId: recruiter.id, vagaId: vaga.id },
+      select: { id: true },
+    });
+    createdVagaVinculos.push(vinculoVaga.id);
+
+    const [currentStatus, nextStatus] = await getTwoActiveStatuses();
+
+    const candidatura = await prisma.empresasCandidatos.create({
+      data: {
+        vagaId: vaga.id,
+        candidatoId: candidato.id,
+        empresaUsuarioId: empresa.id,
+        statusId: currentStatus.id,
+      },
+      select: { id: true },
+    });
+    createdCandidaturas.push(candidatura.id);
+
+    const response = await request(app)
+      .patch(`/api/v1/recrutador/vagas/${vaga.id}/candidaturas/${candidatura.id}/status`)
+      .set('Authorization', `Bearer ${recruiter.token}`)
+      .send({ statusId: nextStatus.id })
+      .expect(200);
+
+    expect(response.body.data).toEqual(
+      expect.objectContaining({
+        candidaturaId: candidatura.id,
+        vagaId: vaga.id,
+        statusId: nextStatus.id,
+        status: nextStatus.nome,
+      }),
+    );
+  });
+
+  it('retorna conflito quando a candidatura não pertence à vaga informada', async () => {
+    const recruiter = await createTestUser({ role: Roles.RECRUTADOR });
+    const empresa = await createTestUser({
+      role: Roles.EMPRESA,
+      tipoUsuario: TiposDeUsuarios.PESSOA_JURIDICA,
+      cnpj: `3${String(Date.now()).padStart(13, '0').slice(0, 13)}`,
+    });
+    const candidato = await createTestUser({ role: Roles.ALUNO_CANDIDATO });
+    testUsers.push(recruiter, empresa, candidato);
+
+    const vinculo = await prisma.usuariosEmpresasVinculos.create({
+      data: { recrutadorId: recruiter.id, empresaUsuarioId: empresa.id },
+      select: { id: true },
+    });
+    createdVinculos.push(vinculo.id);
+
+    const vagaA = await createVaga({
+      empresaUsuarioId: empresa.id,
+      status: StatusDeVagas.PUBLICADO,
+      titulo: 'Vaga A',
+    });
+    const vagaB = await createVaga({
+      empresaUsuarioId: empresa.id,
+      status: StatusDeVagas.PUBLICADO,
+      titulo: 'Vaga B',
+    });
+    createdVagas.push(vagaA.id, vagaB.id);
+
+    const statusId = await getActiveStatusId();
+    const candidatura = await prisma.empresasCandidatos.create({
+      data: {
+        vagaId: vagaB.id,
+        candidatoId: candidato.id,
+        empresaUsuarioId: empresa.id,
+        statusId,
+      },
+      select: { id: true },
+    });
+    createdCandidaturas.push(candidatura.id);
+
+    const response = await request(app)
+      .patch(`/api/v1/recrutador/vagas/${vagaA.id}/candidaturas/${candidatura.id}/status`)
+      .set('Authorization', `Bearer ${recruiter.token}`)
+      .send({ statusId })
+      .expect(409);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        success: false,
+        code: 'RECRUITER_SCOPE_CONFLICT',
+        message: 'A candidatura informada não pertence à vaga selecionada.',
+      }),
+    );
+  });
+
+  it('bloqueia atualização de status da candidatura fora do escopo do recrutador', async () => {
+    const recruiter = await createTestUser({ role: Roles.RECRUTADOR });
+    const empresa = await createTestUser({
+      role: Roles.EMPRESA,
+      tipoUsuario: TiposDeUsuarios.PESSOA_JURIDICA,
+      cnpj: `4${String(Date.now()).padStart(13, '0').slice(0, 13)}`,
+    });
+    const candidato = await createTestUser({ role: Roles.ALUNO_CANDIDATO });
+    testUsers.push(recruiter, empresa, candidato);
+
+    const vaga = await createVaga({
+      empresaUsuarioId: empresa.id,
+      status: StatusDeVagas.PUBLICADO,
+      titulo: 'Vaga Fora do Escopo para Status',
+    });
+    createdVagas.push(vaga.id);
+
+    const statusId = await getActiveStatusId();
+    const candidatura = await prisma.empresasCandidatos.create({
+      data: {
+        vagaId: vaga.id,
+        candidatoId: candidato.id,
+        empresaUsuarioId: empresa.id,
+        statusId,
+      },
+      select: { id: true },
+    });
+    createdCandidaturas.push(candidatura.id);
+
+    const response = await request(app)
+      .patch(`/api/v1/recrutador/vagas/${vaga.id}/candidaturas/${candidatura.id}/status`)
+      .set('Authorization', `Bearer ${recruiter.token}`)
+      .send({ statusId })
+      .expect(403);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        success: false,
+        code: 'FORBIDDEN',
+        message: 'Você não possui acesso para alterar o status desta candidatura.',
+      }),
+    );
+  });
+
+  it('retorna 404 quando o status informado não existe', async () => {
+    const recruiter = await createTestUser({ role: Roles.RECRUTADOR });
+    const empresa = await createTestUser({
+      role: Roles.EMPRESA,
+      tipoUsuario: TiposDeUsuarios.PESSOA_JURIDICA,
+      cnpj: `5${String(Date.now()).padStart(13, '0').slice(0, 13)}`,
+    });
+    const candidato = await createTestUser({ role: Roles.ALUNO_CANDIDATO });
+    testUsers.push(recruiter, empresa, candidato);
+
+    const vinculoVaga = await prisma.usuariosVagasVinculos.create({
+      data: {
+        recrutadorId: recruiter.id,
+        vagaId: (
+          await createVaga({
+            empresaUsuarioId: empresa.id,
+            status: StatusDeVagas.PUBLICADO,
+            titulo: 'Vaga Status Inexistente',
+          })
+        ).id,
+      },
+      select: { id: true, vagaId: true },
+    });
+    createdVagaVinculos.push(vinculoVaga.id);
+    createdVagas.push(vinculoVaga.vagaId);
+
+    const statusId = await getActiveStatusId();
+    const candidatura = await prisma.empresasCandidatos.create({
+      data: {
+        vagaId: vinculoVaga.vagaId,
+        candidatoId: candidato.id,
+        empresaUsuarioId: empresa.id,
+        statusId,
+      },
+      select: { id: true },
+    });
+    createdCandidaturas.push(candidatura.id);
+
+    const response = await request(app)
+      .patch(`/api/v1/recrutador/vagas/${vinculoVaga.vagaId}/candidaturas/${candidatura.id}/status`)
+      .set('Authorization', `Bearer ${recruiter.token}`)
+      .send({ statusId: randomUUID() })
+      .expect(404);
+
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        success: false,
+        code: 'STATUS_NOT_FOUND',
+        message: 'Status não encontrado.',
       }),
     );
   });
@@ -1741,7 +2107,7 @@ describe('API - Recrutador (escopo por empresas vinculadas)', () => {
       .get(`/api/v1/recrutador/entrevistas/opcoes/candidatos?vagaId=${vagaForaEscopo.id}`)
       .set('Authorization', `Bearer ${recruiter.token}`)
       .expect(403);
-  });
+  }, 60000);
 
   it('cria entrevista presencial no dashboard do recrutador e bloqueia duplicidade na candidatura', async () => {
     const recruiter = await createTestUser({ role: Roles.RECRUTADOR });

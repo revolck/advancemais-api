@@ -2,14 +2,20 @@ import { Prisma, Roles, StatusDeVagas } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { humanizeStatusProcesso } from '@/modules/entrevistas/utils/presentation';
+import { notificacoesService } from '@/modules/notificacoes/services/notificacoes.service';
 import { attachEnderecoResumo } from '@/modules/usuarios/utils/address';
 import {
   mergeUsuarioInformacoes,
   usuarioInformacoesSelect,
 } from '@/modules/usuarios/utils/information';
 import { recrutadorVagasService } from '@/modules/usuarios/services/recrutador-vagas.service';
+import { logger } from '@/utils/logger';
 
 import type { RecrutadorVagaCandidatosQuery } from '../validators/vagas.schema';
+
+const recrutadorVagaCandidatosLogger = logger.child({
+  module: 'RecrutadorVagaCandidatosService',
+});
 
 export class RecrutadorVagaCandidatosForbiddenError extends Error {
   status = 403 as const;
@@ -19,6 +25,21 @@ export class RecrutadorVagaCandidatosForbiddenError extends Error {
 export class RecrutadorVagaCandidatesNotFoundError extends Error {
   status = 404 as const;
   code = 'VAGA_NOT_FOUND' as const;
+}
+
+export class RecrutadorVagaCandidaturaNotFoundError extends Error {
+  status = 404 as const;
+  code = 'CANDIDATURA_NOT_FOUND' as const;
+}
+
+export class RecrutadorVagaStatusNotFoundError extends Error {
+  status = 404 as const;
+  code = 'STATUS_NOT_FOUND' as const;
+}
+
+export class RecrutadorVagaCandidaturaConflictError extends Error {
+  status = 409 as const;
+  code = 'RECRUITER_SCOPE_CONFLICT' as const;
 }
 
 const candidatePreviewSelect = {
@@ -275,6 +296,74 @@ const mapItem = (candidatura: VagaCandidaturaRecord) => {
   };
 };
 
+const mapStatusUpdateResponse = (payload: {
+  candidaturaId: string;
+  vagaId: string;
+  statusId: string;
+  statusNome: string;
+  atualizadoEm: Date;
+}) => ({
+  candidaturaId: payload.candidaturaId,
+  vagaId: payload.vagaId,
+  statusId: payload.statusId,
+  status: payload.statusNome,
+  statusLabel: humanizeStatusProcesso(payload.statusNome),
+  atualizadoEm: payload.atualizadoEm.toISOString(),
+});
+
+const notifyCandidateStatusUpdated = async (params: {
+  candidaturaId: string;
+  vagaId: string;
+  empresaUsuarioId: string;
+  candidatoId: string;
+  vagaTitulo: string;
+  statusIdAnterior: string;
+  statusAnterior: string;
+  statusIdNovo: string;
+  statusNovo: string;
+  atualizadoEm: Date;
+}) => {
+  const statusAnteriorLabel = humanizeStatusProcesso(params.statusAnterior);
+  const statusNovoLabel = humanizeStatusProcesso(params.statusNovo);
+
+  try {
+    await notificacoesService.criar({
+      usuarioId: params.candidatoId,
+      tipo: 'SISTEMA',
+      titulo: 'Status da candidatura atualizado',
+      mensagem: `Sua candidatura para a vaga "${params.vagaTitulo}" foi atualizada para "${statusNovoLabel}".`,
+      prioridade: 'NORMAL',
+      vagaId: params.vagaId,
+      candidaturaId: params.candidaturaId,
+      dados: {
+        evento: 'CANDIDATURA_STATUS_ATUALIZADO',
+        origem: 'PAINEL_RECRUTADOR',
+        candidaturaId: params.candidaturaId,
+        vagaId: params.vagaId,
+        empresaUsuarioId: params.empresaUsuarioId,
+        vagaTitulo: params.vagaTitulo,
+        statusIdAnterior: params.statusIdAnterior,
+        statusAnterior: params.statusAnterior,
+        statusAnteriorLabel,
+        statusIdNovo: params.statusIdNovo,
+        statusNovo: params.statusNovo,
+        statusNovoLabel,
+        atualizadoEm: params.atualizadoEm.toISOString(),
+      },
+    });
+  } catch (error) {
+    recrutadorVagaCandidatosLogger.error(
+      {
+        candidaturaId: params.candidaturaId,
+        vagaId: params.vagaId,
+        candidatoId: params.candidatoId,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      'Erro ao criar notificação de atualização de status da candidatura',
+    );
+  }
+};
+
 export const recrutadorVagaCandidatosService = {
   async list(recrutadorId: string, vagaId: string, query: RecrutadorVagaCandidatosQuery) {
     const vaga = await prisma.empresasVagas.findUnique({
@@ -350,5 +439,126 @@ export const recrutadorVagaCandidatosService = {
       items: sortedItems.slice(skip, skip + query.pageSize),
       pagination: buildPagination(query.page, query.pageSize, total),
     };
+  },
+
+  async updateStatus(params: {
+    recrutadorId: string;
+    vagaId: string;
+    candidaturaId: string;
+    statusId: string;
+  }) {
+    const vaga = await prisma.empresasVagas.findUnique({
+      where: { id: params.vagaId },
+      select: {
+        id: true,
+        status: true,
+        titulo: true,
+        usuarioId: true,
+      },
+    });
+
+    if (!vaga || vaga.status === StatusDeVagas.RASCUNHO) {
+      throw new RecrutadorVagaCandidatesNotFoundError('Vaga não encontrada.');
+    }
+
+    try {
+      await recrutadorVagasService.assertVinculo(params.recrutadorId, params.vagaId);
+    } catch {
+      throw new RecrutadorVagaCandidatosForbiddenError(
+        'Você não possui acesso para alterar o status desta candidatura.',
+      );
+    }
+
+    const candidatura = await prisma.empresasCandidatos.findUnique({
+      where: { id: params.candidaturaId },
+      select: {
+        id: true,
+        vagaId: true,
+        candidatoId: true,
+        statusId: true,
+        atualizadaEm: true,
+        status_processo: {
+          select: {
+            nome: true,
+          },
+        },
+      },
+    });
+
+    if (!candidatura) {
+      throw new RecrutadorVagaCandidaturaNotFoundError('Candidatura não encontrada.');
+    }
+
+    if (candidatura.vagaId !== params.vagaId) {
+      throw new RecrutadorVagaCandidaturaConflictError(
+        'A candidatura informada não pertence à vaga selecionada.',
+      );
+    }
+
+    const status = await prisma.statusProcessosCandidatos.findFirst({
+      where: {
+        id: params.statusId,
+        ativo: true,
+      },
+      select: {
+        id: true,
+        nome: true,
+      },
+    });
+
+    if (!status) {
+      throw new RecrutadorVagaStatusNotFoundError('Status não encontrado.');
+    }
+
+    if (candidatura.statusId === status.id) {
+      return mapStatusUpdateResponse({
+        candidaturaId: candidatura.id,
+        vagaId: candidatura.vagaId,
+        statusId: candidatura.statusId,
+        statusNome: candidatura.status_processo?.nome ?? status.nome,
+        atualizadoEm: candidatura.atualizadaEm,
+      });
+    }
+
+    const now = new Date();
+    const updated = await prisma.empresasCandidatos.update({
+      where: { id: params.candidaturaId },
+      data: {
+        statusId: status.id,
+        atualizadaEm: now,
+      },
+      select: {
+        id: true,
+        vagaId: true,
+        statusId: true,
+        atualizadaEm: true,
+        status_processo: {
+          select: {
+            nome: true,
+          },
+        },
+      },
+    });
+
+    await notifyCandidateStatusUpdated({
+      candidaturaId: updated.id,
+      vagaId: updated.vagaId,
+      empresaUsuarioId: vaga.usuarioId,
+      candidatoId: candidatura.candidatoId,
+      vagaTitulo: vaga.titulo,
+      statusIdAnterior: candidatura.statusId,
+      statusAnterior: candidatura.status_processo?.nome ?? 'DESCONHECIDO',
+      statusIdNovo: updated.statusId,
+      statusNovo: updated.status_processo?.nome ?? status.nome,
+      atualizadoEm: updated.atualizadaEm,
+    });
+
+    return mapStatusUpdateResponse({
+      candidaturaId: updated.id,
+      vagaId: updated.vagaId,
+      statusId: updated.statusId,
+      statusNome: updated.status_processo?.nome ?? status.nome,
+      atualizadoEm: updated.atualizadaEm,
+    });
   },
 };

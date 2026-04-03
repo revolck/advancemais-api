@@ -1,18 +1,24 @@
 import type { Request, Response } from 'express';
 import { StatusDeVagas } from '@prisma/client';
+import { ZodError } from 'zod';
+import { prisma } from '@/config/prisma';
 import { vagasService } from '@/modules/empresas/vagas/services/vagas.service';
-import { recrutadorEmpresasService } from '@/modules/usuarios/services/recrutador-empresas.service';
+import {
+  RecrutadorEmpresaNotFoundError,
+  RecrutadorEmpresasForbiddenError,
+} from '@/modules/usuarios/services/recrutador-empresas.service';
 import { recrutadorVagasService } from '@/modules/usuarios/services/recrutador-vagas.service';
-
-const VALID_STATUSES = new Set<StatusDeVagas>([
-  StatusDeVagas.RASCUNHO,
-  StatusDeVagas.EM_ANALISE,
-  StatusDeVagas.PUBLICADO,
-  StatusDeVagas.EXPIRADO,
-  StatusDeVagas.DESPUBLICADA,
-  StatusDeVagas.PAUSADA,
-  StatusDeVagas.ENCERRADA,
-]);
+import { recrutadorVagasDashboardService } from '../services/vagas.service';
+import {
+  recrutadorVagaCandidatosQuerySchema,
+  recrutadorVagaIdParamSchema,
+  recrutadorVagasListQuerySchema,
+} from '../validators/vagas.schema';
+import {
+  RecrutadorVagaCandidatesNotFoundError,
+  RecrutadorVagaCandidatosForbiddenError,
+  recrutadorVagaCandidatosService,
+} from '../services/vaga-candidatos.service';
 
 const DEFAULT_RECRUITER_STATUSES: StatusDeVagas[] = [
   StatusDeVagas.EM_ANALISE,
@@ -23,44 +29,6 @@ const DEFAULT_RECRUITER_STATUSES: StatusDeVagas[] = [
   StatusDeVagas.ENCERRADA,
 ];
 
-const normalizeStatusInput = (input: string | string[] | undefined): string[] => {
-  if (!input) return [];
-  if (Array.isArray(input)) {
-    return input.flatMap((item) =>
-      item
-        .split(',')
-        .map((s) => s.trim().toUpperCase())
-        .filter(Boolean),
-    );
-  }
-  return input
-    .split(',')
-    .map((s) => s.trim().toUpperCase())
-    .filter(Boolean);
-};
-
-const parseStatusFilter = (raw?: string | string[]): StatusDeVagas[] => {
-  const normalized = normalizeStatusInput(raw);
-  if (normalized.length === 0) return DEFAULT_RECRUITER_STATUSES;
-
-  if (normalized.some((s) => s === 'ALL' || s === 'TODAS' || s === 'TODOS')) {
-    return DEFAULT_RECRUITER_STATUSES;
-  }
-
-  const chosen = normalized
-    .filter((s): s is StatusDeVagas => VALID_STATUSES.has(s as StatusDeVagas))
-    .map((s) => s as StatusDeVagas);
-
-  if (chosen.includes(StatusDeVagas.RASCUNHO)) {
-    throw Object.assign(new Error('Recrutador não pode consultar vagas em RASCUNHO'), {
-      status: 403,
-      code: 'RECRUTADOR_RASCUNHO_FORBIDDEN',
-    });
-  }
-
-  return chosen.length > 0 ? chosen : DEFAULT_RECRUITER_STATUSES;
-};
-
 export class RecrutadorVagasController {
   static list = async (req: Request, res: Response) => {
     try {
@@ -69,48 +37,49 @@ export class RecrutadorVagasController {
         return res.status(401).json({ success: false, code: 'UNAUTHORIZED' });
       }
 
+      const query = recrutadorVagasListQuerySchema.parse(req.query);
+      const vagas = await recrutadorVagasDashboardService.list(recruiterId, query);
+
+      return res.json({
+        success: true,
+        data: vagas.data,
+        pagination: vagas.pagination,
+        filtrosDisponiveis: vagas.filtrosDisponiveis,
+      });
+    } catch (error: any) {
       const empresaUsuarioId =
         typeof req.query.empresaUsuarioId === 'string' ? req.query.empresaUsuarioId : undefined;
 
-      const status = parseStatusFilter(req.query.status as any);
-
-      let vagaIds: string[];
-
-      if (empresaUsuarioId) {
-        await recrutadorEmpresasService.assertVinculo(recruiterId, empresaUsuarioId);
-        vagaIds = await recrutadorVagasService.listVagaIdsByEmpresa(recruiterId, empresaUsuarioId);
-      } else {
-        vagaIds = await recrutadorVagasService.listVagaIds(recruiterId);
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos para listar vagas do recrutador.',
+          issues: error.flatten().fieldErrors,
+        });
       }
 
-      if (vagaIds.length === 0) {
-        return res.json([]);
+      if (error instanceof RecrutadorEmpresaNotFoundError || error?.code === 'EMPRESA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'EMPRESA_NOT_FOUND',
+          message: 'Empresa não encontrada.',
+        });
       }
 
-      const page = typeof req.query.page === 'string' ? parseInt(req.query.page, 10) : undefined;
-      const pageSize =
-        typeof req.query.pageSize === 'string' ? parseInt(req.query.pageSize, 10) : undefined;
-
-      const vagas = await vagasService.list({
-        ids: vagaIds,
-        status,
-        page: page ? Math.max(1, page) : undefined,
-        pageSize: pageSize ? Math.max(1, Math.min(100, pageSize)) : undefined,
-      });
-
-      return res.json(vagas);
-    } catch (error: any) {
-      if (error?.status === 403) {
+      if (error instanceof RecrutadorEmpresasForbiddenError || error?.status === 403) {
         return res.status(403).json({
           success: false,
-          code: error?.code ?? 'FORBIDDEN',
-          message: error?.message ?? 'Acesso negado',
+          code: 'FORBIDDEN',
+          message: empresaUsuarioId
+            ? 'Você não possui acesso a esta empresa.'
+            : 'Você não possui acesso a estas vagas.',
         });
       }
       return res.status(500).json({
         success: false,
-        code: 'RECRUTADOR_VAGAS_LIST_ERROR',
-        message: 'Erro ao listar vagas do recrutador',
+        code: 'RECRUITER_SCOPE_ERROR',
+        message: 'Erro ao listar vagas do recrutador.',
         error: error?.message,
       });
     }
@@ -124,6 +93,19 @@ export class RecrutadorVagasController {
       }
 
       const { id } = req.params;
+      const vagaExists = await prisma.empresasVagas.findUnique({
+        where: { id },
+        select: { id: true, status: true },
+      });
+
+      if (!vagaExists || vagaExists.status === StatusDeVagas.RASCUNHO) {
+        return res.status(404).json({
+          success: false,
+          code: 'VAGA_NOT_FOUND',
+          message: 'Vaga não encontrada.',
+        });
+      }
+
       await recrutadorVagasService.assertVinculo(recruiterId, id);
 
       const vaga = await vagasService.getForInternalViewer({
@@ -135,16 +117,77 @@ export class RecrutadorVagasController {
         return res.status(404).json({
           success: false,
           code: 'VAGA_NOT_FOUND',
-          message: 'Vaga não encontrada',
+          message: 'Vaga não encontrada.',
         });
       }
 
-      return res.json(vaga);
+      return res.json({ success: true, data: vaga });
     } catch (error: any) {
+      if (error?.status === 403) {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: 'Você não possui acesso a esta vaga.',
+        });
+      }
+
       return res.status(500).json({
         success: false,
-        code: 'RECRUTADOR_VAGAS_GET_ERROR',
-        message: 'Erro ao buscar vaga',
+        code: 'RECRUITER_SCOPE_ERROR',
+        message: 'Erro ao buscar vaga do recrutador.',
+        error: error?.message,
+      });
+    }
+  };
+
+  static listCandidates = async (req: Request, res: Response) => {
+    try {
+      const recruiterId = (req as any).user?.id as string | undefined;
+      if (!recruiterId) {
+        return res.status(401).json({ success: false, code: 'UNAUTHORIZED' });
+      }
+
+      const { vagaId } = recrutadorVagaIdParamSchema.parse(req.params);
+      const query = recrutadorVagaCandidatosQuerySchema.parse(req.query);
+      const result = await recrutadorVagaCandidatosService.list(recruiterId, vagaId, query);
+
+      return res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos para listar candidatos da vaga do recrutador.',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (
+        error instanceof RecrutadorVagaCandidatesNotFoundError ||
+        error?.code === 'VAGA_NOT_FOUND'
+      ) {
+        return res.status(404).json({
+          success: false,
+          code: 'VAGA_NOT_FOUND',
+          message: 'Vaga não encontrada.',
+        });
+      }
+
+      if (error instanceof RecrutadorVagaCandidatosForbiddenError || error?.status === 403) {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: 'Você não possui acesso aos candidatos desta vaga.',
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        code: 'RECRUITER_SCOPE_ERROR',
+        message: 'Erro ao listar candidatos da vaga do recrutador.',
         error: error?.message,
       });
     }

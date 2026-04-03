@@ -1,17 +1,10 @@
+import { assertMercadoPagoConfigured, mpClient } from '@/config/mercadopago';
 import { prisma } from '@/config/prisma';
-import { mpClient, assertMercadoPagoConfigured } from '@/config/mercadopago';
-import { mercadopagoConfig, serverConfig } from '@/config/env';
-import { Payment } from 'mercadopago';
-import jwt from 'jsonwebtoken';
 import { logger } from '@/utils/logger';
+import { CuponsAplicarEm, CuponsLimiteUso, CuponsPeriodo, WebsiteStatus } from '@prisma/client';
+import jwt from 'jsonwebtoken';
+import { Payment } from 'mercadopago';
 import type { StartCursoCheckoutInput } from '../validators/cursos-checkout.schema';
-import {
-  CuponsAplicarEm,
-  CuponsLimiteUso,
-  CuponsPeriodo,
-  WebsiteStatus,
-  type StatusInscricao,
-} from '@prisma/client';
 
 // ========================================
 // TIPOS E INTERFACES
@@ -731,7 +724,7 @@ export const cursosCheckoutService = {
         const pixBody = pixPayment.body ?? pixPayment;
         const mpPaymentId = pixBody?.id ? String(pixBody.id) : undefined;
         const statusPagamento = mapToStatusPagamento(pixBody?.status);
-        const expiration = pixBody?.date_of_expiration
+        const _expiration = pixBody?.date_of_expiration
           ? new Date(pixBody.date_of_expiration)
           : null;
 
@@ -954,7 +947,7 @@ export const cursosCheckoutService = {
         const boletoBody = boletoPayment.body ?? boletoPayment;
         const mpPaymentId = boletoBody?.id ? String(boletoBody.id) : undefined;
         const statusPagamento = mapToStatusPagamento(boletoBody?.status);
-        const expiration = boletoBody?.date_of_expiration
+        const _expiration = boletoBody?.date_of_expiration
           ? new Date(boletoBody.date_of_expiration)
           : null;
 

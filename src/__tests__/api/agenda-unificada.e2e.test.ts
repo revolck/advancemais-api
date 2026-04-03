@@ -313,11 +313,11 @@ describe('API - Agenda Unificada', () => {
     );
   });
 
-  it('permite SETOR_DE_VAGAS ver entrevistas globais mesmo quando não foi o criador', async () => {
+  it('oculta entrevistas da agenda para SETOR_DE_VAGAS mesmo com filtro explícito', async () => {
     const setorViewer = await createTestUser({ role: Roles.SETOR_DE_VAGAS });
     testUsers.push(setorViewer);
 
-    const fixture = await createInterviewFixture({
+    await createInterviewFixture({
       creatorRole: Roles.ADMIN,
       candidateName: 'Maria Global',
       vagaTitulo: 'Analista de Produto',
@@ -333,8 +333,35 @@ describe('API - Agenda Unificada', () => {
       })
       .expect(200);
 
-    const ids = response.body.eventos.map((item: { id: string }) => item.id);
-    expect(ids).toContain(fixture.entrevista.id);
+    expect(response.body).toEqual({
+      success: true,
+      eventos: [],
+    });
+  });
+
+  it('oculta entrevistas da agenda para SETOR_DE_VAGAS também sem filtro explícito', async () => {
+    const setorViewer = await createTestUser({ role: Roles.SETOR_DE_VAGAS });
+    testUsers.push(setorViewer);
+
+    await createInterviewFixture({
+      creatorRole: Roles.ADMIN,
+      candidateName: 'Maria Sem Filtro',
+      vagaTitulo: 'Analista Agenda',
+    });
+
+    const response = await request(app)
+      .get('/api/v1/agenda')
+      .set('Authorization', `Bearer ${setorViewer.token}`)
+      .query({
+        dataInicio: '2026-03-01T00:00:00.000Z',
+        dataFim: '2026-03-31T23:59:59.999Z',
+      })
+      .expect(200);
+
+    expect(response.body.success).toBe(true);
+    expect(
+      response.body.eventos.every((item: { tipo: string }) => item.tipo !== 'ENTREVISTA'),
+    ).toBe(true);
   });
 
   it('restringe RECRUTADOR às vagas do próprio escopo mesmo quando outro usuário criou a entrevista', async () => {

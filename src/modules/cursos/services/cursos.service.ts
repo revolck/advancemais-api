@@ -1,4 +1,4 @@
-import { CursoStatus, CursosStatusPadrao, Prisma, StatusInscricao, Status } from '@prisma/client';
+import { CursoStatus, CursosStatusPadrao, Prisma } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
@@ -6,7 +6,7 @@ import { logger } from '@/utils/logger';
 import { traduzirModelosPrisma } from '../utils/avaliacao';
 import { generateUniqueCourseCode } from '../utils/code-generator';
 import { AulaWithMateriais, aulaWithMateriaisInclude, mapAula } from './aulas.mapper';
-import { ModuloWithRelations, moduloDetailedInclude, mapModulo } from './modulos.mapper';
+import { ModuloWithRelations, mapModulo, moduloDetailedInclude } from './modulos.mapper';
 import { ProvaWithRelations, mapProva, provaDefaultInclude } from './provas.mapper';
 
 const cursosLogger = logger.child({ module: 'CursosService' });
@@ -64,7 +64,7 @@ const regrasAvaliacaoSelect = {
   observacoes: true,
 } as const;
 
-const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
+const _turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
   include: {
     CursosTurmasInstrutores: {
       include: {
@@ -166,13 +166,13 @@ const turmaPublicInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
 });
 
 type TurmaSummaryPayload = Prisma.CursosTurmasGetPayload<{ select: typeof turmaSummarySelect }>;
-type TurmaDetailedPayload = Prisma.CursosTurmasGetPayload<typeof turmaDetailedInclude>;
+type TurmaDetailedPayload = Prisma.CursosTurmasGetPayload<typeof _turmaDetailedInclude>;
 type TurmaPublicPayload = Prisma.CursosTurmasGetPayload<typeof turmaPublicInclude>;
 type RawCourseBase = Prisma.CursosGetPayload<{
   include: {
     CursosCategorias: { select: typeof categoriaSelect };
     CursosSubcategorias: { select: typeof subcategoriaSelect };
-    CursosTurmas: { select: typeof turmaSummarySelect } | typeof turmaDetailedInclude;
+    CursosTurmas: { select: typeof turmaSummarySelect } | typeof _turmaDetailedInclude;
     _count: { select: { CursosTurmas: true } };
   };
 }>;

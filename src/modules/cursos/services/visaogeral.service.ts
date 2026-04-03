@@ -9,10 +9,10 @@
  * - Processamento paralelo de queries independentes
  */
 
-import { Prisma, CursoStatus } from '@prisma/client';
 import { prisma, retryOperation } from '@/config/prisma';
-import { logger } from '@/utils/logger';
 import { getCache, setCache } from '@/utils/cache';
+import { logger } from '@/utils/logger';
+import { CursoStatus, Prisma } from '@prisma/client';
 
 const visaogeralLogger = logger.child({ module: 'CursosVisaoGeralService' });
 
@@ -219,8 +219,8 @@ async function buscarCursosProximosInicio(): Promise<{
   }
 
   const agora = new Date();
-  const data7Dias = new Date(agora.getTime() + 7 * 24 * 60 * 60 * 1000);
-  const data15Dias = new Date(agora.getTime() + 15 * 24 * 60 * 60 * 1000);
+  const _data7Dias = new Date(agora.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const _data15Dias = new Date(agora.getTime() + 15 * 24 * 60 * 60 * 1000);
   const data30Dias = new Date(agora.getTime() + 30 * 24 * 60 * 60 * 1000);
 
   // ✅ OTIMIZADO: Buscar apenas turmas dos próximos 30 dias com LIMIT

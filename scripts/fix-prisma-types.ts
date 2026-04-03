@@ -6,13 +6,12 @@
 
 import { readFileSync, writeFileSync } from 'fs';
 import { glob } from 'glob';
-import path from 'path';
 
-const FIXES = [
+const _FIXES = [
   // Adicionar id e atualizadoEm em creates que faltam
   {
     pattern: /prisma\.(\w+)\.create\(\s*\{\s*data:\s*\{/g,
-    replacement: (match: string, model: string) => {
+    replacement: (match: string, _model: string) => {
       // Verificar se já tem id e atualizadoEm
       if (match.includes('id:') && match.includes('atualizadoEm:')) {
         return match;
@@ -23,7 +22,7 @@ const FIXES = [
   },
 ];
 
-async function fixFiles() {
+async function _fixFiles() {
   const files = await glob('src/**/*.ts', { ignore: ['**/*.test.ts', '**/node_modules/**'] });
 
   for (const file of files) {
@@ -44,6 +43,6 @@ async function fixFiles() {
   }
 }
 
-// fixFiles().catch(console.error);
+// _fixFiles().catch(console.error);
 
 console.log('Use o helper addRequiredFields() nos creates que faltam campos obrigatórios');

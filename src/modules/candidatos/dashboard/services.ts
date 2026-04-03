@@ -8,15 +8,15 @@
  */
 
 import { prisma } from '@/config/prisma';
-import { StatusInscricao } from '@prisma/client';
 import { logger } from '@/utils/logger';
+import { StatusInscricao } from '@prisma/client';
 
 const dashboardLogger = logger.child({ module: 'CandidatoDashboardService' });
 
 /**
  * Formata o status da inscrição para exibição
  */
-const formatarStatusInscricao = (status: StatusInscricao): string => {
+const _formatarStatusInscricao = (status: StatusInscricao): string => {
   const statusMap: Record<StatusInscricao, string> = {
     [StatusInscricao.INSCRITO]: 'Não iniciado',
     [StatusInscricao.EM_ANDAMENTO]: 'Em Andamento',

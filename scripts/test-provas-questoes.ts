@@ -4,8 +4,8 @@
  */
 
 import { CursosTipoQuestao } from '@prisma/client';
-import dotenv from 'dotenv';
 import { randomUUID } from 'crypto';
+import dotenv from 'dotenv';
 import { prisma } from '../src/config/prisma';
 
 // Carregar variáveis de ambiente ANTES de importar o PrismaClient
@@ -368,7 +368,7 @@ async function testMigration() {
 
 // Executar testes
 testMigration()
-  .then((result) => {
+  .then(() => {
     console.log('\n✨ Testes concluídos com sucesso!');
     process.exit(0);
   })

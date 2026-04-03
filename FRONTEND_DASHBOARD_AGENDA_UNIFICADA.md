@@ -57,7 +57,7 @@ Mas o contrato canônico recomendado para o frontend é:
 - `EMPRESA`
   - entrevistas da própria empresa
 - `SETOR_DE_VAGAS`
-  - visão global operacional de entrevistas
+  - agenda operacional sem eventos de entrevista
 - `RECRUTADOR`
   - entrevistas das vagas no próprio escopo
 
@@ -271,10 +271,18 @@ Quando não houver eventos no período:
 
 ### 3. Escopo por perfil
 
-- `SETOR_DE_VAGAS` vê entrevistas globais do recrutamento
+- `SETOR_DE_VAGAS` continua acessando `/dashboard/agenda`, mas não recebe `ENTREVISTA` no payload
 - `RECRUTADOR` vê entrevistas das vagas vinculadas ao próprio escopo
 - `EMPRESA` vê entrevistas da própria empresa
 - `PEDAGOGICO` não depende de entrevistas para a agenda funcionar
+
+### Regra específica para `SETOR_DE_VAGAS`
+
+- manter o menu e a rota `/dashboard/agenda`
+- ocultar o filtro `Entrevistas`
+- não renderizar eventos `ENTREVISTA` se algum cache antigo ainda os mantiver na UI
+- o backend já remove `ENTREVISTA` do resultado de `GET /api/v1/agenda` para esse perfil
+- isso vale tanto sem filtro explícito quanto com `tipos=ENTREVISTA`
 
 ---
 
@@ -353,6 +361,8 @@ Exemplo:
 - [ ] trocar o consumo canônico para `GET /api/v1/agenda`
 - [ ] manter `GET /api/v1/agenda/aniversariantes` para o card/lista de aniversariantes
 - [ ] aceitar `ENTREVISTA` como tipo oficial da agenda
+- [ ] ocultar o filtro `Entrevistas` para `SETOR_DE_VAGAS`
+- [ ] não renderizar `ENTREVISTA` para `SETOR_DE_VAGAS` mesmo se houver payload em cache local
 - [ ] renderizar `meetUrl` quando o evento for entrevista online
 - [ ] tratar `empresa`, `vaga`, `candidato` e `agenda` como metadados opcionais do evento
 - [ ] considerar `eventos: []` como estado válido

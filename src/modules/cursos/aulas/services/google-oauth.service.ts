@@ -1,7 +1,7 @@
-import { google } from 'googleapis';
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import crypto from 'crypto';
+import { google } from 'googleapis';
 
 const oauthLogger = logger.child({ module: 'GoogleOAuth' });
 
@@ -127,7 +127,7 @@ export const googleOAuthService = {
     const refreshTokenEncrypted = encryptToken(tokens.refresh_token);
 
     // Salvar no banco
-    const usuario = await prisma.usuarios.update({
+    await prisma.usuarios.update({
       where: { id: usuarioId },
       data: {
         googleAccessToken: accessTokenEncrypted,

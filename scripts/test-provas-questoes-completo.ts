@@ -3,9 +3,9 @@
  * Testa todos os tipos de questões, alternativas e respostas conforme documentação
  */
 
-import { PrismaClient, CursosTipoQuestao } from '@prisma/client';
-import dotenv from 'dotenv';
+import { CursosTipoQuestao } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import dotenv from 'dotenv';
 import { prisma } from '../src/config/prisma';
 
 // Carregar variáveis de ambiente

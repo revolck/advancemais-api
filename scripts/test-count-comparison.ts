@@ -43,7 +43,6 @@ async function testCountComparison() {
     // 2. Fazer requisição de listagem com diferentes pageSize para forçar todas as páginas
     console.log('2️⃣ Fazendo requisições para contar todas as aulas...');
 
-    let totalAulas = 0;
     let page = 1;
     const pageSize = 100; // Grande para pegar todas de uma vez
     let hasMore = true;
@@ -70,8 +69,6 @@ async function testCountComparison() {
       const listData = await listResponse.json();
       const aulas = listData.data || [];
       todasAulas.push(...aulas);
-      totalAulas += aulas.length;
-
       const pagination = listData.pagination || {};
       const totalPages = pagination.totalPages || 1;
       const total = pagination.total || 0;

@@ -1,6 +1,5 @@
-import request from 'supertest';
-import express from 'express';
 import { prisma } from '@/config/prisma';
+import express from 'express';
 
 /**
  * Testes de Integração - Rota de Alunos
@@ -14,8 +13,8 @@ import { prisma } from '@/config/prisma';
  */
 
 describe('GET /api/v1/cursos/alunos - Integração', () => {
-  let app: express.Application;
-  let authToken: string;
+  let _app: express.Application;
+  let _authToken: string;
 
   beforeAll(async () => {
     // Setup da aplicação (importar o app real seria ideal)

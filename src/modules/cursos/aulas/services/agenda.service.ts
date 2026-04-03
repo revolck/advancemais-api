@@ -71,15 +71,10 @@ const ACADEMIC_ROLES = new Set<Roles>([
   Roles.INSTRUTOR,
   Roles.ALUNO_CANDIDATO,
 ]);
-const RECRUITMENT_GLOBAL_ROLES = new Set<Roles>([
-  Roles.ADMIN,
-  Roles.MODERADOR,
-  Roles.SETOR_DE_VAGAS,
-]);
+const RECRUITMENT_GLOBAL_ROLES = new Set<Roles>([Roles.ADMIN, Roles.MODERADOR]);
 const RECRUITMENT_ROLES = new Set<Roles>([
   Roles.ADMIN,
   Roles.MODERADOR,
-  Roles.SETOR_DE_VAGAS,
   Roles.EMPRESA,
   Roles.RECRUTADOR,
   Roles.ALUNO_CANDIDATO,
@@ -232,10 +227,14 @@ export const agendaService = {
   }): Promise<{ eventos: AgendaEvento[] }> {
     const eventos: AgendaEvento[] = [];
     const requestedTipos = params.tipos ?? [];
-    const tipos =
+    const tiposBase =
       requestedTipos.length > 0
         ? requestedTipos
         : ['AULA', 'PROVA', 'ATIVIDADE', 'ENTREVISTA', 'ANIVERSARIO', 'TURMA_INICIO', 'TURMA_FIM'];
+    const tipos =
+      params.role === Roles.SETOR_DE_VAGAS
+        ? tiposBase.filter((tipo) => tipo !== 'ENTREVISTA')
+        : tiposBase;
 
     // 1. AULAS AO VIVO
     if (tipos.includes('AULA')) {

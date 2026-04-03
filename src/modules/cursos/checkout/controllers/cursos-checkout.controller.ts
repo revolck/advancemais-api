@@ -1,13 +1,9 @@
+import { prisma } from '@/config/prisma';
+import { logger } from '@/utils/logger';
 import { Request, Response } from 'express';
 import { ZodError } from 'zod';
 import { cursosCheckoutService } from '../services/cursos-checkout.service';
-import {
-  startCursoCheckoutSchema,
-  validarTokenAcessoSchema,
-  consultarPagamentoSchema,
-} from '../validators/cursos-checkout.schema';
-import { prisma } from '@/config/prisma';
-import { logger } from '@/utils/logger';
+import { startCursoCheckoutSchema } from '../validators/cursos-checkout.schema';
 
 /**
  * Controller para checkout de cursos

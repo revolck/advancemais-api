@@ -1,22 +1,16 @@
-import request from 'supertest';
+import { prisma } from '@/config/prisma';
+import { CursosModelosRecuperacao } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import { Express } from 'express';
-import { getTestApp } from '../helpers/test-setup';
+import request from 'supertest';
 import {
-  createTestUser,
+  cleanupTestUsers,
   createTestAdmin,
   createTestModerator,
-  cleanupTestUsers,
+  createTestUser,
   type TestUser,
 } from '../helpers/auth-helper';
-import { prisma } from '@/config/prisma';
-import { randomUUID } from 'crypto';
-import {
-  CursosMetodos,
-  CursosTurnos,
-  CursoStatus,
-  CursosFrequenciaStatus,
-  CursosModelosRecuperacao,
-} from '@prisma/client';
+import { getTestApp } from '../helpers/test-setup';
 
 describe('API - Cursos Integração Completa (Turmas, Aulas, Provas, Frequência, Estágios, Recuperações)', () => {
   let app: Express;
@@ -585,7 +579,7 @@ describe('API - Cursos Integração Completa (Turmas, Aulas, Provas, Frequência
       }
 
       // Buscar template de recuperação
-      const templateRecuperacao = testAvaliacaoTemplateIds.find(async (id) => {
+      testAvaliacaoTemplateIds.find(async (id) => {
         const avaliacao = await prisma.cursosTurmasProvas.findUnique({
           where: { id },
           select: { recuperacaoFinal: true },

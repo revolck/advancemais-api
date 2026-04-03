@@ -1,14 +1,13 @@
-import request from 'supertest';
+import { prisma } from '@/config/prisma';
 import { Express } from 'express';
-import { getTestApp } from '../helpers/test-setup';
+import request from 'supertest';
 import {
-  createTestUser,
-  createTestAdmin,
   cleanupTestUsers,
+  createTestAdmin,
+  createTestUser,
   type TestUser,
 } from '../helpers/auth-helper';
-import { prisma } from '@/config/prisma';
-import { randomUUID } from 'crypto';
+import { getTestApp } from '../helpers/test-setup';
 
 describe('API - Aulas: POST e PUT', () => {
   let app: Express;

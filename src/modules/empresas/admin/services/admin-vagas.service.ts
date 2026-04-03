@@ -6,7 +6,7 @@ import {
   mergeUsuarioInformacoes,
   usuarioInformacoesSelect,
 } from '@/modules/usuarios/utils/information';
-import { mapSocialLinks, usuarioRedesSociaisSelect } from '@/modules/usuarios/utils/social-links';
+import { mapSocialLinks } from '@/modules/usuarios/utils/social-links';
 
 import type { AdminVagasListQuery } from '@/modules/empresas/admin/validators/admin-vagas.schema';
 

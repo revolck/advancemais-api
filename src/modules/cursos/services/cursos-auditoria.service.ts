@@ -1,7 +1,6 @@
-import { prisma } from '@/config/prisma';
+import { auditoriaService } from '@/modules/auditoria/services/auditoria.service';
 import { logger } from '@/utils/logger';
 import { AuditoriaCategoria } from '@prisma/client';
-import { auditoriaService } from '@/modules/auditoria/services/auditoria.service';
 
 const cursosAuditoriaLogger = logger.child({ module: 'CursosAuditoriaService' });
 

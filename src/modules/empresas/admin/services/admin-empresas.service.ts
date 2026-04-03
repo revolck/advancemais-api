@@ -1,22 +1,22 @@
-import { randomBytes } from 'crypto';
 import bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 
 import {
   AcoesDeLogDeBloqueio,
   EmpresasPlanoModo,
   EmpresasPlanoOrigin,
   EmpresasPlanoStatus,
+  Jornadas,
   METODO_PAGAMENTO,
-  MODELO_PAGAMENTO,
-  STATUS_PAGAMENTO,
   ModalidadesDeVagas,
+  MODELO_PAGAMENTO,
   MotivosDeBloqueios,
   Prisma,
-  Jornadas,
-  Roles,
   RegimesDeTrabalhos,
+  Roles,
   Senioridade,
   Status,
+  STATUS_PAGAMENTO,
   StatusDeBloqueios,
   StatusDeVagas,
   TiposDeBloqueios,
@@ -25,33 +25,12 @@ import {
 
 import { serverConfig } from '@/config/env';
 import { prisma, retryOperation } from '@/config/prisma';
-import { clientesService } from '@/modules/empresas/clientes/services/clientes.service';
-import { LimiteVagasPlanoAtingidoError } from '@/modules/empresas/vagas/services/errors';
-import { empresasAuditoriaService, type EmpresaAuditoriaItem } from './empresas-auditoria.service';
-import { calcularFim } from '@/modules/empresas/shared/planos';
 import { EmailService } from '@/modules/brevo/services/email-service';
 import { EmailTemplates } from '@/modules/brevo/templates/email-templates';
-import { attachEnderecoResumo } from '@/modules/usuarios/utils/address';
-import type { UsuarioEnderecoDto } from '@/modules/usuarios/utils/address';
-import { getCachedOrFetch } from '@/utils/cache';
-import {
-  mapUsuarioInformacoes,
-  mergeUsuarioInformacoes,
-  usuarioInformacoesSelect,
-} from '@/modules/usuarios/utils/information';
-import type { UsuarioSocialLinks } from '@/modules/usuarios/utils/types';
-import {
-  buildSocialLinksCreateData,
-  buildSocialLinksUpdateData,
-  extractSocialLinksFromPayload,
-  mapSocialLinks,
-  sanitizeSocialLinks,
-  usuarioRedesSociaisSelect,
-} from '@/modules/usuarios/utils/social-links';
 import type {
   AdminEmpresasBloqueioInput,
-  AdminEmpresasDashboardListQuery,
   AdminEmpresasCreateInput,
+  AdminEmpresasDashboardListQuery,
   AdminEmpresasHistoryQuery,
   AdminEmpresasListQuery,
   AdminEmpresasPlanoInput,
@@ -60,6 +39,26 @@ import type {
   AdminEmpresasUpdateInput,
   AdminEmpresasVagasQuery,
 } from '@/modules/empresas/admin/validators/admin-empresas.schema';
+import { clientesService } from '@/modules/empresas/clientes/services/clientes.service';
+import { calcularFim } from '@/modules/empresas/shared/planos';
+import { LimiteVagasPlanoAtingidoError } from '@/modules/empresas/vagas/services/errors';
+import type { UsuarioEnderecoDto } from '@/modules/usuarios/utils/address';
+import { attachEnderecoResumo } from '@/modules/usuarios/utils/address';
+import {
+  mapUsuarioInformacoes,
+  mergeUsuarioInformacoes,
+  usuarioInformacoesSelect,
+} from '@/modules/usuarios/utils/information';
+import {
+  buildSocialLinksCreateData,
+  buildSocialLinksUpdateData,
+  extractSocialLinksFromPayload,
+  mapSocialLinks,
+  sanitizeSocialLinks,
+} from '@/modules/usuarios/utils/social-links';
+import type { UsuarioSocialLinks } from '@/modules/usuarios/utils/types';
+import { getCachedOrFetch } from '@/utils/cache';
+import { empresasAuditoriaService, type EmpresaAuditoriaItem } from './empresas-auditoria.service';
 
 const createPlanoAtivoSelect = () =>
   ({

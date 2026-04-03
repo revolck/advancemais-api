@@ -1,22 +1,19 @@
-import request from 'supertest';
-import { Express } from 'express';
-import { getTestApp } from '../helpers/test-setup';
-import {
-  createTestUser,
-  createTestAdmin,
-  cleanupTestUsers,
-  type TestUser,
-} from '../helpers/auth-helper';
 import { prisma } from '@/config/prisma';
-import { randomUUID } from 'crypto';
 import {
-  CursosMetodos,
-  CursosTurnos,
-  CursoStatus,
+  CursosEstagioStatus,
   CursosFrequenciaStatus,
   CursosModelosRecuperacao,
-  CursosEstagioStatus,
 } from '@prisma/client';
+import { randomUUID } from 'crypto';
+import { Express } from 'express';
+import request from 'supertest';
+import {
+  cleanupTestUsers,
+  createTestAdmin,
+  createTestUser,
+  type TestUser,
+} from '../helpers/auth-helper';
+import { getTestApp } from '../helpers/test-setup';
 
 /**
  * Testes de Ambiente Completo de Cursos
@@ -52,7 +49,6 @@ describe('API - Ambiente Completo de Cursos (Gratuito, Pago, Recuperação, Cert
   const estagioIds: string[] = [];
   const certificadoIds: string[] = [];
   const notificacaoIds: string[] = [];
-  const agendaEventoIds: string[] = [];
 
   // Datas de teste
   const hoje = new Date();

@@ -1,16 +1,11 @@
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
-import crypto from 'crypto';
 import type {
   CreateMaterialInput,
-  UpdateMaterialInput,
   ReordenarMateriaisInput,
+  UpdateMaterialInput,
 } from '../validators/materiais.schema';
 import { montarCamposAlteradosMaterial } from './historico-materiais.helper';
-
-// Re-exportar tipos para uso na função helper
-type CreateMaterialInputType = CreateMaterialInput;
-type UpdateMaterialInputType = UpdateMaterialInput;
 
 const materiaisLogger = logger.child({ module: 'MateriaisService' });
 

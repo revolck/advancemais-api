@@ -1,7 +1,7 @@
 import { EntrevistaStatus, Roles, StatusDeVagas, type Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 
-import { prisma } from '@/config/prisma';
+import { prisma, retryOperation } from '@/config/prisma';
 import { googleCalendarService } from '@/modules/cursos/aulas/services/google-calendar.service';
 import { googleOAuthService } from '@/modules/cursos/aulas/services/google-oauth.service';
 import { notificacoesHelper } from '@/modules/cursos/aulas/services/notificacoes-helper.service';
@@ -236,6 +236,9 @@ const mapEnderecoPadraoEntrevista = (usuario: Record<string, any>) => {
   });
 };
 
+const runInterviewReadQuery = async <T>(operation: () => Promise<T>) =>
+  retryOperation(operation, 2, 400, 6000);
+
 const notifyInterviewCreated = async (params: {
   entrevistaId: string;
   empresaUsuarioId: string;
@@ -322,317 +325,327 @@ const notifyInterviewCreated = async (params: {
 
 export const entrevistasManageService = {
   async listEmpresas(params: { viewerId: string; viewerRole: Roles }) {
-    const scopedEmpresaIds = await resolveScopedEmpresaIds(params.viewerId, params.viewerRole);
+    return runInterviewReadQuery(async () => {
+      const scopedEmpresaIds = await resolveScopedEmpresaIds(params.viewerId, params.viewerRole);
 
-    if (scopedEmpresaIds && scopedEmpresaIds.length === 0) {
-      return { items: [] };
-    }
+      if (scopedEmpresaIds && scopedEmpresaIds.length === 0) {
+        return { items: [] };
+      }
 
-    const companies = await prisma.usuarios.findMany({
-      where: {
-        role: Roles.EMPRESA,
-        ...(scopedEmpresaIds ? { id: { in: scopedEmpresaIds } } : {}),
-      },
-      orderBy: { nomeCompleto: 'asc' },
-      select: {
-        id: true,
-        codUsuario: true,
-        cnpj: true,
-        email: true,
-        nomeCompleto: true,
-        UsuariosInformation: { select: usuarioInformacoesSelect },
-        UsuariosEnderecos: {
-          orderBy: { criadoEm: 'asc' },
-          select: {
-            id: true,
-            logradouro: true,
-            numero: true,
-            bairro: true,
-            cidade: true,
-            estado: true,
-            cep: true,
+      const companies = await prisma.usuarios.findMany({
+        where: {
+          role: Roles.EMPRESA,
+          ...(scopedEmpresaIds ? { id: { in: scopedEmpresaIds } } : {}),
+        },
+        orderBy: { nomeCompleto: 'asc' },
+        select: {
+          id: true,
+          codUsuario: true,
+          cnpj: true,
+          email: true,
+          nomeCompleto: true,
+          UsuariosInformation: { select: usuarioInformacoesSelect },
+          UsuariosEnderecos: {
+            orderBy: { criadoEm: 'asc' },
+            select: {
+              id: true,
+              logradouro: true,
+              numero: true,
+              bairro: true,
+              cidade: true,
+              estado: true,
+              cep: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    if (companies.length === 0) {
-      return { items: [] };
-    }
+      if (companies.length === 0) {
+        return { items: [] };
+      }
 
-    const vagas = await prisma.empresasVagas.findMany({
-      where: {
-        usuarioId: { in: companies.map((company) => company.id) },
-        status: { not: StatusDeVagas.RASCUNHO },
-      },
-      select: {
-        id: true,
-        usuarioId: true,
-      },
-    });
+      const vagas = await prisma.empresasVagas.findMany({
+        where: {
+          usuarioId: { in: companies.map((company) => company.id) },
+          status: { not: StatusDeVagas.RASCUNHO },
+        },
+        select: {
+          id: true,
+          usuarioId: true,
+        },
+      });
 
-    if (vagas.length === 0) {
-      return { items: [] };
-    }
+      if (vagas.length === 0) {
+        return { items: [] };
+      }
 
-    const candidaturas = await prisma.empresasCandidatos.findMany({
-      where: {
-        ...eligibleCandidaturasWhere,
+      const candidaturas = await prisma.empresasCandidatos.findMany({
+        where: {
+          ...eligibleCandidaturasWhere,
+          vagaId: { in: vagas.map((vaga) => vaga.id) },
+        },
+        select: {
+          vagaId: true,
+          candidatoId: true,
+          empresaUsuarioId: true,
+        },
+      });
+
+      const activeInterviewMap = await getActiveInterviewMap({
         vagaId: { in: vagas.map((vaga) => vaga.id) },
-      },
-      select: {
-        vagaId: true,
-        candidatoId: true,
-        empresaUsuarioId: true,
-      },
-    });
+      });
 
-    const activeInterviewMap = await getActiveInterviewMap({
-      vagaId: { in: vagas.map((vaga) => vaga.id) },
-    });
+      const empresaByVagaId = new Map(vagas.map((vaga) => [vaga.id, vaga.usuarioId]));
+      const vagasElegiveisPorEmpresa = new Map<string, Set<string>>();
 
-    const empresaByVagaId = new Map(vagas.map((vaga) => [vaga.id, vaga.usuarioId]));
-    const vagasElegiveisPorEmpresa = new Map<string, Set<string>>();
+      for (const candidatura of candidaturas) {
+        const key = buildInterviewKey(
+          candidatura.vagaId,
+          candidatura.candidatoId,
+          candidatura.empresaUsuarioId,
+        );
 
-    for (const candidatura of candidaturas) {
-      const key = buildInterviewKey(
-        candidatura.vagaId,
-        candidatura.candidatoId,
-        candidatura.empresaUsuarioId,
-      );
+        if (activeInterviewMap.has(key)) {
+          continue;
+        }
 
-      if (activeInterviewMap.has(key)) {
-        continue;
+        const empresaUsuarioId = empresaByVagaId.get(candidatura.vagaId);
+        if (!empresaUsuarioId) continue;
+
+        if (!vagasElegiveisPorEmpresa.has(empresaUsuarioId)) {
+          vagasElegiveisPorEmpresa.set(empresaUsuarioId, new Set());
+        }
+
+        vagasElegiveisPorEmpresa.get(empresaUsuarioId)!.add(candidatura.vagaId);
       }
 
-      const empresaUsuarioId = empresaByVagaId.get(candidatura.vagaId);
-      if (!empresaUsuarioId) continue;
+      const items = companies
+        .map((company) => {
+          const companyInfo =
+            attachEnderecoResumo(mergeUsuarioInformacoes(company)) ??
+            attachEnderecoResumo(
+              mergeUsuarioInformacoes({
+                ...company,
+                UsuariosEnderecos: [],
+              }),
+            )!;
+          const totalVagasElegiveis = vagasElegiveisPorEmpresa.get(company.id)?.size ?? 0;
 
-      if (!vagasElegiveisPorEmpresa.has(empresaUsuarioId)) {
-        vagasElegiveisPorEmpresa.set(empresaUsuarioId, new Set());
-      }
+          return {
+            id: company.id,
+            nomeExibicao: company.nomeCompleto,
+            codigo: company.codUsuario,
+            cnpj: company.cnpj ?? null,
+            email: company.email ?? null,
+            logoUrl: companyInfo.avatarUrl ?? null,
+            totalVagasElegiveis,
+            enderecoPadraoEntrevista: mapEnderecoPadraoEntrevista(companyInfo),
+          };
+        })
+        .filter((item) => item.totalVagasElegiveis > 0);
 
-      vagasElegiveisPorEmpresa.get(empresaUsuarioId)!.add(candidatura.vagaId);
-    }
-
-    const items = companies
-      .map((company) => {
-        const companyInfo =
-          attachEnderecoResumo(mergeUsuarioInformacoes(company)) ??
-          attachEnderecoResumo(
-            mergeUsuarioInformacoes({
-              ...company,
-              UsuariosEnderecos: [],
-            }),
-          )!;
-        const totalVagasElegiveis = vagasElegiveisPorEmpresa.get(company.id)?.size ?? 0;
-
-        return {
-          id: company.id,
-          nomeExibicao: company.nomeCompleto,
-          codigo: company.codUsuario,
-          cnpj: company.cnpj ?? null,
-          email: company.email ?? null,
-          logoUrl: companyInfo.avatarUrl ?? null,
-          totalVagasElegiveis,
-          enderecoPadraoEntrevista: mapEnderecoPadraoEntrevista(companyInfo),
-        };
-      })
-      .filter((item) => item.totalVagasElegiveis > 0);
-
-    return { items };
+      return { items };
+    });
   },
 
   async listVagas(params: { viewerId: string; viewerRole: Roles } & EntrevistasOpcoesVagasQuery) {
-    const empresa = await prisma.usuarios.findFirst({
-      where: {
-        id: params.empresaUsuarioId,
-        role: Roles.EMPRESA,
-      },
-      select: {
-        id: true,
-      },
-    });
+    return runInterviewReadQuery(async () => {
+      const empresa = await prisma.usuarios.findFirst({
+        where: {
+          id: params.empresaUsuarioId,
+          role: Roles.EMPRESA,
+        },
+        select: {
+          id: true,
+        },
+      });
 
-    if (!empresa) {
-      throw notFoundError('EMPRESA_NOT_FOUND', 'Empresa não encontrada.');
-    }
+      if (!empresa) {
+        throw notFoundError('EMPRESA_NOT_FOUND', 'Empresa não encontrada.');
+      }
 
-    await assertEmpresaAccess(params.viewerId, params.viewerRole, params.empresaUsuarioId);
+      await assertEmpresaAccess(params.viewerId, params.viewerRole, params.empresaUsuarioId);
 
-    let scopedVagaIds: string[] | null = null;
-    if (params.viewerRole === Roles.RECRUTADOR) {
-      scopedVagaIds = await recrutadorVagasService.listVagaIdsByEmpresa(
-        params.viewerId,
-        params.empresaUsuarioId,
-      );
+      let scopedVagaIds: string[] | null = null;
+      if (params.viewerRole === Roles.RECRUTADOR) {
+        scopedVagaIds = await recrutadorVagasService.listVagaIdsByEmpresa(
+          params.viewerId,
+          params.empresaUsuarioId,
+        );
 
-      if (scopedVagaIds.length === 0) {
+        if (scopedVagaIds.length === 0) {
+          return { items: [] };
+        }
+      }
+
+      const vagas = await prisma.empresasVagas.findMany({
+        where: {
+          usuarioId: params.empresaUsuarioId,
+          status: { not: StatusDeVagas.RASCUNHO },
+          ...(scopedVagaIds ? { id: { in: scopedVagaIds } } : {}),
+        },
+        orderBy: [{ status: 'asc' }, { titulo: 'asc' }],
+        select: {
+          id: true,
+          codigo: true,
+          titulo: true,
+          status: true,
+          usuarioId: true,
+          modoAnonimo: true,
+        },
+      });
+
+      if (vagas.length === 0) {
         return { items: [] };
       }
-    }
 
-    const vagas = await prisma.empresasVagas.findMany({
-      where: {
-        usuarioId: params.empresaUsuarioId,
-        status: { not: StatusDeVagas.RASCUNHO },
-        ...(scopedVagaIds ? { id: { in: scopedVagaIds } } : {}),
-      },
-      orderBy: [{ status: 'asc' }, { titulo: 'asc' }],
-      select: {
-        id: true,
-        codigo: true,
-        titulo: true,
-        status: true,
-        usuarioId: true,
-      },
-    });
+      const candidaturas = await prisma.empresasCandidatos.findMany({
+        where: {
+          ...eligibleCandidaturasWhere,
+          vagaId: { in: vagas.map((vaga) => vaga.id) },
+        },
+        select: {
+          vagaId: true,
+          candidatoId: true,
+          empresaUsuarioId: true,
+        },
+      });
 
-    if (vagas.length === 0) {
-      return { items: [] };
-    }
-
-    const candidaturas = await prisma.empresasCandidatos.findMany({
-      where: {
-        ...eligibleCandidaturasWhere,
+      const activeInterviewMap = await getActiveInterviewMap({
         vagaId: { in: vagas.map((vaga) => vaga.id) },
-      },
-      select: {
-        vagaId: true,
-        candidatoId: true,
-        empresaUsuarioId: true,
-      },
-    });
+        empresaUsuarioId: params.empresaUsuarioId,
+      });
 
-    const activeInterviewMap = await getActiveInterviewMap({
-      vagaId: { in: vagas.map((vaga) => vaga.id) },
-      empresaUsuarioId: params.empresaUsuarioId,
-    });
+      const candidatosElegiveisPorVaga = new Map<string, number>();
+      for (const candidatura of candidaturas) {
+        const key = buildInterviewKey(
+          candidatura.vagaId,
+          candidatura.candidatoId,
+          candidatura.empresaUsuarioId,
+        );
 
-    const candidatosElegiveisPorVaga = new Map<string, number>();
-    for (const candidatura of candidaturas) {
-      const key = buildInterviewKey(
-        candidatura.vagaId,
-        candidatura.candidatoId,
-        candidatura.empresaUsuarioId,
-      );
+        if (activeInterviewMap.has(key)) {
+          continue;
+        }
 
-      if (activeInterviewMap.has(key)) {
-        continue;
+        candidatosElegiveisPorVaga.set(
+          candidatura.vagaId,
+          (candidatosElegiveisPorVaga.get(candidatura.vagaId) ?? 0) + 1,
+        );
       }
 
-      candidatosElegiveisPorVaga.set(
-        candidatura.vagaId,
-        (candidatosElegiveisPorVaga.get(candidatura.vagaId) ?? 0) + 1,
-      );
-    }
+      const items = vagas
+        .map((vaga) => ({
+          id: vaga.id,
+          codigo: vaga.codigo,
+          titulo: vaga.titulo,
+          status: vaga.status,
+          statusLabel: getVagaStatusLabel(vaga.status),
+          empresaUsuarioId: vaga.usuarioId,
+          empresaAnonima: vaga.modoAnonimo,
+          anonimatoOrigem: 'VAGA' as const,
+          anonimatoBloqueado: true,
+          candidatosElegiveis: candidatosElegiveisPorVaga.get(vaga.id) ?? 0,
+        }))
+        .filter((item) => item.candidatosElegiveis > 0);
 
-    const items = vagas
-      .map((vaga) => ({
-        id: vaga.id,
-        codigo: vaga.codigo,
-        titulo: vaga.titulo,
-        status: vaga.status,
-        statusLabel: getVagaStatusLabel(vaga.status),
-        empresaUsuarioId: vaga.usuarioId,
-        candidatosElegiveis: candidatosElegiveisPorVaga.get(vaga.id) ?? 0,
-      }))
-      .filter((item) => item.candidatosElegiveis > 0);
-
-    return { items };
+      return { items };
+    });
   },
 
   async listCandidatos(
     params: { viewerId: string; viewerRole: Roles } & EntrevistasOpcoesCandidatosQuery,
   ) {
-    const vaga = await prisma.empresasVagas.findUnique({
-      where: { id: params.vagaId },
-      select: {
-        id: true,
-        usuarioId: true,
-      },
-    });
-
-    if (!vaga) {
-      throw notFoundError('VAGA_NOT_FOUND', 'Vaga não encontrada.');
-    }
-
-    await assertEmpresaAccess(params.viewerId, params.viewerRole, vaga.usuarioId);
-    await assertVagaAccess(params.viewerId, params.viewerRole, params.vagaId);
-
-    const candidaturas = await prisma.empresasCandidatos.findMany({
-      where: {
-        ...eligibleCandidaturasWhere,
-        vagaId: params.vagaId,
-      },
-      orderBy: [{ atualizadaEm: 'desc' }, { aplicadaEm: 'desc' }],
-      select: {
-        id: true,
-        vagaId: true,
-        candidatoId: true,
-        empresaUsuarioId: true,
-        atualizadaEm: true,
-        status_processo: {
-          select: {
-            nome: true,
-          },
+    return runInterviewReadQuery(async () => {
+      const vaga = await prisma.empresasVagas.findUnique({
+        where: { id: params.vagaId },
+        select: {
+          id: true,
+          usuarioId: true,
         },
-        Usuarios_EmpresasCandidatos_candidatoIdToUsuarios: {
-          select: {
-            id: true,
-            codUsuario: true,
-            nomeCompleto: true,
-            email: true,
-            cpf: true,
-            UsuariosInformation: { select: usuarioInformacoesSelect },
-            UsuariosEnderecos: {
-              orderBy: { criadoEm: 'asc' },
-              select: {
-                id: true,
-                logradouro: true,
-                numero: true,
-                bairro: true,
-                cidade: true,
-                estado: true,
-                cep: true,
+      });
+
+      if (!vaga) {
+        throw notFoundError('VAGA_NOT_FOUND', 'Vaga não encontrada.');
+      }
+
+      await assertEmpresaAccess(params.viewerId, params.viewerRole, vaga.usuarioId);
+      await assertVagaAccess(params.viewerId, params.viewerRole, params.vagaId);
+
+      const candidaturas = await prisma.empresasCandidatos.findMany({
+        where: {
+          ...eligibleCandidaturasWhere,
+          vagaId: params.vagaId,
+        },
+        orderBy: [{ atualizadaEm: 'desc' }, { aplicadaEm: 'desc' }],
+        select: {
+          id: true,
+          vagaId: true,
+          candidatoId: true,
+          empresaUsuarioId: true,
+          atualizadaEm: true,
+          status_processo: {
+            select: {
+              nome: true,
+            },
+          },
+          Usuarios_EmpresasCandidatos_candidatoIdToUsuarios: {
+            select: {
+              id: true,
+              codUsuario: true,
+              nomeCompleto: true,
+              email: true,
+              cpf: true,
+              UsuariosInformation: { select: usuarioInformacoesSelect },
+              UsuariosEnderecos: {
+                orderBy: { criadoEm: 'asc' },
+                select: {
+                  id: true,
+                  logradouro: true,
+                  numero: true,
+                  bairro: true,
+                  cidade: true,
+                  estado: true,
+                  cep: true,
+                },
               },
             },
           },
         },
-      },
+      });
+
+      if (candidaturas.length === 0) {
+        return { items: [] };
+      }
+
+      const activeInterviewMap = await getActiveInterviewMap({
+        vagaId: params.vagaId,
+        empresaUsuarioId: vaga.usuarioId,
+      });
+
+      return {
+        items: candidaturas.map((candidatura) => {
+          const interviewKey = buildInterviewKey(
+            candidatura.vagaId,
+            candidatura.candidatoId,
+            candidatura.empresaUsuarioId,
+          );
+          const entrevistaAtivaId = activeInterviewMap.get(interviewKey) ?? null;
+
+          return {
+            candidaturaId: candidatura.id,
+            candidato: mapCandidatePreview(
+              candidatura.Usuarios_EmpresasCandidatos_candidatoIdToUsuarios,
+            ),
+            statusCandidatura: candidatura.status_processo.nome,
+            statusCandidaturaLabel: humanizeStatusProcesso(candidatura.status_processo.nome),
+            ultimaAtualizacaoEm: candidatura.atualizadaEm.toISOString(),
+            entrevistaAtiva: Boolean(entrevistaAtivaId),
+            entrevistaAtivaId,
+          };
+        }),
+      };
     });
-
-    if (candidaturas.length === 0) {
-      return { items: [] };
-    }
-
-    const activeInterviewMap = await getActiveInterviewMap({
-      vagaId: params.vagaId,
-      empresaUsuarioId: vaga.usuarioId,
-    });
-
-    return {
-      items: candidaturas.map((candidatura) => {
-        const interviewKey = buildInterviewKey(
-          candidatura.vagaId,
-          candidatura.candidatoId,
-          candidatura.empresaUsuarioId,
-        );
-        const entrevistaAtivaId = activeInterviewMap.get(interviewKey) ?? null;
-
-        return {
-          candidaturaId: candidatura.id,
-          candidato: mapCandidatePreview(
-            candidatura.Usuarios_EmpresasCandidatos_candidatoIdToUsuarios,
-          ),
-          statusCandidatura: candidatura.status_processo.nome,
-          statusCandidaturaLabel: humanizeStatusProcesso(candidatura.status_processo.nome),
-          ultimaAtualizacaoEm: candidatura.atualizadaEm.toISOString(),
-          entrevistaAtiva: Boolean(entrevistaAtivaId),
-          entrevistaAtivaId,
-        };
-      }),
-    };
   },
 
   async create(
@@ -669,6 +682,7 @@ export const entrevistasManageService = {
         titulo: true,
         status: true,
         usuarioId: true,
+        modoAnonimo: true,
       },
     });
 
@@ -709,6 +723,13 @@ export const entrevistasManageService = {
       candidatura.vagaId !== params.vagaId ||
       candidatura.empresaUsuarioId !== params.empresaUsuarioId
     ) {
+      if (params.viewerRole === Roles.RECRUTADOR) {
+        throw conflictError(
+          'RECRUITER_SCOPE_CONFLICT',
+          'A candidatura informada não pertence à vaga e empresa selecionadas no escopo do recrutador.',
+        );
+      }
+
       throw validationError(
         'INTERVIEW_INVALID_PAYLOAD',
         'A candidatura informada não pertence à vaga e empresa selecionadas.',
@@ -716,9 +737,23 @@ export const entrevistasManageService = {
     }
 
     if (params.candidatoId && params.candidatoId !== candidatura.candidatoId) {
+      if (params.viewerRole === Roles.RECRUTADOR) {
+        throw conflictError(
+          'RECRUITER_SCOPE_CONFLICT',
+          'O candidato informado não corresponde à candidatura selecionada no escopo do recrutador.',
+        );
+      }
+
       throw validationError(
         'INTERVIEW_INVALID_PAYLOAD',
         'O candidato informado não corresponde à candidatura selecionada.',
+      );
+    }
+
+    if (typeof params.empresaAnonima === 'boolean' && params.empresaAnonima !== vaga.modoAnonimo) {
+      throw validationError(
+        'INTERVIEW_INVALID_PAYLOAD',
+        'empresaAnonima deve respeitar o anonimato configurado na vaga.',
       );
     }
 
@@ -950,6 +985,8 @@ export const entrevistasManageService = {
       empresa: {
         id: empresa.id,
         nomeExibicao: empresa.nomeCompleto,
+        anonima: vaga.modoAnonimo,
+        labelExibicao: vaga.modoAnonimo ? 'Empresa anônima' : empresa.nomeCompleto,
       },
       recrutador: {
         id: responsavel.id,

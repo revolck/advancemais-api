@@ -8,13 +8,9 @@
  * @version 1.0.0
  */
 
-import { Prisma } from '@prisma/client';
-import {
-  getCachedOrFetch,
-  setCache,
-  generateCacheKey as generateCacheKeyUtil,
-} from '@/utils/cache';
+import { generateCacheKey as generateCacheKeyUtil, getCachedOrFetch } from '@/utils/cache';
 import { logger } from '@/utils/logger';
+import { Prisma } from '@prisma/client';
 
 const queryLogger = logger.child({ module: 'QueryOptimizer' });
 

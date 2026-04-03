@@ -1,12 +1,12 @@
 import {
-  CursosAvaliacaoTipo,
   CursosAtividadeTipo,
-  CursosLocalProva,
   CursosAulaStatus,
-  Prisma,
-  CursosTipoQuestao,
+  CursosAvaliacaoTipo,
+  CursosLocalProva,
   CursosMetodos,
   CursoStatus,
+  CursosTipoQuestao,
+  Prisma,
   Roles,
 } from '@prisma/client';
 
@@ -15,10 +15,10 @@ import { logger } from '@/utils/logger';
 import { notificacoesHelper } from '../aulas/services/notificacoes-helper.service';
 
 import type {
+  ClonarAvaliacaoInput,
   CreateAvaliacaoInput,
   ListAvaliacoesQuery,
   PutUpdateAvaliacaoInput,
-  ClonarAvaliacaoInput,
 } from '../validators/avaliacoes.schema';
 
 const avaliacoesLogger = logger.child({ module: 'CursosAvaliacoesService' });
@@ -364,7 +364,7 @@ const ensureModuloBelongsToTurma = async (
   }
 };
 
-const fetchTemplate = async (client: PrismaClientOrTx, avaliacaoId: string) => {
+const _fetchTemplate = async (client: PrismaClientOrTx, avaliacaoId: string) => {
   const avaliacao = await client.cursosTurmasProvas.findUnique({
     where: { id: avaliacaoId },
     ...avaliacaoWithQuestoesInclude,

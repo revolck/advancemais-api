@@ -1,9 +1,8 @@
-import { Router } from 'express';
 import { supabaseAuthMiddleware } from '@/modules/usuarios/auth';
 import { Roles } from '@/modules/usuarios/enums/Roles';
 import { asyncHandler } from '@/utils/asyncHandler';
+import { Router } from 'express';
 import { SolicitacoesController } from '../controllers/solicitacoes.controller';
-import { MetricasController } from '../controllers/metricas.controller';
 
 const router = Router();
 

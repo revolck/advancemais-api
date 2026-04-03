@@ -1,5 +1,4 @@
 import { invalidateCache, invalidateCacheByPrefix } from '@/utils/cache';
-import { prisma } from '@/config/prisma';
 
 export async function invalidateUserCache(
   usuario: { authId?: string; id?: string } | string | null,

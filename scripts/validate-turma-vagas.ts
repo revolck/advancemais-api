@@ -156,7 +156,7 @@ async function validateTurmaVagas() {
   } finally {
     try {
       await prisma.$disconnect();
-    } catch (disconnectError) {
+    } catch {
       // Ignorar erros ao desconectar
     }
   }

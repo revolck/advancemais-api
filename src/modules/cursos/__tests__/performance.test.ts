@@ -56,7 +56,7 @@ describe('Performance e Resiliência', () => {
           3,
           100,
         );
-      } catch (error) {
+      } catch {
         // Pode dar erro se não conseguir reconectar
       }
 

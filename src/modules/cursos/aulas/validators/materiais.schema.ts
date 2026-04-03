@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 // Enum de tipo de material
-const tipoMaterialEnum = z.enum(['ARQUIVO', 'LINK', 'TEXTO']);
+const _tipoMaterialEnum = z.enum(['ARQUIVO', 'LINK', 'TEXTO']);
 
 /**
  * Schema para criar material via URL do blob storage

@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from '@jest/globals';
 import { prisma } from '@/config/prisma';
+import { beforeEach, describe, expect, it, vi } from '@jest/globals';
 import { cursosCheckoutService } from '../services/cursos-checkout.service';
 
 describe('Cursos Checkout Service', () => {

@@ -7,33 +7,32 @@
  */
 import { NextFunction, Request, Response } from 'express';
 import { ZodError } from 'zod';
-import { AdminService } from '../services/admin-service';
 import { logger } from '../../../utils/logger';
+import { AdminService } from '../services/admin-service';
 import {
-  adminCreateUserSchema,
+  aplicarBloqueioAluno,
+  listarBloqueiosAluno,
+  revogarBloqueioAluno,
+} from '../services/aluno-bloqueios.service';
+import {
+  aplicarBloqueioInstrutor,
+  listarBloqueiosInstrutor,
+  revogarBloqueioInstrutor,
+} from '../services/instrutor-bloqueios.service';
+import {
+  aplicarBloqueioUsuario,
+  listarBloqueiosUsuario,
+  revogarBloqueioUsuario,
+} from '../services/usuario-bloqueios.service';
+import {
   adminAlunoBloqueioSchema,
+  adminCreateUserSchema,
   bypassEmailVerificationSchema,
   formatZodErrors,
   updateRoleSchema,
   updateStatusSchema,
   userHistoryQuerySchema,
 } from '../validators/auth.schema';
-import {
-  aplicarBloqueioAluno,
-  revogarBloqueioAluno,
-  listarBloqueiosAluno,
-} from '../services/aluno-bloqueios.service';
-import {
-  aplicarBloqueioInstrutor,
-  revogarBloqueioInstrutor,
-  listarBloqueiosInstrutor,
-} from '../services/instrutor-bloqueios.service';
-import {
-  aplicarBloqueioUsuario,
-  revogarBloqueioUsuario,
-  listarBloqueiosUsuario,
-} from '../services/usuario-bloqueios.service';
-import { InstrutorController } from './instrutor-controller';
 
 export class AdminController {
   private adminService: AdminService;
@@ -199,7 +198,7 @@ export class AdminController {
     }
   };
 
-  public buscarHistoricoUsuario = async (req: Request, res: Response, next: NextFunction) => {
+  public buscarHistoricoUsuario = async (req: Request, res: Response, _next: NextFunction) => {
     const log = this.getLogger(req);
     try {
       const { userId } = req.params;

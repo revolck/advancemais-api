@@ -8,10 +8,9 @@
  * - Uso de índices existentes no banco
  */
 
-import { Prisma, StatusDeVagas, Roles } from '@prisma/client';
 import { prisma } from '@/config/prisma';
-import { logger } from '@/utils/logger';
 import { getCache, setCache } from '@/utils/cache';
+import { logger } from '@/utils/logger';
 import crypto from 'crypto';
 
 const metricasLogger = logger.child({ module: 'MetricasSetorVagasService' });

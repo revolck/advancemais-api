@@ -1,16 +1,16 @@
 import { prisma, retryOperation } from '@/config/prisma';
 import { logger } from '@/utils/logger';
+import type { Prisma } from '@prisma/client';
+import { CursoStatus, Roles } from '@prisma/client';
 import type {
   CreateAulaInput,
-  UpdateAulaInput,
   ListAulasQuery,
+  UpdateAulaInput,
   UpdateProgressoInput,
 } from '../validators/aulas.schema';
-import type { Prisma, Usuarios } from '@prisma/client';
-import { CursoStatus, Roles } from '@prisma/client';
 import { googleCalendarService } from './google-calendar.service';
-import { notificacoesHelper } from './notificacoes-helper.service';
 import { montarCamposAlteradosMaterial } from './historico-materiais.helper';
+import { notificacoesHelper } from './notificacoes-helper.service';
 
 const aulasLogger = logger.child({ module: 'AulasService' });
 
@@ -1295,8 +1295,8 @@ export const aulasService = {
 
     // ✅ Tratar vínculos (undefined = manter; null = remover; string = atualizar)
     const turmaIdAnterior = aulaDbAnterior.turmaId;
-    const instrutorIdAnterior = aulaDbAnterior.instrutorId;
-    const moduloIdAnterior = aulaDbAnterior.moduloId;
+    const _instrutorIdAnterior = aulaDbAnterior.instrutorId;
+    const _moduloIdAnterior = aulaDbAnterior.moduloId;
 
     const turmaIdParaSalvar: string | null | undefined =
       input.turmaId === undefined ? undefined : input.turmaId;

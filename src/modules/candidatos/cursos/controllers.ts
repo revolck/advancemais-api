@@ -1,7 +1,6 @@
+import { logger } from '@/utils/logger';
 import { Request, Response } from 'express';
 import { candidatoCursosService } from './services';
-import { logger } from '@/utils/logger';
-import { CursosMetodos } from '@prisma/client';
 
 const cursosControllerLogger = logger.child({ module: 'CandidatoCursosController' });
 

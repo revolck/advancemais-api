@@ -5,38 +5,17 @@
  * @author Sistema Advance+
  * @version 3.0.0
  */
-import {
-  AuditoriaCategoria,
-  Prisma,
-  Roles,
-  Status,
-  TiposDeUsuarios,
-  CandidatoLogTipo,
-} from '@prisma/client';
+import { CandidatoLogTipo, Prisma, Roles, Status, TiposDeUsuarios } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 
 import { prisma, retryOperation } from '@/config/prisma';
-import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
-import { logger } from '@/utils/logger';
-import { invalidateCacheByPrefix, getCachedOrFetch, generateCacheKey } from '@/utils/cache';
-import { attachEnderecoResumo } from '../utils/address';
-import { mergeUsuarioInformacoes, usuarioInformacoesSelect } from '../utils/information';
-import {
-  getOptimizedUserSelect,
-  optimizeSearchFilter,
-  optimizeAddressFilter,
-  QueryProfiler,
-} from '../utils/query-optimizer';
-import {
-  mapSocialLinks,
-  usuarioRedesSociaisSelect,
-  sanitizeSocialLinks,
-  buildSocialLinksUpdateData,
-} from '../utils/social-links';
 import { candidaturasService } from '@/modules/candidatos/candidaturas/services';
 import { candidatoLogsService } from '@/modules/candidatos/logs/service';
+import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
+import { generateCacheKey, getCachedOrFetch, invalidateCacheByPrefix } from '@/utils/cache';
+import { logger } from '@/utils/logger';
 import {
   buildUserDataForDatabase,
   checkForDuplicates,
@@ -44,12 +23,23 @@ import {
   extractAdminSocialLinks,
   processUserTypeSpecificData,
 } from '../register/user-creation-helpers';
-import type { AdminCreateUserInput } from '../validators/auth.schema';
+import { attachEnderecoResumo } from '../utils/address';
 import {
   buildEmailVerificationSummary,
   normalizeEmailVerification,
   UsuariosVerificacaoEmailSelect,
 } from '../utils/email-verification';
+import { mergeUsuarioInformacoes, usuarioInformacoesSelect } from '../utils/information';
+import {
+  getOptimizedUserSelect,
+  optimizeAddressFilter,
+  QueryProfiler,
+} from '../utils/query-optimizer';
+import {
+  buildSocialLinksUpdateData,
+  mapSocialLinks,
+  sanitizeSocialLinks,
+} from '../utils/social-links';
 import {
   buildUserProfileSnapshot,
   diffSnapshot,
@@ -59,6 +49,7 @@ import {
   type UserHistoryCategoria,
   type UserHistoryTipo,
 } from '../utils/user-history';
+import type { AdminCreateUserInput } from '../validators/auth.schema';
 
 type AdminEnderecoInput = {
   logradouro?: string | null;

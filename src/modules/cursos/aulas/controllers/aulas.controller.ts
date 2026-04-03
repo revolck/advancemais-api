@@ -1,15 +1,15 @@
+import { logger } from '@/utils/logger';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { Request, Response } from 'express';
 import { ZodError } from 'zod';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { aulasService } from '../services/aulas.service';
 import {
   createAulaSchema,
-  putUpdateAulaSchema,
   listAulasQuerySchema,
-  updateProgressoSchema,
+  putUpdateAulaSchema,
   registrarPresencaSchema,
+  updateProgressoSchema,
 } from '../validators/aulas.schema';
-import { logger } from '@/utils/logger';
 
 export class AulasController {
   /**
@@ -348,7 +348,7 @@ export class AulasController {
       }
 
       // Atualizar status
-      const aulaAtualizada = await aulasService.update(id, { status: statusNovo }, usuarioLogado);
+      await aulasService.update(id, { status: statusNovo }, usuarioLogado);
 
       // Buscar aula atualizada completa
       const aulaCompleta = await aulasService.getById(id, usuarioLogado);

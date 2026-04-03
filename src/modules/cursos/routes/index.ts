@@ -1155,9 +1155,37 @@ router.get(
  */
 router.get(
   '/alunos/:alunoId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  supabaseAuthMiddleware([
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.PEDAGOGICO,
+    Roles.INSTRUTOR,
+    Roles.ALUNO_CANDIDATO,
+    Roles.RECRUTADOR,
+  ]),
   cursosAlunosGetResponseCache,
   CursosController.getAlunoById,
+);
+
+router.get(
+  '/alunos/:alunoId/entrevistas',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.ALUNO_CANDIDATO, Roles.RECRUTADOR]),
+  cursosAlunosGetResponseCache,
+  CursosController.listAlunoEntrevistas,
+);
+
+router.get(
+  '/alunos/:alunoId/entrevistas/opcoes',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.RECRUTADOR]),
+  cursosAlunosGetResponseCache,
+  CursosController.listAlunoEntrevistasOpcoes,
+);
+
+router.post(
+  '/alunos/:alunoId/entrevistas',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.RECRUTADOR]),
+  cursosAlunosInvalidateCacheOnMutation,
+  CursosController.createAlunoEntrevista,
 );
 
 /**

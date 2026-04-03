@@ -1,14 +1,14 @@
-import { Prisma, StatusDeVagas } from '@prisma/client';
 import { prisma } from '@/config/prisma';
-import { logger } from '@/utils/logger';
-import type {
-  SolicitacoesListQuery,
-  AprovarSolicitacaoInput,
-  RejeitarSolicitacaoInput,
-} from '../validators/solicitacoes.schema';
 import { adminEmpresasService } from '@/modules/empresas/admin/services/admin-empresas.service';
 import { adminVagasService } from '@/modules/empresas/admin/services/admin-vagas.service';
 import { notificacoesService } from '@/modules/notificacoes/services/notificacoes.service';
+import { logger } from '@/utils/logger';
+import { Prisma, StatusDeVagas } from '@prisma/client';
+import type {
+  AprovarSolicitacaoInput,
+  RejeitarSolicitacaoInput,
+  SolicitacoesListQuery,
+} from '../validators/solicitacoes.schema';
 
 const solicitacoesLogger = logger.child({ module: 'SolicitacoesService' });
 
@@ -294,7 +294,7 @@ export const solicitacoesService = {
   /**
    * Aprova uma solicitação de publicação
    */
-  aprovar: async (solicitacaoId: string, input: AprovarSolicitacaoInput, aprovadorId: string) => {
+  aprovar: async (solicitacaoId: string, input: AprovarSolicitacaoInput, _aprovadorId: string) => {
     // Buscar a vaga com título para notificação
     const vaga = await prisma.empresasVagas.findUnique({
       where: { id: solicitacaoId },
@@ -369,7 +369,7 @@ export const solicitacoesService = {
   rejeitar: async (
     solicitacaoId: string,
     input: RejeitarSolicitacaoInput,
-    rejeitadorId: string,
+    _rejeitadorId: string,
   ) => {
     // Buscar a vaga com título e usuarioId para notificação
     const vaga = await prisma.empresasVagas.findUnique({

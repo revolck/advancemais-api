@@ -1,8 +1,8 @@
 import {
-  CursosAvaliacaoTipo,
   CursosAtividadeTipo,
-  CursosMetodos,
   CursosAulaStatus,
+  CursosAvaliacaoTipo,
+  CursosMetodos,
 } from '@prisma/client';
 import { z } from 'zod';
 
@@ -15,7 +15,7 @@ const ordemSchema = z
   .int('Ordem deve ser inteiro')
   .min(0, 'Ordem deve ser maior ou igual a zero');
 
-const pesoSchema = z
+const _pesoSchema = z
   .number({ invalid_type_error: 'Peso deve ser um número' })
   .min(0, 'Peso não pode ser negativo')
   .max(10, 'Peso máximo é 10');

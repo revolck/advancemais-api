@@ -1,10 +1,9 @@
-import { NextFunction, Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
+import { NextFunction, Request, Response } from 'express';
 
 import { prisma, retryOperation } from '@/config/prisma';
-import { logger } from '@/utils/logger';
-import { loginCache, getCache, userCache, setCache, deleteCache } from '@/utils/cache';
+import { limparDocumento, validarCNPJ, validarCPF } from '@/modules/usuarios/utils';
 import {
   clearRefreshTokenCookie,
   extractRefreshTokenFromRequest,
@@ -12,35 +11,36 @@ import {
   getRefreshTokenExpiration,
   setRefreshTokenCookie,
 } from '@/modules/usuarios/utils/auth';
-import { limparDocumento, validarCNPJ, validarCPF } from '@/modules/usuarios/utils';
 import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
-import { formatZodErrors, loginSchema, updateProfileSchema } from '../validators/auth.schema';
+import { deleteCache, loginCache } from '@/utils/cache';
+import { logger } from '@/utils/logger';
 import {
   attachEnderecoResumo,
   normalizeUsuarioEnderecos,
   UsuarioEnderecoDto,
 } from '../utils/address';
 import {
+  buildEmailVerificationSummary,
+  normalizeEmailVerification,
+  UsuariosVerificacaoEmailSelect,
+} from '../utils/email-verification';
+import {
   mapUsuarioInformacoes,
   mergeUsuarioInformacoes,
   usuarioInformacoesSelect,
 } from '../utils/information';
 import {
+  buildSocialLinksUpdateData,
   mapSocialLinks,
   sanitizeSocialLinks,
-  buildSocialLinksUpdateData,
 } from '../utils/social-links';
 import type { UsuarioSocialLinks } from '../utils/types';
-import {
-  buildEmailVerificationSummary,
-  UsuariosVerificacaoEmailSelect,
-  normalizeEmailVerification,
-} from '../utils/email-verification';
 import {
   buildUserProfileSnapshot,
   diffSnapshot,
   recordUserAuditEvent,
 } from '../utils/user-history';
+import { formatZodErrors, loginSchema, updateProfileSchema } from '../validators/auth.schema';
 
 /**
  * Controllers para autenticação e gestão de usuários
@@ -103,9 +103,9 @@ interface UsuarioPerfil {
   UsuariosInformation?: ReturnType<typeof mapUsuarioInformacoes> | null;
 }
 
-const USER_PROFILE_CACHE_TTL = 300;
+const _USER_PROFILE_CACHE_TTL = 300;
 
-const reviveUsuario = (usuario: UsuarioPerfil): UsuarioPerfil => {
+const _reviveUsuario = (usuario: UsuarioPerfil): UsuarioPerfil => {
   const UsuariosVerificacaoEmailSummary =
     usuario.UsuariosVerificacaoEmail ?? buildEmailVerificationSummary();
   const enderecos = normalizeUsuarioEnderecos(
@@ -198,7 +198,7 @@ const formatUsuarioResponse = (usuario: UsuarioPerfil) => {
   // Extrair apenas o necessário, removendo redundâncias
   const {
     UsuariosInformation: _,
-    UsuariosEnderecos,
+    UsuariosEnderecos: _UsuariosEnderecos,
     UsuariosVerificacaoEmail,
     informacoes: __,
     _count,
@@ -1124,8 +1124,6 @@ export const obterPerfil = async (req: Request, res: Response, next: NextFunctio
     //     timestamp: new Date().toISOString(),
     //   });
     // }
-
-    const cacheKey = `user:${userId}`;
 
     // Busca dados completos do usuário (excluindo informações sensíveis)
     const usuarioDb = await prisma.usuarios.findUnique({

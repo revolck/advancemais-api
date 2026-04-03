@@ -5,19 +5,19 @@
  * @author Sistema Advance+
  * @version 1.0.0
  */
-import {
-  Prisma,
-  TiposDeBloqueios,
-  MotivosDeBloqueios,
-  Status,
-  StatusDeBloqueios,
-  AcoesDeLogDeBloqueio,
-} from '@prisma/client';
 import { prisma } from '@/config/prisma';
-import { logger } from '@/utils/logger';
-import type { AdminAlunoBloqueioInput } from '../validators/auth.schema';
 import { EmailService } from '@/modules/brevo/services/email-service';
 import { EmailTemplates } from '@/modules/brevo/templates/email-templates';
+import { logger } from '@/utils/logger';
+import {
+  AcoesDeLogDeBloqueio,
+  MotivosDeBloqueios,
+  Prisma,
+  Status,
+  StatusDeBloqueios,
+  TiposDeBloqueios,
+} from '@prisma/client';
+import type { AdminAlunoBloqueioInput } from '../validators/auth.schema';
 
 const bloqueioLogger = logger.child({ module: 'UsuarioBloqueiosService' });
 
@@ -245,7 +245,7 @@ export async function revogarBloqueioUsuario(
   adminId: string,
   observacoes?: string | null,
 ) {
-  const usuario = await ensureUsuarioExiste(prisma, userId);
+  await ensureUsuarioExiste(prisma, userId);
 
   const bloqueioAtivo = await prisma.usuariosEmBloqueios.findFirst({
     where: { usuarioId: userId, status: StatusDeBloqueios.ATIVO },

@@ -1,16 +1,15 @@
-import request from 'supertest';
-import { Express } from 'express';
-import { getTestApp } from '../helpers/test-setup';
-import {
-  createTestUser,
-  createTestAdmin,
-  createTestModerator,
-  cleanupTestUsers,
-  type TestUser,
-} from '../helpers/auth-helper';
 import { prisma } from '@/config/prisma';
 import { randomUUID } from 'crypto';
-import { CursosMetodos, CursosTurnos, CursoStatus } from '@prisma/client';
+import { Express } from 'express';
+import request from 'supertest';
+import {
+  cleanupTestUsers,
+  createTestAdmin,
+  createTestModerator,
+  createTestUser,
+  type TestUser,
+} from '../helpers/auth-helper';
+import { getTestApp } from '../helpers/test-setup';
 
 const isoFuture = (daysAhead: number) =>
   new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000).toISOString();

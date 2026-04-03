@@ -37,6 +37,7 @@ let usuarioRoutes: Router | undefined;
 let adminRoutes: Router | undefined;
 let recrutadorEmpresasRoutes: Router | undefined;
 let recrutadorVagasRoutes: Router | undefined;
+let recrutadorLinksAdminRoutes: Router | undefined;
 // Rotas de estatísticas removidas
 
 // Import das rotas básicas (ESSENCIAL)
@@ -74,6 +75,14 @@ try {
   usuarioModuleLogger.warn({ err: error }, '⚠️ recrutador-vagas.routes não disponível');
 }
 
+try {
+  const { default: routes } = require('./recrutador-links-admin.routes');
+  recrutadorLinksAdminRoutes = routes;
+  usuarioModuleLogger.info('✅ recrutador-links-admin.routes carregado');
+} catch (error) {
+  usuarioModuleLogger.warn({ err: error }, '⚠️ recrutador-links-admin.routes não disponível');
+}
+
 // Rotas de estatísticas removidas (não utilizadas)
 
 // =============================================
@@ -109,6 +118,11 @@ if (recrutadorEmpresasRoutes) {
 if (recrutadorVagasRoutes) {
   router.use('/', recrutadorVagasRoutes);
   usuarioModuleLogger.info('✅ Rotas de vínculos de recrutadores para vagas registradas');
+}
+
+if (recrutadorLinksAdminRoutes) {
+  router.use('/', recrutadorLinksAdminRoutes);
+  usuarioModuleLogger.info('✅ Rotas administrativas de vínculos de recrutadores registradas');
 }
 
 export { router as usuarioRoutes };

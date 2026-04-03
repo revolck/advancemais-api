@@ -1,5 +1,5 @@
-import { PrismaClient } from '@prisma/client';
 import { logger } from '@/utils/logger';
+import { PrismaClient } from '@prisma/client';
 
 // Criar logger ANTES de qualquer função que o use
 const prismaLogger = logger.child({ module: 'PrismaClient' });
@@ -251,7 +251,7 @@ async function retryOperation<T>(
                 ),
               ]);
               prismaLogger.info('✅ Reconectado com sucesso');
-            } catch (connectError) {
+            } catch {
               prismaLogger.warn('⚠️ Erro ao reconectar, continuando tentativa...');
             }
           }

@@ -7,10 +7,10 @@
  * 3. Valida a estrutura da resposta
  */
 
-import { prisma } from '../src/config/prisma';
 import { Roles, TiposDeUsuarios } from '@prisma/client';
+import { prisma } from '../src/config/prisma';
 
-interface MetricasResponse {
+interface _MetricasResponse {
   success: boolean;
   data: {
     metricasGerais: {

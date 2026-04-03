@@ -542,6 +542,7 @@ Regras:
 
 - `400 INTERVIEWS_INVALID_FILTERS`
 - `403 INSUFFICIENT_PERMISSIONS`
+- `503 DATABASE_CONNECTION_ERROR`
 - `404 EMPRESA_NOT_FOUND`
 - `404 VAGA_NOT_FOUND`
 
@@ -567,6 +568,16 @@ Exemplo:
 }
 ```
 
+Exemplo de indisponibilidade temporária:
+
+```json
+{
+  "success": false,
+  "code": "DATABASE_CONNECTION_ERROR",
+  "message": "Serviço temporariamente indisponível. Por favor, tente novamente mais tarde."
+}
+```
+
 ---
 
 ## Checklist frontend
@@ -589,6 +600,7 @@ Exemplo:
 - [ ] Habilitar `ONLINE` apenas quando `data.capabilities.canCreateOnline = true`
 - [ ] Oferecer conexão com Google quando `data.capabilities.google.connected = false`
 - [ ] Tratar `403 INSUFFICIENT_PERMISSIONS`
+- [ ] Tratar `503 DATABASE_CONNECTION_ERROR` nas listagens auxiliares com retry/estado temporário
 - [ ] Tratar `400 INTERVIEW_GOOGLE_NOT_CONNECTED`
 - [ ] Tratar `500 INTERVIEW_MEET_CREATE_ERROR`
 - [ ] Tratar `409 INTERVIEW_ALREADY_EXISTS`

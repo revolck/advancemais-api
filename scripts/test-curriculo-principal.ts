@@ -10,8 +10,8 @@
  */
 
 import { PrismaClient, Roles } from '@prisma/client';
-import jwt from 'jsonwebtoken';
 import axios from 'axios';
+import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
 
@@ -55,7 +55,7 @@ async function getCandidatoToken() {
     log(`✅ Login realizado: ${user.nomeCompleto} (${user.email})`, 'green');
 
     return { candidato: user, token };
-  } catch (error: any) {
+  } catch {
     log('❌ Erro no login - tentando obter usuário do banco...', 'yellow');
 
     // Fallback: buscar usuário no banco

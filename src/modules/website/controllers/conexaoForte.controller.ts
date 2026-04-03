@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import path from 'path';
 
-import { uploadImage } from '@/config/storage';
 import { conexaoForteService } from '@/modules/website/services/conexaoForte.service';
 import { respondWithCache } from '@/modules/website/utils/cache-response';
 

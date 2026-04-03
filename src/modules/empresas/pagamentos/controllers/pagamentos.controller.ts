@@ -1,5 +1,5 @@
-import type { Request, Response } from 'express';
 import { Roles } from '@prisma/client';
+import type { Request, Response } from 'express';
 
 import { asyncHandler } from '@/utils/asyncHandler';
 import { pagamentosService } from '../services/pagamentos.service';
@@ -35,7 +35,7 @@ export const listarPagamentos = asyncHandler(async (req: Request, res: Response)
     });
   }
 
-  const { empresaId: queryEmpresaId, ...params } = req.query as any;
+  const { empresaId: queryEmpresaId } = req.query as any;
 
   // Determinar ID da empresa baseado na role
   let targetEmpresaId = usuarioId;

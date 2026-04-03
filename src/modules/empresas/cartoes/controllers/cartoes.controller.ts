@@ -1,11 +1,10 @@
-import { Request, Response } from 'express';
+import { prisma } from '@/config/prisma';
 import { Roles } from '@/modules/usuarios/enums/Roles';
 import { EmpresasPlanoStatus } from '@prisma/client';
-import { prisma } from '@/config/prisma';
+import { Request, Response } from 'express';
 import { cartoesService } from '../services/cartoes.service';
 import { cobrancaAutomaticaService } from '../services/cobranca-automatica.service';
 import { adicionarCartaoSchema } from '../validators/cartoes.schema';
-import { ZodError } from 'zod';
 
 /**
  * Controller para gerenciamento de cartões de empresas

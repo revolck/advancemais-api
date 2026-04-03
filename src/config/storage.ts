@@ -4,8 +4,6 @@
  * Para manter flexibilidade futura
  */
 
-import { logger } from '@/utils/logger';
-
 export interface StorageProvider {
   upload(
     bucket: string,
@@ -27,23 +25,23 @@ export interface StorageProvider {
  */
 class NoOpStorageProvider implements StorageProvider {
   async upload(
-    bucket: string,
-    path: string,
-    file: Buffer,
-    options?: { contentType?: string },
+    _bucket: string,
+    _path: string,
+    _file: Buffer,
+    _options?: { contentType?: string },
   ): Promise<void> {
     throw new Error(
       'Storage não está mais disponível. O frontend deve enviar URLs de imagens diretamente nos requests.',
     );
   }
 
-  getPublicUrl(bucket: string, path: string): string {
+  getPublicUrl(_bucket: string, _path: string): string {
     throw new Error(
       'Storage não está mais disponível. O frontend deve enviar URLs de imagens diretamente nos requests.',
     );
   }
 
-  async delete(bucket: string, path: string): Promise<void> {
+  async delete(_bucket: string, _path: string): Promise<void> {
     throw new Error(
       'Storage não está mais disponível. O frontend deve enviar URLs de imagens diretamente nos requests.',
     );

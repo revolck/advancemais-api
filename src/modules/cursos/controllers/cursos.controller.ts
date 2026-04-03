@@ -18,6 +18,8 @@ import {
 import {
   listAlunosComInscricoesQuerySchema,
   alunoHistoricoInscricoesQuerySchema,
+  alunoCriarEntrevistaSchema,
+  alunoEntrevistasQuerySchema,
 } from '../validators/alunos.schema';
 import { cursoHistoricoInscricoesQuerySchema } from '../validators/cursos.schema';
 import {
@@ -29,6 +31,11 @@ import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
 import { getCachedOrFetch, generateCacheKey, invalidateCacheByPrefix } from '@/utils/cache';
 import { cursosAuditoriaService } from '../services/cursos-auditoria.service';
 import { invalidateCursosAlunosGetResponseCache } from '../middlewares/alunos-response-cache';
+import {
+  AlunoNotFoundError,
+  alunosEntrevistasService,
+} from '../services/alunos-entrevistas.service';
+import { recrutadorVagasService } from '@/modules/usuarios/services/recrutador-vagas.service';
 
 const parseCourseId = (raw: string): string | null => {
   // Validar se é UUID válido
@@ -37,6 +44,63 @@ const parseCourseId = (raw: string): string | null => {
     return null;
   }
   return raw;
+};
+
+const parseAlunoId = (raw: string): string | null => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(raw)) {
+    return null;
+  }
+  return raw;
+};
+
+const ensureAlunoScopeAccess = async (req: Request, res: Response, alunoId: string) => {
+  if (req.user?.role === Roles.ALUNO_CANDIDATO && req.user.id !== alunoId) {
+    res.status(403).json({
+      success: false,
+      code: 'INSUFFICIENT_PERMISSIONS',
+      message: 'Sem permissão para acessar dados de outro aluno.',
+    });
+    return false;
+  }
+
+  if (req.user?.role === Roles.RECRUTADOR) {
+    const vagaIds = await recrutadorVagasService.listVagaIds(req.user.id);
+
+    if (vagaIds.length === 0) {
+      res.status(403).json({
+        success: false,
+        code: 'INSUFFICIENT_PERMISSIONS',
+        message: 'Sem permissão para acessar dados deste aluno.',
+      });
+      return false;
+    }
+
+    const candidaturaEmEscopo = await retryOperation(
+      () =>
+        prisma.empresasCandidatos.findFirst({
+          where: {
+            candidatoId: alunoId,
+            vagaId: { in: vagaIds },
+          },
+          select: { id: true },
+        }),
+      3,
+      400,
+      6000,
+    );
+
+    if (!candidaturaEmEscopo) {
+      res.status(403).json({
+        success: false,
+        code: 'INSUFFICIENT_PERMISSIONS',
+        message: 'Sem permissão para acessar dados deste aluno.',
+      });
+      return false;
+    }
+  }
+
+  return true;
 };
 
 const normalizeDescricao = (value: unknown) => {
@@ -1049,13 +1113,16 @@ export class CursosController {
       const { alunoId } = req.params;
 
       // Validar UUID
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(alunoId)) {
+      if (!parseAlunoId(alunoId)) {
         return res.status(400).json({
           success: false,
           code: 'INVALID_ID',
           message: 'ID do aluno inválido. Deve ser um UUID válido.',
         });
+      }
+
+      if (!(await ensureAlunoScopeAccess(req, res, alunoId))) {
+        return;
       }
 
       // Buscar aluno com TODAS as inscrições
@@ -1140,6 +1207,13 @@ export class CursosController {
                   criadoEm: 'desc',
                 },
               },
+              UsuariosCurriculos: {
+                select: {
+                  id: true,
+                  principal: true,
+                },
+                orderBy: [{ principal: 'desc' }, { criadoEm: 'asc' }],
+              },
             },
           });
         },
@@ -1208,6 +1282,11 @@ export class CursosController {
           },
         })),
         totalInscricoes: aluno.CursosTurmasInscricoes.length,
+        curriculosResumo: {
+          total: aluno.UsuariosCurriculos.length,
+          principalId:
+            aluno.UsuariosCurriculos.find((curriculo) => curriculo.principal)?.id ?? null,
+        },
         estatisticas: {
           cursosAtivos: aluno.CursosTurmasInscricoes.filter((i) =>
             ['INSCRITO', 'EM_ANDAMENTO'].includes(i.status),
@@ -1236,9 +1315,221 @@ export class CursosController {
 
       res.status(500).json({
         success: false,
-        code: 'ALUNO_FETCH_ERROR',
-        message: 'Erro ao buscar detalhes do aluno',
+        code: 'ALUNO_DETAILS_ERROR',
+        message: 'Não foi possível carregar os detalhes do aluno.',
         error: error?.message,
+      });
+    }
+  };
+
+  static listAlunoEntrevistas = async (req: Request, res: Response) => {
+    try {
+      const { alunoId } = req.params;
+
+      if (!parseAlunoId(alunoId)) {
+        return res.status(400).json({
+          success: false,
+          code: 'INVALID_ID',
+          message: 'ID do aluno inválido. Deve ser um UUID válido.',
+        });
+      }
+
+      if (!(await ensureAlunoScopeAccess(req, res, alunoId))) {
+        return;
+      }
+
+      const query = alunoEntrevistasQuerySchema.parse(req.query);
+      const result = await alunosEntrevistasService.list({
+        alunoId,
+        viewerId: req.user!.id,
+        viewerRole: req.user!.role as Roles,
+        filters: query,
+      });
+
+      return res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'INTERVIEWS_INVALID_FILTERS',
+          message: 'Os filtros informados para entrevistas são inválidos.',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error instanceof AlunoNotFoundError || error?.code === 'ALUNO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'ALUNO_NOT_FOUND',
+          message: 'Aluno não encontrado.',
+        });
+      }
+
+      logger.error(
+        {
+          alunoId: req.params.alunoId,
+          error: error?.message,
+          code: error?.code,
+        },
+        '❌ Erro ao listar entrevistas do aluno',
+      );
+
+      return res.status(500).json({
+        success: false,
+        code: 'STUDENT_INTERVIEWS_ERROR',
+        message: 'Não foi possível carregar as entrevistas do aluno.',
+        error: error?.message,
+      });
+    }
+  };
+
+  static listAlunoEntrevistasOpcoes = async (req: Request, res: Response) => {
+    try {
+      const { alunoId } = req.params;
+
+      if (!parseAlunoId(alunoId)) {
+        return res.status(400).json({
+          success: false,
+          code: 'INVALID_ID',
+          message: 'ID do aluno inválido. Deve ser um UUID válido.',
+        });
+      }
+
+      const result = await alunosEntrevistasService.listCreateOptions({
+        alunoId,
+        viewerId: req.user!.id,
+        viewerRole: req.user!.role as Roles,
+      });
+
+      return res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      if (error instanceof AlunoNotFoundError || error?.code === 'ALUNO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'ALUNO_NOT_FOUND',
+          message: 'Aluno não encontrado.',
+        });
+      }
+
+      if (error?.status === 403 || error?.code === 'INSUFFICIENT_PERMISSIONS') {
+        return res.status(403).json({
+          success: false,
+          code: 'INSUFFICIENT_PERMISSIONS',
+          message: error?.message ?? 'Sem permissão para criar entrevista para este aluno.',
+        });
+      }
+
+      logger.error(
+        {
+          alunoId: req.params.alunoId,
+          error: error?.message,
+          code: error?.code,
+        },
+        '❌ Erro ao listar opções de entrevistas do aluno',
+      );
+
+      return res.status(500).json({
+        success: false,
+        code: 'STUDENT_INTERVIEW_OPTIONS_ERROR',
+        message: 'Não foi possível carregar as opções de entrevista do aluno.',
+        error: error?.message,
+      });
+    }
+  };
+
+  static createAlunoEntrevista = async (req: Request, res: Response) => {
+    try {
+      const { alunoId } = req.params;
+
+      if (!parseAlunoId(alunoId)) {
+        return res.status(400).json({
+          success: false,
+          code: 'INVALID_ID',
+          message: 'ID do aluno inválido. Deve ser um UUID válido.',
+        });
+      }
+
+      const payload = alunoCriarEntrevistaSchema.parse(req.body);
+      const result = await alunosEntrevistasService.createForAluno({
+        alunoId,
+        viewerId: req.user!.id,
+        viewerRole: req.user!.role as Roles,
+        payload,
+      });
+
+      return res.status(201).json({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'INTERVIEW_INVALID_PAYLOAD',
+          message: 'Os dados informados para criar a entrevista são inválidos.',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error instanceof AlunoNotFoundError || error?.code === 'ALUNO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'ALUNO_NOT_FOUND',
+          message: 'Aluno não encontrado.',
+        });
+      }
+
+      if (error?.status === 404) {
+        return res.status(404).json({
+          success: false,
+          code: error?.code ?? 'NOT_FOUND',
+          message: error?.message ?? 'Recurso não encontrado.',
+        });
+      }
+
+      if (error?.status === 403 || error?.code === 'INSUFFICIENT_PERMISSIONS') {
+        return res.status(403).json({
+          success: false,
+          code: 'INSUFFICIENT_PERMISSIONS',
+          message: error?.message ?? 'Sem permissão para criar entrevista para este aluno.',
+        });
+      }
+
+      if (error?.status === 409) {
+        return res.status(409).json({
+          success: false,
+          code: error?.code ?? 'INTERVIEW_ALREADY_EXISTS',
+          message: error?.message ?? 'Já existe uma entrevista ativa para esta candidatura.',
+        });
+      }
+
+      if (error?.status === 400) {
+        return res.status(400).json({
+          success: false,
+          code: error?.code ?? 'INTERVIEW_INVALID_PAYLOAD',
+          message: error?.message ?? 'Os dados informados para criar a entrevista são inválidos.',
+        });
+      }
+
+      logger.error(
+        {
+          alunoId: req.params.alunoId,
+          error: error?.message,
+          code: error?.code,
+        },
+        '❌ Erro ao criar entrevista no contexto do aluno',
+      );
+
+      return res.status(500).json({
+        success: false,
+        code: error?.code ?? 'STUDENT_INTERVIEW_CREATE_ERROR',
+        message: error?.message ?? 'Não foi possível criar a entrevista no contexto do aluno.',
       });
     }
   };

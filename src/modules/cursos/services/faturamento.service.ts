@@ -1,6 +1,6 @@
-import { Prisma, TransacaoTipo, TransacaoStatus } from '@prisma/client';
 import { prisma, retryOperation } from '@/config/prisma';
 import { logger } from '@/utils/logger';
+import { Prisma, TransacaoStatus } from '@prisma/client';
 import type { FaturamentoQuery } from '../validators/faturamento.schema';
 
 const faturamentoLogger = logger.child({ module: 'FaturamentoService' });

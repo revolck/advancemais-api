@@ -93,7 +93,14 @@ export const entrevistasOverviewQuerySchema = z
     dataInicio: z.string().datetime().optional(),
     dataFim: z.string().datetime().optional(),
     sortBy: z
-      .enum(['agendadaPara', 'criadoEm', 'statusEntrevista', 'candidatoNome', 'vagaTitulo'])
+      .enum([
+        'agendadaPara',
+        'criadoEm',
+        'statusEntrevista',
+        'candidatoNome',
+        'vagaTitulo',
+        'empresaNome',
+      ])
       .default('agendadaPara'),
     sortDir: z.enum(['asc', 'desc']).default('asc'),
   })
@@ -126,6 +133,7 @@ export const createEntrevistaSchema = z
     vagaId: z.string().uuid(),
     candidaturaId: z.string().uuid(),
     candidatoId: z.string().uuid().optional(),
+    empresaAnonima: z.coerce.boolean().optional(),
     modalidade: z.enum(entrevistaModalidadeValues),
     dataInicio: z.string().datetime(),
     dataFim: z.string().datetime(),

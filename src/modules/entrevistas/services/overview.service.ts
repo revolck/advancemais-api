@@ -163,12 +163,6 @@ const buildScopedWhere = async (
       and.push({ recrutadorId: params.recrutadorId });
     }
   } else if (params.viewerRole === Roles.RECRUTADOR) {
-    if (params.recrutadorId && params.recrutadorId !== params.viewerId) {
-      throw new EntrevistasOverviewForbiddenError(
-        'Sem permissão para acessar entrevistas de outro recrutador.',
-      );
-    }
-
     const allowedVagaIds = await recrutadorVagasService.listVagaIds(params.viewerId);
 
     if (allowedVagaIds.length === 0) {
@@ -203,7 +197,10 @@ const buildScopedWhere = async (
     }
 
     and.push({ vagaId: { in: effectiveVagaIds } });
-    and.push({ recrutadorId: params.viewerId });
+
+    if (params.recrutadorId) {
+      and.push({ recrutadorId: params.recrutadorId });
+    }
   } else {
     throw new EntrevistasOverviewForbiddenError('Sem permissão para acessar as entrevistas.');
   }
@@ -264,6 +261,8 @@ const buildOrderBy = (
       return { candidato: { nomeCompleto: sortDir } };
     case 'vagaTitulo':
       return { EmpresasVagas: { titulo: sortDir } };
+    case 'empresaNome':
+      return { empresa: { nomeCompleto: sortDir } };
     case 'agendadaPara':
     default:
       return { dataInicio: sortDir };
@@ -386,6 +385,7 @@ export const entrevistasOverviewService = {
               codigo: true,
               titulo: true,
               status: true,
+              modoAnonimo: true,
             },
           },
           empresa: {
@@ -520,7 +520,11 @@ export const entrevistasOverviewService = {
         empresa: {
           id: empresa.id,
           nomeExibicao: empresa.nomeCompleto,
-          logoUrl: empresa.avatarUrl ?? null,
+          anonima: Boolean(entrevista.EmpresasVagas.modoAnonimo),
+          labelExibicao: entrevista.EmpresasVagas.modoAnonimo
+            ? 'Empresa anônima'
+            : (empresa.nomeCompleto ?? 'Empresa não informada'),
+          logoUrl: entrevista.EmpresasVagas.modoAnonimo ? null : (empresa.avatarUrl ?? null),
         },
         recrutador: {
           id: recrutador.id,

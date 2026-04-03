@@ -5,17 +5,10 @@
  * @author Sistema Advance+
  * @version 1.0.0
  */
-import { Request, Response } from 'express';
-import { ZodError } from 'zod';
 import bcrypt from 'bcrypt';
+import { Request, Response } from 'express';
 
 import { prisma, retryOperation } from '@/config/prisma';
-import { logger } from '@/utils/logger';
-import {
-  sanitizeSocialLinks,
-  buildSocialLinksUpdateData,
-  mapSocialLinks,
-} from '@/modules/usuarios/utils/social-links';
 import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
 import { mergeUsuarioInformacoes } from '@/modules/usuarios/utils/information';
 import {
@@ -23,7 +16,13 @@ import {
   optimizeSearchFilter,
   QueryProfiler,
 } from '@/modules/usuarios/utils/query-optimizer';
-import { getCachedOrFetch, generateCacheKey } from '@/utils/cache';
+import {
+  buildSocialLinksUpdateData,
+  mapSocialLinks,
+  sanitizeSocialLinks,
+} from '@/modules/usuarios/utils/social-links';
+import { generateCacheKey, getCachedOrFetch } from '@/utils/cache';
+import { logger } from '@/utils/logger';
 
 export class InstrutorController {
   /**

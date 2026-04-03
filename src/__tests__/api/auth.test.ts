@@ -1,7 +1,6 @@
 import request from 'supertest';
+import { cleanupTestUsers, createTestUser, type TestUser } from '../helpers/auth-helper';
 import { getTestApp } from '../helpers/test-setup';
-import { createTestUser, cleanupTestUsers, type TestUser } from '../helpers/auth-helper';
-import { Roles } from '@prisma/client';
 
 describe('API - Autenticação', () => {
   let app: Express;

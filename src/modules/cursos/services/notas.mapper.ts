@@ -18,6 +18,7 @@ export const notaWithRelations = Prisma.validator<Prisma.CursosNotasDefaultArgs>
     CursosTurmasProvas: {
       select: {
         id: true,
+        tipo: true,
         titulo: true,
         etiqueta: true,
       },

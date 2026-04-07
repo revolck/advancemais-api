@@ -64,6 +64,25 @@ const resolveTtl = (value: string | undefined, fallback: number) => {
 
 const CURSOS_NOTAS_CACHE_TTL = resolveTtl(process.env.CACHE_TTL_CURSOS_NOTAS, 30);
 
+const viewerFromRequest = (req: Request) => ({
+  userId: req.user?.id,
+  role: req.user?.role,
+});
+
+const sendForbidden = (res: Response, message = 'Você não possui acesso a esta nota.') =>
+  res.status(403).json({
+    success: false,
+    code: 'FORBIDDEN',
+    message,
+  });
+
+const sendInstrutorScopeError = (res: Response) =>
+  res.status(500).json({
+    success: false,
+    code: 'INSTRUTOR_SCOPE_ERROR',
+    message: 'Erro ao montar o escopo do instrutor',
+  });
+
 const invalidateCursoNotasCache = async () => {
   try {
     await Promise.all([
@@ -91,13 +110,14 @@ export class NotasController {
           orderBy: query.orderBy,
           order: query.order,
           role: req.user?.role ?? '',
+          userId: req.user?.id ?? '',
         },
         { excludeKeys: [] },
       );
 
       const result = await getCachedOrFetch(
         cacheKey,
-        () => notasService.listNotasGeral(query),
+        () => notasService.listNotasGeral(query, undefined, viewerFromRequest(req)),
         CURSOS_NOTAS_CACHE_TTL,
       );
 
@@ -118,6 +138,14 @@ export class NotasController {
           code: 'INVALID_TURMA_FILTER',
           message: 'Uma ou mais turmas são inválidas para o curso informado.',
         });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res);
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
       }
 
       res.status(500).json({
@@ -181,13 +209,14 @@ export class NotasController {
           orderBy: query.orderBy,
           order: query.order,
           role: req.user?.role ?? '',
+          userId: req.user?.id ?? '',
         },
         { excludeKeys: [] },
       );
 
       const result = await getCachedOrFetch(
         cacheKey,
-        () => notasService.listNotasGeral(query, { alunoId }),
+        () => notasService.listNotasGeral(query, { alunoId }, viewerFromRequest(req)),
         CURSOS_NOTAS_CACHE_TTL,
       );
 
@@ -208,6 +237,14 @@ export class NotasController {
           code: 'INVALID_TURMA_FILTER',
           message: 'Uma ou mais turmas são inválidas para o curso informado.',
         });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res);
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
       }
 
       res.status(500).json({
@@ -242,13 +279,14 @@ export class NotasController {
           orderBy: query.orderBy,
           order: query.order,
           role: req.user?.role ?? '',
+          userId: req.user?.id ?? '',
         },
         { excludeKeys: [] },
       );
 
       const result = await getCachedOrFetch(
         cacheKey,
-        () => notasService.listCursoNotas(cursoId, query),
+        () => notasService.listCursoNotas(cursoId, query, viewerFromRequest(req)),
         CURSOS_NOTAS_CACHE_TTL,
       );
       res.json({ success: true, data: result });
@@ -268,6 +306,14 @@ export class NotasController {
           code: 'INVALID_TURMA_FILTER',
           message: 'Uma ou mais turmas são inválidas para o curso informado.',
         });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res);
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
       }
 
       res.status(500).json({
@@ -294,9 +340,14 @@ export class NotasController {
     const inscricaoId = parseInscricaoId(req.query.inscricaoId);
 
     try {
-      const notas = await notasService.list(cursoId, turmaId, {
-        inscricaoId: inscricaoId ?? undefined,
-      });
+      const notas = await notasService.list(
+        cursoId,
+        turmaId,
+        {
+          inscricaoId: inscricaoId ?? undefined,
+        },
+        viewerFromRequest(req),
+      );
       res.json({ data: notas });
     } catch (error: any) {
       if (error?.code === 'TURMA_NOT_FOUND') {
@@ -305,6 +356,14 @@ export class NotasController {
           code: 'TURMA_NOT_FOUND',
           message: 'Turma não encontrada para o curso informado',
         });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res);
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
       }
 
       res.status(500).json({
@@ -330,7 +389,7 @@ export class NotasController {
     }
 
     try {
-      const nota = await notasService.get(cursoId, turmaId, notaId);
+      const nota = await notasService.get(cursoId, turmaId, notaId, viewerFromRequest(req));
       res.json(nota);
     } catch (error: any) {
       if (error?.code === 'NOTA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
@@ -339,6 +398,14 @@ export class NotasController {
           code: 'NOTA_NOT_FOUND',
           message: 'Nota não encontrada para a turma informada',
         });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res);
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
       }
 
       res.status(500).json({
@@ -393,10 +460,15 @@ export class NotasController {
       }
 
       // Contrato legado: criação direta de nota (por inscrição)
-      const nota = await notasService.create(cursoId, turmaId, {
-        ...parsed,
-        tipo: parsed.tipo as CursosNotasTipo,
-      });
+      const nota = await notasService.create(
+        cursoId,
+        turmaId,
+        {
+          ...parsed,
+          tipo: parsed.tipo as CursosNotasTipo,
+        },
+        viewerFromRequest(req),
+      );
       await invalidateCursoNotasCache();
       res.status(201).json(nota);
     } catch (error: any) {
@@ -466,6 +538,14 @@ export class NotasController {
         });
       }
 
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res);
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
+      }
+
       res.status(500).json({
         success: false,
         code: 'NOTA_CREATE_ERROR',
@@ -528,6 +608,14 @@ export class NotasController {
           code: 'INSCRICAO_NOT_FOUND',
           message: 'Aluno não possui inscrição nesta turma',
         });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res);
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
       }
 
       res.status(500).json({
@@ -636,6 +724,14 @@ export class NotasController {
         });
       }
 
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res);
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
+      }
+
       res.status(500).json({
         success: false,
         code: 'NOTA_UPDATE_ERROR',
@@ -689,6 +785,14 @@ export class NotasController {
         });
       }
 
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res);
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
+      }
+
       res.status(500).json({
         success: false,
         code: 'NOTA_DELETE_ERROR',
@@ -712,7 +816,12 @@ export class NotasController {
     }
 
     try {
-      const historico = await notasService.listHistorico(cursoId, turmaId, notaId);
+      const historico = await notasService.listHistorico(
+        cursoId,
+        turmaId,
+        notaId,
+        viewerFromRequest(req),
+      );
       res.json({ success: true, data: historico });
     } catch (error: any) {
       if (error?.code === 'NOTA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
@@ -721,6 +830,14 @@ export class NotasController {
           code: 'NOTA_NOT_FOUND',
           message: 'Nota não encontrada para a turma informada',
         });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res);
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
       }
 
       res.status(500).json({
@@ -746,6 +863,7 @@ export class NotasController {
     try {
       const resultado = await notasService.listByInscricao(inscricaoId, undefined, {
         permitirAdmin: true,
+        viewer: viewerFromRequest(req),
       });
       res.json(resultado);
     } catch (error: any) {
@@ -755,6 +873,14 @@ export class NotasController {
           code: 'INSCRICAO_NOT_FOUND',
           message: 'Inscrição não encontrada',
         });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res);
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
       }
 
       res.status(500).json({
@@ -788,7 +914,9 @@ export class NotasController {
     }
 
     try {
-      const resultado = await notasService.listByInscricao(inscricaoId, usuarioId);
+      const resultado = await notasService.listByInscricao(inscricaoId, usuarioId, {
+        viewer: viewerFromRequest(req),
+      });
       res.json(resultado);
     } catch (error: any) {
       if (error?.code === 'INSCRICAO_NOT_FOUND') {

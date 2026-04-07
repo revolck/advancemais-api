@@ -7,6 +7,15 @@ import {
 } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
+import {
+  buildInstrutorScope,
+  canAccessCursoInScope,
+  canAccessOrigemInScope,
+  canAccessTurmaInScope,
+  hasFullTurmaScope,
+  hasInstrutorScope,
+  type InstrutorScope,
+} from '@/modules/instrutor/services/instrutor-scope.service';
 import { logger } from '@/utils/logger';
 
 import { mapNota, NotaWithRelations, notaWithRelations } from './notas.mapper';
@@ -19,6 +28,20 @@ import type {
 const notasLogger = logger.child({ module: 'CursosNotasService' });
 
 type PrismaClientOrTx = Prisma.TransactionClient | typeof prisma;
+type NotasViewer = {
+  userId?: string;
+  role?: string | null;
+};
+type NotaTipoOrigemEscopo = 'AULA' | 'PROVA' | 'ATIVIDADE';
+type NotaHistoryLogRow = {
+  nota_id: string;
+  inscricao_id: string;
+  turma_id: string;
+  referencia_externa: string | null;
+  prova_id: string | null;
+  tipo: string | null;
+  criado_em: Date;
+};
 
 const ensureTurmaBelongsToCurso = async (
   client: PrismaClientOrTx,
@@ -64,6 +87,7 @@ const ensureProvaBelongsToTurma = async (
     where: { id: provaId, turmaId, CursosTurmas: { cursoId } },
     select: {
       id: true,
+      tipo: true,
       titulo: true,
       descricao: true,
       peso: true,
@@ -167,7 +191,20 @@ const ensureNotaBelongsToTurma = async (
 ) => {
   const nota = await client.cursosNotas.findFirst({
     where: { id: notaId, turmaId, CursosTurmas: { cursoId } },
-    select: { id: true, inscricaoId: true, tipo: true, provaId: true, titulo: true },
+    select: {
+      id: true,
+      turmaId: true,
+      inscricaoId: true,
+      tipo: true,
+      provaId: true,
+      referenciaExterna: true,
+      titulo: true,
+      CursosTurmasProvas: {
+        select: {
+          tipo: true,
+        },
+      },
+    },
   });
 
   if (!nota) {
@@ -328,6 +365,195 @@ const parseOrigemFromReferencia = (
   return { tipo, id, titulo: tituloOrigem ?? null };
 };
 
+const buildEmptyNotasListResult = (requestedPage = 1, requestedPageSize = 10) => {
+  const pageSize = Math.max(1, Math.min(200, requestedPageSize));
+  return {
+    items: [] as any[],
+    pagination: {
+      page: 1,
+      requestedPage,
+      pageSize,
+      total: 0,
+      totalPages: 1,
+      hasNext: false,
+      hasPrevious: false,
+      isPageAdjusted: false,
+    },
+  };
+};
+
+const buildAlunoSearchWhere = (search?: string): Prisma.CursosTurmasInscricoesWhereInput => {
+  const normalized = search?.trim();
+  if (!normalized) {
+    return {};
+  }
+
+  return {
+    Usuarios: {
+      OR: [
+        { nomeCompleto: { contains: normalized, mode: 'insensitive' } },
+        { email: { contains: normalized, mode: 'insensitive' } },
+        { cpf: { contains: normalized } },
+        { codUsuario: { contains: normalized } },
+        { UsuariosInformation: { inscricao: { contains: normalized } } },
+      ],
+    },
+  };
+};
+
+const getNotaOrigemEscopo = (input: {
+  turmaId: string;
+  referenciaExterna?: string | null;
+  provaId?: string | null;
+  provaTipo?: CursosAvaliacaoTipo | null;
+  notaTipo?: CursosNotasTipo | string | null;
+}) => {
+  if (!input.turmaId) {
+    return null;
+  }
+
+  const origemReferencia = parseOrigemFromReferencia(input.referenciaExterna ?? null, null);
+  if (origemReferencia.id && ['AULA', 'PROVA', 'ATIVIDADE'].includes(origemReferencia.tipo)) {
+    return {
+      kind: 'explicit' as const,
+      turmaId: input.turmaId,
+      tipoOrigem: origemReferencia.tipo as NotaTipoOrigemEscopo,
+      origemId: origemReferencia.id,
+    };
+  }
+
+  if (input.provaId) {
+    const tipoOrigem: NotaTipoOrigemEscopo =
+      input.provaTipo === CursosAvaliacaoTipo.ATIVIDADE ||
+      input.notaTipo === CursosNotasTipo.ATIVIDADE
+        ? 'ATIVIDADE'
+        : 'PROVA';
+
+    return {
+      kind: 'explicit' as const,
+      turmaId: input.turmaId,
+      tipoOrigem,
+      origemId: input.provaId,
+    };
+  }
+
+  return {
+    kind: 'neutral' as const,
+    turmaId: input.turmaId,
+  };
+};
+
+const isNotaWithinInstrutorScope = (
+  scope: InstrutorScope | null,
+  input: {
+    turmaId: string;
+    referenciaExterna?: string | null;
+    provaId?: string | null;
+    provaTipo?: CursosAvaliacaoTipo | null;
+    notaTipo?: CursosNotasTipo | string | null;
+  },
+) => {
+  if (!scope) {
+    return true;
+  }
+
+  const origem = getNotaOrigemEscopo(input);
+  if (!origem) {
+    return false;
+  }
+
+  if (origem.kind === 'neutral') {
+    return hasFullTurmaScope(scope, origem.turmaId);
+  }
+
+  return canAccessOrigemInScope(scope, origem);
+};
+
+const ensureNotaDentroDoEscopo = (
+  scope: InstrutorScope | null,
+  input: {
+    turmaId: string;
+    referenciaExterna?: string | null;
+    provaId?: string | null;
+    provaTipo?: CursosAvaliacaoTipo | null;
+    notaTipo?: CursosNotasTipo | string | null;
+  },
+) => {
+  if (isNotaWithinInstrutorScope(scope, input)) {
+    return;
+  }
+
+  const error = new Error('Você não possui acesso a esta nota.');
+  (error as any).code = 'FORBIDDEN';
+  throw error;
+};
+
+const ensureInstrutorTurmaScope = async (
+  client: PrismaClientOrTx,
+  cursoId: string,
+  turmaId: string,
+  viewer?: NotasViewer,
+) => {
+  await ensureTurmaBelongsToCurso(client, cursoId, turmaId);
+
+  if (viewer?.role !== Roles.INSTRUTOR) {
+    return null;
+  }
+
+  if (!viewer.userId) {
+    const error = new Error('Instrutor sem contexto de autenticação válido');
+    (error as any).code = 'FORBIDDEN';
+    throw error;
+  }
+
+  const scope = await buildInstrutorScope(client, viewer.userId);
+  if (!canAccessCursoInScope(scope, cursoId) || !canAccessTurmaInScope(scope, turmaId)) {
+    const error = new Error('Você não possui acesso a esta nota.');
+    (error as any).code = 'FORBIDDEN';
+    throw error;
+  }
+
+  return scope;
+};
+
+const ensureManualNotaOrigemDentroDoEscopo = (
+  scope: InstrutorScope | null,
+  turmaId: string,
+  origem: CreateNotaManualInput['origem'],
+) => {
+  if (!scope) {
+    return;
+  }
+
+  if (origem.tipo === 'OUTRO') {
+    if (hasFullTurmaScope(scope, turmaId)) {
+      return;
+    }
+
+    const error = new Error('Você não possui acesso a esta nota.');
+    (error as any).code = 'FORBIDDEN';
+    throw error;
+  }
+
+  if (!origem.id) {
+    const error = new Error('Item de origem é obrigatório para PROVA, ATIVIDADE e AULA');
+    (error as any).code = 'VALIDATION_ERROR';
+    throw error;
+  }
+
+  if (
+    !canAccessOrigemInScope(scope, {
+      turmaId,
+      tipoOrigem: origem.tipo,
+      origemId: origem.id,
+    })
+  ) {
+    const error = new Error('Você não possui acesso a esta nota.');
+    (error as any).code = 'FORBIDDEN';
+    throw error;
+  }
+};
+
 const roleLabelMap: Partial<Record<Roles, string>> = {
   ADMIN: 'Administrador',
   MODERADOR: 'Moderador',
@@ -342,6 +568,7 @@ const formatRoleLabel = (role: Roles | null | undefined) => {
 
 type ManualNotaRow = {
   id: string;
+  turmaId: string;
   inscricaoId: string;
   nota: Prisma.Decimal | null;
   titulo: string | null;
@@ -457,32 +684,65 @@ const registerNotaAuditLog = async (
   });
 };
 
+const readNotaAuditObject = (value: Prisma.JsonValue | null) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as Prisma.JsonObject;
+};
+
+const readNotaAuditRecord = (log: {
+  metadata: Prisma.JsonValue | null;
+  dadosAnteriores: Prisma.JsonValue | null;
+  dadosNovos: Prisma.JsonValue | null;
+}) => {
+  const metadata = readNotaAuditObject(log.metadata);
+  const dadosNovos = readNotaAuditObject(log.dadosNovos);
+  const dadosAnteriores = readNotaAuditObject(log.dadosAnteriores);
+  const readString =
+    (...values: (Prisma.JsonObject | null)[]) =>
+    (key: string) => {
+      for (const value of values) {
+        const candidate = value?.[key];
+        if (typeof candidate === 'string') {
+          return candidate;
+        }
+      }
+      return null;
+    };
+
+  const readField = readString(dadosNovos, dadosAnteriores, metadata);
+  const tipoRaw = readField('tipo');
+  const tipo = Object.values(CursosNotasTipo).includes(tipoRaw as CursosNotasTipo)
+    ? (tipoRaw as CursosNotasTipo)
+    : null;
+
+  return {
+    notaId: readField('notaId'),
+    cursoId: readField('cursoId'),
+    turmaId: readField('turmaId'),
+    inscricaoId: readField('inscricaoId'),
+    referenciaExterna: readField('referenciaExterna'),
+    provaId: readField('provaId'),
+    tipo,
+  };
+};
+
 const readNotaAuditScope = (log: {
   metadata: Prisma.JsonValue | null;
   dadosAnteriores: Prisma.JsonValue | null;
   dadosNovos: Prisma.JsonValue | null;
 }) => {
-  const fromObject = (value: Prisma.JsonValue | null) => {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-    const objectValue = value as Prisma.JsonObject;
-    const cursoId =
-      typeof objectValue.cursoId === 'string'
-        ? objectValue.cursoId
-        : typeof objectValue['cursoId'] === 'string'
-          ? (objectValue['cursoId'] as string)
-          : null;
-    const turmaId =
-      typeof objectValue.turmaId === 'string'
-        ? objectValue.turmaId
-        : typeof objectValue['turmaId'] === 'string'
-          ? (objectValue['turmaId'] as string)
-          : null;
+  const record = readNotaAuditRecord(log);
+  if (!record.cursoId && !record.turmaId) {
+    return null;
+  }
 
-    if (!cursoId && !turmaId) return null;
-    return { cursoId, turmaId };
+  return {
+    cursoId: record.cursoId,
+    turmaId: record.turmaId,
   };
-
-  return fromObject(log.metadata) ?? fromObject(log.dadosNovos) ?? fromObject(log.dadosAnteriores);
 };
 
 const buildNotaHistoryActor = (log: {
@@ -665,6 +925,424 @@ const resolveNotaHistoryReferences = async (
   return { notaAtualIdPorInscricao, historicoNotaIdPorInscricao };
 };
 
+const resolveScopedNotaHistoryReferences = async (
+  scope: InstrutorScope,
+  inscricaoIds: string[],
+  turmaIds: string[],
+  manuais: ManualNotaRow[],
+) => {
+  const notaAtualIdPorInscricao = new Map<string, string>();
+  const historicoNotaIdPorInscricao = new Map<string, string>();
+
+  for (const manual of manuais) {
+    if (!notaAtualIdPorInscricao.has(manual.inscricaoId)) {
+      notaAtualIdPorInscricao.set(manual.inscricaoId, manual.id);
+    }
+
+    if (!historicoNotaIdPorInscricao.has(manual.inscricaoId)) {
+      historicoNotaIdPorInscricao.set(manual.inscricaoId, manual.id);
+    }
+  }
+
+  if (inscricaoIds.length === 0 || turmaIds.length === 0) {
+    return { notaAtualIdPorInscricao, historicoNotaIdPorInscricao };
+  }
+
+  const uniqueInscricaoIds = Array.from(new Set(inscricaoIds));
+  const uniqueTurmaIds = Array.from(new Set(turmaIds));
+
+  const historicoRows = await prisma.$queryRaw<NotaHistoryLogRow[]>(Prisma.sql`
+    SELECT
+      l."entidadeId" AS nota_id,
+      COALESCE(l."dadosNovos"->>'inscricaoId', l."dadosAnteriores"->>'inscricaoId') AS inscricao_id,
+      COALESCE(l."dadosNovos"->>'turmaId', l."dadosAnteriores"->>'turmaId') AS turma_id,
+      COALESCE(l."dadosNovos"->>'referenciaExterna', l."dadosAnteriores"->>'referenciaExterna') AS referencia_externa,
+      COALESCE(l."dadosNovos"->>'provaId', l."dadosAnteriores"->>'provaId') AS prova_id,
+      COALESCE(l."dadosNovos"->>'tipo', l."dadosAnteriores"->>'tipo') AS tipo,
+      l."criadoEm" AS criado_em
+    FROM "AuditoriaLogs" l
+    WHERE l."entidadeTipo" = 'CURSO_NOTA'
+      AND l.acao IN ('NOTA_MANUAL_ADICIONADA', 'NOTA_MANUAL_ATUALIZADA', 'NOTA_MANUAL_EXCLUIDA')
+      AND COALESCE(l."dadosNovos"->>'inscricaoId', l."dadosAnteriores"->>'inscricaoId') IN (${Prisma.join(uniqueInscricaoIds)})
+      AND COALESCE(l."dadosNovos"->>'turmaId', l."dadosAnteriores"->>'turmaId') IN (${Prisma.join(uniqueTurmaIds)})
+    ORDER BY l."criadoEm" DESC
+  `);
+
+  for (const row of historicoRows) {
+    if (!row.inscricao_id || !row.nota_id || historicoNotaIdPorInscricao.has(row.inscricao_id)) {
+      continue;
+    }
+
+    if (
+      !isNotaWithinInstrutorScope(scope, {
+        turmaId: row.turma_id,
+        referenciaExterna: row.referencia_externa,
+        provaId: row.prova_id,
+        notaTipo: row.tipo,
+      })
+    ) {
+      continue;
+    }
+
+    historicoNotaIdPorInscricao.set(row.inscricao_id, row.nota_id);
+  }
+
+  return { notaAtualIdPorInscricao, historicoNotaIdPorInscricao };
+};
+
+const compareNullableDates = (left: string | null, right: string | null) => {
+  const leftValue = left ? new Date(left).getTime() : 0;
+  const rightValue = right ? new Date(right).getTime() : 0;
+  return leftValue - rightValue;
+};
+
+const listNotasConsolidadasParaInstrutor = async (
+  filters: {
+    cursoId?: string;
+    turmaIds?: string[];
+    alunoId?: string;
+    search?: string;
+    page: number;
+    pageSize: number;
+    orderBy: ListCursoNotasQuery['orderBy'];
+    order: ListCursoNotasQuery['order'];
+  },
+  scope: InstrutorScope,
+) => {
+  if (!hasInstrutorScope(scope)) {
+    return buildEmptyNotasListResult(filters.page, filters.pageSize);
+  }
+
+  if (filters.cursoId && !canAccessCursoInScope(scope, filters.cursoId)) {
+    return buildEmptyNotasListResult(filters.page, filters.pageSize);
+  }
+
+  const requestedTurmaIds = filters.turmaIds?.filter(Boolean);
+  if (filters.cursoId && requestedTurmaIds?.length) {
+    const validCount = await prisma.cursosTurmas.count({
+      where: {
+        cursoId: filters.cursoId,
+        id: { in: Array.from(new Set(requestedTurmaIds)) },
+      },
+    });
+
+    if (validCount !== Array.from(new Set(requestedTurmaIds)).length) {
+      const error: any = new Error('Uma ou mais turmas são inválidas para o curso informado');
+      error.code = 'INVALID_TURMA_FILTER';
+      throw error;
+    }
+  } else if (requestedTurmaIds?.length) {
+    const validCount = await prisma.cursosTurmas.count({
+      where: {
+        id: { in: Array.from(new Set(requestedTurmaIds)) },
+      },
+    });
+
+    if (validCount !== Array.from(new Set(requestedTurmaIds)).length) {
+      const error: any = new Error('Uma ou mais turmas são inválidas para o curso informado');
+      error.code = 'INVALID_TURMA_FILTER';
+      throw error;
+    }
+  }
+
+  const turmas = await prisma.cursosTurmas.findMany({
+    where: {
+      id: { in: [...scope.accessibleTurmaIds] },
+      deletedAt: null,
+      ...(filters.cursoId ? { cursoId: filters.cursoId } : {}),
+      ...(requestedTurmaIds?.length ? { id: { in: requestedTurmaIds } } : {}),
+    },
+    select: {
+      id: true,
+      nome: true,
+      codigo: true,
+      cursoId: true,
+      Cursos: {
+        select: {
+          id: true,
+          nome: true,
+        },
+      },
+    },
+  });
+
+  const turmaIds = turmas.map((turma) => turma.id);
+  if (turmaIds.length === 0) {
+    return buildEmptyNotasListResult(filters.page, filters.pageSize);
+  }
+
+  const searchWhere = buildAlunoSearchWhere(filters.search);
+  const inscricoes = await prisma.cursosTurmasInscricoes.findMany({
+    where: {
+      turmaId: { in: turmaIds },
+      ...(filters.alunoId ? { alunoId: filters.alunoId } : {}),
+      ...searchWhere,
+    },
+    select: {
+      id: true,
+      turmaId: true,
+      alunoId: true,
+      criadoEm: true,
+      Usuarios: {
+        select: {
+          id: true,
+          nomeCompleto: true,
+          email: true,
+          cpf: true,
+          codUsuario: true,
+          UsuariosInformation: {
+            select: {
+              inscricao: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      },
+      CursosTurmas: {
+        select: {
+          id: true,
+          nome: true,
+          codigo: true,
+          cursoId: true,
+          Cursos: {
+            select: {
+              id: true,
+              nome: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (inscricoes.length === 0) {
+    return buildEmptyNotasListResult(filters.page, filters.pageSize);
+  }
+
+  const inscricaoIds = inscricoes.map((inscricao) => inscricao.id);
+  const provas = await prisma.cursosTurmasProvas.findMany({
+    where: {
+      turmaId: { in: turmaIds },
+      ativo: true,
+    },
+    select: {
+      id: true,
+      turmaId: true,
+      tipo: true,
+      peso: true,
+    },
+  });
+
+  const provasAcessiveis = provas.filter((prova) =>
+    canAccessOrigemInScope(scope, {
+      turmaId: prova.turmaId ?? '',
+      tipoOrigem: prova.tipo === CursosAvaliacaoTipo.PROVA ? 'PROVA' : 'ATIVIDADE',
+      origemId: prova.id,
+    }),
+  );
+  const provaMeta = new Map(
+    provasAcessiveis.map((prova) => [
+      prova.id,
+      {
+        turmaId: prova.turmaId ?? '',
+        peso: Number(prova.peso ?? 0),
+      },
+    ]),
+  );
+
+  const envios = provasAcessiveis.length
+    ? await prisma.cursosTurmasProvasEnvios.findMany({
+        where: {
+          inscricaoId: { in: inscricaoIds },
+          provaId: { in: provasAcessiveis.map((prova) => prova.id) },
+        },
+        select: {
+          inscricaoId: true,
+          provaId: true,
+          nota: true,
+          atualizadoEm: true,
+        },
+      })
+    : [];
+
+  const manuais = await prisma.cursosNotas.findMany({
+    where: {
+      turmaId: { in: turmaIds },
+      inscricaoId: { in: inscricaoIds },
+      provaId: null,
+    },
+    orderBy: [{ atualizadoEm: 'desc' }, { criadoEm: 'desc' }],
+    select: {
+      id: true,
+      turmaId: true,
+      inscricaoId: true,
+      nota: true,
+      titulo: true,
+      descricao: true,
+      referenciaExterna: true,
+      criadoEm: true,
+      atualizadoEm: true,
+    },
+  });
+
+  const manuaisAcessiveis = manuais.filter((nota) =>
+    isNotaWithinInstrutorScope(scope, {
+      turmaId: nota.turmaId,
+      referenciaExterna: nota.referenciaExterna,
+      notaTipo: CursosNotasTipo.BONUS,
+    }),
+  );
+
+  const { historicoPorInscricao, ultimaOrigemManualPorInscricao } =
+    await buildManualNotasPayload(manuaisAcessiveis);
+  const { notaAtualIdPorInscricao, historicoNotaIdPorInscricao } =
+    await resolveScopedNotaHistoryReferences(scope, inscricaoIds, turmaIds, manuaisAcessiveis);
+
+  const manuaisPorInscricao = new Map<
+    string,
+    {
+      soma: number;
+      atualizadoEm: string | null;
+    }
+  >();
+  for (const manual of manuaisAcessiveis) {
+    const current = manuaisPorInscricao.get(manual.inscricaoId) ?? {
+      soma: 0,
+      atualizadoEm: null,
+    };
+    current.soma += Number(manual.nota ?? 0);
+    const atualizadoEm = manual.atualizadoEm.toISOString();
+    if (!current.atualizadoEm || compareNullableDates(current.atualizadoEm, atualizadoEm) < 0) {
+      current.atualizadoEm = atualizadoEm;
+    }
+    manuaisPorInscricao.set(manual.inscricaoId, current);
+  }
+
+  const enviosPorInscricao = new Map<
+    string,
+    {
+      somaPonderada: number;
+      somaPesos: number;
+      atualizadoEm: string | null;
+    }
+  >();
+  for (const envio of envios) {
+    const meta = provaMeta.get(envio.provaId);
+    if (!meta) {
+      continue;
+    }
+
+    const current = enviosPorInscricao.get(envio.inscricaoId) ?? {
+      somaPonderada: 0,
+      somaPesos: 0,
+      atualizadoEm: null,
+    };
+    const peso = Number(meta.peso ?? 0);
+    current.somaPonderada += Number(envio.nota ?? 0) * peso;
+    current.somaPesos += peso;
+    const atualizadoEm = envio.atualizadoEm.toISOString();
+    if (!current.atualizadoEm || compareNullableDates(current.atualizadoEm, atualizadoEm) < 0) {
+      current.atualizadoEm = atualizadoEm;
+    }
+    enviosPorInscricao.set(envio.inscricaoId, current);
+  }
+
+  const items = inscricoes.map((inscricao) => {
+    const base = enviosPorInscricao.get(inscricao.id);
+    const manuaisResumo = manuaisPorInscricao.get(inscricao.id);
+    const notaBase = base && base.somaPesos > 0 ? base.somaPonderada / base.somaPesos : 0;
+    const ajustesManuais = manuaisResumo?.soma ?? 0;
+    const atualizadoEmCandidatos = [
+      base?.atualizadoEm ?? null,
+      manuaisResumo?.atualizadoEm ?? null,
+      inscricao.criadoEm.toISOString(),
+    ].filter(Boolean) as string[];
+    const atualizadoEm =
+      atualizadoEmCandidatos.sort((left, right) => compareNullableDates(right, left))[0] ?? null;
+    const origemPayload = ultimaOrigemManualPorInscricao.get(inscricao.id)?.origem ?? {
+      tipo: 'SISTEMA' as const,
+      id: null,
+      titulo: 'Cálculo automático do sistema',
+    };
+
+    return {
+      cursoId: inscricao.CursosTurmas.Cursos.id,
+      cursoNome: inscricao.CursosTurmas.Cursos.nome,
+      turmaId: inscricao.CursosTurmas.id,
+      turmaNome: inscricao.CursosTurmas.nome,
+      turmaCodigo: inscricao.CursosTurmas.codigo,
+      inscricaoId: inscricao.id,
+      alunoId: inscricao.alunoId,
+      alunoNome: inscricao.Usuarios.nomeCompleto,
+      avatarUrl: inscricao.Usuarios.UsuariosInformation?.avatarUrl ?? null,
+      cpf: inscricao.Usuarios.cpf ?? null,
+      matricula:
+        inscricao.Usuarios.UsuariosInformation?.inscricao ?? inscricao.Usuarios.codUsuario ?? null,
+      nota: Number(Math.min(10, notaBase + ajustesManuais)),
+      atualizadoEm,
+      motivo:
+        ultimaOrigemManualPorInscricao.get(inscricao.id)?.motivo ??
+        'Nota consolidada automaticamente pelo sistema',
+      origem: origemPayload,
+      isManual: historicoPorInscricao.has(inscricao.id),
+      notaId: notaAtualIdPorInscricao.get(inscricao.id) ?? null,
+      historicoNotaId: historicoNotaIdPorInscricao.get(inscricao.id) ?? null,
+      historicoDisponivel: historicoNotaIdPorInscricao.has(inscricao.id),
+      history: historicoPorInscricao.get(inscricao.id) ?? [],
+      alunoCodigo: inscricao.Usuarios.codUsuario ?? null,
+      alunoCpf: inscricao.Usuarios.cpf ?? null,
+      alunoMatricula: inscricao.Usuarios.UsuariosInformation?.inscricao ?? null,
+      notaBase: Number(notaBase),
+      ajustesManuais: Number(ajustesManuais),
+      notaFinalOriginal: Number(Math.min(10, notaBase + ajustesManuais)),
+    };
+  });
+
+  const sortedItems = [...items].sort((left, right) => {
+    const direction = filters.order === 'desc' ? -1 : 1;
+    if (filters.orderBy === 'nota') {
+      if (left.nota !== right.nota) {
+        return (left.nota - right.nota) * direction;
+      }
+    } else if (filters.orderBy === 'atualizadoEm') {
+      const compare = compareNullableDates(left.atualizadoEm, right.atualizadoEm);
+      if (compare !== 0) {
+        return compare * direction;
+      }
+    } else {
+      const compare = left.alunoNome.localeCompare(right.alunoNome, 'pt-BR', {
+        sensitivity: 'base',
+      });
+      if (compare !== 0) {
+        return compare * direction;
+      }
+    }
+
+    return left.alunoNome.localeCompare(right.alunoNome, 'pt-BR', {
+      sensitivity: 'base',
+    });
+  });
+
+  const total = sortedItems.length;
+  const totalPages = total === 0 ? 0 : Math.ceil(total / filters.pageSize);
+  const safePage = totalPages === 0 ? 1 : Math.min(filters.page, totalPages);
+  const skip = (safePage - 1) * filters.pageSize;
+
+  return {
+    items: sortedItems.slice(skip, skip + filters.pageSize),
+    pagination: {
+      page: safePage,
+      requestedPage: filters.page,
+      pageSize: filters.pageSize,
+      total,
+      totalPages: totalPages || 1,
+      hasNext: totalPages > 0 && safePage < totalPages,
+      hasPrevious: safePage > 1,
+      isPageAdjusted: safePage !== filters.page,
+    },
+  };
+};
+
 export const notasService = {
   async list(
     cursoId: string,
@@ -672,8 +1350,9 @@ export const notasService = {
     filters: {
       inscricaoId?: string;
     } = {},
+    viewer?: NotasViewer,
   ) {
-    await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
+    const scope = await ensureInstrutorTurmaScope(prisma, cursoId, turmaId, viewer);
 
     const notas = await prisma.cursosNotas.findMany({
       where: {
@@ -685,11 +1364,21 @@ export const notasService = {
       include: notaWithRelations.include,
     });
 
-    return notas.map(mapNota);
+    return notas
+      .filter((nota) =>
+        isNotaWithinInstrutorScope(scope, {
+          turmaId: nota.turmaId,
+          referenciaExterna: nota.referenciaExterna,
+          provaId: nota.provaId,
+          provaTipo: nota.CursosTurmasProvas?.tipo ?? null,
+          notaTipo: nota.tipo,
+        }),
+      )
+      .map(mapNota);
   },
 
-  async get(cursoId: string, turmaId: string, notaId: string) {
-    await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
+  async get(cursoId: string, turmaId: string, notaId: string, viewer?: NotasViewer) {
+    const scope = await ensureInstrutorTurmaScope(prisma, cursoId, turmaId, viewer);
 
     const nota = await prisma.cursosNotas.findFirst({
       where: { id: notaId, turmaId, CursosTurmas: { cursoId } },
@@ -701,6 +1390,14 @@ export const notasService = {
       (error as any).code = 'NOTA_NOT_FOUND';
       throw error;
     }
+
+    ensureNotaDentroDoEscopo(scope, {
+      turmaId: nota.turmaId,
+      referenciaExterna: nota.referenciaExterna,
+      provaId: nota.provaId,
+      provaTipo: nota.CursosTurmasProvas?.tipo ?? null,
+      notaTipo: nota.tipo,
+    });
 
     return mapNota(nota);
   },
@@ -721,9 +1418,10 @@ export const notasService = {
       dataReferencia?: Date | null;
       observacoes?: string | null;
     },
+    viewer?: NotasViewer,
   ) {
     return prisma.$transaction(async (tx) => {
-      await ensureTurmaBelongsToCurso(tx, cursoId, turmaId);
+      const scope = await ensureInstrutorTurmaScope(tx, cursoId, turmaId, viewer);
       await ensureInscricaoBelongsToTurma(tx, turmaId, data.inscricaoId);
 
       const prova =
@@ -739,6 +1437,13 @@ export const notasService = {
         (error as any).code = 'VALIDATION_ERROR';
         throw error;
       }
+
+      ensureNotaDentroDoEscopo(scope, {
+        turmaId,
+        referenciaExterna: data.referenciaExterna ?? null,
+        provaId: prova?.id ?? data.provaId ?? null,
+        notaTipo: data.tipo,
+      });
 
       const nota = await tx.cursosNotas.create({
         data: {
@@ -786,7 +1491,18 @@ export const notasService = {
     context?: NotaAuditContext,
   ) {
     return prisma.$transaction(async (tx) => {
+      const scope = await ensureInstrutorTurmaScope(tx, cursoId, turmaId, {
+        userId: context?.actorId ?? undefined,
+        role: context?.actorRole ?? null,
+      });
       const notaAtual = await ensureNotaBelongsToTurma(tx, cursoId, turmaId, notaId);
+      ensureNotaDentroDoEscopo(scope, {
+        turmaId: notaAtual.turmaId,
+        referenciaExterna: notaAtual.referenciaExterna,
+        provaId: notaAtual.provaId,
+        provaTipo: notaAtual.CursosTurmasProvas?.tipo ?? null,
+        notaTipo: notaAtual.tipo,
+      });
       ensureNotaIsManual(notaAtual);
 
       const notaAnteriorCompleta = await tx.cursosNotas.findFirst({
@@ -816,6 +1532,17 @@ export const notasService = {
       if (data.provaId) {
         prova = await ensureProvaBelongsToTurma(tx, cursoId, turmaId, data.provaId);
       }
+
+      ensureNotaDentroDoEscopo(scope, {
+        turmaId,
+        referenciaExterna:
+          data.referenciaExterna !== undefined
+            ? data.referenciaExterna
+            : notaAtual.referenciaExterna,
+        provaId: data.provaId !== undefined ? data.provaId : notaAtual.provaId,
+        provaTipo: prova?.tipo ?? notaAtual.CursosTurmasProvas?.tipo ?? null,
+        notaTipo: data.tipo ?? notaAtual.tipo,
+      });
 
       const isProvaAfterUpdate =
         data.tipo === CursosNotasTipo.PROVA ||
@@ -903,7 +1630,18 @@ export const notasService = {
 
   async remove(cursoId: string, turmaId: string, notaId: string, context?: NotaAuditContext) {
     return prisma.$transaction(async (tx) => {
+      const scope = await ensureInstrutorTurmaScope(tx, cursoId, turmaId, {
+        userId: context?.actorId ?? undefined,
+        role: context?.actorRole ?? null,
+      });
       const notaAtual = await ensureNotaBelongsToTurma(tx, cursoId, turmaId, notaId);
+      ensureNotaDentroDoEscopo(scope, {
+        turmaId: notaAtual.turmaId,
+        referenciaExterna: notaAtual.referenciaExterna,
+        provaId: notaAtual.provaId,
+        provaTipo: notaAtual.CursosTurmasProvas?.tipo ?? null,
+        notaTipo: notaAtual.tipo,
+      });
       ensureNotaIsManual(notaAtual);
 
       const notaCompleta = await tx.cursosNotas.findFirst({
@@ -939,7 +1677,7 @@ export const notasService = {
   async listByInscricao(
     inscricaoId: string,
     requesterId?: string,
-    { permitirAdmin = false }: { permitirAdmin?: boolean } = {},
+    { permitirAdmin = false, viewer }: { permitirAdmin?: boolean; viewer?: NotasViewer } = {},
   ) {
     const inscricao = await prisma.cursosTurmasInscricoes.findUnique({
       where: { id: inscricaoId },
@@ -968,6 +1706,25 @@ export const notasService = {
       throw error;
     }
 
+    let scope: InstrutorScope | null = null;
+    if (viewer?.role === Roles.INSTRUTOR) {
+      if (!viewer.userId) {
+        const error = new Error('Você não possui acesso a esta nota.');
+        (error as any).code = 'FORBIDDEN';
+        throw error;
+      }
+
+      scope = await buildInstrutorScope(prisma, viewer.userId);
+      if (
+        !canAccessCursoInScope(scope, inscricao.CursosTurmas.Cursos.id) ||
+        !canAccessTurmaInScope(scope, inscricao.CursosTurmas.id)
+      ) {
+        const error = new Error('Você não possui acesso a esta nota.');
+        (error as any).code = 'FORBIDDEN';
+        throw error;
+      }
+    }
+
     const notas = await prisma.cursosNotas.findMany({
       where: { inscricaoId },
       orderBy: [{ dataReferencia: 'desc' }, { criadoEm: 'desc' }],
@@ -992,7 +1749,17 @@ export const notasService = {
         nome: inscricao.CursosTurmas.nome,
         codigo: inscricao.CursosTurmas.codigo,
       },
-      notas: notas.map(mapNota),
+      notas: notas
+        .filter((nota) =>
+          isNotaWithinInstrutorScope(scope, {
+            turmaId: nota.turmaId,
+            referenciaExterna: nota.referenciaExterna,
+            provaId: nota.provaId,
+            provaTipo: nota.CursosTurmasProvas?.tipo ?? null,
+            notaTipo: nota.tipo,
+          }),
+        )
+        .map(mapNota),
     };
   },
 
@@ -1003,7 +1770,10 @@ export const notasService = {
     context?: NotaAuditContext,
   ) {
     return prisma.$transaction(async (tx) => {
-      await ensureTurmaBelongsToCurso(tx, cursoId, turmaId);
+      const scope = await ensureInstrutorTurmaScope(tx, cursoId, turmaId, {
+        userId: context?.actorId ?? undefined,
+        role: context?.actorRole ?? null,
+      });
 
       const inscricao = await tx.cursosTurmasInscricoes.findFirst({
         where: { turmaId, alunoId: data.alunoId },
@@ -1018,6 +1788,8 @@ export const notasService = {
 
       const consolidadoAtual = await getConsolidatedNotaContext(tx, turmaId, inscricao.id);
       validateManualNotaCreateLimit(consolidadoAtual.notaAtual, data.nota);
+
+      ensureManualNotaOrigemDentroDoEscopo(scope, turmaId, data.origem);
 
       const origemItem = await ensureOrigemItemBelongsToTurma(tx, cursoId, turmaId, data.origem);
 
@@ -1068,7 +1840,10 @@ export const notasService = {
     context?: NotaAuditContext,
   ) {
     return prisma.$transaction(async (tx) => {
-      await ensureTurmaBelongsToCurso(tx, cursoId, turmaId);
+      const scope = await ensureInstrutorTurmaScope(tx, cursoId, turmaId, {
+        userId: context?.actorId ?? undefined,
+        role: context?.actorRole ?? null,
+      });
 
       const inscricao = await tx.cursosTurmasInscricoes.findFirst({
         where: { turmaId, alunoId },
@@ -1089,6 +1864,16 @@ export const notasService = {
         },
         include: notaWithRelations.include,
       });
+
+      for (const nota of notasParaExcluir) {
+        ensureNotaDentroDoEscopo(scope, {
+          turmaId: nota.turmaId,
+          referenciaExterna: nota.referenciaExterna,
+          provaId: nota.provaId,
+          provaTipo: nota.CursosTurmasProvas?.tipo ?? null,
+          notaTipo: nota.tipo,
+        });
+      }
 
       for (const nota of notasParaExcluir) {
         await registerNotaAuditLog(tx, {
@@ -1120,13 +1905,24 @@ export const notasService = {
     });
   },
 
-  async listHistorico(cursoId: string, turmaId: string, notaId: string) {
-    await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
+  async listHistorico(cursoId: string, turmaId: string, notaId: string, viewer?: NotasViewer) {
+    const scope = await ensureInstrutorTurmaScope(prisma, cursoId, turmaId, viewer);
 
     const [notaAtual, logs] = await Promise.all([
       prisma.cursosNotas.findFirst({
         where: { id: notaId, turmaId, CursosTurmas: { cursoId } },
-        select: { id: true },
+        select: {
+          id: true,
+          turmaId: true,
+          tipo: true,
+          provaId: true,
+          referenciaExterna: true,
+          CursosTurmasProvas: {
+            select: {
+              tipo: true,
+            },
+          },
+        },
       }),
       prisma.auditoriaLogs.findMany({
         where: {
@@ -1158,10 +1954,45 @@ export const notasService = {
       }),
     ]);
 
+    if (notaAtual) {
+      ensureNotaDentroDoEscopo(scope, {
+        turmaId: notaAtual.turmaId,
+        referenciaExterna: notaAtual.referenciaExterna,
+        provaId: notaAtual.provaId,
+        provaTipo: notaAtual.CursosTurmasProvas?.tipo ?? null,
+        notaTipo: notaAtual.tipo,
+      });
+    }
+
     const scopedLogs = logs.filter((log) => {
-      const scope = readNotaAuditScope(log);
-      return scope?.cursoId === cursoId && scope?.turmaId === turmaId;
+      const auditScope = readNotaAuditScope(log);
+      if (auditScope?.cursoId !== cursoId || auditScope?.turmaId !== turmaId) {
+        return false;
+      }
+
+      if (!viewer || viewer.role !== Roles.INSTRUTOR) {
+        return true;
+      }
+
+      const record = readNotaAuditRecord(log);
+      return isNotaWithinInstrutorScope(scope, {
+        turmaId: record.turmaId ?? turmaId,
+        referenciaExterna: record.referenciaExterna,
+        provaId: record.provaId,
+        notaTipo: record.tipo,
+      });
     });
+
+    if (
+      !notaAtual &&
+      logs.length > 0 &&
+      viewer?.role === Roles.INSTRUTOR &&
+      scopedLogs.length === 0
+    ) {
+      const error = new Error('Você não possui acesso a esta nota.');
+      (error as any).code = 'FORBIDDEN';
+      throw error;
+    }
 
     if (!notaAtual && scopedLogs.length === 0) {
       const error = new Error('Nota não encontrada para a turma informada');
@@ -1183,8 +2014,28 @@ export const notasService = {
     };
   },
 
-  async listCursoNotas(cursoId: string, query: ListCursoNotasQuery) {
+  async listCursoNotas(cursoId: string, query: ListCursoNotasQuery, viewer?: NotasViewer) {
     const { turmaIds, search, page, pageSize, orderBy, order } = query;
+
+    if (viewer?.role === Roles.INSTRUTOR) {
+      if (!viewer.userId) {
+        return buildEmptyNotasListResult(page, pageSize);
+      }
+
+      const scope = await buildInstrutorScope(prisma, viewer.userId);
+      return listNotasConsolidadasParaInstrutor(
+        {
+          cursoId,
+          turmaIds,
+          search,
+          page,
+          pageSize,
+          orderBy,
+          order,
+        },
+        scope,
+      );
+    }
 
     const turmas = await prisma.cursosTurmas.findMany({
       where: { id: { in: turmaIds }, cursoId },
@@ -1358,6 +2209,7 @@ export const notasService = {
           orderBy: [{ atualizadoEm: 'desc' }, { criadoEm: 'desc' }],
           select: {
             id: true,
+            turmaId: true,
             inscricaoId: true,
             nota: true,
             titulo: true,
@@ -1440,9 +2292,31 @@ export const notasService = {
     options?: {
       alunoId?: string;
     },
+    viewer?: NotasViewer,
   ) {
     const { cursoId, turmaIds, search, page, pageSize, orderBy, order } = query;
     const alunoIdFilter = options?.alunoId;
+
+    if (viewer?.role === Roles.INSTRUTOR) {
+      if (!viewer.userId) {
+        return buildEmptyNotasListResult(page, pageSize);
+      }
+
+      const scope = await buildInstrutorScope(prisma, viewer.userId);
+      return listNotasConsolidadasParaInstrutor(
+        {
+          cursoId,
+          turmaIds,
+          alunoId: alunoIdFilter,
+          search,
+          page,
+          pageSize,
+          orderBy,
+          order,
+        },
+        scope,
+      );
+    }
 
     if (turmaIds && turmaIds.length > 0) {
       const turmas = await prisma.cursosTurmas.findMany({
@@ -1677,6 +2551,7 @@ export const notasService = {
           orderBy: [{ atualizadoEm: 'desc' }, { criadoEm: 'desc' }],
           select: {
             id: true,
+            turmaId: true,
             inscricaoId: true,
             nota: true,
             titulo: true,

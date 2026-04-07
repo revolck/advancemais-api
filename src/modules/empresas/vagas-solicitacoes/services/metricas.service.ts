@@ -9,6 +9,7 @@
  */
 
 import { prisma } from '@/config/prisma';
+import { syncExpiredPublishedVagas } from '@/modules/empresas/vagas/services/status-sync.service';
 import { getCache, setCache } from '@/utils/cache';
 import { logger } from '@/utils/logger';
 import crypto from 'crypto';
@@ -74,6 +75,11 @@ export const metricasService = {
     }
 
     try {
+      await syncExpiredPublishedVagas({
+        empresaUsuarioIds,
+        vagaIds,
+      });
+
       const hoje = new Date();
       hoje.setHours(0, 0, 0, 0);
       const amanha = new Date(hoje);

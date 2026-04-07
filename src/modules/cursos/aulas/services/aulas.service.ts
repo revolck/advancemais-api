@@ -1,4 +1,9 @@
 import { prisma, retryOperation } from '@/config/prisma';
+import {
+  buildInstrutorScope,
+  canAccessTurmaInScope,
+  hasFullTurmaScope,
+} from '@/modules/instrutor/services/instrutor-scope.service';
 import { logger } from '@/utils/logger';
 import type { Prisma } from '@prisma/client';
 import { CursoStatus, Roles } from '@prisma/client';
@@ -307,6 +312,9 @@ export const aulasService = {
     const cursoTerm = curso?.trim();
     const turmaTerm = turma?.trim();
     const instrutorTerm = instrutor?.trim();
+    let instrutorScope:
+      | Awaited<ReturnType<typeof buildInstrutorScope>>
+      | null = null;
 
     const applyAndFilter = (filter: Prisma.CursosTurmasAulasWhereInput) => {
       if (where.AND && Array.isArray(where.AND)) {
@@ -324,40 +332,48 @@ export const aulasService = {
     };
 
     if (usuarioLogado.role === 'INSTRUTOR' && turmaId) {
-      const [turma, aulasComInstrutor] = await Promise.all([
-        prisma.cursosTurmas.findUnique({
-          where: { id: turmaId },
-          select: { instrutorId: true },
-        }),
-        prisma.cursosTurmasAulas.count({
-          where: {
-            turmaId,
-            instrutorId: usuarioLogado.id,
-            deletedAt: null,
-          },
-        }),
-      ]);
+      instrutorScope = await buildInstrutorScope(prisma, usuarioLogado.id);
 
-      const instrutorVinculadoTurma =
-        turma?.instrutorId === usuarioLogado.id || aulasComInstrutor > 0;
-      if (!instrutorVinculadoTurma) {
+      if (!canAccessTurmaInScope(instrutorScope, turmaId)) {
         const error: any = new Error('Instrutor só pode visualizar aulas vinculadas a ele');
         error.code = 'FORBIDDEN';
         throw error;
+      }
+
+      if (hasFullTurmaScope(instrutorScope, turmaId)) {
+        if (instrutorScope.blockedAulaIds.size > 0) {
+          applyAndFilter({ NOT: { id: { in: [...instrutorScope.blockedAulaIds] } } });
+        }
+      } else {
+        applyAndFilter({ id: { in: [...instrutorScope.directAulaIds] } });
       }
     }
 
     // Filtro por role: INSTRUTOR vê apenas suas turmas
     // IMPORTANTE: Aplicar ANTES dos filtros da query para não sobrescrever
     if (usuarioLogado.role === 'INSTRUTOR' && !turmaId) {
-      // Apenas aplicar filtro de INSTRUTOR se não houver filtro explícito de turmaId.
-      // Evita query extra para buscar IDs de turmas e filtra direto por relação.
-      applyAndFilter({
-        OR: [
-          { CursosTurmas: { instrutorId: usuarioLogado.id } },
-          { instrutorId: usuarioLogado.id },
-        ],
-      });
+      instrutorScope = instrutorScope ?? (await buildInstrutorScope(prisma, usuarioLogado.id));
+
+      const scopeClauses: Prisma.CursosTurmasAulasWhereInput[] = [
+        ...(instrutorScope.fullTurmaIds.size > 0
+          ? [
+              {
+                turmaId: { in: [...instrutorScope.fullTurmaIds] },
+                ...(instrutorScope.blockedAulaIds.size > 0
+                  ? { NOT: { id: { in: [...instrutorScope.blockedAulaIds] } } }
+                  : {}),
+              },
+            ]
+          : []),
+        ...(instrutorScope.directAulaIds.size > 0
+          ? [{ id: { in: [...instrutorScope.directAulaIds] } }]
+          : []),
+        ...(instrutorScope.explicitCursoIds.size > 0
+          ? [{ turmaId: null, cursoId: { in: [...instrutorScope.explicitCursoIds] } }]
+          : []),
+      ];
+
+      applyAndFilter(scopeClauses.length > 0 ? { OR: scopeClauses } : { id: { in: [] } });
     }
 
     if (semTurma === true) {

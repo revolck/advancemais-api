@@ -1,6 +1,7 @@
 import { ModalidadesDeVagas, Prisma, StatusDeVagas } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
+import { syncExpiredPublishedVagas } from '@/modules/empresas/vagas/services/status-sync.service';
 import { getVagaStatusLabel } from '@/modules/entrevistas/utils/presentation';
 import { recrutadorEmpresasService } from '@/modules/usuarios/services/recrutador-empresas.service';
 import { recrutadorVagasService } from '@/modules/usuarios/services/recrutador-vagas.service';
@@ -321,6 +322,8 @@ export const recrutadorVagasDashboardService = {
         },
       };
     }
+
+    await syncExpiredPublishedVagas({ vagaIds: scopedVagaIds });
 
     const vagas = await prisma.empresasVagas.findMany({
       where: {

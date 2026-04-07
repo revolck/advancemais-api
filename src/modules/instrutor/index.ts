@@ -1,0 +1,1 @@
+export { instrutorRoutes } from './routes';

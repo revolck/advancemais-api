@@ -4,6 +4,7 @@ import { Roles } from '@/modules/usuarios/enums/Roles';
 import { MetricasController } from '@/modules/empresas/vagas-solicitacoes/controllers/metricas.controller';
 import { auditoriaAdminOnlyMiddleware } from '@/modules/auditoria/routes/access';
 import { financeiroController } from '../controllers/financeiro.controller';
+import { dashboardOverviewController } from '../controllers/overview.controller';
 
 const router = Router();
 
@@ -76,6 +77,8 @@ const allowedRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.SETOR_DE_VAGAS, Roles.
  *       500:
  *         description: Erro interno
  */
+router.get('/overview', supabaseAuthMiddleware(allowedRoles), dashboardOverviewController.get);
+
 router.get(
   '/setor-de-vagas/metricas',
   supabaseAuthMiddleware(allowedRoles),

@@ -1773,7 +1773,7 @@ router.put(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/', publicCache, CursosController.list);
+router.get('/', optionalSupabaseAuth(), publicCache, CursosController.list);
 
 /**
  * @openapi

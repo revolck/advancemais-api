@@ -85,6 +85,25 @@ const parseDateQuery = (raw: unknown) => {
   return date;
 };
 
+const viewerFromRequest = (req: Request) => ({
+  userId: req.user?.id,
+  role: req.user?.role,
+});
+
+const sendForbidden = (res: Response, message: string) =>
+  res.status(403).json({
+    success: false,
+    code: 'FORBIDDEN',
+    message,
+  });
+
+const sendInstrutorScopeError = (res: Response) =>
+  res.status(500).json({
+    success: false,
+    code: 'INSTRUTOR_SCOPE_ERROR',
+    message: 'Erro ao montar o escopo do instrutor',
+  });
+
 const canManageFrequencia = (role?: string) =>
   ['ADMIN', 'MODERADOR', 'PEDAGOGICO', 'INSTRUTOR'].includes(role ?? '');
 
@@ -171,6 +190,10 @@ export class FrequenciaController {
           code: 'INVALID_TURMA_FILTER',
           message: 'Uma ou mais turmas são inválidas para o curso informado.',
         });
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
       }
 
       res.status(500).json({
@@ -268,6 +291,10 @@ export class FrequenciaController {
         });
       }
 
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
+      }
+
       return res.status(500).json({
         success: false,
         code: 'FREQUENCIA_ALUNO_LIST_ERROR',
@@ -296,17 +323,22 @@ export class FrequenciaController {
         origemId: req.query.origemId ?? req.query.aulaId,
       });
 
-      const frequencias = await frequenciaService.list(cursoId, turmaId, {
-        inscricaoId: query.inscricaoId ?? undefined,
-        tipoOrigem: query.tipoOrigem ?? undefined,
-        origemId: query.origemId ?? undefined,
-        status: query.status ?? undefined,
-        search: query.search ?? undefined,
-        page: query.page,
-        pageSize: query.pageSize,
-        dataInicio: query.dataInicio ?? undefined,
-        dataFim: query.dataFim ?? undefined,
-      });
+      const frequencias = await frequenciaService.list(
+        cursoId,
+        turmaId,
+        {
+          inscricaoId: query.inscricaoId ?? undefined,
+          tipoOrigem: query.tipoOrigem ?? undefined,
+          origemId: query.origemId ?? undefined,
+          status: query.status ?? undefined,
+          search: query.search ?? undefined,
+          page: query.page,
+          pageSize: query.pageSize,
+          dataInicio: query.dataInicio ?? undefined,
+          dataFim: query.dataFim ?? undefined,
+        },
+        viewerFromRequest(req),
+      );
 
       const isLegacyRequest =
         req.query.page === undefined &&
@@ -369,6 +401,14 @@ export class FrequenciaController {
         });
       }
 
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res, error?.message || 'Você não possui acesso a esta frequência.');
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
+      }
+
       res.status(500).json({
         success: false,
         code: 'FREQUENCIA_LIST_ERROR',
@@ -392,7 +432,12 @@ export class FrequenciaController {
     }
 
     try {
-      const frequencia = await frequenciaService.get(cursoId, turmaId, frequenciaId);
+      const frequencia = await frequenciaService.get(
+        cursoId,
+        turmaId,
+        frequenciaId,
+        viewerFromRequest(req),
+      );
       res.json(frequencia);
     } catch (error: any) {
       if (error?.code === 'FREQUENCIA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
@@ -401,6 +446,14 @@ export class FrequenciaController {
           code: 'FREQUENCIA_NOT_FOUND',
           message: 'Registro de frequência não encontrado para a turma informada',
         });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res, error?.message || 'Você não possui acesso a esta frequência.');
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
       }
 
       res.status(500).json({
@@ -449,6 +502,7 @@ export class FrequenciaController {
             ? req.headers['user-agent'].join(' | ')
             : req.headers['user-agent'],
         },
+        viewerFromRequest(req),
       );
       res.status(201).json(frequencia);
     } catch (error: any) {
@@ -509,6 +563,14 @@ export class FrequenciaController {
         });
       }
 
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res, error?.message || 'Você não possui acesso a esta frequência.');
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
+      }
+
       res.status(500).json({
         success: false,
         code: 'FREQUENCIA_CREATE_ERROR',
@@ -554,6 +616,8 @@ export class FrequenciaController {
             ? req.headers['user-agent'].join(' | ')
             : req.headers['user-agent'],
         },
+        undefined,
+        viewerFromRequest(req),
       );
       res.json({
         success: true,
@@ -615,6 +679,14 @@ export class FrequenciaController {
         });
       }
 
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res, error?.message || 'Você não possui acesso a esta frequência.');
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
+      }
+
       res.status(500).json({
         success: false,
         code: 'FREQUENCIA_UPSERT_ERROR',
@@ -659,6 +731,7 @@ export class FrequenciaController {
             ? req.headers['user-agent'].join(' | ')
             : req.headers['user-agent'],
         },
+        viewerFromRequest(req),
       );
 
       return res.json({
@@ -721,6 +794,14 @@ export class FrequenciaController {
         });
       }
 
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res, error?.message || 'Você não possui acesso a esta frequência.');
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
+      }
+
       return res.status(500).json({
         success: false,
         code: 'FREQUENCIA_UPSERT_ALUNO_ERROR',
@@ -748,6 +829,7 @@ export class FrequenciaController {
         cursoId,
         turmaId,
         frequenciaId,
+        viewerFromRequest(req),
       );
       res.json({ success: true, data: historico });
     } catch (error: any) {
@@ -757,6 +839,14 @@ export class FrequenciaController {
           code: 'FREQUENCIA_NOT_FOUND',
           message: 'Registro de frequência não encontrado para a turma informada',
         });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res, error?.message || 'Você não possui acesso a esta frequência.');
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
       }
 
       res.status(500).json({
@@ -784,6 +874,7 @@ export class FrequenciaController {
       const historico = await frequenciaService.listHistoricoByFrequenciaForAluno(
         alunoId,
         frequenciaId,
+        viewerFromRequest(req),
       );
       return res.json({ success: true, data: historico });
     } catch (error: any) {
@@ -793,6 +884,14 @@ export class FrequenciaController {
           code: 'FREQUENCIA_NOT_FOUND',
           message: 'Registro de frequência não encontrado para o aluno informado',
         });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res, error?.message || 'Você não possui acesso a esta frequência.');
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
       }
 
       return res.status(500).json({
@@ -822,7 +921,7 @@ export class FrequenciaController {
         inscricaoId: query.inscricaoId,
         tipoOrigem: query.tipoOrigem,
         origemId: query.origemId,
-      });
+      }, viewerFromRequest(req));
       res.json({ success: true, data: historico });
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -866,6 +965,14 @@ export class FrequenciaController {
         });
       }
 
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res, error?.message || 'Você não possui acesso a esta frequência.');
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
+      }
+
       res.status(500).json({
         success: false,
         code: 'FREQUENCIA_HISTORICO_ERROR',
@@ -893,7 +1000,7 @@ export class FrequenciaController {
         inscricaoId: query.inscricaoId,
         tipoOrigem: query.tipoOrigem,
         origemId: query.origemId,
-      });
+      }, viewerFromRequest(req));
       return res.json({ success: true, data: historico });
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -935,6 +1042,14 @@ export class FrequenciaController {
           code: 'ORIGEM_NOT_FOUND',
           message: 'Origem não encontrada para a turma informada',
         });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res, error?.message || 'Você não possui acesso a esta frequência.');
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
       }
 
       return res.status(500).json({
@@ -1001,6 +1116,8 @@ export class FrequenciaController {
               ? req.headers['user-agent'].join(' | ')
               : req.headers['user-agent'],
           },
+          undefined,
+          viewerFromRequest(req),
         );
         return res.json(frequencia);
       }
@@ -1029,6 +1146,7 @@ export class FrequenciaController {
             ? req.headers['user-agent'].join(' | ')
             : req.headers['user-agent'],
         },
+        viewerFromRequest(req),
       );
       res.json(frequencia);
     } catch (error: any) {
@@ -1076,6 +1194,14 @@ export class FrequenciaController {
         });
       }
 
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res, error?.message || 'Você não possui acesso a esta frequência.');
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
+      }
+
       res.status(500).json({
         success: false,
         code: 'FREQUENCIA_UPDATE_ERROR',
@@ -1099,7 +1225,12 @@ export class FrequenciaController {
     }
 
     try {
-      const result = await frequenciaService.remove(cursoId, turmaId, frequenciaId);
+      const result = await frequenciaService.remove(
+        cursoId,
+        turmaId,
+        frequenciaId,
+        viewerFromRequest(req),
+      );
       res.json(result);
     } catch (error: any) {
       if (error?.code === 'FREQUENCIA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
@@ -1108,6 +1239,14 @@ export class FrequenciaController {
           code: 'FREQUENCIA_NOT_FOUND',
           message: 'Registro de frequência não encontrado para a turma informada',
         });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res, error?.message || 'Você não possui acesso a esta frequência.');
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
       }
 
       res.status(500).json({
@@ -1258,7 +1397,7 @@ export class FrequenciaController {
         search,
         page,
         pageSize,
-      });
+      }, viewerFromRequest(req));
       res.json({ success: true, data: resultado });
     } catch (error: any) {
       if (error?.code === 'TURMA_NOT_FOUND') {
@@ -1267,6 +1406,14 @@ export class FrequenciaController {
           code: 'TURMA_NOT_FOUND',
           message: 'Turma não encontrada para o curso informado',
         });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res, error?.message || 'Você não possui acesso a esta frequência.');
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return sendInstrutorScopeError(res);
       }
 
       res.status(500).json({

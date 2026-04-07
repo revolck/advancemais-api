@@ -17,6 +17,7 @@ import {
   VagaAreaSubareaError,
   UsuarioNaoEmpresaError,
 } from '@/modules/empresas/vagas/services/errors';
+import { syncExpiredPublishedVagas } from '@/modules/empresas/vagas/services/status-sync.service';
 import type {
   CreateVagaInput,
   UpdateVagaInput,
@@ -582,6 +583,11 @@ export const vagasService = {
     page?: number;
     pageSize?: number;
   }) => {
+    await syncExpiredPublishedVagas({
+      empresaUsuarioIds: params?.usuarioIds ?? (params?.usuarioId ? [params.usuarioId] : undefined),
+      vagaIds: params?.ids,
+    });
+
     const where: Prisma.EmpresasVagasWhereInput = {
       ...(params?.ids && params.ids.length > 0 ? { id: { in: params.ids } } : {}),
       ...(params?.status && params.status.length > 0
@@ -613,6 +619,8 @@ export const vagasService = {
     usuarioIds?: string[];
     status?: StatusDeVagas[];
   }) => {
+    await syncExpiredPublishedVagas({ vagaIds: [params.id] });
+
     const vaga = await prisma.empresasVagas.findFirst({
       where: {
         id: params.id,
@@ -628,6 +636,8 @@ export const vagasService = {
   },
 
   get: async (id: string) => {
+    await syncExpiredPublishedVagas({ vagaIds: [id] });
+
     const vaga = await prisma.empresasVagas.findFirst({
       where: { id, status: StatusDeVagas.PUBLICADO },
       ...includeEmpresa,
@@ -638,6 +648,9 @@ export const vagasService = {
 
   getBySlug: async (slug: string) => {
     if (!slug) return null;
+
+    await syncExpiredPublishedVagas();
+
     const normalizedSlug = slug.trim().toLowerCase();
     const vaga = await prisma.empresasVagas.findFirst({
       where: {

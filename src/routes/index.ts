@@ -23,6 +23,7 @@ import { requerimentosRoutes } from '@/modules/requerimentos/routes';
 import { notificacoesRoutes } from '@/modules/notificacoes/routes';
 import { recrutadorRoutes } from '@/modules/recrutador';
 import { entrevistasRoutes } from '@/modules/entrevistas';
+import { instrutorRoutes } from '@/modules/instrutor';
 import { setCacheHeaders, DEFAULT_TTL } from '@/utils/cache';
 import { logger } from '@/utils/logger';
 import { checkDatabaseHealth } from '@/utils/database-health';
@@ -1286,6 +1287,21 @@ if (recrutadorRoutes) {
   }
 } else {
   routesLogger.error({ feature: 'RecrutadorModule' }, '❌ recrutadorRoutes não está definido');
+}
+
+/**
+ * Módulo Instrutor
+ * /api/v1/instrutor
+ */
+if (instrutorRoutes) {
+  try {
+    router.use('/api/v1/instrutor', instrutorRoutes);
+    routesLogger.info({ feature: 'InstrutorModule' }, '✅ Módulo Instrutor registrado com sucesso');
+  } catch (error) {
+    routesLogger.error({ feature: 'InstrutorModule', err: error }, '❌ ERRO - Módulo Instrutor');
+  }
+} else {
+  routesLogger.error({ feature: 'InstrutorModule' }, '❌ instrutorRoutes não está definido');
 }
 
 /**

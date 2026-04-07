@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
+import { syncExpiredPublishedVagas } from '@/modules/empresas/vagas/services/status-sync.service';
 import { attachEnderecoResumo } from '@/modules/usuarios/utils/address';
 import {
   mergeUsuarioInformacoes,
@@ -450,6 +451,10 @@ const buildWhere = ({
 
 export const adminVagasService = {
   list: async (params: AdminVagasListQuery): Promise<AdminVagaListResult> => {
+    await syncExpiredPublishedVagas({
+      empresaUsuarioIds: params.empresaId ? [params.empresaId] : undefined,
+    });
+
     const { page, pageSize } = params;
     const where = buildWhere(params);
     const skip = (page - 1) * pageSize;
@@ -474,6 +479,8 @@ export const adminVagasService = {
   },
 
   get: async (id: string) => {
+    await syncExpiredPublishedVagas({ vagaIds: [id] });
+
     const vaga = await prisma.empresasVagas.findUnique({
       where: { id },
       select: vagaSelect,

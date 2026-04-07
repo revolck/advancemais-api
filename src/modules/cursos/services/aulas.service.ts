@@ -10,6 +10,14 @@ import {
 import { randomUUID } from 'crypto';
 
 import { prisma } from '@/config/prisma';
+import {
+  buildInstrutorScope,
+  canAccessCursoInScope,
+  canAccessOrigemInScope,
+  canAccessTurmaInScope,
+  hasFullTurmaScope,
+  type InstrutorScope,
+} from '@/modules/instrutor/services/instrutor-scope.service';
 import { logger } from '@/utils/logger';
 
 import { notificacoesHelper } from '../aulas/services/notificacoes-helper.service';
@@ -42,22 +50,25 @@ const ensureInstrutorPodeAcessarTurma = async (
   client: PrismaClientOrTx,
   cursoId: string,
   turmaId: string,
-  usuarioId: string,
+  scope: InstrutorScope,
 ) => {
   const turma = await client.cursosTurmas.findFirst({
     where: {
       id: turmaId,
       cursoId,
-      OR: [
-        { CursosTurmasAulas: { some: { instrutorId: usuarioId } } },
-        { CursosTurmasProvas: { some: { instrutorId: usuarioId, ativo: true } } },
-      ],
+      deletedAt: null,
     },
     select: { id: true },
   });
 
   if (!turma) {
-    const error = new Error('Instrutor só pode acessar conteúdos vinculados às próprias turmas');
+    const error = new Error('Turma não encontrada para o curso informado');
+    (error as any).code = 'TURMA_NOT_FOUND';
+    throw error;
+  }
+
+  if (!canAccessCursoInScope(scope, cursoId) || !canAccessTurmaInScope(scope, turmaId)) {
+    const error = new Error('Instrutor só pode acessar conteúdos dentro do próprio escopo');
     (error as any).code = 'FORBIDDEN';
     throw error;
   }
@@ -68,7 +79,7 @@ const ensureInstrutorPodeAcessarAula = async (
   cursoId: string,
   turmaId: string,
   aulaId: string,
-  usuarioId: string,
+  scope: InstrutorScope,
 ) => {
   const aula = await client.cursosTurmasAulas.findFirst({
     where: {
@@ -78,8 +89,7 @@ const ensureInstrutorPodeAcessarAula = async (
     },
     select: {
       id: true,
-      instrutorId: true,
-      CursosTurmas: { select: { instrutorId: true } },
+      turmaId: true,
     },
   });
 
@@ -89,11 +99,14 @@ const ensureInstrutorPodeAcessarAula = async (
     throw error;
   }
 
-  const vinculado = aula.instrutorId
-    ? aula.instrutorId === usuarioId
-    : aula.CursosTurmas?.instrutorId === usuarioId;
-
-  if (!vinculado) {
+  if (
+    !aula.turmaId ||
+    !canAccessOrigemInScope(scope, {
+      turmaId: aula.turmaId,
+      tipoOrigem: 'AULA',
+      origemId: aula.id,
+    })
+  ) {
     const error = new Error('Instrutor só pode acessar aulas vinculadas a ele');
     (error as any).code = 'FORBIDDEN';
     throw error;
@@ -376,7 +389,25 @@ export const aulasService = {
     await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
 
     if (actor?.role === Roles.INSTRUTOR && actor.id) {
-      await ensureInstrutorPodeAcessarTurma(prisma, cursoId, turmaId, actor.id);
+      const scope = await buildInstrutorScope(prisma, actor.id);
+      await ensureInstrutorPodeAcessarTurma(prisma, cursoId, turmaId, scope);
+
+      const aulasWhere: Prisma.CursosTurmasAulasWhereInput = {
+        turmaId,
+        ...(hasFullTurmaScope(scope, turmaId)
+          ? scope.blockedAulaIds.size > 0
+            ? { NOT: { id: { in: [...scope.blockedAulaIds] } } }
+            : {}
+          : { id: { in: [...scope.directAulaIds] } }),
+      };
+
+      const aulas = await prisma.cursosTurmasAulas.findMany({
+        where: aulasWhere,
+        orderBy: [{ ordem: 'asc' }, { criadoEm: 'asc' }],
+        ...aulaWithMateriaisInclude,
+      });
+
+      return (aulas as AulaWithMateriais[]).map(mapAula);
     }
 
     const aulas = await prisma.cursosTurmasAulas.findMany({
@@ -400,7 +431,8 @@ export const aulasService = {
     await ensureAulaBelongsToTurma(prisma, cursoId, turmaId, aulaId);
 
     if (actor?.role === Roles.INSTRUTOR && actor.id) {
-      await ensureInstrutorPodeAcessarAula(prisma, cursoId, turmaId, aulaId, actor.id);
+      const scope = await buildInstrutorScope(prisma, actor.id);
+      await ensureInstrutorPodeAcessarAula(prisma, cursoId, turmaId, aulaId, scope);
     }
 
     return fetchAula(prisma, aulaId);
@@ -528,7 +560,8 @@ export const aulasService = {
       const aulaInfo = await ensureAulaBelongsToTurma(tx, cursoId, turmaId, aulaId);
 
       if (actor?.role === Roles.INSTRUTOR && actor.id) {
-        await ensureInstrutorPodeAcessarAula(tx, cursoId, turmaId, aulaId, actor.id);
+        const scope = await buildInstrutorScope(tx, actor.id);
+        await ensureInstrutorPodeAcessarAula(tx, cursoId, turmaId, aulaId, scope);
       }
 
       if (data.moduloId) {
@@ -577,7 +610,8 @@ export const aulasService = {
       await ensureAulaBelongsToTurma(tx, cursoId, turmaId, aulaId);
 
       if (actor?.role === Roles.INSTRUTOR && actor.id) {
-        await ensureInstrutorPodeAcessarAula(tx, cursoId, turmaId, aulaId, actor.id);
+        const scope = await buildInstrutorScope(tx, actor.id);
+        await ensureInstrutorPodeAcessarAula(tx, cursoId, turmaId, aulaId, scope);
       }
 
       await tx.cursosTurmasAulas.delete({ where: { id: aulaId } });

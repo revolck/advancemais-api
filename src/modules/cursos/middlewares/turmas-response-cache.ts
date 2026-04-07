@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 
 import { generateCacheKey, getCache, invalidateCacheByPrefix, setCache } from '@/utils/cache';
@@ -15,6 +16,12 @@ const resolveTtl = (value: string | undefined, fallback: number) => {
 
 const TURMAS_HTTP_GET_CACHE_TTL = resolveTtl(process.env.CACHE_TTL_CURSOS_TURMAS_HTTP_GET, 30);
 
+const hashAuthContext = (authorization?: string, token?: string): string => {
+  const raw = `${authorization ?? ''}::${token ?? ''}`;
+  if (!raw.trim()) return 'ANON';
+  return crypto.createHash('sha256').update(raw).digest('hex').slice(0, 16);
+};
+
 const isCursoIdParamValid = (req: Request): boolean => {
   const cursoId = req.params?.cursoId;
   if (!cursoId || typeof cursoId !== 'string') {
@@ -29,6 +36,7 @@ const buildTurmasGetCacheKey = (req: Request): string =>
     {
       method: req.method,
       url: req.originalUrl,
+      auth: hashAuthContext(req.headers.authorization, req.cookies?.token),
       role: req.user?.role ?? 'ANON',
       userId: req.user?.id ?? 'ANON',
     },

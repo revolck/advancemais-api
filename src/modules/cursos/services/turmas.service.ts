@@ -11,6 +11,12 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { randomUUID } from 'crypto';
 
 import { prisma } from '@/config/prisma';
+import {
+  buildInstrutorScope,
+  canAccessCursoInScope,
+  canAccessTurmaInScope,
+  type InstrutorScope,
+} from '@/modules/instrutor/services/instrutor-scope.service';
 import { logger } from '@/utils/logger';
 
 import { notificacoesHelper } from '../aulas/services/notificacoes-helper.service';
@@ -96,7 +102,16 @@ async function countInscricoesAtivasPorTurma(turmaIds: string[]): Promise<Record
   return countMap;
 }
 
-const turmaSummarySelect = {
+const instrutorBasicSelect = {
+  id: true,
+  nomeCompleto: true,
+  email: true,
+  cpf: true,
+  codUsuario: true,
+  role: true,
+} as const;
+
+const turmaSummarySelect = Prisma.validator<Prisma.CursosTurmasSelect>()({
   id: true,
   codigo: true,
   nome: true,
@@ -130,7 +145,18 @@ const turmaSummarySelect = {
       email: true,
     },
   },
-} as const;
+  Usuarios: {
+    select: instrutorBasicSelect,
+  },
+  CursosTurmasInstrutores: {
+    select: {
+      Instrutor: {
+        select: instrutorBasicSelect,
+      },
+    },
+    orderBy: [{ criadoEm: 'asc' }],
+  },
+});
 
 const regrasAvaliacaoSelect = {
   mediaMinima: true,
@@ -144,17 +170,13 @@ const regrasAvaliacaoSelect = {
 
 const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
   include: {
+    Usuarios: {
+      select: instrutorBasicSelect,
+    },
     CursosTurmasInstrutores: {
       include: {
         Instrutor: {
-          select: {
-            id: true,
-            nomeCompleto: true,
-            email: true,
-            cpf: true,
-            codUsuario: true,
-            role: true,
-          },
+          select: instrutorBasicSelect,
         },
       },
       orderBy: [{ criadoEm: 'asc' }],
@@ -205,17 +227,13 @@ const turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()(
 
 const turmaDetailedWithoutInscricoesInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
   include: {
+    Usuarios: {
+      select: instrutorBasicSelect,
+    },
     CursosTurmasInstrutores: {
       include: {
         Instrutor: {
-          select: {
-            id: true,
-            nomeCompleto: true,
-            email: true,
-            cpf: true,
-            codUsuario: true,
-            role: true,
-          },
+          select: instrutorBasicSelect,
         },
       },
       orderBy: [{ criadoEm: 'asc' }],
@@ -240,17 +258,13 @@ const turmaDetailedWithoutInscricoesInclude = Prisma.validator<Prisma.CursosTurm
 
 const turmaLightInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
   include: {
+    Usuarios: {
+      select: instrutorBasicSelect,
+    },
     CursosTurmasInstrutores: {
       include: {
         Instrutor: {
-          select: {
-            id: true,
-            nomeCompleto: true,
-            email: true,
-            cpf: true,
-            codUsuario: true,
-            role: true,
-          },
+          select: instrutorBasicSelect,
         },
       },
       orderBy: [{ criadoEm: 'asc' }],
@@ -260,17 +274,13 @@ const turmaLightInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
 
 const turmaLightWithInscricoesInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
   include: {
+    Usuarios: {
+      select: instrutorBasicSelect,
+    },
     CursosTurmasInstrutores: {
       include: {
         Instrutor: {
-          select: {
-            id: true,
-            nomeCompleto: true,
-            email: true,
-            cpf: true,
-            codUsuario: true,
-            role: true,
-          },
+          select: instrutorBasicSelect,
         },
       },
       orderBy: [{ criadoEm: 'asc' }],
@@ -965,44 +975,29 @@ const getBlockedPeriodFieldsAfterStart = (
   return blockedFields;
 };
 
-const buildInstrutorTurmaAccessWhere = (usuarioId: string): Prisma.CursosTurmasWhereInput => ({
-  OR: [
-    {
-      CursosTurmasAulas: {
-        some: {
-          instrutorId: usuarioId,
-          deletedAt: null,
-        },
-      },
-    },
-    {
-      CursosTurmasProvas: {
-        some: {
-          instrutorId: usuarioId,
-          ativo: true,
-        },
-      },
-    },
-  ],
-});
-
 const ensureInstrutorPodeAcessarTurma = async (
   client: PrismaClientOrTx,
   cursoId: string,
   turmaId: string,
-  usuarioId: string,
+  scope: InstrutorScope,
 ) => {
   const turma = await client.cursosTurmas.findFirst({
     where: {
       id: turmaId,
       cursoId,
-      ...buildInstrutorTurmaAccessWhere(usuarioId),
+      deletedAt: null,
     },
     select: { id: true },
   });
 
   if (!turma) {
-    const error = new Error('Instrutor só pode acessar turmas vinculadas a conteúdos seus');
+    const error = new Error('Turma não encontrada para o curso informado');
+    (error as any).code = 'TURMA_NOT_FOUND';
+    throw error;
+  }
+
+  if (!canAccessCursoInScope(scope, cursoId) || !canAccessTurmaInScope(scope, turmaId)) {
+    const error = new Error('Instrutor só pode acessar turmas vinculadas ao próprio escopo');
     (error as any).code = 'FORBIDDEN';
     throw error;
   }
@@ -1254,7 +1249,7 @@ export const turmasService = {
       where.metodo = metodo;
     }
 
-    if (instrutorId) {
+    if (instrutorId && usuarioLogado?.role !== Roles.INSTRUTOR) {
       where.instrutorId = instrutorId;
     }
 
@@ -1265,6 +1260,8 @@ export const turmasService = {
         throw error;
       }
 
+      const scope = await buildInstrutorScope(prisma, usuarioLogado.id);
+
       if (instrutorId && instrutorId !== usuarioLogado.id) {
         const error = new Error(
           'Instrutor só pode listar turmas vinculadas aos próprios conteúdos',
@@ -1273,7 +1270,9 @@ export const turmasService = {
         throw error;
       }
 
-      Object.assign(where, buildInstrutorTurmaAccessWhere(usuarioLogado.id));
+      where.id = {
+        in: [...scope.accessibleTurmaIds],
+      };
     }
 
     const requestedPage = Math.max(page, 1);
@@ -1371,6 +1370,7 @@ export const turmasService = {
     const includeAlunos = options?.includeAlunos ?? false;
     const includeEstrutura = options?.includeEstrutura ?? true;
     try {
+      let instrutorAutenticadoId: string | null = null;
       const useParallelDetailedFetch = includeEstrutura && !includeAlunos;
       const includeArgs = includeEstrutura
         ? includeAlunos
@@ -1411,7 +1411,9 @@ export const turmasService = {
           throw error;
         }
 
-        await ensureInstrutorPodeAcessarTurma(prisma, cursoId, turmaId, usuarioLogado.id);
+        const scope = await buildInstrutorScope(prisma, usuarioLogado.id);
+        await ensureInstrutorPodeAcessarTurma(prisma, cursoId, turmaId, scope);
+        instrutorAutenticadoId = usuarioLogado.id;
       }
 
       const turma = cursosTurmasMapper.detailed(turmaRaw as any);
@@ -1440,8 +1442,8 @@ export const turmasService = {
             : (turma.vagasTotais ?? 0) - (inscricoesCount ?? 0),
       };
 
-      if (usuarioLogado?.role === Roles.INSTRUTOR && usuarioLogado.id) {
-        return filterTurmaForInstrutor(turmaComMetricas, usuarioLogado.id);
+      if (instrutorAutenticadoId) {
+        return filterTurmaForInstrutor(turmaComMetricas, instrutorAutenticadoId);
       }
 
       return turmaComMetricas;
@@ -1466,7 +1468,8 @@ export const turmasService = {
         throw error;
       }
 
-      await ensureInstrutorPodeAcessarTurma(prisma, cursoId, turmaId, usuarioLogado.id);
+      const scope = await buildInstrutorScope(prisma, usuarioLogado.id);
+      await ensureInstrutorPodeAcessarTurma(prisma, cursoId, turmaId, scope);
     }
 
     const inscricoes = await prisma.cursosTurmasInscricoes.findMany({

@@ -6,6 +6,15 @@ import {
 } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
+import {
+  buildInstrutorScope,
+  canAccessCursoInScope,
+  canAccessOrigemInScope,
+  canAccessTurmaInScope,
+  hasInstrutorScope,
+  hasFullTurmaScope,
+  type InstrutorScope,
+} from '@/modules/instrutor/services/instrutor-scope.service';
 import { logger } from '@/utils/logger';
 
 import {
@@ -17,6 +26,10 @@ import {
 const frequenciasLogger = logger.child({ module: 'CursosFrequenciaService' });
 
 type PrismaClientOrTx = Prisma.TransactionClient | typeof prisma;
+type FrequenciaViewer = {
+  userId?: string;
+  role?: string;
+};
 
 const ensureTurmaBelongsToCurso = async (
   client: PrismaClientOrTx,
@@ -102,6 +115,7 @@ const ensureFrequenciaBelongsToTurma = async (
       status: true,
       aulaId: true,
       justificativa: true,
+      observacoes: true,
     },
   });
 
@@ -163,6 +177,23 @@ const roleLabelMap: Record<string, string> = {
   ALUNO_CANDIDATO: 'Aluno/Candidato',
 };
 
+const buildEmptyFrequenciaListResult = (requestedPage = 1, requestedPageSize = 10) => {
+  const pageSize = Math.max(1, Math.min(200, requestedPageSize));
+  return {
+    items: [] as any[],
+    pagination: {
+      page: 1,
+      requestedPage,
+      pageSize,
+      total: 0,
+      totalPages: 1,
+      hasNext: false,
+      hasPrevious: false,
+      isPageAdjusted: false,
+    },
+  };
+};
+
 const toIsoStringOrNull = (value: Date | string | null | undefined) =>
   value ? new Date(value).toISOString() : null;
 
@@ -217,6 +248,110 @@ const decodeFrequenciaMeta = (observacoes: string | null | undefined) => {
       meta: null as FrequenciaMeta | null,
       observacoesLimpa: normalizeNullable(observacoes) ?? null,
     };
+  }
+};
+
+const getOrigemFromFrequenciaRecord = (frequencia: {
+  turmaId: string;
+  aulaId?: string | null;
+  observacoes?: string | null;
+}) => {
+  const { meta } = decodeFrequenciaMeta(frequencia.observacoes);
+
+  if (meta?.tipoOrigem && meta?.origemId) {
+    return {
+      turmaId: frequencia.turmaId,
+      tipoOrigem: meta.tipoOrigem,
+      origemId: meta.origemId,
+    };
+  }
+
+  if (frequencia.aulaId) {
+    return {
+      turmaId: frequencia.turmaId,
+      tipoOrigem: 'AULA' as const,
+      origemId: frequencia.aulaId,
+    };
+  }
+
+  return null;
+};
+
+const isFrequenciaRecordWithinInstrutorScope = (
+  scope: InstrutorScope | null,
+  frequencia: {
+    turmaId: string;
+    aulaId?: string | null;
+    observacoes?: string | null;
+  },
+) => {
+  if (!scope) return true;
+
+  const origem = getOrigemFromFrequenciaRecord(frequencia);
+  if (!origem) return false;
+
+  return canAccessOrigemInScope(scope, origem);
+};
+
+const isFrequenciaItemWithinInstrutorScope = (scope: InstrutorScope | null, item: any) => {
+  if (!scope) return true;
+  if (!item?.turmaId || !item?.tipoOrigem || !item?.origemId) return false;
+
+  return canAccessOrigemInScope(scope, {
+    turmaId: item.turmaId,
+    tipoOrigem: item.tipoOrigem,
+    origemId: item.origemId,
+  });
+};
+
+const ensureInstrutorTurmaScope = async (
+  client: PrismaClientOrTx,
+  cursoId: string,
+  turmaId: string,
+  viewer?: FrequenciaViewer,
+) => {
+  await ensureTurmaBelongsToCurso(client, cursoId, turmaId);
+
+  if (viewer?.role !== 'INSTRUTOR') {
+    return null;
+  }
+
+  if (!viewer.userId) {
+    const error = new Error('Instrutor sem contexto de autenticação válido');
+    (error as any).code = 'FORBIDDEN';
+    throw error;
+  }
+
+  const scope = await buildInstrutorScope(client, viewer.userId);
+  if (!canAccessCursoInScope(scope, cursoId) || !canAccessTurmaInScope(scope, turmaId)) {
+    const error = new Error('Você não possui acesso a esta frequência.');
+    (error as any).code = 'FORBIDDEN';
+    throw error;
+  }
+
+  return scope;
+};
+
+const ensureOrigemDentroDoEscopo = (
+  scope: InstrutorScope | null,
+  turmaId: string,
+  origem: {
+    tipoOrigem: TipoOrigemFrequencia;
+    origemId: string;
+  },
+) => {
+  if (!scope) return;
+
+  if (
+    !canAccessOrigemInScope(scope, {
+      turmaId,
+      tipoOrigem: origem.tipoOrigem,
+      origemId: origem.origemId,
+    })
+  ) {
+    const error = new Error('Você não possui acesso a esta frequência.');
+    (error as any).code = 'FORBIDDEN';
+    throw error;
   }
 };
 
@@ -942,33 +1077,30 @@ export const frequenciaService = {
       }
     }
 
+    const scope =
+      viewer?.role === 'INSTRUTOR'
+        ? viewer.userId
+          ? await buildInstrutorScope(prisma, viewer.userId)
+          : null
+        : null;
+
     if (viewer?.role === 'INSTRUTOR' && !viewer.userId) {
-      return {
-        items: [],
-        pagination: {
-          page: 1,
-          requestedPage: filters.page ?? 1,
-          pageSize: Math.max(1, Math.min(200, filters.pageSize ?? 10)),
-          total: 0,
-          totalPages: 1,
-          hasNext: false,
-          hasPrevious: false,
-          isPageAdjusted: false,
-        },
-      };
+      return buildEmptyFrequenciaListResult(filters.page ?? 1, filters.pageSize ?? 10);
+    }
+
+    if (scope && !hasInstrutorScope(scope)) {
+      return buildEmptyFrequenciaListResult(filters.page ?? 1, filters.pageSize ?? 10);
+    }
+
+    if (scope && filters.cursoId && !canAccessCursoInScope(scope, filters.cursoId)) {
+      return buildEmptyFrequenciaListResult(filters.page ?? 1, filters.pageSize ?? 10);
     }
 
     const turmaScopeWhere: Prisma.CursosTurmasWhereInput = {
       ...(filters.cursoId ? { cursoId: filters.cursoId } : {}),
       ...(turmaIdsFiltro?.length ? { id: { in: turmaIdsFiltro } } : {}),
-      ...(viewer?.role === 'INSTRUTOR'
-        ? {
-            OR: [
-              { instrutorId: viewer.userId },
-              { CursosTurmasInstrutores: { some: { instrutorId: viewer.userId } } },
-            ],
-          }
-        : {}),
+      ...(scope ? { id: { in: [...scope.accessibleTurmaIds] } } : {}),
+      deletedAt: null,
     };
 
     const turmasEscopo = await prisma.cursosTurmas.findMany({
@@ -988,19 +1120,7 @@ export const frequenciaService = {
     });
     const turmaIdsEscopo = turmasEscopo.map((item) => item.id);
     if (turmaIdsEscopo.length === 0) {
-      return {
-        items: [],
-        pagination: {
-          page: 1,
-          requestedPage: filters.page ?? 1,
-          pageSize: Math.max(1, Math.min(200, filters.pageSize ?? 10)),
-          total: 0,
-          totalPages: 1,
-          hasNext: false,
-          hasPrevious: false,
-          isPageAdjusted: false,
-        },
-      };
+      return buildEmptyFrequenciaListResult(filters.page ?? 1, filters.pageSize ?? 10);
     }
 
     const makeKey = (
@@ -1052,20 +1172,19 @@ export const frequenciaService = {
       frequenciasExistentes as FrequenciaWithRelations[],
     );
 
+    const frequenciasVisiveis = frequenciasEnriquecidas.filter((item) =>
+      isFrequenciaItemWithinInstrutorScope(scope, item),
+    );
+
     const existingKeys = new Set<string>();
     for (const frequencia of frequenciasExistentes) {
-      if (frequencia.aulaId) {
-        existingKeys.add(
-          makeKey(frequencia.turmaId, frequencia.inscricaoId, 'AULA', frequencia.aulaId),
-        );
-        continue;
-      }
-      const { meta } = decodeFrequenciaMeta(frequencia.observacoes);
-      if (meta?.tipoOrigem && meta?.origemId) {
-        existingKeys.add(
-          makeKey(frequencia.turmaId, frequencia.inscricaoId, meta.tipoOrigem, meta.origemId),
-        );
-      }
+      if (!isFrequenciaRecordWithinInstrutorScope(scope, frequencia)) continue;
+
+      const origem = getOrigemFromFrequenciaRecord(frequencia);
+      if (!origem) continue;
+      existingKeys.add(
+        makeKey(frequencia.turmaId, frequencia.inscricaoId, origem.tipoOrigem, origem.origemId),
+      );
     }
 
     const shouldBuildPendentes = !filters.status || filters.status === 'PENDENTE';
@@ -1198,6 +1317,16 @@ export const frequenciaService = {
           ) {
             continue;
           }
+          if (
+            scope &&
+            !canAccessOrigemInScope(scope, {
+              turmaId: aula.turmaId ?? '',
+              tipoOrigem: 'AULA',
+              origemId: aula.id,
+            })
+          ) {
+            continue;
+          }
           addOrigem({
             tipoOrigem: 'AULA',
             origemId: aula.id,
@@ -1220,6 +1349,16 @@ export const frequenciaService = {
           if (
             (filters.dataInicio && referencia.getTime() < filters.dataInicio.getTime()) ||
             (filters.dataFim && referencia.getTime() > filters.dataFim.getTime())
+          ) {
+            continue;
+          }
+          if (
+            scope &&
+            !canAccessOrigemInScope(scope, {
+              turmaId: avaliacao.turmaId ?? '',
+              tipoOrigem: avaliacao.tipo === 'PROVA' ? 'PROVA' : 'ATIVIDADE',
+              origemId: avaliacao.id,
+            })
           ) {
             continue;
           }
@@ -1468,7 +1607,7 @@ export const frequenciaService = {
       return haystack.includes(needle);
     };
 
-    const combinadas = [...frequenciasEnriquecidas, ...pendentes].filter((item) => {
+    const combinadas = [...frequenciasVisiveis, ...pendentes].filter((item) => {
       if (filters.alunoId && normalizedSearch && !searchInAlunoContext(item, normalizedSearch)) {
         return false;
       }
@@ -1550,8 +1689,9 @@ export const frequenciaService = {
       dataInicio?: Date;
       dataFim?: Date;
     } = {},
+    viewer?: FrequenciaViewer,
   ) {
-    await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
+    const scope = await ensureInstrutorTurmaScope(prisma, cursoId, turmaId, viewer);
 
     if (filters.inscricaoId) {
       await ensureInscricaoBelongsToTurma(prisma, turmaId, filters.inscricaoId);
@@ -1594,6 +1734,7 @@ export const frequenciaService = {
 
     const enriched = await enrichFrequenciasBatch(prisma, frequencias as FrequenciaWithRelations[]);
     const filtradas = enriched.filter((item) => {
+      if (!isFrequenciaItemWithinInstrutorScope(scope, item)) return false;
       if (filters.tipoOrigem && item.tipoOrigem !== filters.tipoOrigem) return false;
       if (filters.origemId && item.origemId !== filters.origemId) return false;
       if (filters.status === 'PENDENTE') return item.evidencia?.statusSugerido === 'PENDENTE';
@@ -1622,8 +1763,8 @@ export const frequenciaService = {
     };
   },
 
-  async get(cursoId: string, turmaId: string, frequenciaId: string) {
-    await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
+  async get(cursoId: string, turmaId: string, frequenciaId: string, viewer?: FrequenciaViewer) {
+    const scope = await ensureInstrutorTurmaScope(prisma, cursoId, turmaId, viewer);
 
     const frequencia = await prisma.cursosFrequenciaAlunos.findFirst({
       where: { id: frequenciaId, turmaId, CursosTurmas: { cursoId } },
@@ -1633,6 +1774,12 @@ export const frequenciaService = {
     if (!frequencia) {
       const error = new Error('Registro de frequência não encontrado para a turma informada');
       (error as any).code = 'FREQUENCIA_NOT_FOUND';
+      throw error;
+    }
+
+    if (!isFrequenciaRecordWithinInstrutorScope(scope, frequencia)) {
+      const error = new Error('Você não possui acesso a esta frequência.');
+      (error as any).code = 'FORBIDDEN';
       throw error;
     }
 
@@ -1661,9 +1808,10 @@ export const frequenciaService = {
       ip?: string;
       userAgent?: string;
     },
+    viewer?: FrequenciaViewer,
   ) {
     return prisma.$transaction(async (tx) => {
-      await ensureTurmaBelongsToCurso(tx, cursoId, turmaId);
+      const scope = await ensureInstrutorTurmaScope(tx, cursoId, turmaId, viewer);
       await ensureInscricaoBelongsToTurma(tx, turmaId, data.inscricaoId);
       const origem = await resolveOrigemData(tx, turmaId, {
         aulaId: data.aulaId,
@@ -1671,6 +1819,7 @@ export const frequenciaService = {
         origemId: data.origemId,
         origemTitulo: data.origemTitulo,
       });
+      ensureOrigemDentroDoEscopo(scope, turmaId, origem);
 
       const duplicate = await findDuplicateByOrigem(tx, turmaId, data.inscricaoId, {
         tipoOrigem: origem.tipoOrigem,
@@ -1772,10 +1921,14 @@ export const frequenciaService = {
     options?: {
       skipBaseValidation?: boolean;
     },
+    viewer?: FrequenciaViewer,
   ) {
+    let scope: InstrutorScope | null = null;
     if (!options?.skipBaseValidation) {
-      await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
+      scope = await ensureInstrutorTurmaScope(prisma, cursoId, turmaId, viewer);
       await ensureInscricaoBelongsToTurma(prisma, turmaId, data.inscricaoId);
+    } else if (viewer?.role === 'INSTRUTOR' && viewer.userId) {
+      scope = await buildInstrutorScope(prisma, viewer.userId);
     }
 
     const origem = await resolveOrigemData(prisma, turmaId, {
@@ -1783,6 +1936,7 @@ export const frequenciaService = {
       origemId: data.origemId,
       origemTitulo: data.origemTitulo ?? null,
     });
+    ensureOrigemDentroDoEscopo(scope, turmaId, origem);
 
     const existente = await findDuplicateByOrigem(prisma, turmaId, data.inscricaoId, {
       tipoOrigem: origem.tipoOrigem,
@@ -1806,6 +1960,7 @@ export const frequenciaService = {
           minimoMinutosParaPresenca: data.minimoMinutosParaPresenca,
         },
         context,
+        viewer,
       );
     }
 
@@ -1825,6 +1980,7 @@ export const frequenciaService = {
         observacoes: data.observacoes ?? null,
       },
       context,
+      viewer,
     );
   },
 
@@ -1849,8 +2005,9 @@ export const frequenciaService = {
       ip?: string;
       userAgent?: string;
     },
+    viewer?: FrequenciaViewer,
   ) {
-    await ensureTurmaBelongsToCurso(prisma, data.cursoId, data.turmaId);
+    await ensureInstrutorTurmaScope(prisma, data.cursoId, data.turmaId, viewer);
     await ensureInscricaoBelongsToAluno(prisma, alunoId, data.turmaId, data.inscricaoId);
 
     return this.upsertLancamento(
@@ -1870,11 +2027,24 @@ export const frequenciaService = {
       },
       context,
       { skipBaseValidation: true },
+      viewer,
     );
   },
 
-  async listHistoricoByFrequencia(cursoId: string, turmaId: string, frequenciaId: string) {
-    await ensureFrequenciaBelongsToTurma(prisma, cursoId, turmaId, frequenciaId);
+  async listHistoricoByFrequencia(
+    cursoId: string,
+    turmaId: string,
+    frequenciaId: string,
+    viewer?: FrequenciaViewer,
+  ) {
+    const scope = await ensureInstrutorTurmaScope(prisma, cursoId, turmaId, viewer);
+    const frequencia = await ensureFrequenciaBelongsToTurma(prisma, cursoId, turmaId, frequenciaId);
+
+    if (!isFrequenciaRecordWithinInstrutorScope(scope, frequencia)) {
+      const error = new Error('Você não possui acesso a esta frequência.');
+      (error as any).code = 'FORBIDDEN';
+      throw error;
+    }
 
     const logs = await prisma.auditoriaLogs.findMany({
       where: {
@@ -1902,7 +2072,11 @@ export const frequenciaService = {
     return logs.map(mapHistoricoFromAudit);
   },
 
-  async listHistoricoByFrequenciaForAluno(alunoId: string, frequenciaId: string) {
+  async listHistoricoByFrequenciaForAluno(
+    alunoId: string,
+    frequenciaId: string,
+    viewer?: FrequenciaViewer,
+  ) {
     const frequencia = await prisma.cursosFrequenciaAlunos.findFirst({
       where: {
         id: frequenciaId,
@@ -1931,6 +2105,7 @@ export const frequenciaService = {
       frequencia.CursosTurmas.cursoId,
       frequencia.turmaId,
       frequencia.id,
+      viewer,
     );
   },
 
@@ -1942,14 +2117,16 @@ export const frequenciaService = {
       tipoOrigem: TipoOrigemFrequencia;
       origemId: string;
     },
+    viewer?: FrequenciaViewer,
   ) {
-    await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
+    const scope = await ensureInstrutorTurmaScope(prisma, cursoId, turmaId, viewer);
     await ensureInscricaoBelongsToTurma(prisma, turmaId, naturalKey.inscricaoId);
 
     const origem = await resolveOrigemData(prisma, turmaId, {
       tipoOrigem: naturalKey.tipoOrigem,
       origemId: naturalKey.origemId,
     });
+    ensureOrigemDentroDoEscopo(scope, turmaId, origem);
 
     const frequencia = await findDuplicateByOrigem(prisma, turmaId, naturalKey.inscricaoId, {
       tipoOrigem: origem.tipoOrigem,
@@ -1960,7 +2137,7 @@ export const frequenciaService = {
       return [];
     }
 
-    return this.listHistoricoByFrequencia(cursoId, turmaId, frequencia.id);
+    return this.listHistoricoByFrequencia(cursoId, turmaId, frequencia.id, viewer);
   },
 
   async listHistoricoByNaturalKeyForAluno(
@@ -1972,15 +2149,16 @@ export const frequenciaService = {
       tipoOrigem: TipoOrigemFrequencia;
       origemId: string;
     },
+    viewer?: FrequenciaViewer,
   ) {
-    await ensureTurmaBelongsToCurso(prisma, params.cursoId, params.turmaId);
+    await ensureInstrutorTurmaScope(prisma, params.cursoId, params.turmaId, viewer);
     await ensureInscricaoBelongsToAluno(prisma, alunoId, params.turmaId, params.inscricaoId);
 
     return this.listHistoricoByNaturalKey(params.cursoId, params.turmaId, {
       inscricaoId: params.inscricaoId,
       tipoOrigem: params.tipoOrigem,
       origemId: params.origemId,
-    });
+    }, viewer);
   },
 
   async update(
@@ -2005,14 +2183,22 @@ export const frequenciaService = {
       ip?: string;
       userAgent?: string;
     },
+    viewer?: FrequenciaViewer,
   ) {
     return prisma.$transaction(async (tx) => {
+      const scope = await ensureInstrutorTurmaScope(tx, cursoId, turmaId, viewer);
       const frequenciaAtual = await ensureFrequenciaBelongsToTurma(
         tx,
         cursoId,
         turmaId,
         frequenciaId,
       );
+
+      if (!isFrequenciaRecordWithinInstrutorScope(scope, frequenciaAtual)) {
+        const error = new Error('Você não possui acesso a esta frequência.');
+        (error as any).code = 'FORBIDDEN';
+        throw error;
+      }
 
       const atualCompleta = (await tx.cursosFrequenciaAlunos.findFirst({
         where: { id: frequenciaId, turmaId, CursosTurmas: { cursoId } },
@@ -2046,6 +2232,7 @@ export const frequenciaService = {
           origemTitulo:
             data.origemTitulo === undefined ? (metaAtual?.origemTitulo ?? null) : data.origemTitulo,
         });
+        ensureOrigemDentroDoEscopo(scope, turmaId, origemResolvida);
 
         const duplicate = await findDuplicateByOrigem(
           tx,
@@ -2146,9 +2333,21 @@ export const frequenciaService = {
     });
   },
 
-  async remove(cursoId: string, turmaId: string, frequenciaId: string) {
+  async remove(
+    cursoId: string,
+    turmaId: string,
+    frequenciaId: string,
+    viewer?: FrequenciaViewer,
+  ) {
     return prisma.$transaction(async (tx) => {
-      await ensureFrequenciaBelongsToTurma(tx, cursoId, turmaId, frequenciaId);
+      const scope = await ensureInstrutorTurmaScope(tx, cursoId, turmaId, viewer);
+      const frequencia = await ensureFrequenciaBelongsToTurma(tx, cursoId, turmaId, frequenciaId);
+
+      if (!isFrequenciaRecordWithinInstrutorScope(scope, frequencia)) {
+        const error = new Error('Você não possui acesso a esta frequência.');
+        (error as any).code = 'FORBIDDEN';
+        throw error;
+      }
 
       await tx.cursosFrequenciaAlunos.delete({ where: { id: frequenciaId } });
 
@@ -2237,8 +2436,9 @@ export const frequenciaService = {
       page?: number;
       pageSize?: number;
     } = {},
+    viewer?: FrequenciaViewer,
   ) {
-    await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
+    const scope = await ensureInstrutorTurmaScope(prisma, cursoId, turmaId, viewer);
 
     const { periodo = 'TOTAL', anchorDate = new Date(), search, page = 1, pageSize = 10 } = filters;
 
@@ -2278,6 +2478,15 @@ export const frequenciaService = {
       where: {
         turmaId,
         deletedAt: null,
+        ...(scope
+          ? hasFullTurmaScope(scope, turmaId)
+            ? scope.blockedAulaIds.size > 0
+              ? { NOT: { id: { in: [...scope.blockedAulaIds] } } }
+              : {}
+            : scope.directAulaIds.size > 0
+              ? { id: { in: [...scope.directAulaIds] } }
+              : { id: { in: [] } }
+          : {}),
         ...(dataInicio && dataFim
           ? {
               OR: [
@@ -2325,48 +2534,80 @@ export const frequenciaService = {
       }),
     ]);
 
-    // Para cada inscrição, buscar contagens de frequência
-    // Nota: O enum CursosFrequenciaStatus tem: PRESENTE, AUSENTE, JUSTIFICADO, ATRASADO
-    const items = await Promise.all(
-      inscricoes.map(async (inscricao) => {
-        const frequenciaWhere: Prisma.CursosFrequenciaAlunosWhereInput = {
-          inscricaoId: inscricao.id,
-          turmaId,
-          ...(dataInicio && dataFim ? { dataReferencia: { gte: dataInicio, lte: dataFim } } : {}),
-        };
+    const frequenciasPage =
+      inscricoes.length > 0
+        ? await prisma.cursosFrequenciaAlunos.findMany({
+            where: {
+              turmaId,
+              inscricaoId: { in: inscricoes.map((inscricao) => inscricao.id) },
+              ...(dataInicio && dataFim
+                ? { dataReferencia: { gte: dataInicio, lte: dataFim } }
+                : {}),
+            },
+            include: frequenciaWithRelations.include,
+          })
+        : [];
 
-        const [presencas, ausencias, atrasados, justificadas] = await Promise.all([
-          prisma.cursosFrequenciaAlunos.count({
-            where: { ...frequenciaWhere, status: CursosFrequenciaStatus.PRESENTE },
-          }),
-          prisma.cursosFrequenciaAlunos.count({
-            where: { ...frequenciaWhere, status: CursosFrequenciaStatus.AUSENTE },
-          }),
-          prisma.cursosFrequenciaAlunos.count({
-            where: { ...frequenciaWhere, status: CursosFrequenciaStatus.ATRASADO },
-          }),
-          prisma.cursosFrequenciaAlunos.count({
-            where: { ...frequenciaWhere, status: CursosFrequenciaStatus.JUSTIFICADO },
-          }),
-        ]);
+    const frequenciasPageEnriched = (
+      await enrichFrequenciasBatch(prisma, frequenciasPage as FrequenciaWithRelations[])
+    ).filter((item) => isFrequenciaItemWithinInstrutorScope(scope, item));
 
-        const totalAulas = presencas + ausencias + atrasados + justificadas;
-        const taxaPresencaPct =
-          totalAulas > 0 ? Math.round(((presencas + atrasados) / totalAulas) * 100) : 0;
+    const frequenciasPorInscricao = new Map<
+      string,
+      {
+        presencas: number;
+        ausencias: number;
+        atrasados: number;
+        justificadas: number;
+      }
+    >();
 
-        return {
-          alunoId: inscricao.Usuarios.id,
-          alunoNome: inscricao.Usuarios.nomeCompleto,
-          alunoCodigo: inscricao.Usuarios.UsuariosInformation?.inscricao ?? null,
-          totalAulas,
-          presencas,
-          ausencias,
-          atrasados,
-          justificadas,
-          taxaPresencaPct,
-        };
-      }),
-    );
+    for (const frequencia of frequenciasPageEnriched) {
+      const bucket = frequenciasPorInscricao.get(frequencia.inscricaoId) ?? {
+        presencas: 0,
+        ausencias: 0,
+        atrasados: 0,
+        justificadas: 0,
+      };
+
+      if (frequencia.status === CursosFrequenciaStatus.PRESENTE) bucket.presencas += 1;
+      if (frequencia.status === CursosFrequenciaStatus.AUSENTE) bucket.ausencias += 1;
+      if (frequencia.status === CursosFrequenciaStatus.ATRASADO) bucket.atrasados += 1;
+      if (frequencia.status === CursosFrequenciaStatus.JUSTIFICADO) bucket.justificadas += 1;
+
+      frequenciasPorInscricao.set(frequencia.inscricaoId, bucket);
+    }
+
+    const items = inscricoes.map((inscricao) => {
+      const resumoInscricao = frequenciasPorInscricao.get(inscricao.id) ?? {
+        presencas: 0,
+        ausencias: 0,
+        atrasados: 0,
+        justificadas: 0,
+      };
+
+      const totalAulas =
+        resumoInscricao.presencas +
+        resumoInscricao.ausencias +
+        resumoInscricao.atrasados +
+        resumoInscricao.justificadas;
+      const taxaPresencaPct =
+        totalAulas > 0
+          ? Math.round(((resumoInscricao.presencas + resumoInscricao.atrasados) / totalAulas) * 100)
+          : 0;
+
+      return {
+        alunoId: inscricao.Usuarios.id,
+        alunoNome: inscricao.Usuarios.nomeCompleto,
+        alunoCodigo: inscricao.Usuarios.UsuariosInformation?.inscricao ?? null,
+        totalAulas,
+        presencas: resumoInscricao.presencas,
+        ausencias: resumoInscricao.ausencias,
+        atrasados: resumoInscricao.atrasados,
+        justificadas: resumoInscricao.justificadas,
+        taxaPresencaPct,
+      };
+    });
 
     return {
       totalAulasNoPeriodo,

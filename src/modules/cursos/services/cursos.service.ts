@@ -1,6 +1,7 @@
 import { CursoStatus, CursosStatusPadrao, Prisma } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
+import { buildInstrutorScope } from '@/modules/instrutor/services/instrutor-scope.service';
 import { logger } from '@/utils/logger';
 
 import { traduzirModelosPrisma } from '../utils/avaliacao';
@@ -34,9 +35,19 @@ const subcategoriaSelect = {
   descricao: true,
 } as const;
 
-const turmaSummarySelect = {
+const instrutorBasicSelect = {
+  id: true,
+  nomeCompleto: true,
+  email: true,
+  cpf: true,
+  codUsuario: true,
+  role: true,
+} as const;
+
+const turmaSummarySelect = Prisma.validator<Prisma.CursosTurmasSelect>()({
   id: true,
   codigo: true,
+  instrutorId: true,
   nome: true,
   estruturaTipo: true,
   turno: true,
@@ -52,7 +63,18 @@ const turmaSummarySelect = {
   editadoPorId: true,
   editadoEm: true,
   criadoEm: true,
-} as const;
+  Usuarios: {
+    select: instrutorBasicSelect,
+  },
+  CursosTurmasInstrutores: {
+    select: {
+      Instrutor: {
+        select: instrutorBasicSelect,
+      },
+    },
+    orderBy: [{ criadoEm: 'asc' }],
+  },
+});
 
 const regrasAvaliacaoSelect = {
   mediaMinima: true,
@@ -66,17 +88,13 @@ const regrasAvaliacaoSelect = {
 
 const _turmaDetailedInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
   include: {
+    Usuarios: {
+      select: instrutorBasicSelect,
+    },
     CursosTurmasInstrutores: {
       include: {
         Instrutor: {
-          select: {
-            id: true,
-            nomeCompleto: true,
-            email: true,
-            cpf: true,
-            codUsuario: true,
-            role: true,
-          },
+          select: instrutorBasicSelect,
         },
       },
       orderBy: [{ criadoEm: 'asc' }],
@@ -132,17 +150,13 @@ const buildPublicTurmaWhere = (referenceDate: Date): Prisma.CursosTurmasWhereInp
 
 const turmaPublicInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
   include: {
+    Usuarios: {
+      select: instrutorBasicSelect,
+    },
     CursosTurmasInstrutores: {
       include: {
         Instrutor: {
-          select: {
-            id: true,
-            nomeCompleto: true,
-            email: true,
-            cpf: true,
-            codUsuario: true,
-            role: true,
-          },
+          select: instrutorBasicSelect,
         },
       },
       orderBy: [{ criadoEm: 'asc' }],
@@ -195,30 +209,78 @@ type CourseListParams = {
   instrutorId?: string;
   includeTurmas?: boolean;
   includeExcluidos?: boolean;
+  viewer?: {
+    userId?: string | null;
+    role?: string | null;
+  };
+};
+
+type InstrutorBasicPayload = Prisma.UsuariosGetPayload<{ select: typeof instrutorBasicSelect }>;
+
+const mapInstrutorResumo = (usuario?: InstrutorBasicPayload | null) => {
+  if (!usuario?.id) {
+    return null;
+  }
+
+  return {
+    id: usuario.id,
+    codigo: usuario.codUsuario ?? null,
+    codUsuario: usuario.codUsuario ?? null,
+    nome: usuario.nomeCompleto ?? null,
+    nomeCompleto: usuario.nomeCompleto ?? null,
+    email: usuario.email ?? null,
+    cpf: usuario.cpf ?? null,
+    role: usuario.role ?? null,
+  };
+};
+
+const normalizeTurmaInstrutores = (turma: {
+  Usuarios?: InstrutorBasicPayload | null;
+  CursosTurmasInstrutores?: { Instrutor?: InstrutorBasicPayload | null }[] | null;
+}) => {
+  const instrutores = dedupeById(
+    [
+      mapInstrutorResumo(turma.Usuarios ?? null),
+      ...((turma.CursosTurmasInstrutores ?? []).map((rel) =>
+        mapInstrutorResumo(rel?.Instrutor ?? null),
+      ) ?? []),
+    ].filter(Boolean) as NonNullable<ReturnType<typeof mapInstrutorResumo>>[],
+  );
+
+  return {
+    instrutor: instrutores[0] ?? null,
+    instrutores,
+  };
 };
 
 const mapTurmaSummary = (
   turma: Prisma.CursosTurmasGetPayload<{ select: typeof turmaSummarySelect }>,
-) => ({
-  id: turma.id,
-  codigo: turma.codigo,
-  nome: turma.nome,
-  estruturaTipo: (turma as any).estruturaTipo ?? 'PADRAO',
-  turno: turma.turno,
-  metodo: turma.metodo,
-  status: turma.status,
-  vagasIlimitadas: (turma as any).vagasIlimitadas ?? false,
-  vagasTotais: turma.vagasTotais,
-  vagasDisponiveis: turma.vagasDisponiveis,
-  dataInicio: turma.dataInicio?.toISOString() ?? null,
-  dataFim: turma.dataFim?.toISOString() ?? null,
-  dataInscricaoInicio: turma.dataInscricaoInicio?.toISOString() ?? null,
-  dataInscricaoFim: turma.dataInscricaoFim?.toISOString() ?? null,
-  // Auditoria de edição
-  editadoPorId: (turma as any).editadoPorId ?? null,
-  editadoEm: (turma as any).editadoEm?.toISOString() ?? null,
-  criadoEm: (turma as any).criadoEm?.toISOString() ?? null,
-});
+) => {
+  const { instrutor, instrutores } = normalizeTurmaInstrutores(turma);
+
+  return {
+    id: turma.id,
+    codigo: turma.codigo,
+    nome: turma.nome,
+    estruturaTipo: (turma as any).estruturaTipo ?? 'PADRAO',
+    turno: turma.turno,
+    metodo: turma.metodo,
+    status: turma.status,
+    vagasIlimitadas: (turma as any).vagasIlimitadas ?? false,
+    vagasTotais: turma.vagasTotais,
+    vagasDisponiveis: turma.vagasDisponiveis,
+    dataInicio: turma.dataInicio?.toISOString() ?? null,
+    dataFim: turma.dataFim?.toISOString() ?? null,
+    dataInscricaoInicio: turma.dataInscricaoInicio?.toISOString() ?? null,
+    dataInscricaoFim: turma.dataInscricaoFim?.toISOString() ?? null,
+    instrutor,
+    instrutores,
+    // Auditoria de edição
+    editadoPorId: (turma as any).editadoPorId ?? null,
+    editadoEm: (turma as any).editadoEm?.toISOString() ?? null,
+    criadoEm: (turma as any).criadoEm?.toISOString() ?? null,
+  };
+};
 
 /**
  * Mapeia turma summary com contagem de inscrições ativas
@@ -465,28 +527,13 @@ const mapTurmaDetailed = (turma: TurmaDetailedPayload) => {
     return diff !== 0 ? diff : String(a.tipo).localeCompare(String(b.tipo));
   });
 
-  const instrutores = ((turma as any).CursosTurmasInstrutores ?? [])
-    .map((rel: any) => {
-      const u = rel.Instrutor;
-      if (!u) return null;
-      return {
-        id: u.id,
-        codigo: u.codUsuario ?? null,
-        nome: u.nomeCompleto ?? null,
-        email: u.email ?? null,
-        cpf: u.cpf ?? null,
-        role: u.role ?? null,
-      };
-    })
-    .filter(Boolean);
+  const { instrutor, instrutores } = normalizeTurmaInstrutores(turma);
 
   const instrutoresMap = new Map<string, { id: string; nome: string }>(
-    instrutores
-      .filter((instrutor: any) => Boolean(instrutor?.id))
-      .map((instrutor: any): [string, { id: string; nome: string }] => [
-        String(instrutor.id),
-        { id: String(instrutor.id), nome: String(instrutor.nome ?? '') },
-      ]),
+    instrutores.map((item): [string, { id: string; nome: string }] => [
+      String(item.id),
+      { id: String(item.id), nome: String(item.nome ?? item.nomeCompleto ?? '') },
+    ]),
   );
 
   const estrutura = {
@@ -556,6 +603,7 @@ const mapTurmaDetailed = (turma: TurmaDetailedPayload) => {
     editadoPorId: (turma as any).editadoPorId ?? null,
     editadoEm: (turma as any).editadoEm?.toISOString() ?? null,
     criadoEm: (turma as any).criadoEm?.toISOString() ?? null,
+    instrutor,
     instrutores,
     alunos: (turma.CursosTurmasInscricoes || (turma as any).inscricoes || []).map(
       (inscricao: any) => {
@@ -640,20 +688,7 @@ const mapTurmaPublic = (turma: TurmaPublicPayload) => {
     return diff !== 0 ? diff : String(a.tipo).localeCompare(String(b.tipo));
   });
 
-  const instrutores = ((turma as any).CursosTurmasInstrutores ?? [])
-    .map((rel: any) => {
-      const u = rel.Instrutor;
-      if (!u) return null;
-      return {
-        id: u.id,
-        codigo: u.codUsuario ?? null,
-        nome: u.nomeCompleto ?? null,
-        email: u.email ?? null,
-        cpf: u.cpf ?? null,
-        role: u.role ?? null,
-      };
-    })
-    .filter(Boolean);
+  const { instrutor, instrutores } = normalizeTurmaInstrutores(turma);
 
   return {
     id: turma.id,
@@ -670,6 +705,7 @@ const mapTurmaPublic = (turma: TurmaPublicPayload) => {
     dataFim: turma.dataFim?.toISOString() ?? null,
     dataInscricaoInicio: turma.dataInscricaoInicio?.toISOString() ?? null,
     dataInscricaoFim: turma.dataInscricaoFim?.toISOString() ?? null,
+    instrutor,
     instrutores,
     modulos: modulos.map(mapModulo),
     aulas: aulasStandalone.map(mapAula),
@@ -993,7 +1029,9 @@ export const cursosService = {
       instrutorId,
       includeTurmas,
       includeExcluidos,
+      viewer,
     } = params;
+    const isInstrutorScopedView = viewer?.role === 'INSTRUTOR';
 
     const where: Prisma.CursosWhereInput = {};
 
@@ -1015,6 +1053,49 @@ export const cursosService = {
 
     if (instrutorId) {
       where.CursosTurmas = { some: { instrutorId } };
+    }
+
+    let scopeTurmaIds: string[] | undefined;
+    if (viewer?.role === 'INSTRUTOR') {
+      if (!viewer.userId) {
+        return {
+          data: [],
+          pagination: {
+            page: 1,
+            requestedPage: page,
+            pageSize,
+            total: 0,
+            totalItems: 0,
+            totalPages: 1,
+            hasNext: false,
+            hasPrevious: false,
+            isPageAdjusted: false,
+          },
+          filters: {
+            applied: {
+              search: search ?? null,
+              statusPadrao: statusPadrao ?? [],
+              categoriaId: categoriaId ?? null,
+              subcategoriaId: subcategoriaId ?? null,
+              instrutorId: instrutorId ?? null,
+            },
+            summary: {
+              statusPadrao: [],
+            },
+          },
+          meta: {
+            empty: true,
+          },
+        };
+      }
+
+      const scope = await buildInstrutorScope(prisma, viewer.userId);
+      const cursoIds = [...scope.accessibleCursoIds];
+      scopeTurmaIds = [...scope.accessibleTurmaIds];
+
+      where.id = {
+        in: cursoIds,
+      };
     }
 
     if (search) {
@@ -1047,7 +1128,12 @@ export const cursosService = {
       include: {
         CursosCategorias: { select: categoriaSelect },
         CursosSubcategorias: { select: subcategoriaSelect },
-        CursosTurmas: includeTurmas ? { select: turmaSummarySelect } : undefined,
+        CursosTurmas: includeTurmas
+          ? {
+              where: scopeTurmaIds?.length ? { id: { in: scopeTurmaIds } } : undefined,
+              select: turmaSummarySelect,
+            }
+          : undefined,
         _count: { select: { CursosTurmas: true } },
       },
       orderBy: { criadoEm: 'desc' },
@@ -1122,7 +1208,9 @@ export const cursosService = {
           criadoEm: course.criadoEm.toISOString(),
           atualizadoEm: course.atualizadoEm.toISOString(),
           turmas: turmasComInscricoes,
-          turmasCount: course._count?.CursosTurmas ?? undefined,
+          turmasCount: isInstrutorScopedView
+            ? turmasComInscricoes.length
+            : (course._count?.CursosTurmas ?? undefined),
         };
       });
     } else {
@@ -1166,7 +1254,9 @@ export const cursosService = {
           criadoEm: course.criadoEm.toISOString(),
           atualizadoEm: course.atualizadoEm.toISOString(),
           turmas: undefined,
-          turmasCount: course._count?.CursosTurmas ?? undefined,
+          turmasCount: isInstrutorScopedView
+            ? undefined
+            : (course._count?.CursosTurmas ?? undefined),
         };
       });
     }
@@ -1211,6 +1301,17 @@ export const cursosService = {
         CursosTurmas: {
           where: { deletedAt: null },
           include: {
+            Usuarios: {
+              select: instrutorBasicSelect,
+            },
+            CursosTurmasInstrutores: {
+              include: {
+                Instrutor: {
+                  select: instrutorBasicSelect,
+                },
+              },
+              orderBy: [{ criadoEm: 'asc' }],
+            },
             CursosTurmasInscricoes: {
               include: {
                 Usuarios: {

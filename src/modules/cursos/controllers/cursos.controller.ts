@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { ZodError } from 'zod';
 import bcrypt from 'bcrypt';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { Roles } from '@prisma/client';
+import { Prisma, Roles, StatusInscricao } from '@prisma/client';
 
 import { prisma, retryOperation } from '@/config/prisma';
 import { logger } from '@/utils/logger';
@@ -36,6 +36,11 @@ import {
   alunosEntrevistasService,
 } from '../services/alunos-entrevistas.service';
 import { recrutadorVagasService } from '@/modules/usuarios/services/recrutador-vagas.service';
+import {
+  buildInstrutorScope,
+  hasInstrutorScope,
+  type InstrutorScope,
+} from '@/modules/instrutor/services/instrutor-scope.service';
 
 const parseCourseId = (raw: string): string | null => {
   // Validar se é UUID válido
@@ -101,6 +106,54 @@ const ensureAlunoScopeAccess = async (req: Request, res: Response, alunoId: stri
   }
 
   return true;
+};
+
+const buildEmptyAlunosListResponse = (page: number, limit: number) => ({
+  data: [] as any[],
+  pagination: {
+    page,
+    pageSize: limit,
+    total: 0,
+    totalPages: 0,
+  },
+});
+
+const getInstrutorAlunoTurmaIds = (scope: InstrutorScope) =>
+  Array.from(new Set([...scope.accessibleTurmaIds, ...scope.fullTurmaIds].filter(Boolean)));
+
+const buildAlunoInscricaoFilter = (params: {
+  turmaIds?: string[];
+  status?: StatusInscricao[];
+  cursoId?: string;
+  turmaId?: string;
+}): Prisma.CursosTurmasInscricoesWhereInput => ({
+  status: {
+    in:
+      params.status && params.status.length > 0
+        ? params.status
+        : [StatusInscricao.EM_ANDAMENTO, StatusInscricao.INSCRITO],
+  },
+  CursosTurmas: {
+    deletedAt: null,
+    ...(params.cursoId ? { cursoId: params.cursoId } : {}),
+    ...(params.turmaId ? { id: params.turmaId } : {}),
+    ...(params.turmaIds ? { id: { in: params.turmaIds } } : {}),
+  },
+});
+
+const compareInscricaoPrioridade = (
+  a: { status: StatusInscricao; criadoEm: Date },
+  b: { status: StatusInscricao; criadoEm: Date },
+) => {
+  const getPriority = (status: StatusInscricao) => {
+    if (status === StatusInscricao.EM_ANDAMENTO) return 0;
+    if (status === StatusInscricao.INSCRITO) return 1;
+    return 2;
+  };
+
+  const priorityDiff = getPriority(a.status) - getPriority(b.status);
+  if (priorityDiff !== 0) return priorityDiff;
+  return b.criadoEm.getTime() - a.criadoEm.getTime();
 };
 
 const normalizeDescricao = (value: unknown) => {
@@ -392,6 +445,7 @@ export class CursosController {
           includeTurmas: params.includeTurmas ? '1' : '0',
           includeExcluidos: params.includeExcluidos ? '1' : '0',
           role: req.user?.role ?? '',
+          userId: req.user?.id ?? '',
         },
         { excludeKeys: [] },
       );
@@ -413,6 +467,10 @@ export class CursosController {
             instrutorId: params.instrutorId,
             includeTurmas: params.includeTurmas,
             includeExcluidos,
+            viewer: {
+              userId: req.user?.id ?? null,
+              role: req.user?.role ?? null,
+            },
           }),
         CURSOS_LIST_CACHE_TTL,
       );
@@ -425,6 +483,22 @@ export class CursosController {
           code: 'VALIDATION_ERROR',
           message: 'Parâmetros de consulta inválidos',
           issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para listar cursos',
+        });
+      }
+
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return res.status(500).json({
+          success: false,
+          code: 'INSTRUTOR_SCOPE_ERROR',
+          message: 'Erro ao montar o escopo do instrutor',
         });
       }
 
@@ -811,6 +885,28 @@ export class CursosController {
       const cursoIdParam = params.cursoId;
       const turmaIdParam = params.turmaId || params.turma;
       const search = params.search;
+      let instrutorScope: InstrutorScope | null = null;
+      let instrutorTurmaIds: string[] | null = null;
+
+      if (req.user?.role === Roles.INSTRUTOR) {
+        if (!req.user.id) {
+          return res.status(403).json({
+            success: false,
+            code: 'FORBIDDEN',
+            message: 'Instrutor sem contexto de autenticação válido.',
+          });
+        }
+
+        instrutorScope = await buildInstrutorScope(prisma, req.user.id);
+        if (!hasInstrutorScope(instrutorScope)) {
+          return res.json(buildEmptyAlunosListResponse(page, limit));
+        }
+
+        instrutorTurmaIds = getInstrutorAlunoTurmaIds(instrutorScope);
+        if (instrutorTurmaIds.length === 0) {
+          return res.json(buildEmptyAlunosListResponse(page, limit));
+        }
+      }
 
       // ✅ Gerar chave de cache baseada nos parâmetros
       const cacheKey = generateCacheKey('cursos:alunos:list', {
@@ -822,6 +918,7 @@ export class CursosController {
         turmaId: turmaIdParam || '',
         search: search || '',
         role: req.user?.role ?? '',
+        userId: req.user?.id ?? '',
       });
 
       // Validar UUID do curso antes de buscar
@@ -862,30 +959,14 @@ export class CursosController {
           }
 
           // Construir filtros de inscrições
-          // SEMPRE filtrar apenas inscrições ATIVAS (EM_ANDAMENTO ou INSCRITO)
-          const inscricaoFilter: any = {
-            status: {
-              in:
-                statusInscricao && statusInscricao.length > 0
-                  ? statusInscricao
-                  : ['EM_ANDAMENTO', 'INSCRITO'], // Priorizar status ativos se não especificado
-            },
-          };
-
-          // Filtro por turma (e opcionalmente por curso)
-          if (cursoIdParam || turmaIdParam) {
-            const turmaFilter: any = {};
-
-            if (cursoIdParam) {
-              turmaFilter.cursoId = cursoIdParam;
-            }
-
-            if (turmaIdParam) {
-              turmaFilter.id = turmaIdParam;
-            }
-
-            inscricaoFilter.CursosTurmas = turmaFilter;
-          }
+          // SEMPRE filtrar apenas inscrições ATIVAS (EM_ANDAMENTO ou INSCRITO),
+          // respeitando o escopo do instrutor quando aplicável.
+          const inscricaoFilter = buildAlunoInscricaoFilter({
+            turmaIds: instrutorTurmaIds ?? undefined,
+            status: statusInscricao,
+            cursoId: cursoIdParam,
+            turmaId: turmaIdParam,
+          });
 
           // Aplicar filtro de inscrições no WHERE
           where.CursosTurmasInscricoes = {
@@ -944,37 +1025,6 @@ export class CursosController {
                         criadoEm: 'desc',
                       },
                     },
-                    CursosTurmasInscricoes: {
-                      where: inscricaoFilter,
-                      select: {
-                        id: true,
-                        status: true,
-                        criadoEm: true,
-                        CursosTurmas: {
-                          select: {
-                            id: true,
-                            nome: true,
-                            codigo: true,
-                            status: true,
-                            dataInicio: true,
-                            dataFim: true,
-                            Cursos: {
-                              select: {
-                                id: true,
-                                nome: true,
-                                codigo: true,
-                              },
-                            },
-                          },
-                        },
-                      },
-                      // ✅ Trazer apenas 1 inscrição (a mais recente)
-                      // A priorização por status será feita no processamento
-                      take: 1,
-                      orderBy: {
-                        criadoEm: 'desc',
-                      },
-                    },
                   },
                   skip,
                   take: limit,
@@ -992,14 +1042,60 @@ export class CursosController {
             1500, // 1.5s entre tentativas
           );
 
+          const alunoIds = alunos.map((aluno) => aluno.id);
+          const inscricoes = await retryOperation(
+            async () => {
+              if (alunoIds.length === 0) return [];
+
+              return prisma.cursosTurmasInscricoes.findMany({
+                where: {
+                  alunoId: { in: alunoIds },
+                  ...inscricaoFilter,
+                },
+                select: {
+                  id: true,
+                  alunoId: true,
+                  status: true,
+                  criadoEm: true,
+                  CursosTurmas: {
+                    select: {
+                      id: true,
+                      nome: true,
+                      codigo: true,
+                      status: true,
+                      dataInicio: true,
+                      dataFim: true,
+                      Cursos: {
+                        select: {
+                          id: true,
+                          nome: true,
+                          codigo: true,
+                        },
+                      },
+                    },
+                  },
+                },
+                orderBy: [{ criadoEm: 'desc' }],
+              });
+            },
+            3,
+            1500,
+          );
+
+          const inscricoesPorAluno = new Map<string, typeof inscricoes>();
+          for (const inscricao of inscricoes) {
+            const bucket = inscricoesPorAluno.get(inscricao.alunoId) ?? [];
+            bucket.push(inscricao);
+            inscricoesPorAluno.set(inscricao.alunoId, bucket);
+          }
+
           // ✅ Processar dados SEM calcular progresso (evita N+1 queries)
           // O progresso pode ser calculado no frontend ou em um endpoint separado se necessário
           const data = alunos.map((aluno) => {
-            // Buscar inscrição ATIVA (priorizando EM_ANDAMENTO > INSCRITO)
-            const inscricaoAtiva =
-              aluno.CursosTurmasInscricoes.find((i) => i.status === 'EM_ANDAMENTO') ||
-              aluno.CursosTurmasInscricoes.find((i) => i.status === 'INSCRITO') ||
-              aluno.CursosTurmasInscricoes[0];
+            const inscricoesAluno = (inscricoesPorAluno.get(aluno.id) ?? []).sort(
+              compareInscricaoPrioridade,
+            );
+            const inscricaoAtiva = inscricoesAluno[0] ?? null;
 
             return {
               id: aluno.id,
@@ -1067,6 +1163,14 @@ export class CursosController {
         });
       }
 
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return res.status(500).json({
+          success: false,
+          code: 'INSTRUTOR_SCOPE_ERROR',
+          message: 'Não foi possível montar o escopo do instrutor.',
+        });
+      }
+
       // Logging detalhado do erro
       logger.error('❌ Erro ao listar alunos:', {
         message: error?.message,
@@ -1111,6 +1215,8 @@ export class CursosController {
   static getAlunoById = async (req: Request, res: Response) => {
     try {
       const { alunoId } = req.params;
+      let instrutorScope: InstrutorScope | null = null;
+      let instrutorTurmaIds: string[] | null = null;
 
       // Validar UUID
       if (!parseAlunoId(alunoId)) {
@@ -1123,6 +1229,34 @@ export class CursosController {
 
       if (!(await ensureAlunoScopeAccess(req, res, alunoId))) {
         return;
+      }
+
+      if (req.user?.role === Roles.INSTRUTOR) {
+        if (!req.user.id) {
+          return res.status(403).json({
+            success: false,
+            code: 'FORBIDDEN',
+            message: 'Instrutor sem contexto de autenticação válido.',
+          });
+        }
+
+        instrutorScope = await buildInstrutorScope(prisma, req.user.id);
+        if (!hasInstrutorScope(instrutorScope)) {
+          return res.status(403).json({
+            success: false,
+            code: 'FORBIDDEN',
+            message: 'Você não possui acesso a este aluno.',
+          });
+        }
+
+        instrutorTurmaIds = getInstrutorAlunoTurmaIds(instrutorScope);
+        if (instrutorTurmaIds.length === 0) {
+          return res.status(403).json({
+            success: false,
+            code: 'FORBIDDEN',
+            message: 'Você não possui acesso a este aluno.',
+          });
+        }
       }
 
       // Buscar aluno com TODAS as inscrições
@@ -1178,6 +1312,14 @@ export class CursosController {
                 },
               },
               CursosTurmasInscricoes: {
+                where: instrutorTurmaIds
+                  ? {
+                      CursosTurmas: {
+                        id: { in: instrutorTurmaIds },
+                        deletedAt: null,
+                      },
+                    }
+                  : undefined,
                 select: {
                   id: true,
                   status: true,
@@ -1227,6 +1369,14 @@ export class CursosController {
           success: false,
           code: 'ALUNO_NOT_FOUND',
           message: 'Aluno não encontrado ou não possui role de ALUNO_CANDIDATO.',
+        });
+      }
+
+      if (instrutorScope && aluno.CursosTurmasInscricoes.length === 0) {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: 'Você não possui acesso a este aluno.',
         });
       }
 
@@ -1304,6 +1454,14 @@ export class CursosController {
         data: response,
       });
     } catch (error: any) {
+      if (error?.code === 'INSTRUTOR_SCOPE_ERROR') {
+        return res.status(500).json({
+          success: false,
+          code: 'INSTRUTOR_SCOPE_ERROR',
+          message: 'Não foi possível montar o escopo do instrutor.',
+        });
+      }
+
       logger.error(
         {
           alunoId: req.params.alunoId,

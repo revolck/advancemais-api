@@ -1,5 +1,6 @@
 import {
   Prisma,
+  CursosAvaliacaoTipo,
   CursosLocalProva,
   CursosNotasTipo,
   AuditoriaCategoria,
@@ -9,6 +10,14 @@ import {
 } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
+import {
+  buildInstrutorScope,
+  canAccessCursoInScope,
+  canAccessOrigemInScope,
+  canAccessTurmaInScope,
+  hasFullTurmaScope,
+  type InstrutorScope,
+} from '@/modules/instrutor/services/instrutor-scope.service';
 import { logger } from '@/utils/logger';
 import { auditoriaService } from '@/modules/auditoria/services/auditoria.service';
 import { notificacoesHelper } from '../aulas/services/notificacoes-helper.service';
@@ -38,42 +47,28 @@ const turmaJaFoiIniciada = (turma: {
   );
 };
 
-const buildInstrutorTurmaProvasWhere = (usuarioId: string): Prisma.CursosTurmasWhereInput => ({
-  OR: [
-    {
-      CursosTurmasProvas: {
-        some: {
-          instrutorId: usuarioId,
-        },
-      },
-    },
-    {
-      CursosTurmasAulas: {
-        some: {
-          instrutorId: usuarioId,
-          deletedAt: null,
-        },
-      },
-    },
-  ],
-});
-
 const ensureInstrutorPodeAcessarTurma = async (
   client: PrismaClientOrTx,
   cursoId: string,
   turmaId: string,
-  usuarioId: string,
+  scope: InstrutorScope,
 ) => {
   const turma = await client.cursosTurmas.findFirst({
     where: {
       id: turmaId,
       cursoId,
-      ...buildInstrutorTurmaProvasWhere(usuarioId),
+      deletedAt: null,
     },
     select: { id: true },
   });
 
   if (!turma) {
+    const error = new Error('Turma não encontrada para o curso informado');
+    (error as any).code = 'TURMA_NOT_FOUND';
+    throw error;
+  }
+
+  if (!canAccessCursoInScope(scope, cursoId) || !canAccessTurmaInScope(scope, turmaId)) {
     const error = new Error('Instrutor só pode acessar provas de turmas vinculadas a ele');
     (error as any).code = 'FORBIDDEN';
     throw error;
@@ -83,23 +78,14 @@ const ensureInstrutorPodeAcessarTurma = async (
 const ensureInstrutorPodeAcessarProva = async (
   client: PrismaClientOrTx,
   provaId: string,
-  usuarioId: string,
+  scope: InstrutorScope,
 ) => {
   const prova = await client.cursosTurmasProvas.findUnique({
     where: { id: provaId },
     select: {
       id: true,
-      instrutorId: true,
-      CursosTurmas: {
-        select: {
-          instrutorId: true,
-          CursosTurmasInstrutores: {
-            where: { instrutorId: usuarioId },
-            select: { id: true },
-            take: 1,
-          },
-        },
-      },
+      turmaId: true,
+      tipo: true,
     },
   });
 
@@ -109,13 +95,14 @@ const ensureInstrutorPodeAcessarProva = async (
     throw error;
   }
 
-  const vinculado =
-    prova.instrutorId === usuarioId ||
-    (!prova.instrutorId &&
-      (prova.CursosTurmas?.instrutorId === usuarioId ||
-        (prova.CursosTurmas?.CursosTurmasInstrutores?.length ?? 0) > 0));
-
-  if (!vinculado) {
+  if (
+    !prova.turmaId ||
+    !canAccessOrigemInScope(scope, {
+      turmaId: prova.turmaId,
+      tipoOrigem: prova.tipo === CursosAvaliacaoTipo.PROVA ? 'PROVA' : 'ATIVIDADE',
+      origemId: prova.id,
+    })
+  ) {
     const error = new Error('Instrutor só pode acessar provas vinculadas a ele');
     (error as any).code = 'FORBIDDEN';
     throw error;
@@ -310,6 +297,12 @@ export const provasService = {
     await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
 
     const turmaIdFiltro = filters?.turmaId || turmaId;
+    let scope: InstrutorScope | null = null;
+
+    // Construir where clause com filtros
+    const where: Prisma.CursosTurmasProvasWhereInput = {
+      turmaId: turmaIdFiltro,
+    };
 
     if (usuarioLogado?.role === Roles.INSTRUTOR) {
       if (!usuarioLogado.id) {
@@ -318,13 +311,17 @@ export const provasService = {
         throw error;
       }
 
-      await ensureInstrutorPodeAcessarTurma(prisma, cursoId, turmaIdFiltro, usuarioLogado.id);
-    }
+      scope = await buildInstrutorScope(prisma, usuarioLogado.id);
+      await ensureInstrutorPodeAcessarTurma(prisma, cursoId, turmaIdFiltro, scope);
 
-    // Construir where clause com filtros
-    const where: Prisma.CursosTurmasProvasWhereInput = {
-      turmaId: turmaIdFiltro,
-    };
+      if (hasFullTurmaScope(scope, turmaIdFiltro)) {
+        if (scope.blockedAvaliacaoIds.size > 0) {
+          where.NOT = { id: { in: [...scope.blockedAvaliacaoIds] } };
+        }
+      } else {
+        where.id = { in: [...scope.directAvaliacaoIds] };
+      }
+    }
 
     // Filtro de busca por título
     if (filters?.search) {
@@ -342,21 +339,6 @@ export const provasService = {
     // Filtro de tipo (PROVA ou ATIVIDADE)
     if (filters?.tipo) {
       where.tipo = filters.tipo as any;
-    }
-
-    if (usuarioLogado?.role === Roles.INSTRUTOR && usuarioLogado.id) {
-      where.OR = [
-        { instrutorId: usuarioLogado.id },
-        {
-          instrutorId: null,
-          CursosTurmas: {
-            OR: [
-              { instrutorId: usuarioLogado.id },
-              { CursosTurmasInstrutores: { some: { instrutorId: usuarioLogado.id } } },
-            ],
-          },
-        },
-      ];
     }
 
     const provas = await prisma.cursosTurmasProvas.findMany({
@@ -433,7 +415,8 @@ export const provasService = {
         throw error;
       }
 
-      await ensureInstrutorPodeAcessarProva(prisma, provaId, usuarioLogado.id);
+      const scope = await buildInstrutorScope(prisma, usuarioLogado.id);
+      await ensureInstrutorPodeAcessarProva(prisma, provaId, scope);
     }
 
     return fetchProva(prisma, provaId);
@@ -453,7 +436,8 @@ export const provasService = {
         throw error;
       }
 
-      await ensureInstrutorPodeAcessarProva(prisma, provaId, usuarioLogado.id);
+      const scope = await buildInstrutorScope(prisma, usuarioLogado.id);
+      await ensureInstrutorPodeAcessarProva(prisma, provaId, scope);
     }
 
     return fetchProva(prisma, provaId);
@@ -683,7 +667,8 @@ export const provasService = {
           throw error;
         }
 
-        await ensureInstrutorPodeAcessarProva(tx, provaId, usuarioLogado.id);
+        const scope = await buildInstrutorScope(tx, usuarioLogado.id);
+        await ensureInstrutorPodeAcessarProva(tx, provaId, scope);
       }
 
       if (data.moduloId) {
@@ -732,7 +717,8 @@ export const provasService = {
           throw error;
         }
 
-        await ensureInstrutorPodeAcessarProva(tx, provaId, usuarioLogado.id);
+        const scope = await buildInstrutorScope(tx, usuarioLogado.id);
+        await ensureInstrutorPodeAcessarProva(tx, provaId, scope);
       }
 
       await tx.cursosTurmasProvas.delete({ where: { id: provaId } });

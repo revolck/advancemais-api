@@ -10,8 +10,11 @@ import {
   StatusInscricao,
 } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { assertTestSeedEnvironment } from './assert-test-seed';
 
 export async function seedCursos(prisma?: PrismaClient) {
+  assertTestSeedEnvironment('seed-cursos');
+
   const client = prisma || new PrismaClient();
   console.log('🌱 Iniciando seed de cursos e turmas...');
 

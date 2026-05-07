@@ -1,4 +1,10 @@
-import { CursoStatus, CursosMetodos, CursosTurnos, StatusInscricao } from '@prisma/client';
+import {
+  CursoStatus,
+  CursosAtividadeTipo,
+  CursosMetodos,
+  CursosTurnos,
+  StatusInscricao,
+} from '@prisma/client';
 import { z } from 'zod';
 
 const uuid = z.string().uuid('Identificador inválido');
@@ -96,6 +102,131 @@ const turmaEstruturaSchema = z.object({
   modules: z.array(turmaEstruturaModuleSchema).default([]),
   standaloneItems: z.array(turmaEstruturaItemSchema).default([]),
 });
+
+const horarioSchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Horário inválido. Use o formato HH:mm');
+
+const itemStatusSchema = z.enum(['RASCUNHO', 'PUBLICADA']);
+
+const appendPlacementSchema = z.object({
+  moduleId: uuid.nullish(),
+  afterItemId: uuid.nullish(),
+});
+
+const appendTurmaEstruturaItemPayloadSchema = z
+  .object({
+    titulo: z.string().trim().min(3).max(255),
+    descricao: z.string().trim().max(5000).nullish(),
+    status: itemStatusSchema.optional().default('RASCUNHO'),
+    dataInicio: requiredDate,
+    dataFim: optionalDate,
+    horaInicio: horarioSchema.optional(),
+    horaFim: horarioSchema.optional(),
+    horaTermino: horarioSchema.optional(),
+    obrigatoria: z.preprocess(parseBoolean, z.boolean()).optional().default(true),
+    instrutorId: uuid.optional(),
+    instrutorIds: z.array(uuid).max(20).optional(),
+    modalidade: z.enum(['ONLINE', 'PRESENCIAL', 'AO_VIVO', 'SEMIPRESENCIAL']).optional(),
+    tipoLink: z.enum(['YOUTUBE', 'MEET']).optional(),
+    youtubeUrl: z.string().trim().url().optional(),
+    urlVideo: z.string().trim().url().optional(),
+    sala: z.string().trim().max(100).optional(),
+    duracaoMinutos: z.coerce.number().int().positive().optional(),
+    gravarAula: z.preprocess(parseBoolean, z.boolean()).optional(),
+    apenasMateriaisComplementares: z.preprocess(parseBoolean, z.boolean()).optional(),
+    valePonto: z.preprocess(parseBoolean, z.boolean()).optional().default(true),
+    peso: z.coerce.number().min(0).max(10).optional(),
+    recuperacaoFinal: z.preprocess(parseBoolean, z.boolean()).optional().default(false),
+    tipoAtividade: z.nativeEnum(CursosAtividadeTipo).optional().nullable(),
+  })
+  .superRefine((item, ctx) => {
+    if (
+      item.instrutorIds?.length &&
+      item.instrutorId &&
+      !item.instrutorIds.includes(item.instrutorId)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['instrutorId'],
+        message: 'instrutorId deve estar contido em instrutorIds quando ambos forem enviados',
+      });
+    }
+
+    if (item.dataFim && item.dataFim < item.dataInicio) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dataFim'],
+        message: 'Data de término deve ser posterior ou igual à data de início',
+      });
+    }
+  });
+
+export const syncTurmaInstrutoresSchema = z.object({
+  instrutorIds: z.array(uuid).max(50).default([]),
+});
+
+export const appendTurmaEstruturaItemSchema = z
+  .object({
+    type: z.enum(['AULA', 'PROVA', 'ATIVIDADE']),
+    placement: appendPlacementSchema.default({ moduleId: null, afterItemId: null }),
+    item: appendTurmaEstruturaItemPayloadSchema,
+  })
+  .superRefine((value, ctx) => {
+    const item = value.item;
+
+    if (value.type === 'AULA') {
+      if (!item.modalidade) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['item', 'modalidade'],
+          message: 'modalidade é obrigatória para aulas',
+        });
+      }
+
+      if (item.horaTermino) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['item', 'horaTermino'],
+          message: 'horaTermino não deve ser usado em aulas. Use horaFim',
+        });
+      }
+    }
+
+    if (value.type === 'PROVA' || value.type === 'ATIVIDADE') {
+      if (item.horaFim) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['item', 'horaFim'],
+          message: 'horaFim não deve ser usado em provas/atividades. Use horaTermino',
+        });
+      }
+
+      if ((item.valePonto ?? true) && item.peso === undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['item', 'peso'],
+          message: 'peso é obrigatório quando a avaliação vale ponto',
+        });
+      }
+    }
+
+    if (value.type === 'PROVA' && item.tipoAtividade) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['item', 'tipoAtividade'],
+        message: 'tipoAtividade só pode ser usado em itens do tipo ATIVIDADE',
+      });
+    }
+
+    if (value.type === 'ATIVIDADE' && item.recuperacaoFinal) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['item', 'recuperacaoFinal'],
+        message: 'recuperacaoFinal só pode ser usado em itens do tipo PROVA',
+      });
+    }
+  });
 
 const applyDateValidations = <Schema extends z.ZodTypeAny>(schema: Schema) =>
   schema.superRefine((value, ctx) => {

@@ -4,8 +4,11 @@
 
 import { PrismaClient, Roles, UsuariosCurriculos, EmpresasCandidatos } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { assertTestSeedEnvironment } from './assert-test-seed';
 
 export async function seedCurriculosCandidaturas(prisma?: PrismaClient) {
+  assertTestSeedEnvironment('seed-curriculos-candidaturas');
+
   const client = prisma || new PrismaClient();
   console.log('🌱 Iniciando seed de currículos e candidaturas...');
 

@@ -326,24 +326,35 @@ export class AdminService {
       status: z.string().optional(),
       role: z.string().optional(),
       tipoUsuario: z.string().optional(),
+      search: z.string().optional(),
       cidade: z.string().optional(),
       estado: z.string().optional(),
     });
 
-    const { page, limit, status, role, tipoUsuario, cidade, estado } = querySchema.parse(query);
+    const { page, limit, status, role, tipoUsuario, search, cidade, estado } =
+      querySchema.parse(query);
     const pageSize = Math.min(Number(limit) || 50, 100);
     const skip = (page - 1) * pageSize;
 
     // Construir filtros dinamicamente
     const where: Prisma.UsuariosWhereInput = {};
     const statusFilter = this.getStatusFilter(status);
+    const roleFilter = this.getRoleFilter(role);
     const tipoUsuarioFilter = this.getTipoUsuarioFilter(tipoUsuario);
+    const searchTerm = search?.trim();
+
+    if (searchTerm && searchTerm.length < 3) {
+      throw Object.assign(new Error('Busca deve conter pelo menos 3 caracteres'), {
+        statusCode: 400,
+        code: 'SEARCH_TERM_TOO_SHORT',
+      });
+    }
 
     // Se o usuário for PEDAGOGICO, filtrar apenas ALUNO_CANDIDATO e INSTRUTOR
     if (options?.userRole === Roles.PEDAGOGICO) {
       // PEDAGOGICO só pode ver ALUNO_CANDIDATO e INSTRUTOR
       // Se tentar filtrar por outra role, não retornar nada
-      if (role && role !== Roles.ALUNO_CANDIDATO && role !== Roles.INSTRUTOR) {
+      if (roleFilter && roleFilter !== Roles.ALUNO_CANDIDATO && roleFilter !== Roles.INSTRUTOR) {
         return {
           message: 'Lista de usuários',
           usuarios: [],
@@ -362,7 +373,7 @@ export class AdminService {
     } else if (options?.userRole === Roles.SETOR_DE_VAGAS) {
       // SETOR_DE_VAGAS só pode ver EMPRESA e ALUNO_CANDIDATO (com currículos)
       // Se tentar filtrar por outra role, não retornar nada
-      if (role && role !== Roles.EMPRESA && role !== Roles.ALUNO_CANDIDATO) {
+      if (roleFilter && roleFilter !== Roles.EMPRESA && roleFilter !== Roles.ALUNO_CANDIDATO) {
         return {
           message: 'Lista de usuários',
           usuarios: [],
@@ -375,9 +386,9 @@ export class AdminService {
         };
       }
       // Se filtrar apenas por EMPRESA, retornar apenas empresas
-      if (role === Roles.EMPRESA) {
+      if (roleFilter === Roles.EMPRESA) {
         where.role = Roles.EMPRESA;
-      } else if (role === Roles.ALUNO_CANDIDATO) {
+      } else if (roleFilter === Roles.ALUNO_CANDIDATO) {
         // Se filtrar apenas por ALUNO_CANDIDATO, retornar apenas alunos com currículos
         where.role = Roles.ALUNO_CANDIDATO;
         where.UsuariosCurriculos = {
@@ -397,12 +408,19 @@ export class AdminService {
       }
     } else {
       // Para outros roles, usar filtro normal
-      const roleFilter = this.getRoleFilter(role);
       if (roleFilter) where.role = roleFilter;
     }
 
     if (statusFilter) where.status = statusFilter;
     if (tipoUsuarioFilter) where.tipoUsuario = tipoUsuarioFilter;
+    if (searchTerm) {
+      where.OR = [
+        { nomeCompleto: { contains: searchTerm, mode: 'insensitive' } },
+        { email: { contains: searchTerm, mode: 'insensitive' } },
+        { cpf: { contains: searchTerm, mode: 'insensitive' } },
+        { codUsuario: { contains: searchTerm, mode: 'insensitive' } },
+      ];
+    }
 
     // ✅ OTIMIZAÇÃO: Usar filtros otimizados com índices
     const addressFilter = optimizeAddressFilter(cidade, estado);
@@ -424,6 +442,7 @@ export class AdminService {
       status,
       role,
       tipoUsuario,
+      search: searchTerm || undefined,
       cidade,
       estado,
       userRole: options?.userRole,

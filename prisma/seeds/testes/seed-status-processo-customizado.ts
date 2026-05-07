@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { assertTestSeedEnvironment } from './assert-test-seed';
 
 const prisma = new PrismaClient();
 
@@ -7,6 +8,8 @@ const prisma = new PrismaClient();
  * Seed para criar status customizados padrão do sistema
  */
 async function seedStatusProcessoCustomizado() {
+  assertTestSeedEnvironment('seed-status-processo-customizado');
+
   console.log('🌱 Iniciando seed de status customizados...');
 
   try {

@@ -5,6 +5,7 @@
 import { PrismaClient, Status, TiposDeUsuarios, Roles } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
+import { assertTestSeedEnvironment } from './assert-test-seed';
 
 interface UsuarioSeed {
   nomeCompleto: string;
@@ -250,6 +251,8 @@ const usuarios: UsuarioSeed[] = [
 ];
 
 export async function seedUsuarios(prisma?: PrismaClient) {
+  assertTestSeedEnvironment('seed-usuarios');
+
   const client = prisma || new PrismaClient();
   console.log('🌱 Iniciando seed de usuários...');
 

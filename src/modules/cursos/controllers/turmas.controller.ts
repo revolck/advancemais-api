@@ -6,8 +6,10 @@ import { turmasService } from '../services/turmas.service';
 import { cursosService } from '../services/cursos.service';
 import { generateCacheKey, getCachedOrFetch, invalidateCacheByPrefix } from '@/utils/cache';
 import {
+  appendTurmaEstruturaItemSchema,
   createTurmaSchema,
   turmaInscricaoSchema,
+  syncTurmaInstrutoresSchema,
   updateTurmaSchema,
   updateInscricaoStatusSchema,
   listTurmasQuerySchema,
@@ -566,6 +568,146 @@ export class TurmasController {
         success: false,
         code: 'TURMA_UPDATE_ERROR',
         message: 'Erro ao atualizar turma',
+        error: error?.message,
+      });
+    }
+  };
+
+  static syncInstrutores = async (req: Request, res: Response) => {
+    const cursoId = parseCursoId(req.params.cursoId);
+    const turmaId = parseTurmaId(req.params.turmaId);
+
+    if (!cursoId || !turmaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificadores de curso ou turma inválidos',
+      });
+    }
+
+    try {
+      const data = syncTurmaInstrutoresSchema.parse(req.body);
+      const turma = await turmasService.syncInstrutores(cursoId, turmaId, data, {
+        id: req.user?.id ?? null,
+        role: (req.user?.role as Roles | undefined) ?? null,
+      });
+
+      await invalidateTurmasCache();
+
+      res.json(turma);
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(422).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Dados inválidos para sincronizar instrutores da turma',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'TURMA_NOT_FOUND' || error?.code === 'CURSO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'TURMA_NOT_FOUND',
+          message: 'Turma não encontrada para o curso informado',
+        });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para sincronizar instrutores da turma',
+        });
+      }
+
+      if (error?.code === 'VALIDATION_ERROR') {
+        return res.status(422).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: error?.message || 'Dados inválidos para sincronizar instrutores da turma',
+          details: error?.details,
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'TURMA_INSTRUTORES_SYNC_ERROR',
+        message: 'Erro ao sincronizar instrutores da turma',
+        error: error?.message,
+      });
+    }
+  };
+
+  static appendEstruturaItem = async (req: Request, res: Response) => {
+    const cursoId = parseCursoId(req.params.cursoId);
+    const turmaId = parseTurmaId(req.params.turmaId);
+
+    if (!cursoId || !turmaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificadores de curso ou turma inválidos',
+      });
+    }
+
+    try {
+      const payload = appendTurmaEstruturaItemSchema.parse(req.body);
+      const result = await turmasService.appendEstruturaItem(cursoId, turmaId, payload, {
+        id: req.user?.id ?? null,
+        role: (req.user?.role as Roles | undefined) ?? null,
+      });
+
+      await invalidateTurmasCache();
+
+      res.status(201).json(result);
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(422).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Dados inválidos para adicionar item à estrutura da turma',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'TURMA_NOT_FOUND' || error?.code === 'CURSO_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'TURMA_NOT_FOUND',
+          message: 'Turma não encontrada para o curso informado',
+        });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          code: 'FORBIDDEN',
+          message: error?.message || 'Sem permissão para operar a estrutura da turma',
+        });
+      }
+
+      if (error?.code === 'TURMA_OPERACAO_NAO_PERMITIDA') {
+        return res.status(409).json({
+          success: false,
+          code: 'TURMA_OPERACAO_NAO_PERMITIDA',
+          message: error?.message,
+        });
+      }
+
+      if (error?.code === 'VALIDATION_ERROR') {
+        return res.status(422).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: error?.message || 'Dados inválidos para adicionar item à estrutura da turma',
+          details: error?.details,
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'TURMA_STRUCTURE_APPEND_ERROR',
+        message: 'Erro ao adicionar item à estrutura da turma',
         error: error?.message,
       });
     }

@@ -223,6 +223,12 @@ router.get('/', asyncHandler(adminController.getAdminInfo));
  *           type: string
  *           example: PESSOA_FISICA
  *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *           example: Maria Silva
+ *         description: Busca por nome, e-mail, CPF ou código do usuário (mínimo 3 caracteres).
+ *       - in: query
  *         name: cidade
  *         schema:
  *           type: string

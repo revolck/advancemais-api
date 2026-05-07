@@ -2154,11 +2154,16 @@ export const frequenciaService = {
     await ensureInstrutorTurmaScope(prisma, params.cursoId, params.turmaId, viewer);
     await ensureInscricaoBelongsToAluno(prisma, alunoId, params.turmaId, params.inscricaoId);
 
-    return this.listHistoricoByNaturalKey(params.cursoId, params.turmaId, {
-      inscricaoId: params.inscricaoId,
-      tipoOrigem: params.tipoOrigem,
-      origemId: params.origemId,
-    }, viewer);
+    return this.listHistoricoByNaturalKey(
+      params.cursoId,
+      params.turmaId,
+      {
+        inscricaoId: params.inscricaoId,
+        tipoOrigem: params.tipoOrigem,
+        origemId: params.origemId,
+      },
+      viewer,
+    );
   },
 
   async update(
@@ -2333,12 +2338,7 @@ export const frequenciaService = {
     });
   },
 
-  async remove(
-    cursoId: string,
-    turmaId: string,
-    frequenciaId: string,
-    viewer?: FrequenciaViewer,
-  ) {
+  async remove(cursoId: string, turmaId: string, frequenciaId: string, viewer?: FrequenciaViewer) {
     return prisma.$transaction(async (tx) => {
       const scope = await ensureInstrutorTurmaScope(tx, cursoId, turmaId, viewer);
       const frequencia = await ensureFrequenciaBelongsToTurma(tx, cursoId, turmaId, frequenciaId);

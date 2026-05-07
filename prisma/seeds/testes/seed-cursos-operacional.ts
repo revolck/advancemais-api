@@ -24,6 +24,7 @@ import {
   Roles,
   StatusInscricao,
 } from '@prisma/client';
+import { assertTestSeedEnvironment } from './assert-test-seed';
 
 type SeedResult = {
   turmasProcessadas: number;
@@ -121,6 +122,8 @@ const ensureAgendaItem = async (
 };
 
 export async function seedCursosOperacional(prisma?: PrismaClient): Promise<SeedResult> {
+  assertTestSeedEnvironment('seed-cursos-operacional');
+
   const client = prisma ?? new PrismaClient();
   console.log('🌱 Iniciando seed operacional de cursos...');
 

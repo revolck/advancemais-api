@@ -4,13 +4,13 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { seedUsuarios } from './seeds/seed-usuarios';
-import { seedAreasInteresse } from './seeds/seed-areas-interesse';
-import { seedVagas } from './seeds/seed-vagas';
-import { seedCurriculosCandidaturas } from './seeds/seed-curriculos-candidaturas';
-import { seedCursos } from './seeds/seed-cursos';
-import { seedCursosOperacional } from './seeds/seed-cursos-operacional';
-import { seedStatusProcesso } from './seeds/seed-status-processo';
+import { seedUsuarios } from './seeds/testes/seed-usuarios';
+import { seedAreasInteresse } from './seeds/testes/seed-areas-interesse';
+import { seedVagas } from './seeds/testes/seed-vagas';
+import { seedCurriculosCandidaturas } from './seeds/testes/seed-curriculos-candidaturas';
+import { seedCursos } from './seeds/testes/seed-cursos';
+import { seedCursosOperacional } from './seeds/testes/seed-cursos-operacional';
+import { seedStatusProcesso } from './seeds/testes/seed-status-processo';
 
 // Usar DIRECT_URL para seeds (conexão direta, sem pooler)
 const datasourceUrl = process.env.DIRECT_URL || process.env.DATABASE_URL || '';
@@ -18,7 +18,19 @@ const prisma = new PrismaClient({
   datasourceUrl,
 });
 
+function assertTestEnvironment() {
+  const ambiente = process.env.SEED_AMBIENTE || process.env.NODE_ENV;
+
+  if (!['test', 'teste'].includes(ambiente || '')) {
+    throw new Error(
+      'O seed completo usa dados de teste e só pode rodar com NODE_ENV=test ou SEED_AMBIENTE=teste. Para migrar empresas, use o seed isolado seed:empresas.',
+    );
+  }
+}
+
 async function main() {
+  assertTestEnvironment();
+
   console.log('🚀 Iniciando seed completo do banco de dados...\n');
   console.log('═══════════════════════════════════════════════════\n');
 

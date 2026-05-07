@@ -108,8 +108,8 @@ export const buildInstrutorScope = async (
   try {
     const scope = createEmptyInstrutorScope(instrutorId);
 
-    const [turmasPrincipais, turmasVinculadas, aulasDiretas, avaliacoesDiretas] =
-      await Promise.all([
+    const [turmasPrincipais, turmasVinculadas, aulasDiretas, avaliacoesDiretas] = await Promise.all(
+      [
         client.cursosTurmas.findMany({
           where: {
             instrutorId,
@@ -159,7 +159,8 @@ export const buildInstrutorScope = async (
             tipo: true,
           },
         }),
-      ]);
+      ],
+    );
 
     for (const turma of turmasPrincipais) {
       scope.fullTurmaIds.add(turma.id);
@@ -244,7 +245,9 @@ export const buildInstrutorScope = async (
       });
 
       const turmaAtivaIds = new Set(turmasAtivas.map((turma) => turma.id));
-      scope.fullTurmaIds = new Set([...scope.fullTurmaIds].filter((turmaId) => turmaAtivaIds.has(turmaId)));
+      scope.fullTurmaIds = new Set(
+        [...scope.fullTurmaIds].filter((turmaId) => turmaAtivaIds.has(turmaId)),
+      );
       scope.accessibleTurmaIds = new Set(
         [...scope.accessibleTurmaIds].filter((turmaId) => turmaAtivaIds.has(turmaId)),
       );

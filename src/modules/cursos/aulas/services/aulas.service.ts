@@ -312,9 +312,7 @@ export const aulasService = {
     const cursoTerm = curso?.trim();
     const turmaTerm = turma?.trim();
     const instrutorTerm = instrutor?.trim();
-    let instrutorScope:
-      | Awaited<ReturnType<typeof buildInstrutorScope>>
-      | null = null;
+    let instrutorScope: Awaited<ReturnType<typeof buildInstrutorScope>> | null = null;
 
     const applyAndFilter = (filter: Prisma.CursosTurmasAulasWhereInput) => {
       if (where.AND && Array.isArray(where.AND)) {

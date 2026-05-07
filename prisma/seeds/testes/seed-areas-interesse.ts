@@ -3,6 +3,7 @@
  */
 
 import { PrismaClient, CandidatosAreasInteresse } from '@prisma/client';
+import { assertTestSeedEnvironment } from './assert-test-seed';
 
 interface AreaSeed {
   categoria: string;
@@ -135,6 +136,8 @@ const areas: AreaSeed[] = [
 ];
 
 export async function seedAreasInteresse(prisma?: PrismaClient) {
+  assertTestSeedEnvironment('seed-areas-interesse');
+
   const client = prisma || new PrismaClient();
   console.log('🌱 Iniciando seed de áreas de interesse...');
 

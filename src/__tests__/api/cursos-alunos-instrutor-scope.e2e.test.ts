@@ -31,7 +31,8 @@ describe('API - Cursos Alunos escopados para INSTRUTOR', () => {
   let inscricaoForaEscopoId: string;
 
   const suffix = randomUUID().replace(/-/g, '').slice(0, 8);
-  const buildCodigo = (prefix: string) => `${prefix}${randomUUID().replace(/-/g, '').slice(0, 8)}`.toUpperCase();
+  const buildCodigo = (prefix: string) =>
+    `${prefix}${randomUUID().replace(/-/g, '').slice(0, 8)}`.toUpperCase();
 
   beforeAll(async () => {
     app = await getTestApp();
@@ -280,7 +281,9 @@ describe('API - Cursos Alunos escopados para INSTRUTOR', () => {
     expect(alunosIds).toContain(alunoTurmaEscopo.id);
     expect(alunosIds).not.toContain(alunoForaEscopo.id);
 
-    const alunoMultiPayload = response.body.data.find((item: any) => item.id === alunoMultiEscopo.id);
+    const alunoMultiPayload = response.body.data.find(
+      (item: any) => item.id === alunoMultiEscopo.id,
+    );
     expect(alunoMultiPayload).toEqual(
       expect.objectContaining({
         id: alunoMultiEscopo.id,

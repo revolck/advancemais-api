@@ -13,8 +13,11 @@ import {
   EmpresasVagas,
 } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { assertTestSeedEnvironment } from './assert-test-seed';
 
 export async function seedVagas(prisma?: PrismaClient) {
+  assertTestSeedEnvironment('seed-vagas');
+
   const client = prisma || new PrismaClient();
   console.log('🌱 Iniciando seed de vagas...');
 

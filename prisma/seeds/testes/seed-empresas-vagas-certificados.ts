@@ -24,8 +24,11 @@ import {
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
+import { assertTestSeedEnvironment } from './assert-test-seed';
 
 export async function seedEmpresasVagasCertificados(prisma?: PrismaClient) {
+  assertTestSeedEnvironment('seed-empresas-vagas-certificados');
+
   const client = prisma || new PrismaClient();
   console.log('🌱 Iniciando seed completo: Empresas, Vagas e Certificados...\n');
 

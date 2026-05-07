@@ -74,8 +74,8 @@ describe('API - Turmas com instrutores vinculados na listagem', () => {
     });
     cursoId = curso.id;
 
-    const [turmaComInstrutores, turmaComInstrutorViaRelacao, turmaSemInstrutor] =
-      await Promise.all([
+    const [turmaComInstrutores, turmaComInstrutorViaRelacao, turmaSemInstrutor] = await Promise.all(
+      [
         prisma.cursosTurmas.create({
           data: {
             id: randomUUID(),
@@ -113,7 +113,8 @@ describe('API - Turmas com instrutores vinculados na listagem', () => {
             vagasIlimitadas: false,
           },
         }),
-      ]);
+      ],
+    );
 
     turmaComInstrutoresId = turmaComInstrutores.id;
     turmaComInstrutorViaRelacaoId = turmaComInstrutorViaRelacao.id;
@@ -144,22 +145,18 @@ describe('API - Turmas com instrutores vinculados na listagem', () => {
     await prisma.cursosTurmasInstrutores.deleteMany({
       where: {
         turmaId: {
-          in: [
-            turmaComInstrutoresId,
-            turmaComInstrutorViaRelacaoId,
-            turmaSemInstrutorId,
-          ].filter(Boolean),
+          in: [turmaComInstrutoresId, turmaComInstrutorViaRelacaoId, turmaSemInstrutorId].filter(
+            Boolean,
+          ),
         },
       },
     });
     await prisma.cursosTurmas.deleteMany({
       where: {
         id: {
-          in: [
-            turmaComInstrutoresId,
-            turmaComInstrutorViaRelacaoId,
-            turmaSemInstrutorId,
-          ].filter(Boolean),
+          in: [turmaComInstrutoresId, turmaComInstrutorViaRelacaoId, turmaSemInstrutorId].filter(
+            Boolean,
+          ),
         },
       },
     });
@@ -184,11 +181,15 @@ describe('API - Turmas com instrutores vinculados na listagem', () => {
 
     expect(Array.isArray(response.body.data)).toBe(true);
 
-    const turmaComInstrutores = response.body.data.find((item: any) => item.id === turmaComInstrutoresId);
+    const turmaComInstrutores = response.body.data.find(
+      (item: any) => item.id === turmaComInstrutoresId,
+    );
     const turmaComInstrutorViaRelacao = response.body.data.find(
       (item: any) => item.id === turmaComInstrutorViaRelacaoId,
     );
-    const turmaSemInstrutor = response.body.data.find((item: any) => item.id === turmaSemInstrutorId);
+    const turmaSemInstrutor = response.body.data.find(
+      (item: any) => item.id === turmaSemInstrutorId,
+    );
 
     expect(turmaComInstrutores).toEqual(
       expect.objectContaining({
@@ -251,7 +252,9 @@ describe('API - Turmas com instrutores vinculados na listagem', () => {
       .query({ page: 1, pageSize: 20 })
       .expect(200);
 
-    const turmaDaListagem = listResponse.body.data.find((item: any) => item.id === turmaComInstrutoresId);
+    const turmaDaListagem = listResponse.body.data.find(
+      (item: any) => item.id === turmaComInstrutoresId,
+    );
     expect(turmaDaListagem).toBeTruthy();
 
     const detalheResponse = await request(app)
@@ -284,7 +287,9 @@ describe('API - Turmas com instrutores vinculados na listagem', () => {
     const curso = cursosResponse.body.data.find((item: any) => item.id === cursoId);
     expect(curso).toBeTruthy();
 
-    const turmaEmbutida = (curso.turmas ?? []).find((item: any) => item.id === turmaComInstrutoresId);
+    const turmaEmbutida = (curso.turmas ?? []).find(
+      (item: any) => item.id === turmaComInstrutoresId,
+    );
     expect(turmaEmbutida).toEqual(
       expect.objectContaining({
         instrutor: expect.objectContaining({

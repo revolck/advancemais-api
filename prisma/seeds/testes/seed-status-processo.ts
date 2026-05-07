@@ -1,7 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { assertTestSeedEnvironment } from './assert-test-seed';
 
 export async function seedStatusProcesso(prisma?: PrismaClient) {
+  assertTestSeedEnvironment('seed-status-processo');
+
   const client = prisma || new PrismaClient();
   console.log('🌱 Iniciando seed de Status Processo...');
 

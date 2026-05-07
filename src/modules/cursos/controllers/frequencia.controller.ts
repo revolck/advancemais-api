@@ -917,11 +917,16 @@ export class FrequenciaController {
 
     try {
       const query = listFrequenciaHistoricoNaturalQuerySchema.parse(req.query);
-      const historico = await frequenciaService.listHistoricoByNaturalKey(cursoId, turmaId, {
-        inscricaoId: query.inscricaoId,
-        tipoOrigem: query.tipoOrigem,
-        origemId: query.origemId,
-      }, viewerFromRequest(req));
+      const historico = await frequenciaService.listHistoricoByNaturalKey(
+        cursoId,
+        turmaId,
+        {
+          inscricaoId: query.inscricaoId,
+          tipoOrigem: query.tipoOrigem,
+          origemId: query.origemId,
+        },
+        viewerFromRequest(req),
+      );
       res.json({ success: true, data: historico });
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -994,13 +999,17 @@ export class FrequenciaController {
 
     try {
       const query = listFrequenciaHistoricoAlunoNaturalQuerySchema.parse(req.query);
-      const historico = await frequenciaService.listHistoricoByNaturalKeyForAluno(alunoId, {
-        cursoId: query.cursoId,
-        turmaId: query.turmaId,
-        inscricaoId: query.inscricaoId,
-        tipoOrigem: query.tipoOrigem,
-        origemId: query.origemId,
-      }, viewerFromRequest(req));
+      const historico = await frequenciaService.listHistoricoByNaturalKeyForAluno(
+        alunoId,
+        {
+          cursoId: query.cursoId,
+          turmaId: query.turmaId,
+          inscricaoId: query.inscricaoId,
+          tipoOrigem: query.tipoOrigem,
+          origemId: query.origemId,
+        },
+        viewerFromRequest(req),
+      );
       return res.json({ success: true, data: historico });
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -1391,13 +1400,18 @@ export class FrequenciaController {
     }
 
     try {
-      const resultado = await frequenciaService.resumo(cursoId, turmaId, {
-        periodo,
-        anchorDate,
-        search,
-        page,
-        pageSize,
-      }, viewerFromRequest(req));
+      const resultado = await frequenciaService.resumo(
+        cursoId,
+        turmaId,
+        {
+          periodo,
+          anchorDate,
+          search,
+          page,
+          pageSize,
+        },
+        viewerFromRequest(req),
+      );
       res.json({ success: true, data: resultado });
     } catch (error: any) {
       if (error?.code === 'TURMA_NOT_FOUND') {

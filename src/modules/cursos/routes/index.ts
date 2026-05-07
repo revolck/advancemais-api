@@ -3237,6 +3237,18 @@ router.put(
   TurmasController.update,
 );
 
+router.put(
+  '/:cursoId/turmas/:turmaId/instrutores',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  TurmasController.syncInstrutores,
+);
+
+router.post(
+  '/:cursoId/turmas/:turmaId/estrutura/itens',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  TurmasController.appendEstruturaItem,
+);
+
 /**
  * @openapi
  * /api/v1/cursos/{cursoId}/turmas/{turmaId}/inscricoes:

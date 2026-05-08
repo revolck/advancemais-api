@@ -1495,6 +1495,12 @@ router.get(
  *         schema:
  *           type: string
  *         description: "Filtro por nome, código da empresa, e-mail ou CNPJ (mínimo 3 caracteres)"
+ *       - in: query
+ *         name: elegivelCadastroVaga
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: "Quando true, retorna apenas empresas com plano ativo elegível para cadastro de vaga antes da paginação."
  *     responses:
  *       200:
  *         description: Empresas listadas com sucesso
@@ -1583,6 +1589,16 @@ router.get(
  */
 router.post('/', supabaseAuthMiddleware(empresasManagementRoles), AdminEmpresasController.create);
 router.get('/', supabaseAuthMiddleware(empresasManagementRoles), AdminEmpresasController.list);
+router.post(
+  '/:id/recursos-premium-vagas',
+  supabaseAuthMiddleware(adminRoles),
+  AdminEmpresasController.applyRecursosPremiumVagas,
+);
+router.delete(
+  '/:id/recursos-premium-vagas',
+  supabaseAuthMiddleware(adminRoles),
+  AdminEmpresasController.removeRecursosPremiumVagas,
+);
 
 /**
  * @openapi

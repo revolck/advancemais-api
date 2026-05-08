@@ -9,16 +9,11 @@ import { z } from 'zod';
 
 const slugField = z
   .string({
-    required_error: 'O slug é obrigatório',
     invalid_type_error: 'O slug deve ser um texto',
   })
   .trim()
-  .min(3, 'O slug deve ter pelo menos 3 caracteres')
-  .max(120, 'O slug deve ter no máximo 120 caracteres')
-  .regex(
-    /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-    'O slug deve conter apenas letras minúsculas, números e hífens',
-  );
+  .min(1, 'O slug deve ter pelo menos 1 caractere')
+  .max(120, 'O slug deve ter no máximo 120 caracteres');
 
 const descricaoOpcional = z
   .string({ invalid_type_error: 'A descrição deve ser um texto' })
@@ -166,7 +161,7 @@ const baseVagaSchemaRaw = z.object({
   // Categorias de vagas (UUID) - opcional
   categoriaVagaId: z.string().uuid().optional(),
   subcategoriaVagaId: z.string().uuid().optional(),
-  slug: slugField,
+  slug: slugField.optional(),
   modoAnonimo: z
     .boolean({ invalid_type_error: 'modoAnonimo deve ser verdadeiro ou falso' })
     .optional(),

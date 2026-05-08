@@ -10,12 +10,30 @@ import {
   LimiteVagasDestaqueAtingidoError,
   LimiteVagasPlanoAtingidoError,
   PlanoNaoPermiteVagaDestaqueError,
+  UsuarioNaoEmpresaError,
   VagaAreaSubareaError,
+  VagaSlugDuplicadoError,
 } from '@/modules/empresas/vagas/services/errors';
 import {
   createVagaSchema,
   updateVagaSchema,
 } from '@/modules/empresas/vagas/validators/vagas.schema';
+
+const isSlugUniqueConstraintError = (error: any) =>
+  error?.code === 'P2002' &&
+  (Array.isArray(error?.meta?.target)
+    ? error.meta.target.includes('slug')
+    : error?.meta?.target === 'slug');
+
+const sendSlugDuplicadoResponse = (res: Response) =>
+  res.status(409).json({
+    success: false,
+    code: 'VAGA_SLUG_DUPLICADO',
+    message: 'Já existe uma vaga com este identificador. Altere o título e tente novamente.',
+    issues: {
+      slug: ['Slug já está em uso.'],
+    },
+  });
 
 export class VagasController {
   static list = async (_req: Request, res: Response) => {
@@ -197,7 +215,7 @@ export class VagasController {
   static create = async (req: Request, res: Response) => {
     try {
       const data = createVagaSchema.parse(req.body);
-      const vaga = await vagasService.create(data);
+      const vaga = await vagasService.create(data, { actorRole: req.user?.role });
       res.status(201).json(vaga);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -217,8 +235,20 @@ export class VagasController {
         });
       }
 
+      if (error instanceof VagaSlugDuplicadoError || isSlugUniqueConstraintError(error)) {
+        return sendSlugDuplicadoResponse(res);
+      }
+
       if (error instanceof VagaAreaSubareaError) {
         return res.status(error.status).json({
+          success: false,
+          code: error.code,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof UsuarioNaoEmpresaError) {
+        return res.status(403).json({
           success: false,
           code: error.code,
           message: error.message,
@@ -263,7 +293,6 @@ export class VagasController {
         success: false,
         code: 'VAGAS_CREATE_ERROR',
         message: 'Erro ao criar vaga',
-        error: error?.message,
       });
     }
   };
@@ -310,8 +339,20 @@ export class VagasController {
         });
       }
 
+      if (error instanceof VagaSlugDuplicadoError || isSlugUniqueConstraintError(error)) {
+        return sendSlugDuplicadoResponse(res);
+      }
+
       if (error instanceof VagaAreaSubareaError) {
         return res.status(error.status).json({
+          success: false,
+          code: error.code,
+          message: error.message,
+        });
+      }
+
+      if (error instanceof UsuarioNaoEmpresaError) {
+        return res.status(403).json({
           success: false,
           code: error.code,
           message: error.message,
@@ -347,7 +388,6 @@ export class VagasController {
         success: false,
         code: 'VAGAS_UPDATE_ERROR',
         message: 'Erro ao atualizar vaga',
-        error: error?.message,
       });
     }
   };

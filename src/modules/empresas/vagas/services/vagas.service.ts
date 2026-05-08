@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 
-import { Prisma, StatusDeVagas, TiposDeUsuarios } from '@prisma/client';
+import { Prisma, Roles, StatusDeVagas, TiposDeUsuarios } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { attachEnderecoResumo } from '@/modules/usuarios/utils/address';
@@ -14,6 +14,7 @@ import {
   EmpresaSemPlanoAtivoError,
   LimiteVagasDestaqueAtingidoError,
   PlanoNaoPermiteVagaDestaqueError,
+  VagaSlugDuplicadoError,
   VagaAreaSubareaError,
   UsuarioNaoEmpresaError,
 } from '@/modules/empresas/vagas/services/errors';
@@ -149,6 +150,8 @@ const nullableText = (value?: string) => {
 
 const VAGA_CODE_LENGTH = 6;
 const VAGA_CODE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+const VAGA_SLUG_MAX_LENGTH = 120;
+const VAGA_SLUG_RACE_RETRIES = 3;
 
 const createCodeCandidate = () => {
   let result = '';
@@ -192,6 +195,75 @@ const generateUniqueVagaCode = async (): Promise<string> => {
   throw Object.assign(new Error('Não foi possível gerar um código único para a vaga'), {
     code: 'VAGA_CODE_GENERATION_FAILED',
   });
+};
+
+type PrismaVagasUniqueClient = Pick<Prisma.TransactionClient, 'empresasVagas'>;
+
+const normalizeVagaSlug = (value: string | null | undefined) => {
+  const normalized = (value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-')
+    .slice(0, VAGA_SLUG_MAX_LENGTH)
+    .replace(/-+$/g, '');
+
+  return normalized.length > 0 ? normalized : 'vaga';
+};
+
+const appendSlugSuffix = (base: string, suffix: string) => {
+  const suffixText = `-${suffix}`;
+  const maxBaseLength = VAGA_SLUG_MAX_LENGTH - suffixText.length;
+  const truncatedBase = base.slice(0, maxBaseLength).replace(/-+$/g, '');
+
+  return `${truncatedBase || 'vaga'}${suffixText}`;
+};
+
+const generateUniqueVagaSlug = async (
+  db: PrismaVagasUniqueClient,
+  source: string | null | undefined,
+) => {
+  const base = normalizeVagaSlug(source);
+
+  for (let suffix = 0; suffix < 50; suffix++) {
+    const candidate = suffix === 0 ? base : appendSlugSuffix(base, String(suffix + 1));
+    const existing = await db.empresasVagas.findUnique({
+      where: { slug: candidate },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return candidate;
+    }
+  }
+
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const randomSuffix = randomUUID().replace(/-/g, '').slice(0, 6).toLowerCase();
+    const candidate = appendSlugSuffix(base, randomSuffix);
+    const existing = await db.empresasVagas.findUnique({
+      where: { slug: candidate },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return candidate;
+    }
+  }
+
+  throw new VagaSlugDuplicadoError();
+};
+
+const isUniqueConstraintForField = (error: unknown, field: string) => {
+  const prismaError = error as { code?: string; meta?: { target?: unknown } };
+  const target = prismaError?.meta?.target;
+
+  if (prismaError?.code !== 'P2002') {
+    return false;
+  }
+
+  return Array.isArray(target) ? target.includes(field) : target === field;
 };
 
 const sanitizeStringArray = (values: string[] | undefined) => {
@@ -333,6 +405,8 @@ const resolveAreaSubareaUpdate = async (
 const sanitizeCreateData = (
   data: CreateVagaData,
   codigo: string,
+  slug: string,
+  status?: StatusDeVagas,
 ): Prisma.EmpresasVagasUncheckedCreateInput => {
   const localizacao = sanitizeLocalizacao(data.localizacao ?? null);
 
@@ -343,7 +417,7 @@ const sanitizeCreateData = (
 
   return {
     usuarioId: data.usuarioId,
-    slug: data.slug.trim().toLowerCase(),
+    slug,
     codigo,
     areaInteresseId,
     subareaInteresseId,
@@ -362,7 +436,7 @@ const sanitizeCreateData = (
     senioridade: data.senioridade,
     inscricoesAte: data.inscricoesAte ?? null,
     inseridaEm: data.inseridaEm ?? new Date(),
-    // status default handled by DB (RASCUNHO/EM_ANALISE)
+    ...(status ? { status } : {}),
     ...(localizacao ? { localizacao } : {}),
     salarioMin: data.salarioMin ?? undefined,
     salarioMax: data.salarioMax ?? undefined,
@@ -393,7 +467,7 @@ const sanitizeUpdateData = (data: UpdateVagaData): Prisma.EmpresasVagasUnchecked
     update.paraPcd = data.paraPcd;
   }
   if (data.slug !== undefined) {
-    update.slug = data.slug.trim().toLowerCase();
+    update.slug = normalizeVagaSlug(data.slug);
   }
   if (data.vagaEmDestaque !== undefined) {
     update.destaque = data.vagaEmDestaque;
@@ -552,7 +626,7 @@ const transformVaga = (vaga: VagaWithEmpresa) => {
   };
 };
 
-const ensurePlanoAtivoParaUsuario = async (usuarioId: string) => {
+const ensureUsuarioEmpresa = async (usuarioId: string) => {
   const usuarioEmpresa = await prisma.usuarios.findUnique({
     where: { id: usuarioId },
     select: { tipoUsuario: true },
@@ -561,7 +635,32 @@ const ensurePlanoAtivoParaUsuario = async (usuarioId: string) => {
   if (!usuarioEmpresa || usuarioEmpresa.tipoUsuario !== TiposDeUsuarios.PESSOA_JURIDICA) {
     throw new UsuarioNaoEmpresaError();
   }
+};
 
+const hasRecursosPremiumVagasAtivos = async (usuarioId: string) => {
+  await ensureUsuarioEmpresa(usuarioId);
+
+  const recursosPremium = await prisma.empresasRecursosPremiumVagas.findUnique({
+    where: { empresaId: usuarioId },
+    select: {
+      ativo: true,
+      vagasIlimitadas: true,
+      destaquesIlimitados: true,
+    },
+  });
+
+  return Boolean(
+    recursosPremium?.ativo &&
+      recursosPremium.vagasIlimitadas &&
+      recursosPremium.destaquesIlimitados,
+  );
+};
+
+const canBypassPlanoAtivo = (actorRole?: Roles | string | null) =>
+  actorRole === Roles.ADMIN || actorRole === Roles.MODERADOR;
+
+const ensurePlanoAtivoParaUsuario = async (usuarioId: string) => {
+  await ensureUsuarioEmpresa(usuarioId);
   const planoAtivo = await clientesService.findActiveByUsuario(usuarioId);
 
   if (!planoAtivo) {
@@ -651,7 +750,7 @@ export const vagasService = {
 
     await syncExpiredPublishedVagas();
 
-    const normalizedSlug = slug.trim().toLowerCase();
+    const normalizedSlug = normalizeVagaSlug(slug);
     const vaga = await prisma.empresasVagas.findFirst({
       where: {
         status: StatusDeVagas.PUBLICADO,
@@ -663,7 +762,7 @@ export const vagasService = {
     return vaga ? transformVaga(vaga) : null;
   },
 
-  create: async (data: CreateVagaData) => {
+  create: async (data: CreateVagaData, options?: { actorRole?: Roles | string | null }) => {
     // Se areaInteresseId é UUID, é na verdade a categoriaVagaId
     let categoriaId = data.categoriaVagaId;
     let subcategoriaId = data.subcategoriaVagaId;
@@ -691,9 +790,12 @@ export const vagasService = {
       throw new Error('Categoria de vaga não encontrada');
     }
 
-    const planoAtivo = await ensurePlanoAtivoParaUsuario(data.usuarioId);
     const codigo = await generateUniqueVagaCode();
     const shouldHighlight = data.vagaEmDestaque ?? false;
+    const recursosPremiumAtivos = await hasRecursosPremiumVagasAtivos(data.usuarioId);
+    const precisaPlanoAtivo =
+      !recursosPremiumAtivos && (!canBypassPlanoAtivo(options?.actorRole) || shouldHighlight);
+    const planoAtivo = precisaPlanoAtivo ? await ensurePlanoAtivoParaUsuario(data.usuarioId) : null;
 
     // Preparar dados com categoria correta
     const dataComCategoria = {
@@ -704,32 +806,61 @@ export const vagasService = {
       subareaInteresseId: null,
     };
 
-    const vaga = await prisma.$transaction(async (tx) => {
-      if (shouldHighlight) {
-        const limite = assertPlanoPermiteVagaDestaque(planoAtivo);
-        await assertVagasDestaqueDisponiveis(tx, planoAtivo.id, limite);
-      }
+    for (let attempt = 0; attempt < VAGA_SLUG_RACE_RETRIES; attempt++) {
+      try {
+        const vaga = await prisma.$transaction(async (tx) => {
+          if (shouldHighlight && !recursosPremiumAtivos) {
+            if (!planoAtivo) {
+              throw new EmpresaSemPlanoAtivoError();
+            }
 
-      const created = await tx.empresasVagas.create({
-        data: sanitizeCreateData(dataComCategoria as any, codigo),
-      });
+            const limite = assertPlanoPermiteVagaDestaque(planoAtivo);
+            await assertVagasDestaqueDisponiveis(tx, planoAtivo.id, limite);
+          }
 
-      if (shouldHighlight) {
-        await tx.empresasVagasDestaque.create({
-          data: {
-            vagaId: created.id,
-            empresasPlanoId: planoAtivo.id,
-          },
+          const slug = await generateUniqueVagaSlug(
+            tx,
+            dataComCategoria.slug ?? dataComCategoria.titulo,
+          );
+          const created = await tx.empresasVagas.create({
+            data: sanitizeCreateData(
+              dataComCategoria as any,
+              codigo,
+              slug,
+              recursosPremiumAtivos ? StatusDeVagas.PUBLICADO : undefined,
+            ),
+          });
+
+          if (shouldHighlight && !recursosPremiumAtivos) {
+            if (!planoAtivo) {
+              throw new EmpresaSemPlanoAtivoError();
+            }
+
+            await tx.empresasVagasDestaque.create({
+              data: {
+                vagaId: created.id,
+                empresasPlanoId: planoAtivo.id,
+              },
+            });
+          }
+
+          return tx.empresasVagas.findUniqueOrThrow({
+            where: { id: created.id },
+            ...includeEmpresa,
+          });
         });
+
+        return transformVaga(vaga);
+      } catch (error) {
+        if (isUniqueConstraintForField(error, 'slug')) {
+          continue;
+        }
+
+        throw error;
       }
+    }
 
-      return tx.empresasVagas.findUniqueOrThrow({
-        where: { id: created.id },
-        ...includeEmpresa,
-      });
-    });
-
-    return transformVaga(vaga);
+    throw new VagaSlugDuplicadoError();
   },
 
   update: async (id: string, data: UpdateVagaData) => {
@@ -750,11 +881,12 @@ export const vagasService = {
     const shouldDeactivateHighlight = data.vagaEmDestaque === false && vagaAtual.destaque;
     const manterHighlightAtivo = vagaAtual.destaque && !shouldDeactivateHighlight;
     const shouldReassignHighlightPlan = manterHighlightAtivo && data.usuarioId !== undefined;
+    const recursosPremiumAtivos = await hasRecursosPremiumVagasAtivos(novoUsuarioId);
 
     let planoAtivo: PlanoAtivo = null;
     let limiteDestaque: number | null = null;
 
-    if (shouldActivateHighlight || shouldReassignHighlightPlan) {
+    if (!recursosPremiumAtivos && (shouldActivateHighlight || shouldReassignHighlightPlan)) {
       planoAtivo = await ensurePlanoAtivoParaUsuario(novoUsuarioId);
       limiteDestaque = assertPlanoPermiteVagaDestaque(planoAtivo);
     }
@@ -782,6 +914,13 @@ export const vagasService = {
             vagaId: atualizada.id,
             empresasPlanoId: planoAtivo.id,
           },
+        });
+      }
+
+      if (recursosPremiumAtivos && (shouldActivateHighlight || shouldReassignHighlightPlan)) {
+        await tx.empresasVagasDestaque.updateMany({
+          where: { vagaId: atualizada.id },
+          data: { ativo: false, desativadoEm: new Date() },
         });
       }
 

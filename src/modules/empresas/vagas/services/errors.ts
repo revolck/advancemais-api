@@ -47,6 +47,15 @@ export class LimiteVagasDestaqueAtingidoError extends Error {
   }
 }
 
+export class VagaSlugDuplicadoError extends Error {
+  code = 'VAGA_SLUG_DUPLICADO';
+
+  constructor() {
+    super('Já existe uma vaga com este identificador. Altere o título e tente novamente.');
+    this.name = 'VagaSlugDuplicadoError';
+  }
+}
+
 type AreaSubareaReason = 'SUBAREA_REQUIRED' | 'SUBAREA_NOT_FOUND' | 'AREA_NOT_FOUND' | 'MISMATCH';
 
 const AREA_SUBAREA_MESSAGES: Record<

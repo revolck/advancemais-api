@@ -13,6 +13,8 @@ import {
   adminEmpresasListQuerySchema,
   adminEmpresasPlanoManualAssignSchema,
   adminEmpresasPlanoUpdateSchema,
+  adminEmpresasRecursosPremiumVagasApplySchema,
+  adminEmpresasRecursosPremiumVagasRemoveSchema,
   adminEmpresasVagaParamSchema,
   adminEmpresasVagasQuerySchema,
   adminEmpresasUpdateSchema,
@@ -360,10 +362,11 @@ export class AdminEmpresasController {
   static list = async (req: Request, res: Response) => {
     try {
       const filters = adminEmpresasListQuerySchema.parse(req.query);
+      const options = { actorRole: req.user?.role };
       const result =
         filters.context === 'AUTOFILL'
-          ? await adminEmpresasService.listAutofill(filters)
-          : await adminEmpresasService.list(filters);
+          ? await adminEmpresasService.listAutofill(filters, options)
+          : await adminEmpresasService.list(filters, options);
       res.json(result);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -379,6 +382,108 @@ export class AdminEmpresasController {
         success: false,
         code: 'ADMIN_EMPRESAS_LIST_ERROR',
         message: 'Erro ao listar empresas',
+        error: error?.message,
+      });
+    }
+  };
+
+  static applyRecursosPremiumVagas = async (req: Request, res: Response) => {
+    try {
+      const params = adminEmpresasIdParamSchema.parse(req.params);
+      const payload = adminEmpresasRecursosPremiumVagasApplySchema.parse(req.body);
+      const adminId = req.user?.id;
+
+      if (!adminId) {
+        return res.status(401).json({ success: false, code: 'UNAUTHORIZED' });
+      }
+
+      const result = await adminEmpresasService.applyRecursosPremiumVagas(
+        params.id,
+        payload,
+        adminId,
+      );
+      res.json(result);
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(422).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Dados inválidos para aplicação dos recursos premium',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'EMPRESA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'EMPRESA_NOT_FOUND',
+          message: 'Empresa não encontrada',
+        });
+      }
+
+      if (error?.code === 'ADMIN_REQUIRED') {
+        return res.status(403).json({
+          success: false,
+          code: 'ADMIN_REQUIRED',
+          message: 'Apenas ADMIN ou MODERADOR podem alterar recursos premium.',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'ADMIN_EMPRESAS_RECURSOS_PREMIUM_APPLY_ERROR',
+        message: 'Erro ao aplicar recursos premium de vagas',
+        error: error?.message,
+      });
+    }
+  };
+
+  static removeRecursosPremiumVagas = async (req: Request, res: Response) => {
+    try {
+      const params = adminEmpresasIdParamSchema.parse(req.params);
+      const payload = adminEmpresasRecursosPremiumVagasRemoveSchema.parse(req.body);
+      const adminId = req.user?.id;
+
+      if (!adminId) {
+        return res.status(401).json({ success: false, code: 'UNAUTHORIZED' });
+      }
+
+      const result = await adminEmpresasService.removeRecursosPremiumVagas(
+        params.id,
+        payload,
+        adminId,
+      );
+      res.json(result);
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(422).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Dados inválidos para remoção dos recursos premium',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      if (error?.code === 'EMPRESA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'EMPRESA_NOT_FOUND',
+          message: 'Empresa não encontrada',
+        });
+      }
+
+      if (error?.code === 'ADMIN_REQUIRED') {
+        return res.status(403).json({
+          success: false,
+          code: 'ADMIN_REQUIRED',
+          message: 'Apenas ADMIN ou MODERADOR podem alterar recursos premium.',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'ADMIN_EMPRESAS_RECURSOS_PREMIUM_REMOVE_ERROR',
+        message: 'Erro ao remover recursos premium de vagas',
         error: error?.message,
       });
     }

@@ -1173,6 +1173,29 @@ model EmpresasPlano {
   @@index([cupomDescontoId])
 }
 
+model EmpresasRecursosPremiumVagas {
+  id                  String    @id @default(uuid())
+  empresaId           String    @unique
+  ativo               Boolean   @default(true)
+  vagasIlimitadas     Boolean   @default(true)
+  destaquesIlimitados Boolean   @default(true)
+  aplicadoEm          DateTime  @default(now())
+  aplicadoPorId       String
+  motivo              String?   @db.VarChar(500)
+  removidoEm          DateTime?
+  removidoPorId       String?
+  motivoRemocao       String?   @db.VarChar(500)
+  criadoEm            DateTime  @default(now())
+  atualizadoEm        DateTime  @updatedAt
+  Empresa             Usuarios  @relation("EmpresasRecursosPremiumVagasEmpresa", fields: [empresaId], references: [id], onDelete: Cascade)
+  AplicadoPor         Usuarios  @relation("EmpresasRecursosPremiumVagasAplicadoPor", fields: [aplicadoPorId], references: [id])
+  RemovidoPor         Usuarios? @relation("EmpresasRecursosPremiumVagasRemovidoPor", fields: [removidoPorId], references: [id])
+
+  @@index([ativo])
+  @@index([aplicadoPorId])
+  @@index([removidoPorId])
+}
+
 model EmpresasVagas {
   id                          String                       @id @default(uuid())
   codigo                      String                       @unique @db.VarChar(6)
@@ -1440,6 +1463,9 @@ model Usuarios {
   EmpresasCandidatos_EmpresasCandidatos_candidatoIdToUsuarios                                               EmpresasCandidatos[]                          @relation("EmpresasCandidatos_candidatoIdToUsuarios")
   EmpresasCandidatos_EmpresasCandidatos_empresaUsuarioIdToUsuarios                                          EmpresasCandidatos[]                          @relation("EmpresasCandidatos_empresaUsuarioIdToUsuarios")
   EmpresasPlano                                                                                             EmpresasPlano[]
+  RecursosPremiumVagas                                                                                      EmpresasRecursosPremiumVagas?                 @relation("EmpresasRecursosPremiumVagasEmpresa")
+  RecursosPremiumVagasAplicados                                                                             EmpresasRecursosPremiumVagas[]                @relation("EmpresasRecursosPremiumVagasAplicadoPor")
+  RecursosPremiumVagasRemovidos                                                                             EmpresasRecursosPremiumVagas[]                @relation("EmpresasRecursosPremiumVagasRemovidoPor")
   EmpresasVagas                                                                                             EmpresasVagas[]
   EmpresasVagasProcesso                                                                                     EmpresasVagasProcesso[]
   UsuariosCandidatosLogs                                                                                    UsuariosCandidatosLogs[]
@@ -2456,6 +2482,8 @@ enum EmpresasAuditoriaAcao {
   BLOQUEIO_REVOGADO
   STATUS_ALTERADO
   DADOS_ALTERADOS
+  RECURSOS_PREMIUM_VAGAS_APLICADOS
+  RECURSOS_PREMIUM_VAGAS_REMOVIDOS
 }
 
 enum EmpresasPlanoModo {

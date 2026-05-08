@@ -14,6 +14,28 @@ import { clientePlanoModoSchema } from '@/modules/empresas/clientes/validators/c
 
 const uuidSchema = z.string().uuid('Informe um identificador válido');
 
+const optionalBooleanQuerySchema = z.preprocess((value) => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['true', '1', 'sim', 'yes'].includes(normalized)) {
+      return true;
+    }
+    if (['false', '0', 'nao', 'não', 'no'].includes(normalized)) {
+      return false;
+    }
+  }
+
+  return value;
+}, z.boolean().optional());
+
 const nullableString = z.string().trim().max(255, 'Valor muito longo').optional().nullable();
 
 const nullableEnderecoString = z
@@ -236,6 +258,7 @@ export const adminEmpresasListQuerySchema = z
     page: z.coerce.number().int().min(1).optional(),
     pageSize: z.coerce.number().int().min(1).max(100).optional(),
     context: z.enum(['DEFAULT', 'AUTOFILL']).optional(),
+    elegivelCadastroVaga: optionalBooleanQuerySchema,
     search: z
       .string()
       .trim()
@@ -249,10 +272,37 @@ export const adminEmpresasListQuerySchema = z
     page: values.page ?? 1,
     pageSize: values.pageSize ?? 20,
     context: values.context ?? 'DEFAULT',
+    elegivelCadastroVaga: values.elegivelCadastroVaga ?? false,
     search: values.search,
   }));
 
 export type AdminEmpresasListQuery = z.infer<typeof adminEmpresasListQuerySchema>;
+
+const recursosPremiumVagasMotivoSchema = z
+  .string({ required_error: 'Informe o motivo da ação administrativa' })
+  .trim()
+  .min(3, 'Informe um motivo com pelo menos 3 caracteres')
+  .max(500, 'Motivo muito longo');
+
+export const adminEmpresasRecursosPremiumVagasApplySchema = z.object({
+  motivo: recursosPremiumVagasMotivoSchema,
+});
+
+export type AdminEmpresasRecursosPremiumVagasApplyInput = z.infer<
+  typeof adminEmpresasRecursosPremiumVagasApplySchema
+>;
+
+export const adminEmpresasRecursosPremiumVagasRemoveSchema = z.object({
+  motivo: recursosPremiumVagasMotivoSchema,
+  novoStatusVagasPublicadas: z
+    .union([z.literal(StatusDeVagas.RASCUNHO), z.literal(StatusDeVagas.ENCERRADA)])
+    .optional()
+    .default(StatusDeVagas.RASCUNHO),
+});
+
+export type AdminEmpresasRecursosPremiumVagasRemoveInput = z.infer<
+  typeof adminEmpresasRecursosPremiumVagasRemoveSchema
+>;
 
 export const adminEmpresasDetailQuerySchema = z
   .object({

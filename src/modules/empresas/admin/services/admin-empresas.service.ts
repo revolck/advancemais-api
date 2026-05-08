@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto';
 
 import {
   AcoesDeLogDeBloqueio,
+  EmpresasAuditoriaAcao,
   EmpresasPlanoModo,
   EmpresasPlanoOrigin,
   EmpresasPlanoStatus,
@@ -36,6 +37,8 @@ import type {
   AdminEmpresasPlanoInput,
   AdminEmpresasPlanoManualAssignInput,
   AdminEmpresasPlanoUpdateInput,
+  AdminEmpresasRecursosPremiumVagasApplyInput,
+  AdminEmpresasRecursosPremiumVagasRemoveInput,
   AdminEmpresasUpdateInput,
   AdminEmpresasVagasQuery,
 } from '@/modules/empresas/admin/validators/admin-empresas.schema';
@@ -114,6 +117,22 @@ const planoHistoricoSelect = {
   },
 } satisfies Prisma.EmpresasPlanoSelect;
 
+const recursosPremiumVagasSelect = {
+  id: true,
+  ativo: true,
+  vagasIlimitadas: true,
+  destaquesIlimitados: true,
+  aplicadoEm: true,
+  motivo: true,
+  AplicadoPor: {
+    select: {
+      id: true,
+      nomeCompleto: true,
+      role: true,
+    },
+  },
+} satisfies Prisma.EmpresasRecursosPremiumVagasSelect;
+
 const bloqueioSelect = {
   id: true,
   tipo: true,
@@ -155,6 +174,9 @@ const createUsuarioListSelect = () =>
       select: usuarioInformacoesSelect,
     },
     EmpresasPlano: createPlanoAtivoSelect(),
+    RecursosPremiumVagas: {
+      select: recursosPremiumVagasSelect,
+    },
     UsuariosEmBloqueios_UsuariosEmBloqueios_usuarioIdToUsuarios: {
       where: {
         status: StatusDeBloqueios.ATIVO,
@@ -276,6 +298,9 @@ const usuarioDetailSelect = {
     select: usuarioInformacoesSelect,
   },
   EmpresasPlano: createPlanoAtivoSelect(),
+  RecursosPremiumVagas: {
+    select: recursosPremiumVagasSelect,
+  },
   UsuariosEnderecos: {
     orderBy: { criadoEm: 'asc' },
     select: {
@@ -356,6 +381,9 @@ type UsuarioAutofillSelect = ReturnType<typeof createUsuarioAutofillSelect>;
 type UsuarioAutofillResult = Prisma.UsuariosGetPayload<{ select: UsuarioAutofillSelect }>;
 type PlanoResumoData = UsuarioListResult['EmpresasPlano'][number];
 type PlanoHistoricoRecord = Prisma.EmpresasPlanoGetPayload<{ select: typeof planoHistoricoSelect }>;
+type RecursosPremiumVagasRecord = Prisma.EmpresasRecursosPremiumVagasGetPayload<{
+  select: typeof recursosPremiumVagasSelect;
+}>;
 type BloqueioResumoData = Prisma.UsuariosEmBloqueiosGetPayload<{
   select: typeof bloqueioSelect;
 }>;
@@ -421,6 +449,19 @@ type AdminEmpresaPlanoHistoricoItem = AdminEmpresasPlanoResumo & {
   graceUntil: Date | null;
 };
 
+type AdminEmpresaRecursosPremiumVagasResumo = {
+  ativo: boolean;
+  vagasIlimitadas: boolean;
+  destaquesIlimitados: boolean;
+  aplicadoEm: Date | null;
+  aplicadoPor: {
+    id: string;
+    nome: string;
+    role: Roles;
+  } | null;
+  motivo: string | null;
+};
+
 type AdminEmpresaListItem = {
   id: string;
   codUsuario: string;
@@ -438,6 +479,7 @@ type AdminEmpresaListItem = {
   parceira: boolean;
   diasTesteDisponibilizados: number | null;
   plano: AdminEmpresasPlanoResumo | null;
+  recursosPremiumVagas: AdminEmpresaRecursosPremiumVagasResumo;
   vagasPublicadas: number;
   limiteVagasPlano: number | null;
   bloqueada: boolean;
@@ -591,6 +633,7 @@ type AdminEmpresaDetail = {
   parceira: boolean;
   diasTesteDisponibilizados: number | null;
   plano: AdminEmpresasPlanoResumo | null;
+  recursosPremiumVagas: AdminEmpresaRecursosPremiumVagasResumo;
   vagas: {
     publicadas: number;
     limitePlano: number | null;
@@ -1037,6 +1080,97 @@ const buildSearchFilter = (search?: string): Prisma.UsuariosWhereInput => {
   };
 };
 
+const buildAndFilters = (...filters: Prisma.UsuariosWhereInput[]) =>
+  filters.filter((filter) => Object.keys(filter).length > 0);
+
+const buildElegivelCadastroVagaFilter = (
+  referenceDate: Date,
+  includeRecursosPremium: boolean,
+): Prisma.UsuariosWhereInput => {
+  const planoElegivel: Prisma.UsuariosWhereInput = {
+    EmpresasPlano: {
+      some: {
+        status: EmpresasPlanoStatus.ATIVO,
+        OR: [
+          {
+            modo: EmpresasPlanoModo.CLIENTE,
+            OR: [{ fim: null }, { fim: { gt: referenceDate } }],
+          },
+          {
+            modo: EmpresasPlanoModo.PARCEIRO,
+            OR: [{ fim: null }, { fim: { gt: referenceDate } }],
+          },
+          {
+            modo: EmpresasPlanoModo.TESTE,
+            inicio: { not: null },
+            fim: { gt: referenceDate },
+          },
+        ],
+      },
+    },
+  };
+
+  if (!includeRecursosPremium) {
+    return planoElegivel;
+  }
+
+  return {
+    OR: [
+      planoElegivel,
+      {
+        RecursosPremiumVagas: {
+          is: {
+            ativo: true,
+            vagasIlimitadas: true,
+            destaquesIlimitados: true,
+          },
+        },
+      },
+    ],
+  };
+};
+
+const buildRecursosPremiumVagasAtivoFilter = (): Prisma.EmpresasRecursosPremiumVagasWhereInput => ({
+  ativo: true,
+  vagasIlimitadas: true,
+  destaquesIlimitados: true,
+});
+
+const canIncludeRecursosPremiumInElegibilidade = (role?: Roles | string | null) =>
+  role === Roles.ADMIN || role === Roles.MODERADOR;
+
+const emptyRecursosPremiumVagas = (): AdminEmpresaRecursosPremiumVagasResumo => ({
+  ativo: false,
+  vagasIlimitadas: false,
+  destaquesIlimitados: false,
+  aplicadoEm: null,
+  aplicadoPor: null,
+  motivo: null,
+});
+
+const mapRecursosPremiumVagas = (
+  recurso?: RecursosPremiumVagasRecord | null,
+): AdminEmpresaRecursosPremiumVagasResumo => {
+  if (!recurso?.ativo) {
+    return emptyRecursosPremiumVagas();
+  }
+
+  return {
+    ativo: true,
+    vagasIlimitadas: recurso.vagasIlimitadas,
+    destaquesIlimitados: recurso.destaquesIlimitados,
+    aplicadoEm: recurso.aplicadoEm,
+    aplicadoPor: recurso.AplicadoPor
+      ? {
+          id: recurso.AplicadoPor.id,
+          nome: recurso.AplicadoPor.nomeCompleto,
+          role: recurso.AplicadoPor.role,
+        }
+      : null,
+    motivo: recurso.motivo ?? null,
+  };
+};
+
 const MILLISECONDS_IN_DAY = 1000 * 60 * 60 * 24;
 
 const calculateDurationInDays = (inicio: Date | null, fim: Date | null) => {
@@ -1251,8 +1385,16 @@ const buildPagination = (page: number, pageSize: number, total: number) => ({
 const EMPRESAS_AUTOFILL_CACHE_TTL_SECONDS = 120;
 const EMPRESAS_OVERVIEW_CACHE_TTL_SECONDS = 60;
 
-const buildEmpresasAutofillListCacheKey = (page: number, pageSize: number, search?: string) =>
-  `admin:empresas:autofill:list:p${page}:s${pageSize}:q:${(search ?? '').toLowerCase()}`;
+const buildEmpresasAutofillListCacheKey = (
+  page: number,
+  pageSize: number,
+  search?: string,
+  elegivelCadastroVaga?: boolean,
+  includeRecursosPremium?: boolean,
+) =>
+  `admin:empresas:autofill:list:p${page}:s${pageSize}:q:${(search ?? '').toLowerCase()}:elegivel:${
+    elegivelCadastroVaga ? '1' : '0'
+  }:premium:${includeRecursosPremium ? '1' : '0'}`;
 
 const buildEmpresasAutofillDetailCacheKey = (id: string) => `admin:empresas:autofill:detail:${id}`;
 const buildEmpresasOverviewCacheKey = (id: string) => `admin:empresas:overview:${id}`;
@@ -1379,6 +1521,32 @@ const listVagas = async (id: string, { page, pageSize, status }: AdminEmpresasVa
     pagination: buildPagination(page, pageSize, total),
   };
 };
+
+const RECURSOS_PREMIUM_VAGAS_DESTAQUES_POLICY =
+  'Ao remover recursos premium, a API remove todos os destaques ativos da empresa e exige nova selecao manual conforme o plano normal.';
+
+const ensureRecursosPremiumAdmin = async (tx: Prisma.TransactionClient, adminId: string) => {
+  const admin = await tx.usuarios.findUnique({
+    where: { id: adminId },
+    select: { id: true, nomeCompleto: true, role: true },
+  });
+
+  if (!admin || (admin.role !== Roles.ADMIN && admin.role !== Roles.MODERADOR)) {
+    throw Object.assign(new Error('Usuário não autorizado a alterar recursos premium'), {
+      code: 'ADMIN_REQUIRED',
+    });
+  }
+
+  return admin;
+};
+
+const buildRecursosPremiumVagasEmpresaPayload = (
+  empresaId: string,
+  recurso?: RecursosPremiumVagasRecord | null,
+) => ({
+  id: empresaId,
+  recursosPremiumVagas: mapRecursosPremiumVagas(recurso),
+});
 
 export const adminEmpresasService = {
   validateCnpj: async (input: string) => {
@@ -2254,15 +2422,24 @@ export const adminEmpresasService = {
     }
   },
 
-  list: async ({ page, pageSize, search }: AdminEmpresasListQuery) => {
+  list: async (
+    { page, pageSize, search, elegivelCadastroVaga }: AdminEmpresasListQuery,
+    options?: { actorRole?: Roles | string | null },
+  ) => {
+    const referenceDate = new Date();
+    const includeRecursosPremium = canIncludeRecursosPremiumInElegibilidade(options?.actorRole);
+    const andFilters = buildAndFilters(
+      buildSearchFilter(search),
+      elegivelCadastroVaga
+        ? buildElegivelCadastroVagaFilter(referenceDate, includeRecursosPremium)
+        : {},
+    );
     const where: Prisma.UsuariosWhereInput = {
       tipoUsuario: TiposDeUsuarios.PESSOA_JURIDICA,
-      ...buildSearchFilter(search),
+      ...(andFilters.length > 0 ? { AND: andFilters } : {}),
     };
 
     const skip = (page - 1) * pageSize;
-
-    const referenceDate = new Date();
 
     const [total, empresas] = await prisma.$transaction([
       prisma.usuarios.count({ where }),
@@ -2304,6 +2481,7 @@ export const adminEmpresasService = {
         parceira: Boolean(planoAtual && planoAtual.modo === EmpresasPlanoModo.PARCEIRO),
         diasTesteDisponibilizados: diasTeste,
         plano,
+        recursosPremiumVagas: mapRecursosPremiumVagas(empresa.RecursosPremiumVagas),
         vagasPublicadas: empresa._count?.EmpresasVagas ?? 0,
         limiteVagasPlano: plano?.quantidadeVagas ?? null,
         bloqueada: Boolean(bloqueio),
@@ -2318,15 +2496,32 @@ export const adminEmpresasService = {
     };
   },
 
-  listAutofill: async ({ page, pageSize, search }: AdminEmpresasListQuery) => {
-    const cacheKey = buildEmpresasAutofillListCacheKey(page, pageSize, search);
+  listAutofill: async (
+    { page, pageSize, search, elegivelCadastroVaga }: AdminEmpresasListQuery,
+    options?: { actorRole?: Roles | string | null },
+  ) => {
+    const includeRecursosPremium = canIncludeRecursosPremiumInElegibilidade(options?.actorRole);
+    const cacheKey = buildEmpresasAutofillListCacheKey(
+      page,
+      pageSize,
+      search,
+      elegivelCadastroVaga,
+      includeRecursosPremium,
+    );
 
     return getCachedOrFetch(
       cacheKey,
       async () => {
+        const referenceDate = new Date();
+        const andFilters = buildAndFilters(
+          buildSearchFilter(search),
+          elegivelCadastroVaga
+            ? buildElegivelCadastroVagaFilter(referenceDate, includeRecursosPremium)
+            : {},
+        );
         const where: Prisma.UsuariosWhereInput = {
           tipoUsuario: TiposDeUsuarios.PESSOA_JURIDICA,
-          ...buildSearchFilter(search),
+          ...(andFilters.length > 0 ? { AND: andFilters } : {}),
         };
 
         const skip = (page - 1) * pageSize;
@@ -2350,6 +2545,192 @@ export const adminEmpresasService = {
       EMPRESAS_AUTOFILL_CACHE_TTL_SECONDS,
     );
   },
+
+  applyRecursosPremiumVagas: async (
+    empresaId: string,
+    input: AdminEmpresasRecursosPremiumVagasApplyInput,
+    adminId: string,
+  ) =>
+    prisma.$transaction(async (tx) => {
+      const empresa = await ensureEmpresaExiste(tx, empresaId);
+      const admin = await ensureRecursosPremiumAdmin(tx, adminId);
+
+      const atual = await tx.empresasRecursosPremiumVagas.findUnique({
+        where: { empresaId: empresa.id },
+        select: recursosPremiumVagasSelect,
+      });
+
+      if (atual?.ativo) {
+        return {
+          success: true,
+          message: 'Recursos premium aplicados com sucesso.',
+          empresa: buildRecursosPremiumVagasEmpresaPayload(empresa.id, atual),
+        };
+      }
+
+      const now = new Date();
+      const recurso = atual
+        ? await tx.empresasRecursosPremiumVagas.update({
+            where: { empresaId: empresa.id },
+            data: {
+              ativo: true,
+              vagasIlimitadas: true,
+              destaquesIlimitados: true,
+              aplicadoEm: now,
+              aplicadoPorId: admin.id,
+              motivo: input.motivo,
+              removidoEm: null,
+              removidoPorId: null,
+              motivoRemocao: null,
+            },
+            select: recursosPremiumVagasSelect,
+          })
+        : await tx.empresasRecursosPremiumVagas.create({
+            data: {
+              empresaId: empresa.id,
+              ativo: true,
+              vagasIlimitadas: true,
+              destaquesIlimitados: true,
+              aplicadoEm: now,
+              aplicadoPorId: admin.id,
+              motivo: input.motivo,
+            },
+            select: recursosPremiumVagasSelect,
+          });
+
+      await tx.empresasAuditoria.create({
+        data: {
+          empresaId: empresa.id,
+          alteradoPor: admin.id,
+          acao: EmpresasAuditoriaAcao.RECURSOS_PREMIUM_VAGAS_APLICADOS,
+          campo: 'recursosPremiumVagas',
+          valorAnterior: atual?.ativo ? 'ATIVO' : 'INATIVO',
+          valorNovo: 'ATIVO',
+          descricao: 'Recursos premium de vagas aplicados administrativamente.',
+          metadata: {
+            motivo: input.motivo,
+            vagasIlimitadas: true,
+            destaquesIlimitados: true,
+            aplicadoPorRole: admin.role,
+          },
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Recursos premium aplicados com sucesso.',
+        empresa: buildRecursosPremiumVagasEmpresaPayload(empresa.id, recurso),
+      };
+    }),
+
+  removeRecursosPremiumVagas: async (
+    empresaId: string,
+    input: AdminEmpresasRecursosPremiumVagasRemoveInput,
+    adminId: string,
+  ) =>
+    prisma.$transaction(async (tx) => {
+      const empresa = await ensureEmpresaExiste(tx, empresaId);
+      const admin = await ensureRecursosPremiumAdmin(tx, adminId);
+
+      const atual = await tx.empresasRecursosPremiumVagas.findUnique({
+        where: { empresaId: empresa.id },
+        select: recursosPremiumVagasSelect,
+      });
+
+      if (!atual?.ativo) {
+        return {
+          success: true,
+          message: 'Recursos premium removidos com sucesso.',
+          empresa: buildRecursosPremiumVagasEmpresaPayload(empresa.id, null),
+          efeitos: {
+            vagasPublicadasAlteradas: 0,
+            novoStatusVagasPublicadas: input.novoStatusVagasPublicadas,
+            destaquesRemovidos: 0,
+          },
+        };
+      }
+
+      const now = new Date();
+      const vagasPublicadas = await tx.empresasVagas.updateMany({
+        where: {
+          usuarioId: empresa.id,
+          status: StatusDeVagas.PUBLICADO,
+        },
+        data: {
+          status: input.novoStatusVagasPublicadas,
+          atualizadoEm: now,
+        },
+      });
+      const destaques = await tx.empresasVagas.updateMany({
+        where: {
+          usuarioId: empresa.id,
+          destaque: true,
+        },
+        data: {
+          destaque: false,
+          atualizadoEm: now,
+        },
+      });
+
+      await tx.empresasVagasDestaque.updateMany({
+        where: {
+          ativo: true,
+          EmpresasVagas: {
+            usuarioId: empresa.id,
+          },
+        },
+        data: {
+          ativo: false,
+          desativadoEm: now,
+          atualizadoEm: now,
+        },
+      });
+
+      const recurso = await tx.empresasRecursosPremiumVagas.update({
+        where: { empresaId: empresa.id },
+        data: {
+          ativo: false,
+          vagasIlimitadas: false,
+          destaquesIlimitados: false,
+          motivo: null,
+          removidoEm: now,
+          removidoPorId: admin.id,
+          motivoRemocao: input.motivo,
+        },
+        select: recursosPremiumVagasSelect,
+      });
+
+      const efeitos = {
+        vagasPublicadasAlteradas: vagasPublicadas.count,
+        novoStatusVagasPublicadas: input.novoStatusVagasPublicadas,
+        destaquesRemovidos: destaques.count,
+      };
+
+      await tx.empresasAuditoria.create({
+        data: {
+          empresaId: empresa.id,
+          alteradoPor: admin.id,
+          acao: EmpresasAuditoriaAcao.RECURSOS_PREMIUM_VAGAS_REMOVIDOS,
+          campo: 'recursosPremiumVagas',
+          valorAnterior: 'ATIVO',
+          valorNovo: 'INATIVO',
+          descricao: 'Recursos premium de vagas removidos administrativamente.',
+          metadata: {
+            motivo: input.motivo,
+            efeitos,
+            politicaDestaques: RECURSOS_PREMIUM_VAGAS_DESTAQUES_POLICY,
+            removidoPorRole: admin.role,
+          },
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Recursos premium removidos com sucesso.',
+        empresa: buildRecursosPremiumVagasEmpresaPayload(empresa.id, recurso),
+        efeitos,
+      };
+    }),
 
   get: async (id: string): Promise<AdminEmpresaDetail | null> => {
     const empresaRecord = await prisma.usuarios.findUnique({
@@ -2425,6 +2806,7 @@ export const adminEmpresasService = {
       parceira: Boolean(planoAtual && planoAtual.modo === EmpresasPlanoModo.PARCEIRO),
       diasTesteDisponibilizados: diasTeste,
       plano,
+      recursosPremiumVagas: mapRecursosPremiumVagas(empresa.RecursosPremiumVagas),
       vagas: {
         publicadas: empresa._count?.EmpresasVagas ?? 0,
         limitePlano: plano?.quantidadeVagas ?? null,
@@ -2668,8 +3050,19 @@ export const adminEmpresasService = {
         });
       }
 
-      // Verifica limite do plano considerando apenas PUBLICADO
-      const planoAtivo = await clientesService.findActiveByUsuario(empresaId);
+      const recursosPremium = await tx.empresasRecursosPremiumVagas.findFirst({
+        where: {
+          empresaId,
+          ...buildRecursosPremiumVagasAtivoFilter(),
+        },
+        select: { id: true },
+      });
+
+      // Verifica limite do plano considerando apenas PUBLICADO.
+      // Empresas com recursos premium ativos nao consomem limite comercial.
+      const planoAtivo = recursosPremium
+        ? null
+        : await clientesService.findActiveByUsuario(empresaId);
       const limite = planoAtivo?.PlanosEmpresariais?.quantidadeVagas ?? null;
       if (typeof limite === 'number' && limite > 0) {
         const publicados = await tx.empresasVagas.count({

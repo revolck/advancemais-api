@@ -4,7 +4,7 @@
   "description": "API do sistema Advance+ - Gestão de usuários e autenticação",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only --ignore-watch node_modules --require tsconfig-paths/register src/index.ts",
+    "dev": "cross-env CHOKIDAR_USEPOLLING=1 CHOKIDAR_INTERVAL=500 ts-node-dev --respawn --transpile-only --ignore-watch node_modules --require tsconfig-paths/register src/index.ts",
     "start": "node -r tsconfig-paths/register dist/index.js",
     "build": "cross-env NODE_OPTIONS='--max-old-space-size=4096' tsc --project tsconfig.prod.json",
     "build:prod": "pnpm prisma db push --accept-data-loss && pnpm prisma generate && pnpm run build",

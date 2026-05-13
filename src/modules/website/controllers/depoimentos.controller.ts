@@ -8,7 +8,7 @@ function mapDepoimento(ordem: any) {
   return {
     id: ordem.id,
     depoimentoId: ordem.WebsiteDepoimento.id,
-    depoimento: ordem.WebsiteDepoimento.WebsiteDepoimento,
+    depoimento: ordem.WebsiteDepoimento.depoimento,
     nome: ordem.WebsiteDepoimento.nome,
     cargo: ordem.WebsiteDepoimento.cargo,
     fotoUrl: ordem.WebsiteDepoimento.fotoUrl,

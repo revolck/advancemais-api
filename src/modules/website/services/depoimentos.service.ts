@@ -1,10 +1,27 @@
-import { WebsiteStatus } from '@prisma/client';
+import { Prisma, WebsiteStatus } from '@prisma/client';
 import { prisma } from '@/config/prisma';
 import { getCache, setCache, invalidateCacheByPrefix } from '@/utils/cache';
 import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
 
 const CACHE_PREFIX = 'website:depoimentos:list';
 const buildCacheKey = (status?: WebsiteStatus) => `${CACHE_PREFIX}:${status ?? 'ALL'}`;
+const depoimentoOrderSelect = {
+  id: true,
+  ordem: true,
+  status: true,
+  criadoEm: true,
+  WebsiteDepoimento: {
+    select: {
+      id: true,
+      depoimento: true,
+      nome: true,
+      cargo: true,
+      fotoUrl: true,
+      criadoEm: true,
+      atualizadoEm: true,
+    },
+  },
+} satisfies Prisma.WebsiteDepoimentoOrdemSelect;
 
 export const depoimentosService = {
   list: async (status?: WebsiteStatus) => {
@@ -17,20 +34,7 @@ export const depoimentosService = {
       ...(status ? { where: { status } } : {}),
       orderBy: { ordem: 'asc' },
       take: 100,
-      select: {
-        id: true,
-        ordem: true,
-        status: true,
-        WebsiteDepoimento: {
-          select: {
-            id: true,
-            depoimento: true,
-            nome: true,
-            cargo: true,
-            fotoUrl: true,
-          },
-        },
-      },
+      select: depoimentoOrderSelect,
     });
     await setCache(cacheKey, result, WEBSITE_CACHE_TTL);
     return result;
@@ -38,20 +42,7 @@ export const depoimentosService = {
   get: (id: string) =>
     prisma.websiteDepoimentoOrdem.findUnique({
       where: { id },
-      select: {
-        id: true,
-        ordem: true,
-        status: true,
-        WebsiteDepoimento: {
-          select: {
-            id: true,
-            depoimento: true,
-            nome: true,
-            cargo: true,
-            fotoUrl: true,
-          },
-        },
-      },
+      select: depoimentoOrderSelect,
     }),
   create: async (data: {
     depoimento: string;
@@ -77,20 +68,7 @@ export const depoimentosService = {
           },
         },
       },
-      select: {
-        id: true,
-        ordem: true,
-        status: true,
-        WebsiteDepoimento: {
-          select: {
-            id: true,
-            depoimento: true,
-            nome: true,
-            cargo: true,
-            fotoUrl: true,
-          },
-        },
-      },
+      select: depoimentoOrderSelect,
     });
     await invalidateCacheByPrefix(CACHE_PREFIX);
     return result;
@@ -107,8 +85,10 @@ export const depoimentosService = {
     },
   ) => {
     const result = await prisma.$transaction(async (tx) => {
-      const current = await tx.websiteDepoimentoOrdem.findUnique({
-        where: { websiteDepoimentoId: depoimentoId },
+      const current = await tx.websiteDepoimentoOrdem.findFirst({
+        where: {
+          OR: [{ websiteDepoimentoId: depoimentoId }, { id: depoimentoId }],
+        },
       });
       if (!current) throw new Error('Depoimento não encontrado');
 
@@ -151,20 +131,7 @@ export const depoimentosService = {
               }
             : {}),
         },
-        select: {
-          id: true,
-          ordem: true,
-          status: true,
-          WebsiteDepoimento: {
-            select: {
-              id: true,
-              depoimento: true,
-              nome: true,
-              cargo: true,
-              fotoUrl: true,
-            },
-          },
-        },
+        select: depoimentoOrderSelect,
       });
     });
     await invalidateCacheByPrefix(CACHE_PREFIX);
@@ -177,6 +144,8 @@ export const depoimentosService = {
         select: {
           id: true,
           ordem: true,
+          status: true,
+          criadoEm: true,
           WebsiteDepoimento: {
             select: {
               id: true,
@@ -184,6 +153,8 @@ export const depoimentosService = {
               nome: true,
               cargo: true,
               fotoUrl: true,
+              criadoEm: true,
+              atualizadoEm: true,
             },
           },
         },
@@ -211,19 +182,7 @@ export const depoimentosService = {
         return tx.websiteDepoimentoOrdem.update({
           where: { id: ordemId },
           data: { ordem: novaOrdem },
-          select: {
-            id: true,
-            ordem: true,
-            WebsiteDepoimento: {
-              select: {
-                id: true,
-                depoimento: true,
-                nome: true,
-                cargo: true,
-                fotoUrl: true,
-              },
-            },
-          },
+          select: depoimentoOrderSelect,
         });
       }
 
@@ -234,13 +193,15 @@ export const depoimentosService = {
   },
   remove: async (depoimentoId: string) => {
     await prisma.$transaction(async (tx) => {
-      const ordem = await tx.websiteDepoimentoOrdem.findUnique({
-        where: { websiteDepoimentoId: depoimentoId },
-        select: { id: true, ordem: true },
+      const ordem = await tx.websiteDepoimentoOrdem.findFirst({
+        where: {
+          OR: [{ websiteDepoimentoId: depoimentoId }, { id: depoimentoId }],
+        },
+        select: { id: true, ordem: true, websiteDepoimentoId: true },
       });
       if (!ordem) return;
       await tx.websiteDepoimentoOrdem.delete({ where: { id: ordem.id } });
-      await tx.websiteDepoimento.delete({ where: { id: depoimentoId } });
+      await tx.websiteDepoimento.delete({ where: { id: ordem.websiteDepoimentoId } });
       await tx.websiteDepoimentoOrdem.updateMany({
         where: { ordem: { gt: ordem.ordem } },
         data: { ordem: { decrement: 1 } },

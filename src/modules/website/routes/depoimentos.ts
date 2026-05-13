@@ -131,7 +131,7 @@ router.post('/', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), DepoimentosCont
  *     parameters:
  *       - in: path
  *         name: id
- *         description: ID do depoimento
+ *         description: ID da ordem do depoimento ou ID do depoimento
  *         required: true
  *         schema:
  *           type: string

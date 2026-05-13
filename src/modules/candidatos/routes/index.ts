@@ -665,11 +665,11 @@ router.get(
  *                       empresa:
  *                         type: string
  *                         description: Nome da empresa ou "Anônima" se modoAnonimo=true
- *                         example: "Tech Innovations LTDA" ou "Anônima"
+ *                         example: "Tech Innovations LTDA"
  *                       local:
  *                         type: string
  *                         description: Localização formatada (cidade, estado) ou "Remoto" ou "Híbrido"
- *                         example: "São Paulo, SP" ou "Remoto"
+ *                         example: "São Paulo, SP"
  *                       publicadaEm:
  *                         type: string
  *                         format: date-time

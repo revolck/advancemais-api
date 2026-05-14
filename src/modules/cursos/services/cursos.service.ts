@@ -21,6 +21,14 @@ const publicTurmaStatuses: CursoStatus[] = [
   CursoStatus.EM_ANDAMENTO,
 ];
 
+const mapTurmaPublication = (status: CursoStatus) => {
+  const publicado = publicTurmaStatuses.includes(status);
+  return {
+    publicacaoStatus: publicado ? CursoStatus.PUBLICADO : CursoStatus.RASCUNHO,
+    publicado,
+  };
+};
+
 const categoriaSelect = {
   id: true,
   codCategoria: true,
@@ -257,6 +265,7 @@ const mapTurmaSummary = (
   turma: Prisma.CursosTurmasGetPayload<{ select: typeof turmaSummarySelect }>,
 ) => {
   const { instrutor, instrutores } = normalizeTurmaInstrutores(turma);
+  const publication = mapTurmaPublication(turma.status);
 
   return {
     id: turma.id,
@@ -266,6 +275,8 @@ const mapTurmaSummary = (
     turno: turma.turno,
     metodo: turma.metodo,
     status: turma.status,
+    publicacaoStatus: publication.publicacaoStatus,
+    publicado: publication.publicado,
     vagasIlimitadas: (turma as any).vagasIlimitadas ?? false,
     vagasTotais: turma.vagasTotais,
     vagasDisponiveis: turma.vagasDisponiveis,
@@ -582,6 +593,12 @@ const mapTurmaDetailed = (turma: TurmaDetailedPayload) => {
     totalProvasRecuperacaoFinal: allProvas.filter((p) => (p as any).recuperacaoFinal === true)
       .length,
   };
+  const estruturaResumo = {
+    itemCount: estrutura.totalAulas + estrutura.totalProvas + estrutura.totalAtividades,
+    modulesCount: estrutura.totalModulos,
+    standaloneItemsCount: estrutura.totalStandaloneItems,
+  };
+  const publication = mapTurmaPublication(turma.status);
 
   return {
     id: turma.id,
@@ -592,6 +609,9 @@ const mapTurmaDetailed = (turma: TurmaDetailedPayload) => {
     turno: turma.turno,
     metodo: turma.metodo,
     status: turma.status,
+    publicacaoStatus: publication.publicacaoStatus,
+    publicado: publication.publicado,
+    estruturaResumo,
     vagasIlimitadas: (turma as any).vagasIlimitadas ?? false,
     vagasTotais: turma.vagasTotais,
     vagasDisponiveis: turma.vagasDisponiveis,
@@ -689,6 +709,7 @@ const mapTurmaPublic = (turma: TurmaPublicPayload) => {
   });
 
   const { instrutor, instrutores } = normalizeTurmaInstrutores(turma);
+  const publication = mapTurmaPublication(turma.status);
 
   return {
     id: turma.id,
@@ -698,6 +719,8 @@ const mapTurmaPublic = (turma: TurmaPublicPayload) => {
     turno: turma.turno,
     metodo: turma.metodo,
     status: turma.status,
+    publicacaoStatus: publication.publicacaoStatus,
+    publicado: publication.publicado,
     vagasIlimitadas: (turma as any).vagasIlimitadas ?? false,
     vagasTotais: turma.vagasTotais,
     vagasDisponiveis: turma.vagasDisponiveis,

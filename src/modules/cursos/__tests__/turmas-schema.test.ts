@@ -123,21 +123,18 @@ describe('Turmas Schemas', () => {
       expect(result.success).toBe(true);
     });
 
-    it('rejeita MODULAR sem módulos', () => {
+    it('aceita MODULAR em rascunho sem módulos ou itens', () => {
       const payload = {
         ...baseCreate,
         estruturaTipo: 'MODULAR' as const,
+        status: 'RASCUNHO' as const,
         estrutura: {
           modules: [],
           standaloneItems: [],
         },
       };
       const result = createTurmaSchema.safeParse(payload);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        const msg = result.error.issues.find((i) => i.path?.join('.').includes('modules'));
-        expect(msg?.message).toMatch(/ao menos 1 módulo/i);
-      }
+      expect(result.success).toBe(true);
     });
 
     it('rejeita MODULAR com standaloneItems', () => {
@@ -193,24 +190,74 @@ describe('Turmas Schemas', () => {
       }
     });
 
-    it('rejeita PADRAO sem standaloneItems', () => {
+    it('aceita PADRAO em rascunho sem standaloneItems', () => {
       const payload = {
         ...baseCreate,
         estruturaTipo: 'PADRAO' as const,
+        status: 'RASCUNHO' as const,
         estrutura: {
           modules: [],
           standaloneItems: [],
         },
       };
       const result = createTurmaSchema.safeParse(payload);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        const msg = result.error.issues.find((i) => i.path?.join('.').includes('standalone'));
-        expect(msg?.message).toMatch(/ao menos 1 item avulso|standaloneItems/i);
-      }
+      expect(result.success).toBe(true);
     });
 
-    it('rejeita estrutura sem nenhuma AULA', () => {
+    it('aceita estrutura vazia com status PUBLICADO para bloqueio no service', () => {
+      const payload = {
+        ...baseCreate,
+        estruturaTipo: 'PADRAO' as const,
+        status: 'PUBLICADO' as const,
+        estrutura: {
+          modules: [],
+          standaloneItems: [],
+        },
+      };
+      const result = createTurmaSchema.safeParse(payload);
+      expect(result.success).toBe(true);
+    });
+
+    it('aceita alias publicado=true para bloqueio no service', () => {
+      const payload = {
+        ...baseCreate,
+        estruturaTipo: 'PADRAO' as const,
+        publicado: true,
+        estrutura: {
+          modules: [],
+          standaloneItems: [],
+        },
+      };
+      const result = createTurmaSchema.safeParse(payload);
+      expect(result.success).toBe(true);
+    });
+
+    it('aceita publicar com apenas um item efetivo', () => {
+      const payload = {
+        ...baseCreate,
+        status: 'PUBLICADO' as const,
+        estrutura: {
+          modules: [
+            {
+              title: 'M1',
+              items: [
+                {
+                  type: 'PROVA' as const,
+                  title: 'P1',
+                  templateId: uuidProva,
+                  instructorId: uuidInstrutor,
+                },
+              ],
+            },
+          ],
+          standaloneItems: [],
+        },
+      };
+      const result = createTurmaSchema.safeParse(payload);
+      expect(result.success).toBe(true);
+    });
+
+    it('aceita estrutura sem nenhuma AULA', () => {
       const payload = {
         ...baseCreate,
         estrutura: {
@@ -237,14 +284,10 @@ describe('Turmas Schemas', () => {
         },
       };
       const result = createTurmaSchema.safeParse(payload);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        const msg = result.error.issues.find((i) => i.path?.join('.').includes('estrutura'));
-        expect(msg?.message).toMatch(/ao menos 1.*AULA/i);
-      }
+      expect(result.success).toBe(true);
     });
 
-    it('rejeita estrutura sem nenhum item PROVA ou ATIVIDADE', () => {
+    it('aceita estrutura sem nenhum item PROVA ou ATIVIDADE', () => {
       const payload = {
         ...baseCreate,
         estrutura: {
@@ -271,11 +314,7 @@ describe('Turmas Schemas', () => {
         },
       };
       const result = createTurmaSchema.safeParse(payload);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        const msg = result.error.issues.find((i) => i.path?.join('.').includes('estrutura'));
-        expect(msg?.message).toMatch(/PROVA ou ATIVIDADE/i);
-      }
+      expect(result.success).toBe(true);
     });
 
     it('rejeita recuperacaoFinal em item que não seja PROVA', () => {

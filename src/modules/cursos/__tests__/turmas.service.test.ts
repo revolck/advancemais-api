@@ -112,6 +112,7 @@ function createMockTx(overrides: Record<string, any> = {}) {
         .fn()
         .mockResolvedValueOnce(null) // generateUniqueTurmaCode: código livre
         .mockResolvedValueOnce(turmaRawParaMapper), // fetchTurmaDetailed (raw para mapper)
+      findFirst: jest.fn().mockResolvedValue(turmaRawParaMapper),
       create: jest.fn().mockResolvedValue({
         id: uuidTurmaCriada,
         codigo: 'TRAB1234',
@@ -130,12 +131,20 @@ function createMockTx(overrides: Record<string, any> = {}) {
         dataInscricaoFim: new Date(),
         instrutorId: null,
       }),
+      update: jest.fn().mockResolvedValue({ id: uuidTurmaCriada }),
     },
     cursosTurmasInstrutores: {
       createMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     cursosTurmasModulos: {
       create: jest.fn().mockResolvedValue({ id: uuidModulo }),
+      count: jest.fn().mockResolvedValue(1),
+    },
+    usuarios: {
+      findMany: jest.fn(({ where }: any) => {
+        const ids = where?.id?.in ?? [];
+        return Promise.resolve(ids.map((id: string) => ({ id })));
+      }),
     },
   };
 
@@ -149,6 +158,18 @@ function createMockTx(overrides: Record<string, any> = {}) {
     cursosTurmasProvas: {
       ...defaultTx.cursosTurmasProvas,
       ...(overrides.cursosTurmasProvas ?? {}),
+    },
+    cursosTurmas: {
+      ...defaultTx.cursosTurmas,
+      ...(overrides.cursosTurmas ?? {}),
+    },
+    cursosTurmasModulos: {
+      ...defaultTx.cursosTurmasModulos,
+      ...(overrides.cursosTurmasModulos ?? {}),
+    },
+    usuarios: {
+      ...defaultTx.usuarios,
+      ...(overrides.usuarios ?? {}),
     },
   };
 
@@ -205,7 +226,8 @@ const datasValidas = {
 
 describe('Turmas Service', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.restoreAllMocks();
+    jest.spyOn(prisma.cursosTurmas, 'findFirst').mockResolvedValue(turmaRawParaMapper as any);
   });
 
   describe('create - cenários de erro', () => {
@@ -238,6 +260,39 @@ describe('Turmas Service', () => {
         where: { id: uuidCurso },
         select: { id: true },
       });
+    });
+
+    it('deve lançar TURMA_ESTRUTURA_OBRIGATORIA_PUBLICACAO ao criar PUBLICADO sem itens', async () => {
+      const mockTx = createMockTx();
+
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (fn: any) => fn(mockTx));
+
+      await expect(
+        turmasService.create(uuidCurso, {
+          nome: 'Turma Publicada Vazia',
+          estruturaTipo: 'PADRAO',
+          turno: CursosTurnos.NOITE,
+          metodo: CursosMetodos.LIVE,
+          vagasIlimitadas: false,
+          vagasTotais: 30,
+          status: CursoStatus.PUBLICADO,
+          ...datasValidas,
+          estrutura: {
+            modules: [],
+            standaloneItems: [],
+          },
+        }),
+      ).rejects.toMatchObject({
+        message: 'Para publicar a turma, adicione pelo menos 1 item na estrutura.',
+        code: 'TURMA_ESTRUTURA_OBRIGATORIA_PUBLICACAO',
+        details: {
+          itemCount: 0,
+          modulesCount: 0,
+          standaloneItemsCount: 0,
+        },
+      });
+
+      expect(mockTx.cursosTurmas.create).not.toHaveBeenCalled();
     });
 
     it('deve lançar TURMA_PREREQUISITOS_NAO_ATENDIDOS quando não há templates de aula', async () => {
@@ -427,6 +482,36 @@ describe('Turmas Service', () => {
   });
 
   describe('create - sucesso com vínculos de aulas, módulos e provas', () => {
+    it('deve criar turma RASCUNHO sem estrutura e sem validar templates', async () => {
+      const mockTx = createMockTx();
+
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (fn: any) => fn(mockTx));
+
+      const result = await turmasService.create(uuidCurso, {
+        nome: 'Turma Rascunho Vazia',
+        estruturaTipo: 'PADRAO',
+        turno: CursosTurnos.NOITE,
+        metodo: CursosMetodos.LIVE,
+        vagasIlimitadas: false,
+        vagasTotais: 30,
+        status: CursoStatus.RASCUNHO,
+        ...datasValidas,
+        estrutura: {
+          modules: [],
+          standaloneItems: [],
+        },
+      });
+
+      expect(result).toHaveProperty('id', uuidTurmaCriada);
+      expect(result).toHaveProperty('mapping');
+      expect(result.mapping).toEqual([]);
+      expect(mockTx.cursosTurmasAulas.findMany).not.toHaveBeenCalled();
+      expect(mockTx.cursosTurmasProvas.findMany).not.toHaveBeenCalled();
+      expect(mockTx.cursosTurmasModulos.create).not.toHaveBeenCalled();
+      expect(mockTx.cursosTurmasAulas.create).not.toHaveBeenCalled();
+      expect(mockTx.cursosTurmasProvas.create).not.toHaveBeenCalled();
+    });
+
     it('deve criar turma MODULAR com módulos, aulas e provas clonadas e retornar mapping', async () => {
       const mockTx = createMockTx();
 
@@ -735,6 +820,61 @@ describe('Turmas Service', () => {
           skipDuplicates: true,
         }),
       );
+    });
+  });
+
+  describe('togglePublicacao', () => {
+    it('bloqueia publicar turma sem itens efetivos', async () => {
+      const mockTx = createMockTx({
+        cursosTurmasAulas: {
+          count: jest.fn().mockResolvedValue(0),
+        },
+        cursosTurmasProvas: {
+          count: jest.fn().mockResolvedValue(0),
+        },
+        cursosTurmasModulos: {
+          count: jest.fn().mockResolvedValue(0),
+        },
+      });
+
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (fn: any) => fn(mockTx));
+
+      await expect(
+        turmasService.togglePublicacao(uuidCurso, uuidTurmaCriada, true),
+      ).rejects.toMatchObject({
+        code: 'TURMA_ESTRUTURA_OBRIGATORIA_PUBLICACAO',
+        details: {
+          itemCount: 0,
+          modulesCount: 0,
+          standaloneItemsCount: 0,
+        },
+      });
+
+      expect(mockTx.cursosTurmas.update).not.toHaveBeenCalled();
+    });
+
+    it('permite publicar turma com 1 ou mais itens efetivos', async () => {
+      const mockTx = createMockTx({
+        cursosTurmasAulas: {
+          count: jest.fn().mockResolvedValue(1),
+        },
+        cursosTurmasProvas: {
+          count: jest.fn().mockResolvedValue(0),
+        },
+        cursosTurmasModulos: {
+          count: jest.fn().mockResolvedValue(0),
+        },
+      });
+
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (fn: any) => fn(mockTx));
+
+      const result = await turmasService.togglePublicacao(uuidCurso, uuidTurmaCriada, true);
+
+      expect(result).toHaveProperty('id', uuidTurmaCriada);
+      expect(mockTx.cursosTurmas.update).toHaveBeenCalledWith({
+        where: { id: uuidTurmaCriada },
+        data: { status: CursoStatus.PUBLICADO },
+      });
     });
   });
 });

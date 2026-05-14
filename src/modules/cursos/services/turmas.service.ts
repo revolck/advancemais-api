@@ -30,6 +30,7 @@ import { provaDefaultInclude } from './provas.mapper';
 import { cursosTurmasMapper, mapTurmaSummaryWithInscricoes } from './cursos.service';
 
 const turmasLogger = logger.child({ module: 'CursosTurmasService' });
+const TURMA_ESTRUTURA_OBRIGATORIA_PUBLICACAO = 'TURMA_ESTRUTURA_OBRIGATORIA_PUBLICACAO';
 
 type TurmaEstruturaItemInput = {
   type: 'AULA' | 'PROVA' | 'ATIVIDADE';
@@ -538,26 +539,6 @@ const fetchTurmaDetailed = async (client: PrismaClientOrTx, turmaId: string) => 
   return cursosTurmasMapper.detailed(turma);
 };
 
-const countTemplatesForCurso = async (client: PrismaClientOrTx, cursoId: string) => {
-  const [templatesAulasCount, templatesAvaliacoesCount] = await Promise.all([
-    client.cursosTurmasAulas.count({
-      where: {
-        cursoId,
-        turmaId: null,
-        deletedAt: null,
-      },
-    }),
-    client.cursosTurmasProvas.count({
-      where: {
-        cursoId,
-        turmaId: null,
-      },
-    }),
-  ]);
-
-  return { templatesAulasCount, templatesAvaliacoesCount };
-};
-
 const ensureTemplatesExistForTurmaCreate = async (
   client: PrismaClientOrTx,
   cursoId: string,
@@ -568,6 +549,10 @@ const ensureTemplatesExistForTurmaCreate = async (
     : { moduleItems: [], standaloneItems: [] };
 
   const allItems = [...moduleItems.flatMap((entry) => entry.items ?? []), ...standaloneItems];
+
+  if (allItems.length === 0) {
+    return;
+  }
 
   const aulaTemplateIds = Array.from(
     new Set(allItems.filter((item) => item.type === 'AULA').map((item) => item.templateId)),
@@ -580,57 +565,35 @@ const ensureTemplatesExistForTurmaCreate = async (
         .map((item) => item.templateId),
     ),
   ).filter(Boolean);
+  const [aulasEncontradas, avaliacoesEncontradas] = await Promise.all([
+    aulaTemplateIds.length > 0
+      ? client.cursosTurmasAulas.findMany({
+          where: { id: { in: aulaTemplateIds }, turmaId: null, deletedAt: null },
+          select: { id: true },
+        })
+      : Promise.resolve([]),
+    avaliacaoTemplateIds.length > 0
+      ? client.cursosTurmasProvas.findMany({
+          where: { id: { in: avaliacaoTemplateIds }, turmaId: null },
+          select: { id: true },
+        })
+      : Promise.resolve([]),
+  ]);
 
-  if (aulaTemplateIds.length > 0 || avaliacaoTemplateIds.length > 0) {
-    const [aulasEncontradas, avaliacoesEncontradas] = await Promise.all([
-      aulaTemplateIds.length > 0
-        ? client.cursosTurmasAulas.findMany({
-            where: { id: { in: aulaTemplateIds }, turmaId: null, deletedAt: null },
-            select: { id: true },
-          })
-        : Promise.resolve([]),
-      avaliacaoTemplateIds.length > 0
-        ? client.cursosTurmasProvas.findMany({
-            where: { id: { in: avaliacaoTemplateIds }, turmaId: null },
-            select: { id: true },
-          })
-        : Promise.resolve([]),
-    ]);
+  const aulasSet = new Set(aulasEncontradas.map((item) => item.id));
+  const avaliacoesSet = new Set(avaliacoesEncontradas.map((item) => item.id));
 
-    const aulasSet = new Set(aulasEncontradas.map((item) => item.id));
-    const avaliacoesSet = new Set(avaliacoesEncontradas.map((item) => item.id));
+  const missingAulas = aulaTemplateIds.filter((id) => !aulasSet.has(id));
+  const missingAvaliacoes = avaliacaoTemplateIds.filter((id) => !avaliacoesSet.has(id));
 
-    const missingAulas = aulaTemplateIds.filter((id) => !aulasSet.has(id));
-    const missingAvaliacoes = avaliacaoTemplateIds.filter((id) => !avaliacoesSet.has(id));
-
-    if (missingAulas.length > 0 || missingAvaliacoes.length > 0) {
-      const error: any = new Error(
-        'Templates informados não encontrados ou não são templates válidos (sem turma).',
-      );
-      error.code = 'TURMA_PREREQUISITOS_NAO_ATENDIDOS';
-      error.details = {
-        missingAulaTemplateIds: missingAulas,
-        missingAvaliacaoTemplateIds: missingAvaliacoes,
-      };
-      throw error;
-    }
-
-    return;
-  }
-
-  const { templatesAulasCount, templatesAvaliacoesCount } = await countTemplatesForCurso(
-    client,
-    cursoId,
-  );
-
-  if (templatesAulasCount < 1 || templatesAvaliacoesCount < 1) {
+  if (missingAulas.length > 0 || missingAvaliacoes.length > 0) {
     const error: any = new Error(
-      'Para cadastrar uma turma é necessário ter pelo menos 1 aula e 1 avaliação cadastradas.',
+      'Templates informados não encontrados ou não são templates válidos (sem turma).',
     );
     error.code = 'TURMA_PREREQUISITOS_NAO_ATENDIDOS';
     error.details = {
-      templatesAulasCount,
-      templatesAvaliacoesCount,
+      missingAulaTemplateIds: missingAulas,
+      missingAvaliacaoTemplateIds: missingAvaliacoes,
     };
     throw error;
   }
@@ -649,6 +612,75 @@ const buildItemsFromEstrutura = (estrutura: TurmaEstruturaInput) => {
     })),
     standaloneItems,
   };
+};
+
+const summarizeEstruturaInput = (estrutura?: TurmaEstruturaInput) => {
+  const { moduleItems, standaloneItems } = estrutura
+    ? buildItemsFromEstrutura(estrutura)
+    : { moduleItems: [], standaloneItems: [] };
+  const modulesCount = moduleItems.length;
+  const standaloneItemsCount = standaloneItems.length;
+  const moduleItemsCount = moduleItems.reduce((total, entry) => total + entry.items.length, 0);
+
+  return {
+    itemCount: moduleItemsCount + standaloneItemsCount,
+    modulesCount,
+    standaloneItemsCount,
+  };
+};
+
+const countPersistedEstruturaResumo = async (client: PrismaClientOrTx, turmaId: string) => {
+  const [modulesCount, aulasCount, provasCount, standaloneAulasCount, standaloneProvasCount] =
+    await Promise.all([
+      client.cursosTurmasModulos.count({ where: { turmaId } }),
+      client.cursosTurmasAulas.count({
+        where: {
+          turmaId,
+          deletedAt: null,
+        },
+      }),
+      client.cursosTurmasProvas.count({
+        where: {
+          turmaId,
+          ativo: true,
+        },
+      }),
+      client.cursosTurmasAulas.count({
+        where: {
+          turmaId,
+          moduloId: null,
+          deletedAt: null,
+        },
+      }),
+      client.cursosTurmasProvas.count({
+        where: {
+          turmaId,
+          moduloId: null,
+          ativo: true,
+        },
+      }),
+    ]);
+
+  return {
+    itemCount: aulasCount + provasCount,
+    modulesCount,
+    standaloneItemsCount: standaloneAulasCount + standaloneProvasCount,
+  };
+};
+
+const ensureTurmaPodeSerPublicada = (estruturaResumo: {
+  itemCount: number;
+  modulesCount: number;
+  standaloneItemsCount: number;
+}) => {
+  if (estruturaResumo.itemCount > 0) {
+    return;
+  }
+
+  const error: any = new Error('Para publicar a turma, adicione pelo menos 1 item na estrutura.');
+  error.code = TURMA_ESTRUTURA_OBRIGATORIA_PUBLICACAO;
+  error.details = estruturaResumo;
+  throw error;
 };
 
 const mapAulaModalidadeToDb = (
@@ -1961,6 +1993,11 @@ export const turmasService = {
         throw error;
       }
 
+      const estruturaResumo = summarizeEstruturaInput(data.estrutura);
+      if (data.status === CursoStatus.PUBLICADO) {
+        ensureTurmaPodeSerPublicada(estruturaResumo);
+      }
+
       await ensureTemplatesExistForTurmaCreate(tx, cursoId, data.estrutura);
 
       if (!data.vagasIlimitadas && (!data.vagasTotais || data.vagasTotais <= 0)) {
@@ -2422,32 +2459,8 @@ export const turmasService = {
         : null;
 
       if (estaPublicandoOuAbrindoInscricoes) {
-        const [aulasCount, avaliacoesCount] = await Promise.all([
-          tx.cursosTurmasAulas.count({
-            where: {
-              turmaId,
-              deletedAt: null,
-            },
-          }),
-          tx.cursosTurmasProvas.count({
-            where: {
-              turmaId,
-              ativo: true,
-            },
-          }),
-        ]);
-
-        if (aulasCount < 1 || avaliacoesCount < 1) {
-          const error: any = new Error(
-            'Para publicar/abrir inscrições de uma turma é necessário ter pelo menos 1 aula e 1 avaliação cadastradas.',
-          );
-          error.code = 'TURMA_PREREQUISITOS_NAO_ATENDIDOS';
-          error.details = {
-            aulasCount,
-            avaliacoesCount,
-          };
-          throw error;
-        }
+        const estruturaResumo = await countPersistedEstruturaResumo(tx, turmaId);
+        ensureTurmaPodeSerPublicada(estruturaResumo);
       }
 
       // ============================================================================
@@ -3221,32 +3234,8 @@ export const turmasService = {
 
       // Validar pré-requisitos se estiver publicando
       if (publicar) {
-        const [aulasCount, avaliacoesCount] = await Promise.all([
-          tx.cursosTurmasAulas.count({
-            where: {
-              turmaId,
-              deletedAt: null,
-            },
-          }),
-          tx.cursosTurmasProvas.count({
-            where: {
-              turmaId,
-              ativo: true,
-            },
-          }),
-        ]);
-
-        if (aulasCount < 1 || avaliacoesCount < 1) {
-          const error: any = new Error(
-            'Para publicar uma turma é necessário ter pelo menos 1 aula e 1 avaliação cadastradas.',
-          );
-          error.code = 'TURMA_PREREQUISITOS_NAO_ATENDIDOS';
-          error.details = {
-            aulasCount,
-            avaliacoesCount,
-          };
-          throw error;
-        }
+        const estruturaResumo = await countPersistedEstruturaResumo(tx, turmaId);
+        ensureTurmaPodeSerPublicada(estruturaResumo);
       } else {
         if (turmaJaFoiIniciada(turma)) {
           const error: any = new Error(

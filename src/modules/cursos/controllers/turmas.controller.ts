@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Roles } from '@prisma/client';
+import { CursoStatus, Roles } from '@prisma/client';
 import { ZodError } from 'zod';
 
 import { turmasService } from '../services/turmas.service';
@@ -72,6 +72,42 @@ const invalidateTurmasCache = async () => {
     // Cache é best effort; não deve quebrar fluxo principal
   }
 };
+
+const normalizeTurmaStatusAliases = <T extends Record<string, any>>(
+  data: T,
+): Omit<T, 'publicacaoStatus' | 'publicado'> & { status?: CursoStatus } => {
+  const { publicacaoStatus, publicado, ...payload } = data as T & {
+    status?: CursoStatus | 'RASCUNHO' | 'PUBLICADO';
+    publicacaoStatus?: CursoStatus | 'RASCUNHO' | 'PUBLICADO';
+    publicado?: boolean;
+  };
+  const requestedStatuses = [payload.status, publicacaoStatus].filter(Boolean) as CursoStatus[];
+
+  if (publicado === true) {
+    requestedStatuses.push(CursoStatus.PUBLICADO);
+  } else if (publicado === false) {
+    requestedStatuses.push(CursoStatus.RASCUNHO);
+  }
+
+  const status = requestedStatuses.includes(CursoStatus.PUBLICADO)
+    ? CursoStatus.PUBLICADO
+    : requestedStatuses.includes(CursoStatus.RASCUNHO)
+      ? CursoStatus.RASCUNHO
+      : undefined;
+
+  return {
+    ...payload,
+    ...(status !== undefined ? { status } : {}),
+  } as Omit<T, 'publicacaoStatus' | 'publicado'> & { status?: CursoStatus };
+};
+
+const respondTurmaEstruturaObrigatoriaPublicacao = (res: Response, error: any) =>
+  res.status(422).json({
+    success: false,
+    code: 'TURMA_ESTRUTURA_OBRIGATORIA_PUBLICACAO',
+    message: error?.message || 'Para publicar a turma, adicione pelo menos 1 item na estrutura.',
+    details: error?.details,
+  });
 
 export class TurmasController {
   static list = async (req: Request, res: Response) => {
@@ -370,7 +406,7 @@ export class TurmasController {
     }
 
     try {
-      const data = createTurmaSchema.parse(req.body);
+      const data: any = normalizeTurmaStatusAliases(createTurmaSchema.parse(req.body));
 
       const turma = await turmasService.create(
         cursoId,
@@ -419,6 +455,10 @@ export class TurmasController {
         });
       }
 
+      if (error?.code === 'TURMA_ESTRUTURA_OBRIGATORIA_PUBLICACAO') {
+        return respondTurmaEstruturaObrigatoriaPublicacao(res, error);
+      }
+
       if (
         error?.code === 'AULA_TEMPLATE_NOT_FOUND' ||
         error?.code === 'AVALIACAO_TEMPLATE_NOT_FOUND'
@@ -453,7 +493,7 @@ export class TurmasController {
     }
 
     try {
-      const data = updateTurmaSchema.parse(req.body);
+      const data: any = normalizeTurmaStatusAliases(updateTurmaSchema.parse(req.body));
 
       if (Object.keys(data).length === 0) {
         return res.status(400).json({
@@ -562,6 +602,10 @@ export class TurmasController {
             'Para cadastrar/publicar uma turma é necessário ter pelo menos 1 aula e 1 avaliação cadastradas.',
           details: error?.details,
         });
+      }
+
+      if (error?.code === 'TURMA_ESTRUTURA_OBRIGATORIA_PUBLICACAO') {
+        return respondTurmaEstruturaObrigatoriaPublicacao(res, error);
       }
 
       res.status(500).json({
@@ -965,6 +1009,10 @@ export class TurmasController {
             'Para publicar uma turma é necessário ter pelo menos 1 aula e 1 avaliação cadastradas.',
           details: error?.details,
         });
+      }
+
+      if (error?.code === 'TURMA_ESTRUTURA_OBRIGATORIA_PUBLICACAO') {
+        return respondTurmaEstruturaObrigatoriaPublicacao(res, error);
       }
 
       if (

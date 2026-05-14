@@ -70,6 +70,8 @@ const turmaBaseSchema = z.object({
   // Entrada do usuário: apenas RASCUNHO/PUBLICADO.
   // Demais status são definidos automaticamente com base nos períodos (inscrições e turma).
   status: z.enum(['RASCUNHO', 'PUBLICADO']).optional(),
+  publicacaoStatus: z.enum(['RASCUNHO', 'PUBLICADO']).optional(),
+  publicado: booleanOptional,
 });
 
 const turmaEstruturaItemSchema = z.object({
@@ -304,6 +306,7 @@ export const createTurmaSchema = applyDateValidations(
   const modules = estrutura?.modules ?? [];
   const standaloneItems = estrutura?.standaloneItems ?? [];
   const allItems = [...modules.flatMap((m) => m.items ?? []), ...standaloneItems];
+  const estruturaVazia = allItems.length === 0;
 
   // Validação por item (ex: recuperacaoFinal apenas em PROVA)
   for (const item of allItems) {
@@ -316,7 +319,7 @@ export const createTurmaSchema = applyDateValidations(
     }
   }
 
-  if (estruturaTipo === 'MODULAR') {
+  if (!estruturaVazia && estruturaTipo === 'MODULAR') {
     if (modules.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -333,7 +336,7 @@ export const createTurmaSchema = applyDateValidations(
     }
   }
 
-  if (estruturaTipo === 'PADRAO') {
+  if (!estruturaVazia && estruturaTipo === 'PADRAO') {
     if (modules.length > 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -341,34 +344,6 @@ export const createTurmaSchema = applyDateValidations(
         message: 'Estrutura PADRAO não utiliza módulos (modules deve ser vazio)',
       });
     }
-    if (standaloneItems.length === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['estrutura', 'standaloneItems'],
-        message: 'Estrutura PADRAO exige ao menos 1 item avulso',
-      });
-    }
-  }
-
-  const aulasCount = allItems.filter((item) => item.type === 'AULA').length;
-  const avaliacoesCount = allItems.filter(
-    (item) => item.type === 'PROVA' || item.type === 'ATIVIDADE',
-  ).length;
-
-  if (aulasCount < 1) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['estrutura'],
-      message: 'A estrutura da turma deve conter ao menos 1 item do tipo AULA',
-    });
-  }
-
-  if (avaliacoesCount < 1) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['estrutura'],
-      message: 'A estrutura da turma deve conter ao menos 1 item do tipo PROVA ou ATIVIDADE',
-    });
   }
 
   // Regra: ordem única por módulo e por lista de itens

@@ -1,17 +1,16 @@
-# Frontend - Turmas em Rascunho Sem Estrutura
+# Frontend - Turmas Publicadas Sem Estrutura
 
 ## Contexto
 
-Nas telas de cadastro e edição de turmas:
+Nas telas:
 
 - `/dashboard/cursos/turmas/cadastrar`
 - `/dashboard/cursos/:cursoId/turmas/:turmaId/editar`
+- `/dashboard/cursos/turmas/:turmaId?cursoId=:cursoId`
 
-o frontend pode criar e editar turmas antes de a estrutura final de aulas, atividades e provas estar pronta.
+o backend agora permite criar, editar e publicar turmas sem itens de estrutura.
 
-A estrutura vazia passa a ser um estado válido somente quando a turma permanecer em `RASCUNHO`.
-
-Turmas sem itens efetivos não podem ser publicadas.
+A turma pode ficar pública para inscrição antes de a estrutura final estar pronta, mas só pode iniciar quando tiver pelo menos `1` item efetivo.
 
 ## Perfis permitidos
 
@@ -21,21 +20,29 @@ Podem criar, editar, publicar e despublicar turmas:
 - `MODERADOR`
 - `PEDAGOGICO`
 
-Demais perfis continuam sem permissão para criar ou editar turmas.
+Demais perfis continuam sem permissão para ações de gestão.
 
-Erro esperado para perfil sem permissão:
+## IDs nas ações
+
+Todas as ações de turma continuam usando `cursoId + turmaId`.
+
+Na tela de detalhes, o `turmaId` vem do path e o `cursoId` deve vir da query string ou do detalhe carregado:
+
+```http
+PUT /api/v1/cursos/:cursoId/turmas/:turmaId
+PATCH /api/v1/cursos/:cursoId/turmas/:turmaId/publicar
+DELETE /api/v1/cursos/:cursoId/turmas/:turmaId
+```
+
+Se `cursoId` não pertencer à turma informada, a API retorna:
 
 ```json
 {
   "success": false,
-  "code": "FORBIDDEN",
-  "message": "Sem permissão para executar esta ação"
+  "code": "TURMA_NOT_FOUND",
+  "message": "Turma não encontrada para o curso informado"
 }
 ```
-
-Status HTTP:
-
-- `403 Forbidden`
 
 ## Definição de estrutura vazia
 
@@ -47,55 +54,21 @@ Itens efetivos:
 estrutura.modules[].items.length + estrutura.standaloneItems.length
 ```
 
-Exemplos vazios:
+Ou, nas respostas do backend:
 
-```json
-{
-  "modules": [],
-  "standaloneItems": []
-}
+```ts
+turma.estruturaResumo.itemCount === 0;
 ```
 
-```json
-{
-  "modules": [
-    {
-      "title": "Módulo 1",
-      "items": []
-    }
-  ],
-  "standaloneItems": []
-}
-```
-
-Exemplo preenchido:
-
-```json
-{
-  "modules": [],
-  "standaloneItems": [
-    {
-      "type": "AULA",
-      "title": "Aula 1",
-      "templateId": "uuid-template",
-      "ordem": 1,
-      "obrigatoria": true
-    }
-  ]
-}
-```
-
-## Criar turma
+## Criar turma sem estrutura
 
 ```http
 POST /api/v1/cursos/:cursoId/turmas
 ```
 
-### Criar rascunho sem estrutura
+### Rascunho
 
-Permitido para `ADMIN`, `MODERADOR` e `PEDAGOGICO`.
-
-Payload:
+Criar `RASCUNHO` sem estrutura continua permitido.
 
 ```json
 {
@@ -104,9 +77,6 @@ Payload:
   "turno": "NOITE",
   "metodo": "ONLINE",
   "status": "RASCUNHO",
-  "instrutorIds": [],
-  "dataInscricaoInicio": "2026-05-01T00:00:00.000Z",
-  "dataInscricaoFim": "2026-05-10T00:00:00.000Z",
   "dataInicio": "2026-05-20T00:00:00.000Z",
   "dataFim": "2026-07-20T00:00:00.000Z",
   "vagasIlimitadas": false,
@@ -118,140 +88,44 @@ Payload:
 }
 ```
 
-Resposta `201`:
+### Publicada
+
+Criar `PUBLICADO` sem estrutura agora é permitido quando `dataInicio` é futura e `dataFim` é posterior a `dataInicio`.
+
+```json
+{
+  "estruturaTipo": "PADRAO",
+  "nome": "Turma Maio 2026",
+  "turno": "NOITE",
+  "metodo": "ONLINE",
+  "status": "PUBLICADO",
+  "dataInicio": "2026-05-20T00:00:00.000Z",
+  "dataFim": "2026-07-20T00:00:00.000Z",
+  "vagasIlimitadas": false,
+  "vagasTotais": 30,
+  "estrutura": {
+    "modules": [],
+    "standaloneItems": []
+  }
+}
+```
+
+Resposta:
 
 ```json
 {
   "id": "uuid-turma",
   "codigo": "TRM-000001",
   "nome": "Turma Maio 2026",
-  "status": "RASCUNHO",
-  "publicacaoStatus": "RASCUNHO",
-  "publicado": false,
-  "estruturaTipo": "PADRAO",
-  "estrutura": {
-    "modules": [],
-    "standaloneItems": []
-  },
-  "estruturaResumo": {
-    "itemCount": 0,
-    "modulesCount": 0,
-    "standaloneItemsCount": 0
-  }
-}
-```
-
-### Status default
-
-Se o frontend não enviar `status`, a API cria a turma como rascunho:
-
-```json
-{
-  "status": "RASCUNHO",
-  "publicacaoStatus": "RASCUNHO",
-  "publicado": false
-}
-```
-
-## Bloqueio de publicação sem estrutura
-
-A API bloqueia qualquer tentativa de deixar a turma pública quando a estrutura final tiver `0` itens efetivos.
-
-Campos que contam como tentativa de publicação:
-
-- `status: "PUBLICADO"`
-- `publicacaoStatus: "PUBLICADO"`
-- `publicado: true`
-- `PATCH publicar=true`
-
-Erro esperado:
-
-```json
-{
-  "success": false,
-  "code": "TURMA_ESTRUTURA_OBRIGATORIA_PUBLICACAO",
-  "message": "Para publicar a turma, adicione pelo menos 1 item na estrutura.",
-  "details": {
-    "itemCount": 0,
-    "modulesCount": 0,
-    "standaloneItemsCount": 0
-  }
-}
-```
-
-Status HTTP:
-
-- `422 Unprocessable Entity`
-
-## Editar turma
-
-```http
-PUT /api/v1/cursos/:cursoId/turmas/:turmaId
-```
-
-### Permitido
-
-Editar mantendo a turma em `RASCUNHO` é permitido mesmo com estrutura vazia.
-
-Exemplo:
-
-```json
-{
-  "nome": "Turma Maio 2026 - Revisada",
-  "status": "RASCUNHO",
-  "estrutura": {
-    "modules": [],
-    "standaloneItems": []
-  }
-}
-```
-
-Resposta `200`:
-
-```json
-{
-  "id": "uuid-turma",
-  "nome": "Turma Maio 2026 - Revisada",
-  "status": "RASCUNHO",
-  "publicacaoStatus": "RASCUNHO",
-  "publicado": false,
-  "estrutura": {
-    "modules": [],
-    "standaloneItems": []
-  },
-  "estruturaResumo": {
-    "itemCount": 0,
-    "modulesCount": 0,
-    "standaloneItemsCount": 0
-  }
-}
-```
-
-### Bloqueado
-
-Editar uma turma vazia tentando publicar retorna `422`.
-
-Exemplos bloqueados:
-
-```json
-{
   "status": "PUBLICADO",
-  "estrutura": {
-    "modules": [],
-    "standaloneItems": []
-  }
-}
-```
-
-```json
-{
-  "publicacaoStatus": "PUBLICADO"
-}
-```
-
-```json
-{
-  "publicado": true
+  "publicacaoStatus": "PUBLICADO",
+  "publicado": true,
+  "estruturaResumo": {
+    "itemCount": 0,
+    "modulesCount": 0,
+    "standaloneItemsCount": 0
+  },
+  "inicioBloqueadoPorEstrutura": false
 }
 ```
 
@@ -261,9 +135,7 @@ Exemplos bloqueados:
 PATCH /api/v1/cursos/:cursoId/turmas/:turmaId/publicar
 ```
 
-### Publicar
-
-Payload:
+Publicar:
 
 ```json
 {
@@ -271,40 +143,7 @@ Payload:
 }
 ```
 
-Para `publicar=true`, a API valida a estrutura persistida da turma.
-
-Permite publicar quando:
-
-- o usuário é `ADMIN`, `MODERADOR` ou `PEDAGOGICO`;
-- a turma tem `1` ou mais itens efetivos.
-
-Bloqueia publicar quando:
-
-- a turma tem `0` itens efetivos.
-
-Resposta de sucesso:
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": "uuid-turma",
-    "status": "PUBLICADO",
-    "publicacaoStatus": "PUBLICADO",
-    "publicado": true,
-    "estruturaResumo": {
-      "itemCount": 1,
-      "modulesCount": 0,
-      "standaloneItemsCount": 1
-    }
-  },
-  "message": "Turma publicada com sucesso"
-}
-```
-
-### Despublicar
-
-Payload:
+Despublicar:
 
 ```json
 {
@@ -312,99 +151,121 @@ Payload:
 }
 ```
 
-`PATCH publicar=false` continua permitido mesmo se a estrutura estiver vazia.
+`estruturaResumo.itemCount === 0` não bloqueia publicação. O frontend deve exibir um alerta operacional, não impedir a ação.
 
-Resposta de sucesso:
+Quando a turma sem estrutura for publicada, ela precisa ter:
 
-```json
-{
-  "success": true,
-  "data": {
-    "id": "uuid-turma",
-    "status": "RASCUNHO",
-    "publicacaoStatus": "RASCUNHO",
-    "publicado": false
-  },
-  "message": "Turma despublicada com sucesso"
-}
-```
+- `dataInicio` futura;
+- `dataFim` posterior a `dataInicio`.
 
-## Listagem e detalhe
-
-As respostas de listagem e detalhe passam a retornar estes campos de forma consistente:
+Erro quando o período não permite controle de início:
 
 ```json
 {
-  "id": "uuid-turma",
-  "status": "RASCUNHO",
-  "publicacaoStatus": "RASCUNHO",
-  "publicado": false,
-  "estrutura": {
-    "modules": [],
-    "standaloneItems": []
-  },
-  "estruturaResumo": {
+  "success": false,
+  "code": "TURMA_PERIODO_OBRIGATORIO_PUBLICACAO",
+  "message": "Para publicar uma turma sem estrutura, informe uma nova data de início e fim futuras.",
+  "details": {
     "itemCount": 0,
     "modulesCount": 0,
-    "standaloneItemsCount": 0
+    "standaloneItemsCount": 0,
+    "dataInicio": null,
+    "dataFim": null,
+    "requiredFields": ["dataInicio", "dataFim"]
   }
 }
 ```
 
-Endpoints:
+## Bloqueio automático no início
 
-```http
-GET /api/v1/cursos/:cursoId/turmas
-GET /api/v1/cursos/:cursoId/turmas/:turmaId
+O backend verifica automaticamente as datas da turma.
+
+Quando `dataInicio` chegar:
+
+- se `estruturaResumo.itemCount >= 1`, a turma pode entrar em `EM_ANDAMENTO`;
+- se `estruturaResumo.itemCount === 0`, a turma volta para `RASCUNHO`;
+- os alunos continuam com inscrição `INSCRITO`;
+- gestores e alunos recebem notificação por sininho e email.
+
+Resposta de detalhe/listagem após bloqueio:
+
+```json
+{
+  "id": "uuid-turma",
+  "nome": "Turma Maio 2026",
+  "status": "RASCUNHO",
+  "publicacaoStatus": "RASCUNHO",
+  "publicado": false,
+  "estruturaResumo": {
+    "itemCount": 0,
+    "modulesCount": 0,
+    "standaloneItemsCount": 0
+  },
+  "inicioBloqueadoPorEstrutura": true
+}
 ```
 
-O frontend deve usar os campos retornados pela API como fonte da verdade:
+## Reprogramação
 
-```ts
-const estaPublicada = turma.publicado === true;
-const podePublicar = (turma.estruturaResumo?.itemCount ?? 0) >= 1;
+Se `inicioBloqueadoPorEstrutura=true`, o frontend deve exigir uma nova data antes de publicar novamente.
+
+Fluxo esperado:
+
+1. Usuário adiciona pelo menos `1` item na estrutura ou mantém a estrutura pendente.
+2. Usuário informa nova `dataInicio` futura e nova `dataFim`.
+3. Usuário publica a turma novamente.
+4. A API notifica os alunos sobre a nova data confirmada.
+
+Mensagem sugerida para alerta no dashboard:
+
+```txt
+Esta turma não iniciou porque ainda não possui estrutura. Adicione a estrutura e informe uma nova data de início e fim para publicar novamente.
 ```
 
-## Regra atual de composição mínima
+## Notificações
 
-Para publicação, a regra atual é:
+Tipos novos que podem aparecer em `/api/v1/notificacoes`:
 
-```ts
-itemCount >= 1;
+- `TURMA_ESTRUTURA_PENDENTE_24H`
+- `TURMA_INICIO_BLOQUEADO_ESTRUTURA`
+- `TURMA_INICIO_REPROGRAMADO`
+- `TURMA_NOVA_DATA_CONFIRMADA`
+
+### Gestão
+
+24h antes do início, se a turma publicada estiver sem estrutura:
+
+```txt
+A turma "{{nome}}" do curso "{{curso}}" está prevista para iniciar em {{dataHora}} e ainda não possui estrutura. Cadastre pelo menos 1 item até {{horas}} para que ela possa iniciar. Se não for corrigida, a turma voltará para rascunho e os alunos permanecerão aguardando nova data.
 ```
 
-Não é mais exigido ter ao mesmo tempo:
+Quando o início for bloqueado:
 
-- pelo menos `1` aula;
-- pelo menos `1` prova ou atividade.
+```txt
+A turma "{{nome}}" do curso "{{curso}}" não iniciou porque ainda está sem estrutura. Para publicar novamente, adicione ao menos 1 item e informe uma nova data de início e fim futuras.
+```
 
-Se houver `1` item efetivo na estrutura, a turma pode ser publicada.
+### Alunos
 
-## Regras por ação
+Quando o início for bloqueado:
 
-| Ação                       | Estrutura vazia | Estrutura com 1+ itens |
-| -------------------------- | --------------- | ---------------------- |
-| Criar como `RASCUNHO`      | Permitir        | Permitir               |
-| Criar como `PUBLICADO`     | Bloquear `422`  | Permitir               |
-| Editar mantendo `RASCUNHO` | Permitir        | Permitir               |
-| Editar publicando          | Bloquear `422`  | Permitir               |
-| `PATCH publicar=true`      | Bloquear `422`  | Permitir               |
-| `PATCH publicar=false`     | Permitir        | Permitir               |
+```txt
+A turma "{{nome}}" precisou ser reprogramada por um ajuste operacional. Em breve divulgaremos a nova data de início. Você continua inscrito e será avisado assim que o novo cronograma for confirmado. Atenciosamente, Direção Advance+.
+```
+
+Quando a nova data for confirmada:
+
+```txt
+A turma "{{nome}}" foi reprogramada e acontecerá de {{dataInicio}} a {{dataFim}}. Acompanhe a plataforma para consultar a estrutura, atividades e prazos atualizados.
+```
 
 ## Ajustes esperados no frontend
 
-Na criação e edição:
+Na criação, edição e detalhes:
 
-- permitir concluir cadastro sem itens somente quando a turma ficar em `RASCUNHO`;
-- bloquear botão/ação de publicar quando `estruturaResumo.itemCount === 0`;
-- exibir aviso operacional de que a turma foi salva como rascunho e precisa de estrutura antes da publicação;
-- tratar `422 TURMA_ESTRUTURA_OBRIGATORIA_PUBLICACAO` mostrando a mensagem da API;
-- após criar, editar, publicar ou despublicar, atualizar a tela usando o objeto retornado pela API.
-
-Mensagens locais antigas como:
-
-- `Estrutura padrão: adicione ao menos 1 item.`
-- `Estrutura modular: adicione ao menos 1 módulo.`
-- `Estrutura dinâmica: adicione ao menos 1 módulo ou item avulso.`
-
-devem ser restritas ao fluxo de publicação. Elas não devem bloquear o salvamento em `RASCUNHO`.
+- permitir publicar turma sem estrutura quando houver período futuro válido;
+- mostrar alerta visual quando `estruturaResumo.itemCount === 0`;
+- não bloquear publicação apenas por estrutura vazia;
+- bloquear a publicação localmente quando `dataInicio` estiver ausente, vencida ou sem `dataFim`;
+- quando `inicioBloqueadoPorEstrutura=true`, orientar o usuário a reprogramar datas e revisar estrutura;
+- sempre usar `cursoId + turmaId` nas ações de editar, publicar, despublicar e excluir.

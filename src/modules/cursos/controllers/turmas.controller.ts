@@ -101,11 +101,13 @@ const normalizeTurmaStatusAliases = <T extends Record<string, any>>(
   } as Omit<T, 'publicacaoStatus' | 'publicado'> & { status?: CursoStatus };
 };
 
-const respondTurmaEstruturaObrigatoriaPublicacao = (res: Response, error: any) =>
+const respondTurmaPeriodoObrigatorioPublicacao = (res: Response, error: any) =>
   res.status(422).json({
     success: false,
-    code: 'TURMA_ESTRUTURA_OBRIGATORIA_PUBLICACAO',
-    message: error?.message || 'Para publicar a turma, adicione pelo menos 1 item na estrutura.',
+    code: 'TURMA_PERIODO_OBRIGATORIO_PUBLICACAO',
+    message:
+      error?.message ||
+      'Para publicar uma turma sem estrutura, informe uma nova data de início e fim futuras.',
     details: error?.details,
   });
 
@@ -455,8 +457,8 @@ export class TurmasController {
         });
       }
 
-      if (error?.code === 'TURMA_ESTRUTURA_OBRIGATORIA_PUBLICACAO') {
-        return respondTurmaEstruturaObrigatoriaPublicacao(res, error);
+      if (error?.code === 'TURMA_PERIODO_OBRIGATORIO_PUBLICACAO') {
+        return respondTurmaPeriodoObrigatorioPublicacao(res, error);
       }
 
       if (
@@ -604,8 +606,8 @@ export class TurmasController {
         });
       }
 
-      if (error?.code === 'TURMA_ESTRUTURA_OBRIGATORIA_PUBLICACAO') {
-        return respondTurmaEstruturaObrigatoriaPublicacao(res, error);
+      if (error?.code === 'TURMA_PERIODO_OBRIGATORIO_PUBLICACAO') {
+        return respondTurmaPeriodoObrigatorioPublicacao(res, error);
       }
 
       res.status(500).json({
@@ -1011,8 +1013,8 @@ export class TurmasController {
         });
       }
 
-      if (error?.code === 'TURMA_ESTRUTURA_OBRIGATORIA_PUBLICACAO') {
-        return respondTurmaEstruturaObrigatoriaPublicacao(res, error);
+      if (error?.code === 'TURMA_PERIODO_OBRIGATORIO_PUBLICACAO') {
+        return respondTurmaPeriodoObrigatorioPublicacao(res, error);
       }
 
       if (

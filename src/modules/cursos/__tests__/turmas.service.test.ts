@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { prisma } from '@/config/prisma';
 import { turmasService } from '../services/turmas.service';
 import { CursosTurnos, CursosMetodos, CursoStatus } from '@prisma/client';
+import { notificacoesHelper } from '../aulas/services/notificacoes-helper.service';
 
 const uuidCurso = '33333333-3333-3333-3333-333333333333';
 const uuidAulaTemplate = '11111111-1111-1111-1111-111111111111';
@@ -136,6 +137,9 @@ function createMockTx(overrides: Record<string, any> = {}) {
     cursosTurmasInstrutores: {
       createMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
+    cursosTurmasInscricoes: {
+      count: jest.fn().mockResolvedValue(0),
+    },
     cursosTurmasModulos: {
       create: jest.fn().mockResolvedValue({ id: uuidModulo }),
       count: jest.fn().mockResolvedValue(1),
@@ -166,6 +170,10 @@ function createMockTx(overrides: Record<string, any> = {}) {
     cursosTurmasModulos: {
       ...defaultTx.cursosTurmasModulos,
       ...(overrides.cursosTurmasModulos ?? {}),
+    },
+    cursosTurmasInscricoes: {
+      ...defaultTx.cursosTurmasInscricoes,
+      ...(overrides.cursosTurmasInscricoes ?? {}),
     },
     usuarios: {
       ...defaultTx.usuarios,
@@ -262,7 +270,35 @@ describe('Turmas Service', () => {
       });
     });
 
-    it('deve lançar TURMA_ESTRUTURA_OBRIGATORIA_PUBLICACAO ao criar PUBLICADO sem itens', async () => {
+    it('deve criar turma PUBLICADO sem estrutura quando o período é futuro', async () => {
+      const mockTx = createMockTx();
+
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (fn: any) => fn(mockTx));
+
+      const result = await turmasService.create(uuidCurso, {
+        nome: 'Turma Publicada Vazia',
+        estruturaTipo: 'PADRAO',
+        turno: CursosTurnos.NOITE,
+        metodo: CursosMetodos.LIVE,
+        vagasIlimitadas: false,
+        vagasTotais: 30,
+        status: CursoStatus.PUBLICADO,
+        ...datasValidas,
+        estrutura: {
+          modules: [],
+          standaloneItems: [],
+        },
+      });
+
+      expect(result).toHaveProperty('id', uuidTurmaCriada);
+      expect(mockTx.cursosTurmas.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          status: CursoStatus.PUBLICADO,
+        }),
+      });
+    });
+
+    it('deve bloquear PUBLICADO sem estrutura quando o período não é futuro', async () => {
       const mockTx = createMockTx();
 
       jest.spyOn(prisma, '$transaction').mockImplementation(async (fn: any) => fn(mockTx));
@@ -276,15 +312,13 @@ describe('Turmas Service', () => {
           vagasIlimitadas: false,
           vagasTotais: 30,
           status: CursoStatus.PUBLICADO,
-          ...datasValidas,
           estrutura: {
             modules: [],
             standaloneItems: [],
           },
         }),
       ).rejects.toMatchObject({
-        message: 'Para publicar a turma, adicione pelo menos 1 item na estrutura.',
-        code: 'TURMA_ESTRUTURA_OBRIGATORIA_PUBLICACAO',
+        code: 'TURMA_PERIODO_OBRIGATORIO_PUBLICACAO',
         details: {
           itemCount: 0,
           modulesCount: 0,
@@ -824,8 +858,46 @@ describe('Turmas Service', () => {
   });
 
   describe('togglePublicacao', () => {
-    it('bloqueia publicar turma sem itens efetivos', async () => {
+    it('permite publicar turma sem itens efetivos quando o período é futuro', async () => {
       const mockTx = createMockTx({
+        cursosTurmas: {
+          findFirst: jest.fn().mockResolvedValue({
+            ...turmaRawParaMapper,
+            dataInicio: datasValidas.dataInicio,
+            dataFim: datasValidas.dataFim,
+          }),
+        },
+        cursosTurmasAulas: {
+          count: jest.fn().mockResolvedValue(0),
+        },
+        cursosTurmasProvas: {
+          count: jest.fn().mockResolvedValue(0),
+        },
+        cursosTurmasModulos: {
+          count: jest.fn().mockResolvedValue(0),
+        },
+      });
+
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (fn: any) => fn(mockTx));
+
+      const result = await turmasService.togglePublicacao(uuidCurso, uuidTurmaCriada, true);
+
+      expect(result).toHaveProperty('id', uuidTurmaCriada);
+      expect(mockTx.cursosTurmas.update).toHaveBeenCalledWith({
+        where: { id: uuidTurmaCriada },
+        data: { status: CursoStatus.PUBLICADO },
+      });
+    });
+
+    it('bloqueia publicar turma sem estrutura quando dataInicio está vencida', async () => {
+      const mockTx = createMockTx({
+        cursosTurmas: {
+          findFirst: jest.fn().mockResolvedValue({
+            ...turmaRawParaMapper,
+            dataInicio: new Date(Date.now() - 24 * 60 * 60 * 1000),
+            dataFim: datasValidas.dataFim,
+          }),
+        },
         cursosTurmasAulas: {
           count: jest.fn().mockResolvedValue(0),
         },
@@ -842,7 +914,7 @@ describe('Turmas Service', () => {
       await expect(
         turmasService.togglePublicacao(uuidCurso, uuidTurmaCriada, true),
       ).rejects.toMatchObject({
-        code: 'TURMA_ESTRUTURA_OBRIGATORIA_PUBLICACAO',
+        code: 'TURMA_PERIODO_OBRIGATORIO_PUBLICACAO',
         details: {
           itemCount: 0,
           modulesCount: 0,
@@ -855,6 +927,13 @@ describe('Turmas Service', () => {
 
     it('permite publicar turma com 1 ou mais itens efetivos', async () => {
       const mockTx = createMockTx({
+        cursosTurmas: {
+          findFirst: jest.fn().mockResolvedValue({
+            ...turmaRawParaMapper,
+            dataInicio: datasValidas.dataInicio,
+            dataFim: datasValidas.dataFim,
+          }),
+        },
         cursosTurmasAulas: {
           count: jest.fn().mockResolvedValue(1),
         },
@@ -875,6 +954,46 @@ describe('Turmas Service', () => {
         where: { id: uuidTurmaCriada },
         data: { status: CursoStatus.PUBLICADO },
       });
+    });
+
+    it('notifica alunos inscritos ao publicar turma com nova data', async () => {
+      const mockTx = createMockTx({
+        cursosTurmas: {
+          findFirst: jest.fn().mockResolvedValue({
+            ...turmaRawParaMapper,
+            dataInicio: datasValidas.dataInicio,
+            dataFim: datasValidas.dataFim,
+          }),
+        },
+        cursosTurmasAulas: {
+          count: jest.fn().mockResolvedValue(0),
+        },
+        cursosTurmasProvas: {
+          count: jest.fn().mockResolvedValue(0),
+        },
+        cursosTurmasModulos: {
+          count: jest.fn().mockResolvedValue(0),
+        },
+        cursosTurmasInscricoes: {
+          count: jest.fn().mockResolvedValue(1),
+        },
+      });
+      const notificarSpy = jest
+        .spyOn(notificacoesHelper, 'notificarAlunosDaTurma')
+        .mockResolvedValue({ notificados: 1 });
+
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (fn: any) => fn(mockTx));
+
+      await turmasService.togglePublicacao(uuidCurso, uuidTurmaCriada, true);
+
+      expect(notificarSpy).toHaveBeenCalledWith(
+        uuidTurmaCriada,
+        expect.objectContaining({
+          tipo: 'TURMA_NOVA_DATA_CONFIRMADA',
+          prioridade: 'ALTA',
+          enviarEmail: true,
+        }),
+      );
     });
   });
 });

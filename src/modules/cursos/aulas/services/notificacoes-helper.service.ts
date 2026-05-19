@@ -103,6 +103,9 @@ export const notificacoesHelper = {
       prioridade?: NotificacaoPrioridade;
       linkAcao?: string;
       eventoId?: string;
+      enviarEmail?: boolean;
+      emailAssunto?: string;
+      emailMensagem?: string;
     },
   ) {
     const alunos = await prisma.cursosTurmasInscricoes.findMany({
@@ -117,10 +120,22 @@ export const notificacoesHelper = {
     });
 
     for (const inscricao of alunos) {
-      await this.criar({
+      const notificacaoCriada = await this.criar({
         usuarioId: inscricao.alunoId,
         ...notificacao,
       });
+
+      if (notificacao.enviarEmail && notificacaoCriada) {
+        await this.enviarEmailCritico({
+          para: inscricao.Usuarios.email,
+          nomeDestinatario: inscricao.Usuarios.nomeCompleto,
+          assunto: notificacao.emailAssunto ?? notificacao.titulo,
+          mensagem: notificacao.emailMensagem ?? notificacao.mensagem,
+          linkAcao: notificacao.linkAcao
+            ? `${process.env.FRONTEND_URL ?? ''}${notificacao.linkAcao}`
+            : undefined,
+        });
+      }
     }
 
     notifLogger.info('[NOTIF] Alunos notificados', {
@@ -170,6 +185,10 @@ export const notificacoesHelper = {
       'INSTRUTOR_VINCULADO',
       'TURMA_INICIOU',
       'TURMA_FINALIZADA',
+      'TURMA_ESTRUTURA_PENDENTE_24H',
+      'TURMA_INICIO_BLOQUEADO_ESTRUTURA',
+      'TURMA_INICIO_REPROGRAMADO',
+      'TURMA_NOVA_DATA_CONFIRMADA',
     ];
 
     return tiposCriticos.includes(tipo);

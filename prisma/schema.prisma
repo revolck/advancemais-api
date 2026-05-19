@@ -2810,6 +2810,10 @@ enum NotificacaoTipo {
   INSTRUTOR_DESVINCULADO // Instrutor foi desvinculado
   TURMA_INICIOU // Turma iniciou
   TURMA_FINALIZADA // Turma finalizou
+  TURMA_ESTRUTURA_PENDENTE_24H // Turma sem estrutura a 24h do início
+  TURMA_INICIO_BLOQUEADO_ESTRUTURA // Turma não iniciou por falta de estrutura
+  TURMA_INICIO_REPROGRAMADO // Alunos avisados sobre reprogramação do início
+  TURMA_NOVA_DATA_CONFIRMADA // Nova data da turma confirmada
   // Notificações gerais
   SISTEMA // Notificação do sistema
 }

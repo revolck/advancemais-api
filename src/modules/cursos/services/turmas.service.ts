@@ -30,7 +30,7 @@ import { provaDefaultInclude } from './provas.mapper';
 import { cursosTurmasMapper, mapTurmaSummaryWithInscricoes } from './cursos.service';
 
 const turmasLogger = logger.child({ module: 'CursosTurmasService' });
-const TURMA_ESTRUTURA_OBRIGATORIA_PUBLICACAO = 'TURMA_ESTRUTURA_OBRIGATORIA_PUBLICACAO';
+const TURMA_PERIODO_OBRIGATORIO_PUBLICACAO = 'TURMA_PERIODO_OBRIGATORIO_PUBLICACAO';
 
 type TurmaEstruturaItemInput = {
   type: 'AULA' | 'PROVA' | 'ATIVIDADE';
@@ -668,18 +668,55 @@ const countPersistedEstruturaResumo = async (client: PrismaClientOrTx, turmaId: 
   };
 };
 
-const ensureTurmaPodeSerPublicada = (estruturaResumo: {
+type EstruturaResumo = {
   itemCount: number;
   modulesCount: number;
   standaloneItemsCount: number;
-}) => {
+};
+
+const formatDateTimePtBr = (date?: Date | null) =>
+  date
+    ? new Intl.DateTimeFormat('pt-BR', {
+        timeZone: 'America/Maceio',
+        dateStyle: 'short',
+        timeStyle: 'short',
+      }).format(date)
+    : null;
+
+const ensurePeriodoFuturoParaPublicacaoSemEstrutura = (
+  estruturaResumo: EstruturaResumo,
+  periodo: { dataInicio?: Date | null; dataFim?: Date | null },
+  agora = new Date(),
+) => {
   if (estruturaResumo.itemCount > 0) {
     return;
   }
 
-  const error: any = new Error('Para publicar a turma, adicione pelo menos 1 item na estrutura.');
-  error.code = TURMA_ESTRUTURA_OBRIGATORIA_PUBLICACAO;
-  error.details = estruturaResumo;
+  const dataInicio = periodo.dataInicio ?? null;
+  const dataFim = periodo.dataFim ?? null;
+  const dataInicioFutura = Boolean(dataInicio && dataInicio.getTime() > agora.getTime());
+  const dataFimPosterior = Boolean(
+    dataInicio && dataFim && dataFim.getTime() > dataInicio.getTime(),
+  );
+  const exigePeriodoFuturo =
+    estruturaResumo.itemCount === 0 ||
+    Boolean(dataInicio && dataInicio.getTime() <= agora.getTime());
+
+  if (!exigePeriodoFuturo || (dataInicioFutura && dataFimPosterior)) {
+    return;
+  }
+
+  const error: any = new Error(
+    'Para publicar uma turma sem estrutura, informe uma nova data de início e fim futuras.',
+  );
+  error.code = TURMA_PERIODO_OBRIGATORIO_PUBLICACAO;
+  error.details = {
+    ...estruturaResumo,
+    dataInicio: dataInicio?.toISOString() ?? null,
+    dataFim: dataFim?.toISOString() ?? null,
+    agora: agora.toISOString(),
+    requiredFields: ['dataInicio', 'dataFim'],
+  };
   throw error;
 };
 
@@ -1995,7 +2032,10 @@ export const turmasService = {
 
       const estruturaResumo = summarizeEstruturaInput(data.estrutura);
       if (data.status === CursoStatus.PUBLICADO) {
-        ensureTurmaPodeSerPublicada(estruturaResumo);
+        ensurePeriodoFuturoParaPublicacaoSemEstrutura(estruturaResumo, {
+          dataInicio: data.dataInicio,
+          dataFim: data.dataFim,
+        });
       }
 
       await ensureTemplatesExistForTurmaCreate(tx, cursoId, data.estrutura);
@@ -2460,7 +2500,10 @@ export const turmasService = {
 
       if (estaPublicandoOuAbrindoInscricoes) {
         const estruturaResumo = await countPersistedEstruturaResumo(tx, turmaId);
-        ensureTurmaPodeSerPublicada(estruturaResumo);
+        ensurePeriodoFuturoParaPublicacaoSemEstrutura(estruturaResumo, {
+          dataInicio: dataInicioFinal,
+          dataFim: dataFimFinal,
+        });
       }
 
       // ============================================================================
@@ -3204,11 +3247,12 @@ export const turmasService = {
    * Este controle é independente das datas de início/fim da turma e inscrições
    */
   async togglePublicacao(cursoId: string, turmaId: string, publicar: boolean) {
-    return prisma.$transaction(async (tx) => {
+    const { turmaDetailed, notificacaoPendente } = await prisma.$transaction(async (tx) => {
       const turma = await tx.cursosTurmas.findFirst({
         where: { id: turmaId, cursoId, deletedAt: null },
         select: {
           id: true,
+          nome: true,
           status: true,
           dataInicio: true,
           dataFim: true,
@@ -3229,13 +3273,44 @@ export const turmasService = {
           { cursoId, turmaId, status: novoStatus },
           '✅ Turma já está no status desejado',
         );
-        return fetchTurmaDetailed(tx, turmaId);
+        return {
+          turmaDetailed: await fetchTurmaDetailed(tx, turmaId),
+          notificacaoPendente: null,
+        };
       }
+
+      let notificacaoPendente:
+        | Parameters<typeof notificacoesHelper.notificarAlunosDaTurma>[1]
+        | null = null;
 
       // Validar pré-requisitos se estiver publicando
       if (publicar) {
         const estruturaResumo = await countPersistedEstruturaResumo(tx, turmaId);
-        ensureTurmaPodeSerPublicada(estruturaResumo);
+        ensurePeriodoFuturoParaPublicacaoSemEstrutura(estruturaResumo, {
+          dataInicio: turma.dataInicio,
+          dataFim: turma.dataFim,
+        });
+
+        if (await hasActiveInscricoes(tx, turmaId)) {
+          const inicioFormatado = formatDateTimePtBr(turma.dataInicio);
+          const fimFormatado = formatDateTimePtBr(turma.dataFim);
+          const periodo =
+            inicioFormatado && fimFormatado
+              ? `${inicioFormatado} a ${fimFormatado}`
+              : 'o novo período informado';
+
+          notificacaoPendente = {
+            tipo: 'TURMA_NOVA_DATA_CONFIRMADA',
+            titulo: `Nova data confirmada: ${turma.nome}`,
+            mensagem: `A turma "${turma.nome}" foi reprogramada e acontecerá de ${periodo}. Acompanhe a plataforma para consultar a estrutura, atividades e prazos atualizados.`,
+            prioridade: 'ALTA',
+            linkAcao: `/turmas/${turmaId}`,
+            eventoId: `turma-nova-data-${turmaId}-${turma.dataInicio?.toISOString() ?? randomUUID()}`,
+            enviarEmail: true,
+            emailAssunto: `Nova data da turma ${turma.nome}`,
+            emailMensagem: `A turma "${turma.nome}" foi reprogramada e acontecerá de ${periodo}. Acesse a plataforma para acompanhar a estrutura, atividades e prazos atualizados.`,
+          };
+        }
       } else {
         if (turmaJaFoiIniciada(turma)) {
           const error: any = new Error(
@@ -3273,8 +3348,24 @@ export const turmasService = {
         `✅ Turma ${publicar ? 'publicada' : 'despublicada'} com sucesso`,
       );
 
-      return fetchTurmaDetailed(tx, turmaId);
+      return {
+        turmaDetailed: await fetchTurmaDetailed(tx, turmaId),
+        notificacaoPendente,
+      };
     });
+
+    if (notificacaoPendente) {
+      try {
+        await notificacoesHelper.notificarAlunosDaTurma(turmaId, notificacaoPendente);
+      } catch (error) {
+        turmasLogger.warn(
+          { err: error, turmaId },
+          'Falha ao notificar alunos após confirmação de nova data da turma',
+        );
+      }
+    }
+
+    return turmaDetailed;
   },
 
   async remove(cursoId: string, turmaId: string, actor?: { id?: string | null }) {

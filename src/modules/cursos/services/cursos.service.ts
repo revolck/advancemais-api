@@ -29,6 +29,15 @@ const mapTurmaPublication = (status: CursoStatus) => {
   };
 };
 
+const isInicioBloqueadoPorEstrutura = (
+  status: CursoStatus,
+  dataInicio: Date | null,
+  itemCount: number,
+) =>
+  status === CursoStatus.RASCUNHO &&
+  Boolean(dataInicio && dataInicio <= new Date()) &&
+  itemCount === 0;
+
 const categoriaSelect = {
   id: true,
   codCategoria: true,
@@ -81,6 +90,13 @@ const turmaSummarySelect = Prisma.validator<Prisma.CursosTurmasSelect>()({
       },
     },
     orderBy: [{ criadoEm: 'asc' }],
+  },
+  _count: {
+    select: {
+      CursosTurmasAulas: { where: { deletedAt: null } },
+      CursosTurmasProvas: { where: { ativo: true } },
+      CursosTurmasModulos: true,
+    },
   },
 });
 
@@ -188,6 +204,8 @@ const turmaPublicInclude = Prisma.validator<Prisma.CursosTurmasDefaultArgs>()({
 });
 
 type TurmaSummaryPayload = Prisma.CursosTurmasGetPayload<{ select: typeof turmaSummarySelect }>;
+type TurmaSummaryMapperPayload = Omit<TurmaSummaryPayload, '_count'> &
+  Partial<Pick<TurmaSummaryPayload, '_count'>>;
 type TurmaDetailedPayload = Prisma.CursosTurmasGetPayload<typeof _turmaDetailedInclude>;
 type TurmaPublicPayload = Prisma.CursosTurmasGetPayload<typeof turmaPublicInclude>;
 type RawCourseBase = Prisma.CursosGetPayload<{
@@ -261,11 +279,16 @@ const normalizeTurmaInstrutores = (turma: {
   };
 };
 
-const mapTurmaSummary = (
-  turma: Prisma.CursosTurmasGetPayload<{ select: typeof turmaSummarySelect }>,
-) => {
+const mapTurmaSummary = (turma: TurmaSummaryMapperPayload) => {
   const { instrutor, instrutores } = normalizeTurmaInstrutores(turma);
   const publication = mapTurmaPublication(turma.status);
+  const estruturaResumo = {
+    itemCount:
+      ((turma as any)._count?.CursosTurmasAulas ?? 0) +
+      ((turma as any)._count?.CursosTurmasProvas ?? 0),
+    modulesCount: (turma as any)._count?.CursosTurmasModulos ?? 0,
+    standaloneItemsCount: 0,
+  };
 
   return {
     id: turma.id,
@@ -277,6 +300,12 @@ const mapTurmaSummary = (
     status: turma.status,
     publicacaoStatus: publication.publicacaoStatus,
     publicado: publication.publicado,
+    estruturaResumo,
+    inicioBloqueadoPorEstrutura: isInicioBloqueadoPorEstrutura(
+      turma.status,
+      turma.dataInicio,
+      estruturaResumo.itemCount,
+    ),
     vagasIlimitadas: (turma as any).vagasIlimitadas ?? false,
     vagasTotais: turma.vagasTotais,
     vagasDisponiveis: turma.vagasDisponiveis,
@@ -298,7 +327,7 @@ const mapTurmaSummary = (
  * ✅ Otimização: Adiciona campos calculados de inscrições
  */
 export const mapTurmaSummaryWithInscricoes = (
-  turma: Prisma.CursosTurmasGetPayload<{ select: typeof turmaSummarySelect }>,
+  turma: TurmaSummaryMapperPayload,
   inscricoesCount: number,
 ) => ({
   ...mapTurmaSummary(turma),
@@ -612,6 +641,11 @@ const mapTurmaDetailed = (turma: TurmaDetailedPayload) => {
     publicacaoStatus: publication.publicacaoStatus,
     publicado: publication.publicado,
     estruturaResumo,
+    inicioBloqueadoPorEstrutura: isInicioBloqueadoPorEstrutura(
+      turma.status,
+      turma.dataInicio,
+      estruturaResumo.itemCount,
+    ),
     vagasIlimitadas: (turma as any).vagasIlimitadas ?? false,
     vagasTotais: turma.vagasTotais,
     vagasDisponiveis: turma.vagasDisponiveis,
@@ -710,6 +744,11 @@ const mapTurmaPublic = (turma: TurmaPublicPayload) => {
 
   const { instrutor, instrutores } = normalizeTurmaInstrutores(turma);
   const publication = mapTurmaPublication(turma.status);
+  const estruturaResumo = {
+    itemCount: allAulas.length + allProvas.length,
+    modulesCount: modulos.length,
+    standaloneItemsCount: aulasStandalone.length + provasStandalone.length,
+  };
 
   return {
     id: turma.id,
@@ -721,6 +760,12 @@ const mapTurmaPublic = (turma: TurmaPublicPayload) => {
     status: turma.status,
     publicacaoStatus: publication.publicacaoStatus,
     publicado: publication.publicado,
+    estruturaResumo,
+    inicioBloqueadoPorEstrutura: isInicioBloqueadoPorEstrutura(
+      turma.status,
+      turma.dataInicio,
+      estruturaResumo.itemCount,
+    ),
     vagasIlimitadas: (turma as any).vagasIlimitadas ?? false,
     vagasTotais: turma.vagasTotais,
     vagasDisponiveis: turma.vagasDisponiveis,

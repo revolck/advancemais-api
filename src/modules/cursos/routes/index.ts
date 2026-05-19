@@ -3552,7 +3552,8 @@ router.delete(
  *       - Uma turma PUBLICADA aparece no site, respeitando as demais regras de inscrição e datas
  *
  *       **VALIDAÇÕES:**
- *       - Para publicar, a turma deve ter **pelo menos 1 aula** e **1 avaliação** cadastradas
+ *       - Turma sem estrutura pode ser publicada quando possui data de início futura e data fim posterior
+ *       - A turma só entra em andamento automaticamente quando possuir pelo menos 1 item efetivo na estrutura
  *       - Se já estiver no status desejado, não faz nada (operação idempotente)
  *
  *       **PERMISSÕES:**
@@ -3615,7 +3616,7 @@ router.delete(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       422:
- *         description: Pré-requisitos não atendidos (ex. sem aulas ou avaliações cadastradas)
+ *         description: Período inválido para publicação de turma sem estrutura
  *         content:
  *           application/json:
  *             schema:

@@ -2,6 +2,7 @@ node_modules
 # Keep environment variables out of version control
 .env
 .env.local
+.env_prod
 dist/
 /generated/prisma
 *.map.env.backup
@@ -9,3 +10,4 @@ dist/
 docs/
 .env_2.env_deletar
 .env_2
+grid_w_alunoCursos.xlsx

@@ -763,15 +763,16 @@ router.delete(
  *   get:
  *     summary: 👥 Listar alunos com inscrições em cursos
  *     description: |
- *       Retorna lista paginada de alunos que possuem inscrições em cursos,
- *       incluindo detalhes das inscrições, turmas e cursos associados.
+ *       Retorna lista paginada de alunos que possuem inscrições ou certificados emitidos,
+ *       incluindo detalhes das inscrições, turmas, cursos e certificado mais recente quando houver.
  *
  *       **FILTROS DISPONÍVEIS:**
  *       - `cidade`: Filtra por cidade do aluno
  *       - `status`: Filtra por status da inscrição
  *       - `curso`: Filtra por ID do curso
  *       - `turma`: Filtra por ID da turma
- *       - `search`: Busca por nome, email, CPF ou matrícula
+ *       - `search`: Busca por nome, email, CPF, matrícula ou código de certificado
+ *       - `incluirCertificados`: Inclui alunos encontrados por certificado emitido
  *     tags: [Cursos]
  *     security:
  *       - bearerAuth: []
@@ -806,7 +807,11 @@ router.delete(
  *       - in: query
  *         name: search
  *         schema: { type: string }
- *         description: Buscar por nome, email, CPF ou código de inscrição do aluno
+ *         description: Buscar por nome, email, CPF, código do aluno ou código de certificado
+ *       - in: query
+ *         name: incluirCertificados
+ *         schema: { type: boolean, default: true }
+ *         description: Quando true, certificados emitidos também tornam o aluno elegível para a listagem. Para status=CONCLUIDO, certificado emitido pode derivar statusInscricao=CONCLUIDO.
  *     responses:
  *       200:
  *         description: Lista paginada de alunos com inscrições
@@ -854,9 +859,9 @@ router.delete(
  *                         type: object
  *                         nullable: true
  *                         description: |
- *                           Dados da inscrição ATIVA do aluno (curso atual).
- *                           Prioriza EM_ANDAMENTO > INSCRITO.
- *                           Um aluno não pode estar em múltiplos cursos simultaneamente.
+ *                           Dados da inscrição mais relevante para a listagem.
+ *                           Quando a relação aparece por certificado emitido com filtro CONCLUIDO,
+ *                           statusInscricao pode ser derivado como CONCLUIDO.
  *                         properties:
  *                           inscricaoId:
  *                             type: string
@@ -889,6 +894,21 @@ router.delete(
  *                                 type: string
  *                               codigo:
  *                                 type: string
+ *                           certificado:
+ *                             type: object
+ *                             nullable: true
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 format: uuid
+ *                               codigo:
+ *                                 type: string
+ *                               status:
+ *                                 type: string
+ *                                 enum: [EMITIDO]
+ *                               emitidoEm:
+ *                                 type: string
+ *                                 format: date-time
  *                 pagination:
  *                   $ref: '#/components/schemas/PaginationMeta'
  *       500:
@@ -5518,6 +5538,7 @@ router.get(
 router.post(
   '/certificados',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  cursosAlunosInvalidateCacheOnMutation,
   CertificadosController.emitirGlobal,
 );
 
@@ -5637,6 +5658,7 @@ router.get(
 router.post(
   '/:cursoId/turmas/:turmaId/certificados',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  cursosAlunosInvalidateCacheOnMutation,
   CertificadosController.emitir,
 );
 

@@ -29,6 +29,19 @@ const parseCsv = (value: unknown) => {
     .filter(Boolean);
 };
 
+const booleanQueryParam = z
+  .preprocess((value) => {
+    if (value === undefined || value === null || value === '') return undefined;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (['true', '1', 'sim', 'yes'].includes(normalized)) return true;
+      if (['false', '0', 'nao', 'não', 'no'].includes(normalized)) return false;
+    }
+    return value;
+  }, z.boolean().optional())
+  .default(true);
+
 /**
  * Schema de validação para query de listagem de alunos com inscrições
  * Segue o padrão dos outros endpoints (cursos, turmas)
@@ -75,6 +88,7 @@ export const listAlunosComInscricoesQuerySchema = z
       .optional(),
     turma: z.string().uuid().optional(),
     turmaId: z.string().uuid().optional(),
+    incluirCertificados: booleanQueryParam,
   })
   .transform((data) => {
     // Normalizar cursoId: usar cursoId se fornecido, caso contrário usar curso

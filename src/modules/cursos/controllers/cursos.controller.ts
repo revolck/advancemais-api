@@ -121,23 +121,49 @@ const buildEmptyAlunosListResponse = (page: number, limit: number) => ({
 const getInstrutorAlunoTurmaIds = (scope: InstrutorScope) =>
   Array.from(new Set([...scope.accessibleTurmaIds, ...scope.fullTurmaIds].filter(Boolean)));
 
+const buildCursoTurmaAlunoFilter = (params: {
+  turmaIds?: string[];
+  cursoId?: string;
+  turmaId?: string;
+}): Prisma.CursosTurmasWhereInput => {
+  const andFilters: Prisma.CursosTurmasWhereInput[] = [];
+
+  if (params.turmaId) {
+    andFilters.push({ id: params.turmaId });
+  }
+
+  if (params.turmaIds) {
+    andFilters.push({ id: { in: params.turmaIds } });
+  }
+
+  return {
+    deletedAt: null,
+    ...(params.cursoId ? { cursoId: params.cursoId } : {}),
+    ...(andFilters.length > 0 ? { AND: andFilters } : {}),
+  };
+};
+
 const buildAlunoInscricaoFilter = (params: {
   turmaIds?: string[];
   status?: StatusInscricao[];
   cursoId?: string;
   turmaId?: string;
 }): Prisma.CursosTurmasInscricoesWhereInput => ({
-  status: {
-    in:
-      params.status && params.status.length > 0
-        ? params.status
-        : [StatusInscricao.EM_ANDAMENTO, StatusInscricao.INSCRITO],
-  },
-  CursosTurmas: {
-    deletedAt: null,
-    ...(params.cursoId ? { cursoId: params.cursoId } : {}),
-    ...(params.turmaId ? { id: params.turmaId } : {}),
-    ...(params.turmaIds ? { id: { in: params.turmaIds } } : {}),
+  ...(params.status && params.status.length > 0 ? { status: { in: params.status } } : {}),
+  CursosTurmas: buildCursoTurmaAlunoFilter(params),
+});
+
+const shouldDeriveConclusaoFromCertificado = (status?: StatusInscricao[]) =>
+  !status || status.length === 0 || status.includes(StatusInscricao.CONCLUIDO);
+
+const buildAlunoCertificadoInscricaoFilter = (params: {
+  turmaIds?: string[];
+  cursoId?: string;
+  turmaId?: string;
+}): Prisma.CursosTurmasInscricoesWhereInput => ({
+  CursosTurmas: buildCursoTurmaAlunoFilter(params),
+  CursosCertificadosEmitidos: {
+    some: {},
   },
 });
 
@@ -885,6 +911,7 @@ export class CursosController {
       const cursoIdParam = params.cursoId;
       const turmaIdParam = params.turmaId || params.turma;
       const search = params.search;
+      const incluirCertificados = params.incluirCertificados !== false;
       let instrutorScope: InstrutorScope | null = null;
       let instrutorTurmaIds: string[] | null = null;
 
@@ -917,6 +944,7 @@ export class CursosController {
         cursoId: cursoIdParam || '',
         turmaId: turmaIdParam || '',
         search: search || '',
+        incluirCertificados,
         role: req.user?.role ?? '',
         userId: req.user?.id ?? '',
       });
@@ -938,60 +966,144 @@ export class CursosController {
       const result = await getCachedOrFetch(
         cacheKey,
         async () => {
-          // Construir filtro dinamicamente
-          const where: any = {
-            role: 'ALUNO_CANDIDATO',
-            CursosTurmasInscricoes: {
-              some: {},
-            },
+          const statusIncluiConclusaoPorCertificado =
+            shouldDeriveConclusaoFromCertificado(statusInscricao);
+          const scopeFilter = {
+            turmaIds: instrutorTurmaIds ?? undefined,
+            cursoId: cursoIdParam,
+            turmaId: turmaIdParam,
           };
+          const inscricaoFilter = buildAlunoInscricaoFilter({
+            ...scopeFilter,
+            status: statusInscricao,
+          });
+          const certificadoInscricaoFilter =
+            incluirCertificados && statusIncluiConclusaoPorCertificado
+              ? buildAlunoCertificadoInscricaoFilter(scopeFilter)
+              : null;
+
+          const inscricaoEligibilityFilters: Prisma.UsuariosWhereInput[] = [
+            {
+              CursosTurmasInscricoes: {
+                some: inscricaoFilter,
+              },
+            },
+          ];
+
+          if (certificadoInscricaoFilter) {
+            inscricaoEligibilityFilters.push({
+              CursosTurmasInscricoes: {
+                some: certificadoInscricaoFilter,
+              },
+            });
+          }
+
+          const andFilters: Prisma.UsuariosWhereInput[] = [
+            {
+              OR: inscricaoEligibilityFilters,
+            },
+          ];
 
           // Filtro por cidade (já normalizado como array pelo schema)
           if (cidade && cidade.length > 0) {
-            where.UsuariosEnderecos = {
-              some: {
-                cidade: {
-                  in: cidade,
-                  mode: 'insensitive',
+            andFilters.push({
+              UsuariosEnderecos: {
+                some: {
+                  cidade: {
+                    in: cidade,
+                    mode: 'insensitive',
+                  },
                 },
               },
-            };
+            });
           }
 
-          // Construir filtros de inscrições
-          // SEMPRE filtrar apenas inscrições ATIVAS (EM_ANDAMENTO ou INSCRITO),
-          // respeitando o escopo do instrutor quando aplicável.
-          const inscricaoFilter = buildAlunoInscricaoFilter({
-            turmaIds: instrutorTurmaIds ?? undefined,
-            status: statusInscricao,
-            cursoId: cursoIdParam,
-            turmaId: turmaIdParam,
-          });
-
-          // Aplicar filtro de inscrições no WHERE
-          where.CursosTurmasInscricoes = {
-            some: inscricaoFilter,
+          const where: Prisma.UsuariosWhereInput = {
+            role: Roles.ALUNO_CANDIDATO,
+            AND: andFilters,
           };
 
           // ✅ Filtro por busca otimizado (usar startsWith quando possível)
           if (search) {
             const searchClean = search.trim();
             const cpfClean = search.replace(/\D/g, '');
+            const certificadoCodigoFilter = {
+              CursosCertificadosEmitidos: {
+                some: {
+                  codigo: {
+                    contains: searchClean,
+                    mode: Prisma.QueryMode.insensitive,
+                  },
+                },
+              },
+            };
 
             // Se busca parece ser CPF (apenas números), priorizar busca por CPF
             if (cpfClean.length >= 3 && /^\d+$/.test(searchClean)) {
-              where.OR = [
-                { cpf: { contains: cpfClean } },
-                { codUsuario: { contains: searchClean, mode: 'insensitive' } },
-              ];
+              andFilters.push({
+                OR: [
+                  { cpf: { contains: cpfClean } },
+                  { codUsuario: { contains: searchClean, mode: Prisma.QueryMode.insensitive } },
+                  ...(incluirCertificados
+                    ? [
+                        {
+                          CursosTurmasInscricoes: {
+                            some: {
+                              ...inscricaoFilter,
+                              ...certificadoCodigoFilter,
+                            },
+                          },
+                        },
+                        ...(certificadoInscricaoFilter
+                          ? [
+                              {
+                                CursosTurmasInscricoes: {
+                                  some: {
+                                    ...certificadoInscricaoFilter,
+                                    ...certificadoCodigoFilter,
+                                  },
+                                },
+                              },
+                            ]
+                          : []),
+                      ]
+                    : []),
+                ],
+              });
             } else {
               // Busca geral por nome, email ou código
-              where.OR = [
-                { nomeCompleto: { contains: searchClean, mode: 'insensitive' } },
-                { email: { contains: searchClean, mode: 'insensitive' } },
-                { codUsuario: { contains: searchClean, mode: 'insensitive' } },
-                ...(cpfClean.length >= 3 ? [{ cpf: { contains: cpfClean } }] : []),
-              ];
+              andFilters.push({
+                OR: [
+                  { nomeCompleto: { contains: searchClean, mode: Prisma.QueryMode.insensitive } },
+                  { email: { contains: searchClean, mode: Prisma.QueryMode.insensitive } },
+                  { codUsuario: { contains: searchClean, mode: Prisma.QueryMode.insensitive } },
+                  ...(cpfClean.length >= 3 ? [{ cpf: { contains: cpfClean } }] : []),
+                  ...(incluirCertificados
+                    ? [
+                        {
+                          CursosTurmasInscricoes: {
+                            some: {
+                              ...inscricaoFilter,
+                              ...certificadoCodigoFilter,
+                            },
+                          },
+                        },
+                        ...(certificadoInscricaoFilter
+                          ? [
+                              {
+                                CursosTurmasInscricoes: {
+                                  some: {
+                                    ...certificadoInscricaoFilter,
+                                    ...certificadoCodigoFilter,
+                                  },
+                                },
+                              },
+                            ]
+                          : []),
+                      ]
+                    : []),
+                ],
+              });
             }
           }
 
@@ -1047,16 +1159,35 @@ export class CursosController {
             async () => {
               if (alunoIds.length === 0) return [];
 
+              const inscricaoSelectionFilters: Prisma.CursosTurmasInscricoesWhereInput[] = [
+                inscricaoFilter,
+              ];
+
+              if (certificadoInscricaoFilter) {
+                inscricaoSelectionFilters.push(certificadoInscricaoFilter);
+              }
+
               return prisma.cursosTurmasInscricoes.findMany({
                 where: {
                   alunoId: { in: alunoIds },
-                  ...inscricaoFilter,
+                  OR: inscricaoSelectionFilters,
                 },
                 select: {
                   id: true,
                   alunoId: true,
                   status: true,
                   criadoEm: true,
+                  CursosCertificadosEmitidos: {
+                    select: {
+                      id: true,
+                      codigo: true,
+                      emitidoEm: true,
+                    },
+                    orderBy: {
+                      emitidoEm: 'desc',
+                    },
+                    take: 1,
+                  },
                   CursosTurmas: {
                     select: {
                       id: true,
@@ -1092,9 +1223,48 @@ export class CursosController {
           // ✅ Processar dados SEM calcular progresso (evita N+1 queries)
           // O progresso pode ser calculado no frontend ou em um endpoint separado se necessário
           const data = alunos.map((aluno) => {
-            const inscricoesAluno = (inscricoesPorAluno.get(aluno.id) ?? []).sort(
-              compareInscricaoPrioridade,
-            );
+            const searchLower = search?.trim().toLowerCase() ?? '';
+            const statusFilterSet = new Set(statusInscricao ?? []);
+            const hasStatusFilter = statusFilterSet.size > 0;
+            const inscricoesAluno = (inscricoesPorAluno.get(aluno.id) ?? [])
+              .map((inscricao) => {
+                const certificado = inscricao.CursosCertificadosEmitidos?.[0] ?? null;
+                const matchesInscricaoStatus =
+                  !hasStatusFilter || statusFilterSet.has(inscricao.status);
+                const statusInscricaoExibicao =
+                  incluirCertificados &&
+                  certificado &&
+                  !matchesInscricaoStatus &&
+                  statusFilterSet.has(StatusInscricao.CONCLUIDO)
+                    ? StatusInscricao.CONCLUIDO
+                    : inscricao.status;
+                const criadoEmReferencia =
+                  statusInscricaoExibicao === StatusInscricao.CONCLUIDO &&
+                  !matchesInscricaoStatus &&
+                  certificado
+                    ? certificado.emitidoEm
+                    : inscricao.criadoEm;
+
+                return {
+                  ...inscricao,
+                  certificado,
+                  statusInscricaoExibicao,
+                  criadoEmReferencia,
+                  certificadoCodigoMatch:
+                    searchLower.length > 0 &&
+                    Boolean(certificado?.codigo?.toLowerCase().includes(searchLower)),
+                };
+              })
+              .sort((a, b) => {
+                if (a.certificadoCodigoMatch !== b.certificadoCodigoMatch) {
+                  return a.certificadoCodigoMatch ? -1 : 1;
+                }
+
+                return compareInscricaoPrioridade(
+                  { status: a.statusInscricaoExibicao, criadoEm: a.criadoEmReferencia },
+                  { status: b.statusInscricaoExibicao, criadoEm: b.criadoEmReferencia },
+                );
+              });
             const inscricaoAtiva = inscricoesAluno[0] ?? null;
 
             return {
@@ -1112,7 +1282,7 @@ export class CursosController {
               ultimoCurso: inscricaoAtiva
                 ? {
                     inscricaoId: inscricaoAtiva.id,
-                    statusInscricao: inscricaoAtiva.status,
+                    statusInscricao: inscricaoAtiva.statusInscricaoExibicao,
                     dataInscricao: inscricaoAtiva.criadoEm,
                     // ✅ Removido progresso para evitar N+1 queries
                     // Progresso pode ser calculado em batch ou endpoint separado se necessário
@@ -1127,6 +1297,16 @@ export class CursosController {
                       nome: inscricaoAtiva.CursosTurmas.Cursos.nome,
                       codigo: inscricaoAtiva.CursosTurmas.Cursos.codigo,
                     },
+                    ...(inscricaoAtiva.certificado
+                      ? {
+                          certificado: {
+                            id: inscricaoAtiva.certificado.id,
+                            codigo: inscricaoAtiva.certificado.codigo,
+                            status: 'EMITIDO',
+                            emitidoEm: inscricaoAtiva.certificado.emitidoEm,
+                          },
+                        }
+                      : {}),
                   }
                 : null,
             };

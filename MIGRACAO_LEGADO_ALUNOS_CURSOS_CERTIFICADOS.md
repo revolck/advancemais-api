@@ -21,7 +21,7 @@ A planilha `.xlsx` fica local e não deve ser commitada.
 
 ## Senha padrão
 
-Todos os alunos migrados e todas as empresas processadas pela migração recebem a senha:
+Todos os alunos migrados e todos os usuários com `role=EMPRESA` recebem a senha:
 
 ```txt
 BemVindo@2026
@@ -33,7 +33,7 @@ A senha é persistida com bcrypt.
 
 O CPF é a chave principal do aluno.
 
-A seed bloqueia a execução real quando encontra:
+A seed coloca em quarentena os registros que encontrar com:
 
 - CPF ausente ou inválido;
 - data de cadastro inválida;
@@ -41,6 +41,8 @@ A seed bloqueia a execução real quando encontra:
 - mesmo CPF associado a nomes divergentes.
 
 Duplicatas exatas por `CPF + curso + DT INÍCIO + DT FIM` são consolidadas.
+
+Por padrão, a execução real importa os registros seguros e gera um relatório local com os registros em quarentena. Para bloquear qualquer importação quando houver pendência, rode com `--strict`.
 
 ## Datas preservadas
 
@@ -76,10 +78,22 @@ Validar sem gravar no banco:
 pnpm run seed:migracao:legado -- --dry-run
 ```
 
-Executar a migração real:
+Executar a migração real importando registros seguros e isolando pendências:
 
 ```bash
 pnpm run seed:migracao:legado
+```
+
+Executar em modo estrito, bloqueando tudo se houver pendência:
+
+```bash
+pnpm run seed:migracao:legado -- --strict
+```
+
+Retomar apenas alunos, cursos, turmas, inscrições e certificados quando a etapa de empresas já tiver sido concluída:
+
+```bash
+pnpm run seed:migracao:legado -- --skip-empresas
 ```
 
 O alias antigo continua disponível:
@@ -90,17 +104,24 @@ pnpm run seed:empresas
 
 ## Bloqueios atuais da planilha
 
-O arquivo normalizado atual contém bloqueios conhecidos:
+O arquivo normalizado atual contém pendências conhecidas que irão para quarentena:
 
 - 2 registros sem CPF;
 - 43 registros sem `DT INÍCIO/DT FIM`;
 - CPFs com nomes divergentes.
 
-Enquanto esses itens existirem, a execução real será bloqueada antes de qualquer escrita.
+Enquanto esses itens existirem, eles não serão importados. O restante dos registros válidos pode ser migrado.
+
+Relatórios de quarentena são gerados localmente em:
+
+```txt
+prisma/seeds/reports/
+```
 
 ## Arquivos que não devem entrar no commit
 
 ```txt
 .env_prod
 grid_w_alunoCursos.xlsx
+prisma/seeds/reports/
 ```

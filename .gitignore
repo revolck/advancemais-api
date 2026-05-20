@@ -11,3 +11,4 @@ docs/
 .env_2.env_deletar
 .env_2
 grid_w_alunoCursos.xlsx
+prisma/seeds/reports/

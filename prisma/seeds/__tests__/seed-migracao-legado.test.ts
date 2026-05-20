@@ -4,6 +4,7 @@ import {
   buildCodigoInscricaoMigracao,
   buildCodigoTurmaMigracao,
   buildMigrationPreflight,
+  buildQuarantinePlan,
   consolidateMigrationRecords,
   parseLegacyDateToUtcNoon,
 } from '../seed-migracao-legado';
@@ -112,5 +113,16 @@ describe('seed migracao legado preflight', () => {
     const date = parseLegacyDateToUtcNoon('2023-01-20');
 
     expect(date?.toISOString()).toBe('2023-01-20T12:00:00.000Z');
+  });
+
+  it('separa registros importaveis dos registros em quarentena', () => {
+    const preflight = buildMigrationPreflight([
+      baseRecord({ linhaOrigem: 10, cpf: '', cpfOriginal: '' }) as any,
+      baseRecord({ linhaOrigem: 20, cpf: '04886279406', cpfOriginal: '04886279406' }) as any,
+    ]);
+    const quarantine = buildQuarantinePlan(preflight);
+
+    expect(quarantine.registrosQuarentenados.map((record) => record.linhaOrigem)).toEqual([10]);
+    expect(quarantine.registrosImportaveis.map((record) => record.linhaOrigem)).toEqual([20]);
   });
 });

@@ -6,6 +6,7 @@
  * normalizados em prisma/seeds/data.
  */
 
+import 'dotenv/config';
 import {
   CursoStatus,
   CursosCertificados,
@@ -57,6 +58,7 @@ interface SeedEmpresasResult {
   total: number;
   criadas: number;
   atualizadas: number;
+  senhasEmpresasRoleAtualizadas: number;
   erros: number;
   emailsGerados: number;
   emailsAjustadosPorConflito: number;
@@ -145,13 +147,23 @@ interface SeedAlunosCursosCertificadosResult {
 
 interface SeedMigracaoLegadoOptions {
   dryRun?: boolean;
+  strict?: boolean;
+  skipEmpresas?: boolean;
 }
 
 interface SeedMigracaoLegadoResult {
   dryRun: boolean;
   preflight: PreflightResult;
+  quarentena?: QuarantinePlan;
   empresas?: SeedEmpresasResult;
   alunosCursosCertificados?: SeedAlunosCursosCertificadosResult;
+}
+
+interface QuarantinePlan {
+  registrosImportaveis: RegistroConsolidado[];
+  registrosQuarentenados: RegistroConsolidado[];
+  cpfsQuarentenados: string[];
+  linhasQuarentenadas: number[];
 }
 
 const datasourceUrl = process.env.DIRECT_URL || process.env.DATABASE_URL || '';
@@ -161,10 +173,12 @@ const ALUNOS_CURSOS_CERTIFICADOS_DATA_PATH = path.resolve(
   'data',
   'alunos-cursos-certificados-migracao.json',
 );
+const REPORTS_DIR = path.resolve(__dirname, 'reports');
 const TELEFONE_NAO_INFORMADO = 'NAO_INFORMADO';
 const SENHA_PADRAO_MIGRACAO = 'BemVindo@2026';
 const CPF_LENGTH = 11;
 const MAX_HASH_ATTEMPTS = 100;
+const MIGRACAO_LEGADO_CONCURRENCY = Number(process.env.MIGRACAO_LEGADO_CONCURRENCY || 16);
 
 function loadEmpresas(): EmpresaMigracaoSeed[] {
   return JSON.parse(fs.readFileSync(EMPRESAS_DATA_PATH, 'utf8')) as EmpresaMigracaoSeed[];
@@ -686,6 +700,67 @@ const createPreflightError = (issues: IssuePreflight[]) => {
   return error;
 };
 
+export function buildQuarantinePlan(preflight: PreflightResult): QuarantinePlan {
+  const linhasQuarentenadas = new Set<number>();
+  const cpfsQuarentenados = new Set<string>();
+
+  for (const issue of preflight.issues) {
+    for (const linha of issue.linhasOrigem) {
+      linhasQuarentenadas.add(linha);
+    }
+
+    if (issue.code === 'CPF_COM_NOMES_DIVERGENTES' && issue.cpf) {
+      cpfsQuarentenados.add(issue.cpf);
+    }
+  }
+
+  const registrosImportaveis: RegistroConsolidado[] = [];
+  const registrosQuarentenados: RegistroConsolidado[] = [];
+
+  for (const record of preflight.registrosConsolidados) {
+    const hasLinhaQuarentenada = record.linhasOrigem.some((linha) =>
+      linhasQuarentenadas.has(linha),
+    );
+    const hasCpfQuarentenado = cpfsQuarentenados.has(record.cpf);
+
+    if (hasLinhaQuarentenada || hasCpfQuarentenado) {
+      registrosQuarentenados.push(record);
+    } else {
+      registrosImportaveis.push(record);
+    }
+  }
+
+  return {
+    registrosImportaveis,
+    registrosQuarentenados,
+    cpfsQuarentenados: Array.from(cpfsQuarentenados).sort(),
+    linhasQuarentenadas: Array.from(linhasQuarentenadas).sort((a, b) => a - b),
+  };
+}
+
+function writeQuarantineReport(preflight: PreflightResult, quarentena: QuarantinePlan) {
+  fs.mkdirSync(REPORTS_DIR, { recursive: true });
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const reportPath = path.join(REPORTS_DIR, `migracao-legado-quarentena-${timestamp}.json`);
+  const payload = {
+    generatedAt: new Date().toISOString(),
+    summary: {
+      issues: preflight.issues.length,
+      registrosOriginais: preflight.stats.registrosOriginais,
+      registrosConsolidados: preflight.stats.registrosConsolidados,
+      registrosImportaveis: quarentena.registrosImportaveis.length,
+      registrosQuarentenados: quarentena.registrosQuarentenados.length,
+      linhasQuarentenadas: quarentena.linhasQuarentenadas.length,
+      cpfsQuarentenados: quarentena.cpfsQuarentenados.length,
+    },
+    issues: preflight.issues,
+    registrosQuarentenados: quarentena.registrosQuarentenados,
+  };
+
+  fs.writeFileSync(reportPath, JSON.stringify(payload, null, 2) + '\n', 'utf8');
+  return reportPath;
+}
+
 const chunk = <T>(items: T[], size: number) => {
   const chunks: T[][] = [];
   for (let index = 0; index < items.length; index += size) {
@@ -693,6 +768,34 @@ const chunk = <T>(items: T[], size: number) => {
   }
   return chunks;
 };
+
+async function runWithConcurrency<T>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T, index: number) => Promise<void>,
+  onProgress?: (completed: number) => void,
+) {
+  let nextIndex = 0;
+  let completed = 0;
+  const workerCount = Math.max(1, Math.min(concurrency, items.length));
+
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      while (true) {
+        const index = nextIndex;
+        nextIndex += 1;
+
+        if (index >= items.length) {
+          break;
+        }
+
+        await worker(items[index], index);
+        completed += 1;
+        onProgress?.(completed);
+      }
+    }),
+  );
+}
 
 const buildAlunoMigrationMetadata = (records: RegistroConsolidado[]) => {
   const byCpf = new Map<string, RegistroConsolidado[]>();
@@ -819,11 +922,7 @@ async function findOrCreateAluno(
     where: { cpf },
     select: { id: true, role: true },
   });
-  const resolvedEmail = await resolveUniqueAlunoEmail(client, cpf, existing?.id);
-  const authId = await resolveUniqueAuthId(client, 'aluno', cpf, existing?.id);
-  const codUsuario = existing
-    ? undefined
-    : await resolveUniqueCodUsuario(client, `ALU${cpf.slice(-8)}`);
+  const codUsuario = existing ? undefined : await resolveUniqueCodUsuario(client, `ALU${cpf}`);
 
   if (existing) {
     if (existing.role !== Roles.ALUNO_CANDIDATO) {
@@ -833,9 +932,7 @@ async function findOrCreateAluno(
     await client.usuarios.update({
       where: { id: existing.id },
       data: {
-        authId,
         nomeCompleto: metadata.nome,
-        email: resolvedEmail.email,
         senha: senhaPadraoHash,
         tipoUsuario: TiposDeUsuarios.PESSOA_FISICA,
         role: Roles.ALUNO_CANDIDATO,
@@ -850,6 +947,9 @@ async function findOrCreateAluno(
     await syncVerificacaoEmail(client, existing.id);
     return { id: existing.id, created: false };
   }
+
+  const resolvedEmail = await resolveUniqueAlunoEmail(client, cpf);
+  const authId = await resolveUniqueAuthId(client, 'aluno', cpf);
 
   const created = await client.usuarios.create({
     data: {
@@ -1239,6 +1339,7 @@ async function seedEmpresasMigracao(
     total: empresas.length,
     criadas: 0,
     atualizadas: 0,
+    senhasEmpresasRoleAtualizadas: 0,
     erros: 0,
     emailsGerados: empresas.filter((empresa) => empresa.emailGerado).length,
     emailsAjustadosPorConflito: 0,
@@ -1325,9 +1426,19 @@ async function seedEmpresasMigracao(
       }
     }
 
+    const empresasSenhaAtualizadas = await client.usuarios.updateMany({
+      where: { role: Roles.EMPRESA },
+      data: {
+        senha: senhaHash,
+        atualizadoEm: new Date(),
+      },
+    });
+    result.senhasEmpresasRoleAtualizadas = empresasSenhaAtualizadas.count;
+
     console.log('\n✨ Seed de empresas migradas finalizado!');
     console.log(`  Criadas: ${result.criadas}`);
     console.log(`  Atualizadas: ${result.atualizadas}`);
+    console.log(`  Senhas atualizadas para role=EMPRESA: ${result.senhasEmpresasRoleAtualizadas}`);
     console.log(`  Erros: ${result.erros}`);
     console.log(`  E-mails sinteticos no arquivo: ${result.emailsGerados}`);
     console.log(`  E-mails ajustados por conflito no banco: ${result.emailsAjustadosPorConflito}`);
@@ -1372,92 +1483,137 @@ async function seedAlunosCursosCertificadosMigracao(
   console.log(`  👤 Alunos unicos: ${alunoMetadata.size}`);
   console.log(`  📚 Cursos unicos: ${cursoMetadata.size}`);
   console.log(`  🧾 Registros consolidados: ${registrosConsolidados.length}`);
+  console.log(`  ⚙️ Concorrencia controlada: ${MIGRACAO_LEGADO_CONCURRENCY}`);
 
-  for (const [index, record] of registrosConsolidados.entries()) {
-    try {
-      let aluno = alunosCache.get(record.cpf);
-      if (!aluno) {
-        const metadata = alunoMetadata.get(record.cpf);
-        if (!metadata) {
-          throw new Error(`Metadados do aluno ${record.cpf} nao encontrados`);
-        }
-        const alunoResult = await findOrCreateAluno(client, record.cpf, metadata, senhaPadraoHash);
+  const logProgress = (label: string, total: number) => (completed: number) => {
+    if (completed % 250 === 0 || completed === total) {
+      console.log(`  Progresso ${label}: ${completed}/${total}`);
+    }
+  };
+
+  const alunoEntries = Array.from(alunoMetadata.entries());
+  await runWithConcurrency(
+    alunoEntries,
+    MIGRACAO_LEGADO_CONCURRENCY,
+    async ([cpf, metadata]) => {
+      try {
+        const alunoResult = await findOrCreateAluno(client, cpf, metadata, senhaPadraoHash);
         if (alunoResult.created) {
           result.alunosCriados += 1;
         } else {
           result.alunosAtualizados += 1;
         }
-        aluno = { id: alunoResult.id, nome: metadata.nome };
-        alunosCache.set(record.cpf, aluno);
+        alunosCache.set(cpf, { id: alunoResult.id, nome: metadata.nome });
+      } catch (error: any) {
+        result.erros += 1;
+        console.error(`  ❌ Erro ao processar aluno ${cpf}: ${error.message}`);
       }
+    },
+    logProgress('alunos', alunoEntries.length),
+  );
 
-      let cursoId = cursosCache.get(record.cursoNome);
-      if (!cursoId) {
-        const metadata = cursoMetadata.get(record.cursoNome);
-        if (!metadata) {
-          throw new Error(`Metadados do curso ${record.cursoNome} nao encontrados`);
-        }
-        const curso = await findOrCreateCurso(client, record.cursoNome, metadata);
+  const cursoEntries = Array.from(cursoMetadata.entries());
+  await runWithConcurrency(
+    cursoEntries,
+    Math.min(MIGRACAO_LEGADO_CONCURRENCY, 8),
+    async ([cursoNome, metadata]) => {
+      try {
+        const curso = await findOrCreateCurso(client, cursoNome, metadata);
         if (curso.created) {
           result.cursosCriados += 1;
         } else {
           result.cursosReutilizados += 1;
         }
-        cursoId = curso.id;
-        cursosCache.set(record.cursoNome, cursoId);
+        cursosCache.set(cursoNome, curso.id);
+      } catch (error: any) {
+        result.erros += 1;
+        console.error(`  ❌ Erro ao processar curso ${cursoNome}: ${error.message}`);
       }
+    },
+    logProgress('cursos', cursoEntries.length),
+  );
 
-      const turmaKey = buildCodigoTurmaMigracao(record);
-      let turma = turmasCache.get(turmaKey);
-      if (!turma) {
+  const turmaRecords = Array.from(
+    new Map(
+      registrosConsolidados.map((record) => [buildCodigoTurmaMigracao(record), record]),
+    ).values(),
+  );
+  await runWithConcurrency(
+    turmaRecords,
+    Math.min(MIGRACAO_LEGADO_CONCURRENCY, 8),
+    async (record) => {
+      try {
+        const cursoId = cursosCache.get(record.cursoNome);
+        if (!cursoId) {
+          throw new Error(`Curso ${record.cursoNome} nao foi importado`);
+        }
+        const turmaKey = buildCodigoTurmaMigracao(record);
         const turmaResult = await findOrCreateTurmaHistorica(client, cursoId, record);
         if (turmaResult.created) {
           result.turmasCriadas += 1;
         } else {
           result.turmasAtualizadas += 1;
         }
-        turma = { id: turmaResult.id, codigo: turmaResult.codigo };
-        turmasCache.set(turmaKey, turma);
-      }
-
-      const inscricao = await upsertInscricaoHistorica(
-        client,
-        turma.id,
-        aluno.id,
-        record,
-        turma.codigo,
-      );
-      if (inscricao.created) {
-        result.inscricoesCriadas += 1;
-      } else {
-        result.inscricoesAtualizadas += 1;
-      }
-
-      const certificado = await upsertCertificadoHistorico(
-        client,
-        inscricao.id,
-        inscricao.codigo,
-        record,
-        aluno.nome,
-      );
-      if (certificado.created) {
-        result.certificadosCriados += 1;
-      } else {
-        result.certificadosAtualizados += 1;
-      }
-
-      if ((index + 1) % 250 === 0 || index + 1 === registrosConsolidados.length) {
-        console.log(
-          `  Progresso alunos/certificados: ${index + 1}/${registrosConsolidados.length}`,
+        turmasCache.set(turmaKey, { id: turmaResult.id, codigo: turmaResult.codigo });
+      } catch (error: any) {
+        result.erros += 1;
+        console.error(
+          `  ❌ Erro ao processar turma ${buildCodigoTurmaMigracao(record)} (${record.cursoNome}): ${error.message}`,
         );
       }
-    } catch (error: any) {
-      result.erros += 1;
-      console.error(
-        `  ❌ Erro ao processar linha(s) ${record.linhasOrigem.join(', ')} (${record.cpf} - ${record.nomeAluno}): ${error.message}`,
-      );
-    }
-  }
+    },
+    logProgress('turmas', turmaRecords.length),
+  );
+
+  await runWithConcurrency(
+    registrosConsolidados,
+    MIGRACAO_LEGADO_CONCURRENCY,
+    async (record) => {
+      try {
+        const aluno = alunosCache.get(record.cpf);
+        if (!aluno) {
+          throw new Error(`Aluno ${record.cpf} nao foi importado`);
+        }
+
+        const turma = turmasCache.get(buildCodigoTurmaMigracao(record));
+        if (!turma) {
+          throw new Error(`Turma ${buildCodigoTurmaMigracao(record)} nao foi importada`);
+        }
+
+        const inscricao = await upsertInscricaoHistorica(
+          client,
+          turma.id,
+          aluno.id,
+          record,
+          turma.codigo,
+        );
+        if (inscricao.created) {
+          result.inscricoesCriadas += 1;
+        } else {
+          result.inscricoesAtualizadas += 1;
+        }
+
+        const certificado = await upsertCertificadoHistorico(
+          client,
+          inscricao.id,
+          inscricao.codigo,
+          record,
+          aluno.nome,
+        );
+        if (certificado.created) {
+          result.certificadosCriados += 1;
+        } else {
+          result.certificadosAtualizados += 1;
+        }
+      } catch (error: any) {
+        result.erros += 1;
+        console.error(
+          `  ❌ Erro ao processar linha(s) ${record.linhasOrigem.join(', ')} (${record.cpf} - ${record.nomeAluno}): ${error.message}`,
+        );
+      }
+    },
+    logProgress('inscricoes/certificados', registrosConsolidados.length),
+  );
 
   console.log('\n✨ Seed de alunos, cursos e certificados finalizado!');
   console.log(`  Alunos criados: ${result.alunosCriados}`);
@@ -1481,15 +1637,25 @@ export async function seedMigracaoLegado(
 ): Promise<SeedMigracaoLegadoResult> {
   const alunosCursosCertificados = loadAlunosCursosCertificados();
   const preflight = buildMigrationPreflight(alunosCursosCertificados.records);
+  const quarentena = buildQuarantinePlan(preflight);
 
   printPreflight(preflight);
 
-  if (options.dryRun) {
-    console.log('\n🧪 Dry-run habilitado: nenhuma escrita sera executada.');
-    return { dryRun: true, preflight };
+  if (preflight.issues.length > 0) {
+    console.log(
+      `  🧺 Quarentena: ${quarentena.registrosQuarentenados.length} registro(s) ficarao fora da importacao agora.`,
+    );
+    console.log(
+      `  ✅ Importaveis: ${quarentena.registrosImportaveis.length} registro(s) consolidado(s).`,
+    );
   }
 
-  if (preflight.issues.length > 0) {
+  if (options.dryRun) {
+    console.log('\n🧪 Dry-run habilitado: nenhuma escrita sera executada.');
+    return { dryRun: true, preflight, quarentena };
+  }
+
+  if (options.strict && preflight.issues.length > 0) {
     throw createPreflightError(preflight.issues);
   }
 
@@ -1497,18 +1663,30 @@ export async function seedMigracaoLegado(
   const shouldDisconnect = !prisma;
 
   try {
-    await assertNoDatabaseConflicts(client, preflight.registrosConsolidados);
+    const reportPath =
+      preflight.issues.length > 0 ? writeQuarantineReport(preflight, quarentena) : null;
+    if (reportPath) {
+      console.log(`  🧾 Relatorio de quarentena gerado em: ${reportPath}`);
+    }
+
     const senhaPadraoHash = await bcrypt.hash(SENHA_PADRAO_MIGRACAO, 12);
-    const empresas = await seedEmpresasMigracao(client, senhaPadraoHash);
+    const empresas = options.skipEmpresas
+      ? undefined
+      : await seedEmpresasMigracao(client, senhaPadraoHash);
+    if (options.skipEmpresas) {
+      console.log('  ⏭️  Etapa de empresas ignorada por --skip-empresas.');
+    }
+    await assertNoDatabaseConflicts(client, quarentena.registrosImportaveis);
     const alunosCursosCertificadosResult = await seedAlunosCursosCertificadosMigracao(
       client,
-      preflight.registrosConsolidados,
+      quarentena.registrosImportaveis,
       senhaPadraoHash,
     );
 
     return {
       dryRun: false,
       preflight,
+      quarentena,
       empresas,
       alunosCursosCertificados: alunosCursosCertificadosResult,
     };
@@ -1523,6 +1701,8 @@ export const seedEmpresas = seedEmpresasMigracao;
 
 const cliOptions = (): SeedMigracaoLegadoOptions => ({
   dryRun: process.argv.includes('--dry-run'),
+  strict: process.argv.includes('--strict'),
+  skipEmpresas: process.argv.includes('--skip-empresas'),
 });
 
 if (require.main === module) {

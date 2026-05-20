@@ -39,6 +39,7 @@ A seed coloca em quarentena os registros que encontrar com:
 - data de cadastro inválida;
 - `DT INÍCIO` ou `DT FIM` ausente/inválido;
 - mesmo CPF associado a nomes divergentes.
+- CPF já existente no banco em usuário administrativo, como `ADMIN`, `MODERADOR` ou `PEDAGOGICO`.
 
 Duplicatas exatas por `CPF + curso + DT INÍCIO + DT FIM` são consolidadas.
 

@@ -700,11 +700,15 @@ const createPreflightError = (issues: IssuePreflight[]) => {
   return error;
 };
 
-export function buildQuarantinePlan(preflight: PreflightResult): QuarantinePlan {
+export function buildQuarantinePlan(
+  preflight: PreflightResult,
+  extraIssues: IssuePreflight[] = [],
+): QuarantinePlan {
+  const issues = [...preflight.issues, ...extraIssues];
   const linhasQuarentenadas = new Set<number>();
   const cpfsQuarentenados = new Set<string>();
 
-  for (const issue of preflight.issues) {
+  for (const issue of issues) {
     for (const linha of issue.linhasOrigem) {
       linhasQuarentenadas.add(linha);
     }
@@ -738,14 +742,19 @@ export function buildQuarantinePlan(preflight: PreflightResult): QuarantinePlan 
   };
 }
 
-function writeQuarantineReport(preflight: PreflightResult, quarentena: QuarantinePlan) {
+function writeQuarantineReport(
+  preflight: PreflightResult,
+  quarentena: QuarantinePlan,
+  extraIssues: IssuePreflight[] = [],
+) {
+  const issues = [...preflight.issues, ...extraIssues];
   fs.mkdirSync(REPORTS_DIR, { recursive: true });
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const reportPath = path.join(REPORTS_DIR, `migracao-legado-quarentena-${timestamp}.json`);
   const payload = {
     generatedAt: new Date().toISOString(),
     summary: {
-      issues: preflight.issues.length,
+      issues: issues.length,
       registrosOriginais: preflight.stats.registrosOriginais,
       registrosConsolidados: preflight.stats.registrosConsolidados,
       registrosImportaveis: quarentena.registrosImportaveis.length,
@@ -753,7 +762,7 @@ function writeQuarantineReport(preflight: PreflightResult, quarentena: Quarantin
       linhasQuarentenadas: quarentena.linhasQuarentenadas.length,
       cpfsQuarentenados: quarentena.cpfsQuarentenados.length,
     },
-    issues: preflight.issues,
+    issues,
     registrosQuarentenados: quarentena.registrosQuarentenados,
   };
 
@@ -861,7 +870,10 @@ const buildCursoMigrationMetadata = (records: RegistroConsolidado[]) => {
   );
 };
 
-async function assertNoDatabaseConflicts(client: PrismaClient, records: RegistroConsolidado[]) {
+async function findDatabaseConflicts(
+  client: PrismaClient,
+  records: RegistroConsolidado[],
+): Promise<IssuePreflight[]> {
   const cpfs = Array.from(new Set(records.map((record) => record.cpf).filter(Boolean)));
   const conflicts: IssuePreflight[] = [];
 
@@ -887,9 +899,7 @@ async function assertNoDatabaseConflicts(client: PrismaClient, records: Registro
     }
   }
 
-  if (conflicts.length > 0) {
-    throw createPreflightError(conflicts);
-  }
+  return conflicts;
 }
 
 async function resolveUniqueAlunoEmail(
@@ -1663,8 +1673,26 @@ export async function seedMigracaoLegado(
   const shouldDisconnect = !prisma;
 
   try {
+    const databaseIssues = await findDatabaseConflicts(client, quarentena.registrosImportaveis);
+    const quarentenaFinal =
+      databaseIssues.length > 0 ? buildQuarantinePlan(preflight, databaseIssues) : quarentena;
+    const totalIssues = preflight.issues.length + databaseIssues.length;
+
+    if (databaseIssues.length > 0) {
+      console.log(
+        `  🧺 Conflitos no banco: ${databaseIssues.length} CPF(s) ja pertencem a usuarios administrativos e ficarao em quarentena.`,
+      );
+      console.log(
+        `  ✅ Importaveis apos banco: ${quarentenaFinal.registrosImportaveis.length} registro(s) consolidado(s).`,
+      );
+    }
+
+    if (options.strict && totalIssues > 0) {
+      throw createPreflightError([...preflight.issues, ...databaseIssues]);
+    }
+
     const reportPath =
-      preflight.issues.length > 0 ? writeQuarantineReport(preflight, quarentena) : null;
+      totalIssues > 0 ? writeQuarantineReport(preflight, quarentenaFinal, databaseIssues) : null;
     if (reportPath) {
       console.log(`  🧾 Relatorio de quarentena gerado em: ${reportPath}`);
     }
@@ -1676,17 +1704,16 @@ export async function seedMigracaoLegado(
     if (options.skipEmpresas) {
       console.log('  ⏭️  Etapa de empresas ignorada por --skip-empresas.');
     }
-    await assertNoDatabaseConflicts(client, quarentena.registrosImportaveis);
     const alunosCursosCertificadosResult = await seedAlunosCursosCertificadosMigracao(
       client,
-      quarentena.registrosImportaveis,
+      quarentenaFinal.registrosImportaveis,
       senhaPadraoHash,
     );
 
     return {
       dryRun: false,
       preflight,
-      quarentena,
+      quarentena: quarentenaFinal,
       empresas,
       alunosCursosCertificados: alunosCursosCertificadosResult,
     };

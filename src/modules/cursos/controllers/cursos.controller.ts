@@ -167,6 +167,12 @@ const buildAlunoCertificadoInscricaoFilter = (params: {
   },
 });
 
+const alunosListOrderBy: Prisma.UsuariosOrderByWithRelationInput[] = [
+  { criadoEm: 'desc' },
+  { codUsuario: 'asc' },
+  { id: 'asc' },
+];
+
 const compareInscricaoPrioridade = (
   a: { status: StatusInscricao; criadoEm: Date },
   b: { status: StatusInscricao; criadoEm: Date },
@@ -1140,10 +1146,7 @@ export class CursosController {
                   },
                   skip,
                   take: limit,
-                  // ✅ Usar índice composto para ordenação
-                  orderBy: {
-                    criadoEm: 'desc',
-                  },
+                  orderBy: alunosListOrderBy,
                 }),
                 prisma.usuarios.count({ where }),
               ]);

@@ -150,13 +150,14 @@ export const processUserTypeSpecificData = async (
         return { success: false, error: 'CPF deve ter 11 dígitos válidos' };
       }
 
+      const dataNascimentoInput = dadosPF.dataNasc || dadosPF.dataNascimento;
       let dataNascimento: Date | undefined;
-      if (dadosPF.dataNasc) {
-        const validacaoData = validarDataNascimento(dadosPF.dataNasc);
+      if (dataNascimentoInput) {
+        const validacaoData = validarDataNascimento(dataNascimentoInput);
         if (!validacaoData.valida) {
           return { success: false, error: validacaoData.mensagem };
         }
-        dataNascimento = new Date(dadosPF.dataNasc);
+        dataNascimento = new Date(dataNascimentoInput);
       }
 
       let generoValidado: string | undefined;

@@ -72,6 +72,7 @@ const pessoaFisicaRegisterSchema = baseRegisterSchema.extend({
   tipoUsuario: z.literal(TiposDeUsuarios.PESSOA_FISICA),
   cpf: z.string({ required_error: 'CPF é obrigatório' }).min(1, 'CPF é obrigatório'),
   dataNasc: z.string().optional(),
+  dataNascimento: z.string().optional(),
   genero: z.string().optional(),
 });
 
@@ -93,6 +94,7 @@ const adminPessoaFisicaSchema = adminBaseRegisterSchema.extend({
   tipoUsuario: z.literal(TiposDeUsuarios.PESSOA_FISICA),
   cpf: z.string({ required_error: 'CPF é obrigatório' }).min(1, 'CPF é obrigatório'),
   dataNasc: z.string().optional(),
+  dataNascimento: z.string().optional(),
   genero: z.string().optional(),
 });
 

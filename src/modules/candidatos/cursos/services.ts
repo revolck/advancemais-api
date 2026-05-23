@@ -13,6 +13,21 @@ import { logger } from '@/utils/logger';
 
 const cursosLogger = logger.child({ module: 'CandidatoCursosService' });
 
+const STATUS_PAGAMENTO_LIBERADO = 'APROVADO';
+
+const STATUS_INSCRICAO_LISTAGEM_LIBERADA: StatusInscricao[] = [
+  StatusInscricao.INSCRITO,
+  StatusInscricao.EM_ANDAMENTO,
+  StatusInscricao.EM_ESTAGIO,
+  StatusInscricao.CONCLUIDO,
+];
+
+const STATUS_INSCRICAO_PROXIMA_AULA: StatusInscricao[] = [
+  StatusInscricao.INSCRITO,
+  StatusInscricao.EM_ANDAMENTO,
+  StatusInscricao.EM_ESTAGIO,
+];
+
 /**
  * Formata o status da inscrição para exibição
  */
@@ -53,12 +68,9 @@ const buscarProximaAula = async (usuarioId: string) => {
           CursosTurmasInscricoes: {
             some: {
               alunoId: usuarioId,
+              statusPagamento: STATUS_PAGAMENTO_LIBERADO,
               status: {
-                in: [
-                  StatusInscricao.INSCRITO,
-                  StatusInscricao.EM_ANDAMENTO,
-                  StatusInscricao.EM_ESTAGIO,
-                ],
+                in: STATUS_INSCRICAO_PROXIMA_AULA,
               },
             },
           },
@@ -162,16 +174,9 @@ export const candidatoCursosService = {
     // Buscar inscrições do candidato
     const where: any = {
       alunoId: usuarioId,
+      statusPagamento: STATUS_PAGAMENTO_LIBERADO,
       status: {
-        in: [
-          StatusInscricao.INSCRITO,
-          StatusInscricao.EM_ANDAMENTO,
-          StatusInscricao.CONCLUIDO,
-          StatusInscricao.EM_ESTAGIO,
-          StatusInscricao.REPROVADO,
-          StatusInscricao.CANCELADO,
-          StatusInscricao.TRANCADO,
-        ],
+        in: STATUS_INSCRICAO_LISTAGEM_LIBERADA,
       },
       CursosTurmas: {
         ...(modalidadeFilter && {
@@ -292,12 +297,16 @@ export const candidatoCursosService = {
         turmaId: inscricao.CursosTurmas.id,
         foto: inscricao.CursosTurmas.Cursos.imagemUrl,
         status: formatarStatusInscricao(inscricao.status),
+        statusRaw: inscricao.status,
         nome: inscricao.CursosTurmas.Cursos.nome,
         descricao: inscricao.CursosTurmas.Cursos.descricao,
         progresso,
         iniciadoEm: inscricao.criadoEm,
         quantidadeAulas: totalAulas + totalProvas,
         notaMedia,
+        modalidade: inscricao.CursosTurmas.metodo,
+        dataInicio: inscricao.CursosTurmas.dataInicio,
+        cargaHoraria: inscricao.CursosTurmas.Cursos.cargaHoraria,
       };
     });
 

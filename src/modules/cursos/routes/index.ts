@@ -1966,6 +1966,26 @@ router.get(
 );
 
 /**
+ * Listagem consolidada de notas do aluno autenticado
+ * GET /api/v1/cursos/me/notas
+ */
+router.get(
+  '/me/notas',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  NotasController.listMinhas,
+);
+
+/**
+ * Histórico de nota do aluno autenticado
+ * GET /api/v1/cursos/me/notas/:notaId/historico
+ */
+router.get(
+  '/me/notas/:notaId/historico',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  NotasController.historicoMinhas,
+);
+
+/**
  * Listagem consolidada de frequências (todos os cursos/turmas acessíveis, com filtros opcionais)
  * GET /api/v1/cursos/frequencias
  */
@@ -5442,26 +5462,6 @@ router.get(
   '/inscricoes/:inscricaoId/notas-detalhadas',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   NotasController.listByInscricao,
-);
-
-/**
- * Listagem consolidada de notas do aluno autenticado
- * GET /api/v1/cursos/me/notas
- */
-router.get(
-  '/me/notas',
-  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
-  NotasController.listMinhas,
-);
-
-/**
- * Histórico de nota do aluno autenticado
- * GET /api/v1/cursos/me/notas/:notaId/historico
- */
-router.get(
-  '/me/notas/:notaId/historico',
-  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
-  NotasController.historicoMinhas,
 );
 
 /**

@@ -7,6 +7,7 @@ import { notasService } from '../services/notas.service';
 import {
   clearNotasManuaisSchema,
   createNotaV2Schema,
+  listMinhasNotasQuerySchema,
   listNotasGeralQuerySchema,
   listCursoNotasQuerySchema,
   updateNotaSchema,
@@ -320,6 +321,85 @@ export class NotasController {
         success: false,
         code: 'NOTAS_CURSO_LIST_ERROR',
         message: 'Erro ao listar notas do curso',
+        error: error?.message,
+      });
+    }
+  };
+
+  static listMinhas = async (req: Request, res: Response) => {
+    const usuarioId = req.user?.id;
+
+    if (!usuarioId) {
+      return res.status(401).json({
+        success: false,
+        code: 'UNAUTHORIZED',
+        message: 'Usuário não autenticado',
+      });
+    }
+
+    try {
+      const query = listMinhasNotasQuerySchema.parse(req.query);
+      const result = await notasService.listMinhasNotas(usuarioId, query);
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos para listagem de notas do aluno',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'NOTAS_ME_LIST_ERROR',
+        message: 'Erro ao listar notas do aluno',
+        error: error?.message,
+      });
+    }
+  };
+
+  static historicoMinhas = async (req: Request, res: Response) => {
+    const usuarioId = req.user?.id;
+    const notaId = parseNotaId(req.params.notaId);
+
+    if (!notaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificador da nota inválido',
+      });
+    }
+
+    if (!usuarioId) {
+      return res.status(401).json({
+        success: false,
+        code: 'UNAUTHORIZED',
+        message: 'Usuário não autenticado',
+      });
+    }
+
+    try {
+      const result = await notasService.listMeuHistoricoNota(notaId, usuarioId);
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      if (error?.code === 'NOTA_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'NOTA_NOT_FOUND',
+          message: 'Nota não encontrada para o aluno autenticado',
+        });
+      }
+
+      if (error?.code === 'FORBIDDEN') {
+        return sendForbidden(res);
+      }
+
+      res.status(500).json({
+        success: false,
+        code: 'NOTA_ME_HISTORICO_ERROR',
+        message: 'Erro ao consultar histórico da nota',
         error: error?.message,
       });
     }

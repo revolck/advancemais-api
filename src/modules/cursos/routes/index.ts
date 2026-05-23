@@ -5445,6 +5445,26 @@ router.get(
 );
 
 /**
+ * Listagem consolidada de notas do aluno autenticado
+ * GET /api/v1/cursos/me/notas
+ */
+router.get(
+  '/me/notas',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  NotasController.listMinhas,
+);
+
+/**
+ * Histórico de nota do aluno autenticado
+ * GET /api/v1/cursos/me/notas/:notaId/historico
+ */
+router.get(
+  '/me/notas/:notaId/historico',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  NotasController.historicoMinhas,
+);
+
+/**
  * @openapi
  * /api/v1/cursos/me/inscricoes/{inscricaoId}/notas-detalhadas:
  *   get:

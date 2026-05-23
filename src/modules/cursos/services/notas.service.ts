@@ -4,6 +4,7 @@ import {
   CursosNotasTipo,
   Prisma,
   Roles,
+  StatusInscricao,
 } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
@@ -22,10 +23,21 @@ import { mapNota, NotaWithRelations, notaWithRelations } from './notas.mapper';
 import type {
   CreateNotaManualInput,
   ListCursoNotasQuery,
+  ListMinhasNotasQuery,
   ListNotasGeralQuery,
 } from '../validators/notas.schema';
 
 const notasLogger = logger.child({ module: 'CursosNotasService' });
+
+const STATUS_PAGAMENTO_LIBERADO = 'APROVADO';
+
+const STATUS_INSCRICAO_MINHAS_NOTAS: StatusInscricao[] = [
+  StatusInscricao.INSCRITO,
+  StatusInscricao.EM_ANDAMENTO,
+  StatusInscricao.EM_ESTAGIO,
+  StatusInscricao.CONCLUIDO,
+  StatusInscricao.REPROVADO,
+];
 
 type PrismaClientOrTx = Prisma.TransactionClient | typeof prisma;
 type NotasViewer = {
@@ -723,6 +735,7 @@ const readNotaAuditRecord = (log: {
     cursoId: readField('cursoId'),
     turmaId: readField('turmaId'),
     inscricaoId: readField('inscricaoId'),
+    alunoId: readField('alunoId'),
     referenciaExterna: readField('referenciaExterna'),
     provaId: readField('provaId'),
     tipo,
@@ -1343,7 +1356,391 @@ const listNotasConsolidadasParaInstrutor = async (
   };
 };
 
+const getSituacaoNota = (nota: number) => {
+  if (nota >= 7) return 'APROVADO' as const;
+  if (nota >= 5) return 'RECUPERACAO' as const;
+  return 'REPROVADO' as const;
+};
+
+const parseDataFiltro = (value: string | undefined, endOfDay = false) => {
+  if (!value) return null;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return null;
+  if (endOfDay) {
+    date.setUTCHours(23, 59, 59, 999);
+  }
+  return date;
+};
+
+const normalizeDateToIso = (value: Date | string | null | undefined) => {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+};
+
+const roundNota = (value: number) => Math.round(value * 100) / 100;
+
 export const notasService = {
+  async listMinhasNotas(alunoId: string, query: ListMinhasNotasQuery) {
+    const inscricoes = await prisma.cursosTurmasInscricoes.findMany({
+      where: {
+        alunoId,
+        statusPagamento: STATUS_PAGAMENTO_LIBERADO,
+        status: { in: STATUS_INSCRICAO_MINHAS_NOTAS },
+        CursosTurmas: {
+          deletedAt: null,
+        },
+      },
+      orderBy: { criadoEm: 'desc' },
+      select: {
+        id: true,
+        alunoId: true,
+        status: true,
+        criadoEm: true,
+        Usuarios: {
+          select: {
+            id: true,
+            nomeCompleto: true,
+            cpf: true,
+            codUsuario: true,
+          },
+        },
+        CursosTurmas: {
+          select: {
+            id: true,
+            nome: true,
+            codigo: true,
+            cursoId: true,
+            metodo: true,
+            dataInicio: true,
+            Cursos: {
+              select: {
+                id: true,
+                nome: true,
+                codigo: true,
+                cargaHoraria: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const cursosMap = new Map<
+      string,
+      {
+        id: string;
+        nome: string;
+        codigo: string | null;
+        turmas: { id: string; nome: string; codigo: string | null }[];
+      }
+    >();
+
+    for (const inscricao of inscricoes) {
+      const curso = inscricao.CursosTurmas.Cursos;
+      const current = cursosMap.get(curso.id) ?? {
+        id: curso.id,
+        nome: curso.nome,
+        codigo: curso.codigo ?? null,
+        turmas: [],
+      };
+
+      if (!current.turmas.some((turma) => turma.id === inscricao.CursosTurmas.id)) {
+        current.turmas.push({
+          id: inscricao.CursosTurmas.id,
+          nome: inscricao.CursosTurmas.nome,
+          codigo: inscricao.CursosTurmas.codigo ?? null,
+        });
+      }
+
+      cursosMap.set(curso.id, current);
+    }
+
+    const cursosFiltro = Array.from(cursosMap.values())
+      .map((curso) => ({
+        ...curso,
+        turmas: curso.turmas.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+      }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+    const inscricoesFiltradasPorCurso = query.cursoId
+      ? inscricoes.filter((inscricao) => inscricao.CursosTurmas.Cursos.id === query.cursoId)
+      : inscricoes;
+
+    if (inscricoesFiltradasPorCurso.length === 0) {
+      return {
+        items: [],
+        pagination: {
+          page: 1,
+          requestedPage: query.page,
+          pageSize: query.pageSize,
+          total: 0,
+          totalPages: 1,
+          hasNext: false,
+          hasPrevious: false,
+          isPageAdjusted: false,
+        },
+        filters: {
+          cursos: cursosFiltro,
+        },
+      };
+    }
+
+    const inscricaoIds = inscricoesFiltradasPorCurso.map((inscricao) => inscricao.id);
+    const turmaIds = Array.from(
+      new Set(inscricoesFiltradasPorCurso.map((inscricao) => inscricao.CursosTurmas.id)),
+    );
+
+    const [provas, envios, notas] = await Promise.all([
+      prisma.cursosTurmasProvas.findMany({
+        where: {
+          turmaId: { in: turmaIds },
+          ativo: true,
+        },
+        select: {
+          id: true,
+          turmaId: true,
+          peso: true,
+        },
+      }),
+      prisma.cursosTurmasProvasEnvios.findMany({
+        where: {
+          inscricaoId: { in: inscricaoIds },
+        },
+        select: {
+          provaId: true,
+          inscricaoId: true,
+          nota: true,
+          atualizadoEm: true,
+        },
+      }),
+      prisma.cursosNotas.findMany({
+        where: {
+          inscricaoId: { in: inscricaoIds },
+        },
+        orderBy: [{ atualizadoEm: 'desc' }, { criadoEm: 'desc' }],
+        select: {
+          id: true,
+          turmaId: true,
+          inscricaoId: true,
+          provaId: true,
+          nota: true,
+          titulo: true,
+          descricao: true,
+          referenciaExterna: true,
+          criadoEm: true,
+          atualizadoEm: true,
+        },
+      }),
+    ]);
+
+    const provasByTurma = new Map<string, typeof provas>();
+    for (const prova of provas) {
+      if (!prova.turmaId) {
+        continue;
+      }
+
+      const list = provasByTurma.get(prova.turmaId) ?? [];
+      list.push(prova);
+      provasByTurma.set(prova.turmaId, list);
+    }
+
+    const enviosByInscricaoProva = new Map<string, (typeof envios)[number]>();
+    for (const envio of envios) {
+      enviosByInscricaoProva.set(`${envio.inscricaoId}::${envio.provaId}`, envio);
+    }
+
+    const notasByInscricao = new Map<string, typeof notas>();
+    const manuais = notas.filter((nota) => !nota.provaId);
+    for (const nota of notas) {
+      const list = notasByInscricao.get(nota.inscricaoId) ?? [];
+      list.push(nota);
+      notasByInscricao.set(nota.inscricaoId, list);
+    }
+
+    const { historicoPorInscricao, ultimaOrigemManualPorInscricao } =
+      await buildManualNotasPayload(manuais);
+    const { notaAtualIdPorInscricao, historicoNotaIdPorInscricao } =
+      await resolveNotaHistoryReferences(inscricaoIds, turmaIds, manuais);
+
+    const itemsCalculados = inscricoesFiltradasPorCurso.map((inscricao) => {
+      const provasDaTurma = provasByTurma.get(inscricao.CursosTurmas.id) ?? [];
+      let somaPonderada = 0;
+      let somaPesos = 0;
+      const atualizadoEmCandidatos = [inscricao.criadoEm.toISOString()];
+
+      for (const prova of provasDaTurma) {
+        const peso = Number(prova.peso ?? 0);
+        somaPesos += peso;
+        const envio = enviosByInscricaoProva.get(`${inscricao.id}::${prova.id}`);
+        somaPonderada += Number(envio?.nota ?? 0) * peso;
+        const envioAtualizadoEm = normalizeDateToIso(envio?.atualizadoEm);
+        if (envioAtualizadoEm) {
+          atualizadoEmCandidatos.push(envioAtualizadoEm);
+        }
+      }
+
+      const notaBase = somaPesos > 0 ? somaPonderada / somaPesos : 0;
+      const notasDaInscricao = notasByInscricao.get(inscricao.id) ?? [];
+      const notasManuais = notasDaInscricao.filter((nota) => !nota.provaId);
+      const ajustesManuais = notasManuais.reduce((acc, nota) => acc + Number(nota.nota ?? 0), 0);
+
+      for (const nota of notasDaInscricao) {
+        const notaAtualizadoEm = normalizeDateToIso(nota.atualizadoEm);
+        if (notaAtualizadoEm) {
+          atualizadoEmCandidatos.push(notaAtualizadoEm);
+        }
+      }
+
+      const notaFinal = roundNota(Math.min(MAX_NOTA_FINAL, notaBase + ajustesManuais));
+      const origemPayload = ultimaOrigemManualPorInscricao.get(inscricao.id)?.origem ?? {
+        tipo: 'SISTEMA' as const,
+        id: null,
+        titulo: 'Cálculo automático do sistema',
+      };
+      const atualizadoEm =
+        atualizadoEmCandidatos.sort((left, right) => compareNullableDates(right, left))[0] ??
+        inscricao.criadoEm.toISOString();
+
+      return {
+        cursoId: inscricao.CursosTurmas.Cursos.id,
+        cursoNome: inscricao.CursosTurmas.Cursos.nome,
+        cursoCodigo: inscricao.CursosTurmas.Cursos.codigo ?? null,
+        turmaId: inscricao.CursosTurmas.id,
+        turmaNome: inscricao.CursosTurmas.nome,
+        turmaCodigo: inscricao.CursosTurmas.codigo ?? null,
+        inscricaoId: inscricao.id,
+        statusInscricao: inscricao.status,
+        statusRaw: inscricao.status,
+        modalidade: inscricao.CursosTurmas.metodo,
+        dataInicio: normalizeDateToIso(inscricao.CursosTurmas.dataInicio),
+        cargaHoraria: inscricao.CursosTurmas.Cursos.cargaHoraria,
+        alunoId: inscricao.alunoId,
+        alunoNome: inscricao.Usuarios.nomeCompleto,
+        alunoCodigo: inscricao.Usuarios.codUsuario,
+        alunoCpf: inscricao.Usuarios.cpf,
+        nota: notaFinal,
+        atualizadoEm,
+        motivo:
+          ultimaOrigemManualPorInscricao.get(inscricao.id)?.motivo ??
+          'Nota consolidada automaticamente pelo sistema',
+        origem: origemPayload,
+        isManual: historicoPorInscricao.has(inscricao.id),
+        notaId: notaAtualIdPorInscricao.get(inscricao.id) ?? null,
+        historicoNotaId: historicoNotaIdPorInscricao.get(inscricao.id) ?? null,
+        historicoDisponivel: historicoNotaIdPorInscricao.has(inscricao.id),
+        history: historicoPorInscricao.get(inscricao.id) ?? [],
+        notaBase: roundNota(notaBase),
+        ajustesManuais: roundNota(ajustesManuais),
+        notaFinalOriginal: notaFinal,
+      };
+    });
+
+    const dataInicio = parseDataFiltro(query.dataInicio);
+    const dataFim = parseDataFiltro(query.dataFim, true);
+
+    const itemsFiltrados = itemsCalculados.filter((item) => {
+      if (query.situacao && getSituacaoNota(item.nota) !== query.situacao) {
+        return false;
+      }
+
+      const atualizadoEm = new Date(item.atualizadoEm);
+      if (dataInicio && atualizadoEm < dataInicio) {
+        return false;
+      }
+      if (dataFim && atualizadoEm > dataFim) {
+        return false;
+      }
+
+      return true;
+    });
+
+    const orderDirection = query.order === 'asc' ? 1 : -1;
+    const sortedItems = [...itemsFiltrados].sort((left, right) => {
+      if (query.orderBy === 'nota') {
+        return (left.nota - right.nota) * orderDirection;
+      }
+      if (query.orderBy === 'cursoNome') {
+        return left.cursoNome.localeCompare(right.cursoNome, 'pt-BR') * orderDirection;
+      }
+      return compareNullableDates(left.atualizadoEm, right.atualizadoEm) * orderDirection;
+    });
+
+    const total = sortedItems.length;
+    const totalPages = total === 0 ? 0 : Math.ceil(total / query.pageSize);
+    const safePage = totalPages === 0 ? 1 : Math.min(query.page, totalPages);
+    const start = (safePage - 1) * query.pageSize;
+
+    return {
+      items: sortedItems.slice(start, start + query.pageSize),
+      pagination: {
+        page: safePage,
+        requestedPage: query.page,
+        pageSize: query.pageSize,
+        total,
+        totalPages: totalPages || 1,
+        hasNext: totalPages > 0 && safePage < totalPages,
+        hasPrevious: safePage > 1,
+        isPageAdjusted: safePage !== query.page,
+      },
+      filters: {
+        cursos: cursosFiltro,
+      },
+    };
+  },
+
+  async listMeuHistoricoNota(notaId: string, alunoId: string) {
+    const nota = await prisma.cursosNotas.findFirst({
+      where: {
+        id: notaId,
+        CursosTurmasInscricoes: {
+          alunoId,
+        },
+      },
+      select: {
+        turmaId: true,
+        CursosTurmas: {
+          select: {
+            cursoId: true,
+          },
+        },
+      },
+    });
+
+    if (nota) {
+      return this.listHistorico(nota.CursosTurmas.cursoId, nota.turmaId, notaId);
+    }
+
+    const logs = await prisma.auditoriaLogs.findMany({
+      where: {
+        entidadeId: notaId,
+        entidadeTipo: 'CURSO_NOTA',
+        tipo: 'CURSO_NOTA',
+        acao: {
+          in: ['NOTA_MANUAL_ADICIONADA', 'NOTA_MANUAL_ATUALIZADA', 'NOTA_MANUAL_EXCLUIDA'],
+        },
+      },
+      select: {
+        metadata: true,
+        dadosAnteriores: true,
+        dadosNovos: true,
+      },
+      orderBy: { criadoEm: 'desc' },
+    });
+
+    const matchingLog = logs
+      .map((log) => readNotaAuditRecord(log))
+      .find((record) => record.alunoId === alunoId && record.cursoId && record.turmaId);
+
+    if (!matchingLog?.cursoId || !matchingLog.turmaId) {
+      const error = new Error('Nota não encontrada para o aluno autenticado');
+      (error as any).code = 'NOTA_NOT_FOUND';
+      throw error;
+    }
+
+    return this.listHistorico(matchingLog.cursoId, matchingLog.turmaId, notaId);
+  },
+
   async list(
     cursoId: string,
     turmaId: string,

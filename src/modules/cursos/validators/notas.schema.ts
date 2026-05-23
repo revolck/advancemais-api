@@ -217,8 +217,26 @@ export const listNotasGeralQuerySchema = z.object({
   order: z.enum(['asc', 'desc']).optional().default('asc'),
 });
 
+const dataFiltroSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Data deve estar no formato YYYY-MM-DD')
+  .optional();
+
+export const listMinhasNotasQuerySchema = z.object({
+  cursoId: uuid.optional(),
+  situacao: z.enum(['APROVADO', 'RECUPERACAO', 'REPROVADO']).optional(),
+  dataInicio: dataFiltroSchema,
+  dataFim: dataFiltroSchema,
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().positive().max(200).default(10),
+  orderBy: z.enum(['cursoNome', 'nota', 'atualizadoEm']).optional().default('atualizadoEm'),
+  order: z.enum(['asc', 'desc']).optional().default('desc'),
+});
+
 export type CreateNotaManualInput = z.infer<typeof createNotaManualSchema>;
 export type CreateNotaV2Input = z.infer<typeof createNotaV2Schema>;
 export type ClearNotasManuaisInput = z.infer<typeof clearNotasManuaisSchema>;
 export type ListCursoNotasQuery = z.infer<typeof listCursoNotasQuerySchema>;
 export type ListNotasGeralQuery = z.infer<typeof listNotasGeralQuerySchema>;
+export type ListMinhasNotasQuery = z.infer<typeof listMinhasNotasQuerySchema>;

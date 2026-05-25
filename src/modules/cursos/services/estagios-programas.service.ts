@@ -22,6 +22,7 @@ import {
   ListFrequenciasEstagioPeriodoQuery,
   ListFrequenciaHistoricoEstagioQuery,
   ListEstagiosAlunoQuery,
+  ListMeusEstagiosQuery,
   UpsertFrequenciaEstagioInput,
 } from '../validators/estagios.schema';
 
@@ -805,6 +806,33 @@ const mapAlunoProgramaStatus = (params: {
   return 'ATIVO' as const;
 };
 
+const mapMeuEstagioStatus = (params: {
+  participanteStatus: CursosEstagioParticipanteStatus;
+  programaStatus: CursosEstagioProgramaStatus;
+}) =>
+  params.programaStatus === CursosEstagioProgramaStatus.CANCELADO
+    ? CursosEstagioParticipanteStatus.CANCELADO
+    : params.participanteStatus;
+
+const mapEmpresaEndereco = (value: Prisma.JsonValue | null) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+
+  const endereco = value as Record<string, unknown>;
+  const getString = (field: string) =>
+    typeof endereco[field] === 'string' ? (endereco[field] as string) : undefined;
+
+  return {
+    cep: getString('cep'),
+    rua: getString('rua'),
+    numero: getString('numero'),
+    bairro: getString('bairro'),
+    cidade: getString('cidade'),
+    estado: getString('estado'),
+  };
+};
+
 export const estagiosProgramasService = {
   async list(query: ListEstagiosProgramasQuery) {
     const where: Prisma.CursosEstagiosProgramasWhereInput = {
@@ -981,6 +1009,113 @@ export const estagiosProgramasService = {
           total,
           totalPages,
         },
+      },
+    };
+  },
+
+  async listMeus(alunoId: string, query: ListMeusEstagiosQuery) {
+    const participacoes = await prisma.cursosEstagiosProgramasAlunos.findMany({
+      where: { alunoId },
+      select: {
+        id: true,
+        inscricaoId: true,
+        alunoId: true,
+        status: true,
+        atualizadoEm: true,
+        CursosEstagiosProgramasGrupos: {
+          select: {
+            empresaNome: true,
+            horaInicio: true,
+            horaFim: true,
+          },
+        },
+        CursosEstagiosProgramas: {
+          select: {
+            id: true,
+            titulo: true,
+            descricao: true,
+            status: true,
+            cursoId: true,
+            turmaId: true,
+            dataInicio: true,
+            dataFim: true,
+            horarioPadraoInicio: true,
+            horarioPadraoFim: true,
+            empresaNome: true,
+            empresaTelefone: true,
+            empresaEndereco: true,
+            Cursos: { select: { nome: true } },
+            CursosTurmas: { select: { nome: true, codigo: true } },
+          },
+        },
+      },
+      orderBy: [{ atualizadoEm: 'desc' }, { criadoEm: 'desc' }],
+    });
+
+    const cursos = new Map<string, { id: string; nome: string }>();
+    for (const participacao of participacoes) {
+      const programa = participacao.CursosEstagiosProgramas;
+      cursos.set(programa.cursoId, { id: programa.cursoId, nome: programa.Cursos.nome });
+    }
+
+    const filtradas = participacoes.filter((participacao) => {
+      const programa = participacao.CursosEstagiosProgramas;
+      if (query.cursoId && programa.cursoId !== query.cursoId) return false;
+      if (query.dataInicio && programa.dataInicio < toStartOfDay(query.dataInicio)) return false;
+      if (query.dataFim && programa.dataInicio > toEndOfDay(query.dataFim)) return false;
+      return true;
+    });
+
+    const total = filtradas.length;
+    const totalPages = total > 0 ? Math.ceil(total / query.pageSize) : 1;
+    const page = Math.min(query.page, totalPages);
+    const items = filtradas
+      .slice((page - 1) * query.pageSize, page * query.pageSize)
+      .map((participacao) => {
+        const programa = participacao.CursosEstagiosProgramas;
+        const grupo = participacao.CursosEstagiosProgramasGrupos;
+
+        return {
+          id: programa.id,
+          participacaoId: participacao.id,
+          inscricaoId: participacao.inscricaoId,
+          alunoId: participacao.alunoId,
+          titulo: programa.titulo,
+          observacoes: programa.descricao,
+          cursoId: programa.cursoId,
+          cursoNome: programa.Cursos.nome,
+          turmaId: programa.turmaId,
+          turmaNome: programa.CursosTurmas.nome,
+          turmaCodigo: programa.CursosTurmas.codigo,
+          empresaNome: grupo?.empresaNome ?? programa.empresaNome ?? null,
+          empresaTelefone: programa.empresaTelefone,
+          ...mapEmpresaEndereco(programa.empresaEndereco),
+          dataInicioPrevista: dateToIsoDay(programa.dataInicio),
+          dataFimPrevista: dateToIsoDay(programa.dataFim),
+          horarioInicio: grupo?.horaInicio ?? programa.horarioPadraoInicio ?? null,
+          horarioFim: grupo?.horaFim ?? programa.horarioPadraoFim ?? null,
+          status: mapMeuEstagioStatus({
+            participanteStatus: participacao.status,
+            programaStatus: programa.status,
+          }),
+          atualizadoEm: participacao.atualizadoEm.toISOString(),
+        };
+      });
+
+    return {
+      items,
+      pagination: {
+        page,
+        requestedPage: query.page,
+        pageSize: query.pageSize,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrevious: page > 1,
+        isPageAdjusted: page !== query.page,
+      },
+      filters: {
+        cursos: Array.from(cursos.values()).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
       },
     };
   },

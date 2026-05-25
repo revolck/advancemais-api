@@ -7,6 +7,7 @@ import {
   listFrequenciaHistoricoAlunoNaturalQuerySchema,
   listFrequenciaHistoricoNaturalQuerySchema,
   listFrequenciaGeralQuerySchema,
+  listMinhasFrequenciasQuerySchema,
   listFrequenciaQuerySchema,
   upsertFrequenciaAlunoLancamentoSchema,
   upsertFrequenciaLancamentoSchema,
@@ -144,6 +145,39 @@ const withAcaoFrequencia = (payload: any, role?: string) => {
 };
 
 export class FrequenciaController {
+  static listMinhas = async (req: Request, res: Response) => {
+    const usuarioId = req.user?.id;
+    if (!usuarioId) {
+      return res.status(401).json({
+        success: false,
+        code: 'UNAUTHORIZED',
+        message: 'Usuário não autenticado',
+      });
+    }
+
+    try {
+      const query = listMinhasFrequenciasQuerySchema.parse(req.query);
+      const result = await frequenciaService.listMinhasFrequencias(usuarioId, query);
+      return res.json({ success: true, data: result });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos para listagem de frequências do aluno',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        code: 'FREQUENCIA_ME_LIST_ERROR',
+        message: 'Erro ao listar frequências do aluno',
+        error: error?.message,
+      });
+    }
+  };
+
   static listGeral = async (req: Request, res: Response) => {
     try {
       const query = listFrequenciaGeralQuerySchema.parse({

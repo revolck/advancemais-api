@@ -13,6 +13,7 @@ import {
   createEstagioProgramaSchema,
   createEstagioSchema,
   listEstagiosAlunoQuerySchema,
+  listMeusEstagiosQuerySchema,
   listFrequenciaHistoricoEstagioQuerySchema,
   listFrequenciasEstagioAlunoPeriodoQuerySchema,
   listFrequenciasEstagioAlunoQuerySchema,
@@ -93,6 +94,39 @@ const ensureAlunoScopeAccess = (req: Request, res: Response, alunoId: string) =>
 };
 
 export class EstagiosController {
+  static async listMeus(req: Request, res: Response) {
+    const usuarioId = req.user?.id;
+    if (!usuarioId) {
+      return res.status(401).json({
+        success: false,
+        code: 'UNAUTHORIZED',
+        message: 'Usuário não autenticado',
+      });
+    }
+
+    try {
+      const query = listMeusEstagiosQuerySchema.parse(req.query);
+      const result = await estagiosProgramasService.listMeus(usuarioId, query);
+      return res.json({ success: true, data: result });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos para listagem de estágios do aluno',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        code: 'ESTAGIOS_ME_LIST_ERROR',
+        message: 'Erro ao listar estágios do aluno',
+        error: error?.message,
+      });
+    }
+  }
+
   static async list(req: Request, res: Response) {
     try {
       const query = listEstagiosProgramasQuerySchema.parse(req.query);

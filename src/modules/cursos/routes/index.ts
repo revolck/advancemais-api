@@ -1986,6 +1986,26 @@ router.get(
 );
 
 /**
+ * Frequências lançadas em aulas do aluno autenticado
+ * GET /api/v1/cursos/me/frequencias
+ */
+router.get(
+  '/me/frequencias',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  FrequenciaController.listMinhas,
+);
+
+/**
+ * Estágios vinculados ao aluno autenticado
+ * GET /api/v1/cursos/me/estagios
+ */
+router.get(
+  '/me/estagios',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  EstagiosController.listMeus,
+);
+
+/**
  * Listagem consolidada de frequências (todos os cursos/turmas acessíveis, com filtros opcionais)
  * GET /api/v1/cursos/frequencias
  */

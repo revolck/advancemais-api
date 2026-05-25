@@ -271,5 +271,23 @@ export const listFrequenciaGeralQuerySchema = z.object({
   dataFim: dateSchema,
 });
 
+export const listMinhasFrequenciasQuerySchema = z.object({
+  cursoId: normalizeOptionalUuid,
+  aulaId: normalizeOptionalUuid,
+  status: z.preprocess((value) => {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+    return String(value).trim().toUpperCase();
+  }, statusSchema.optional()),
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().positive().max(200).default(10),
+  orderBy: z.enum(['atualizadoEm', 'status']).optional().default('atualizadoEm'),
+  order: orderSchema.optional().default('desc'),
+  dataInicio: dateSchema,
+  dataFim: dateSchema,
+});
+
 export type ListFrequenciaQuery = z.infer<typeof listFrequenciaQuerySchema>;
 export type ListFrequenciaGeralQuery = z.infer<typeof listFrequenciaGeralQuerySchema>;
+export type ListMinhasFrequenciasQuery = z.infer<typeof listMinhasFrequenciasQuerySchema>;

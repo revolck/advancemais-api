@@ -12,4 +12,22 @@ describe('rotas de notas do aluno', () => {
     expect(notasPorCursoIndex).toBeGreaterThanOrEqual(0);
     expect(minhasNotasIndex).toBeLessThan(notasPorCursoIndex);
   });
+
+  it('registra endpoints pessoais de frequência e estágios antes das rotas genéricas', () => {
+    const routesSource = readFileSync(resolve(__dirname, '../routes/index.ts'), 'utf8');
+
+    const minhasFrequenciasIndex = routesSource.indexOf("'/me/frequencias'");
+    const frequenciasGlobaisIndex = routesSource.indexOf("'/frequencias'");
+    const meusEstagiosIndex = routesSource.indexOf("'/me/estagios'");
+    const estagiosGenericosIndex = routesSource.indexOf(
+      "'/:cursoId/turmas/:turmaId/inscricoes/:inscricaoId/estagios'",
+    );
+
+    expect(minhasFrequenciasIndex).toBeGreaterThanOrEqual(0);
+    expect(frequenciasGlobaisIndex).toBeGreaterThanOrEqual(0);
+    expect(minhasFrequenciasIndex).toBeLessThan(frequenciasGlobaisIndex);
+    expect(meusEstagiosIndex).toBeGreaterThanOrEqual(0);
+    expect(estagiosGenericosIndex).toBeGreaterThanOrEqual(0);
+    expect(meusEstagiosIndex).toBeLessThan(estagiosGenericosIndex);
+  });
 });

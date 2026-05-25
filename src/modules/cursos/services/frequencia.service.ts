@@ -3,6 +3,7 @@ import {
   CursosAvaliacaoTipo,
   CursosFrequenciaStatus,
   Prisma,
+  StatusInscricao,
 } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
@@ -22,8 +23,17 @@ import {
   frequenciaWithRelations,
   mapFrequencia,
 } from './frequencia.mapper';
+import type { ListMinhasFrequenciasQuery } from '../validators/frequencia.schema';
 
 const frequenciasLogger = logger.child({ module: 'CursosFrequenciaService' });
+const STATUS_PAGAMENTO_MINHAS_FREQUENCIAS = 'APROVADO';
+const STATUS_INSCRICAO_MINHAS_FREQUENCIAS: StatusInscricao[] = [
+  StatusInscricao.INSCRITO,
+  StatusInscricao.EM_ANDAMENTO,
+  StatusInscricao.EM_ESTAGIO,
+  StatusInscricao.CONCLUIDO,
+  StatusInscricao.REPROVADO,
+];
 
 type PrismaClientOrTx = Prisma.TransactionClient | typeof prisma;
 type FrequenciaViewer = {
@@ -1035,6 +1045,91 @@ const writeFrequenciaAudit = async (
 };
 
 export const frequenciaService = {
+  async listMinhasFrequencias(alunoId: string, query: ListMinhasFrequenciasQuery) {
+    const frequencias = await prisma.cursosFrequenciaAlunos.findMany({
+      where: {
+        CursosTurmasInscricoes: {
+          alunoId,
+          statusPagamento: STATUS_PAGAMENTO_MINHAS_FREQUENCIAS,
+          status: { in: STATUS_INSCRICAO_MINHAS_FREQUENCIAS },
+        },
+      },
+      orderBy: [{ dataReferencia: 'desc' }, { criadoEm: 'desc' }],
+      include: frequenciaWithRelations.include,
+    });
+
+    const itensAula = (
+      await enrichFrequenciasBatch(prisma, frequencias as FrequenciaWithRelations[])
+    ).filter((item) => item.tipoOrigem === 'AULA' && item.origemId);
+
+    const cursosMap = new Map<string, { id: string; nome: string }>();
+    const aulasMap = new Map<string, { id: string; nome: string; cursoId: string }>();
+
+    for (const item of itensAula) {
+      if (item.cursoId && item.cursoNome) {
+        cursosMap.set(item.cursoId, { id: item.cursoId, nome: item.cursoNome });
+      }
+      if (item.origemId && item.origemTitulo && item.cursoId) {
+        aulasMap.set(item.origemId, {
+          id: item.origemId,
+          nome: item.origemTitulo,
+          cursoId: item.cursoId,
+        });
+      }
+    }
+
+    const inicio = query.dataInicio ? new Date(query.dataInicio) : null;
+    const fim = query.dataFim ? new Date(query.dataFim) : null;
+    if (inicio) inicio.setUTCHours(0, 0, 0, 0);
+    if (fim) fim.setUTCHours(23, 59, 59, 999);
+
+    const items = itensAula.filter((item) => {
+      if (query.cursoId && item.cursoId !== query.cursoId) return false;
+      if (query.aulaId && item.origemId !== query.aulaId) return false;
+      if (query.status && item.status !== query.status) return false;
+
+      const referencia = new Date(item.dataReferencia);
+      if (inicio && referencia < inicio) return false;
+      if (fim && referencia > fim) return false;
+      return true;
+    });
+
+    const direction = query.order === 'asc' ? 1 : -1;
+    items.sort((a, b) => {
+      const comparison =
+        query.orderBy === 'status'
+          ? String(a.status).localeCompare(String(b.status), 'pt-BR')
+          : new Date(a.atualizadoEm).getTime() - new Date(b.atualizadoEm).getTime();
+      if (comparison !== 0) return comparison * direction;
+      return new Date(b.dataReferencia).getTime() - new Date(a.dataReferencia).getTime();
+    });
+
+    const total = items.length;
+    const totalPages = total > 0 ? Math.ceil(total / query.pageSize) : 1;
+    const page = Math.min(query.page, totalPages);
+    const start = (page - 1) * query.pageSize;
+
+    return {
+      items: items.slice(start, start + query.pageSize),
+      pagination: {
+        page,
+        requestedPage: query.page,
+        pageSize: query.pageSize,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrevious: page > 1,
+        isPageAdjusted: page !== query.page,
+      },
+      filters: {
+        cursos: Array.from(cursosMap.values()).sort((a, b) =>
+          a.nome.localeCompare(b.nome, 'pt-BR'),
+        ),
+        aulas: Array.from(aulasMap.values()).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+      },
+    };
+  },
+
   async listGeral(
     filters: {
       cursoId?: string;

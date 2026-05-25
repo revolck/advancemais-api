@@ -377,9 +377,9 @@ const mapSortByToOrderBy = (
 const toDateRange = (value: Date, mode: 'start' | 'end') => {
   const date = new Date(value);
   if (mode === 'start') {
-    date.setHours(0, 0, 0, 0);
+    date.setUTCHours(0, 0, 0, 0);
   } else {
-    date.setHours(23, 59, 59, 999);
+    date.setUTCHours(23, 59, 59, 999);
   }
   return date;
 };
@@ -1555,6 +1555,9 @@ export const certificadosService = {
   },
 
   async listarDoAlunoPaginado(usuarioId: string, query: ListarMeCertificadosQuery) {
+    const escopoAluno: Prisma.CursosCertificadosEmitidosWhereInput = {
+      CursosTurmasInscricoes: { alunoId: usuarioId },
+    };
     const where: Prisma.CursosCertificadosEmitidosWhereInput = {
       CursosTurmasInscricoes: {
         alunoId: usuarioId,
@@ -1571,7 +1574,14 @@ export const certificadosService = {
         : {}),
     };
 
-    const total = await prisma.cursosCertificadosEmitidos.count({ where });
+    const [total, certificadosFiltro] = await Promise.all([
+      prisma.cursosCertificadosEmitidos.count({ where }),
+      prisma.cursosCertificadosEmitidos.findMany({
+        where: escopoAluno,
+        include: certificadoWithRelations.include,
+        orderBy: { emitidoEm: 'desc' },
+      }),
+    ]);
     const totalPages = total > 0 ? Math.ceil(total / query.pageSize) : 1;
     const page = Math.min(query.page, totalPages);
     const items = await prisma.cursosCertificadosEmitidos.findMany({
@@ -1581,6 +1591,25 @@ export const certificadosService = {
       skip: (page - 1) * query.pageSize,
       take: query.pageSize,
     });
+    const cursos = new Map<string, { id: string; nome: string }>();
+    const turmas = new Map<
+      string,
+      { id: string; nome: string; codigo?: string | null; cursoId: string }
+    >();
+
+    for (const item of certificadosFiltro) {
+      const certificado = mapCertificadoDashboard(item);
+      cursos.set(certificado.curso.id, {
+        id: certificado.curso.id,
+        nome: certificado.curso.nome,
+      });
+      turmas.set(certificado.turma.id, {
+        id: certificado.turma.id,
+        nome: certificado.turma.nome,
+        codigo: certificado.turma.codigo,
+        cursoId: certificado.curso.id,
+      });
+    }
 
     return {
       success: true,
@@ -1595,6 +1624,10 @@ export const certificadosService = {
           pageSize: query.pageSize,
           total,
           totalPages,
+        },
+        filters: {
+          cursos: Array.from(cursos.values()).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+          turmas: Array.from(turmas.values()).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
         },
       },
     };

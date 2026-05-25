@@ -606,6 +606,24 @@ export const listEstagiosAlunoQuerySchema = z.object({
   pageSize: z.coerce.number().int().positive().max(100).default(10),
 });
 
+export const listMeusEstagiosQuerySchema = z
+  .object({
+    cursoId: z.string().uuid().optional(),
+    dataInicio: dateOnlySafeSchema.optional(),
+    dataFim: dateOnlySafeSchema.optional(),
+    page: z.coerce.number().int().positive().default(1),
+    pageSize: z.coerce.number().int().positive().max(100).default(10),
+  })
+  .superRefine((value, ctx) => {
+    if (value.dataInicio && value.dataFim && value.dataFim < value.dataInicio) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'dataFim não pode ser anterior a dataInicio',
+        path: ['dataFim'],
+      });
+    }
+  });
+
 export const listFrequenciasEstagioAlunoQuerySchema = z.object({
   data: dateOnlySafeSchema.optional(),
   status: frequenciaStatusFiltroSchema.optional(),
@@ -651,6 +669,7 @@ export type ListFrequenciaHistoricoEstagioQuery = z.infer<
   typeof listFrequenciaHistoricoEstagioQuerySchema
 >;
 export type ListEstagiosAlunoQuery = z.infer<typeof listEstagiosAlunoQuerySchema>;
+export type ListMeusEstagiosQuery = z.infer<typeof listMeusEstagiosQuerySchema>;
 export type ListFrequenciasEstagioAlunoQuery = z.infer<
   typeof listFrequenciasEstagioAlunoQuerySchema
 >;

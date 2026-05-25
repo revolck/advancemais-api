@@ -244,9 +244,23 @@ export const candidaturasService = {
     usuarioId: string;
     role: Roles;
     vagaId: string;
-    curriculoId?: string;
+    curriculoId: string;
     consentimentos?: any;
   }) => {
+    const curriculo = await prisma.usuariosCurriculos.findFirst({
+      where: {
+        id: params.curriculoId,
+        usuarioId: params.usuarioId,
+      },
+      select: { id: true },
+    });
+
+    if (!curriculo) {
+      throw Object.assign(new Error('Currículo inválido para esta candidatura.'), {
+        code: 'CURRICULO_INVALIDO',
+      });
+    }
+
     // Verificar se já existe candidatura
     const existingCandidatura = await prisma.empresasCandidatos.findFirst({
       where: {
@@ -312,7 +326,7 @@ export const candidaturasService = {
       metadata: {
         acao: 'CANDIDATURA_CRIADA',
         vagaId: params.vagaId,
-        curriculoId: params.curriculoId ?? null,
+        curriculoId: params.curriculoId,
         statusId: statusPadrao.id,
         statusNome: statusPadrao.nome,
       },

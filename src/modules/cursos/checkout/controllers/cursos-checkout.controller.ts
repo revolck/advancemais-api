@@ -3,6 +3,7 @@ import { logger } from '@/utils/logger';
 import { Request, Response } from 'express';
 import { ZodError } from 'zod';
 import { cursosCheckoutService } from '../services/cursos-checkout.service';
+import { pagamentosAlunoService } from '../../services/pagamentos-aluno.service';
 import { startCursoCheckoutSchema } from '../validators/cursos-checkout.schema';
 
 /**
@@ -21,7 +22,10 @@ export class CursosCheckoutController {
    */
   static checkout = async (req: Request, res: Response) => {
     try {
-      const payload = startCursoCheckoutSchema.parse(req.body);
+      const payload = startCursoCheckoutSchema.parse({
+        ...req.body,
+        usuarioId: req.user?.id,
+      });
       const result = await cursosCheckoutService.startCheckout(payload);
 
       res.status(201).json(result);
@@ -65,11 +69,15 @@ export class CursosCheckoutController {
         dataId: req.body?.data?.id,
       });
 
-      await cursosCheckoutService.handleWebhookPagamento({
+      const event = {
         type: req.body?.type,
         action: req.body?.action,
         data: req.body?.data || req.body,
-      });
+      };
+      const isRecuperacao = await pagamentosAlunoService.processarWebhook(event);
+      if (!isRecuperacao) {
+        await cursosCheckoutService.handleWebhookPagamento(event);
+      }
 
       res.status(200).json({ received: true });
     } catch (error: any) {
@@ -160,7 +168,7 @@ export class CursosCheckoutController {
       }
 
       const inscricao = await prisma.cursosTurmasInscricoes.findFirst({
-        where: { mpPaymentId: paymentId },
+        where: { mpPaymentId: paymentId, alunoId: req.user?.id },
         include: {
           CursosTurmas: { include: { Cursos: true } },
           Usuarios: { select: { id: true, nomeCompleto: true, email: true } },

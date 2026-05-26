@@ -22,6 +22,7 @@ import { logger } from '@/utils/logger';
 import { auditoriaService } from '@/modules/auditoria/services/auditoria.service';
 import { notificacoesHelper } from '../aulas/services/notificacoes-helper.service';
 
+import { pagamentosAlunoService } from './pagamentos-aluno.service';
 import {
   mapProva,
   provaDefaultInclude,
@@ -741,7 +742,7 @@ export const provasService = {
       observacoes?: string | null;
     },
   ) {
-    return prisma.$transaction(async (tx) => {
+    const prova = await prisma.$transaction(async (tx) => {
       await ensureProvaBelongsToTurma(tx, cursoId, turmaId, provaId);
 
       const inscricao = await tx.cursosTurmasInscricoes.findFirst({
@@ -831,5 +832,8 @@ export const provasService = {
 
       return fetchProva(tx, provaId);
     });
+
+    await pagamentosAlunoService.reconciliarRecuperacaoInscricao(data.inscricaoId);
+    return prova;
   },
 };

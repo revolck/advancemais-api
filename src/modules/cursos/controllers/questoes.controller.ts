@@ -1,7 +1,10 @@
 import { Request, Response } from 'express';
 import { ZodError } from 'zod';
+import { Roles } from '@prisma/client';
 
+import { prisma } from '@/config/prisma';
 import { questoesService } from '../services/questoes.service';
+import { pagamentosAlunoService } from '../services/pagamentos-aluno.service';
 import {
   createQuestaoSchema,
   updateQuestaoSchema,
@@ -41,6 +44,49 @@ const parseQuestaoId = (raw: string) => {
   return raw;
 };
 
+const ensureAlunoPodeAcessarProva = async (
+  req: Request,
+  turmaId: string,
+  provaId: string,
+  inscricaoId?: string,
+) => {
+  if (req.user?.role !== Roles.ALUNO_CANDIDATO) return;
+
+  const inscricao = await prisma.cursosTurmasInscricoes.findFirst({
+    where: {
+      ...(inscricaoId ? { id: inscricaoId } : {}),
+      alunoId: req.user.id,
+      turmaId,
+      statusPagamento: 'APROVADO',
+    },
+    select: { id: true },
+  });
+  if (!inscricao) {
+    const error: any = new Error('Inscricao nao pertence ao aluno autenticado');
+    error.code = 'FORBIDDEN';
+    throw error;
+  }
+
+  const acesso = await pagamentosAlunoService.getAcessoRecuperacao(
+    req.user.id,
+    inscricao.id,
+    provaId,
+  );
+  if (acesso.requiresPayment && !acesso.liberado) {
+    const error: any = new Error('Pagamento da recuperacao ainda nao aprovado');
+    error.code = 'RECUPERACAO_PAGAMENTO_PENDENTE';
+    throw error;
+  }
+};
+
+const respondAcessoNegado = (res: Response, error: any) => {
+  if (error?.code !== 'FORBIDDEN' && error?.code !== 'RECUPERACAO_PAGAMENTO_PENDENTE') {
+    return false;
+  }
+  res.status(403).json({ success: false, code: error.code, message: error.message });
+  return true;
+};
+
 export class QuestoesController {
   static list = async (req: Request, res: Response) => {
     const cursoId = parseCursoId(req.params.cursoId);
@@ -56,9 +102,18 @@ export class QuestoesController {
     }
 
     try {
-      const questoes = await questoesService.list(cursoId, turmaId, provaId);
+      await ensureAlunoPodeAcessarProva(
+        req,
+        turmaId,
+        provaId,
+        req.query.inscricaoId as string | undefined,
+      );
+      const questoes = await questoesService.list(cursoId, turmaId, provaId, {
+        includeRespostaCorreta: req.user?.role !== Roles.ALUNO_CANDIDATO,
+      });
       res.json({ data: questoes });
     } catch (error: any) {
+      if (respondAcessoNegado(res, error)) return;
       if (error?.code === 'PROVA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
         return res.status(404).json({
           success: false,
@@ -99,9 +154,18 @@ export class QuestoesController {
     }
 
     try {
-      const questao = await questoesService.get(cursoId, turmaId, provaId, questaoId);
+      await ensureAlunoPodeAcessarProva(
+        req,
+        turmaId,
+        provaId,
+        req.query.inscricaoId as string | undefined,
+      );
+      const questao = await questoesService.get(cursoId, turmaId, provaId, questaoId, {
+        includeRespostaCorreta: req.user?.role !== Roles.ALUNO_CANDIDATO,
+      });
       res.json(questao);
     } catch (error: any) {
+      if (respondAcessoNegado(res, error)) return;
       if (error?.code === 'QUESTAO_NOT_FOUND' || error?.code === 'PROVA_NOT_FOUND') {
         return res.status(404).json({
           success: false,
@@ -302,6 +366,7 @@ export class QuestoesController {
         });
       }
 
+      await ensureAlunoPodeAcessarProva(req, turmaId, provaId, inscricaoId);
       const resposta = await questoesService.responder(
         cursoId,
         turmaId,
@@ -317,6 +382,7 @@ export class QuestoesController {
       );
       res.status(200).json(resposta);
     } catch (error: any) {
+      if (respondAcessoNegado(res, error)) return;
       if (error instanceof ZodError) {
         return res.status(400).json({
           success: false,
@@ -425,6 +491,7 @@ export class QuestoesController {
     }
 
     try {
+      await ensureAlunoPodeAcessarProva(req, turmaId, provaId, inscricaoId);
       const respostas = await questoesService.listarRespostas(
         cursoId,
         turmaId,
@@ -434,6 +501,7 @@ export class QuestoesController {
       );
       res.json({ data: respostas });
     } catch (error: any) {
+      if (respondAcessoNegado(res, error)) return;
       if (error?.code === 'PROVA_NOT_FOUND' || error?.code === 'TURMA_NOT_FOUND') {
         return res.status(404).json({
           success: false,

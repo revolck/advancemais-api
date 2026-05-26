@@ -10,6 +10,8 @@ import { prisma } from '@/config/prisma';
 import { auditoriaService } from '@/modules/auditoria/services/auditoria.service';
 import { logger } from '@/utils/logger';
 
+import { pagamentosAlunoService } from './pagamentos-aluno.service';
+
 type PrismaClientOrTx = Prisma.TransactionClient | typeof prisma;
 
 const questoesLogger = logger.child({ module: 'CursosQuestoesService' });
@@ -130,7 +132,12 @@ const calcularPesosNormalizados = (
 };
 
 export const questoesService = {
-  async list(cursoId: string, turmaId: string, provaId: string) {
+  async list(
+    cursoId: string,
+    turmaId: string,
+    provaId: string,
+    options?: { includeRespostaCorreta?: boolean },
+  ) {
     await ensureProvaBelongsToTurma(prisma, cursoId, turmaId, provaId);
 
     const questoes = await prisma.cursosTurmasProvasQuestoes.findMany({
@@ -160,7 +167,7 @@ export const questoesService = {
               questaoId: alt.questaoId,
               texto: alt.texto,
               ordem: alt.ordem,
-              correta: alt.correta,
+              ...(options?.includeRespostaCorreta === false ? {} : { correta: alt.correta }),
               criadoEm: alt.criadoEm.toISOString(),
               atualizadoEm: alt.atualizadoEm.toISOString(),
             }))
@@ -168,7 +175,13 @@ export const questoesService = {
     }));
   },
 
-  async get(cursoId: string, turmaId: string, provaId: string, questaoId: string) {
+  async get(
+    cursoId: string,
+    turmaId: string,
+    provaId: string,
+    questaoId: string,
+    options?: { includeRespostaCorreta?: boolean },
+  ) {
     await ensureQuestaoBelongsToProva(prisma, cursoId, turmaId, provaId, questaoId);
 
     const questao = await prisma.cursosTurmasProvasQuestoes.findUnique({
@@ -203,7 +216,7 @@ export const questoesService = {
               questaoId: alt.questaoId,
               texto: alt.texto,
               ordem: alt.ordem,
-              correta: alt.correta,
+              ...(options?.includeRespostaCorreta === false ? {} : { correta: alt.correta }),
               criadoEm: alt.criadoEm.toISOString(),
               atualizadoEm: alt.atualizadoEm.toISOString(),
             }))
@@ -696,6 +709,7 @@ export const questoesService = {
     if (result.auditoriaAutoCorrecao) {
       await auditoriaService.registrarLog(result.auditoriaAutoCorrecao);
     }
+    await pagamentosAlunoService.reconciliarRecuperacaoInscricao(inscricaoId);
 
     return result.resposta;
   },

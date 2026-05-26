@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { Roles } from '@prisma/client';
+import { supabaseAuthMiddleware } from '@/modules/usuarios/auth';
 import { CursosCheckoutController } from '../controllers/cursos-checkout.controller';
 
 const router = Router();
@@ -11,7 +13,11 @@ const router = Router();
  */
 
 // POST /api/cursos/checkout - Iniciar checkout de curso
-router.post('/checkout', CursosCheckoutController.checkout);
+router.post(
+  '/checkout',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  CursosCheckoutController.checkout,
+);
 
 // POST /api/cursos/checkout/webhook - Webhook do Mercado Pago
 router.post('/checkout/webhook', CursosCheckoutController.webhook);
@@ -20,7 +26,11 @@ router.post('/checkout/webhook', CursosCheckoutController.webhook);
 router.get('/checkout/validar-token/:token', CursosCheckoutController.validarToken);
 
 // GET /api/cursos/checkout/pagamento/:paymentId - Consultar status do pagamento
-router.get('/checkout/pagamento/:paymentId', CursosCheckoutController.consultarPagamento);
+router.get(
+  '/checkout/pagamento/:paymentId',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  CursosCheckoutController.consultarPagamento,
+);
 
 // GET /api/cursos/:cursoId/turmas/:turmaId/vagas - Verificar vagas disponíveis
 router.get('/:cursoId/turmas/:turmaId/vagas', CursosCheckoutController.verificarVagas);

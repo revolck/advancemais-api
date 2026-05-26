@@ -604,6 +604,7 @@ model CursosTurmas {
   CursosTurmasModulos         CursosTurmasModulos[]
   CursosTurmasProvas          CursosTurmasProvas[]
   CursosTurmasRecuperacoes    CursosTurmasRecuperacoes[]
+  CursosRecuperacaoPagamentos CursosRecuperacaoPagamentos[]
   CursosTurmasRegrasAvaliacao CursosTurmasRegrasAvaliacao?
   cursosAulasProgressos       CursosAulasProgresso[]
 
@@ -827,6 +828,11 @@ model CursosTurmasInscricoes {
   tokenAcessoExpiraEm           DateTime?
   valorPago                     Decimal?                             @db.Decimal(10, 2)
   metodoPagamento               String?                              @db.VarChar(50)
+  pixQrCode                     String?                              @db.Text
+  pixQrCodeBase64               String?                              @db.Text
+  boletoCodigo                  String?                              @db.Text
+  boletoUrl                     String?                              @db.Text
+  pagamentoExpiraEm             DateTime?
   // Aceite de termos
   aceitouTermos                 Boolean                              @default(false)
   aceitouTermosIp               String?                              @db.VarChar(45)
@@ -850,6 +856,7 @@ model CursosTurmasInscricoes {
   CursosTurmasProvasRespostas   CursosTurmasProvasRespostas[]
   CursosTurmasAulasAcessos      CursosTurmasInscricoesAulasAcesso[]
   CursosTurmasProvasAcessos     CursosTurmasInscricoesProvasAcesso[]
+  CursosRecuperacaoPagamentos   CursosRecuperacaoPagamentos[]
   CuponsDesconto                CuponsDesconto?                      @relation(fields: [cupomDescontoId], references: [id])
   CursosAulasProgresso          CursosAulasProgresso[]
 
@@ -937,6 +944,7 @@ model CursosTurmasProvas {
   CursosTurmasInscricoesAcessos CursosTurmasInscricoesProvasAcesso[]
   CursosTurmasRecuperacoes      CursosTurmasRecuperacoes[]
   CursosTurmasProvasQuestoes    CursosTurmasProvasQuestoes[]
+  CursosRecuperacaoPagamentos   CursosRecuperacaoPagamentos[]
 
   @@unique([turmaId, etiqueta])
   @@index([cursoId])
@@ -963,6 +971,36 @@ model CursosTurmasInscricoesProvasAcesso {
   @@unique([inscricaoId, provaId])
   @@index([disponivelAte])
   @@index([inscricaoId, liberadoEm])
+  @@index([provaId])
+}
+
+model CursosRecuperacaoPagamentos {
+  id                            String                 @id @default(uuid())
+  alunoId                       String
+  inscricaoId                   String
+  turmaId                       String
+  provaId                       String
+  valor                         Decimal                @db.Decimal(10, 2)
+  statusPagamento               String                 @default("PENDENTE") @db.VarChar(50)
+  metodoPagamento               String?                @db.VarChar(50)
+  mpPaymentId                   String?                @unique @db.VarChar(255)
+  pixQrCode                     String?                @db.Text
+  pixQrCodeBase64               String?                @db.Text
+  boletoCodigo                  String?                @db.Text
+  boletoUrl                     String?                @db.Text
+  expiraEm                      DateTime?
+  pagoEm                        DateTime?
+  criadoEm                      DateTime               @default(now())
+  atualizadoEm                  DateTime               @default(now())
+  Usuarios                      Usuarios               @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+  CursosTurmasInscricoes        CursosTurmasInscricoes @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
+  CursosTurmas                  CursosTurmas           @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  CursosTurmasProvas            CursosTurmasProvas     @relation(fields: [provaId], references: [id], onDelete: Cascade)
+
+  @@unique([inscricaoId, provaId])
+  @@index([alunoId, criadoEm])
+  @@index([alunoId, statusPagamento])
+  @@index([turmaId])
   @@index([provaId])
 }
 
@@ -1458,6 +1496,7 @@ model Usuarios {
   CursosTurmas                                                                                              CursosTurmas[]
   CursosTurmasEditadas                                                                                      CursosTurmas[]                                @relation("TurmasEditadoPor")
   CursosTurmasInscricoes                                                                                    CursosTurmasInscricoes[]
+  CursosRecuperacaoPagamentos                                                                               CursosRecuperacaoPagamentos[]
   EmpresasAuditoria_EmpresasAuditoria_alteradoPorToUsuarios                                                 EmpresasAuditoria[]                           @relation("EmpresasAuditoria_alteradoPorToUsuarios")
   EmpresasAuditoria_EmpresasAuditoria_empresaIdToUsuarios                                                   EmpresasAuditoria[]                           @relation("EmpresasAuditoria_empresaIdToUsuarios")
   EmpresasCandidatos_EmpresasCandidatos_candidatoIdToUsuarios                                               EmpresasCandidatos[]                          @relation("EmpresasCandidatos_candidatoIdToUsuarios")

@@ -30,4 +30,15 @@ describe('rotas de notas do aluno', () => {
     expect(estagiosGenericosIndex).toBeGreaterThanOrEqual(0);
     expect(meusEstagiosIndex).toBeLessThan(estagiosGenericosIndex);
   });
+
+  it('registra pagamentos e acesso a recuperacao como rotas pessoais autenticadas', () => {
+    const routesSource = readFileSync(resolve(__dirname, '../routes/index.ts'), 'utf8');
+
+    expect(routesSource).toContain("'/me/pagamentos'");
+    expect(routesSource).toContain("'/me/pagamentos/recuperacoes/:pagamentoId/checkout'");
+    expect(routesSource).toContain("'/me/recuperacoes/:provaId/acesso'");
+    expect(routesSource.indexOf("'/me/pagamentos'")).toBeLessThan(
+      routesSource.indexOf("'/:cursoId/notas'"),
+    );
+  });
 });

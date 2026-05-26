@@ -724,9 +724,7 @@ export const cursosCheckoutService = {
         const pixBody = pixPayment.body ?? pixPayment;
         const mpPaymentId = pixBody?.id ? String(pixBody.id) : undefined;
         const statusPagamento = mapToStatusPagamento(pixBody?.status);
-        const _expiration = pixBody?.date_of_expiration
-          ? new Date(pixBody.date_of_expiration)
-          : null;
+        const transactionData = pixBody?.point_of_interaction?.transaction_data || {};
 
         // Atualizar inscrição com dados do pagamento
         await prisma.cursosTurmasInscricoes.update({
@@ -736,6 +734,11 @@ export const cursosCheckoutService = {
             statusPagamento,
             metodoPagamento: 'PIX',
             valorPago: statusPagamento === 'APROVADO' ? valorFinal : null,
+            pixQrCode: transactionData.qr_code || null,
+            pixQrCodeBase64: transactionData.qr_code_base64 || null,
+            pagamentoExpiraEm: pixBody?.date_of_expiration
+              ? new Date(pixBody.date_of_expiration)
+              : null,
           },
         });
 
@@ -751,8 +754,6 @@ export const cursosCheckoutService = {
           inscricaoId: inscricao.id,
           mpPaymentId,
         });
-
-        const transactionData = pixBody?.point_of_interaction?.transaction_data || {};
 
         return {
           success: true,
@@ -830,6 +831,11 @@ export const cursosCheckoutService = {
               installments > 1 ? `CARTAO_CREDITO_${installments}X` : 'CARTAO_CREDITO',
             valorPago: ativo ? valorFinal : null,
             status: ativo ? 'INSCRITO' : 'AGUARDANDO_PAGAMENTO',
+            pixQrCode: null,
+            pixQrCodeBase64: null,
+            boletoCodigo: null,
+            boletoUrl: null,
+            pagamentoExpiraEm: null,
           },
         });
 
@@ -947,9 +953,15 @@ export const cursosCheckoutService = {
         const boletoBody = boletoPayment.body ?? boletoPayment;
         const mpPaymentId = boletoBody?.id ? String(boletoBody.id) : undefined;
         const statusPagamento = mapToStatusPagamento(boletoBody?.status);
-        const _expiration = boletoBody?.date_of_expiration
-          ? new Date(boletoBody.date_of_expiration)
-          : null;
+        const barcode =
+          boletoBody?.barcode?.content ||
+          boletoBody?.barcode ||
+          boletoBody?.transaction_details?.external_resource_url ||
+          null;
+        const boletoUrl =
+          boletoBody?.transaction_details?.external_resource_url ||
+          boletoBody?.point_of_interaction?.transaction_data?.ticket_url ||
+          null;
 
         // Atualizar inscrição com dados do pagamento
         await prisma.cursosTurmasInscricoes.update({
@@ -959,6 +971,11 @@ export const cursosCheckoutService = {
             statusPagamento,
             metodoPagamento: 'BOLETO',
             valorPago: statusPagamento === 'APROVADO' ? valorFinal : null,
+            boletoCodigo: barcode,
+            boletoUrl,
+            pagamentoExpiraEm: boletoBody?.date_of_expiration
+              ? new Date(boletoBody.date_of_expiration)
+              : null,
           },
         });
 
@@ -974,16 +991,6 @@ export const cursosCheckoutService = {
           inscricaoId: inscricao.id,
           mpPaymentId,
         });
-
-        const barcode =
-          boletoBody?.barcode?.content ||
-          boletoBody?.barcode ||
-          boletoBody?.transaction_details?.external_resource_url ||
-          null;
-        const boletoUrl =
-          boletoBody?.transaction_details?.external_resource_url ||
-          boletoBody?.point_of_interaction?.transaction_data?.ticket_url ||
-          null;
 
         return {
           success: true,
@@ -1093,7 +1100,20 @@ export const cursosCheckoutService = {
         return;
       }
 
-      const status = String(data?.status || '').toLowerCase();
+      let gatewayData = data;
+      if (mpClient) {
+        try {
+          const fetched = (await new Payment(mpClient).get({ id: mpPaymentId })) as any;
+          gatewayData = fetched?.body ?? fetched;
+        } catch (error) {
+          logger.warn('[WEBHOOK] Falha ao consultar pagamento no gateway', {
+            mpPaymentId,
+            error,
+          });
+        }
+      }
+
+      const status = String(gatewayData?.status || data?.status || '').toLowerCase();
       const statusPagamento = mapToStatusPagamento(status);
 
       logger.info('[WEBHOOK] Processando pagamento de curso', {

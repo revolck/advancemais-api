@@ -18,6 +18,7 @@ import { FrequenciaController } from '../controllers/frequencia.controller';
 import { AgendaController } from '../controllers/agenda.controller';
 import { CertificadosController } from '../controllers/certificados.controller';
 import { EstagiosController } from '../controllers/estagios.controller';
+import { PagamentosAlunoController } from '../controllers/pagamentos-aluno.controller';
 import cursosCheckoutRoutes from '../checkout/routes';
 import aulasRoutes, { agendaRoutes } from '../aulas/routes';
 import {
@@ -2003,6 +2004,28 @@ router.get(
   '/me/estagios',
   supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
   EstagiosController.listMeus,
+);
+
+/**
+ * Pagamentos de matriculas e recuperacoes do aluno autenticado
+ * GET /api/v1/cursos/me/pagamentos
+ */
+router.get(
+  '/me/pagamentos',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  PagamentosAlunoController.listMeus,
+);
+
+router.post(
+  '/me/pagamentos/recuperacoes/:pagamentoId/checkout',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  PagamentosAlunoController.checkoutRecuperacao,
+);
+
+router.get(
+  '/me/recuperacoes/:provaId/acesso',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  PagamentosAlunoController.acessoRecuperacao,
 );
 
 /**
@@ -5108,7 +5131,13 @@ router.put(
  */
 router.get(
   '/:cursoId/turmas/:turmaId/provas/:provaId/questoes',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  supabaseAuthMiddleware([
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.PEDAGOGICO,
+    Roles.INSTRUTOR,
+    Roles.ALUNO_CANDIDATO,
+  ]),
   QuestoesController.list,
 );
 
@@ -5143,7 +5172,13 @@ router.get(
  */
 router.get(
   '/:cursoId/turmas/:turmaId/provas/:provaId/questoes/:questaoId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  supabaseAuthMiddleware([
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.PEDAGOGICO,
+    Roles.INSTRUTOR,
+    Roles.ALUNO_CANDIDATO,
+  ]),
   QuestoesController.get,
 );
 
@@ -5295,7 +5330,13 @@ router.delete(
  */
 router.put(
   '/:cursoId/turmas/:turmaId/provas/:provaId/questoes/:questaoId/responder',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  supabaseAuthMiddleware([
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.PEDAGOGICO,
+    Roles.INSTRUTOR,
+    Roles.ALUNO_CANDIDATO,
+  ]),
   cursosAvaliacoesInvalidateCacheOnMutation,
   QuestoesController.responder,
 );
@@ -5369,7 +5410,13 @@ router.put(
  */
 router.get(
   '/:cursoId/turmas/:turmaId/provas/:provaId/respostas',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  supabaseAuthMiddleware([
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.PEDAGOGICO,
+    Roles.INSTRUTOR,
+    Roles.ALUNO_CANDIDATO,
+  ]),
   QuestoesController.listarRespostas,
 );
 

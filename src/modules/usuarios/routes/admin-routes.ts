@@ -19,6 +19,12 @@ import { Roles } from '../enums/Roles';
 const router = Router();
 const adminController = new AdminController();
 const adminRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO];
+const adminAccessReleaseRoles = [
+  Roles.ADMIN,
+  Roles.MODERADOR,
+  Roles.PEDAGOGICO,
+  Roles.SETOR_DE_VAGAS,
+];
 const curriculoViewerRoles: Roles[] = [
   Roles.ADMIN,
   Roles.MODERADOR,
@@ -898,7 +904,7 @@ router.patch(
  *     description: |
  *       Libera manualmente o acesso completo de um usuário pelo painel administrativo.
  *
- *       **ACESSO:** ADMIN, MODERADOR e PEDAGOGICO.
+ *       **ACESSO:** ADMIN, MODERADOR, PEDAGOGICO e SETOR_DE_VAGAS.
  *
  *       **COMPORTAMENTO:**
  *       - marca o email como verificado
@@ -907,6 +913,9 @@ router.patch(
  *
  *       **RESTRIÇÕES PARA PEDAGOGICO:**
  *       - PEDAGOGICO só pode liberar usuários com role ALUNO_CANDIDATO ou INSTRUTOR.
+ *
+ *       **RESTRIÇÕES PARA SETOR_DE_VAGAS:**
+ *       - SETOR_DE_VAGAS só pode liberar usuários com role EMPRESA, ALUNO_CANDIDATO ou INSTRUTOR.
  *
  *       **BLOQUEIOS:**
  *       - usuários `BLOQUEADO`, `INATIVO` ou `SUSPENSO` retornam erro de negócio.
@@ -944,7 +953,7 @@ router.patch(
  */
 router.patch(
   '/usuarios/:userId/liberar-acesso',
-  supabaseAuthMiddleware(adminRoles),
+  supabaseAuthMiddleware(adminAccessReleaseRoles),
   asyncHandler(adminController.liberarAcessoUsuario),
 );
 

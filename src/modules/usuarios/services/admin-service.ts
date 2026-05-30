@@ -5,7 +5,14 @@
  * @author Sistema Advance+
  * @version 3.0.0
  */
-import { CandidatoLogTipo, Prisma, Roles, Status, TiposDeUsuarios } from '@prisma/client';
+import {
+  CandidatoLogTipo,
+  EmpresasAuditoriaAcao,
+  Prisma,
+  Roles,
+  Status,
+  TiposDeUsuarios,
+} from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
@@ -314,6 +321,30 @@ export class AdminService {
     return undefined;
   }
 
+  private validateRoleByTipoUsuario(
+    tipoUsuario: TiposDeUsuarios,
+    role: Roles,
+    context: 'create' | 'updateRole' | 'updateUser' = 'create',
+  ) {
+    const isPessoaJuridica = tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA;
+    const isPessoaFisica = tipoUsuario === TiposDeUsuarios.PESSOA_FISICA;
+
+    const isValid =
+      (isPessoaJuridica && role === Roles.EMPRESA) || (isPessoaFisica && role !== Roles.EMPRESA);
+
+    if (isValid) return;
+
+    const message = isPessoaJuridica
+      ? 'Pessoa Jurídica só pode ter função EMPRESA.'
+      : 'Pessoa Física não pode ter função EMPRESA.';
+
+    throw this.createServiceError(message, 400, 'INVALID_ROLE_FOR_USER_TYPE', {
+      tipoUsuario,
+      role,
+      context,
+    });
+  }
+
   /**
    * Lista usuários com filtros e paginação
    * @param query - Parâmetros de consulta
@@ -584,6 +615,44 @@ export class AdminService {
           statusCode: 403,
         },
       );
+    }
+  }
+
+  private assertCanReleaseUserAccess(actingRole: string | undefined, targetRole: Roles) {
+    if (!actingRole) return;
+
+    if (actingRole === Roles.PEDAGOGICO) {
+      if (targetRole !== Roles.ALUNO_CANDIDATO && targetRole !== Roles.INSTRUTOR) {
+        throw Object.assign(
+          new Error(
+            'PEDAGOGICO só pode liberar acesso de usuários com role ALUNO_CANDIDATO ou INSTRUTOR',
+          ),
+          {
+            code: 'FORBIDDEN_USER_ROLE',
+            statusCode: 403,
+          },
+        );
+      }
+
+      return;
+    }
+
+    if (actingRole === Roles.SETOR_DE_VAGAS) {
+      if (
+        targetRole !== Roles.EMPRESA &&
+        targetRole !== Roles.ALUNO_CANDIDATO &&
+        targetRole !== Roles.INSTRUTOR
+      ) {
+        throw Object.assign(
+          new Error(
+            'SETOR_DE_VAGAS só pode liberar acesso de usuários com role EMPRESA, ALUNO_CANDIDATO ou INSTRUTOR',
+          ),
+          {
+            code: 'FORBIDDEN_USER_ROLE',
+            statusCode: 403,
+          },
+        );
+      }
     }
   }
 
@@ -1609,6 +1678,7 @@ export class AdminService {
         email: true,
         nomeCompleto: true,
         role: true,
+        tipoUsuario: true,
         status: true,
         UsuariosVerificacaoEmail: {
           select: UsuariosVerificacaoEmailSelect,
@@ -1627,6 +1697,8 @@ export class AdminService {
         'FORBIDDEN_SELF_ROLE_CHANGE',
       );
     }
+
+    this.validateRoleByTipoUsuario(usuarioAntes.tipoUsuario, roleEnum, 'updateRole');
 
     if (options?.actorRole === Roles.PEDAGOGICO) {
       const pedagogicoAllowedRoles: Roles[] = [Roles.ALUNO_CANDIDATO, Roles.INSTRUTOR];
@@ -1751,6 +1823,8 @@ export class AdminService {
         : dados.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
           ? Roles.EMPRESA
           : Roles.ALUNO_CANDIDATO;
+
+    this.validateRoleByTipoUsuario(dados.tipoUsuario, normalizedRole, 'create');
 
     // Validação de permissões por role do criador
     const userRole = options?.userRole;
@@ -2006,6 +2080,7 @@ export class AdminService {
         select: {
           id: true,
           role: true,
+          tipoUsuario: true,
           UsuariosInformation: true,
           UsuariosRedesSociais: true,
         },
@@ -2038,6 +2113,14 @@ export class AdminService {
             },
           );
         }
+      }
+
+      if (dados.role) {
+        this.validateRoleByTipoUsuario(
+          usuarioExistente.tipoUsuario as TiposDeUsuarios,
+          dados.role as Roles,
+          'updateUser',
+        );
       }
 
       // Verificar se email já existe
@@ -2525,7 +2608,7 @@ export class AdminService {
         });
       }
 
-      this.assertPedagogicoCanManageUser(options?.actorRole, usuario.role, 'liberar acesso');
+      this.assertCanReleaseUserAccess(options?.actorRole, usuario.role);
 
       if (
         usuario.status === Status.BLOQUEADO ||
@@ -2618,6 +2701,25 @@ export class AdminService {
           ip: options?.ip ?? null,
           userAgent: options?.userAgent ?? null,
         });
+
+        if (usuario.role === Roles.EMPRESA) {
+          await tx.empresasAuditoria.create({
+            data: {
+              empresaId: usuario.id,
+              alteradoPor: options.actorId,
+              acao: EmpresasAuditoriaAcao.EMPRESA_ATUALIZADA,
+              campo: 'acesso',
+              valorAnterior: JSON.stringify(beforeSnapshot),
+              valorNovo: JSON.stringify(afterSnapshot),
+              descricao: `Acesso liberado manualmente para ${usuario.email}.`,
+              metadata: {
+                origem: 'PAINEL_ADMIN',
+                motivo: options?.motivo ?? null,
+                targetRole: usuario.role,
+              },
+            },
+          });
+        }
       }
 
       return {

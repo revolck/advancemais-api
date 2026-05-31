@@ -1033,6 +1033,24 @@ export const cursosCheckoutService = {
         inscricaoId: inscricao.id,
         error: normalized,
       });
+
+      // Evita travar vagas quando a criação do pagamento falha antes de gerar cobrança válida.
+      await prisma.cursosTurmasInscricoes
+        .update({
+          where: { id: inscricao.id },
+          data: {
+            status: 'CANCELADO',
+            statusPagamento: 'CANCELADO',
+            pagamentoExpiraEm: null,
+          },
+        })
+        .catch((cleanupError) => {
+          logger.error('[CHECKOUT_CURSO_ERROR] Falha ao limpar inscrição após erro de checkout', {
+            inscricaoId: inscricao.id,
+            error: normalizeMercadoPagoError(cleanupError),
+          });
+        });
+
       throw new Error(`Erro ao processar pagamento: ${normalized.message}`);
     }
   },

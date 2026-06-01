@@ -33,6 +33,18 @@ type MercadoPagoResponse<T = any> = {
 
 type StatusPagamento = 'PENDENTE' | 'APROVADO' | 'RECUSADO' | 'PROCESSANDO' | 'CANCELADO';
 
+const CHECKOUT_DOMAIN_STATUS: Record<string, number> = {
+  PAYER_EMAIL_REQUIRED: 400,
+  PAYER_IDENTIFICATION_REQUIRED: 400,
+  INVALID_CPF: 400,
+  INVALID_CNPJ: 400,
+  INVALID_IDENTIFICATION: 400,
+  BOLETO_ADDRESS_REQUIRED: 400,
+  PIX_KEY_NOT_CONFIGURED: 503,
+  FINANCIAL_IDENTITY_ERROR: 502,
+  MERCADOPAGO_ERROR: 502,
+};
+
 // ========================================
 // FUNÇÕES AUXILIARES (Reutilizadas de assinaturas.service.ts)
 // ========================================
@@ -132,9 +144,20 @@ function isValidCNPJ(cnpj: string): boolean {
  */
 function normalizeMercadoPagoError(error: unknown): { message: string; payload?: any } {
   if (error instanceof Error) {
+    const errObj = error as any;
     return {
       message: error.message,
-      payload: { name: error.name, message: error.message, stack: error.stack },
+      payload: {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+        code: errObj?.code,
+        cause: errObj?.cause,
+        apiResponse: errObj?.apiResponse,
+        response: errObj?.response,
+        status: errObj?.status,
+        statusCode: errObj?.statusCode,
+      },
     };
   }
 
@@ -156,6 +179,97 @@ function normalizeMercadoPagoError(error: unknown): { message: string; payload?:
   }
 
   return { message: String(error ?? 'erro desconhecido'), payload: error };
+}
+
+function safeStringify(value: unknown): string {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return '';
+  }
+}
+
+function getGatewayErrorSearchText(error: unknown, normalized: { message: string; payload?: any }) {
+  const errObj = error as any;
+  const causes = [
+    ...(Array.isArray(errObj?.cause) ? errObj.cause : []),
+    ...(Array.isArray(errObj?.apiResponse?.cause) ? errObj.apiResponse.cause : []),
+    ...(Array.isArray(errObj?.response?.data?.cause) ? errObj.response.data.cause : []),
+  ];
+
+  return [
+    normalized.message,
+    ...causes.flatMap((cause) => [cause?.code, cause?.description, cause?.message]),
+    safeStringify(errObj?.apiResponse),
+    safeStringify(errObj?.response?.data),
+    safeStringify(normalized.payload),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+}
+
+function toCheckoutPaymentError(
+  error: unknown,
+  normalized: { message: string; payload?: any },
+): Error & { code?: string; statusCode?: number; details?: unknown } {
+  const rawCode = typeof (error as any)?.code === 'string' ? (error as any).code : undefined;
+  if (rawCode && CHECKOUT_DOMAIN_STATUS[rawCode]) {
+    return Object.assign(new Error((error as Error).message || normalized.message), {
+      code: rawCode,
+      statusCode: (error as any)?.statusCode ?? CHECKOUT_DOMAIN_STATUS[rawCode],
+      details: (error as any)?.details,
+    });
+  }
+
+  const searchText = getGatewayErrorSearchText(error, normalized);
+
+  if (
+    searchText.includes('without key enabled for qr') ||
+    searchText.includes('collector user without key') ||
+    searchText.includes('pix key')
+  ) {
+    return Object.assign(
+      new Error('A conta do Mercado Pago não possui chave PIX habilitada para receber pagamentos.'),
+      {
+        code: 'PIX_KEY_NOT_CONFIGURED',
+        statusCode: CHECKOUT_DOMAIN_STATUS.PIX_KEY_NOT_CONFIGURED,
+        details: normalized.payload,
+      },
+    );
+  }
+
+  if (searchText.includes('financial identity')) {
+    return Object.assign(
+      new Error('O Mercado Pago recusou a criação do pagamento por validação financeira.'),
+      {
+        code: 'FINANCIAL_IDENTITY_ERROR',
+        statusCode: CHECKOUT_DOMAIN_STATUS.FINANCIAL_IDENTITY_ERROR,
+        details: normalized.payload,
+      },
+    );
+  }
+
+  if (
+    searchText.includes('invalid user identification') ||
+    searchText.includes('invalid identification') ||
+    (searchText.includes('identification') && searchText.includes('invalid'))
+  ) {
+    return Object.assign(new Error('CPF/CNPJ inválido para o Mercado Pago.'), {
+      code: 'INVALID_IDENTIFICATION',
+      statusCode: CHECKOUT_DOMAIN_STATUS.INVALID_IDENTIFICATION,
+      details: normalized.payload,
+    });
+  }
+
+  return Object.assign(
+    new Error('Não foi possível processar o pagamento no Mercado Pago. Tente novamente.'),
+    {
+      code: 'MERCADOPAGO_ERROR',
+      statusCode: CHECKOUT_DOMAIN_STATUS.MERCADOPAGO_ERROR,
+      details: normalized.payload,
+    },
+  );
 }
 
 // ========================================
@@ -1120,8 +1234,11 @@ export const cursosCheckoutService = {
       throw new Error(`Método de pagamento não suportado: ${params.pagamento}`);
     } catch (error) {
       const normalized = normalizeMercadoPagoError(error);
+      const checkoutError = toCheckoutPaymentError(error, normalized);
       logger.error('[CHECKOUT_CURSO_ERROR] Erro ao criar pagamento', {
         inscricaoId: inscricao.id,
+        code: checkoutError.code,
+        message: checkoutError.message,
         error: normalized,
       });
 
@@ -1142,7 +1259,7 @@ export const cursosCheckoutService = {
           });
         });
 
-      throw new Error(`Erro ao processar pagamento: ${normalized.message}`);
+      throw checkoutError;
     }
   },
 

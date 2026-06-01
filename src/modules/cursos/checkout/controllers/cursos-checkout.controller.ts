@@ -76,6 +76,27 @@ export class CursosCheckoutController {
         statusCode: 404,
         message: 'Turma não encontrada.',
       },
+      MERCADOPAGO_NOT_CONFIGURED: {
+        statusCode: 503,
+        message: 'Pagamento indisponível no momento. Tente novamente mais tarde.',
+      },
+      PIX_KEY_NOT_CONFIGURED: {
+        statusCode: 503,
+        message: 'Pagamento via PIX indisponível no momento. Tente outro método de pagamento.',
+      },
+      FINANCIAL_IDENTITY_ERROR: {
+        statusCode: 502,
+        message:
+          'O Mercado Pago não autorizou a criação deste pagamento. Verifique os dados e tente novamente.',
+      },
+      INVALID_IDENTIFICATION: {
+        statusCode: 400,
+        message: 'CPF ou CNPJ inválido para este pagamento.',
+      },
+      MERCADOPAGO_ERROR: {
+        statusCode: 502,
+        message: 'Não foi possível processar o pagamento no momento. Tente novamente.',
+      },
     };
 
     const errorCode = typeof error?.code === 'string' ? error.code : undefined;

@@ -12,6 +12,16 @@ for (const file of envFiles) {
   });
 }
 
+const firstEnv = (...keys: string[]): string => {
+  for (const key of keys) {
+    const value = process.env[key];
+    if (value && value.trim()) {
+      return value.trim();
+    }
+  }
+  return '';
+};
+
 /**
  * Configurações de ambiente centralizadas e validadas
  * Implementa padrões de microserviços para configuração segura
@@ -325,14 +335,14 @@ export const mercadopagoConfig = {
 
   // Credenciais de teste
   test: {
-    publicKey: process.env.MP_TEST_PUBLIC_KEY || '',
-    accessToken: process.env.MP_TEST_ACCESS_TOKEN || '',
+    publicKey: firstEnv('MP_TEST_PUBLIC_KEY', 'MERCADOPAGO_TEST_PUBLIC_KEY'),
+    accessToken: firstEnv('MP_TEST_ACCESS_TOKEN', 'MERCADOPAGO_TEST_ACCESS_TOKEN'),
   },
 
   // Credenciais de produção
   prod: {
-    publicKey: process.env.MP_PUBLIC_KEY || '',
-    accessToken: process.env.MP_ACCESS_TOKEN || '',
+    publicKey: firstEnv('MP_PUBLIC_KEY', 'MERCADOPAGO_PUBLIC_KEY'),
+    accessToken: firstEnv('MP_ACCESS_TOKEN', 'MERCADOPAGO_ACCESS_TOKEN'),
     clientId: process.env.MP_CLIENT_ID || '',
     clientSecret: process.env.MP_CLIENT_SECRET || '',
   },
@@ -380,8 +390,12 @@ export const mercadopagoConfig = {
 
   getStatus(): { configured: boolean; issues: string[] } {
     const issues: string[] = [];
-    if (!this.getAccessToken()) issues.push('MP_ACCESS_TOKEN/MP_TEST_ACCESS_TOKEN não configurado');
-    if (!this.getPublicKey()) issues.push('MP_PUBLIC_KEY/MP_TEST_PUBLIC_KEY não configurado');
+    if (!this.getAccessToken())
+      issues.push(
+        'MP_ACCESS_TOKEN/MERCADOPAGO_ACCESS_TOKEN ou MP_TEST_ACCESS_TOKEN não configurado',
+      );
+    if (!this.getPublicKey())
+      issues.push('MP_PUBLIC_KEY/MERCADOPAGO_PUBLIC_KEY ou MP_TEST_PUBLIC_KEY não configurado');
     if (!this.returnUrls.success) issues.push('MP_RETURN_SUCCESS_URL não configurado');
     if (!this.returnUrls.failure) issues.push('MP_RETURN_FAILURE_URL não configurado');
     if (!this.returnUrls.pending) issues.push('MP_RETURN_PENDING_URL não configurado');

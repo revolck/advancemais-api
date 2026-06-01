@@ -493,9 +493,74 @@ describe('Cursos Checkout Service', () => {
 
       vi.spyOn(Payment.prototype, 'create').mockRejectedValue(new Error('gateway offline'));
 
-      await expect(cursosCheckoutService.startCheckout(checkoutParams as any)).rejects.toThrow(
-        'Erro ao processar pagamento: gateway offline',
+      await expect(
+        cursosCheckoutService.startCheckout(checkoutParams as any),
+      ).rejects.toMatchObject({
+        code: 'MERCADOPAGO_ERROR',
+        message: 'Não foi possível processar o pagamento no Mercado Pago. Tente novamente.',
+      });
+
+      expect(cleanupSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'inscricao-123' },
+          data: expect.objectContaining({
+            status: 'CANCELADO',
+            statusPagamento: 'CANCELADO',
+          }),
+        }),
       );
+    });
+
+    it('mapeia erro de identidade financeira do Mercado Pago e limpa inscrição pendente', async () => {
+      const checkoutParams = {
+        usuarioId: 'user-123',
+        cursoId: 'curso-123',
+        turmaId: 'turma-123',
+        pagamento: 'pix' as const,
+        aceitouTermos: true,
+        payer: {
+          email: 'joao@test.com',
+          identification: {
+            type: 'CPF' as const,
+            number: '529.982.247-25',
+          },
+        },
+      };
+
+      vi.spyOn(prisma.cursos, 'findUnique').mockResolvedValue(mockCurso as any);
+      vi.spyOn(prisma.cursosTurmas, 'findUnique').mockResolvedValue(mockTurma as any);
+      vi.spyOn(cursosCheckoutService, 'validarVagasDisponiveis').mockResolvedValue(true);
+      vi.spyOn(cursosCheckoutService, 'validarInscricaoDuplicada').mockResolvedValue(false);
+      vi.spyOn(prisma.usuarios, 'findUnique').mockResolvedValue({
+        ...mockUsuario,
+        cpf: '52998224725',
+        UsuariosEnderecos: [],
+        UsuariosInformation: null,
+      } as any);
+      vi.spyOn(cursosCheckoutService, 'gerarCodigoInscricao').mockResolvedValue('MAT2025001');
+      vi.spyOn(prisma.cursosTurmasInscricoes, 'findUnique').mockResolvedValue(null);
+      vi.spyOn(prisma.cursosTurmasInscricoes, 'create').mockResolvedValue({
+        id: 'inscricao-123',
+        codigo: 'MAT2025001',
+        turmaId: 'turma-123',
+        alunoId: 'user-123',
+        status: 'AGUARDANDO_PAGAMENTO',
+        statusPagamento: 'PENDENTE',
+      } as any);
+      const cleanupSpy = vi
+        .spyOn(prisma.cursosTurmasInscricoes, 'update')
+        .mockResolvedValue({ id: 'inscricao-123' } as any);
+
+      const gatewayError = Object.assign(new Error('Financial Identity validation failed'), {
+        cause: [{ description: 'Financial Identity rejected payer' }],
+      });
+      vi.spyOn(Payment.prototype, 'create').mockRejectedValue(gatewayError);
+
+      await expect(
+        cursosCheckoutService.startCheckout(checkoutParams as any),
+      ).rejects.toMatchObject({
+        code: 'FINANCIAL_IDENTITY_ERROR',
+      });
 
       expect(cleanupSpy).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -553,9 +618,11 @@ describe('Cursos Checkout Service', () => {
       } as any);
       vi.spyOn(Payment.prototype, 'create').mockRejectedValue(new Error('gateway offline'));
 
-      await expect(cursosCheckoutService.startCheckout(checkoutParams as any)).rejects.toThrow(
-        'Erro ao processar pagamento: gateway offline',
-      );
+      await expect(
+        cursosCheckoutService.startCheckout(checkoutParams as any),
+      ).rejects.toMatchObject({
+        code: 'MERCADOPAGO_ERROR',
+      });
 
       expect(createSpy).not.toHaveBeenCalled();
       expect(updateSpy).toHaveBeenCalledWith(
@@ -597,9 +664,11 @@ describe('Cursos Checkout Service', () => {
       } as any);
       vi.spyOn(Payment.prototype, 'create').mockRejectedValue(new Error('gateway offline'));
 
-      await expect(cursosCheckoutService.startCheckout(checkoutParams as any)).rejects.toThrow(
-        'Erro ao processar pagamento: gateway offline',
-      );
+      await expect(
+        cursosCheckoutService.startCheckout(checkoutParams as any),
+      ).rejects.toMatchObject({
+        code: 'MERCADOPAGO_ERROR',
+      });
 
       expect(createSpy).not.toHaveBeenCalled();
       expect(updateSpy).toHaveBeenCalledWith(

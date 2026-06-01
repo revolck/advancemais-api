@@ -1,7 +1,13 @@
 import { assertMercadoPagoConfigured, mpClient } from '@/config/mercadopago';
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
-import { CuponsAplicarEm, CuponsLimiteUso, CuponsPeriodo, WebsiteStatus } from '@prisma/client';
+import {
+  CuponsAplicarEm,
+  CuponsLimiteUso,
+  CuponsPeriodo,
+  Prisma,
+  WebsiteStatus,
+} from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import { Payment } from 'mercadopago';
 import type { StartCursoCheckoutInput } from '../validators/cursos-checkout.schema';
@@ -316,6 +322,94 @@ async function validarECalcularDescontoCurso(
 // ========================================
 
 export const cursosCheckoutService = {
+  async criarOuReativarInscricao(params: {
+    turmaId: string;
+    alunoId: string;
+    codigo: string;
+    status: 'AGUARDANDO_PAGAMENTO' | 'INSCRITO';
+    statusPagamento: StatusPagamento;
+    valorOriginal: number;
+    valorDesconto: number;
+    valorFinal: number;
+    valorPago: number | null;
+    cupomDescontoId: string | null;
+    cupomDescontoCodigo: string | null;
+    aceitouTermos: boolean;
+    aceitouTermosIp?: string;
+    aceitouTermosUserAgent?: string;
+  }) {
+    const existing = await prisma.cursosTurmasInscricoes.findUnique({
+      where: {
+        turmaId_alunoId: {
+          turmaId: params.turmaId,
+          alunoId: params.alunoId,
+        },
+      },
+      select: {
+        id: true,
+        status: true,
+      },
+    });
+
+    const payload = {
+      codigo: params.codigo,
+      status: params.status,
+      statusPagamento: params.statusPagamento,
+      valorOriginal: params.valorOriginal,
+      valorDesconto: params.valorDesconto,
+      valorFinal: params.valorFinal,
+      valorPago: params.valorPago,
+      cupomDescontoId: params.cupomDescontoId,
+      cupomDescontoCodigo: params.cupomDescontoCodigo,
+      aceitouTermos: params.aceitouTermos,
+      aceitouTermosIp: params.aceitouTermosIp,
+      aceitouTermosUserAgent: params.aceitouTermosUserAgent,
+      aceitouTermosEm: new Date(),
+      mpPaymentId: null,
+      metodoPagamento: null,
+      pixQrCode: null,
+      pixQrCodeBase64: null,
+      boletoCodigo: null,
+      boletoUrl: null,
+      pagamentoExpiraEm: null,
+      tokenAcesso: null,
+      tokenAcessoExpiraEm: null,
+    };
+
+    if (!existing) {
+      try {
+        return await prisma.cursosTurmasInscricoes.create({
+          data: {
+            turmaId: params.turmaId,
+            alunoId: params.alunoId,
+            ...payload,
+          },
+        });
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+          throw Object.assign(new Error('Você já possui inscrição ativa nesta turma'), {
+            code: 'INSCRICAO_DUPLICADA_TURMA',
+            statusCode: 409,
+          });
+        }
+
+        throw error;
+      }
+    }
+
+    if (existing.status === 'INSCRITO' || existing.status === 'AGUARDANDO_PAGAMENTO') {
+      throw Object.assign(new Error('Você já possui inscrição ativa nesta turma'), {
+        code: 'INSCRICAO_DUPLICADA_TURMA',
+        statusCode: 409,
+      });
+    }
+
+    return prisma.cursosTurmasInscricoes.update({
+      where: { id: existing.id },
+      data: payload,
+    });
+  },
+
   /**
    * Gerar código único de inscrição (ex: MAT2024001)
    */
@@ -419,22 +513,21 @@ export const cursosCheckoutService = {
   }) {
     const codigo = await this.gerarCodigoInscricao();
 
-    const inscricao = await prisma.cursosTurmasInscricoes.create({
-      data: {
-        codigo,
-        turmaId: params.turmaId,
-        alunoId: params.usuarioId,
-        status: 'INSCRITO',
-        statusPagamento: 'APROVADO', // Curso gratuito = aprovado automaticamente
-        valorOriginal: 0,
-        valorDesconto: 0,
-        valorFinal: 0,
-        valorPago: 0,
-        aceitouTermos: params.aceitouTermos,
-        aceitouTermosIp: params.aceitouTermosIp,
-        aceitouTermosUserAgent: params.aceitouTermosUserAgent,
-        aceitouTermosEm: new Date(),
-      },
+    const inscricao = await this.criarOuReativarInscricao({
+      codigo,
+      turmaId: params.turmaId,
+      alunoId: params.usuarioId,
+      status: 'INSCRITO',
+      statusPagamento: 'APROVADO',
+      valorOriginal: 0,
+      valorDesconto: 0,
+      valorFinal: 0,
+      valorPago: 0,
+      cupomDescontoId: null,
+      cupomDescontoCodigo: null,
+      aceitouTermos: params.aceitouTermos,
+      aceitouTermosIp: params.aceitouTermosIp,
+      aceitouTermosUserAgent: params.aceitouTermosUserAgent,
     });
 
     // Gerar token de acesso
@@ -559,25 +652,23 @@ export const cursosCheckoutService = {
       });
     }
 
-    // 8. Criar inscrição pendente
+    // 8. Criar ou reativar inscrição pendente
     const codigo = await this.gerarCodigoInscricao();
-    const inscricao = await prisma.cursosTurmasInscricoes.create({
-      data: {
-        codigo,
-        turmaId: params.turmaId,
-        alunoId: params.usuarioId,
-        status: 'AGUARDANDO_PAGAMENTO',
-        statusPagamento: 'PENDENTE',
-        valorOriginal,
-        valorDesconto: desconto,
-        valorFinal,
-        cupomDescontoId: cupomId,
-        cupomDescontoCodigo: params.cupomCodigo || null,
-        aceitouTermos: params.aceitouTermos,
-        aceitouTermosIp: params.aceitouTermosIp,
-        aceitouTermosUserAgent: params.aceitouTermosUserAgent,
-        aceitouTermosEm: new Date(),
-      },
+    const inscricao = await this.criarOuReativarInscricao({
+      codigo,
+      turmaId: params.turmaId,
+      alunoId: params.usuarioId,
+      status: 'AGUARDANDO_PAGAMENTO',
+      statusPagamento: 'PENDENTE',
+      valorOriginal,
+      valorDesconto: desconto,
+      valorFinal,
+      valorPago: null,
+      cupomDescontoId: cupomId ?? null,
+      cupomDescontoCodigo: params.cupomCodigo || null,
+      aceitouTermos: params.aceitouTermos,
+      aceitouTermosIp: params.aceitouTermosIp,
+      aceitouTermosUserAgent: params.aceitouTermosUserAgent,
     });
 
     logger.info('[CURSO_CHECKOUT] Inscrição pendente criada', {

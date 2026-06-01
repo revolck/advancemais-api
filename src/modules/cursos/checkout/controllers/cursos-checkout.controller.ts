@@ -1,5 +1,6 @@
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
+import { Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
 import { ZodError } from 'zod';
 import { cursosCheckoutService } from '../services/cursos-checkout.service';
@@ -16,6 +17,83 @@ import { startCursoCheckoutSchema } from '../validators/cursos-checkout.schema';
  * - Não permite inscrições duplicadas
  */
 export class CursosCheckoutController {
+  private static getSanitizedCheckoutError(error: any): {
+    statusCode: number;
+    code: string;
+    message: string;
+    details?: unknown;
+  } {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return {
+        statusCode: 409,
+        code: 'INSCRICAO_DUPLICADA_TURMA',
+        message: 'Você já possui inscrição ativa nesta turma.',
+      };
+    }
+
+    const mappedByCode: Record<string, { statusCode: number; message: string }> = {
+      VALIDATION_ERROR: {
+        statusCode: 400,
+        message: 'Erro de validação nos dados enviados.',
+      },
+      SEM_VAGAS: {
+        statusCode: 409,
+        message: 'Não há vagas disponíveis nesta turma.',
+      },
+      INSCRICOES_ENCERRADAS: {
+        statusCode: 409,
+        message: 'Período de inscrição encerrado para esta turma.',
+      },
+      INSCRICAO_DUPLICADA_TURMA: {
+        statusCode: 409,
+        message: 'Você já possui inscrição ativa nesta turma.',
+      },
+      PAYER_IDENTIFICATION_REQUIRED: {
+        statusCode: 400,
+        message: 'CPF ou CNPJ válido é obrigatório para este pagamento.',
+      },
+      PAYER_EMAIL_REQUIRED: {
+        statusCode: 400,
+        message: 'E-mail do pagador é obrigatório para este pagamento.',
+      },
+      INVALID_CPF: {
+        statusCode: 400,
+        message: 'CPF inválido. Verifique e tente novamente.',
+      },
+      INVALID_CNPJ: {
+        statusCode: 400,
+        message: 'CNPJ inválido. Verifique e tente novamente.',
+      },
+      BOLETO_ADDRESS_REQUIRED: {
+        statusCode: 400,
+        message: 'Endereço completo é obrigatório para pagamento via boleto.',
+      },
+      USER_NOT_FOUND: {
+        statusCode: 404,
+        message: 'Usuário não encontrado.',
+      },
+      TURMA_NOT_FOUND: {
+        statusCode: 404,
+        message: 'Turma não encontrada.',
+      },
+    };
+
+    const errorCode = typeof error?.code === 'string' ? error.code : undefined;
+    if (errorCode && mappedByCode[errorCode]) {
+      return {
+        statusCode: mappedByCode[errorCode].statusCode,
+        code: errorCode,
+        message: mappedByCode[errorCode].message,
+      };
+    }
+
+    return {
+      statusCode: 500,
+      code: 'CHECKOUT_ERROR',
+      message: 'Não foi possível iniciar o checkout no momento. Tente novamente.',
+    };
+  }
+
   /**
    * POST /api/cursos/checkout
    * Iniciar checkout de curso (pagamento único)
@@ -48,11 +126,13 @@ export class CursosCheckoutController {
         code: error?.code,
       });
 
-      res.status(500).json({
+      const sanitized = CursosCheckoutController.getSanitizedCheckoutError(error);
+
+      res.status(sanitized.statusCode).json({
         success: false,
-        code: error?.code || 'CHECKOUT_ERROR',
-        message: error?.message || 'Erro ao iniciar checkout',
-        details: error?.details || undefined,
+        code: sanitized.code,
+        message: sanitized.message,
+        details: sanitized.details,
       });
     }
   };

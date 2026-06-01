@@ -477,6 +477,7 @@ describe('Cursos Checkout Service', () => {
         UsuariosInformation: null,
       } as any);
       vi.spyOn(cursosCheckoutService, 'gerarCodigoInscricao').mockResolvedValue('MAT2025001');
+      vi.spyOn(prisma.cursosTurmasInscricoes, 'findUnique').mockResolvedValue(null);
       vi.spyOn(prisma.cursosTurmasInscricoes, 'create').mockResolvedValue({
         id: 'inscricao-123',
         codigo: 'MAT2025001',
@@ -502,6 +503,111 @@ describe('Cursos Checkout Service', () => {
           data: expect.objectContaining({
             status: 'CANCELADO',
             statusPagamento: 'CANCELADO',
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('startCheckout - Reativação de inscrição encerrada', () => {
+    const checkoutParams = {
+      usuarioId: 'user-123',
+      cursoId: 'curso-123',
+      turmaId: 'turma-123',
+      pagamento: 'pix' as const,
+      aceitouTermos: true,
+      payer: {
+        email: 'joao@test.com',
+        identification: {
+          type: 'CPF' as const,
+          number: '529.982.247-25',
+        },
+      },
+    };
+
+    it('reativa inscrição CANCELADO sem criar duplicidade', async () => {
+      vi.spyOn(prisma.cursos, 'findUnique').mockResolvedValue(mockCurso as any);
+      vi.spyOn(prisma.cursosTurmas, 'findUnique').mockResolvedValue({
+        ...mockTurma,
+        vagasTotais: 1,
+      } as any);
+      vi.spyOn(cursosCheckoutService, 'validarVagasDisponiveis').mockResolvedValue(true);
+      vi.spyOn(cursosCheckoutService, 'validarInscricaoDuplicada').mockResolvedValue(false);
+      vi.spyOn(prisma.usuarios, 'findUnique').mockResolvedValue({
+        ...mockUsuario,
+        cpf: '52998224725',
+        UsuariosEnderecos: [],
+        UsuariosInformation: null,
+      } as any);
+      vi.spyOn(cursosCheckoutService, 'gerarCodigoInscricao').mockResolvedValue('MAT2025001');
+      vi.spyOn(prisma.cursosTurmasInscricoes, 'findUnique').mockResolvedValue({
+        id: 'inscricao-encerrada',
+        status: 'CANCELADO',
+      } as any);
+      const createSpy = vi.spyOn(prisma.cursosTurmasInscricoes, 'create');
+      const updateSpy = vi.spyOn(prisma.cursosTurmasInscricoes, 'update').mockResolvedValue({
+        id: 'inscricao-encerrada',
+        codigo: 'MAT2025001',
+        status: 'AGUARDANDO_PAGAMENTO',
+        statusPagamento: 'PENDENTE',
+      } as any);
+      vi.spyOn(Payment.prototype, 'create').mockRejectedValue(new Error('gateway offline'));
+
+      await expect(cursosCheckoutService.startCheckout(checkoutParams as any)).rejects.toThrow(
+        'Erro ao processar pagamento: gateway offline',
+      );
+
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'inscricao-encerrada' },
+          data: expect.objectContaining({
+            status: 'AGUARDANDO_PAGAMENTO',
+            statusPagamento: 'PENDENTE',
+          }),
+        }),
+      );
+    });
+
+    it('reativa inscrição TRANCADO sem criar duplicidade', async () => {
+      vi.spyOn(prisma.cursos, 'findUnique').mockResolvedValue(mockCurso as any);
+      vi.spyOn(prisma.cursosTurmas, 'findUnique').mockResolvedValue({
+        ...mockTurma,
+        vagasTotais: 1,
+      } as any);
+      vi.spyOn(cursosCheckoutService, 'validarVagasDisponiveis').mockResolvedValue(true);
+      vi.spyOn(cursosCheckoutService, 'validarInscricaoDuplicada').mockResolvedValue(false);
+      vi.spyOn(prisma.usuarios, 'findUnique').mockResolvedValue({
+        ...mockUsuario,
+        cpf: '52998224725',
+        UsuariosEnderecos: [],
+        UsuariosInformation: null,
+      } as any);
+      vi.spyOn(cursosCheckoutService, 'gerarCodigoInscricao').mockResolvedValue('MAT2025002');
+      vi.spyOn(prisma.cursosTurmasInscricoes, 'findUnique').mockResolvedValue({
+        id: 'inscricao-trancada',
+        status: 'TRANCADO',
+      } as any);
+      const createSpy = vi.spyOn(prisma.cursosTurmasInscricoes, 'create');
+      const updateSpy = vi.spyOn(prisma.cursosTurmasInscricoes, 'update').mockResolvedValue({
+        id: 'inscricao-trancada',
+        codigo: 'MAT2025002',
+        status: 'AGUARDANDO_PAGAMENTO',
+        statusPagamento: 'PENDENTE',
+      } as any);
+      vi.spyOn(Payment.prototype, 'create').mockRejectedValue(new Error('gateway offline'));
+
+      await expect(cursosCheckoutService.startCheckout(checkoutParams as any)).rejects.toThrow(
+        'Erro ao processar pagamento: gateway offline',
+      );
+
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'inscricao-trancada' },
+          data: expect.objectContaining({
+            status: 'AGUARDANDO_PAGAMENTO',
+            statusPagamento: 'PENDENTE',
           }),
         }),
       );

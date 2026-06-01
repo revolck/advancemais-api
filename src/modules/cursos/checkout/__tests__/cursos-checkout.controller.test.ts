@@ -104,4 +104,27 @@ describe('CursosCheckoutController.checkout', () => {
       details: undefined,
     });
   });
+
+  it('retorna erro sanitizado quando token do Mercado Pago é inválido', async () => {
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    } as any;
+
+    mockedService.startCheckout.mockRejectedValue(
+      Object.assign(new Error('invalid access token raw detail'), {
+        code: 'MERCADOPAGO_INVALID_TOKEN',
+      }),
+    );
+
+    await CursosCheckoutController.checkout(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      code: 'MERCADOPAGO_INVALID_TOKEN',
+      message: 'Pagamento indisponível no momento. Tente novamente mais tarde.',
+      details: undefined,
+    });
+  });
 });

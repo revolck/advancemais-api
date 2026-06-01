@@ -35,6 +35,8 @@ describe('Mercado Pago config', () => {
     });
 
     expect(envModule.mercadopagoConfig.getAccessToken()).toBe('APP_USR_ALIAS_TOKEN');
+    expect(envModule.mercadopagoConfig.getAccessTokenSource()).toBe('MERCADOPAGO_ACCESS_TOKEN');
+    expect(envModule.mercadopagoConfig.getAccessTokenFingerprint()).toBe('APP_USR_...len:19');
   });
 
   it('lança erro de domínio quando Mercado Pago não está configurado', async () => {

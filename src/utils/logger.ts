@@ -38,16 +38,39 @@ const resolvedLevel = normalizeLevel(
 
 const shouldLog = (requested: KnownLevel) => levelRank[requested] <= levelRank[resolvedLevel];
 
-const baseBindings: Bindings = {
+const getBaseBindings = (): Bindings => ({
   service: 'advancemais-api',
   environment: process.env.NODE_ENV,
+});
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+  if (!value || typeof value !== 'object') return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+};
+
+const normalizeArgsForPino = (args: unknown[]): unknown[] => {
+  if (typeof args[0] === 'string') {
+    const [message, context, ...rest] = args;
+
+    if (isPlainObject(context)) {
+      return [context, message, ...rest];
+    }
+
+    if (context !== undefined) {
+      return [{ context, extra: rest }, message];
+    }
+
+    return [message];
+  }
+
+  return args;
 };
 
 const createConsoleLogger = (bindings: Bindings = {}): AppLogger => {
-  const activeBindings = { ...baseBindings, ...bindings };
+  const activeBindings = { ...bindings };
 
-  const prefixArgs = (args: unknown[]) =>
-    Object.keys(activeBindings).length ? [activeBindings, ...args] : args;
+  const prefixArgs = (args: unknown[]) => [{ ...getBaseBindings(), ...activeBindings }, ...args];
 
   return {
     info: (...args) => {
@@ -75,6 +98,14 @@ const createConsoleLogger = (bindings: Bindings = {}): AppLogger => {
 
 let activeLogger: AppLogger = createConsoleLogger();
 
+const createPinoLogger = (pinoLogger: AppLogger): AppLogger => ({
+  info: (...args) => pinoLogger.info(...normalizeArgsForPino(args)),
+  warn: (...args) => pinoLogger.warn(...normalizeArgsForPino(args)),
+  error: (...args) => pinoLogger.error(...normalizeArgsForPino(args)),
+  debug: (...args) => pinoLogger.debug(...normalizeArgsForPino(args)),
+  child: (bindings) => createPinoLogger(pinoLogger.child(bindings)),
+});
+
 const proxyLogger: AppLogger = {
   info: (...args) => activeLogger.info(...args),
   warn: (...args) => activeLogger.warn(...args),
@@ -98,10 +129,12 @@ const tryLoadPino = async () => {
           : undefined;
 
     if (typeof factory === 'function') {
-      activeLogger = factory({
-        level: resolvedLevel,
-        base: baseBindings,
-      }) as AppLogger;
+      activeLogger = createPinoLogger(
+        factory({
+          level: resolvedLevel,
+          base: getBaseBindings(),
+        }) as AppLogger,
+      );
     }
   } catch (error) {
     if (process.env.NODE_ENV !== 'test') {

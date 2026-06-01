@@ -43,6 +43,7 @@ const CHECKOUT_DOMAIN_STATUS: Record<string, number> = {
   PIX_KEY_NOT_CONFIGURED: 503,
   FINANCIAL_IDENTITY_ERROR: 502,
   MERCADOPAGO_ERROR: 502,
+  MERCADOPAGO_INVALID_TOKEN: 503,
 };
 
 // ========================================
@@ -142,12 +143,43 @@ function isValidCNPJ(cnpj: string): boolean {
 /**
  * Normalizar erro do Mercado Pago
  */
+function redactSensitiveData(value: unknown, depth = 0): unknown {
+  if (depth > 8) return '[Truncated]';
+
+  if (typeof value === 'string') {
+    return value
+      .replace(/Bearer\s+[^\s,;]+/gi, 'Bearer [REDACTED]')
+      .replace(/\b(APP_USR|TEST)-[A-Za-z0-9._-]+/g, '$1-[REDACTED]');
+  }
+
+  if (!value || typeof value !== 'object') return value;
+  if (value instanceof Date) return value.toISOString();
+
+  if (Array.isArray(value)) {
+    return value.map((item) => redactSensitiveData(item, depth + 1));
+  }
+
+  const record = value as Record<string, unknown>;
+  const redacted: Record<string, unknown> = {};
+
+  for (const [key, item] of Object.entries(record)) {
+    if (/token|authorization|access[_-]?key|secret|password|credential/i.test(key)) {
+      redacted[key] = '[REDACTED]';
+      continue;
+    }
+
+    redacted[key] = redactSensitiveData(item, depth + 1);
+  }
+
+  return redacted;
+}
+
 function normalizeMercadoPagoError(error: unknown): { message: string; payload?: any } {
   if (error instanceof Error) {
     const errObj = error as any;
     return {
       message: error.message,
-      payload: {
+      payload: redactSensitiveData({
         name: error.name,
         message: error.message,
         stack: error.stack,
@@ -157,7 +189,7 @@ function normalizeMercadoPagoError(error: unknown): { message: string; payload?:
         response: errObj?.response,
         status: errObj?.status,
         statusCode: errObj?.statusCode,
-      },
+      }),
     };
   }
 
@@ -175,7 +207,7 @@ function normalizeMercadoPagoError(error: unknown): { message: string; payload?:
 
     const payload = errObj?.response?.data ?? errObj;
 
-    return { message: String(message), payload };
+    return { message: String(message), payload: redactSensitiveData(payload) };
   }
 
   return { message: String(error ?? 'erro desconhecido'), payload: error };
@@ -209,6 +241,30 @@ function getGatewayErrorSearchText(error: unknown, normalized: { message: string
     .toLowerCase();
 }
 
+function getGatewayStatus(error: unknown, normalized: { payload?: any }): number | undefined {
+  const errObj = error as any;
+  const candidates = [
+    errObj?.status,
+    errObj?.statusCode,
+    errObj?.apiResponse?.status,
+    errObj?.apiResponse?.statusCode,
+    errObj?.response?.status,
+    errObj?.response?.statusCode,
+    normalized.payload?.status,
+    normalized.payload?.statusCode,
+    normalized.payload?.apiResponse?.status,
+    normalized.payload?.apiResponse?.statusCode,
+    normalized.payload?.response?.status,
+    normalized.payload?.response?.statusCode,
+  ];
+
+  const status = candidates
+    .map((candidate) => Number(candidate))
+    .find((candidate) => Number.isInteger(candidate) && candidate >= 100);
+
+  return status;
+}
+
 function toCheckoutPaymentError(
   error: unknown,
   normalized: { message: string; payload?: any },
@@ -223,6 +279,21 @@ function toCheckoutPaymentError(
   }
 
   const searchText = getGatewayErrorSearchText(error, normalized);
+  const gatewayStatus = getGatewayStatus(error, normalized);
+
+  if (
+    gatewayStatus === 401 ||
+    searchText.includes('invalid access token') ||
+    searchText.includes('invalid_token') ||
+    searchText.includes('unauthorized') ||
+    (searchText.includes('access token') && searchText.includes('invalid'))
+  ) {
+    return Object.assign(new Error('Token do Mercado Pago inválido ou não autorizado.'), {
+      code: 'MERCADOPAGO_INVALID_TOKEN',
+      statusCode: CHECKOUT_DOMAIN_STATUS.MERCADOPAGO_INVALID_TOKEN,
+      details: normalized.payload,
+    });
+  }
 
   if (
     searchText.includes('without key enabled for qr') ||
@@ -572,6 +643,13 @@ export const cursosCheckoutService = {
     return { token, expiresAt };
   },
 
+  getPaymentIdempotencyKey(
+    inscricaoId: string,
+    pagamento: StartCursoCheckoutInput['pagamento'],
+  ): string {
+    return `curso-checkout:${inscricaoId}:${pagamento}`;
+  },
+
   /**
    * Validar se aluno já possui inscrição na turma
    */
@@ -795,6 +873,7 @@ export const cursosCheckoutService = {
     // 9. Criar pagamento no Mercado Pago
     const mp = mpClient!;
     const paymentApi = new Payment(mp);
+    const paymentIdempotencyKey = this.getPaymentIdempotencyKey(inscricao.id, params.pagamento);
     const titulo =
       desconto > 0 ? `${curso.nome} (com desconto de R$ ${desconto.toFixed(2)})` : curso.nome;
 
@@ -909,6 +988,7 @@ export const cursosCheckoutService = {
           inscricaoId: inscricao.id,
           codigo: inscricao.codigo,
           valorFinal,
+          requestId: paymentIdempotencyKey,
         });
 
         const pixPayment = (await paymentApi.create({
@@ -924,6 +1004,7 @@ export const cursosCheckoutService = {
               identification: payerBase.identification,
             },
           },
+          requestOptions: { idempotencyKey: paymentIdempotencyKey },
         })) as MercadoPagoResponse;
 
         const pixBody = pixPayment.body ?? pixPayment;
@@ -1007,6 +1088,7 @@ export const cursosCheckoutService = {
           codigo: inscricao.codigo,
           valorFinal,
           installments: cardData.installments || 1,
+          requestId: paymentIdempotencyKey,
         });
 
         const installments = cardData.installments ?? 1;
@@ -1019,6 +1101,7 @@ export const cursosCheckoutService = {
             external_reference: inscricao.id,
             payer: payerBase,
           },
+          requestOptions: { idempotencyKey: paymentIdempotencyKey },
         })) as MercadoPagoResponse;
 
         const cardBody = cardPayment.body ?? cardPayment;
@@ -1140,6 +1223,7 @@ export const cursosCheckoutService = {
           inscricaoId: inscricao.id,
           codigo: inscricao.codigo,
           valorFinal,
+          requestId: paymentIdempotencyKey,
         });
 
         const boletoPayment = (await paymentApi.create({
@@ -1153,6 +1237,7 @@ export const cursosCheckoutService = {
               identification: documento && documento.number ? documento : undefined,
             },
           },
+          requestOptions: { idempotencyKey: paymentIdempotencyKey },
         })) as MercadoPagoResponse;
 
         const boletoBody = boletoPayment.body ?? boletoPayment;
@@ -1237,6 +1322,8 @@ export const cursosCheckoutService = {
       const checkoutError = toCheckoutPaymentError(error, normalized);
       logger.error('[CHECKOUT_CURSO_ERROR] Erro ao criar pagamento', {
         inscricaoId: inscricao.id,
+        metodoPagamento: params.pagamento,
+        requestId: paymentIdempotencyKey,
         code: checkoutError.code,
         message: checkoutError.message,
         error: normalized,

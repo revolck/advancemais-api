@@ -359,6 +359,24 @@ export const mercadopagoConfig = {
     return this.prod.accessToken || this.test.accessToken || '';
   },
 
+  getAccessTokenSource(): string | null {
+    const candidates = [
+      'MP_ACCESS_TOKEN',
+      'MERCADOPAGO_ACCESS_TOKEN',
+      'MP_TEST_ACCESS_TOKEN',
+      'MERCADOPAGO_TEST_ACCESS_TOKEN',
+    ];
+
+    return candidates.find((key) => Boolean(process.env[key]?.trim())) ?? null;
+  },
+
+  getAccessTokenFingerprint(): string | null {
+    const token = this.getAccessToken();
+    if (!token) return null;
+
+    return `${token.slice(0, 8)}...len:${token.length}`;
+  },
+
   // Retorna a public key prioritária (produção > teste)
   getPublicKey(): string {
     return this.prod.publicKey || this.test.publicKey || '';

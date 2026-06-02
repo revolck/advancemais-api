@@ -4,7 +4,11 @@ import { prisma } from '@/config/prisma';
 import { AuditoriaService } from '@/modules/auditoria/services/auditoria.service';
 import { logger } from '@/utils/logger';
 import { getDefinitionsByCategory, isConfigCategory, type ConfigCategory } from '../catalog';
-import { encryptSecret, fingerprintSecret } from '../utils/config-crypto';
+import {
+  encryptSecret,
+  fingerprintSecret,
+  isConfigEncryptionKeyConfigured,
+} from '../utils/config-crypto';
 import { normalizeConfigValue } from '../utils/config-normalizers';
 import { runtimeConfigService } from './runtime-config.service';
 
@@ -208,6 +212,10 @@ class ConfiguracoesGeraisService {
     const secrets = payload.secrets ?? {};
     const changedKeys: string[] = [];
     const normalizedValues: EffectiveValueMap = {};
+    const hasSecretReplace = definitions.some((definition) => {
+      if (!definition.secret) return false;
+      return secrets[definition.key]?.action === 'replace';
+    });
 
     for (const definition of definitions) {
       if (definition.secret) continue;
@@ -219,6 +227,26 @@ class ConfiguracoesGeraisService {
     }
 
     this.validateUpdatePayload(category, definitions, before, normalizedValues);
+
+    if (hasSecretReplace && !isConfigEncryptionKeyConfigured()) {
+      serviceLogger.warn(
+        {
+          category,
+          actorId,
+          secretKeys: Object.keys(secrets).filter((key) => secrets[key]?.action === 'replace'),
+        },
+        'Tentativa de alterar segredo sem CONFIG_ENCRYPTION_KEY configurada',
+      );
+      throw Object.assign(
+        new Error(
+          'Campos protegidos não podem ser alterados agora porque a chave de segurança da API não está configurada.',
+        ),
+        {
+          code: 'CONFIG_SECRET_UNAVAILABLE',
+          statusCode: 503,
+        },
+      );
+    }
 
     for (const definition of definitions) {
       if (definition.secret) {
@@ -243,7 +271,27 @@ class ConfiguracoesGeraisService {
             });
           }
 
-          const encrypted = encryptSecret(rawValue);
+          let encrypted: string;
+          try {
+            encrypted = encryptSecret(rawValue);
+          } catch (error) {
+            if ((error as any)?.code === 'CONFIG_ENCRYPTION_KEY_MISSING') {
+              serviceLogger.warn(
+                { category, actorId, key: definition.key },
+                'Falha ao criptografar segredo por ausência de CONFIG_ENCRYPTION_KEY',
+              );
+              throw Object.assign(
+                new Error(
+                  'Campos protegidos não podem ser alterados agora porque a chave de segurança da API não está configurada.',
+                ),
+                {
+                  code: 'CONFIG_SECRET_UNAVAILABLE',
+                  statusCode: 503,
+                },
+              );
+            }
+            throw error;
+          }
           await prisma.sistemaConfiguracoes.upsert({
             where: { categoria_chave: { categoria: category, chave: definition.key } },
             create: {

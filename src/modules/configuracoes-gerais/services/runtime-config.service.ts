@@ -133,7 +133,15 @@ class RuntimeConfigService {
 
     if (definition.secret) {
       if (row?.valorCriptografado) {
-        return decryptSecret(row.valorCriptografado);
+        try {
+          return decryptSecret(row.valorCriptografado);
+        } catch (error) {
+          this.log.warn(
+            { category, key, err: error },
+            'Não foi possível decriptar segredo runtime; usando fallback de ambiente/default',
+          );
+          return firstEnvValue(definition.envKeys) ?? String(definition.defaultValue ?? '');
+        }
       }
       return firstEnvValue(definition.envKeys) ?? String(definition.defaultValue ?? '');
     }

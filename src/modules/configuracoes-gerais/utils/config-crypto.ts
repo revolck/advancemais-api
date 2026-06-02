@@ -2,6 +2,10 @@ import crypto from 'crypto';
 
 const ENCRYPTION_VERSION = 'v1';
 
+export function isConfigEncryptionKeyConfigured(): boolean {
+  return Boolean(process.env.CONFIG_ENCRYPTION_KEY?.trim());
+}
+
 function getEncryptionKey(): Buffer {
   const raw = process.env.CONFIG_ENCRYPTION_KEY;
   if (!raw?.trim()) {

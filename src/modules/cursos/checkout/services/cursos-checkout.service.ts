@@ -44,6 +44,7 @@ const CHECKOUT_DOMAIN_STATUS: Record<string, number> = {
   FINANCIAL_IDENTITY_ERROR: 502,
   MERCADOPAGO_ERROR: 502,
   MERCADOPAGO_INVALID_TOKEN: 503,
+  MERCADOPAGO_UNAUTHORIZED_POLICY: 503,
 };
 
 // ========================================
@@ -186,6 +187,7 @@ function normalizeMercadoPagoError(error: unknown): { message: string; payload?:
         code: errObj?.code,
         cause: errObj?.cause,
         apiResponse: errObj?.apiResponse,
+        payload: errObj?.payload,
         response: errObj?.response,
         status: errObj?.status,
         statusCode: errObj?.statusCode,
@@ -248,6 +250,8 @@ function getGatewayStatus(error: unknown, normalized: { payload?: any }): number
     errObj?.statusCode,
     errObj?.apiResponse?.status,
     errObj?.apiResponse?.statusCode,
+    errObj?.payload?.status,
+    errObj?.payload?.statusCode,
     errObj?.response?.status,
     errObj?.response?.statusCode,
     normalized.payload?.status,
@@ -280,6 +284,23 @@ function toCheckoutPaymentError(
 
   const searchText = getGatewayErrorSearchText(error, normalized);
   const gatewayStatus = getGatewayStatus(error, normalized);
+
+  if (
+    gatewayStatus === 403 &&
+    (searchText.includes('pa_unauthorized_result_from_policies') ||
+      searchText.includes('policy returned unauthorized') ||
+      searchText.includes('policyagent') ||
+      searchText.includes('blocked_by'))
+  ) {
+    return Object.assign(
+      new Error('O Mercado Pago bloqueou a criação do pagamento por política da conta.'),
+      {
+        code: 'MERCADOPAGO_UNAUTHORIZED_POLICY',
+        statusCode: CHECKOUT_DOMAIN_STATUS.MERCADOPAGO_UNAUTHORIZED_POLICY,
+        details: normalized.payload,
+      },
+    );
+  }
 
   if (
     gatewayStatus === 401 ||

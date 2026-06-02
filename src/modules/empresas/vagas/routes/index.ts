@@ -788,7 +788,7 @@ router.get('/slug/:slug', publicCache, VagasController.getBySlug);
 router.use('/solicitacoes', vagasSolicitacoesRoutes);
 
 router.use('/:vagaId/processos', supabaseAuthMiddleware(protectedRoles), vagasProcessosRoutes);
-router.get('/:id', publicCache, VagasController.get);
+router.get('/:id', optionalSupabaseAuth(), publicCache, VagasController.get);
 
 /**
  * @openapi

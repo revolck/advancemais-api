@@ -84,6 +84,10 @@ export class CursosCheckoutController {
         statusCode: 503,
         message: 'Pagamento indisponível no momento. Tente novamente mais tarde.',
       },
+      MERCADOPAGO_UNAUTHORIZED_POLICY: {
+        statusCode: 503,
+        message: 'Pagamento indisponível no momento. Tente novamente mais tarde.',
+      },
       PIX_KEY_NOT_CONFIGURED: {
         statusCode: 503,
         message: 'Pagamento via PIX indisponível no momento. Tente outro método de pagamento.',

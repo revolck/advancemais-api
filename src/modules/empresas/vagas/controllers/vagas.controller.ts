@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { ZodError } from 'zod';
-import type { StatusDeVagas } from '@prisma/client';
+import { StatusDeVagas } from '@prisma/client';
 import { setCacheHeaders, DEFAULT_TTL } from '@/utils/cache';
 import { Roles } from '@/modules/usuarios/enums/Roles';
 
@@ -34,6 +34,15 @@ const sendSlugDuplicadoResponse = (res: Response) =>
       slug: ['Slug já está em uso.'],
     },
   });
+
+const SETOR_DE_VAGAS_DETAIL_STATUSES: StatusDeVagas[] = [
+  StatusDeVagas.EM_ANALISE,
+  StatusDeVagas.PUBLICADO,
+  StatusDeVagas.EXPIRADO,
+  StatusDeVagas.DESPUBLICADA,
+  StatusDeVagas.PAUSADA,
+  StatusDeVagas.ENCERRADA,
+];
 
 export class VagasController {
   static list = async (_req: Request, res: Response) => {
@@ -167,7 +176,20 @@ export class VagasController {
   static get = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const vaga = await vagasService.get(id);
+      const user = req.user;
+      const role = user?.role as Roles | undefined;
+
+      const vaga =
+        role === Roles.ADMIN || role === Roles.MODERADOR
+          ? await vagasService.getForInternalViewer({ id })
+          : role === Roles.SETOR_DE_VAGAS
+            ? await vagasService.getForInternalViewer({
+                id,
+                status: SETOR_DE_VAGAS_DETAIL_STATUSES,
+              })
+            : role === Roles.EMPRESA && user?.id
+              ? await vagasService.getForInternalViewer({ id, usuarioIds: [user.id] })
+              : await vagasService.get(id);
 
       if (!vaga) {
         return res.status(404).json({

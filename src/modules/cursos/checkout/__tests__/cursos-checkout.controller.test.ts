@@ -127,4 +127,27 @@ describe('CursosCheckoutController.checkout', () => {
       details: undefined,
     });
   });
+
+  it('retorna erro sanitizado quando Mercado Pago bloqueia por política', async () => {
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    } as any;
+
+    mockedService.startCheckout.mockRejectedValue(
+      Object.assign(new Error('PA_UNAUTHORIZED_RESULT_FROM_POLICIES raw detail'), {
+        code: 'MERCADOPAGO_UNAUTHORIZED_POLICY',
+      }),
+    );
+
+    await CursosCheckoutController.checkout(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      code: 'MERCADOPAGO_UNAUTHORIZED_POLICY',
+      message: 'Pagamento indisponível no momento. Tente novamente mais tarde.',
+      details: undefined,
+    });
+  });
 });

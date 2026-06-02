@@ -63,7 +63,9 @@ export class EmailVerificationService {
       log.info('📧 Iniciando envio de verificação');
 
       // Valida se verificação está habilitada
-      if (!this.config.isEmailVerificationEnabled()) {
+      const runtimeConfig = await this.config.getRuntimeConfig();
+
+      if (!runtimeConfig.UsuariosVerificacaoEmail.enabled) {
         log.info('ℹ️ Verificação de email desabilitada');
         return { success: true, simulated: true };
       }
@@ -98,8 +100,10 @@ export class EmailVerificationService {
 
       // Gera token de verificação
       const token = this.config.generateVerificationToken();
-      const tokenExpiration = this.config.getTokenExpirationDate();
-      const verificationUrl = this.config.generateVerificationUrl(token);
+      const tokenExpiration = new Date(
+        Date.now() + runtimeConfig.UsuariosVerificacaoEmail.tokenExpirationHours * 60 * 60 * 1000,
+      );
+      const verificationUrl = `${runtimeConfig.urls.verification}?token=${token}`;
 
       // Salva token no banco
       await this.saveVerificationToken(userData.id, token, tokenExpiration, correlationId);
@@ -111,8 +115,8 @@ export class EmailVerificationService {
         tipoUsuario: userData.tipoUsuario,
         verificationUrl,
         token,
-        expirationHours: this.config.getConfig().UsuariosVerificacaoEmail.tokenExpirationHours,
-        frontendUrl: this.config.getConfig().urls.frontend,
+        expirationHours: runtimeConfig.UsuariosVerificacaoEmail.tokenExpirationHours,
+        frontendUrl: runtimeConfig.urls.frontend,
       };
 
       // Gera email de verificação

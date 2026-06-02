@@ -1,4 +1,8 @@
-import { assertMercadoPagoConfigured, mpClient } from '@/config/mercadopago';
+import {
+  assertMercadoPagoConfiguredAsync,
+  getMercadoPagoClient,
+  getRuntimeMercadoPagoConfig,
+} from '@/config/mercadopago';
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import {
@@ -45,6 +49,8 @@ const CHECKOUT_DOMAIN_STATUS: Record<string, number> = {
   MERCADOPAGO_ERROR: 502,
   MERCADOPAGO_INVALID_TOKEN: 503,
   MERCADOPAGO_UNAUTHORIZED_POLICY: 503,
+  CURSO_INSTALLMENTS_DISABLED: 400,
+  CURSO_INSTALLMENTS_LIMIT_EXCEEDED: 400,
 };
 
 // ========================================
@@ -796,7 +802,7 @@ export const cursosCheckoutService = {
    * Iniciar checkout de curso (PAGAMENTO ÚNICO)
    */
   async startCheckout(params: StartCursoCheckoutInput) {
-    assertMercadoPagoConfigured();
+    const mp = await assertMercadoPagoConfiguredAsync();
 
     // 1. Validar curso existe e está disponível (PUBLICADO)
     const curso = await prisma.cursos.findUnique({
@@ -892,7 +898,6 @@ export const cursosCheckoutService = {
     });
 
     // 9. Criar pagamento no Mercado Pago
-    const mp = mpClient!;
     const paymentApi = new Payment(mp);
     const paymentIdempotencyKey = this.getPaymentIdempotencyKey(inscricao.id, params.pagamento);
     const titulo =
@@ -1104,15 +1109,39 @@ export const cursosCheckoutService = {
           throw new Error('Token do cartão é obrigatório para pagamentos com cartão');
         }
 
+        const mercadoPagoConfig = await getRuntimeMercadoPagoConfig();
+        const requestedInstallments = cardData.installments ?? 1;
+        const { enabled: courseInstallmentsEnabled, maxInstallments } =
+          mercadoPagoConfig.courseInstallments;
+
+        if (!courseInstallmentsEnabled && requestedInstallments > 1) {
+          throw Object.assign(new Error('Parcelamento desativado para cursos e turmas.'), {
+            code: 'CURSO_INSTALLMENTS_DISABLED',
+            statusCode: CHECKOUT_DOMAIN_STATUS.CURSO_INSTALLMENTS_DISABLED,
+            maxInstallments: 1,
+          });
+        }
+
+        if (requestedInstallments > maxInstallments) {
+          throw Object.assign(
+            new Error(`Parcelamento limitado a ${maxInstallments}x para cursos e turmas.`),
+            {
+              code: 'CURSO_INSTALLMENTS_LIMIT_EXCEEDED',
+              statusCode: CHECKOUT_DOMAIN_STATUS.CURSO_INSTALLMENTS_LIMIT_EXCEEDED,
+              maxInstallments,
+            },
+          );
+        }
+
+        const installments = courseInstallmentsEnabled ? requestedInstallments : 1;
+
         logger.info('[CARD_CHECKOUT_CURSO] Criando pagamento com cartão', {
           inscricaoId: inscricao.id,
           codigo: inscricao.codigo,
           valorFinal,
-          installments: cardData.installments || 1,
+          installments,
           requestId: paymentIdempotencyKey,
         });
-
-        const installments = cardData.installments ?? 1;
         const cardPayment = (await paymentApi.create({
           body: {
             transaction_amount: valorFinal,
@@ -1435,6 +1464,7 @@ export const cursosCheckoutService = {
       }
 
       let gatewayData = data;
+      const mpClient = await getMercadoPagoClient();
       if (mpClient) {
         try {
           const fetched = (await new Payment(mpClient).get({ id: mpPaymentId })) as any;

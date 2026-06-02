@@ -103,6 +103,14 @@ export const startCheckoutSchema = z
       });
     }
 
+    if (data.metodo === 'assinatura' && (data.card?.installments ?? 1) > 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['card', 'installments'],
+        message: 'Planos recorrentes não aceitam parcelamento no cartão.',
+      });
+    }
+
     // Boleto exige endereço completo
     if (data.metodo === 'pagamento' && data.pagamento === 'boleto') {
       if (!data.payer?.address) {

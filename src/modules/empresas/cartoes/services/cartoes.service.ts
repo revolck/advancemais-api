@@ -1,5 +1,8 @@
 import { Customer, CustomerCard } from 'mercadopago';
-import { mpClient, assertMercadoPagoConfigured } from '@/config/mercadopago';
+import {
+  assertMercadoPagoConfiguredAsync,
+  getMercadoPagoClient,
+} from '@/config/mercadopago';
 import { prisma } from '@/config/prisma';
 
 interface CartaoSalvo {
@@ -53,7 +56,7 @@ export const cartoesService = {
     isPadrao = false,
     tipo: 'credito' | 'debito' = 'credito',
   ): Promise<CartaoSalvo> {
-    assertMercadoPagoConfigured();
+    const mpClient = await assertMercadoPagoConfiguredAsync();
 
     // 0. Verificar limite de 5 cartões
     const totalCartoes = await prisma.$queryRaw<{ count: bigint }[]>`
@@ -92,7 +95,7 @@ export const cartoesService = {
     let mpCustomerId = empresa.mpCustomerId;
 
     if (!mpCustomerId) {
-      const customerApi = new Customer(mpClient!);
+      const customerApi = new Customer(mpClient);
       const customerData = {
         email: empresa.email,
         first_name: empresa.nomeCompleto,
@@ -114,7 +117,7 @@ export const cartoesService = {
     }
 
     // 3. Adicionar cartão ao customer
-    const customerCardApi = new CustomerCard(mpClient!);
+    const customerCardApi = new CustomerCard(mpClient);
     const card = await customerCardApi.create({
       customerId: mpCustomerId,
       body: { token: cardToken },
@@ -128,7 +131,7 @@ export const cartoesService = {
     let cartaoValidado = false;
     try {
       const { Payment } = await import('mercadopago');
-      const paymentApi = new Payment(mpClient!);
+      const paymentApi = new Payment(mpClient);
 
       // Fazer cobrança de R$ 1,00 para validar
       const validacao = await paymentApi.create({
@@ -150,7 +153,7 @@ export const cartoesService = {
         // Estornar imediatamente
         try {
           const { PaymentRefund } = await import('mercadopago');
-          const refundApi = new PaymentRefund(mpClient!);
+          const refundApi = new PaymentRefund(mpClient);
           await refundApi.create({
             payment_id: validacao.id,
             body: {},
@@ -329,8 +332,9 @@ export const cartoesService = {
 
     // Tentar remover do Mercado Pago
     try {
-      assertMercadoPagoConfigured();
-      const customerCardApi = new CustomerCard(mpClient!);
+      const mpClient = await getMercadoPagoClient();
+      if (!mpClient) throw new Error('Mercado Pago indisponível');
+      const customerCardApi = new CustomerCard(mpClient);
       await customerCardApi.remove({
         customerId: cartaoData.mpCustomerId,
         cardId: cartaoData.mpCardId,

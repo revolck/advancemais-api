@@ -170,13 +170,19 @@ try {
     startExpiredUserCleanupJob();
     // Cron de reconciliação de assinaturas (habilitado via env)
     try {
-      startAssinaturasReconJob();
-      startBoletoWatcherJob();
+      void startAssinaturasReconJob().catch((err) =>
+        routerLogger.warn({ err }, '⚠️ Falha ao iniciar cron de reconciliação'),
+      );
+      void startBoletoWatcherJob().catch((err) =>
+        routerLogger.warn({ err }, '⚠️ Falha ao iniciar watcher de boletos'),
+      );
       startBloqueiosWatcherJob();
       startEstagiosWatcherJob();
       startTurmasStatusWatcherJob();
-      startCobrancaAutomaticaJob(); // Cobrança automática de cartões
-      startAgendaCronJobs(); // Cron jobs de agenda (aulas, provas, entrevistas)
+      void startCobrancaAutomaticaJob().catch((err) =>
+        routerLogger.warn({ err }, '⚠️ Falha ao iniciar cron de cobrança automática'),
+      );
+      void startAgendaCronJobs(); // Cron jobs de agenda (aulas, provas, entrevistas)
     } catch (e) {
       routerLogger.warn({ err: e }, '⚠️ Falha ao iniciar crons');
     }

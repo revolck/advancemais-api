@@ -2,7 +2,6 @@ import { BrevoClient } from '../client/brevo-client';
 import { BrevoConfigManager } from '../config/brevo-config';
 import { EmailTemplates } from '../templates/email-templates';
 import { prisma } from '../../../config/prisma';
-import { brevoConfig } from '../../../config/env';
 import { invalidateUserCache } from '../../usuarios/utils/cache';
 import { logger } from '@/utils/logger';
 import {
@@ -68,7 +67,9 @@ export class EmailService {
         return await this.sendTestEmail(userData, correlationId);
       }
 
-      if (this.config.isEmailVerificationEnabled()) {
+      const runtimeConfig = await this.config.getRuntimeConfig();
+
+      if (runtimeConfig.UsuariosVerificacaoEmail.enabled) {
         return await this.sendVerificationEmail(userData, correlationId);
       }
 
@@ -100,7 +101,7 @@ export class EmailService {
         nomeCompleto: userData.nomeCompleto,
         tipoUsuario: userData.tipoUsuario,
         email: userData.email,
-        frontendUrl: this.config.getConfig().urls.frontend,
+        frontendUrl: (await this.config.getRuntimeConfig()).urls.frontend,
       };
 
       const emailContent = EmailTemplates.generateWelcomeEmail(templateData);
@@ -153,9 +154,12 @@ export class EmailService {
         return { success: true, simulated: true };
       }
 
+      const runtimeConfig = await this.config.getRuntimeConfig();
       const token = this.config.generateVerificationToken();
-      const tokenExpiration = this.config.getTokenExpirationDate();
-      const verificationUrl = this.config.generateVerificationUrl(token);
+      const tokenExpiration = new Date(
+        Date.now() + runtimeConfig.UsuariosVerificacaoEmail.tokenExpirationHours * 60 * 60 * 1000,
+      );
+      const verificationUrl = `${runtimeConfig.urls.verification}?token=${token}`;
 
       await this.saveVerificationToken(userData.id, token, tokenExpiration);
 
@@ -165,8 +169,8 @@ export class EmailService {
         tipoUsuario: userData.tipoUsuario,
         verificationUrl,
         token,
-        expirationHours: this.config.getConfig().UsuariosVerificacaoEmail.tokenExpirationHours,
-        frontendUrl: this.config.getConfig().urls.frontend,
+        expirationHours: runtimeConfig.UsuariosVerificacaoEmail.tokenExpirationHours,
+        frontendUrl: runtimeConfig.urls.frontend,
       };
 
       const emailContent = EmailTemplates.generateVerificationEmail(templateData);
@@ -207,7 +211,7 @@ export class EmailService {
         nomeCompleto: userData.nomeCompleto,
         tipoUsuario: userData.tipoUsuario,
         email: userData.email,
-        frontendUrl: this.config.getConfig().urls.frontend,
+        frontendUrl: (await this.config.getRuntimeConfig()).urls.frontend,
       };
 
       const emailContent = EmailTemplates.generateWelcomeEmail(templateData);
@@ -286,15 +290,16 @@ export class EmailService {
     });
 
     try {
+      const runtimeConfig = await this.config.getRuntimeConfig();
       const linkRecuperacao = `${
-        this.config.getConfig().urls.passwordRecovery
+        runtimeConfig.urls.passwordRecovery
       }?tp=${token}&ep=${encodeURIComponent(usuario.email)}`;
       const templateData = {
         nomeCompleto: usuario.nomeCompleto,
         token,
         linkRecuperacao,
-        expiracaoHoras: brevoConfig.passwordRecovery.tokenExpirationMinutes / 60,
-        maxTentativas: brevoConfig.passwordRecovery.maxAttempts,
+        expiracaoHoras: runtimeConfig.passwordRecovery.tokenExpirationMinutes / 60,
+        maxTentativas: runtimeConfig.passwordRecovery.maxAttempts,
       };
 
       const emailContent = EmailTemplates.generatePasswordRecoveryEmail(templateData);

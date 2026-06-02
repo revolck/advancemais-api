@@ -3,9 +3,10 @@ import { cobrancaAutomaticaService } from '../services/cobranca-automatica.servi
 import { logger } from '@/utils/logger';
 import { handlePrismaConnectionError } from '@/utils/prisma-errors';
 import { checkDatabaseConnection } from '@/utils/db-connection-check';
-import { parseScheduleConfig } from '@/utils/cron-helpers';
+import { runtimeConfigService } from '@/modules/configuracoes-gerais/services/runtime-config.service';
 
 const log = logger.child({ module: 'CobrancaAutomaticaCron' });
+let cobrancaAutomaticaTask: ReturnType<typeof cron.schedule> | null = null;
 
 /**
  * Processa cobranças automáticas de cartões
@@ -92,29 +93,34 @@ async function processarCobrancasAutomaticas() {
 /**
  * Inicia o cron job de cobrança automática
  */
-export function startCobrancaAutomaticaJob() {
+export async function startCobrancaAutomaticaJob() {
   // Não executar em ambiente de teste
   if (process.env.NODE_ENV === 'test') {
     log.debug('Test environment detectado, pulando cron de cobrança automática');
     return;
   }
 
-  // Verificar se está habilitado via env
-  const enabled = process.env.CRON_COBRANCA_ENABLED === 'true';
-  if (!enabled) {
-    log.info('⏱️ Cron de cobrança automática desabilitado via env (CRON_COBRANCA_ENABLED)');
+  stopCobrancaAutomaticaJob();
+
+  const runtimeConfig = await runtimeConfigService.getMercadoPagoConfig();
+  if (!runtimeConfig.settings.cobrancaEnabled) {
+    log.info('⏱️ Cron de cobrança automática desabilitado');
     return;
   }
 
-  // Schedule: padrão 6h da manhã (360 minutos = 6 horas)
-  // Use apenas minutos (ex: 360 = 6h) ou expressão cron completa
-  const schedule = parseScheduleConfig(process.env.CRON_COBRANCA_SCHEDULE, 360);
+  const schedule = runtimeConfig.settings.cobrancaSchedule;
 
-  cron.schedule(schedule, async () => {
+  cobrancaAutomaticaTask = cron.schedule(schedule, async () => {
     await processarCobrancasAutomaticas();
   });
 
   log.info({ schedule }, '⏱️ Cron de cobrança automática agendado');
+}
+
+export function stopCobrancaAutomaticaJob() {
+  if (!cobrancaAutomaticaTask) return;
+  cobrancaAutomaticaTask.stop();
+  cobrancaAutomaticaTask = null;
 }
 
 // Exportar para testes manuais

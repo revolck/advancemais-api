@@ -105,6 +105,15 @@ export class CursosCheckoutController {
         statusCode: 502,
         message: 'Não foi possível processar o pagamento no momento. Tente novamente.',
       },
+      CURSO_INSTALLMENTS_DISABLED: {
+        statusCode: 400,
+        message: 'O parcelamento está desativado para esta compra de curso.',
+      },
+      CURSO_INSTALLMENTS_LIMIT_EXCEEDED: {
+        statusCode: 400,
+        message:
+          'A quantidade de parcelas informada ultrapassa o limite permitido para esta compra.',
+      },
     };
 
     const errorCode = typeof error?.code === 'string' ? error.code : undefined;

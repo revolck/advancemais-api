@@ -1,25 +1,30 @@
 import cron from 'node-cron';
-import { mercadopagoConfig } from '@/config/env';
 import { assinaturasService } from '../services/assinaturas.service';
 import { logger } from '@/utils/logger';
 import { handlePrismaConnectionError } from '@/utils/prisma-errors';
 import { checkDatabaseConnection } from '@/utils/db-connection-check';
+import { runtimeConfigService } from '@/modules/configuracoes-gerais/services/runtime-config.service';
 
 const log = logger.child({ module: 'AssinaturasCron' });
+let assinaturasReconTask: ReturnType<typeof cron.schedule> | null = null;
 
-export function startAssinaturasReconJob() {
+export async function startAssinaturasReconJob() {
   // Não executar em ambiente de teste
   if (process.env.NODE_ENV === 'test') {
     log.debug('Test environment detectado, pulando cron de reconciliação');
     return;
   }
 
-  if (!mercadopagoConfig.settings.cronEnabled) {
-    log.info('⏱️ Cron de reconciliação desabilitado via env');
+  stopAssinaturasReconJob();
+
+  const runtimeConfig = await runtimeConfigService.getMercadoPagoConfig();
+  if (!runtimeConfig.settings.cronEnabled) {
+    log.info('⏱️ Cron de reconciliação desabilitado');
     return;
   }
-  const schedule = mercadopagoConfig.settings.cronSchedule || '0 2 * * *';
-  cron.schedule(schedule, async () => {
+
+  const schedule = runtimeConfig.settings.cronSchedule || '0 2 * * *';
+  assinaturasReconTask = cron.schedule(schedule, async () => {
     // Verificar conexão ANTES de tentar executar qualquer query
     const isConnected = await checkDatabaseConnection();
     if (!isConnected) {
@@ -40,4 +45,10 @@ export function startAssinaturasReconJob() {
     }
   });
   log.info({ schedule }, '⏱️ Cron de reconciliação agendado');
+}
+
+export function stopAssinaturasReconJob() {
+  if (!assinaturasReconTask) return;
+  assinaturasReconTask.stop();
+  assinaturasReconTask = null;
 }

@@ -29,7 +29,7 @@ export class AssinaturasController {
         response: error?.response?.data || error?.response,
         status: error?.status || error?.response?.status,
       });
-      res.status(500).json({
+      res.status(error?.statusCode || 500).json({
         success: false,
         code: error?.code || 'CHECKOUT_ERROR',
         message: error?.message || 'Erro ao iniciar checkout',

@@ -1,7 +1,10 @@
 import { CursosAulaStatus, Prisma, StatusInscricao } from '@prisma/client';
 import { Payment } from 'mercadopago';
 
-import { assertMercadoPagoConfigured, mpClient } from '@/config/mercadopago';
+import {
+  assertMercadoPagoConfiguredAsync,
+  getMercadoPagoClient,
+} from '@/config/mercadopago';
 import { prisma } from '@/config/prisma';
 import { notificacoesService } from '@/modules/notificacoes/services/notificacoes.service';
 import { logger } from '@/utils/logger';
@@ -400,8 +403,8 @@ export const pagamentosAlunoService = {
       throw error;
     }
 
-    assertMercadoPagoConfigured();
-    const paymentApi = new Payment(mpClient!);
+    const mpClient = await assertMercadoPagoConfiguredAsync();
+    const paymentApi = new Payment(mpClient);
     const body: Record<string, unknown> = {
       transaction_amount: Number(pagamento.valor),
       description: pagamento.CursosTurmasProvas.titulo,
@@ -506,6 +509,7 @@ export const pagamentosAlunoService = {
     if (!pagamento) return false;
 
     let payment = event.data;
+    const mpClient = await getMercadoPagoClient();
     if (mpClient) {
       try {
         const fetched: any = await new Payment(mpClient).get({ id: String(event.data.id) });

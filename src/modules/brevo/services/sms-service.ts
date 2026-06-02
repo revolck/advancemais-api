@@ -108,12 +108,7 @@ export class SMSService {
    */
   public async checkHealth(): Promise<boolean> {
     try {
-      // Se estiver em modo simulado, sempre retorna true
-      if (this.client.isSimulated()) {
-        return true;
-      }
-
-      // Testa conectividade com API Brevo
+      // O client recarrega configuração runtime antes de testar conectividade.
       return await this.client.healthCheck();
     } catch (error) {
       this.log.warn({ err: error }, '⚠️ SMS Health check falhou');

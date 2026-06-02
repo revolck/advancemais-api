@@ -16,6 +16,7 @@ import { cursosRoutes } from '@/modules/cursos';
 import { agendaRoutes } from '@/modules/cursos/aulas';
 import { cuponsRoutes } from '@/modules/cupons';
 import { auditoriaRoutes } from '@/modules/auditoria';
+import { configuracoesGeraisRoutes } from '@/modules/configuracoes-gerais';
 import { statusProcessoRoutes } from '@/modules/status-processo/routes';
 import dashboardRoutes from '@/modules/dashboard/routes';
 import { vagasSolicitacoesRoutes } from '@/modules/empresas/vagas-solicitacoes/routes';
@@ -105,6 +106,7 @@ router.get('/', publicCache, (req, res) => {
       mercadopagoAssinaturas: '/api/v1/mercadopago/assinaturas',
       mercadopagoLogs: '/api/v1/mercadopago/logs',
       auditoria: '/api/v1/auditoria',
+      configuracoes: '/api/v1/configuracoes',
       statusProcesso: '/api/v1/status-processo',
       health: '/health',
     },
@@ -1136,6 +1138,30 @@ if (mercadopagoRoutes) {
   }
 } else {
   routesLogger.error({ feature: 'MercadoPagoModule' }, '❌ mercadopagoRoutes não está definido');
+}
+
+/**
+ * Módulo Configurações Gerais - COM VALIDAÇÃO
+ * /api/v1/configuracoes/*
+ */
+if (configuracoesGeraisRoutes) {
+  try {
+    router.use('/api/v1/configuracoes', configuracoesGeraisRoutes);
+    routesLogger.info(
+      { feature: 'ConfiguracoesGeraisModule' },
+      '✅ Módulo Configurações Gerais registrado com sucesso',
+    );
+  } catch (error) {
+    routesLogger.error(
+      { feature: 'ConfiguracoesGeraisModule', err: error },
+      '❌ ERRO - Módulo Configurações Gerais',
+    );
+  }
+} else {
+  routesLogger.error(
+    { feature: 'ConfiguracoesGeraisModule' },
+    '❌ configuracoesGeraisRoutes não está definido',
+  );
 }
 
 /**

@@ -1,5 +1,8 @@
 import { prisma } from '@/config/prisma';
-import { mpClient, assertMercadoPagoConfigured } from '@/config/mercadopago';
+import {
+  assertMercadoPagoConfiguredAsync,
+  getRuntimeMercadoPagoConfig,
+} from '@/config/mercadopago';
 import { mercadopagoConfig, serverConfig } from '@/config/env';
 import { PreApproval, PreApprovalPlan, Payment, Preference } from 'mercadopago';
 import crypto from 'crypto';
@@ -526,7 +529,7 @@ export const assinaturasService = {
     }
   },
   async ensurePlanPreapproval(planId: string) {
-    assertMercadoPagoConfigured();
+    const mp = await assertMercadoPagoConfiguredAsync();
     const plan = await prisma.planosEmpresariais.findUnique({
       where: { id: planId },
       select: { id: true, nome: true, valor: true, mpPreapprovalPlanId: true },
@@ -534,7 +537,6 @@ export const assinaturasService = {
     if (!plan) throw new Error('PlanosEmpresariais não encontrado');
     if (plan.mpPreapprovalPlanId) return plan.mpPreapprovalPlanId;
 
-    const mp = mpClient!;
     const valor = parseFloat(plan.valor);
     const prePlan = new PreApprovalPlan(mp);
     const created = await prePlan.create({
@@ -612,7 +614,7 @@ export const assinaturasService = {
     return updated;
   },
   async startCheckout(params: StartCheckoutInput) {
-    assertMercadoPagoConfigured();
+    const mp = await assertMercadoPagoConfiguredAsync();
 
     const planoBase = await prisma.planosEmpresariais.findUnique({
       where: { id: params.planosEmpresariaisId },
@@ -664,6 +666,13 @@ export const assinaturasService = {
         : MODELO_PAGAMENTO.PAGAMENTO_UNICO;
     const paymentMode = isAssinatura ? (params.card?.token ? 'DIRECT' : 'CHECKOUT_PRO') : 'DIRECT';
 
+    if (isAssinatura && (params.card?.installments ?? 1) > 1) {
+      throw Object.assign(new Error('Planos recorrentes não aceitam parcelamento no cartão.'), {
+        code: 'ASSINATURA_INSTALLMENTS_NOT_ALLOWED',
+        statusCode: 400,
+      });
+    }
+
     await this.logEvent({
       usuarioId: params.usuarioId,
       tipo: 'CHECKOUT_START',
@@ -684,7 +693,6 @@ export const assinaturasService = {
       },
     });
 
-    const mp = mpClient!;
     // Usar valor com desconto aplicado (se cupom válido)
     const valor = valorFinal;
     const titulo =
@@ -1025,9 +1033,9 @@ export const assinaturasService = {
 
         let payment: MercadoPagoResponse;
         try {
-          // Log do token sendo usado (últimos 8 caracteres apenas para debug)
-          const tokenUsado = mercadopagoConfig.getAccessToken();
-          const tokenTipo = mercadopagoConfig.prod.accessToken ? 'PRODUCAO' : 'TESTE';
+          const runtimeMpConfig = await getRuntimeMercadoPagoConfig();
+          const tokenUsado = runtimeMpConfig.getAccessToken();
+          const tokenTipo = runtimeMpConfig.activeMode === 'production' ? 'PRODUCAO' : 'TESTE';
           logger.info('[PIX_CHECKOUT] Usando token MP', {
             tipo: tokenTipo,
             tokenFinal: tokenUsado ? `...${tokenUsado.slice(-8)}` : 'NAO_CONFIGURADO',
@@ -1768,7 +1776,7 @@ export const assinaturasService = {
   },
 
   async remindPayment(usuarioId: string) {
-    assertMercadoPagoConfigured();
+    const mp = await assertMercadoPagoConfiguredAsync();
     const plano = await prisma.empresasPlano.findFirst({
       where: { usuarioId, status: EmpresasPlanoStatus.ATIVO },
       include: { PlanosEmpresariais: true },
@@ -1777,7 +1785,6 @@ export const assinaturasService = {
     if (!plano) throw new Error('Plano ativo não encontrado para o usuário');
 
     // Gera nova cobrança (Preference) e envia email com link
-    const mp = mpClient!;
     const preference = new Preference(mp);
     const valor = parseFloat(plano.PlanosEmpresariais.valor);
     const titulo = plano.PlanosEmpresariais.nome + ' - Renovação';

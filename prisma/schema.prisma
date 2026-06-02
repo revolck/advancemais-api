@@ -32,6 +32,29 @@ model AuditoriaLogs {
   @@index([usuarioId])
 }
 
+model SistemaConfiguracoes {
+  id                 String    @id @default(uuid())
+  categoria          String    @db.VarChar(50)
+  chave              String    @db.VarChar(120)
+  tipo               String    @db.VarChar(30)
+  valor              Json?
+  valorCriptografado String?   @db.Text
+  valorHash          String?   @db.VarChar(96)
+  ehSecreto          Boolean   @default(false)
+  descricao          String?   @db.VarChar(300)
+  ativo              Boolean   @default(true)
+  atualizadoPorId    String?
+  criadoEm           DateTime  @default(now())
+  atualizadoEm       DateTime  @updatedAt
+  AtualizadoPor       Usuarios? @relation("SistemaConfiguracoesAtualizadoPor", fields: [atualizadoPorId], references: [id], onDelete: SetNull)
+
+  @@unique([categoria, chave])
+  @@index([ativo])
+  @@index([categoria])
+  @@index([chave])
+  @@index([atualizadoPorId])
+}
+
 model AuditoriaScripts {
   id           String       @id @default(uuid())
   nome         String       @db.VarChar(255)
@@ -1477,6 +1500,7 @@ model Usuarios {
   googleTokenExpiraEm                                                                                       DateTime?
   AuditoriaLogs                                                                                             AuditoriaLogs[]
   AuditoriaScripts                                                                                          AuditoriaScripts[]
+  SistemaConfiguracoesAtualizadas                                                                           SistemaConfiguracoes[]                      @relation("SistemaConfiguracoesAtualizadoPor")
   AuditoriaTransacoes_AuditoriaTransacoes_empresaIdToUsuarios                                               AuditoriaTransacoes[]                         @relation("AuditoriaTransacoes_empresaIdToUsuarios")
   AuditoriaTransacoes_AuditoriaTransacoes_usuarioIdToUsuarios                                               AuditoriaTransacoes[]                         @relation("AuditoriaTransacoes_usuarioIdToUsuarios")
   CuponsDesconto                                                                                            CuponsDesconto[]

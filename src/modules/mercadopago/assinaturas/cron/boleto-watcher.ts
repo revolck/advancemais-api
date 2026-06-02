@@ -1,6 +1,5 @@
 import cron from 'node-cron';
-import { mercadopagoConfig } from '@/config/env';
-import { assertMercadoPagoConfigured, mpClient } from '@/config/mercadopago';
+import { getMercadoPagoClient } from '@/config/mercadopago';
 import { prisma } from '@/config/prisma';
 import { METODO_PAGAMENTO, STATUS_PAGAMENTO } from '@prisma/client';
 import { logger } from '@/utils/logger';
@@ -8,10 +7,13 @@ import { Payment } from 'mercadopago';
 import { assinaturasService } from '../services/assinaturas.service';
 import { handlePrismaConnectionError } from '@/utils/prisma-errors';
 import { checkDatabaseConnection } from '@/utils/db-connection-check';
+import { runtimeConfigService } from '@/modules/configuracoes-gerais/services/runtime-config.service';
 
 const log = logger.child({ module: 'AssinaturasBoletoWatcher' });
+let boletoWatcherTask: ReturnType<typeof cron.schedule> | null = null;
 
 async function processPendingBoletos() {
+  const mpClient = await getMercadoPagoClient();
   if (!mpClient) {
     throw new Error('Mercado Pago não configurado para monitorar boletos');
   }
@@ -24,7 +26,8 @@ async function processPendingBoletos() {
   }
 
   try {
-    const maxDays = mercadopagoConfig.settings.boletoWatcherMaxDays || 5;
+    const runtimeConfig = await runtimeConfigService.getMercadoPagoConfig();
+    const maxDays = runtimeConfig.settings.boletoWatcherMaxDays || 5;
     const cutoff = new Date(Date.now() - maxDays * 24 * 60 * 60 * 1000);
 
     const boletos = await prisma.empresasPlano.findMany({
@@ -113,27 +116,33 @@ function mapStatus(status: string): STATUS_PAGAMENTO {
   return STATUS_PAGAMENTO.PENDENTE;
 }
 
-export function startBoletoWatcherJob() {
+export async function startBoletoWatcherJob() {
   // Não executar em ambiente de teste
   if (process.env.NODE_ENV === 'test') {
     log.debug('Test environment detectado, pulando watcher de boletos');
     return;
   }
 
-  if (!mercadopagoConfig.settings.boletoWatcherEnabled) {
+  stopBoletoWatcherJob();
+
+  const runtimeConfig = await runtimeConfigService.getMercadoPagoConfig();
+  if (!runtimeConfig.settings.boletoWatcherEnabled) {
     log.info('⏱️ Monitoramento de boletos desabilitado');
     return;
   }
 
   try {
-    assertMercadoPagoConfigured();
+    const client = await getMercadoPagoClient();
+    if (!client) {
+      throw new Error('Mercado Pago não configurado para monitorar boletos');
+    }
   } catch (err) {
     log.warn({ err }, '⚠️ Mercado Pago não configurado, monitoramento de boletos não iniciado');
     return;
   }
 
-  const schedule = mercadopagoConfig.settings.boletoWatcherSchedule || '0 * * * *';
-  cron.schedule(schedule, async () => {
+  const schedule = runtimeConfig.settings.boletoWatcherSchedule || '0 * * * *';
+  boletoWatcherTask = cron.schedule(schedule, async () => {
     try {
       await processPendingBoletos();
     } catch (err) {
@@ -146,6 +155,12 @@ export function startBoletoWatcherJob() {
     }
   });
   log.info({ schedule }, '⏱️ Monitoramento de boletos agendado');
+}
+
+export function stopBoletoWatcherJob() {
+  if (!boletoWatcherTask) return;
+  boletoWatcherTask.stop();
+  boletoWatcherTask = null;
 }
 
 export { processPendingBoletos };

@@ -2,12 +2,9 @@ import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import crypto from 'crypto';
 import { google } from 'googleapis';
+import { runtimeConfigService } from '@/modules/configuracoes-gerais';
 
 const oauthLogger = logger.child({ module: 'GoogleOAuth' });
-
-// Configuração OAuth 2.0
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
 // Construir URL de callback dinamicamente (não precisa estar no .env)
 function getRedirectUri(): string {
@@ -19,6 +16,17 @@ const SCOPES = [
   'https://www.googleapis.com/auth/calendar',
   'https://www.googleapis.com/auth/calendar.events',
 ];
+
+async function getGoogleOAuthCredentials() {
+  const config = await runtimeConfigService.getGoogleOAuthConfig();
+  if (!config.clientId || !config.clientSecret) {
+    throw new Error(
+      'Google OAuth não configurado. Configure GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET no painel ou no ambiente.',
+    );
+  }
+
+  return config;
+}
 
 /**
  * Criptografar token (AES-256)
@@ -80,18 +88,10 @@ export const googleOAuthService = {
   /**
    * Gerar URL de autorização Google
    */
-  generateAuthUrl(usuarioId: string): string {
-    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-      throw new Error(
-        'Google OAuth não configurado. Defina GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET',
-      );
-    }
+  async generateAuthUrl(usuarioId: string): Promise<string> {
+    const { clientId, clientSecret } = await getGoogleOAuthCredentials();
 
-    const oauth2Client = new google.auth.OAuth2(
-      GOOGLE_CLIENT_ID,
-      GOOGLE_CLIENT_SECRET,
-      getRedirectUri(),
-    );
+    const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, getRedirectUri());
 
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline',
@@ -109,11 +109,8 @@ export const googleOAuthService = {
    * Processar callback do Google OAuth
    */
   async handleCallback(code: string, usuarioId: string) {
-    const oauth2Client = new google.auth.OAuth2(
-      GOOGLE_CLIENT_ID,
-      GOOGLE_CLIENT_SECRET,
-      getRedirectUri(),
-    );
+    const { clientId, clientSecret } = await getGoogleOAuthCredentials();
+    const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, getRedirectUri());
 
     // Trocar code por tokens
     const { tokens } = await oauth2Client.getToken(code);
@@ -188,11 +185,8 @@ export const googleOAuthService = {
       throw new Error('Google não conectado. Conecte sua conta primeiro.');
     }
 
-    const oauth2Client = new google.auth.OAuth2(
-      GOOGLE_CLIENT_ID,
-      GOOGLE_CLIENT_SECRET,
-      getRedirectUri(),
-    );
+    const { clientId, clientSecret } = await getGoogleOAuthCredentials();
+    const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, getRedirectUri());
 
     // Descriptografar tokens
     const accessToken = decryptToken(usuario.googleAccessToken);

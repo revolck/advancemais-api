@@ -6,6 +6,7 @@ import type {
   UpdateMaterialInput,
 } from '../validators/materiais.schema';
 import { montarCamposAlteradosMaterial } from './historico-materiais.helper';
+import { runtimeConfigService } from '@/modules/configuracoes-gerais';
 
 const materiaisLogger = logger.child({ module: 'MateriaisService' });
 
@@ -19,7 +20,7 @@ function mapTipoMaterial(tipo: string): any {
   return map[tipo] || tipo;
 }
 
-const ALLOWED_MIME_TYPES = [
+const DEFAULT_ALLOWED_MIME_TYPES = [
   'application/pdf',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -53,7 +54,13 @@ export const materiaisService = {
     // 2. Validações específicas por tipo
     if (input.tipo === 'ARQUIVO') {
       // Validar MIME type
-      if (!ALLOWED_MIME_TYPES.includes(input.arquivoMimeType)) {
+      const uploadConfig = await runtimeConfigService.getUploadConfig();
+      const allowedMimeTypes =
+        uploadConfig.allowedMimeTypes.length > 0
+          ? uploadConfig.allowedMimeTypes
+          : DEFAULT_ALLOWED_MIME_TYPES;
+
+      if (!allowedMimeTypes.includes(input.arquivoMimeType)) {
         throw new Error(`Tipo de arquivo não permitido: ${input.arquivoMimeType}`);
       }
 
@@ -65,9 +72,9 @@ export const materiaisService = {
       }
 
       // Validar tamanho
-      const MAX_SIZE = 5 * 1024 * 1024; // 5MB
-      if (input.arquivoTamanho > MAX_SIZE) {
-        throw new Error('Arquivo excede o limite de 5MB');
+      const maxSize = uploadConfig.maxFileSize || 5 * 1024 * 1024;
+      if (input.arquivoTamanho > maxSize) {
+        throw new Error(`Arquivo excede o limite de ${Math.round(maxSize / 1024 / 1024)}MB`);
       }
     }
 

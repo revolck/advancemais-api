@@ -1,5 +1,5 @@
 import { mercadopagoConfig } from '@/config/env';
-import { assertMercadoPagoConfigured, mpClient } from '@/config/mercadopago';
+import { assertMercadoPagoConfiguredAsync } from '@/config/mercadopago';
 import { prisma } from '@/config/prisma';
 import { assinaturasService } from '@/modules/mercadopago/assinaturas/services/assinaturas.service';
 import { EmpresasPlanoStatus, STATUS_PAGAMENTO } from '@prisma/client';
@@ -48,7 +48,7 @@ export const cobrancaAutomaticaService = {
     valor: number;
     descricao: string;
   }): Promise<CobrancaResult> {
-    assertMercadoPagoConfigured();
+    const mpClient = await assertMercadoPagoConfiguredAsync();
 
     const { planoId, cartaoId, valor, descricao } = params;
 
@@ -79,7 +79,7 @@ export const cobrancaAutomaticaService = {
 
     // 3. Processar pagamento
     try {
-      const paymentApi = new Payment(mpClient!);
+      const paymentApi = new Payment(mpClient);
       const payment = await paymentApi.create({
         body: {
           transaction_amount: valor,

@@ -10,7 +10,7 @@ export class GoogleOAuthController {
   static connect = async (req: Request, res: Response) => {
     try {
       const usuarioId = req.user!.id;
-      const authUrl = googleOAuthService.generateAuthUrl(usuarioId);
+      const authUrl = await googleOAuthService.generateAuthUrl(usuarioId);
 
       res.json({
         success: true,

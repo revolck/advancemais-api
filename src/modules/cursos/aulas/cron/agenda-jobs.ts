@@ -5,6 +5,7 @@ import { checkDatabaseConnection } from '@/utils/db-connection-check';
 import { parseScheduleConfig } from '@/utils/cron-helpers';
 import { notificarAulasProximas } from './notificar-aulas.cron';
 import { notificarProvasProximas } from './notificar-provas.cron';
+import { runtimeConfigService } from '@/modules/configuracoes-gerais';
 
 const agendaLogger = logger.child({ module: 'AgendaCronJobs' });
 
@@ -24,23 +25,32 @@ const agendaLogger = logger.child({ module: 'AgendaCronJobs' });
  *
  * Ou use expressão cron completa se preferir
  */
-const CONFIG = {
-  // Notificações de aulas (padrão: a cada 15 minutos)
-  aulas: {
-    enabled: process.env.AGENDA_CRON_AULAS_ENABLED !== 'false',
-    schedule: parseScheduleConfig(process.env.AGENDA_CRON_AULAS_SCHEDULE, 15),
-  },
-  // Notificações de provas/atividades (padrão: a cada 15 minutos)
-  provas: {
-    enabled: process.env.AGENDA_CRON_PROVAS_ENABLED !== 'false',
-    schedule: parseScheduleConfig(process.env.AGENDA_CRON_PROVAS_SCHEDULE, 15),
-  },
-  // Notificações de entrevistas (padrão: a cada 15 minutos)
-  entrevistas: {
-    enabled: process.env.AGENDA_CRON_ENTREVISTAS_ENABLED !== 'false',
-    schedule: parseScheduleConfig(process.env.AGENDA_CRON_ENTREVISTAS_SCHEDULE, 15),
-  },
-};
+type CronTask = ReturnType<typeof cron.schedule>;
+type AgendaCronConfig = Awaited<ReturnType<typeof runtimeConfigService.getAgendaCronConfig>>;
+
+let activeAgendaTasks: CronTask[] = [];
+
+async function resolveAgendaConfig(): Promise<AgendaCronConfig> {
+  try {
+    return await runtimeConfigService.getAgendaCronConfig();
+  } catch (error) {
+    agendaLogger.warn({ err: error }, '⚠️ Falha ao ler configuração runtime; usando env');
+    return {
+      aulas: {
+        enabled: process.env.AGENDA_CRON_AULAS_ENABLED !== 'false',
+        schedule: parseScheduleConfig(process.env.AGENDA_CRON_AULAS_SCHEDULE, 15),
+      },
+      provas: {
+        enabled: process.env.AGENDA_CRON_PROVAS_ENABLED !== 'false',
+        schedule: parseScheduleConfig(process.env.AGENDA_CRON_PROVAS_SCHEDULE, 15),
+      },
+      entrevistas: {
+        enabled: process.env.AGENDA_CRON_ENTREVISTAS_ENABLED !== 'false',
+        schedule: parseScheduleConfig(process.env.AGENDA_CRON_ENTREVISTAS_SCHEDULE, 15),
+      },
+    };
+  }
+}
 
 // =============================================
 // HELPER: Executar com tratamento de erros
@@ -76,19 +86,20 @@ async function executeWithErrorHandling(
 /**
  * Iniciar cron job de notificações de aulas
  */
-export function startAulasNotificationJob() {
+export async function startAulasNotificationJob(config?: AgendaCronConfig) {
   // Não executar em ambiente de teste
   if (process.env.NODE_ENV === 'test') {
     agendaLogger.debug('Test environment detectado, pulando cron de notificações de aulas');
     return null;
   }
 
-  if (!CONFIG.aulas.enabled) {
-    agendaLogger.info('⏱️ Cron de notificações de aulas desabilitado via env');
+  const resolvedConfig = config ?? (await resolveAgendaConfig());
+  if (!resolvedConfig.aulas.enabled) {
+    agendaLogger.info('⏱️ Cron de notificações de aulas desabilitado');
     return null;
   }
 
-  const schedule = CONFIG.aulas.schedule;
+  const schedule = resolvedConfig.aulas.schedule;
 
   const task = cron.schedule(
     schedule,
@@ -107,19 +118,20 @@ export function startAulasNotificationJob() {
 /**
  * Iniciar cron job de notificações de provas/atividades
  */
-export function startProvasNotificationJob() {
+export async function startProvasNotificationJob(config?: AgendaCronConfig) {
   // Não executar em ambiente de teste
   if (process.env.NODE_ENV === 'test') {
     agendaLogger.debug('Test environment detectado, pulando cron de notificações de provas');
     return null;
   }
 
-  if (!CONFIG.provas.enabled) {
-    agendaLogger.info('⏱️ Cron de notificações de provas desabilitado via env');
+  const resolvedConfig = config ?? (await resolveAgendaConfig());
+  if (!resolvedConfig.provas.enabled) {
+    agendaLogger.info('⏱️ Cron de notificações de provas desabilitado');
     return null;
   }
 
-  const schedule = CONFIG.provas.schedule;
+  const schedule = resolvedConfig.provas.schedule;
 
   const task = cron.schedule(
     schedule,
@@ -138,15 +150,16 @@ export function startProvasNotificationJob() {
 /**
  * Iniciar cron job de notificações de entrevistas
  */
-export function startEntrevistasNotificationJob() {
+export async function startEntrevistasNotificationJob(config?: AgendaCronConfig) {
   // Não executar em ambiente de teste
   if (process.env.NODE_ENV === 'test') {
     agendaLogger.debug('Test environment detectado, pulando cron de notificações de entrevistas');
     return null;
   }
 
-  if (!CONFIG.entrevistas.enabled) {
-    agendaLogger.info('⏱️ Cron de notificações de entrevistas desabilitado via env');
+  const resolvedConfig = config ?? (await resolveAgendaConfig());
+  if (!resolvedConfig.entrevistas.enabled) {
+    agendaLogger.info('⏱️ Cron de notificações de entrevistas desabilitado');
     return null;
   }
 
@@ -156,7 +169,7 @@ export function startEntrevistasNotificationJob() {
     notificarEntrevistasProximas,
   } = require('@/modules/recrutador/cron/notificar-entrevistas.cron');
 
-  const schedule = CONFIG.entrevistas.schedule;
+  const schedule = resolvedConfig.entrevistas.schedule;
 
   const task = cron.schedule(
     schedule,
@@ -175,26 +188,48 @@ export function startEntrevistasNotificationJob() {
 /**
  * Iniciar todos os cron jobs de agenda
  */
-export function startAgendaCronJobs() {
+export async function stopAgendaCronJobs() {
+  for (const task of activeAgendaTasks) {
+    try {
+      task.stop();
+    } catch (error) {
+      agendaLogger.warn({ err: error }, 'Falha ao parar cron de agenda');
+    }
+  }
+  activeAgendaTasks = [];
+}
+
+export async function startAgendaCronJobs() {
   agendaLogger.info('🚀 Iniciando cron jobs de agenda...');
 
-  const jobs = [
-    startAulasNotificationJob(),
-    startProvasNotificationJob(),
-    startEntrevistasNotificationJob(),
-  ].filter(Boolean); // Remove nulls
+  await stopAgendaCronJobs();
+  const config = await resolveAgendaConfig();
+  const jobs = (
+    await Promise.all([
+      startAulasNotificationJob(config),
+      startProvasNotificationJob(config),
+      startEntrevistasNotificationJob(config),
+    ])
+  ).filter(Boolean) as CronTask[]; // Remove nulls
+
+  activeAgendaTasks = jobs;
 
   agendaLogger.info(
     {
       total: jobs.length,
       enabled: {
-        aulas: CONFIG.aulas.enabled,
-        provas: CONFIG.provas.enabled,
-        entrevistas: CONFIG.entrevistas.enabled,
+        aulas: config.aulas.enabled,
+        provas: config.provas.enabled,
+        entrevistas: config.entrevistas.enabled,
       },
     },
     '✅ Cron jobs de agenda iniciados',
   );
 
   return jobs;
+}
+
+export async function restartAgendaCronJobs() {
+  await stopAgendaCronJobs();
+  return startAgendaCronJobs();
 }

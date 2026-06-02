@@ -13,6 +13,8 @@ export class BrevoClient {
   private accountAPI?: Brevo.AccountApi;
   private config: BrevoConfiguration;
   private operational: boolean = false;
+  private runtimeConfigLoadedAt = 0;
+  private runtimeConfigPromise: Promise<void> | null = null;
   private readonly log = logger.child({ module: 'BrevoClient' });
 
   private constructor() {
@@ -32,6 +34,11 @@ export class BrevoClient {
    */
   private initializeAPIs(): void {
     try {
+      this.emailAPI = undefined;
+      this.smsAPI = undefined;
+      this.accountAPI = undefined;
+      this.operational = false;
+
       if (this.config.isConfigured && this.config.apiKey) {
         // Inicializa APIs apenas se configurado
         this.emailAPI = new Brevo.TransactionalEmailsApi();
@@ -52,6 +59,44 @@ export class BrevoClient {
       this.log.error({ err: error }, '❌ Erro ao inicializar Brevo Client');
       this.operational = false;
     }
+  }
+
+  private async ensureRuntimeConfig(): Promise<void> {
+    const now = Date.now();
+    if (now - this.runtimeConfigLoadedAt < 30_000) {
+      return;
+    }
+
+    if (!this.runtimeConfigPromise) {
+      this.runtimeConfigPromise = BrevoConfigManager.getInstance()
+        .getRuntimeConfig()
+        .then((runtimeConfig) => {
+          const hasChanged =
+            runtimeConfig.apiKey !== this.config.apiKey ||
+            runtimeConfig.fromEmail !== this.config.fromEmail ||
+            runtimeConfig.fromName !== this.config.fromName ||
+            runtimeConfig.isConfigured !== this.config.isConfigured;
+
+          this.config = runtimeConfig;
+          this.runtimeConfigLoadedAt = Date.now();
+
+          if (hasChanged) {
+            this.initializeAPIs();
+          }
+        })
+        .catch((error) => {
+          this.runtimeConfigLoadedAt = Date.now();
+          this.log.warn(
+            { err: error },
+            '⚠️ Falha ao carregar config runtime da Brevo; usando fallback',
+          );
+        })
+        .finally(() => {
+          this.runtimeConfigPromise = null;
+        });
+    }
+
+    await this.runtimeConfigPromise;
   }
 
   /**
@@ -100,6 +145,8 @@ export class BrevoClient {
    * Health check simples
    */
   public async healthCheck(): Promise<boolean> {
+    await this.ensureRuntimeConfig();
+
     if (this.isSimulated()) {
       return true; // Simulado é sempre "healthy"
     }
@@ -131,6 +178,8 @@ export class BrevoClient {
     error?: string;
     simulated?: boolean;
   }> {
+    await this.ensureRuntimeConfig();
+
     // Modo simulado
     if (this.isSimulated()) {
       this.log.info(
@@ -195,6 +244,8 @@ export class BrevoClient {
     error?: string;
     simulated?: boolean;
   }> {
+    await this.ensureRuntimeConfig();
+
     // Modo simulado
     if (this.isSimulated()) {
       this.log.info(

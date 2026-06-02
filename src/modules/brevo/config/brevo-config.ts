@@ -1,5 +1,6 @@
 import { brevoConfig } from '../../../config/env';
 import { logger } from '@/utils/logger';
+import { runtimeConfigService } from '@/modules/configuracoes-gerais';
 
 /**
  * Configuração simplificada e robusta do módulo Brevo
@@ -28,6 +29,12 @@ export interface BrevoConfiguration {
     maxResendAttempts: number;
     resendCooldownMinutes: number;
   };
+
+  passwordRecovery: {
+    tokenExpirationMinutes: number;
+    maxAttempts: number;
+    cooldownMinutes: number;
+  };
 }
 
 /**
@@ -55,6 +62,38 @@ export class BrevoConfigManager {
    */
   public getConfig(): BrevoConfiguration {
     return this.config;
+  }
+
+  public async getRuntimeConfig(): Promise<BrevoConfiguration> {
+    const runtimeConfig = await runtimeConfigService.getBrevoConfig();
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const authUrl = process.env.AUTH_FRONTEND_URL || `${frontendUrl}/auth`;
+
+    return {
+      apiKey: runtimeConfig.apiKey,
+      fromEmail: runtimeConfig.fromEmail,
+      fromName: runtimeConfig.fromName,
+      maxRetries: runtimeConfig.sending.maxRetries,
+      timeout: runtimeConfig.sending.timeout,
+      isConfigured: runtimeConfig.isConfigured,
+      environment: process.env.NODE_ENV || 'development',
+      urls: {
+        frontend: frontendUrl,
+        verification: `${authUrl}/verify-email`,
+        passwordRecovery: `${authUrl}/recuperar-senha`,
+      },
+      UsuariosVerificacaoEmail: {
+        enabled: runtimeConfig.emailVerification.enabled,
+        tokenExpirationHours: runtimeConfig.emailVerification.tokenExpirationHours,
+        maxResendAttempts: runtimeConfig.emailVerification.maxResendAttempts,
+        resendCooldownMinutes: runtimeConfig.emailVerification.resendCooldownMinutes,
+      },
+      passwordRecovery: {
+        tokenExpirationMinutes: runtimeConfig.passwordRecovery.tokenExpirationMinutes,
+        maxAttempts: runtimeConfig.passwordRecovery.maxAttempts,
+        cooldownMinutes: runtimeConfig.passwordRecovery.cooldownMinutes,
+      },
+    };
   }
 
   /**
@@ -133,6 +172,11 @@ export class BrevoConfigManager {
         tokenExpirationHours: parseInt(process.env.EMAIL_VERIFICATION_EXPIRATION_HOURS || '72', 10),
         maxResendAttempts: parseInt(process.env.EMAIL_VERIFICATION_MAX_RESEND || '3', 10),
         resendCooldownMinutes: parseInt(process.env.EMAIL_VERIFICATION_COOLDOWN_MINUTES || '5', 10),
+      },
+      passwordRecovery: {
+        tokenExpirationMinutes: brevoConfig.passwordRecovery.tokenExpirationMinutes,
+        maxAttempts: brevoConfig.passwordRecovery.maxAttempts,
+        cooldownMinutes: brevoConfig.passwordRecovery.cooldownMinutes,
       },
     };
   }

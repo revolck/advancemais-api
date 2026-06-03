@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 import { prisma } from '@/config/prisma';
+import { encryptSecret } from '../../utils/config-crypto';
 import { runtimeConfigService } from '../runtime-config.service';
 
 describe('RuntimeConfigService', () => {
@@ -104,6 +105,8 @@ describe('RuntimeConfigService', () => {
     expect(typeof logs.items.find((item) => item.key === 'enable_console_log')?.value).toBe(
       'boolean',
     );
+    expect(mercadopago.secretEditingAvailable).toBe(false);
+    expect(mercadopago.secretEditingReason).toBe('CONFIG_ENCRYPTION_KEY_MISSING');
   });
 
   it('normaliza métodos de pagamento CSV para arrays ordenados e sem duplicidade', async () => {
@@ -181,5 +184,137 @@ describe('RuntimeConfigService', () => {
     expect(config.getPublicKey()).toBe('TEST_PUBLIC_KEY');
     expect(validation.activeMode).toBe('test');
     expect(validation.accessToken).toBe('TEST_ACCESS_TOKEN');
+  });
+
+  it('expõe edição de segredos como disponível quando CONFIG_ENCRYPTION_KEY existe', async () => {
+    process.env.CONFIG_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString('base64');
+
+    jest.spyOn(prisma.sistemaConfiguracoes, 'findMany').mockResolvedValue([] as never);
+
+    const category = await runtimeConfigService.listCategory('mercadopago');
+
+    expect(category.secretEditingAvailable).toBe(true);
+    expect(category.secretEditingReason).toBeNull();
+  });
+
+  it('mantém tokens de teste e produção separados no runtime', async () => {
+    process.env.CONFIG_ENCRYPTION_KEY = Buffer.alloc(32, 9).toString('base64');
+
+    jest.spyOn(prisma.sistemaConfiguracoes, 'findMany').mockResolvedValue([
+      {
+        categoria: 'mercadopago',
+        chave: 'mp_active_mode',
+        tipo: 'string',
+        valor: 'production',
+        valorCriptografado: null,
+        valorHash: null,
+        ehSecreto: false,
+        atualizadoEm: new Date(),
+      },
+      {
+        categoria: 'mercadopago',
+        chave: 'mp_public_key',
+        tipo: 'string',
+        valor: 'APP_USR_PROD_PUBLIC',
+        valorCriptografado: null,
+        valorHash: null,
+        ehSecreto: false,
+        atualizadoEm: new Date(),
+      },
+      {
+        categoria: 'mercadopago',
+        chave: 'mp_test_public_key',
+        tipo: 'string',
+        valor: 'TEST-TEST_PUBLIC',
+        valorCriptografado: null,
+        valorHash: null,
+        ehSecreto: false,
+        atualizadoEm: new Date(),
+      },
+      {
+        categoria: 'mercadopago',
+        chave: 'mp_access_token',
+        tipo: 'string',
+        valor: null,
+        valorCriptografado: encryptSecret('APP_USR_PROD_TOKEN'),
+        valorHash: null,
+        ehSecreto: true,
+        atualizadoEm: new Date(),
+      },
+      {
+        categoria: 'mercadopago',
+        chave: 'mp_test_access_token',
+        tipo: 'string',
+        valor: null,
+        valorCriptografado: encryptSecret('TEST-ONLY_TOKEN'),
+        valorHash: null,
+        ehSecreto: true,
+        atualizadoEm: new Date(),
+      },
+    ] as never);
+
+    const productionConfig = await runtimeConfigService.getMercadoPagoConfig();
+    expect(productionConfig.activeMode).toBe('production');
+    expect(productionConfig.getAccessToken()).toBe('APP_USR_PROD_TOKEN');
+    expect(productionConfig.test.accessToken).toBe('TEST-ONLY_TOKEN');
+
+    runtimeConfigService.invalidate();
+    jest.spyOn(prisma.sistemaConfiguracoes, 'findMany').mockResolvedValue([
+      {
+        categoria: 'mercadopago',
+        chave: 'mp_active_mode',
+        tipo: 'string',
+        valor: 'test',
+        valorCriptografado: null,
+        valorHash: null,
+        ehSecreto: false,
+        atualizadoEm: new Date(),
+      },
+      {
+        categoria: 'mercadopago',
+        chave: 'mp_public_key',
+        tipo: 'string',
+        valor: 'APP_USR_PROD_PUBLIC',
+        valorCriptografado: null,
+        valorHash: null,
+        ehSecreto: false,
+        atualizadoEm: new Date(),
+      },
+      {
+        categoria: 'mercadopago',
+        chave: 'mp_test_public_key',
+        tipo: 'string',
+        valor: 'TEST-TEST_PUBLIC',
+        valorCriptografado: null,
+        valorHash: null,
+        ehSecreto: false,
+        atualizadoEm: new Date(),
+      },
+      {
+        categoria: 'mercadopago',
+        chave: 'mp_access_token',
+        tipo: 'string',
+        valor: null,
+        valorCriptografado: encryptSecret('APP_USR_PROD_TOKEN'),
+        valorHash: null,
+        ehSecreto: true,
+        atualizadoEm: new Date(),
+      },
+      {
+        categoria: 'mercadopago',
+        chave: 'mp_test_access_token',
+        tipo: 'string',
+        valor: null,
+        valorCriptografado: encryptSecret('TEST-ONLY_TOKEN'),
+        valorHash: null,
+        ehSecreto: true,
+        atualizadoEm: new Date(),
+      },
+    ] as never);
+
+    const testConfig = await runtimeConfigService.getMercadoPagoConfig();
+    expect(testConfig.activeMode).toBe('test');
+    expect(testConfig.getAccessToken()).toBe('TEST-ONLY_TOKEN');
+    expect(testConfig.prod.accessToken).toBe('APP_USR_PROD_TOKEN');
   });
 });

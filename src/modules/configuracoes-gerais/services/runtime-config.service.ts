@@ -12,7 +12,12 @@ import {
   type ConfigDefinition,
   type ConfigSource,
 } from '../catalog';
-import { decryptSecret, fingerprintSecret, maskSecretPreview } from '../utils/config-crypto';
+import {
+  decryptSecret,
+  fingerprintSecret,
+  isConfigEncryptionKeyConfigured,
+  maskSecretPreview,
+} from '../utils/config-crypto';
 import {
   firstEnvValue,
   getEnvSource,
@@ -77,6 +82,8 @@ export interface RuntimeConfigCategoryResponse {
   category: ConfigCategory;
   label: string;
   description: string;
+  secretEditingAvailable: boolean;
+  secretEditingReason: 'CONFIG_ENCRYPTION_KEY_MISSING' | null;
   items: ResolvedConfigItem[];
 }
 
@@ -93,8 +100,10 @@ class RuntimeConfigService {
 
   async listAll(): Promise<RuntimeConfigCategoryResponse[]> {
     const rows = await this.getRowsMap();
+    const secretEditingStatus = this.getSecretEditingStatus();
     const categories = CONFIG_CATEGORIES.map((categoryMeta) => ({
       ...categoryMeta,
+      ...secretEditingStatus,
       items: getDefinitionsByCategory(categoryMeta.category).map((definition) =>
         this.resolvePublicItem(
           definition,
@@ -118,6 +127,7 @@ class RuntimeConfigService {
     const rows = await this.getRowsMap();
     const response = {
       ...meta,
+      ...this.getSecretEditingStatus(),
       items: getDefinitionsByCategory(category).map((definition) =>
         this.resolvePublicItem(definition, rows.get(this.cacheKey(category, definition.key))),
       ),
@@ -693,6 +703,18 @@ class RuntimeConfigService {
       description: definition.description ?? null,
       updatedAt: row?.atualizadoEm?.toISOString() ?? null,
       required: Boolean(definition.required),
+    };
+  }
+
+  private getSecretEditingStatus(): Pick<
+    RuntimeConfigCategoryResponse,
+    'secretEditingAvailable' | 'secretEditingReason'
+  > {
+    const configured = isConfigEncryptionKeyConfigured();
+
+    return {
+      secretEditingAvailable: configured,
+      secretEditingReason: configured ? null : 'CONFIG_ENCRYPTION_KEY_MISSING',
     };
   }
 

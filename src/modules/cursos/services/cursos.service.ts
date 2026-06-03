@@ -241,6 +241,14 @@ type CourseListParams = {
   };
 };
 
+type CourseGetParams = {
+  viewer?: {
+    userId?: string | null;
+    role?: string | null;
+    turmaIds?: string[];
+  };
+};
+
 type InstrutorBasicPayload = Prisma.UsuariosGetPayload<{ select: typeof instrutorBasicSelect }>;
 
 const mapInstrutorResumo = (usuario?: InstrutorBasicPayload | null) => {
@@ -1360,14 +1368,37 @@ export const cursosService = {
     };
   },
 
-  async getById(id: string) {
+  async getById(id: string, params: CourseGetParams = {}) {
+    const isInstrutorScopedView = params.viewer?.role === 'INSTRUTOR';
+    const turmaIds = Array.from(new Set(params.viewer?.turmaIds ?? [])).filter(Boolean);
+
+    if (isInstrutorScopedView && turmaIds.length === 0) {
+      return null;
+    }
+
     const course = await prisma.cursos.findFirst({
-      where: { id, deletedAt: null },
+      where: {
+        id,
+        deletedAt: null,
+        ...(isInstrutorScopedView
+          ? {
+              CursosTurmas: {
+                some: {
+                  id: { in: turmaIds },
+                  deletedAt: null,
+                },
+              },
+            }
+          : {}),
+      },
       include: {
         CursosCategorias: { select: categoriaSelect },
         CursosSubcategorias: { select: subcategoriaSelect },
         CursosTurmas: {
-          where: { deletedAt: null },
+          where: {
+            deletedAt: null,
+            ...(isInstrutorScopedView ? { id: { in: turmaIds } } : {}),
+          },
           include: {
             Usuarios: {
               select: instrutorBasicSelect,

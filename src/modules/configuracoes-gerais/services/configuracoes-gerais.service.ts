@@ -389,8 +389,12 @@ class ConfiguracoesGeraisService {
         const validation = mpConfig.validateActiveCredentials();
         const modeLabel = validation.activeMode === 'production' ? 'Produção' : 'Teste';
         const missingMap: Record<string, string> = {
+          mp_user_id: 'User ID de produção',
+          mp_application_id: 'Application ID de produção',
           mp_public_key: 'Public key de produção',
           mp_access_token: 'Access token de produção',
+          mp_test_user_id: 'User ID de teste',
+          mp_test_application_id: 'Application ID de teste',
           mp_test_public_key: 'Public key de teste',
           mp_test_access_token: 'Access token de teste',
         };

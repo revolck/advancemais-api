@@ -43,14 +43,20 @@ export type MercadoPagoMode = 'production' | 'test';
 type MercadoPagoCredentialKey =
   | 'mp_public_key'
   | 'mp_access_token'
+  | 'mp_user_id'
+  | 'mp_application_id'
   | 'mp_test_public_key'
-  | 'mp_test_access_token';
+  | 'mp_test_access_token'
+  | 'mp_test_user_id'
+  | 'mp_test_application_id';
 
 type MercadoPagoValidationResult = {
   activeMode: MercadoPagoMode;
   missingKeys: MercadoPagoCredentialKey[];
   publicKey: string;
   accessToken: string;
+  userId: string;
+  applicationId: string;
 };
 
 type CursoInstallmentsConfig = {
@@ -192,6 +198,9 @@ class RuntimeConfigService {
       userId,
       applicationId,
       webhookSecret,
+      testUserId,
+      testApplicationId,
+      testWebhookSecret,
       testPublicKey,
       testAccessToken,
       publicKey,
@@ -220,6 +229,9 @@ class RuntimeConfigService {
       this.getString('mercadopago', 'mp_user_id'),
       this.getString('mercadopago', 'mp_application_id'),
       this.getString('mercadopago', 'mp_webhook_secret'),
+      this.getString('mercadopago', 'mp_test_user_id'),
+      this.getString('mercadopago', 'mp_test_application_id'),
+      this.getString('mercadopago', 'mp_test_webhook_secret'),
       this.getString('mercadopago', 'mp_test_public_key'),
       this.getString('mercadopago', 'mp_test_access_token'),
       this.getString('mercadopago', 'mp_public_key'),
@@ -256,14 +268,20 @@ class RuntimeConfigService {
 
     return {
       activeMode: normalizedActiveMode,
-      userId,
-      applicationId,
-      webhookSecret,
+      userId: normalizedActiveMode === 'production' ? userId : testUserId,
+      applicationId: normalizedActiveMode === 'production' ? applicationId : testApplicationId,
+      webhookSecret: normalizedActiveMode === 'production' ? webhookSecret : testWebhookSecret,
       test: {
+        userId: testUserId,
+        applicationId: testApplicationId,
+        webhookSecret: testWebhookSecret,
         publicKey: testPublicKey,
         accessToken: testAccessToken,
       },
       prod: {
+        userId,
+        applicationId,
+        webhookSecret,
         publicKey,
         accessToken,
         clientId,
@@ -296,12 +314,18 @@ class RuntimeConfigService {
       active:
         normalizedActiveMode === 'production'
           ? {
+              userId,
+              applicationId,
+              webhookSecret,
               publicKey,
               accessToken,
               clientId,
               clientSecret,
             }
           : {
+              userId: testUserId,
+              applicationId: testApplicationId,
+              webhookSecret: testWebhookSecret,
               publicKey: testPublicKey,
               accessToken: testAccessToken,
               clientId: '',
@@ -314,6 +338,8 @@ class RuntimeConfigService {
       validateActiveCredentials: (): MercadoPagoValidationResult => {
         if (normalizedActiveMode === 'production') {
           const missingKeys: MercadoPagoCredentialKey[] = [];
+          if (!userId) missingKeys.push('mp_user_id');
+          if (!applicationId) missingKeys.push('mp_application_id');
           if (!publicKey) missingKeys.push('mp_public_key');
           if (!accessToken) missingKeys.push('mp_access_token');
 
@@ -322,10 +348,14 @@ class RuntimeConfigService {
             missingKeys,
             publicKey,
             accessToken,
+            userId,
+            applicationId,
           };
         }
 
         const missingKeys: MercadoPagoCredentialKey[] = [];
+        if (!testUserId) missingKeys.push('mp_test_user_id');
+        if (!testApplicationId) missingKeys.push('mp_test_application_id');
         if (!testPublicKey) missingKeys.push('mp_test_public_key');
         if (!testAccessToken) missingKeys.push('mp_test_access_token');
 
@@ -334,6 +364,8 @@ class RuntimeConfigService {
           missingKeys,
           publicKey: testPublicKey,
           accessToken: testAccessToken,
+          userId: testUserId,
+          applicationId: testApplicationId,
         };
       },
     };

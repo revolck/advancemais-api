@@ -5,6 +5,8 @@ const cardDataSchema = z
   .object({
     token: z.string().min(10, 'Token do cartão inválido'),
     installments: z.number().int().positive().max(12).optional(),
+    paymentMethodId: z.string().min(2).max(40).optional(),
+    paymentMethodType: z.enum(['credit_card', 'debit_card']).optional(),
   })
   .strict();
 

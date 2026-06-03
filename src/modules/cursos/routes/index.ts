@@ -2043,7 +2043,11 @@ router.get(
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   CursosController.metaCurso,
 );
-router.get('/:cursoId([0-9a-fA-F-]{36})', publicCache, CursosController.get);
+router.get(
+  '/:cursoId([0-9a-fA-F-]{36})',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  CursosController.get,
+);
 
 /**
  * @openapi

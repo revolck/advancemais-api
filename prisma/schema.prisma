@@ -46,7 +46,7 @@ model SistemaConfiguracoes {
   atualizadoPorId    String?
   criadoEm           DateTime  @default(now())
   atualizadoEm       DateTime  @updatedAt
-  AtualizadoPor       Usuarios? @relation("SistemaConfiguracoesAtualizadoPor", fields: [atualizadoPorId], references: [id], onDelete: SetNull)
+  AtualizadoPor      Usuarios? @relation("SistemaConfiguracoesAtualizadoPor", fields: [atualizadoPorId], references: [id], onDelete: SetNull)
 
   @@unique([categoria, chave])
   @@index([ativo])
@@ -590,36 +590,36 @@ model CursosSubcategorias {
 }
 
 model CursosTurmas {
-  id                          String                       @id @default(uuid())
-  codigo                      String                       @unique @db.VarChar(12)
+  id                          String                        @id @default(uuid())
+  codigo                      String                        @unique @db.VarChar(12)
   cursoId                     String
   instrutorId                 String?
-  estruturaTipo               CursosTurmaEstruturaTipo     @default(PADRAO)
-  nome                        String                       @db.VarChar(255)
-  turno                       CursosTurnos                 @default(INTEGRAL)
-  metodo                      CursosMetodos                @default(ONLINE)
+  estruturaTipo               CursosTurmaEstruturaTipo      @default(PADRAO)
+  nome                        String                        @db.VarChar(255)
+  turno                       CursosTurnos                  @default(INTEGRAL)
+  metodo                      CursosMetodos                 @default(ONLINE)
   dataInicio                  DateTime?
   dataFim                     DateTime?
   dataInscricaoInicio         DateTime?
   dataInscricaoFim            DateTime?
-  vagasIlimitadas             Boolean                      @default(false)
+  vagasIlimitadas             Boolean                       @default(false)
   vagasTotais                 Int
   vagasDisponiveis            Int
-  status                      CursoStatus                  @default(RASCUNHO)
+  status                      CursoStatus                   @default(RASCUNHO)
   // Auditoria de edição
   editadoPorId                String?
   editadoEm                   DateTime?
   deletedAt                   DateTime?
-  deletedById                 String?                      @db.VarChar(191)
-  criadoEm                    DateTime                     @default(now())
-  atualizadoEm                DateTime                     @default(now())
+  deletedById                 String?                       @db.VarChar(191)
+  criadoEm                    DateTime                      @default(now())
+  atualizadoEm                DateTime                      @default(now())
   CursosEstagios              CursosEstagios[]
   CursosEstagiosProgramas     CursosEstagiosProgramas[]
   CursosFrequenciaAlunos      CursosFrequenciaAlunos[]
   CursosNotas                 CursosNotas[]
-  Cursos                      Cursos                       @relation(fields: [cursoId], references: [id], onDelete: Cascade)
-  Usuarios                    Usuarios?                    @relation(fields: [instrutorId], references: [id])
-  EditadoPor                  Usuarios?                    @relation("TurmasEditadoPor", fields: [editadoPorId], references: [id])
+  Cursos                      Cursos                        @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+  Usuarios                    Usuarios?                     @relation(fields: [instrutorId], references: [id])
+  EditadoPor                  Usuarios?                     @relation("TurmasEditadoPor", fields: [editadoPorId], references: [id])
   CursosTurmasAgenda          CursosTurmasAgenda[]
   CursosTurmasAulas           CursosTurmasAulas[]
   CursosTurmasInscricoes      CursosTurmasInscricoes[]
@@ -846,6 +846,7 @@ model CursosTurmasInscricoes {
   // Campos de pagamento e token de acesso
   codigo                        String?                              @unique @db.VarChar(20)
   statusPagamento               String                               @default("PENDENTE") @db.VarChar(50)
+  mpOrderId                     String?                              @db.VarChar(255)
   mpPaymentId                   String?                              @db.VarChar(255)
   tokenAcesso                   String?                              @unique @db.VarChar(500)
   tokenAcessoExpiraEm           DateTime?
@@ -890,6 +891,7 @@ model CursosTurmasInscricoes {
   @@index([turmaId, statusPagamento], map: "cti_turma_status_pagamento_idx")
   @@index([status])
   @@index([statusPagamento])
+  @@index([mpOrderId])
   @@index([mpPaymentId])
   @@index([tokenAcesso])
   @@index([codigo])
@@ -998,27 +1000,27 @@ model CursosTurmasInscricoesProvasAcesso {
 }
 
 model CursosRecuperacaoPagamentos {
-  id                            String                 @id @default(uuid())
-  alunoId                       String
-  inscricaoId                   String
-  turmaId                       String
-  provaId                       String
-  valor                         Decimal                @db.Decimal(10, 2)
-  statusPagamento               String                 @default("PENDENTE") @db.VarChar(50)
-  metodoPagamento               String?                @db.VarChar(50)
-  mpPaymentId                   String?                @unique @db.VarChar(255)
-  pixQrCode                     String?                @db.Text
-  pixQrCodeBase64               String?                @db.Text
-  boletoCodigo                  String?                @db.Text
-  boletoUrl                     String?                @db.Text
-  expiraEm                      DateTime?
-  pagoEm                        DateTime?
-  criadoEm                      DateTime               @default(now())
-  atualizadoEm                  DateTime               @default(now())
-  Usuarios                      Usuarios               @relation(fields: [alunoId], references: [id], onDelete: Cascade)
-  CursosTurmasInscricoes        CursosTurmasInscricoes @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
-  CursosTurmas                  CursosTurmas           @relation(fields: [turmaId], references: [id], onDelete: Cascade)
-  CursosTurmasProvas            CursosTurmasProvas     @relation(fields: [provaId], references: [id], onDelete: Cascade)
+  id                     String                 @id @default(uuid())
+  alunoId                String
+  inscricaoId            String
+  turmaId                String
+  provaId                String
+  valor                  Decimal                @db.Decimal(10, 2)
+  statusPagamento        String                 @default("PENDENTE") @db.VarChar(50)
+  metodoPagamento        String?                @db.VarChar(50)
+  mpPaymentId            String?                @unique @db.VarChar(255)
+  pixQrCode              String?                @db.Text
+  pixQrCodeBase64        String?                @db.Text
+  boletoCodigo           String?                @db.Text
+  boletoUrl              String?                @db.Text
+  expiraEm               DateTime?
+  pagoEm                 DateTime?
+  criadoEm               DateTime               @default(now())
+  atualizadoEm           DateTime               @default(now())
+  Usuarios               Usuarios               @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+  CursosTurmasInscricoes CursosTurmasInscricoes @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
+  CursosTurmas           CursosTurmas           @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+  CursosTurmasProvas     CursosTurmasProvas     @relation(fields: [provaId], references: [id], onDelete: Cascade)
 
   @@unique([inscricaoId, provaId])
   @@index([alunoId, criadoEm])
@@ -1500,7 +1502,7 @@ model Usuarios {
   googleTokenExpiraEm                                                                                       DateTime?
   AuditoriaLogs                                                                                             AuditoriaLogs[]
   AuditoriaScripts                                                                                          AuditoriaScripts[]
-  SistemaConfiguracoesAtualizadas                                                                           SistemaConfiguracoes[]                      @relation("SistemaConfiguracoesAtualizadoPor")
+  SistemaConfiguracoesAtualizadas                                                                           SistemaConfiguracoes[]                        @relation("SistemaConfiguracoesAtualizadoPor")
   AuditoriaTransacoes_AuditoriaTransacoes_empresaIdToUsuarios                                               AuditoriaTransacoes[]                         @relation("AuditoriaTransacoes_empresaIdToUsuarios")
   AuditoriaTransacoes_AuditoriaTransacoes_usuarioIdToUsuarios                                               AuditoriaTransacoes[]                         @relation("AuditoriaTransacoes_usuarioIdToUsuarios")
   CuponsDesconto                                                                                            CuponsDesconto[]

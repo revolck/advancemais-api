@@ -40,10 +40,18 @@ export async function assertMercadoPagoConfiguredAsync() {
     const modeLabel = validation.activeMode === 'production' ? 'Produção' : 'Teste';
     const missingLabels = validation.missingKeys.map((key) => {
       switch (key) {
+        case 'mp_user_id':
+          return 'User ID de produção';
+        case 'mp_application_id':
+          return 'Application ID de produção';
         case 'mp_public_key':
           return 'Public key de produção';
         case 'mp_access_token':
           return 'Access token de produção';
+        case 'mp_test_user_id':
+          return 'User ID de teste';
+        case 'mp_test_application_id':
+          return 'Application ID de teste';
         case 'mp_test_public_key':
           return 'Public key de teste';
         case 'mp_test_access_token':

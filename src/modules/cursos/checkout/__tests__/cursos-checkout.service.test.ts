@@ -1,7 +1,7 @@
 import { prisma } from '@/config/prisma';
 import * as mercadoPagoConfig from '@/config/mercadopago';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { Payment } from 'mercadopago';
+import * as mercadoPagoOrdersClient from '../services/mercadopago-orders.client';
 import { cursosCheckoutService } from '../services/cursos-checkout.service';
 
 const vi = jest;
@@ -49,7 +49,23 @@ describe('Cursos Checkout Service', () => {
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
+    vi.spyOn(mercadoPagoConfig, 'assertMercadoPagoConfiguredAsync').mockResolvedValue({} as never);
+    vi.spyOn(mercadoPagoConfig, 'getRuntimeMercadoPagoConfig').mockResolvedValue({
+      activeMode: 'test',
+      courseInstallments: { enabled: true, maxInstallments: 12 },
+      coursePaymentMethods: ['pix', 'boleto', 'card'],
+      getAccessToken: () => 'TEST-token',
+      getAccessTokenFingerprint: () => 'TEST-...len:10',
+      validateActiveCredentials: () => ({
+        activeMode: 'test',
+        missingKeys: [],
+        publicKey: 'TEST-public-key',
+        accessToken: 'TEST-token',
+        userId: 'test-user',
+        applicationId: 'test-app',
+      }),
+    } as never);
   });
 
   describe('gerarCodigoInscricao', () => {
@@ -229,7 +245,17 @@ describe('Cursos Checkout Service', () => {
     });
 
     it('deve registrar aceite de termos', async () => {
-      const createSpy = vi.spyOn(prisma.cursosTurmasInscricoes, 'create');
+      const createSpy = vi.spyOn(prisma.cursosTurmasInscricoes, 'create').mockResolvedValue({
+        id: 'inscricao-123',
+        codigo: 'MAT2025001',
+        turmaId: 'turma-123',
+        alunoId: 'user-123',
+        status: 'INSCRITO',
+        statusPagamento: 'APROVADO',
+        tokenAcesso: 'jwt.token.here',
+        tokenAcessoExpiraEm: new Date(),
+        criadoEm: new Date(),
+      } as any);
 
       vi.spyOn(cursosCheckoutService, 'gerarCodigoInscricao').mockResolvedValue('MAT2025001');
       vi.spyOn(prisma.cursosTurmasInscricoes, 'update').mockResolvedValue({
@@ -492,13 +518,18 @@ describe('Cursos Checkout Service', () => {
         .spyOn(prisma.cursosTurmasInscricoes, 'update')
         .mockResolvedValue({ id: 'inscricao-123' } as any);
 
-      vi.spyOn(Payment.prototype, 'create').mockRejectedValue(new Error('gateway offline'));
+      vi.spyOn(mercadoPagoOrdersClient, 'createMercadoPagoOrder').mockRejectedValue(
+        Object.assign(new Error('gateway offline'), {
+          code: 'MERCADOPAGO_ORDERS_ERROR',
+          status: 500,
+          apiResponse: { message: 'gateway offline' },
+        }),
+      );
 
       await expect(
         cursosCheckoutService.startCheckout(checkoutParams as any),
       ).rejects.toMatchObject({
-        code: 'MERCADOPAGO_ERROR',
-        message: 'Não foi possível processar o pagamento no Mercado Pago. Tente novamente.',
+        code: 'MERCADOPAGO_ORDERS_ERROR',
       });
 
       expect(cleanupSpy).toHaveBeenCalledWith(
@@ -555,7 +586,7 @@ describe('Cursos Checkout Service', () => {
       const gatewayError = Object.assign(new Error('Financial Identity validation failed'), {
         cause: [{ description: 'Financial Identity rejected payer' }],
       });
-      vi.spyOn(Payment.prototype, 'create').mockRejectedValue(gatewayError);
+      vi.spyOn(mercadoPagoOrdersClient, 'createMercadoPagoOrder').mockRejectedValue(gatewayError);
 
       await expect(
         cursosCheckoutService.startCheckout(checkoutParams as any),
@@ -622,8 +653,8 @@ describe('Cursos Checkout Service', () => {
           cause: [{ code: 'invalid_token', description: 'Invalid access token' }],
         },
       });
-      const paymentCreateSpy = vi
-        .spyOn(Payment.prototype, 'create')
+      const orderCreateSpy = vi
+        .spyOn(mercadoPagoOrdersClient, 'createMercadoPagoOrder')
         .mockRejectedValue(gatewayError);
 
       await expect(
@@ -632,11 +663,9 @@ describe('Cursos Checkout Service', () => {
         code: 'MERCADOPAGO_INVALID_TOKEN',
       });
 
-      expect(paymentCreateSpy).toHaveBeenCalledWith(
+      expect(orderCreateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          requestOptions: {
-            idempotencyKey: 'curso-checkout:inscricao-123:pix',
-          },
+          idempotencyKey: 'curso-checkout:inscricao-123:pix',
         }),
       );
       expect(cleanupSpy).toHaveBeenCalledWith(
@@ -698,7 +727,7 @@ describe('Cursos Checkout Service', () => {
           blocked_by: 'PolicyAgent',
         },
       });
-      vi.spyOn(Payment.prototype, 'create').mockRejectedValue(gatewayError);
+      vi.spyOn(mercadoPagoOrdersClient, 'createMercadoPagoOrder').mockRejectedValue(gatewayError);
 
       await expect(
         cursosCheckoutService.startCheckout(checkoutParams as any),
@@ -760,12 +789,18 @@ describe('Cursos Checkout Service', () => {
         status: 'AGUARDANDO_PAGAMENTO',
         statusPagamento: 'PENDENTE',
       } as any);
-      vi.spyOn(Payment.prototype, 'create').mockRejectedValue(new Error('gateway offline'));
+      vi.spyOn(mercadoPagoOrdersClient, 'createMercadoPagoOrder').mockRejectedValue(
+        Object.assign(new Error('gateway offline'), {
+          code: 'MERCADOPAGO_ORDERS_ERROR',
+          status: 500,
+          apiResponse: { message: 'gateway offline' },
+        }),
+      );
 
       await expect(
         cursosCheckoutService.startCheckout(checkoutParams as any),
       ).rejects.toMatchObject({
-        code: 'MERCADOPAGO_ERROR',
+        code: 'MERCADOPAGO_ORDERS_ERROR',
       });
 
       expect(createSpy).not.toHaveBeenCalled();
@@ -806,12 +841,18 @@ describe('Cursos Checkout Service', () => {
         status: 'AGUARDANDO_PAGAMENTO',
         statusPagamento: 'PENDENTE',
       } as any);
-      vi.spyOn(Payment.prototype, 'create').mockRejectedValue(new Error('gateway offline'));
+      vi.spyOn(mercadoPagoOrdersClient, 'createMercadoPagoOrder').mockRejectedValue(
+        Object.assign(new Error('gateway offline'), {
+          code: 'MERCADOPAGO_ORDERS_ERROR',
+          status: 500,
+          apiResponse: { message: 'gateway offline' },
+        }),
+      );
 
       await expect(
         cursosCheckoutService.startCheckout(checkoutParams as any),
       ).rejects.toMatchObject({
-        code: 'MERCADOPAGO_ERROR',
+        code: 'MERCADOPAGO_ORDERS_ERROR',
       });
 
       expect(createSpy).not.toHaveBeenCalled();

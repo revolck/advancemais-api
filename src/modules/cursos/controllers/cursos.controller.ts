@@ -38,6 +38,7 @@ import {
 import { recrutadorVagasService } from '@/modules/usuarios/services/recrutador-vagas.service';
 import {
   buildInstrutorScope,
+  canAccessCursoInScope,
   hasInstrutorScope,
   type InstrutorScope,
 } from '@/modules/instrutor/services/instrutor-scope.service';
@@ -610,18 +611,59 @@ export class CursosController {
     }
 
     try {
+      const role = req.user?.role;
+      const userId = req.user?.id ?? null;
+      let instrutorTurmaIds: string[] | undefined;
+
+      if (role === Roles.ALUNO_CANDIDATO) {
+        return res.status(403).json({
+          success: false,
+          code: 'INSUFFICIENT_PERMISSIONS',
+          message: 'Sem permissão para acessar detalhes administrativos do curso.',
+        });
+      }
+
+      if (role === Roles.INSTRUTOR) {
+        if (!userId) {
+          return res.status(403).json({
+            success: false,
+            code: 'INSUFFICIENT_PERMISSIONS',
+            message: 'Sem permissão para acessar detalhes deste curso.',
+          });
+        }
+
+        const scope = await buildInstrutorScope(prisma, userId);
+
+        if (!hasInstrutorScope(scope) || !canAccessCursoInScope(scope, id)) {
+          return res.status(403).json({
+            success: false,
+            code: 'INSUFFICIENT_PERMISSIONS',
+            message: 'Sem permissão para acessar detalhes deste curso.',
+          });
+        }
+
+        instrutorTurmaIds = Array.from(scope.accessibleTurmaIds);
+      }
+
       const cacheKey = generateCacheKey(
         'cursos:get',
         {
           cursoId: id,
-          role: req.user?.role ?? '',
+          role: role ?? '',
+          userId: role === Roles.INSTRUTOR ? userId : '',
         },
         { excludeKeys: [] },
       );
 
       const course = await getCachedOrFetch(
         cacheKey,
-        () => cursosService.getById(id),
+        () =>
+          cursosService.getById(id, {
+            viewer:
+              role === Roles.INSTRUTOR
+                ? { role, userId, turmaIds: instrutorTurmaIds ?? [] }
+                : { role, userId },
+          }),
         CURSOS_GET_CACHE_TTL,
       );
       if (!course) {

@@ -88,6 +88,15 @@ export class CursosCheckoutController {
         statusCode: 503,
         message: 'Pagamento indisponível no momento. Tente novamente mais tarde.',
       },
+      MERCADOPAGO_ORDERS_ERROR: {
+        statusCode: 502,
+        message: 'Pagamento indisponível no momento. Tente novamente mais tarde.',
+      },
+      CARD_PAYMENT_METHOD_REQUIRED: {
+        statusCode: 400,
+        message:
+          'Não foi possível identificar a bandeira do cartão. Revise os dados e tente novamente.',
+      },
       PIX_KEY_NOT_CONFIGURED: {
         statusCode: 503,
         message: 'Pagamento via PIX indisponível no momento. Tente outro método de pagamento.',
@@ -286,7 +295,10 @@ export class CursosCheckoutController {
       }
 
       const inscricao = await prisma.cursosTurmasInscricoes.findFirst({
-        where: { mpPaymentId: paymentId, alunoId: req.user?.id },
+        where: {
+          alunoId: req.user?.id,
+          OR: [{ mpPaymentId: paymentId }, { mpOrderId: paymentId }],
+        },
         include: {
           CursosTurmas: { include: { Cursos: true } },
           Usuarios: { select: { id: true, nomeCompleto: true, email: true } },

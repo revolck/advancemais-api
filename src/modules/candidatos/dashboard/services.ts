@@ -13,6 +13,21 @@ import { StatusInscricao } from '@prisma/client';
 
 const dashboardLogger = logger.child({ module: 'CandidatoDashboardService' });
 
+const STATUS_PAGAMENTO_LIBERADO = 'APROVADO';
+
+const STATUS_INSCRICAO_DASHBOARD_LIBERADA: StatusInscricao[] = [
+  StatusInscricao.INSCRITO,
+  StatusInscricao.EM_ANDAMENTO,
+  StatusInscricao.EM_ESTAGIO,
+  StatusInscricao.CONCLUIDO,
+];
+
+const STATUS_INSCRICAO_EM_PROGRESSO: StatusInscricao[] = [
+  StatusInscricao.INSCRITO,
+  StatusInscricao.EM_ANDAMENTO,
+  StatusInscricao.EM_ESTAGIO,
+];
+
 /**
  * Formata o status da inscrição para exibição
  */
@@ -41,7 +56,11 @@ export const candidatoDashboardService = {
       // 1. Buscar métricas (cursos e candidaturas)
       const [inscricoes, candidaturas] = await Promise.all([
         prisma.cursosTurmasInscricoes.findMany({
-          where: { alunoId: usuarioId },
+          where: {
+            alunoId: usuarioId,
+            statusPagamento: STATUS_PAGAMENTO_LIBERADO,
+            status: { in: STATUS_INSCRICAO_DASHBOARD_LIBERADA },
+          },
           select: {
             id: true,
             status: true,
@@ -58,7 +77,7 @@ export const candidatoDashboardService = {
 
       // Calcular métricas
       const cursosEmProgresso = inscricoes.filter((i) =>
-        ['INSCRITO', 'EM_ANDAMENTO'].includes(i.status),
+        STATUS_INSCRICAO_EM_PROGRESSO.includes(i.status),
       ).length;
       const cursosConcluidos = inscricoes.filter(
         (i) => i.status === StatusInscricao.CONCLUIDO,
@@ -68,7 +87,11 @@ export const candidatoDashboardService = {
 
       // 2. Buscar últimos 8 cursos com detalhes (otimizado com _count)
       const ultimosCursos = await prisma.cursosTurmasInscricoes.findMany({
-        where: { alunoId: usuarioId },
+        where: {
+          alunoId: usuarioId,
+          statusPagamento: STATUS_PAGAMENTO_LIBERADO,
+          status: { in: STATUS_INSCRICAO_DASHBOARD_LIBERADA },
+        },
         take: 8,
         orderBy: { criadoEm: 'desc' },
         select: {
@@ -139,15 +162,8 @@ export const candidatoDashboardService = {
         let statusExibicao: string;
         if (inscricao.status === StatusInscricao.CONCLUIDO) {
           statusExibicao = 'Concluído';
-        } else if (inscricao.status === StatusInscricao.EM_ANDAMENTO) {
+        } else if (STATUS_INSCRICAO_EM_PROGRESSO.includes(inscricao.status)) {
           statusExibicao = 'Em progresso';
-        } else if (inscricao.status === StatusInscricao.INSCRITO) {
-          statusExibicao = 'Em progresso';
-        } else if (
-          inscricao.status === StatusInscricao.CANCELADO ||
-          inscricao.status === StatusInscricao.TRANCADO
-        ) {
-          statusExibicao = 'Cancelado';
         } else {
           statusExibicao = 'Não iniciado';
         }

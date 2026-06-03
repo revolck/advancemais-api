@@ -15,6 +15,11 @@ import {
 import jwt from 'jsonwebtoken';
 import { Payment } from 'mercadopago';
 import type { StartCursoCheckoutInput } from '../validators/cursos-checkout.schema';
+import {
+  createMercadoPagoOrder,
+  getMercadoPagoOrder,
+  normalizeMercadoPagoOrder,
+} from './mercadopago-orders.client';
 
 // ========================================
 // TIPOS E INTERFACES
@@ -30,11 +35,6 @@ type CupomValidado = {
   mensagem?: string;
 };
 
-type MercadoPagoResponse<T = any> = {
-  body?: T;
-  [key: string]: any;
-};
-
 type StatusPagamento = 'PENDENTE' | 'APROVADO' | 'RECUSADO' | 'PROCESSANDO' | 'CANCELADO';
 
 const CHECKOUT_DOMAIN_STATUS: Record<string, number> = {
@@ -48,7 +48,9 @@ const CHECKOUT_DOMAIN_STATUS: Record<string, number> = {
   FINANCIAL_IDENTITY_ERROR: 502,
   MERCADOPAGO_ERROR: 502,
   MERCADOPAGO_INVALID_TOKEN: 503,
+  MERCADOPAGO_ORDERS_ERROR: 502,
   MERCADOPAGO_UNAUTHORIZED_POLICY: 503,
+  CARD_PAYMENT_METHOD_REQUIRED: 400,
   CURSO_INSTALLMENTS_DISABLED: 400,
   CURSO_INSTALLMENTS_LIMIT_EXCEEDED: 400,
   CURSO_PAYMENT_METHOD_DISABLED: 400,
@@ -64,8 +66,9 @@ const PAYMENT_APPROVED_STATUSES = new Set([
   'authorized',
   'authorized_for_collect',
   'active',
+  'processed',
 ]);
-const PAYMENT_PENDING_STATUSES = new Set(['pending', 'in_process']);
+const PAYMENT_PENDING_STATUSES = new Set(['pending', 'in_process', 'action_required']);
 const PAYMENT_REJECTED_STATUSES = new Set(['rejected', 'charged_back', 'chargeback']);
 const PAYMENT_CANCELLED_STATUSES = new Set([
   'cancelled',
@@ -84,6 +87,26 @@ function mapToStatusPagamento(status: string | null | undefined): StatusPagament
   if (PAYMENT_CANCELLED_STATUSES.has(normalized)) return 'CANCELADO';
   if (PAYMENT_REJECTED_STATUSES.has(normalized)) return 'RECUSADO';
   return 'PENDENTE';
+}
+
+function normalizeCardPaymentMethodId(value?: string | null): string {
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_');
+
+  const aliases: Record<string, string> = {
+    mastercard: 'master',
+    master_card: 'master',
+    american_express: 'amex',
+    amex: 'amex',
+    hipercard: 'hipercard',
+    hiper: 'hipercard',
+    visa: 'visa',
+    elo: 'elo',
+  };
+
+  return aliases[normalized] ?? normalized;
 }
 
 /**
@@ -281,7 +304,7 @@ function toCheckoutPaymentError(
   normalized: { message: string; payload?: any },
 ): Error & { code?: string; statusCode?: number; details?: unknown } {
   const rawCode = typeof (error as any)?.code === 'string' ? (error as any).code : undefined;
-  if (rawCode && CHECKOUT_DOMAIN_STATUS[rawCode]) {
+  if (rawCode && rawCode !== 'MERCADOPAGO_ORDERS_ERROR' && CHECKOUT_DOMAIN_STATUS[rawCode]) {
     return Object.assign(new Error((error as Error).message || normalized.message), {
       code: rawCode,
       statusCode: (error as any)?.statusCode ?? CHECKOUT_DOMAIN_STATUS[rawCode],
@@ -357,6 +380,14 @@ function toCheckoutPaymentError(
     return Object.assign(new Error('CPF/CNPJ inválido para o Mercado Pago.'), {
       code: 'INVALID_IDENTIFICATION',
       statusCode: CHECKOUT_DOMAIN_STATUS.INVALID_IDENTIFICATION,
+      details: normalized.payload,
+    });
+  }
+
+  if (rawCode === 'MERCADOPAGO_ORDERS_ERROR') {
+    return Object.assign(new Error('Falha ao criar order no Mercado Pago.'), {
+      code: 'MERCADOPAGO_ORDERS_ERROR',
+      statusCode: CHECKOUT_DOMAIN_STATUS.MERCADOPAGO_ORDERS_ERROR,
       details: normalized.payload,
     });
   }
@@ -578,6 +609,7 @@ export const cursosCheckoutService = {
       aceitouTermosIp: params.aceitouTermosIp,
       aceitouTermosUserAgent: params.aceitouTermosUserAgent,
       aceitouTermosEm: new Date(),
+      mpOrderId: null,
       mpPaymentId: null,
       metodoPagamento: null,
       pixQrCode: null,
@@ -803,8 +835,6 @@ export const cursosCheckoutService = {
    * Iniciar checkout de curso (PAGAMENTO ÚNICO)
    */
   async startCheckout(params: StartCursoCheckoutInput) {
-    const mp = await assertMercadoPagoConfiguredAsync();
-
     // 1. Validar curso existe e está disponível (PUBLICADO)
     const curso = await prisma.cursos.findUnique({
       where: { id: params.cursoId },
@@ -872,7 +902,22 @@ export const cursosCheckoutService = {
       });
     }
 
-    // 8. Criar ou reativar inscrição pendente
+    // 8. Validar método e credenciais de pagamento antes de criar a inscrição pendente.
+    const mercadoPagoConfig = await getRuntimeMercadoPagoConfig();
+    const allowedPaymentMethods = mercadoPagoConfig.coursePaymentMethods;
+    if (!allowedPaymentMethods.includes(params.pagamento)) {
+      throw Object.assign(
+        new Error(`O método ${params.pagamento} está desativado para cursos e turmas.`),
+        {
+          code: 'CURSO_PAYMENT_METHOD_DISABLED',
+          statusCode: CHECKOUT_DOMAIN_STATUS.CURSO_PAYMENT_METHOD_DISABLED,
+          allowedPaymentMethods,
+        },
+      );
+    }
+    await assertMercadoPagoConfiguredAsync();
+
+    // 9. Criar ou reativar inscrição pendente
     const codigo = await this.gerarCodigoInscricao();
     const inscricao = await this.criarOuReativarInscricao({
       codigo,
@@ -898,8 +943,7 @@ export const cursosCheckoutService = {
       metodoPagamento: params.pagamento,
     });
 
-    // 9. Criar pagamento no Mercado Pago
-    const paymentApi = new Payment(mp);
+    // 10. Criar pagamento no Mercado Pago via Orders API
     const paymentIdempotencyKey = this.getPaymentIdempotencyKey(inscricao.id, params.pagamento);
     const titulo =
       desconto > 0 ? `${curso.nome} (com desconto de R$ ${desconto.toFixed(2)})` : curso.nome;
@@ -993,18 +1037,16 @@ export const cursosCheckoutService = {
       phone: params.payer?.phone || payerPhone,
     };
 
-    const mercadoPagoConfig = await getRuntimeMercadoPagoConfig();
-    const allowedPaymentMethods = mercadoPagoConfig.coursePaymentMethods;
-    if (!allowedPaymentMethods.includes(params.pagamento)) {
-      throw Object.assign(
-        new Error(`O método ${params.pagamento} está desativado para cursos e turmas.`),
-        {
-          code: 'CURSO_PAYMENT_METHOD_DISABLED',
-          statusCode: CHECKOUT_DOMAIN_STATUS.CURSO_PAYMENT_METHOD_DISABLED,
-          allowedPaymentMethods,
-        },
-      );
-    }
+    const orderBase = {
+      accessToken: mercadoPagoConfig.getAccessToken(),
+      activeMode: mercadoPagoConfig.activeMode,
+      tokenFingerprint: mercadoPagoConfig.getAccessTokenFingerprint(),
+      idempotencyKey: paymentIdempotencyKey,
+      externalReference: inscricao.id,
+      description: titulo,
+      amount: valorFinal,
+      payer: payerBase,
+    };
 
     try {
       // ========================================
@@ -1031,40 +1073,34 @@ export const cursosCheckoutService = {
           requestId: paymentIdempotencyKey,
         });
 
-        const pixPayment = (await paymentApi.create({
-          body: {
-            transaction_amount: valorFinal,
-            description: titulo,
-            payment_method_id: 'pix',
-            external_reference: inscricao.id,
-            payer: {
-              email: payerBase.email,
-              first_name: payerBase.first_name || undefined,
-              last_name: payerBase.last_name || undefined,
-              identification: payerBase.identification,
-            },
+        const pixOrder = await createMercadoPagoOrder({
+          ...orderBase,
+          payer: {
+            email: payerBase.email,
+            first_name: payerBase.first_name || undefined,
+            last_name: payerBase.last_name || undefined,
+            identification: payerBase.identification,
           },
-          requestOptions: { idempotencyKey: paymentIdempotencyKey },
-        })) as MercadoPagoResponse;
+          payment: { kind: 'pix' },
+        });
 
-        const pixBody = pixPayment.body ?? pixPayment;
-        const mpPaymentId = pixBody?.id ? String(pixBody.id) : undefined;
-        const statusPagamento = mapToStatusPagamento(pixBody?.status);
-        const transactionData = pixBody?.point_of_interaction?.transaction_data || {};
+        const mpOrderId = pixOrder.orderId ?? undefined;
+        const mpPaymentId = pixOrder.payment?.id ?? undefined;
+        const statusPagamento = mapToStatusPagamento(pixOrder.payment?.status ?? pixOrder.status);
+        const transactionData = pixOrder.payment?.paymentMethod || {};
 
         // Atualizar inscrição com dados do pagamento
         await prisma.cursosTurmasInscricoes.update({
           where: { id: inscricao.id },
           data: {
             mpPaymentId: mpPaymentId ?? null,
+            mpOrderId: mpOrderId ?? null,
             statusPagamento,
             metodoPagamento: 'PIX',
             valorPago: statusPagamento === 'APROVADO' ? valorFinal : null,
             pixQrCode: transactionData.qr_code || null,
             pixQrCodeBase64: transactionData.qr_code_base64 || null,
-            pagamentoExpiraEm: pixBody?.date_of_expiration
-              ? new Date(pixBody.date_of_expiration)
-              : null,
+            pagamentoExpiraEm: null,
           },
         });
 
@@ -1078,6 +1114,7 @@ export const cursosCheckoutService = {
 
         logger.info('[PIX_CHECKOUT_CURSO] Pagamento PIX criado com sucesso', {
           inscricaoId: inscricao.id,
+          mpOrderId,
           mpPaymentId,
         });
 
@@ -1091,11 +1128,12 @@ export const cursosCheckoutService = {
           },
           pagamento: {
             tipo: 'pix',
-            status: pixBody?.status ?? null,
-            paymentId: mpPaymentId ?? null,
+            status: pixOrder.payment?.status ?? pixOrder.status ?? null,
+            paymentId: mpPaymentId ?? mpOrderId ?? null,
+            orderId: mpOrderId ?? null,
             qrCode: transactionData.qr_code || null,
             qrCodeBase64: transactionData.qr_code_base64 || null,
-            expiresAt: pixBody?.date_of_expiration || null,
+            expiresAt: null,
           },
           desconto:
             desconto > 0
@@ -1123,11 +1161,21 @@ export const cursosCheckoutService = {
           throw new Error('Token do cartão é obrigatório para pagamentos com cartão');
         }
 
-        const requestedInstallments = cardData.installments ?? 1;
+        const paymentMethodType = cardData.paymentMethodType ?? 'credit_card';
+        const paymentMethodId = normalizeCardPaymentMethodId(cardData.paymentMethodId);
+        if (!paymentMethodId) {
+          throw Object.assign(new Error('Bandeira do cartão é obrigatória para Orders API.'), {
+            code: 'CARD_PAYMENT_METHOD_REQUIRED',
+            statusCode: CHECKOUT_DOMAIN_STATUS.CARD_PAYMENT_METHOD_REQUIRED,
+          });
+        }
+
+        const isDebit = paymentMethodType === 'debit_card';
+        const requestedInstallments = isDebit ? 1 : (cardData.installments ?? 1);
         const { enabled: courseInstallmentsEnabled, maxInstallments } =
           mercadoPagoConfig.courseInstallments;
 
-        if (!courseInstallmentsEnabled && requestedInstallments > 1) {
+        if (!isDebit && !courseInstallmentsEnabled && requestedInstallments > 1) {
           throw Object.assign(new Error('Parcelamento desativado para cursos e turmas.'), {
             code: 'CURSO_INSTALLMENTS_DISABLED',
             statusCode: CHECKOUT_DOMAIN_STATUS.CURSO_INSTALLMENTS_DISABLED,
@@ -1135,7 +1183,7 @@ export const cursosCheckoutService = {
           });
         }
 
-        if (requestedInstallments > maxInstallments) {
+        if (!isDebit && requestedInstallments > maxInstallments) {
           throw Object.assign(
             new Error(`Parcelamento limitado a ${maxInstallments}x para cursos e turmas.`),
             {
@@ -1146,7 +1194,7 @@ export const cursosCheckoutService = {
           );
         }
 
-        const installments = courseInstallmentsEnabled ? requestedInstallments : 1;
+        const installments = isDebit ? 1 : courseInstallmentsEnabled ? requestedInstallments : 1;
 
         logger.info('[CARD_CHECKOUT_CURSO] Criando pagamento com cartão', {
           inscricaoId: inscricao.id,
@@ -1155,21 +1203,20 @@ export const cursosCheckoutService = {
           installments,
           requestId: paymentIdempotencyKey,
         });
-        const cardPayment = (await paymentApi.create({
-          body: {
-            transaction_amount: valorFinal,
-            description: titulo,
+        const cardOrder = await createMercadoPagoOrder({
+          ...orderBase,
+          payment: {
+            kind: 'card',
             token: cardData.token,
+            paymentMethodId,
+            paymentMethodType,
             installments,
-            external_reference: inscricao.id,
-            payer: payerBase,
           },
-          requestOptions: { idempotencyKey: paymentIdempotencyKey },
-        })) as MercadoPagoResponse;
+        });
 
-        const cardBody = cardPayment.body ?? cardPayment;
-        const mpPaymentId = cardBody?.id ? String(cardBody.id) : undefined;
-        const statusPagamento = mapToStatusPagamento(cardBody?.status);
+        const mpOrderId = cardOrder.orderId ?? undefined;
+        const mpPaymentId = cardOrder.payment?.id ?? undefined;
+        const statusPagamento = mapToStatusPagamento(cardOrder.payment?.status ?? cardOrder.status);
         const ativo = statusPagamento === 'APROVADO';
 
         // Atualizar inscrição com dados do pagamento
@@ -1177,9 +1224,13 @@ export const cursosCheckoutService = {
           where: { id: inscricao.id },
           data: {
             mpPaymentId: mpPaymentId ?? null,
+            mpOrderId: mpOrderId ?? null,
             statusPagamento,
-            metodoPagamento:
-              installments > 1 ? `CARTAO_CREDITO_${installments}X` : 'CARTAO_CREDITO',
+            metodoPagamento: isDebit
+              ? 'CARTAO_DEBITO'
+              : installments > 1
+                ? `CARTAO_CREDITO_${installments}X`
+                : 'CARTAO_CREDITO',
             valorPago: ativo ? valorFinal : null,
             status: ativo ? 'INSCRITO' : 'AGUARDANDO_PAGAMENTO',
             pixQrCode: null,
@@ -1217,6 +1268,7 @@ export const cursosCheckoutService = {
 
           logger.info('[CARD_CHECKOUT_CURSO] Pagamento aprovado, token gerado', {
             inscricaoId: inscricao.id,
+            mpOrderId,
             mpPaymentId,
           });
         }
@@ -1239,8 +1291,9 @@ export const cursosCheckoutService = {
           },
           pagamento: {
             tipo: 'card',
-            status: cardBody?.status ?? null,
-            paymentId: mpPaymentId ?? null,
+            status: cardOrder.payment?.status ?? cardOrder.status ?? null,
+            paymentId: mpPaymentId ?? mpOrderId ?? null,
+            orderId: mpOrderId ?? null,
             installments,
           },
           desconto:
@@ -1289,46 +1342,41 @@ export const cursosCheckoutService = {
           requestId: paymentIdempotencyKey,
         });
 
-        const boletoPayment = (await paymentApi.create({
-          body: {
-            transaction_amount: valorFinal,
-            description: titulo,
-            payment_method_id: 'bolbradesco',
-            external_reference: inscricao.id,
-            payer: {
-              ...payerBase,
-              identification: documento && documento.number ? documento : undefined,
-            },
+        const boletoOrder = await createMercadoPagoOrder({
+          ...orderBase,
+          payer: {
+            ...payerBase,
+            identification: documento && documento.number ? documento : undefined,
           },
-          requestOptions: { idempotencyKey: paymentIdempotencyKey },
-        })) as MercadoPagoResponse;
+          payment: { kind: 'boleto', expirationTime: 'P3D' },
+        });
 
-        const boletoBody = boletoPayment.body ?? boletoPayment;
-        const mpPaymentId = boletoBody?.id ? String(boletoBody.id) : undefined;
-        const statusPagamento = mapToStatusPagamento(boletoBody?.status);
+        const mpOrderId = boletoOrder.orderId ?? undefined;
+        const mpPaymentId = boletoOrder.payment?.id ?? undefined;
+        const statusPagamento = mapToStatusPagamento(
+          boletoOrder.payment?.status ?? boletoOrder.status,
+        );
+        const paymentMethod = boletoOrder.payment?.paymentMethod || {};
         const barcode =
-          boletoBody?.barcode?.content ||
-          boletoBody?.barcode ||
-          boletoBody?.transaction_details?.external_resource_url ||
+          paymentMethod.barcode_content ||
+          paymentMethod.digitable_line ||
+          paymentMethod.reference ||
+          paymentMethod.verification_code ||
           null;
-        const boletoUrl =
-          boletoBody?.transaction_details?.external_resource_url ||
-          boletoBody?.point_of_interaction?.transaction_data?.ticket_url ||
-          null;
+        const boletoUrl = paymentMethod.ticket_url || null;
 
         // Atualizar inscrição com dados do pagamento
         await prisma.cursosTurmasInscricoes.update({
           where: { id: inscricao.id },
           data: {
             mpPaymentId: mpPaymentId ?? null,
+            mpOrderId: mpOrderId ?? null,
             statusPagamento,
             metodoPagamento: 'BOLETO',
             valorPago: statusPagamento === 'APROVADO' ? valorFinal : null,
             boletoCodigo: barcode,
             boletoUrl,
-            pagamentoExpiraEm: boletoBody?.date_of_expiration
-              ? new Date(boletoBody.date_of_expiration)
-              : null,
+            pagamentoExpiraEm: null,
           },
         });
 
@@ -1342,6 +1390,7 @@ export const cursosCheckoutService = {
 
         logger.info('[BOLETO_CHECKOUT_CURSO] Pagamento Boleto criado com sucesso', {
           inscricaoId: inscricao.id,
+          mpOrderId,
           mpPaymentId,
         });
 
@@ -1355,11 +1404,12 @@ export const cursosCheckoutService = {
           },
           pagamento: {
             tipo: 'boleto',
-            status: boletoBody?.status ?? null,
-            paymentId: mpPaymentId ?? null,
+            status: boletoOrder.payment?.status ?? boletoOrder.status ?? null,
+            paymentId: mpPaymentId ?? mpOrderId ?? null,
+            orderId: mpOrderId ?? null,
             barcode,
             boletoUrl,
-            expiresAt: boletoBody?.date_of_expiration || null,
+            expiresAt: null,
           },
           desconto:
             desconto > 0
@@ -1400,6 +1450,8 @@ export const cursosCheckoutService = {
             status: 'CANCELADO',
             statusPagamento: 'CANCELADO',
             pagamentoExpiraEm: null,
+            mpOrderId: null,
+            mpPaymentId: null,
           },
         })
         .catch((cleanupError) => {
@@ -1461,6 +1513,118 @@ export const cursosCheckoutService = {
   async handleWebhookPagamento(event: { type?: string; action?: string; data?: any }) {
     const { type, action, data } = event;
 
+    const processarAtualizacao = async (
+      inscricao: any,
+      statusRaw: string | null | undefined,
+      identifiers: { mpPaymentId?: string | null; mpOrderId?: string | null },
+    ) => {
+      const status = String(statusRaw || '').toLowerCase();
+      const statusPagamento = mapToStatusPagamento(status);
+
+      logger.info('[WEBHOOK] Processando pagamento de curso', {
+        ...identifiers,
+        inscricaoId: inscricao.id,
+        status,
+        statusPagamento,
+      });
+
+      if (PAYMENT_APPROVED_STATUSES.has(status)) {
+        const { token, expiresAt } = this.gerarTokenAcesso({
+          inscricaoId: inscricao.id,
+          alunoId: inscricao.alunoId,
+          cursoId: inscricao.CursosTurmas.cursoId,
+          turmaId: inscricao.turmaId,
+        });
+
+        const jaAtiva = inscricao.status === 'INSCRITO';
+        await prisma.cursosTurmasInscricoes.update({
+          where: { id: inscricao.id },
+          data: {
+            status: 'INSCRITO',
+            statusPagamento: 'APROVADO',
+            tokenAcesso: token,
+            tokenAcessoExpiraEm: expiresAt,
+            valorPago: inscricao.valorFinal,
+          },
+        });
+
+        if (inscricao.cupomDescontoId && !jaAtiva) {
+          await prisma.cuponsDesconto.update({
+            where: { id: inscricao.cupomDescontoId },
+            data: { usosTotais: { increment: 1 } },
+          });
+        }
+
+        logger.info('[WEBHOOK] Inscrição ativada com sucesso', {
+          inscricaoId: inscricao.id,
+          codigo: inscricao.codigo,
+        });
+        return;
+      }
+
+      if (PAYMENT_REJECTED_STATUSES.has(status) || PAYMENT_CANCELLED_STATUSES.has(status)) {
+        await prisma.cursosTurmasInscricoes.update({
+          where: { id: inscricao.id },
+          data: {
+            status: 'CANCELADO',
+            statusPagamento: 'RECUSADO',
+          },
+        });
+
+        logger.warn('[WEBHOOK] Pagamento recusado/cancelado', {
+          ...identifiers,
+          inscricaoId: inscricao.id,
+          status,
+        });
+        return;
+      }
+
+      if (statusPagamento !== 'PENDENTE') {
+        await prisma.cursosTurmasInscricoes.update({
+          where: { id: inscricao.id },
+          data: { statusPagamento },
+        });
+      }
+    };
+
+    const eventId = String(data?.id ?? data?.order_id ?? data?.resource ?? '');
+    const isOrderEvent =
+      type === 'order' || String(action || '').startsWith('order.') || eventId.startsWith('ORD');
+
+    if (isOrderEvent && eventId) {
+      const inscricao = await prisma.cursosTurmasInscricoes.findFirst({
+        where: { mpOrderId: eventId },
+        include: { CursosTurmas: { include: { Cursos: true } } },
+      });
+
+      if (!inscricao) {
+        logger.warn('[WEBHOOK] Inscrição não encontrada para mpOrderId', { mpOrderId: eventId });
+        return;
+      }
+
+      let order = normalizeMercadoPagoOrder(data);
+      const config = await getRuntimeMercadoPagoConfig();
+      try {
+        order = await getMercadoPagoOrder({
+          accessToken: config.getAccessToken(),
+          activeMode: config.activeMode,
+          tokenFingerprint: config.getAccessTokenFingerprint(),
+          orderId: eventId,
+        });
+      } catch (error) {
+        logger.warn('[WEBHOOK] Falha ao consultar order no gateway', {
+          mpOrderId: eventId,
+          error,
+        });
+      }
+
+      await processarAtualizacao(inscricao, order.payment?.status ?? order.status, {
+        mpOrderId: eventId,
+        mpPaymentId: order.payment?.id,
+      });
+      return;
+    }
+
     if (type === 'payment' && (action === 'payment.created' || action === 'payment.updated')) {
       const mpPaymentId = String(data?.id ?? '');
       if (!mpPaymentId) return;
@@ -1491,68 +1655,10 @@ export const cursosCheckoutService = {
       }
 
       const status = String(gatewayData?.status || data?.status || '').toLowerCase();
-      const statusPagamento = mapToStatusPagamento(status);
-
-      logger.info('[WEBHOOK] Processando pagamento de curso', {
+      await processarAtualizacao(inscricao, status, {
         mpPaymentId,
-        inscricaoId: inscricao.id,
-        status,
-        statusPagamento,
+        mpOrderId: inscricao.mpOrderId,
       });
-
-      // Se pagamento aprovado, ativar inscrição e gerar token
-      if (PAYMENT_APPROVED_STATUSES.has(status)) {
-        const { token, expiresAt } = this.gerarTokenAcesso({
-          inscricaoId: inscricao.id,
-          alunoId: inscricao.alunoId,
-          cursoId: inscricao.CursosTurmas.cursoId,
-          turmaId: inscricao.turmaId,
-        });
-
-        await prisma.cursosTurmasInscricoes.update({
-          where: { id: inscricao.id },
-          data: {
-            status: 'INSCRITO',
-            statusPagamento: 'APROVADO',
-            tokenAcesso: token,
-            tokenAcessoExpiraEm: expiresAt,
-            valorPago: inscricao.valorFinal,
-          },
-        });
-
-        // Incrementar uso do cupom (se foi usado)
-        if (inscricao.cupomDescontoId) {
-          await prisma.cuponsDesconto.update({
-            where: { id: inscricao.cupomDescontoId },
-            data: { usosTotais: { increment: 1 } },
-          });
-        }
-
-        logger.info('[WEBHOOK] Inscrição ativada com sucesso', {
-          inscricaoId: inscricao.id,
-          codigo: inscricao.codigo,
-        });
-
-        // TODO: Enviar email de confirmação
-      }
-
-      // Se pagamento recusado
-      if (PAYMENT_REJECTED_STATUSES.has(status) || PAYMENT_CANCELLED_STATUSES.has(status)) {
-        await prisma.cursosTurmasInscricoes.update({
-          where: { id: inscricao.id },
-          data: {
-            status: 'CANCELADO',
-            statusPagamento: 'RECUSADO',
-          },
-        });
-
-        logger.warn('[WEBHOOK] Pagamento recusado/cancelado', {
-          inscricaoId: inscricao.id,
-          status,
-        });
-
-        // TODO: Enviar email de falha
-      }
     }
   },
 };

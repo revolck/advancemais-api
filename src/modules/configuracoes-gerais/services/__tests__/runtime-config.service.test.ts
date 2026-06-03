@@ -135,4 +135,51 @@ describe('RuntimeConfigService', () => {
     expect(config.coursePaymentMethods).toEqual(['pix', 'boleto', 'card']);
     expect(config.subscriptionPaymentMethods).toEqual(['boleto', 'card']);
   });
+
+  it('usa mp_active_mode salvo no banco sem inferir produção quando teste está ativo', async () => {
+    process.env.MP_TEST_ACCESS_TOKEN = 'TEST_ACCESS_TOKEN';
+    process.env.MP_ACCESS_TOKEN = 'APP_USR_ENV_TOKEN';
+
+    jest.spyOn(prisma.sistemaConfiguracoes, 'findMany').mockResolvedValue([
+      {
+        categoria: 'mercadopago',
+        chave: 'mp_active_mode',
+        tipo: 'string',
+        valor: 'test',
+        valorCriptografado: null,
+        valorHash: null,
+        ehSecreto: false,
+        atualizadoEm: new Date(),
+      },
+      {
+        categoria: 'mercadopago',
+        chave: 'mp_test_public_key',
+        tipo: 'string',
+        valor: 'TEST_PUBLIC_KEY',
+        valorCriptografado: null,
+        valorHash: null,
+        ehSecreto: false,
+        atualizadoEm: new Date(),
+      },
+      {
+        categoria: 'mercadopago',
+        chave: 'mp_public_key',
+        tipo: 'string',
+        valor: 'APP_USR_PUBLIC_KEY',
+        valorCriptografado: null,
+        valorHash: null,
+        ehSecreto: false,
+        atualizadoEm: new Date(),
+      },
+    ] as never);
+
+    const config = await runtimeConfigService.getMercadoPagoConfig();
+    const validation = config.validateActiveCredentials();
+
+    expect(config.activeMode).toBe('test');
+    expect(config.active.publicKey).toBe('TEST_PUBLIC_KEY');
+    expect(config.getPublicKey()).toBe('TEST_PUBLIC_KEY');
+    expect(validation.activeMode).toBe('test');
+    expect(validation.accessToken).toBe('TEST_ACCESS_TOKEN');
+  });
 });

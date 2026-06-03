@@ -354,6 +354,90 @@ describe('ConfiguracoesGeraisService', () => {
     );
   });
 
+  it('retorna o modo ativo do Mercado Pago persistido após salvar', async () => {
+    jest
+      .spyOn(runtimeConfigService, 'listCategory')
+      .mockResolvedValueOnce(
+        categorySnapshot('mercadopago', [
+          {
+            key: 'course_payment_methods',
+            label: 'Métodos de pagamento para cursos e turmas',
+            type: 'csv',
+            secret: false,
+            value: 'pix,boleto,card',
+            configured: true,
+            source: 'ENV',
+          },
+          {
+            key: 'subscription_payment_methods',
+            label: 'Métodos de pagamento para assinaturas',
+            type: 'csv',
+            secret: false,
+            value: 'pix,boleto,card',
+            configured: true,
+            source: 'ENV',
+          },
+          {
+            key: 'mp_active_mode',
+            label: 'Modo do Mercado Pago',
+            type: 'string',
+            secret: false,
+            value: 'production',
+            configured: true,
+            source: 'DB',
+          },
+        ]) as never,
+      )
+      .mockResolvedValueOnce(
+        categorySnapshot('mercadopago', [
+          {
+            key: 'course_payment_methods',
+            label: 'Métodos de pagamento para cursos e turmas',
+            type: 'csv',
+            secret: false,
+            value: 'pix,boleto,card',
+            configured: true,
+            source: 'ENV',
+          },
+          {
+            key: 'subscription_payment_methods',
+            label: 'Métodos de pagamento para assinaturas',
+            type: 'csv',
+            secret: false,
+            value: 'pix,boleto,card',
+            configured: true,
+            source: 'ENV',
+          },
+          {
+            key: 'mp_active_mode',
+            label: 'Modo do Mercado Pago',
+            type: 'string',
+            secret: false,
+            value: 'test',
+            configured: true,
+            source: 'DB',
+          },
+        ]) as never,
+      );
+
+    const result = await configuracoesGeraisService.updateCategory(
+      'mercadopago',
+      {
+        values: {
+          mp_active_mode: 'test',
+        },
+      },
+      req,
+    );
+
+    expect(prisma.sistemaConfiguracoes.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { categoria_chave: { categoria: 'mercadopago', chave: 'mp_active_mode' } },
+      }),
+    );
+    expect(result.items.find((item) => item.key === 'mp_active_mode')?.value).toBe('test');
+  });
+
   it('rejeita salvar métodos de pagamento vazios no Mercado Pago', async () => {
     jest.spyOn(runtimeConfigService, 'listCategory').mockResolvedValue(
       categorySnapshot('mercadopago', [

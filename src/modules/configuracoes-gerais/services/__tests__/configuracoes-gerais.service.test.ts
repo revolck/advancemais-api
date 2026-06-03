@@ -15,12 +15,23 @@ const req = {
 } as any;
 
 function categorySnapshot(
-  category: 'mercadopago' | 'uploads',
+  category: 'mercadopago' | 'uploads' | 'logs' | 'agenda' | 'emails' | 'integracoes',
   items: Record<string, any>[],
 ) {
   return {
     category,
-    label: category === 'mercadopago' ? 'Mercado Pago' : 'Uploads',
+    label:
+      category === 'mercadopago'
+        ? 'Mercado Pago'
+        : category === 'uploads'
+          ? 'Uploads'
+          : category === 'logs'
+            ? 'Logs'
+            : category === 'agenda'
+              ? 'Agenda'
+              : category === 'emails'
+                ? 'E-mails'
+                : 'Integrações',
     description: '',
     items: items.map((item) => ({
       description: null,
@@ -53,6 +64,24 @@ describe('ConfiguracoesGeraisService', () => {
       .mockResolvedValueOnce(
         categorySnapshot('mercadopago', [
           {
+            key: 'course_payment_methods',
+            label: 'Métodos de pagamento para cursos e turmas',
+            type: 'csv',
+            secret: false,
+            value: 'pix,boleto,card',
+            configured: true,
+            source: 'ENV',
+          },
+          {
+            key: 'subscription_payment_methods',
+            label: 'Métodos de pagamento para assinaturas',
+            type: 'csv',
+            secret: false,
+            value: 'pix,boleto,card',
+            configured: true,
+            source: 'ENV',
+          },
+          {
             key: 'assinaturas_grace_days',
             label: 'Dias de tolerância',
             type: 'number',
@@ -65,6 +94,24 @@ describe('ConfiguracoesGeraisService', () => {
       )
       .mockResolvedValueOnce(
         categorySnapshot('mercadopago', [
+          {
+            key: 'course_payment_methods',
+            label: 'Métodos de pagamento para cursos e turmas',
+            type: 'csv',
+            secret: false,
+            value: 'pix,boleto,card',
+            configured: true,
+            source: 'ENV',
+          },
+          {
+            key: 'subscription_payment_methods',
+            label: 'Métodos de pagamento para assinaturas',
+            type: 'csv',
+            secret: false,
+            value: 'pix,boleto,card',
+            configured: true,
+            source: 'ENV',
+          },
           {
             key: 'assinaturas_grace_days',
             label: 'Dias de tolerância',
@@ -86,12 +133,30 @@ describe('ConfiguracoesGeraisService', () => {
     );
 
     expect(prisma.sistemaConfiguracoes.upsert).toHaveBeenCalledTimes(1);
-    expect(result.items[0]?.value).toBe(10);
+    expect(result.items.find((item) => item.key === 'assinaturas_grace_days')?.value).toBe(10);
   });
 
   it('bloqueia replace de segredo sem CONFIG_ENCRYPTION_KEY antes de persistir', async () => {
     jest.spyOn(runtimeConfigService, 'listCategory').mockResolvedValue(
       categorySnapshot('mercadopago', [
+        {
+          key: 'course_payment_methods',
+          label: 'Métodos de pagamento para cursos e turmas',
+          type: 'csv',
+          secret: false,
+          value: 'pix,boleto,card',
+          configured: true,
+          source: 'ENV',
+        },
+        {
+          key: 'subscription_payment_methods',
+          label: 'Métodos de pagamento para assinaturas',
+          type: 'csv',
+          secret: false,
+          value: 'pix,boleto,card',
+          configured: true,
+          source: 'ENV',
+        },
         {
           key: 'mp_access_token',
           label: 'Access token de produção',
@@ -130,6 +195,24 @@ describe('ConfiguracoesGeraisService', () => {
       .mockResolvedValueOnce(
         categorySnapshot('mercadopago', [
           {
+            key: 'course_payment_methods',
+            label: 'Métodos de pagamento para cursos e turmas',
+            type: 'csv',
+            secret: false,
+            value: 'pix,boleto,card',
+            configured: true,
+            source: 'ENV',
+          },
+          {
+            key: 'subscription_payment_methods',
+            label: 'Métodos de pagamento para assinaturas',
+            type: 'csv',
+            secret: false,
+            value: 'pix,boleto,card',
+            configured: true,
+            source: 'ENV',
+          },
+          {
             key: 'mp_access_token',
             label: 'Access token de produção',
             type: 'string',
@@ -167,5 +250,147 @@ describe('ConfiguracoesGeraisService', () => {
     );
 
     expect(prisma.sistemaConfiguracoes.deleteMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('retorna o estado persistido para toggles booleanos após salvar', async () => {
+    jest
+      .spyOn(runtimeConfigService, 'listCategory')
+      .mockResolvedValueOnce(
+        categorySnapshot('mercadopago', [
+          {
+            key: 'course_payment_methods',
+            label: 'Métodos de pagamento para cursos e turmas',
+            type: 'csv',
+            secret: false,
+            value: 'pix,boleto,card',
+            configured: true,
+            source: 'ENV',
+          },
+          {
+            key: 'subscription_payment_methods',
+            label: 'Métodos de pagamento para assinaturas',
+            type: 'csv',
+            secret: false,
+            value: 'pix,boleto,card',
+            configured: true,
+            source: 'ENV',
+          },
+          {
+            key: 'cron_cobranca_enabled',
+            label: 'Cron de cobrança ativo',
+            type: 'boolean',
+            secret: false,
+            value: false,
+            configured: true,
+            source: 'ENV',
+          },
+          {
+            key: 'cron_cobranca_schedule',
+            label: 'Agenda do cron de cobrança',
+            type: 'cron',
+            secret: false,
+            value: '0 6 * * *',
+            configured: true,
+            source: 'ENV',
+          },
+        ]) as never,
+      )
+      .mockResolvedValueOnce(
+        categorySnapshot('mercadopago', [
+          {
+            key: 'course_payment_methods',
+            label: 'Métodos de pagamento para cursos e turmas',
+            type: 'csv',
+            secret: false,
+            value: 'pix,boleto,card',
+            configured: true,
+            source: 'ENV',
+          },
+          {
+            key: 'subscription_payment_methods',
+            label: 'Métodos de pagamento para assinaturas',
+            type: 'csv',
+            secret: false,
+            value: 'pix,boleto,card',
+            configured: true,
+            source: 'ENV',
+          },
+          {
+            key: 'cron_cobranca_enabled',
+            label: 'Cron de cobrança ativo',
+            type: 'boolean',
+            secret: false,
+            value: true,
+            configured: true,
+            source: 'DB',
+          },
+          {
+            key: 'cron_cobranca_schedule',
+            label: 'Agenda do cron de cobrança',
+            type: 'cron',
+            secret: false,
+            value: '0 6 * * *',
+            configured: true,
+            source: 'DB',
+          },
+        ]) as never,
+      );
+
+    const result = await configuracoesGeraisService.updateCategory(
+      'mercadopago',
+      {
+        values: {
+          cron_cobranca_enabled: true,
+          cron_cobranca_schedule: '0 6 * * *',
+        },
+      },
+      req,
+    );
+
+    expect(prisma.sistemaConfiguracoes.upsert).toHaveBeenCalled();
+    expect(result.items.find((item) => item.key === 'cron_cobranca_enabled')?.value).toBe(true);
+    expect(typeof result.items.find((item) => item.key === 'cron_cobranca_enabled')?.value).toBe(
+      'boolean',
+    );
+  });
+
+  it('rejeita salvar métodos de pagamento vazios no Mercado Pago', async () => {
+    jest.spyOn(runtimeConfigService, 'listCategory').mockResolvedValue(
+      categorySnapshot('mercadopago', [
+        {
+          key: 'course_payment_methods',
+          label: 'Métodos de pagamento para cursos e turmas',
+          type: 'csv',
+          secret: false,
+          value: 'pix,boleto,card',
+          configured: true,
+          source: 'ENV',
+        },
+        {
+          key: 'subscription_payment_methods',
+          label: 'Métodos de pagamento para assinaturas',
+          type: 'csv',
+          secret: false,
+          value: 'pix,boleto,card',
+          configured: true,
+          source: 'ENV',
+        },
+      ]) as never,
+    );
+
+    await expect(
+      configuracoesGeraisService.updateCategory(
+        'mercadopago',
+        {
+          values: {
+            course_payment_methods: '',
+          },
+        },
+        req,
+      ),
+    ).rejects.toMatchObject({
+      code: 'INVALID_CONFIG_VALUE',
+      statusCode: 400,
+    });
   });
 });

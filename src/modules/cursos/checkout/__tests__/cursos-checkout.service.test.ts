@@ -1,4 +1,5 @@
 import { prisma } from '@/config/prisma';
+import * as mercadoPagoConfig from '@/config/mercadopago';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { Payment } from 'mercadopago';
 import { cursosCheckoutService } from '../services/cursos-checkout.service';
@@ -823,6 +824,48 @@ describe('Cursos Checkout Service', () => {
           }),
         }),
       );
+    });
+  });
+
+  describe('startCheckout', () => {
+    it('rejeita método de pagamento desativado para cursos', async () => {
+      jest
+        .spyOn(mercadoPagoConfig, 'assertMercadoPagoConfiguredAsync')
+        .mockResolvedValue({} as never);
+      jest.spyOn(mercadoPagoConfig, 'getRuntimeMercadoPagoConfig').mockResolvedValue({
+        courseInstallments: { enabled: false, maxInstallments: 1 },
+        coursePaymentMethods: ['pix'],
+      } as never);
+
+      jest.spyOn(prisma.cursos, 'findUnique').mockResolvedValue(mockCurso as never);
+      jest.spyOn(prisma.cursosTurmas, 'findUnique').mockResolvedValue(mockTurma as never);
+      jest.spyOn(cursosCheckoutService, 'validarVagasDisponiveis').mockResolvedValue(true);
+      jest.spyOn(cursosCheckoutService, 'validarInscricaoDuplicada').mockResolvedValue(false);
+      jest.spyOn(prisma.usuarios, 'findUnique').mockResolvedValue({
+        ...mockUsuario,
+        UsuariosEnderecos: [],
+        UsuariosInformation: { telefone: '82999999999' },
+      } as never);
+      jest.spyOn(cursosCheckoutService, 'gerarCodigoInscricao').mockResolvedValue('MAT2025001');
+      jest.spyOn(cursosCheckoutService as any, 'criarOuReativarInscricao').mockResolvedValue({
+        id: 'inscricao-123',
+        codigo: 'MAT2025001',
+        status: 'AGUARDANDO_PAGAMENTO',
+      });
+
+      await expect(
+        cursosCheckoutService.startCheckout({
+          usuarioId: 'user-123',
+          cursoId: 'curso-123',
+          turmaId: 'turma-123',
+          pagamento: 'card',
+          payer: { email: 'joao@test.com' },
+          aceitouTermos: true,
+        } as any),
+      ).rejects.toMatchObject({
+        code: 'CURSO_PAYMENT_METHOD_DISABLED',
+        statusCode: 400,
+      });
     });
   });
 });

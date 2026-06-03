@@ -490,6 +490,8 @@ class ConfiguracoesGeraisService {
       activeMode: validation.activeMode,
       courseInstallmentsEnabled: mpConfig.courseInstallments.enabled,
       courseInstallmentsMax: mpConfig.courseInstallments.maxInstallments,
+      coursePaymentMethods: mpConfig.coursePaymentMethods,
+      subscriptionPaymentMethods: mpConfig.subscriptionPaymentMethods,
     };
   }
 
@@ -592,6 +594,46 @@ class ConfiguracoesGeraisService {
           statusCode: 400,
         });
       }
+    }
+
+    if (category === 'mercadopago') {
+      ['course_payment_methods', 'subscription_payment_methods'].forEach((key) => {
+        const requested = String(effectiveValues[key] ?? '')
+          .split(',')
+          .map((item) => item.trim().toLowerCase())
+          .filter(Boolean);
+        const normalized = Array.from(
+          new Set(requested.filter((item) => ['pix', 'boleto', 'card'].includes(item))),
+        );
+
+        if (requested.length !== normalized.length) {
+          throw Object.assign(
+            new Error(
+              `${
+                definitions.find((item) => item.key === key)?.label ?? key
+              } contém métodos inválidos`,
+            ),
+            {
+              code: 'INVALID_CONFIG_VALUE',
+              statusCode: 400,
+            },
+          );
+        }
+
+        if (normalized.length === 0) {
+          throw Object.assign(
+            new Error(
+              `${
+                definitions.find((item) => item.key === key)?.label ?? key
+              } precisa ter pelo menos um método selecionado`,
+            ),
+            {
+              code: 'INVALID_CONFIG_VALUE',
+              statusCode: 400,
+            },
+          );
+        }
+      });
     }
 
     const conditionalRules = CONDITIONAL_REQUIRED_FIELDS[category] ?? [];

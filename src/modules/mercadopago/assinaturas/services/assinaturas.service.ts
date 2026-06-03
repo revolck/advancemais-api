@@ -665,12 +665,33 @@ export const assinaturasService = {
         ? MODELO_PAGAMENTO.PAGAMENTO_PARCELADO
         : MODELO_PAGAMENTO.PAGAMENTO_UNICO;
     const paymentMode = isAssinatura ? (params.card?.token ? 'DIRECT' : 'CHECKOUT_PRO') : 'DIRECT';
+    const mercadoPagoConfig = await getRuntimeMercadoPagoConfig();
+    const allowedPaymentMethods = mercadoPagoConfig.subscriptionPaymentMethods;
 
     if (isAssinatura && (params.card?.installments ?? 1) > 1) {
       throw Object.assign(new Error('Planos recorrentes não aceitam parcelamento no cartão.'), {
         code: 'ASSINATURA_INSTALLMENTS_NOT_ALLOWED',
         statusCode: 400,
       });
+    }
+
+    if (isAssinatura && !allowedPaymentMethods.includes('card')) {
+      throw Object.assign(new Error('Cartão está desativado para o checkout de assinaturas.'), {
+        code: 'ASSINATURA_CARD_DISABLED',
+        statusCode: 400,
+        allowedPaymentMethods,
+      });
+    }
+
+    if (!allowedPaymentMethods.includes(pagamentoSelecionado)) {
+      throw Object.assign(
+        new Error(`O método ${pagamentoSelecionado} está desativado para assinaturas.`),
+        {
+          code: 'ASSINATURA_PAYMENT_METHOD_DISABLED',
+          statusCode: 400,
+          allowedPaymentMethods,
+        },
+      );
     }
 
     await this.logEvent({

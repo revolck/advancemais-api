@@ -51,6 +51,7 @@ const CHECKOUT_DOMAIN_STATUS: Record<string, number> = {
   MERCADOPAGO_UNAUTHORIZED_POLICY: 503,
   CURSO_INSTALLMENTS_DISABLED: 400,
   CURSO_INSTALLMENTS_LIMIT_EXCEEDED: 400,
+  CURSO_PAYMENT_METHOD_DISABLED: 400,
 };
 
 // ========================================
@@ -992,6 +993,19 @@ export const cursosCheckoutService = {
       phone: params.payer?.phone || payerPhone,
     };
 
+    const mercadoPagoConfig = await getRuntimeMercadoPagoConfig();
+    const allowedPaymentMethods = mercadoPagoConfig.coursePaymentMethods;
+    if (!allowedPaymentMethods.includes(params.pagamento)) {
+      throw Object.assign(
+        new Error(`O método ${params.pagamento} está desativado para cursos e turmas.`),
+        {
+          code: 'CURSO_PAYMENT_METHOD_DISABLED',
+          statusCode: CHECKOUT_DOMAIN_STATUS.CURSO_PAYMENT_METHOD_DISABLED,
+          allowedPaymentMethods,
+        },
+      );
+    }
+
     try {
       // ========================================
       // PAGAMENTO VIA PIX
@@ -1109,7 +1123,6 @@ export const cursosCheckoutService = {
           throw new Error('Token do cartão é obrigatório para pagamentos com cartão');
         }
 
-        const mercadoPagoConfig = await getRuntimeMercadoPagoConfig();
         const requestedInstallments = cardData.installments ?? 1;
         const { enabled: courseInstallmentsEnabled, maxInstallments } =
           mercadoPagoConfig.courseInstallments;

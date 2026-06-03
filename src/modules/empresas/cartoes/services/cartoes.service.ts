@@ -1,8 +1,5 @@
 import { Customer, CustomerCard } from 'mercadopago';
-import {
-  assertMercadoPagoConfiguredAsync,
-  getMercadoPagoClient,
-} from '@/config/mercadopago';
+import { assertMercadoPagoConfiguredAsync, getMercadoPagoClient } from '@/config/mercadopago';
 import { prisma } from '@/config/prisma';
 
 interface CartaoSalvo {

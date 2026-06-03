@@ -1,10 +1,7 @@
 import { CursosAulaStatus, Prisma, StatusInscricao } from '@prisma/client';
 import { Payment } from 'mercadopago';
 
-import {
-  assertMercadoPagoConfiguredAsync,
-  getMercadoPagoClient,
-} from '@/config/mercadopago';
+import { assertMercadoPagoConfiguredAsync, getMercadoPagoClient } from '@/config/mercadopago';
 import { prisma } from '@/config/prisma';
 import { notificacoesService } from '@/modules/notificacoes/services/notificacoes.service';
 import { logger } from '@/utils/logger';

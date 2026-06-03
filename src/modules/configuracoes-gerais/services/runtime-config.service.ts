@@ -53,6 +53,8 @@ type CursoInstallmentsConfig = {
   maxInstallments: number;
 };
 
+type CheckoutPaymentMethod = 'pix' | 'boleto' | 'card';
+
 export interface ResolvedConfigItem {
   key: string;
   label: string;
@@ -191,6 +193,8 @@ class RuntimeConfigService {
       pendingUrl,
       billingPortalUrl,
       courseInstallments,
+      coursePaymentMethods,
+      subscriptionPaymentMethods,
       graceDays,
       boletoGraceDays,
       emailsEnabled,
@@ -217,6 +221,8 @@ class RuntimeConfigService {
       this.getString('mercadopago', 'mp_return_pending_url'),
       this.getString('mercadopago', 'mp_billing_portal_url'),
       this.getCourseInstallmentsConfig(),
+      this.getPaymentMethodsConfig('course_payment_methods', ['pix', 'boleto', 'card']),
+      this.getPaymentMethodsConfig('subscription_payment_methods', ['pix', 'boleto', 'card']),
       this.getNumber('mercadopago', 'assinaturas_grace_days', 5),
       this.getNumber('mercadopago', 'assinaturas_boleto_grace_days', 5),
       this.getBoolean('mercadopago', 'assinaturas_emails_enabled', true),
@@ -275,6 +281,8 @@ class RuntimeConfigService {
         cobrancaSchedule: parseScheduleConfig(cobrancaScheduleRaw || undefined, 360),
       },
       courseInstallments,
+      coursePaymentMethods,
+      subscriptionPaymentMethods,
       active:
         normalizedActiveMode === 'production'
           ? {
@@ -485,6 +493,14 @@ class RuntimeConfigService {
     };
   }
 
+  async getPaymentMethodsConfig(
+    key: 'course_payment_methods' | 'subscription_payment_methods',
+    fallback: CheckoutPaymentMethod[],
+  ): Promise<CheckoutPaymentMethod[]> {
+    const raw = await this.getString('mercadopago', key);
+    return this.normalizePaymentMethods(raw, fallback);
+  }
+
   async getCourseInstallmentsConfig(): Promise<CursoInstallmentsConfig> {
     const [enabled, maxInstallmentsRaw] = await Promise.all([
       this.getBoolean('mercadopago', 'cursos_installments_enabled', false),
@@ -495,6 +511,23 @@ class RuntimeConfigService {
       enabled,
       maxInstallments: Math.min(12, Math.max(1, Number(maxInstallmentsRaw || 1))),
     };
+  }
+
+  private normalizePaymentMethods(
+    raw: string | null | undefined,
+    fallback: CheckoutPaymentMethod[],
+  ): CheckoutPaymentMethod[] {
+    const allowed: CheckoutPaymentMethod[] = ['pix', 'boleto', 'card'];
+    const parsed = String(raw || '')
+      .split(',')
+      .map((item) => item.trim().toLowerCase())
+      .filter((item): item is CheckoutPaymentMethod =>
+        allowed.includes(item as CheckoutPaymentMethod),
+      );
+
+    const unique = Array.from(new Set(parsed));
+    if (unique.length === 0) return [...fallback];
+    return allowed.filter((item) => unique.includes(item));
   }
 
   private async getRowsMap(): Promise<Map<string, ConfigRow>> {
@@ -710,6 +743,22 @@ class RuntimeConfigService {
             value: 'ASSINATURA',
             configured: true,
             source: 'DEFAULT',
+          };
+        }
+
+        if (item.key === 'course_payment_methods') {
+          return {
+            ...item,
+            value: mpConfig.coursePaymentMethods.join(','),
+            configured: true,
+          };
+        }
+
+        if (item.key === 'subscription_payment_methods') {
+          return {
+            ...item,
+            value: mpConfig.subscriptionPaymentMethods.join(','),
+            configured: true,
           };
         }
 

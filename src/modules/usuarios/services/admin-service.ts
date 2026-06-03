@@ -445,11 +445,17 @@ export class AdminService {
     if (statusFilter) where.status = statusFilter;
     if (tipoUsuarioFilter) where.tipoUsuario = tipoUsuarioFilter;
     if (searchTerm) {
-      where.OR = [
-        { nomeCompleto: { contains: searchTerm, mode: 'insensitive' } },
-        { email: { contains: searchTerm, mode: 'insensitive' } },
-        { cpf: { contains: searchTerm, mode: 'insensitive' } },
-        { codUsuario: { contains: searchTerm, mode: 'insensitive' } },
+      const existingAnd = Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : [];
+      where.AND = [
+        ...existingAnd,
+        {
+          OR: [
+            { nomeCompleto: { contains: searchTerm, mode: 'insensitive' } },
+            { email: { contains: searchTerm, mode: 'insensitive' } },
+            { cpf: { contains: searchTerm, mode: 'insensitive' } },
+            { codUsuario: { contains: searchTerm, mode: 'insensitive' } },
+          ],
+        },
       ];
     }
 
@@ -467,17 +473,21 @@ export class AdminService {
     });
 
     // ✅ OTIMIZAÇÃO: Cache para queries de listagem (TTL: 30s)
-    const cacheKey = generateCacheKey('users:list', {
-      page,
-      limit: pageSize,
-      status,
-      role,
-      tipoUsuario,
-      search: searchTerm || undefined,
-      cidade,
-      estado,
-      userRole: options?.userRole,
-    });
+    const cacheKey = generateCacheKey(
+      'users:list',
+      {
+        page,
+        limit: pageSize,
+        status,
+        role,
+        tipoUsuario,
+        search: searchTerm || undefined,
+        cidade,
+        estado,
+        userRole: options?.userRole,
+      },
+      { excludeKeys: [] },
+    );
 
     const startTime = Date.now();
     const [usuarios, total] = await getCachedOrFetch(
@@ -490,7 +500,7 @@ export class AdminService {
               where,
               select,
               // ✅ Usar índice composto para melhor performance
-              orderBy: { criadoEm: 'desc' },
+              orderBy: [{ criadoEm: 'desc' }, { id: 'desc' }],
               skip,
               take: pageSize,
             });
@@ -508,6 +518,16 @@ export class AdminService {
     // ✅ Profiler: Registrar query
     const duration = Date.now() - startTime;
     QueryProfiler.record('listarUsuarios', duration);
+    this.log.info(
+      {
+        page,
+        limit: pageSize,
+        total,
+        durationMs: duration,
+        cacheKey: cacheKey.slice(-12),
+      },
+      'Listagem de usuários executada',
+    );
 
     const usuariosComEndereco = usuarios.map(
       (usuario) => attachEnderecoResumo(mergeUsuarioInformacoes(usuario))!,

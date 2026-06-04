@@ -518,19 +518,30 @@ describe('Cursos Checkout Service', () => {
         .spyOn(prisma.cursosTurmasInscricoes, 'update')
         .mockResolvedValue({ id: 'inscricao-123' } as any);
 
-      vi.spyOn(mercadoPagoOrdersClient, 'createMercadoPagoOrder').mockRejectedValue(
-        Object.assign(new Error('gateway offline'), {
-          code: 'MERCADOPAGO_ORDERS_ERROR',
-          status: 500,
-          apiResponse: { message: 'gateway offline' },
-        }),
-      );
+      const orderCreateSpy = vi
+        .spyOn(mercadoPagoOrdersClient, 'createMercadoPagoOrder')
+        .mockRejectedValue(
+          Object.assign(new Error('gateway offline'), {
+            code: 'MERCADOPAGO_ORDERS_ERROR',
+            status: 500,
+            apiResponse: { message: 'gateway offline' },
+          }),
+        );
 
       await expect(
         cursosCheckoutService.startCheckout(checkoutParams as any),
       ).rejects.toMatchObject({
         code: 'MERCADOPAGO_ORDERS_ERROR',
       });
+
+      expect(orderCreateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          activeMode: 'test',
+          payer: expect.objectContaining({
+            email: expect.stringMatching(/@testuser\.com$/),
+          }),
+        }),
+      );
 
       expect(cleanupSpy).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -665,7 +676,7 @@ describe('Cursos Checkout Service', () => {
 
       expect(orderCreateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          idempotencyKey: 'curso-checkout:inscricao-123:pix',
+          idempotencyKey: 'curso-checkout:inscricao-123:MAT2025001:pix',
         }),
       );
       expect(cleanupSpy).toHaveBeenCalledWith(

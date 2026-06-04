@@ -49,6 +49,7 @@ const CHECKOUT_DOMAIN_STATUS: Record<string, number> = {
   MERCADOPAGO_ERROR: 502,
   MERCADOPAGO_INVALID_TOKEN: 503,
   MERCADOPAGO_ORDERS_ERROR: 502,
+  MERCADOPAGO_SANDBOX_PAYER_EMAIL_REQUIRED: 400,
   MERCADOPAGO_UNAUTHORIZED_POLICY: 503,
   CARD_PAYMENT_METHOD_REQUIRED: 400,
   CURSO_INSTALLMENTS_DISABLED: 400,
@@ -126,6 +127,21 @@ function splitName(fullName?: string | null): { firstName?: string; lastName?: s
   if (parts.length === 0) return { firstName: undefined, lastName: undefined };
   const [first, ...rest] = parts;
   return { firstName: first, lastName: rest.length ? rest.join(' ') : undefined };
+}
+
+function resolveMercadoPagoPayerEmail(
+  email: string | null | undefined,
+  activeMode: string,
+  identifier?: string | null,
+): string {
+  const normalizedEmail = String(email || '').trim();
+  if (activeMode !== 'test') return normalizedEmail;
+
+  const sandboxEmail = String(process.env.MP_SANDBOX_PAYER_EMAIL || '').trim();
+  if (sandboxEmail.toLowerCase().endsWith('@testuser.com')) return sandboxEmail;
+
+  const suffix = sanitizeDigits(identifier) || 'comprador';
+  return `checkout_${suffix}@testuser.com`;
 }
 
 /**
@@ -330,6 +346,17 @@ function toCheckoutPaymentError(
         details: normalized.payload,
       },
     );
+  }
+
+  if (
+    searchText.includes('invalid_email_for_sandbox') ||
+    (searchText.includes('sandbox') && searchText.includes('@testuser.com'))
+  ) {
+    return Object.assign(new Error('E-mail sandbox inválido para o Mercado Pago.'), {
+      code: 'MERCADOPAGO_SANDBOX_PAYER_EMAIL_REQUIRED',
+      statusCode: CHECKOUT_DOMAIN_STATUS.MERCADOPAGO_SANDBOX_PAYER_EMAIL_REQUIRED,
+      details: normalized.payload,
+    });
   }
 
   if (
@@ -705,9 +732,10 @@ export const cursosCheckoutService = {
 
   getPaymentIdempotencyKey(
     inscricaoId: string,
+    codigoInscricao: string | null | undefined,
     pagamento: StartCursoCheckoutInput['pagamento'],
   ): string {
-    return `curso-checkout:${inscricaoId}:${pagamento}`;
+    return `curso-checkout:${inscricaoId}:${codigoInscricao || inscricaoId}:${pagamento}`;
   },
 
   /**
@@ -944,7 +972,11 @@ export const cursosCheckoutService = {
     });
 
     // 10. Criar pagamento no Mercado Pago via Orders API
-    const paymentIdempotencyKey = this.getPaymentIdempotencyKey(inscricao.id, params.pagamento);
+    const paymentIdempotencyKey = this.getPaymentIdempotencyKey(
+      inscricao.id,
+      codigo,
+      params.pagamento,
+    );
     const titulo =
       desconto > 0 ? `${curso.nome} (com desconto de R$ ${desconto.toFixed(2)})` : curso.nome;
 
@@ -1029,7 +1061,11 @@ export const cursosCheckoutService = {
         : undefined;
 
     const payerBase = {
-      email: params.payer?.email || usuario.email,
+      email: resolveMercadoPagoPayerEmail(
+        params.payer?.email || usuario.email,
+        mercadoPagoConfig.activeMode,
+        documento?.number || params.usuarioId,
+      ),
       first_name: params.payer?.first_name || firstName,
       last_name: params.payer?.last_name || lastName,
       identification: documento && documento.number ? documento : undefined,

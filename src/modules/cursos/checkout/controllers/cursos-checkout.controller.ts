@@ -92,6 +92,11 @@ export class CursosCheckoutController {
         statusCode: 502,
         message: 'Pagamento indisponível no momento. Tente novamente mais tarde.',
       },
+      MERCADOPAGO_SANDBOX_PAYER_EMAIL_REQUIRED: {
+        statusCode: 400,
+        message:
+          'O modo teste do Mercado Pago exige um pagador sandbox. Ajuste a configuração e tente novamente.',
+      },
       CARD_PAYMENT_METHOD_REQUIRED: {
         statusCode: 400,
         message:

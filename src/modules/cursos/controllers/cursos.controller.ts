@@ -589,6 +589,7 @@ export class CursosController {
   static publicList = async (_req: Request, res: Response) => {
     try {
       const cursos = await cursosService.listPublic();
+      res.set('Cache-Control', 'no-store');
       res.json({ data: cursos });
     } catch (error: any) {
       res.status(500).json({
@@ -705,6 +706,7 @@ export class CursosController {
         });
       }
 
+      res.set('Cache-Control', 'no-store');
       res.json(course);
     } catch (error: any) {
       res.status(500).json({

@@ -9,7 +9,10 @@ import { generateUniqueCourseCode } from '../utils/code-generator';
 import { AulaWithMateriais, aulaWithMateriaisInclude, mapAula } from './aulas.mapper';
 import { ModuloWithRelations, mapModulo, moduloDetailedInclude } from './modulos.mapper';
 import { ProvaWithRelations, mapProva, provaDefaultInclude } from './provas.mapper';
-import { countInscricoesQueOcupamVagaPorTurma } from './inscricoes-vagas.service';
+import {
+  countInscricoesQueOcupamVagaPorTurma,
+  limparReservasExpiradasDaTurma,
+} from './inscricoes-vagas.service';
 
 const cursosLogger = logger.child({ module: 'CursosService' });
 
@@ -893,7 +896,14 @@ const mapCourse = async (course: RawCourse) => {
  * Reutiliza a mesma lógica do turmas.service.ts.
  * Inscrição ativa = matrícula liberada ou reserva de pagamento ainda não expirada.
  */
-async function countInscricoesAtivasPorTurma(turmaIds: string[]): Promise<Record<string, number>> {
+async function countInscricoesAtivasPorTurma(
+  turmaIds: string[],
+  options?: { limparExpiradas?: boolean },
+): Promise<Record<string, number>> {
+  if (options?.limparExpiradas && turmaIds.length > 0) {
+    await Promise.all(turmaIds.map((turmaId) => limparReservasExpiradasDaTurma(turmaId)));
+  }
+
   return countInscricoesQueOcupamVagaPorTurma(turmaIds);
 }
 
@@ -1473,7 +1483,9 @@ export const cursosService = {
     const todasTurmas = cursos.flatMap((curso) => (curso as any).CursosTurmas || []);
     const turmaIds = todasTurmas.map((t) => t.id);
     const inscricoesCountMap =
-      turmaIds.length > 0 ? await countInscricoesAtivasPorTurma(turmaIds) : {};
+      turmaIds.length > 0
+        ? await countInscricoesAtivasPorTurma(turmaIds, { limparExpiradas: true })
+        : {};
 
     return cursos.map((curso) => {
       const categoria = (curso as any).CursosCategorias;
@@ -1561,7 +1573,9 @@ export const cursosService = {
       const turmas = (curso as any).CursosTurmas as any[];
       if (turmas && turmas.length > 0) {
         const turmaIds = turmas.map((t) => t.id);
-        const inscricoesCountMap = await countInscricoesAtivasPorTurma(turmaIds);
+        const inscricoesCountMap = await countInscricoesAtivasPorTurma(turmaIds, {
+          limparExpiradas: true,
+        });
         return {
           ...curso,
           CursosTurmas: turmas.map((turma) => ({
@@ -1596,7 +1610,19 @@ export const cursosService = {
       return null;
     }
 
-    return mapTurmaPublic(turma);
+    await limparReservasExpiradasDaTurma(turma.id);
+    const inscricoesCountMap = await countInscricoesAtivasPorTurma([turma.id]);
+    const inscricoesCount = inscricoesCountMap[turma.id] || 0;
+
+    return {
+      ...mapTurmaPublic(turma),
+      inscricoesCount,
+      vagasOcupadas: inscricoesCount,
+      vagasDisponiveisCalculadas:
+        (turma as any).vagasIlimitadas || turma.vagasTotais === 0
+          ? null
+          : turma.vagasTotais - inscricoesCount,
+    };
   },
 
   async create(

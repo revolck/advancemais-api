@@ -386,6 +386,7 @@ export class TurmasController {
         });
       }
 
+      res.set('Cache-Control', 'no-store');
       res.json(turma);
     } catch (error: any) {
       res.status(500).json({

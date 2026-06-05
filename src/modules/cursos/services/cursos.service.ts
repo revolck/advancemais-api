@@ -9,6 +9,7 @@ import { generateUniqueCourseCode } from '../utils/code-generator';
 import { AulaWithMateriais, aulaWithMateriaisInclude, mapAula } from './aulas.mapper';
 import { ModuloWithRelations, mapModulo, moduloDetailedInclude } from './modulos.mapper';
 import { ProvaWithRelations, mapProva, provaDefaultInclude } from './provas.mapper';
+import { countInscricoesQueOcupamVagaPorTurma } from './inscricoes-vagas.service';
 
 const cursosLogger = logger.child({ module: 'CursosService' });
 
@@ -890,39 +891,10 @@ const mapCourse = async (course: RawCourse) => {
 /**
  * Conta inscrições ativas por turma usando agregação SQL eficiente
  * Reutiliza a mesma lógica do turmas.service.ts.
- * Inscrição ativa = status diferente de CANCELADO/TRANCADO.
+ * Inscrição ativa = matrícula liberada ou reserva de pagamento ainda não expirada.
  */
 async function countInscricoesAtivasPorTurma(turmaIds: string[]): Promise<Record<string, number>> {
-  if (turmaIds.length === 0) {
-    return {};
-  }
-
-  // Construir a query com IN ao invés de ANY para evitar problemas de tipo
-  const placeholders = turmaIds.map((_, i) => `$${i + 1}`).join(', ');
-  const result = await prisma.$queryRawUnsafe<{ turmaId: string; count: bigint }[]>(
-    `SELECT 
-      ti."turmaId"::text as "turmaId",
-      COUNT(*)::int as count
-    FROM "CursosTurmasInscricoes" ti
-    WHERE 
-      ti."turmaId"::text IN (${placeholders})
-      AND ti.status NOT IN ('CANCELADO', 'TRANCADO')
-    GROUP BY ti."turmaId"`,
-    ...turmaIds,
-  );
-
-  const countMap: Record<string, number> = {};
-  for (const row of result) {
-    countMap[row.turmaId] = Number(row.count);
-  }
-
-  for (const turmaId of turmaIds) {
-    if (!(turmaId in countMap)) {
-      countMap[turmaId] = 0;
-    }
-  }
-
-  return countMap;
+  return countInscricoesQueOcupamVagaPorTurma(turmaIds);
 }
 
 const mapPublicCourse = (

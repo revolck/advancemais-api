@@ -28,6 +28,7 @@ import { aulaWithMateriaisInclude } from './aulas.mapper';
 import { moduloDetailedInclude } from './modulos.mapper';
 import { provaDefaultInclude } from './provas.mapper';
 import { cursosTurmasMapper, mapTurmaSummaryWithInscricoes } from './cursos.service';
+import { countInscricoesQueOcupamVagaPorTurma } from './inscricoes-vagas.service';
 
 const turmasLogger = logger.child({ module: 'CursosTurmasService' });
 const TURMA_PERIODO_OBRIGATORIO_PUBLICACAO = 'TURMA_PERIODO_OBRIGATORIO_PUBLICACAO';
@@ -111,46 +112,14 @@ type EstruturaScopeItem = {
 
 /**
  * Conta inscrições ativas por turma usando agregação SQL eficiente.
- * Inscrição ativa = status diferente de CANCELADO/TRANCADO.
+ * Inscrição ativa = matrícula liberada ou reserva de pagamento ainda não expirada.
  *
  * Nota:
  * A contagem de ocupação de turma não deve depender do status atual do usuário.
  * Isso evita JOIN extra e reduz latência no cold-path das rotas de turmas.
  */
 async function countInscricoesAtivasPorTurma(turmaIds: string[]): Promise<Record<string, number>> {
-  if (turmaIds.length === 0) {
-    return {};
-  }
-
-  // Usar agregação SQL para melhor performance
-  // Construir a query com IN ao invés de ANY para evitar problemas de tipo
-  const placeholders = turmaIds.map((_, i) => `$${i + 1}`).join(', ');
-  const result = await prisma.$queryRawUnsafe<{ turmaId: string; count: bigint }[]>(
-    `SELECT 
-      ti."turmaId"::text as "turmaId",
-      COUNT(*)::int as count
-    FROM "CursosTurmasInscricoes" ti
-    WHERE 
-      ti."turmaId"::text IN (${placeholders})
-      AND ti.status NOT IN ('CANCELADO', 'TRANCADO')
-    GROUP BY ti."turmaId"`,
-    ...turmaIds,
-  );
-
-  // Converter para Record<string, number>
-  const countMap: Record<string, number> = {};
-  for (const row of result) {
-    countMap[row.turmaId] = Number(row.count);
-  }
-
-  // Garantir que todas as turmas tenham entrada (mesmo que 0)
-  for (const turmaId of turmaIds) {
-    if (!(turmaId in countMap)) {
-      countMap[turmaId] = 0;
-    }
-  }
-
-  return countMap;
+  return countInscricoesQueOcupamVagaPorTurma(turmaIds);
 }
 
 const instrutorBasicSelect = {
@@ -1860,11 +1829,19 @@ export const turmasService = {
       let inscricoesCount = 0;
       if (includeAlunos) {
         const inscricoesRaw = (turmaRaw as any).CursosTurmasInscricoes || [];
+        const now = new Date();
         inscricoesCount = inscricoesRaw.filter(
           (inscricao: any) =>
-            inscricao?.status !== StatusInscricao.CANCELADO &&
-            inscricao?.status !== StatusInscricao.TRANCADO &&
-            inscricao?.Usuarios?.status === Status.ATIVO,
+            [
+              StatusInscricao.INSCRITO,
+              StatusInscricao.EM_ANDAMENTO,
+              StatusInscricao.EM_ESTAGIO,
+              StatusInscricao.CONCLUIDO,
+            ].includes(inscricao?.status) ||
+            (inscricao?.status === StatusInscricao.AGUARDANDO_PAGAMENTO &&
+              ['PENDENTE', 'PROCESSANDO'].includes(String(inscricao?.statusPagamento || '')) &&
+              inscricao?.pagamentoExpiraEm &&
+              new Date(inscricao.pagamentoExpiraEm).getTime() > now.getTime()),
         ).length;
       } else {
         inscricoesCount = inscricoesCountMap?.[turmaId] || 0;

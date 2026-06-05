@@ -5,6 +5,7 @@ import { Request, Response } from 'express';
 import { ZodError } from 'zod';
 import { cursosCheckoutService } from '../services/cursos-checkout.service';
 import { pagamentosAlunoService } from '../../services/pagamentos-aluno.service';
+import { calcularDisponibilidadeTurma } from '../../services/inscricoes-vagas.service';
 import { startCursoCheckoutSchema } from '../validators/cursos-checkout.schema';
 
 /**
@@ -374,26 +375,11 @@ export class CursosCheckoutController {
         });
       }
 
-      const turma = await prisma.cursosTurmas.findUnique({
-        where: { id: turmaId },
-        select: {
-          id: true,
-          nome: true,
-          cursoId: true,
-          vagasTotais: true,
-          vagasIlimitadas: true,
-          _count: {
-            select: {
-              CursosTurmasInscricoes: {
-                // Vaga fica ocupada enquanto a inscrição não estiver CANCELADO/TRANCADO (inclui boleto pendente)
-                where: { status: { notIn: ['CANCELADO', 'TRANCADO'] } },
-              },
-            },
-          },
-        },
+      const disponibilidade = await calcularDisponibilidadeTurma(turmaId, {
+        limparExpiradas: true,
       });
 
-      if (!turma) {
+      if (!disponibilidade) {
         return res.status(404).json({
           success: false,
           code: 'TURMA_NOT_FOUND',
@@ -401,6 +387,7 @@ export class CursosCheckoutController {
         });
       }
 
+      const { turma } = disponibilidade;
       if (turma.cursoId !== cursoId) {
         return res.status(400).json({
           success: false,
@@ -409,12 +396,6 @@ export class CursosCheckoutController {
         });
       }
 
-      const inscritosAtual = turma._count.CursosTurmasInscricoes;
-      const ilimitado = turma.vagasIlimitadas || !turma.vagasTotais || turma.vagasTotais === 0;
-      const vagasTotais = ilimitado ? null : turma.vagasTotais;
-      const temVaga = ilimitado ? true : inscritosAtual < (vagasTotais as number);
-      const vagasDisponiveis = ilimitado ? null : (vagasTotais as number) - inscritosAtual;
-
       res.json({
         success: true,
         turma: {
@@ -422,11 +403,11 @@ export class CursosCheckoutController {
           nome: turma.nome,
         },
         vagas: {
-          temVaga,
-          inscritosAtual,
-          vagasTotais,
-          vagasDisponiveis,
-          ilimitado,
+          temVaga: disponibilidade.temVaga,
+          inscritosAtual: disponibilidade.inscritosAtual,
+          vagasTotais: disponibilidade.vagasTotais,
+          vagasDisponiveis: disponibilidade.vagasDisponiveis,
+          ilimitado: disponibilidade.ilimitado,
         },
       });
     } catch (error: any) {

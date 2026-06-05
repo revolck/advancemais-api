@@ -20,6 +20,7 @@ import {
   getMercadoPagoOrder,
   normalizeMercadoPagoOrder,
 } from './mercadopago-orders.client';
+import { calcularDisponibilidadeTurma } from '../../services/inscricoes-vagas.service';
 
 // ========================================
 // TIPOS E INTERFACES
@@ -51,6 +52,7 @@ const CHECKOUT_DOMAIN_STATUS: Record<string, number> = {
   MERCADOPAGO_ORDERS_ERROR: 502,
   MERCADOPAGO_SANDBOX_PAYER_EMAIL_REQUIRED: 400,
   MERCADOPAGO_UNAUTHORIZED_POLICY: 503,
+  SEM_VAGAS: 409,
   CARD_PAYMENT_METHOD_REQUIRED: 400,
   CURSO_INSTALLMENTS_DISABLED: 400,
   CURSO_INSTALLMENTS_LIMIT_EXCEEDED: 400,
@@ -77,6 +79,13 @@ const PAYMENT_CANCELLED_STATUSES = new Set([
   'cancelled_by_user',
   'expired',
 ]);
+const PIX_RESERVATION_TTL_MS = 24 * 60 * 60 * 1000;
+const BOLETO_RESERVATION_TTL_MS = 3 * 24 * 60 * 60 * 1000;
+const CARD_PENDING_RESERVATION_TTL_MS = 30 * 60 * 1000;
+
+function addMilliseconds(ms: number): Date {
+  return new Date(Date.now() + ms);
+}
 
 /**
  * Mapear status do Mercado Pago para status interno
@@ -756,28 +765,9 @@ export const cursosCheckoutService = {
    * Validar vagas disponíveis na turma
    */
   async validarVagasDisponiveis(turmaId: string): Promise<boolean> {
-    const turma = await prisma.cursosTurmas.findUnique({
-      where: { id: turmaId },
-      select: {
-        vagasTotais: true,
-        vagasIlimitadas: true,
-        _count: {
-          select: {
-            CursosTurmasInscricoes: {
-              where: { status: { notIn: ['CANCELADO', 'TRANCADO'] } },
-            },
-          },
-        },
-      },
-    });
-
-    if (!turma) throw new Error('Turma não encontrada');
-
-    // Se não há limite, sempre tem vaga
-    if (turma.vagasIlimitadas || !turma.vagasTotais || turma.vagasTotais === 0) return true;
-
-    // Verificar se ainda há vagas
-    return turma._count.CursosTurmasInscricoes < turma.vagasTotais;
+    const disponibilidade = await calcularDisponibilidadeTurma(turmaId, { limparExpiradas: true });
+    if (!disponibilidade) throw new Error('Turma não encontrada');
+    return disponibilidade.temVaga;
   },
 
   /**
@@ -886,7 +876,12 @@ export const cursosCheckoutService = {
 
     // 3. Validar vagas disponíveis
     const temVaga = await this.validarVagasDisponiveis(params.turmaId);
-    if (!temVaga) throw new Error('Não há vagas disponíveis nesta turma');
+    if (!temVaga) {
+      throw Object.assign(new Error('Não há vagas disponíveis nesta turma'), {
+        code: 'SEM_VAGAS',
+        statusCode: CHECKOUT_DOMAIN_STATUS.SEM_VAGAS,
+      });
+    }
 
     // 4. Validar se aluno já está inscrito
     const jaInscrito = await this.validarInscricaoDuplicada(params.usuarioId, params.turmaId);
@@ -1109,6 +1104,7 @@ export const cursosCheckoutService = {
           requestId: paymentIdempotencyKey,
         });
 
+        const pixExpiresAt = addMilliseconds(PIX_RESERVATION_TTL_MS);
         const pixOrder = await createMercadoPagoOrder({
           ...orderBase,
           payer: {
@@ -1117,7 +1113,7 @@ export const cursosCheckoutService = {
             last_name: payerBase.last_name || undefined,
             identification: payerBase.identification,
           },
-          payment: { kind: 'pix' },
+          payment: { kind: 'pix', expirationTime: 'PT24H' },
         });
 
         const mpOrderId = pixOrder.orderId ?? undefined;
@@ -1136,7 +1132,7 @@ export const cursosCheckoutService = {
             valorPago: statusPagamento === 'APROVADO' ? valorFinal : null,
             pixQrCode: transactionData.qr_code || null,
             pixQrCodeBase64: transactionData.qr_code_base64 || null,
-            pagamentoExpiraEm: null,
+            pagamentoExpiraEm: statusPagamento === 'APROVADO' ? null : pixExpiresAt,
           },
         });
 
@@ -1169,7 +1165,7 @@ export const cursosCheckoutService = {
             orderId: mpOrderId ?? null,
             qrCode: transactionData.qr_code || null,
             qrCodeBase64: transactionData.qr_code_base64 || null,
-            expiresAt: null,
+            expiresAt: statusPagamento === 'APROVADO' ? null : pixExpiresAt.toISOString(),
           },
           desconto:
             desconto > 0
@@ -1254,6 +1250,11 @@ export const cursosCheckoutService = {
         const mpPaymentId = cardOrder.payment?.id ?? undefined;
         const statusPagamento = mapToStatusPagamento(cardOrder.payment?.status ?? cardOrder.status);
         const ativo = statusPagamento === 'APROVADO';
+        const cardPendingExpiresAt =
+          statusPagamento === 'PROCESSANDO' || statusPagamento === 'PENDENTE'
+            ? addMilliseconds(CARD_PENDING_RESERVATION_TTL_MS)
+            : null;
+        const cardShouldReserve = Boolean(cardPendingExpiresAt);
 
         // Atualizar inscrição com dados do pagamento
         await prisma.cursosTurmasInscricoes.update({
@@ -1268,12 +1269,12 @@ export const cursosCheckoutService = {
                 ? `CARTAO_CREDITO_${installments}X`
                 : 'CARTAO_CREDITO',
             valorPago: ativo ? valorFinal : null,
-            status: ativo ? 'INSCRITO' : 'AGUARDANDO_PAGAMENTO',
+            status: ativo ? 'INSCRITO' : cardShouldReserve ? 'AGUARDANDO_PAGAMENTO' : 'CANCELADO',
             pixQrCode: null,
             pixQrCodeBase64: null,
             boletoCodigo: null,
             boletoUrl: null,
-            pagamentoExpiraEm: null,
+            pagamentoExpiraEm: cardPendingExpiresAt,
           },
         });
 
@@ -1331,6 +1332,7 @@ export const cursosCheckoutService = {
             paymentId: mpPaymentId ?? mpOrderId ?? null,
             orderId: mpOrderId ?? null,
             installments,
+            expiresAt: cardPendingExpiresAt?.toISOString() ?? null,
           },
           desconto:
             desconto > 0
@@ -1378,6 +1380,7 @@ export const cursosCheckoutService = {
           requestId: paymentIdempotencyKey,
         });
 
+        const boletoExpiresAt = addMilliseconds(BOLETO_RESERVATION_TTL_MS);
         const boletoOrder = await createMercadoPagoOrder({
           ...orderBase,
           payer: {
@@ -1412,7 +1415,7 @@ export const cursosCheckoutService = {
             valorPago: statusPagamento === 'APROVADO' ? valorFinal : null,
             boletoCodigo: barcode,
             boletoUrl,
-            pagamentoExpiraEm: null,
+            pagamentoExpiraEm: statusPagamento === 'APROVADO' ? null : boletoExpiresAt,
           },
         });
 
@@ -1445,7 +1448,7 @@ export const cursosCheckoutService = {
             orderId: mpOrderId ?? null,
             barcode,
             boletoUrl,
-            expiresAt: null,
+            expiresAt: statusPagamento === 'APROVADO' ? null : boletoExpiresAt.toISOString(),
           },
           desconto:
             desconto > 0

@@ -107,7 +107,7 @@ function paymentMethodFor(input: CreateMercadoPagoOrderInput): {
   }
 
   if (input.payment.kind === 'boleto') {
-    return { id: 'boleto', type: 'ticket' };
+    return { id: 'bolbradesco', type: 'ticket' };
   }
 
   return {

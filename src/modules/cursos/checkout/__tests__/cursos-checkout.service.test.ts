@@ -50,6 +50,8 @@ describe('Cursos Checkout Service', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(prisma.cursosTurmasInscricoes, 'updateMany').mockResolvedValue({ count: 0 } as any);
+    vi.spyOn(prisma.cursosTurmasInscricoes, 'groupBy').mockResolvedValue([] as any);
     vi.spyOn(mercadoPagoConfig, 'assertMercadoPagoConfiguredAsync').mockResolvedValue({} as never);
     vi.spyOn(mercadoPagoConfig, 'getRuntimeMercadoPagoConfig').mockResolvedValue({
       activeMode: 'test',
@@ -128,10 +130,10 @@ describe('Cursos Checkout Service', () => {
       // Mock: turma com limite 30, 20 inscritos
       vi.spyOn(prisma.cursosTurmas, 'findUnique').mockResolvedValue({
         ...mockTurma,
-        _count: {
-          CursosTurmasInscricoes: 20,
-        },
       } as any);
+      vi.spyOn(prisma.cursosTurmasInscricoes, 'groupBy').mockResolvedValue([
+        { turmaId: 'turma-123', _count: { _all: 20 } },
+      ] as any);
 
       const temVaga = await cursosCheckoutService.validarVagasDisponiveis('turma-123');
 
@@ -142,10 +144,10 @@ describe('Cursos Checkout Service', () => {
       // Mock: turma com limite 30, 30 inscritos (lotada)
       vi.spyOn(prisma.cursosTurmas, 'findUnique').mockResolvedValue({
         ...mockTurma,
-        _count: {
-          CursosTurmasInscricoes: 30,
-        },
       } as any);
+      vi.spyOn(prisma.cursosTurmasInscricoes, 'groupBy').mockResolvedValue([
+        { turmaId: 'turma-123', _count: { _all: 30 } },
+      ] as any);
 
       const temVaga = await cursosCheckoutService.validarVagasDisponiveis('turma-123');
 
@@ -158,9 +160,6 @@ describe('Cursos Checkout Service', () => {
         ...mockTurma,
         vagasIlimitadas: true,
         vagasTotais: 0,
-        _count: {
-          CursosTurmasInscricoes: 100,
-        },
       } as any);
 
       const temVaga = await cursosCheckoutService.validarVagasDisponiveis('turma-123');

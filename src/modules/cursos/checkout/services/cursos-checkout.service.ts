@@ -16,6 +16,7 @@ import jwt from 'jsonwebtoken';
 import { Payment } from 'mercadopago';
 import type { StartCursoCheckoutInput } from '../validators/cursos-checkout.schema';
 import {
+  cancelMercadoPagoOrder,
   createMercadoPagoOrder,
   getMercadoPagoOrder,
   normalizeMercadoPagoOrder,
@@ -79,12 +80,25 @@ const PAYMENT_CANCELLED_STATUSES = new Set([
   'cancelled_by_user',
   'expired',
 ]);
-const PIX_RESERVATION_TTL_MS = 24 * 60 * 60 * 1000;
-const BOLETO_RESERVATION_TTL_MS = 3 * 24 * 60 * 60 * 1000;
+const PIX_RESERVATION_TTL_MS = 30 * 60 * 1000;
 const CARD_PENDING_RESERVATION_TTL_MS = 30 * 60 * 1000;
+const BOLETO_BUSINESS_DAYS = 3;
 
 function addMilliseconds(ms: number): Date {
   return new Date(Date.now() + ms);
+}
+
+function addBusinessDays(days: number, from = new Date()): Date {
+  const result = new Date(from);
+  let added = 0;
+
+  while (added < days) {
+    result.setDate(result.getDate() + 1);
+    const day = result.getDay();
+    if (day !== 0 && day !== 6) added += 1;
+  }
+
+  return result;
 }
 
 /**
@@ -1113,7 +1127,7 @@ export const cursosCheckoutService = {
             last_name: payerBase.last_name || undefined,
             identification: payerBase.identification,
           },
-          payment: { kind: 'pix', expirationTime: 'PT24H' },
+          payment: { kind: 'pix', expirationTime: 'PT30M' },
         });
 
         const mpOrderId = pixOrder.orderId ?? undefined;
@@ -1380,7 +1394,7 @@ export const cursosCheckoutService = {
           requestId: paymentIdempotencyKey,
         });
 
-        const boletoExpiresAt = addMilliseconds(BOLETO_RESERVATION_TTL_MS);
+        const boletoExpiresAt = addBusinessDays(BOLETO_BUSINESS_DAYS);
         const boletoOrder = await createMercadoPagoOrder({
           ...orderBase,
           payer: {
@@ -1504,6 +1518,237 @@ export const cursosCheckoutService = {
     }
   },
 
+  async aplicarStatusGatewayNaInscricao(
+    inscricao: any,
+    statusRaw: string | null | undefined,
+    identifiers: { mpPaymentId?: string | null; mpOrderId?: string | null },
+  ) {
+    const status = String(statusRaw || '').toLowerCase();
+    const statusPagamento = mapToStatusPagamento(status);
+
+    if (PAYMENT_APPROVED_STATUSES.has(status)) {
+      const { token, expiresAt } = this.gerarTokenAcesso({
+        inscricaoId: inscricao.id,
+        alunoId: inscricao.alunoId,
+        cursoId: inscricao.CursosTurmas.cursoId,
+        turmaId: inscricao.turmaId,
+      });
+
+      await prisma.cursosTurmasInscricoes.update({
+        where: { id: inscricao.id },
+        data: {
+          status: 'INSCRITO',
+          statusPagamento: 'APROVADO',
+          tokenAcesso: token,
+          tokenAcessoExpiraEm: expiresAt,
+          valorPago: inscricao.valorFinal,
+          pagamentoExpiraEm: null,
+        },
+      });
+
+      logger.info('[CURSO_CHECKOUT_STATUS] Inscrição ativada por status do gateway', {
+        ...identifiers,
+        inscricaoId: inscricao.id,
+        status,
+      });
+
+      return 'APROVADO' as StatusPagamento;
+    }
+
+    if (PAYMENT_REJECTED_STATUSES.has(status) || PAYMENT_CANCELLED_STATUSES.has(status)) {
+      await prisma.cursosTurmasInscricoes.update({
+        where: { id: inscricao.id },
+        data: {
+          status: 'CANCELADO',
+          statusPagamento: statusPagamento === 'CANCELADO' ? 'CANCELADO' : 'RECUSADO',
+          tokenAcesso: null,
+          tokenAcessoExpiraEm: null,
+          pixQrCode: null,
+          pixQrCodeBase64: null,
+          boletoCodigo: null,
+          boletoUrl: null,
+          pagamentoExpiraEm: null,
+        },
+      });
+
+      logger.warn('[CURSO_CHECKOUT_STATUS] Inscrição cancelada por status do gateway', {
+        ...identifiers,
+        inscricaoId: inscricao.id,
+        status,
+        statusPagamento,
+      });
+
+      return statusPagamento;
+    }
+
+    if (statusPagamento !== 'PENDENTE' && statusPagamento !== inscricao.statusPagamento) {
+      await prisma.cursosTurmasInscricoes.update({
+        where: { id: inscricao.id },
+        data: { statusPagamento },
+      });
+    }
+
+    return statusPagamento;
+  },
+
+  async consultarPagamentoCheckout(params: { paymentId: string; usuarioId: string }) {
+    let inscricao = await prisma.cursosTurmasInscricoes.findFirst({
+      where: {
+        alunoId: params.usuarioId,
+        OR: [{ mpPaymentId: params.paymentId }, { mpOrderId: params.paymentId }],
+      },
+      include: {
+        CursosTurmas: { include: { Cursos: true } },
+        Usuarios: { select: { id: true, nomeCompleto: true, email: true } },
+      },
+    });
+
+    if (!inscricao) return null;
+
+    const now = new Date();
+    const isReservada =
+      inscricao.status === 'AGUARDANDO_PAGAMENTO' &&
+      ['PENDENTE', 'PROCESSANDO'].includes(inscricao.statusPagamento);
+
+    if (isReservada && inscricao.pagamentoExpiraEm && inscricao.pagamentoExpiraEm <= now) {
+      await prisma.cursosTurmasInscricoes.update({
+        where: { id: inscricao.id },
+        data: {
+          status: 'CANCELADO',
+          statusPagamento: 'CANCELADO',
+          tokenAcesso: null,
+          tokenAcessoExpiraEm: null,
+          pixQrCode: null,
+          pixQrCodeBase64: null,
+          boletoCodigo: null,
+          boletoUrl: null,
+          pagamentoExpiraEm: null,
+        },
+      });
+
+      logger.info('[CURSO_CHECKOUT_STATUS] Reserva expirada liberada na consulta', {
+        inscricaoId: inscricao.id,
+        mpOrderId: inscricao.mpOrderId,
+        mpPaymentId: inscricao.mpPaymentId,
+      });
+    } else if (isReservada && inscricao.mpOrderId) {
+      const config = await getRuntimeMercadoPagoConfig();
+      try {
+        const order = await getMercadoPagoOrder({
+          accessToken: config.getAccessToken(),
+          activeMode: config.activeMode,
+          tokenFingerprint: config.getAccessTokenFingerprint(),
+          orderId: inscricao.mpOrderId,
+        });
+
+        await this.aplicarStatusGatewayNaInscricao(
+          inscricao,
+          order.payment?.status ?? order.status,
+          {
+            mpOrderId: inscricao.mpOrderId,
+            mpPaymentId: order.payment?.id ?? inscricao.mpPaymentId,
+          },
+        );
+      } catch (error) {
+        logger.warn('[CURSO_CHECKOUT_STATUS] Falha ao atualizar status via gateway', {
+          inscricaoId: inscricao.id,
+          mpOrderId: inscricao.mpOrderId,
+          error,
+        });
+      }
+    }
+
+    inscricao = await prisma.cursosTurmasInscricoes.findUnique({
+      where: { id: inscricao.id },
+      include: {
+        CursosTurmas: { include: { Cursos: true } },
+        Usuarios: { select: { id: true, nomeCompleto: true, email: true } },
+      },
+    });
+
+    if (!inscricao) return null;
+
+    return {
+      inscricao,
+      canRetry: ['CANCELADO', 'RECUSADO'].includes(inscricao.statusPagamento),
+      expiresAt: inscricao.pagamentoExpiraEm?.toISOString() ?? null,
+    };
+  },
+
+  async cancelarPagamentoCheckout(params: {
+    paymentId: string;
+    usuarioId: string;
+    motivo?: string;
+  }) {
+    const found = await this.consultarPagamentoCheckout({
+      paymentId: params.paymentId,
+      usuarioId: params.usuarioId,
+    });
+
+    if (!found) {
+      throw Object.assign(new Error('Pagamento não encontrado'), {
+        code: 'CHECKOUT_PAYMENT_NOT_FOUND',
+        statusCode: 404,
+      });
+    }
+
+    const { inscricao } = found;
+    if (['CANCELADO', 'RECUSADO'].includes(inscricao.statusPagamento)) {
+      return { inscricao, cancelled: true, alreadyTerminal: true };
+    }
+
+    const cancelavel =
+      inscricao.status === 'AGUARDANDO_PAGAMENTO' &&
+      ['PENDENTE', 'PROCESSANDO'].includes(inscricao.statusPagamento);
+
+    if (!cancelavel) {
+      throw Object.assign(new Error('Este pagamento não pode ser cancelado.'), {
+        code: 'CHECKOUT_PAYMENT_NOT_CANCELABLE',
+        statusCode: 409,
+      });
+    }
+
+    if (inscricao.mpOrderId) {
+      const config = await getRuntimeMercadoPagoConfig();
+      await cancelMercadoPagoOrder({
+        accessToken: config.getAccessToken(),
+        activeMode: config.activeMode,
+        tokenFingerprint: config.getAccessTokenFingerprint(),
+        orderId: inscricao.mpOrderId,
+        idempotencyKey: `curso-checkout-cancel:${inscricao.id}:${params.motivo ?? 'manual'}`,
+      });
+    }
+
+    const updated = await prisma.cursosTurmasInscricoes.update({
+      where: { id: inscricao.id },
+      data: {
+        status: 'CANCELADO',
+        statusPagamento: 'CANCELADO',
+        tokenAcesso: null,
+        tokenAcessoExpiraEm: null,
+        pixQrCode: null,
+        pixQrCodeBase64: null,
+        boletoCodigo: null,
+        boletoUrl: null,
+        pagamentoExpiraEm: null,
+      },
+      include: {
+        CursosTurmas: { include: { Cursos: true } },
+        Usuarios: { select: { id: true, nomeCompleto: true, email: true } },
+      },
+    });
+
+    logger.info('[CURSO_CHECKOUT_CANCEL] Pagamento cancelado pelo aluno', {
+      inscricaoId: updated.id,
+      alunoId: params.usuarioId,
+      mpOrderId: updated.mpOrderId,
+      mpPaymentId: updated.mpPaymentId,
+      motivo: params.motivo ?? 'manual',
+    });
+
+    return { inscricao: updated, cancelled: true, alreadyTerminal: false };
+  },
+
   /**
    * Validar token de acesso ao curso
    */
@@ -1584,6 +1829,7 @@ export const cursosCheckoutService = {
             tokenAcesso: token,
             tokenAcessoExpiraEm: expiresAt,
             valorPago: inscricao.valorFinal,
+            pagamentoExpiraEm: null,
           },
         });
 
@@ -1607,6 +1853,13 @@ export const cursosCheckoutService = {
           data: {
             status: 'CANCELADO',
             statusPagamento: 'RECUSADO',
+            tokenAcesso: null,
+            tokenAcessoExpiraEm: null,
+            pixQrCode: null,
+            pixQrCodeBase64: null,
+            boletoCodigo: null,
+            boletoUrl: null,
+            pagamentoExpiraEm: null,
           },
         });
 

@@ -1,4 +1,3 @@
-import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import { Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
@@ -128,6 +127,18 @@ export class CursosCheckoutController {
         statusCode: 400,
         message:
           'A quantidade de parcelas informada ultrapassa o limite permitido para esta compra.',
+      },
+      CHECKOUT_PAYMENT_NOT_FOUND: {
+        statusCode: 404,
+        message: 'Pagamento não encontrado.',
+      },
+      CHECKOUT_PAYMENT_NOT_CANCELABLE: {
+        statusCode: 409,
+        message: 'Este pagamento não pode mais ser cancelado.',
+      },
+      MERCADOPAGO_ORDERS_CANCEL_ERROR: {
+        statusCode: 502,
+        message: 'Não foi possível cancelar o pagamento no momento. Tente novamente.',
       },
     };
 
@@ -300,18 +311,12 @@ export class CursosCheckoutController {
         });
       }
 
-      const inscricao = await prisma.cursosTurmasInscricoes.findFirst({
-        where: {
-          alunoId: req.user?.id,
-          OR: [{ mpPaymentId: paymentId }, { mpOrderId: paymentId }],
-        },
-        include: {
-          CursosTurmas: { include: { Cursos: true } },
-          Usuarios: { select: { id: true, nomeCompleto: true, email: true } },
-        },
+      const result = await cursosCheckoutService.consultarPagamentoCheckout({
+        paymentId,
+        usuarioId: req.user?.id || '',
       });
 
-      if (!inscricao) {
+      if (!result) {
         return res.status(404).json({
           success: false,
           code: 'NOT_FOUND',
@@ -319,8 +324,21 @@ export class CursosCheckoutController {
         });
       }
 
+      const { inscricao } = result;
       res.json({
         success: true,
+        data: {
+          paymentId: inscricao.mpPaymentId || inscricao.mpOrderId,
+          orderId: inscricao.mpOrderId,
+          status: inscricao.statusPagamento,
+          statusPagamento: inscricao.statusPagamento,
+          statusDetail: inscricao.status,
+          valor: Number(inscricao.valorFinal || 0),
+          cursoId: inscricao.CursosTurmas.Cursos.id,
+          turmaId: inscricao.CursosTurmas.id,
+          expiresAt: result.expiresAt,
+          canRetry: result.canRetry,
+        },
         inscricao: {
           id: inscricao.id,
           codigo: inscricao.codigo,
@@ -355,6 +373,53 @@ export class CursosCheckoutController {
         success: false,
         code: 'QUERY_ERROR',
         message: error?.message || 'Erro ao consultar pagamento',
+      });
+    }
+  };
+
+  /**
+   * POST /api/cursos/checkout/pagamento/:paymentId/cancelar
+   * Cancelar checkout pendente e liberar reserva de vaga.
+   */
+  static cancelarPagamento = async (req: Request, res: Response) => {
+    try {
+      const { paymentId } = req.params;
+      if (!paymentId) {
+        return res.status(400).json({
+          success: false,
+          code: 'MISSING_PAYMENT_ID',
+          message: 'Payment ID não fornecido',
+        });
+      }
+
+      const result = await cursosCheckoutService.cancelarPagamentoCheckout({
+        paymentId,
+        usuarioId: req.user?.id || '',
+        motivo: typeof req.body?.motivo === 'string' ? req.body.motivo : 'manual',
+      });
+
+      res.json({
+        success: true,
+        cancelled: result.cancelled,
+        alreadyTerminal: result.alreadyTerminal,
+        inscricao: {
+          id: result.inscricao.id,
+          status: result.inscricao.status,
+          statusPagamento: result.inscricao.statusPagamento,
+        },
+      });
+    } catch (error: any) {
+      logger.error('[CANCELAR_PAGAMENTO_ERROR]', {
+        message: error?.message,
+        stack: error?.stack,
+        code: error?.code,
+      });
+
+      const sanitized = CursosCheckoutController.getSanitizedCheckoutError(error);
+      res.status(sanitized.statusCode).json({
+        success: false,
+        code: sanitized.code,
+        message: sanitized.message,
       });
     }
   };

@@ -32,6 +32,13 @@ router.get(
   CursosCheckoutController.consultarPagamento,
 );
 
+// POST /api/cursos/checkout/pagamento/:paymentId/cancelar - Cancelar checkout pendente
+router.post(
+  '/checkout/pagamento/:paymentId/cancelar',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  CursosCheckoutController.cancelarPagamento,
+);
+
 // GET /api/cursos/:cursoId/turmas/:turmaId/vagas - Verificar vagas disponíveis
 router.get('/:cursoId/turmas/:turmaId/vagas', CursosCheckoutController.verificarVagas);
 

@@ -1,6 +1,8 @@
 import { StatusInscricao } from '@prisma/client';
 
+import { getRuntimeMercadoPagoConfig } from '@/config/mercadopago';
 import { prisma } from '@/config/prisma';
+import { cancelMercadoPagoOrder } from '@/modules/cursos/checkout/services/mercadopago-orders.client';
 import { logger } from '@/utils/logger';
 
 const vagasLogger = logger.child({ module: 'CursosInscricoesVagasService' });
@@ -28,18 +30,58 @@ export function buildInscricaoOcupaVagaWhere(now = new Date()) {
 }
 
 export async function limparReservasExpiradasDaTurma(turmaId: string, now = new Date()) {
+  const expiredWhere = {
+    turmaId,
+    status: StatusInscricao.AGUARDANDO_PAGAMENTO,
+    statusPagamento: { in: STATUS_PAGAMENTO_RESERVA },
+    OR: [{ pagamentoExpiraEm: null }, { pagamentoExpiraEm: { lte: now } }],
+  };
+
+  const expiradas = await prisma.cursosTurmasInscricoes.findMany({
+    where: expiredWhere,
+    select: { id: true, mpOrderId: true },
+  });
+
+  if (expiradas.some((inscricao) => inscricao.mpOrderId)) {
+    const config = await getRuntimeMercadoPagoConfig().catch((error) => {
+      vagasLogger.warn(
+        { turmaId, error },
+        '[CURSOS_VAGAS] Falha ao carregar config MP para cancelamento',
+      );
+      return null;
+    });
+
+    if (config) {
+      for (const inscricao of expiradas) {
+        if (!inscricao.mpOrderId) continue;
+        await cancelMercadoPagoOrder({
+          accessToken: config.getAccessToken(),
+          activeMode: config.activeMode,
+          tokenFingerprint: config.getAccessTokenFingerprint(),
+          orderId: inscricao.mpOrderId,
+          idempotencyKey: `curso-reserva-expirada:${inscricao.id}`,
+        }).catch((error) => {
+          vagasLogger.warn(
+            { turmaId, inscricaoId: inscricao.id, mpOrderId: inscricao.mpOrderId, error },
+            '[CURSOS_VAGAS] Falha ao cancelar order expirada no gateway',
+          );
+        });
+      }
+    }
+  }
+
   const result = await prisma.cursosTurmasInscricoes.updateMany({
-    where: {
-      turmaId,
-      status: StatusInscricao.AGUARDANDO_PAGAMENTO,
-      statusPagamento: { in: STATUS_PAGAMENTO_RESERVA },
-      OR: [{ pagamentoExpiraEm: null }, { pagamentoExpiraEm: { lte: now } }],
-    },
+    where: expiredWhere,
     data: {
       status: StatusInscricao.CANCELADO,
       statusPagamento: 'CANCELADO',
       tokenAcesso: null,
       tokenAcessoExpiraEm: null,
+      pixQrCode: null,
+      pixQrCodeBase64: null,
+      boletoCodigo: null,
+      boletoUrl: null,
+      pagamentoExpiraEm: null,
     },
   });
 

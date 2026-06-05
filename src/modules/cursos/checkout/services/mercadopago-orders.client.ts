@@ -291,3 +291,55 @@ export async function getMercadoPagoOrder(params: {
 
   return normalizeMercadoPagoOrder(payload);
 }
+
+export async function cancelMercadoPagoOrder(params: {
+  accessToken: string;
+  activeMode: MercadoPagoMode;
+  tokenFingerprint: string | null;
+  orderId: string;
+  idempotencyKey: string;
+}): Promise<MercadoPagoOrderResult> {
+  const response = await fetch(`${ORDERS_API_URL}/${encodeURIComponent(params.orderId)}/cancel`, {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${params.accessToken}`,
+      'X-Idempotency-Key': params.idempotencyKey,
+    },
+  });
+
+  const payload = await parseMercadoPagoResponse(response);
+  if (!response.ok) {
+    logger.error('[MERCADOPAGO_ORDERS] Falha ao cancelar order', {
+      activeMode: params.activeMode,
+      tokenFingerprint: params.tokenFingerprint,
+      orderId: params.orderId,
+      requestId: params.idempotencyKey,
+      status: response.status,
+      apiResponse: redactMercadoPagoPayload(payload),
+    });
+
+    throw Object.assign(
+      new Error(payload?.message || payload?.error || 'Falha ao cancelar order no Mercado Pago.'),
+      {
+        code: 'MERCADOPAGO_ORDERS_CANCEL_ERROR',
+        statusCode: response.status >= 500 ? 502 : 409,
+        status: response.status,
+        apiResponse: payload,
+      },
+    );
+  }
+
+  const order = normalizeMercadoPagoOrder(payload);
+  logger.info('[MERCADOPAGO_ORDERS] Order cancelada', {
+    activeMode: params.activeMode,
+    tokenFingerprint: params.tokenFingerprint,
+    orderId: params.orderId,
+    requestId: params.idempotencyKey,
+    status: order.status,
+    paymentStatus: order.payment?.status,
+  });
+
+  return order;
+}

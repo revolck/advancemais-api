@@ -127,6 +127,8 @@ export const CandidaturasController = {
         return res.status(403).json({ success: false, code: error.code, message: error.message });
       if (error?.code === 'CURRICULO_INVALIDO')
         return res.status(400).json({ success: false, code: error.code, message: error.message });
+      if (error?.code === 'CANDIDATURA_DUPLICADA')
+        return res.status(409).json({ success: false, code: error.code, message: error.message });
       if (error?.code === 'VAGA_NOT_FOUND')
         return res.status(404).json({ success: false, code: error.code, message: error.message });
       if (error?.code === 'VAGA_LIMIT_CANDIDATURAS')

@@ -271,7 +271,9 @@ export const candidaturasService = {
     });
 
     if (existingCandidatura) {
-      throw new Error('Você já se candidatou para esta vaga com este currículo.');
+      throw Object.assign(new Error('Você já se candidatou para esta vaga com este currículo.'), {
+        code: 'CANDIDATURA_DUPLICADA',
+      });
     }
 
     // Buscar status padrão
@@ -286,7 +288,9 @@ export const candidaturasService = {
     // Buscar vaga para descobrir o usuário da empresa responsável
     const vaga = await prisma.empresasVagas.findUnique({ where: { id: params.vagaId } });
     if (!vaga) {
-      throw new Error('Vaga não encontrada.');
+      throw Object.assign(new Error('Vaga não encontrada.'), {
+        code: 'VAGA_NOT_FOUND',
+      });
     }
 
     const candidatura = await prisma.empresasCandidatos.create({

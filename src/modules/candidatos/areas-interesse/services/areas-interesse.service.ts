@@ -4,7 +4,7 @@ import { prisma } from '@/config/prisma';
 
 export type CreateAreaInteresseData = {
   categoria: string;
-  subareas: string[];
+  subareas?: string[];
 };
 
 export type UpdateAreaInteresseData = Partial<CreateAreaInteresseData>;
@@ -56,8 +56,8 @@ const normalizeCategoria = (categoria: string) => categoria.trim();
 
 const normalizeSubareaNome = (nome: string) => nome.trim();
 
-const normalizeSubareas = (subareas: string[]) =>
-  Array.from(new Set(subareas.map(normalizeSubareaNome).filter(Boolean)));
+const normalizeSubareas = (subareas?: string[]) =>
+  Array.from(new Set((subareas ?? []).map(normalizeSubareaNome).filter(Boolean)));
 
 export const areasInteresseService = {
   async list() {

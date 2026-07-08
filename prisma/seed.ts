@@ -10,6 +10,7 @@ import { seedVagas } from './seeds/testes/seed-vagas';
 import { seedCurriculosCandidaturas } from './seeds/testes/seed-curriculos-candidaturas';
 import { seedCursos } from './seeds/testes/seed-cursos';
 import { seedCursosOperacional } from './seeds/testes/seed-cursos-operacional';
+import { seedPopupContatosCrm } from './seeds/testes/seed-popup-contatos-crm';
 import { seedStatusProcesso } from './seeds/testes/seed-status-processo';
 
 // Usar DIRECT_URL para seeds (conexão direta, sem pooler)
@@ -36,39 +37,44 @@ async function main() {
 
   try {
     // 1. Usuários (todas as roles)
-    console.log('👥 ETAPA 1/7: Usuários');
+    console.log('👥 ETAPA 1/8: Usuários');
     console.log('───────────────────────────────────────────────────');
     await seedUsuarios(prisma);
 
     // 2. Status Processo
-    console.log('\n📊 ETAPA 2/7: Status Processo');
+    console.log('\n📊 ETAPA 2/8: Status Processo');
     console.log('───────────────────────────────────────────────────');
     await seedStatusProcesso(prisma);
 
     // 3. Áreas de Interesse
-    console.log('\n🏷️  ETAPA 3/7: Áreas de Interesse');
+    console.log('\n🏷️  ETAPA 3/8: Áreas de Interesse');
     console.log('───────────────────────────────────────────────────');
     await seedAreasInteresse(prisma);
 
     // 4. Vagas
-    console.log('\n💼 ETAPA 4/7: Vagas');
+    console.log('\n💼 ETAPA 4/8: Vagas');
     console.log('───────────────────────────────────────────────────');
     await seedVagas(prisma);
 
     // 5. Currículos e Candidaturas
-    console.log('\n📄 ETAPA 5/7: Currículos e Candidaturas');
+    console.log('\n📄 ETAPA 5/8: Currículos e Candidaturas');
     console.log('───────────────────────────────────────────────────');
     await seedCurriculosCandidaturas(prisma);
 
     // 6. Cursos e Turmas
-    console.log('\n📚 ETAPA 6/7: Cursos e Turmas');
+    console.log('\n📚 ETAPA 6/8: Cursos e Turmas');
     console.log('───────────────────────────────────────────────────');
     await seedCursos(prisma);
 
     // 7. Operacional de cursos (aulas, agenda, avaliações, notas, frequência)
-    console.log('\n🧪 ETAPA 7/7: Operacional de Cursos');
+    console.log('\n🧪 ETAPA 7/8: Operacional de Cursos');
     console.log('───────────────────────────────────────────────────');
     await seedCursosOperacional(prisma);
+
+    // 8. CRM de pop-ups e contatos consolidados
+    console.log('\n🧲 ETAPA 8/8: CRM de Pop-ups e Contatos');
+    console.log('───────────────────────────────────────────────────');
+    await seedPopupContatosCrm(prisma);
 
     console.log('\n═══════════════════════════════════════════════════');
     console.log('✨ Seed completo finalizado com sucesso!');

@@ -2,6 +2,37 @@ import { brevoConfig } from '../../../config/env';
 import { logger } from '@/utils/logger';
 import { runtimeConfigService } from '@/modules/configuracoes-gerais';
 
+export function resolveBrevoEnvironment(): 'development' | 'production' | 'test' {
+  const rawNodeEnv = process.env.NODE_ENV?.trim().toLowerCase();
+  if (rawNodeEnv === 'production' || rawNodeEnv === 'development' || rawNodeEnv === 'test') {
+    return rawNodeEnv;
+  }
+
+  const renderSignals = [
+    process.env.RENDER,
+    process.env.RENDER_EXTERNAL_URL,
+    process.env.RENDER_SERVICE_ID,
+  ].some((value) => Boolean(value));
+
+  const vercelSignals = process.env.VERCEL_ENV === 'production';
+  const hostedUrls = [
+    process.env.FRONTEND_URL,
+    process.env.AUTH_FRONTEND_URL,
+    process.env.KEEP_ALIVE_URL,
+    process.env.RENDER_EXTERNAL_URL,
+  ].filter(Boolean) as string[];
+
+  const hostedProductionUrls = hostedUrls.some(
+    (url) => /^https:\/\//i.test(url) && !/(localhost|127\.0\.0\.1)/i.test(url),
+  );
+
+  if (renderSignals || vercelSignals || hostedProductionUrls) {
+    return 'production';
+  }
+
+  return 'development';
+}
+
 /**
  * Configuração simplificada e robusta do módulo Brevo
  * Implementa configuração centralizada com validação
@@ -76,7 +107,7 @@ export class BrevoConfigManager {
       maxRetries: runtimeConfig.sending.maxRetries,
       timeout: runtimeConfig.sending.timeout,
       isConfigured: runtimeConfig.isConfigured,
-      environment: process.env.NODE_ENV || 'development',
+      environment: resolveBrevoEnvironment(),
       urls: {
         frontend: frontendUrl,
         verification: `${authUrl}/verify-email`,
@@ -159,7 +190,7 @@ export class BrevoConfigManager {
       maxRetries: 3,
       timeout: 30000,
       isConfigured,
-      environment: process.env.NODE_ENV || 'development',
+      environment: resolveBrevoEnvironment(),
 
       urls: {
         frontend: frontendUrl,

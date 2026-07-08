@@ -2,11 +2,35 @@ import * as Brevo from '@getbrevo/brevo';
 import { BrevoConfigManager, BrevoConfiguration } from '../config/brevo-config';
 import { logger } from '@/utils/logger';
 
+type BrevoFailureReason =
+  | 'API_NOT_CONFIGURED'
+  | 'API_NOT_INITIALIZED'
+  | 'IP_NOT_AUTHORIZED'
+  | 'AUTHENTICATION_FAILED'
+  | 'API_REQUEST_FAILED';
+
+interface BrevoOperationalIssue {
+  operation: 'health_check' | 'send_email' | 'send_sms';
+  failureReason: BrevoFailureReason;
+  message: string;
+  statusCode?: number;
+  code?: string;
+  occurredAt: string;
+}
+
+interface BrevoErrorDetails {
+  message: string;
+  statusCode?: number;
+  code?: string;
+  failureReason: BrevoFailureReason;
+}
+
 /**
  * Cliente Brevo simplificado e robusto
  * Gerencia conexão com API Brevo de forma segura
  */
 export class BrevoClient {
+  private static readonly EMAIL_REQUEST_TIMEOUT_MS = 15000;
   private static instance: BrevoClient;
   private emailAPI?: Brevo.TransactionalEmailsApi;
   private smsAPI?: Brevo.TransactionalSMSApi;
@@ -15,6 +39,7 @@ export class BrevoClient {
   private operational: boolean = false;
   private runtimeConfigLoadedAt = 0;
   private runtimeConfigPromise: Promise<void> | null = null;
+  private lastOperationalIssue: BrevoOperationalIssue | null = null;
   private readonly log = logger.child({ module: 'BrevoClient' });
 
   private constructor() {
@@ -51,8 +76,15 @@ export class BrevoClient {
         this.accountAPI.setApiKey(Brevo.AccountApiApiKeys.apiKey, this.config.apiKey);
 
         this.operational = true;
+        this.lastOperationalIssue = null;
         this.log.info({ environment: this.config.environment }, '✅ Brevo Client configurado');
       } else {
+        this.lastOperationalIssue = {
+          operation: 'health_check',
+          failureReason: 'API_NOT_CONFIGURED',
+          message: 'Brevo não configurado; cliente operando em modo simulado',
+          occurredAt: new Date().toISOString(),
+        };
         this.log.info('ℹ️ Brevo Client em modo simulado (API não configurada)');
       }
     } catch (error) {
@@ -141,6 +173,10 @@ export class BrevoClient {
     return !this.config.isConfigured || !this.operational;
   }
 
+  public getLastOperationalIssue(): BrevoOperationalIssue | null {
+    return this.lastOperationalIssue;
+  }
+
   /**
    * Health check simples
    */
@@ -148,17 +184,38 @@ export class BrevoClient {
     await this.ensureRuntimeConfig();
 
     if (this.isSimulated()) {
+      this.lastOperationalIssue = {
+        operation: 'health_check',
+        failureReason: 'API_NOT_CONFIGURED',
+        message: 'Brevo não configurado; health check em modo simulado',
+        occurredAt: new Date().toISOString(),
+      };
       return true; // Simulado é sempre "healthy"
     }
 
     try {
       if (this.accountAPI) {
         await this.accountAPI.getAccount();
+        this.lastOperationalIssue = null;
         return true;
       }
+      this.recordOperationalIssue('health_check', {
+        failureReason: 'API_NOT_INITIALIZED',
+        message: 'API de conta não inicializada',
+      });
       return false;
     } catch (error) {
-      this.log.warn({ err: error }, '⚠️ Brevo health check falhou');
+      const details = this.extractErrorDetails(error, 'API_REQUEST_FAILED');
+      this.recordOperationalIssue('health_check', details);
+      this.log.warn(
+        {
+          err: error,
+          brevoStatusCode: details.statusCode,
+          brevoCode: details.code,
+          failureReason: details.failureReason,
+        },
+        '⚠️ Brevo health check falhou',
+      );
       return false;
     }
   }
@@ -212,8 +269,16 @@ export class BrevoClient {
       sendSmtpEmail.htmlContent = emailData.html;
       sendSmtpEmail.textContent = emailData.text;
 
-      const response = await this.emailAPI.sendTransacEmail(sendSmtpEmail);
+      const response = await Promise.race([
+        this.emailAPI.sendTransacEmail(sendSmtpEmail),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            reject(new Error('BREVO_EMAIL_TIMEOUT'));
+          }, BrevoClient.EMAIL_REQUEST_TIMEOUT_MS);
+        }),
+      ]);
       const messageId = this.extractMessageId(response);
+      this.lastOperationalIssue = null;
 
       this.log.info({ to: emailData.to, messageId }, '✅ Email enviado via Brevo');
 
@@ -222,15 +287,21 @@ export class BrevoClient {
         messageId,
       };
     } catch (error) {
-      this.log.error({ err: error, to: emailData.to }, '❌ Erro no envio via Brevo');
-
-      // Fallback para simulação em caso de erro
-      this.log.warn({ to: emailData.to }, '🎭 Fallback para modo simulado');
+      const details = this.extractErrorDetails(error, 'API_REQUEST_FAILED');
+      this.recordOperationalIssue('send_email', details);
+      this.log.error(
+        {
+          err: error,
+          to: emailData.to,
+          brevoStatusCode: details.statusCode,
+          brevoCode: details.code,
+          failureReason: details.failureReason,
+        },
+        '❌ Erro no envio via Brevo',
+      );
       return {
-        success: true,
-        messageId: `fallback_${Date.now()}`,
-        simulated: true,
-        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        success: false,
+        error: details.message,
       };
     }
   }
@@ -277,6 +348,7 @@ export class BrevoClient {
 
       const response = await this.smsAPI.sendTransacSms(sendSmsRequest);
       const messageId = this.extractMessageId(response);
+      this.lastOperationalIssue = null;
 
       this.log.info({ to: smsData.to, messageId }, '✅ SMS enviado via Brevo');
 
@@ -285,15 +357,21 @@ export class BrevoClient {
         messageId,
       };
     } catch (error) {
-      this.log.error({ err: error, to: smsData.to }, '❌ Erro no envio de SMS via Brevo');
-
-      // Fallback para simulação
-      this.log.warn({ to: smsData.to }, '🎭 Fallback SMS para modo simulado');
+      const details = this.extractErrorDetails(error, 'API_REQUEST_FAILED');
+      this.recordOperationalIssue('send_sms', details);
+      this.log.error(
+        {
+          err: error,
+          to: smsData.to,
+          brevoStatusCode: details.statusCode,
+          brevoCode: details.code,
+          failureReason: details.failureReason,
+        },
+        '❌ Erro no envio de SMS via Brevo',
+      );
       return {
-        success: true,
-        messageId: `sms_fallback_${Date.now()}`,
-        simulated: true,
-        error: error instanceof Error ? error.message : 'Erro na API de SMS',
+        success: false,
+        error: details.message,
       };
     }
   }
@@ -305,5 +383,76 @@ export class BrevoClient {
     if (response?.messageId) return String(response.messageId);
     if (response?.body?.messageId) return String(response.body.messageId);
     return `brevo_${Date.now()}`;
+  }
+
+  private recordOperationalIssue(
+    operation: BrevoOperationalIssue['operation'],
+    details: BrevoErrorDetails,
+  ): void {
+    this.lastOperationalIssue = {
+      operation,
+      failureReason: details.failureReason,
+      message: details.message,
+      statusCode: details.statusCode,
+      code: details.code,
+      occurredAt: new Date().toISOString(),
+    };
+  }
+
+  private extractErrorDetails(
+    error: unknown,
+    fallbackReason: Exclude<BrevoFailureReason, 'API_NOT_CONFIGURED'>,
+  ): BrevoErrorDetails {
+    const errorRecord = error as
+      | {
+          message?: string;
+          code?: string;
+          statusCode?: number;
+          response?: { statusCode?: number; body?: { code?: string; message?: string } };
+          body?: { code?: string; message?: string };
+        }
+      | undefined;
+
+    const statusCode = errorRecord?.response?.statusCode ?? errorRecord?.statusCode;
+    const code = errorRecord?.response?.body?.code ?? errorRecord?.body?.code ?? errorRecord?.code;
+    const message =
+      errorRecord?.response?.body?.message ??
+      errorRecord?.body?.message ??
+      errorRecord?.message ??
+      'Erro desconhecido na comunicação com a Brevo';
+
+    const normalizedMessage = String(message);
+    const normalizedCode = String(code || '').toLowerCase();
+    const normalizedText = `${normalizedCode} ${normalizedMessage}`.toLowerCase();
+
+    if (
+      normalizedCode === 'unauthorized' &&
+      (normalizedText.includes('unrecognised ip address') ||
+        normalizedText.includes('authorized ip') ||
+        normalizedText.includes('authorised ip'))
+    ) {
+      return {
+        message: normalizedMessage,
+        statusCode,
+        code,
+        failureReason: 'IP_NOT_AUTHORIZED',
+      };
+    }
+
+    if (statusCode === 401 || normalizedCode === 'unauthorized') {
+      return {
+        message: normalizedMessage,
+        statusCode,
+        code,
+        failureReason: 'AUTHENTICATION_FAILED',
+      };
+    }
+
+    return {
+      message: normalizedMessage,
+      statusCode,
+      code,
+      failureReason: fallbackReason,
+    };
   }
 }

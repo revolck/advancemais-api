@@ -22,6 +22,10 @@ import { informacoesGeraisRoutes } from './informacoes-gerais';
 import { imagemLoginRoutes } from './imagem-login';
 import { websiteScriptsRoutes } from './scripts';
 import { websiteSiteDataRoutes } from './site-data';
+import { websiteEmailsMarketingRoutes } from './emails-marketing';
+import { websitePopupsRoutes } from './popups';
+import { websiteRecipientListsRoutes } from './recipient-lists';
+import { websiteRecipientListFoldersRoutes } from './recipient-list-folders';
 import {
   invalidateWebsiteGetResponseCache,
   websiteGetResponseCache,
@@ -84,6 +88,10 @@ router.get('/', publicCache, (req, res) => {
       imagemLogin: '/imagem-login',
       scripts: '/scripts',
       siteData: '/site-data',
+      emailsMarketing: '/emails-marketing',
+      recipientLists: '/recipient-lists',
+      recipientListFolders: '/recipient-list-folders',
+      popups: '/popups',
     },
     status: 'operational',
   });
@@ -125,5 +133,9 @@ router.use('/informacoes-gerais', informacoesGeraisRoutes);
 router.use('/imagem-login', imagemLoginRoutes);
 router.use('/scripts', websiteScriptsRoutes);
 router.use('/site-data', websiteSiteDataRoutes);
+router.use('/emails-marketing', websiteEmailsMarketingRoutes);
+router.use('/recipient-lists', websiteRecipientListsRoutes);
+router.use('/recipient-list-folders', websiteRecipientListFoldersRoutes);
+router.use('/popups', websitePopupsRoutes);
 
 export { router as websiteRoutes };

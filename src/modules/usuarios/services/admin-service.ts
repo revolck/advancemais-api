@@ -676,6 +676,24 @@ export class AdminService {
     }
   }
 
+  private assertCanViewUserHistory(actingRole: string | undefined) {
+    if (
+      actingRole === Roles.ADMIN ||
+      actingRole === Roles.MODERADOR ||
+      actingRole === Roles.PEDAGOGICO
+    ) {
+      return;
+    }
+
+    throw Object.assign(
+      new Error('Você não tem permissão para visualizar o histórico deste usuário'),
+      {
+        code: 'FORBIDDEN_USER_HISTORY',
+        statusCode: 403,
+      },
+    );
+  }
+
   private getHistoryTargetSummary(
     usuario: Pick<UserHistoryTarget, 'id' | 'nomeCompleto' | 'email' | 'role' | 'status'>,
   ) {
@@ -689,6 +707,8 @@ export class AdminService {
   }
 
   private async ensureHistoryTarget(userId: string, userRole?: string) {
+    this.assertCanViewUserHistory(userRole);
+
     const usuario = await prisma.usuarios.findUnique({
       where: { id: userId },
       select: userHistoryTargetSelect,

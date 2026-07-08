@@ -162,6 +162,36 @@ describe('API - Admin alterar função de usuário', () => {
     expect(forbiddenRoleResponse.body.code).toBe('FORBIDDEN_USER_ROLE');
   });
 
+  it('histórico do usuário deve permitir ADMIN/MODERADOR/PEDAGOGICO e bloquear SETOR_DE_VAGAS', async () => {
+    const admin = await registerUser({ role: Roles.ADMIN });
+    const moderador = await registerUser({ role: Roles.MODERADOR });
+    const pedagogico = await registerUser({ role: Roles.PEDAGOGICO });
+    const setorDeVagas = await registerUser({ role: Roles.SETOR_DE_VAGAS });
+    const target = await registerUser({ role: Roles.ALUNO_CANDIDATO });
+
+    await request(app)
+      .get(`/api/v1/usuarios/usuarios/${target.id}/historico`)
+      .set('Authorization', `Bearer ${admin.token}`)
+      .expect(200);
+
+    await request(app)
+      .get(`/api/v1/usuarios/usuarios/${target.id}/historico`)
+      .set('Authorization', `Bearer ${moderador.token}`)
+      .expect(200);
+
+    await request(app)
+      .get(`/api/v1/usuarios/usuarios/${target.id}/historico`)
+      .set('Authorization', `Bearer ${pedagogico.token}`)
+      .expect(200);
+
+    const forbiddenResponse = await request(app)
+      .get(`/api/v1/usuarios/usuarios/${target.id}/historico`)
+      .set('Authorization', `Bearer ${setorDeVagas.token}`)
+      .expect(403);
+
+    expect(forbiddenResponse.body.code).toBe('FORBIDDEN_USER_HISTORY');
+  });
+
   it('não deve permitir autoalteração de função', async () => {
     const admin = await registerUser({ role: Roles.ADMIN });
 

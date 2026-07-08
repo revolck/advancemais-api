@@ -437,12 +437,9 @@ export class EmailVerificationService {
         '❌ Erro no envio via Brevo',
       );
 
-      // Fallback para simulação
-      this.log.warn({ correlationId, email: emailData.to }, '🎭 Fallback para modo simulado');
       return {
-        success: true,
-        messageId: `fallback_verify_${Date.now()}`,
-        simulated: true,
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
       };
     }
   }

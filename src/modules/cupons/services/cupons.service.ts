@@ -13,6 +13,7 @@ import {
   CreateCupomDescontoInput,
   UpdateCupomDescontoInput,
   createCupomDescontoSchema,
+  listCupomDescontoQuerySchema,
 } from '@/modules/cupons/validators/cupons.schema';
 
 const cupomInclude = {
@@ -174,8 +175,23 @@ const buildCupomValidacaoSelect = (planosEmpresariaisId?: string): Prisma.Cupons
 });
 
 export const cuponsService = {
-  list: async () => {
+  list: async (filters?: {
+    status?: WebsiteStatus;
+    aplicarEm?: CuponsAplicarEm;
+    apenasAtivos?: boolean;
+  }) => {
+    const parsedFilters = listCupomDescontoQuerySchema.parse(filters ?? {});
+    const where: Prisma.CuponsDescontoWhereInput = {
+      ...(parsedFilters.aplicarEm ? { aplicarEm: parsedFilters.aplicarEm } : {}),
+      ...(parsedFilters.apenasAtivos
+        ? { status: WebsiteStatus.PUBLICADO }
+        : parsedFilters.status
+          ? { status: parsedFilters.status }
+          : {}),
+    };
+
     const cupons = await prisma.cuponsDesconto.findMany({
+      where,
       orderBy: { criadoEm: 'desc' },
       include: cupomInclude,
     });

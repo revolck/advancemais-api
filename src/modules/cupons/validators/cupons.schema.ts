@@ -175,6 +175,17 @@ const baseCupomSchema = z
   })
   .strict();
 
+export const listCupomDescontoQuerySchema = z.object({
+  status: z.nativeEnum(WebsiteStatus).optional(),
+  aplicarEm: z.nativeEnum(CuponsAplicarEm).optional(),
+  apenasAtivos: z.preprocess((value) => {
+    if (value === undefined || value === null || value === '') return undefined;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') return value === 'true';
+    return value;
+  }, z.boolean().optional()),
+});
+
 const validateCupomRules = (data: z.infer<typeof baseCupomSchema>, ctx: RefinementCtx) => {
   if (data.tipoDesconto === CuponsTipoDesconto.PORCENTAGEM) {
     if (data.valorPercentual === undefined) {

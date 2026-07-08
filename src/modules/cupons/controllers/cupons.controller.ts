@@ -6,17 +6,28 @@ import { cuponsService, CupomNaoEncontradoError } from '@/modules/cupons/service
 import { invalidateCuponsGetResponseCache } from '@/modules/cupons/middlewares/response-cache';
 import {
   createCupomDescontoSchema,
+  listCupomDescontoQuerySchema,
   updateCupomDescontoSchema,
   CreateCupomDescontoInput,
   UpdateCupomDescontoInput,
 } from '@/modules/cupons/validators/cupons.schema';
 
 export class CuponsController {
-  static list = async (_req: Request, res: Response) => {
+  static list = async (req: Request, res: Response) => {
     try {
-      const cupons = await cuponsService.list();
+      const filters = listCupomDescontoQuerySchema.parse(req.query);
+      const cupons = await cuponsService.list(filters);
       res.json(cupons);
     } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          code: 'VALIDATION_ERROR',
+          message: 'Parâmetros inválidos para listagem de cupons',
+          issues: error.flatten().fieldErrors,
+        });
+      }
+
       res.status(500).json({
         success: false,
         code: 'CUPONS_LIST_ERROR',

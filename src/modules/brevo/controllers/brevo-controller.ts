@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { EmailService } from '../services/email-service';
 import { SMSService } from '../services/sms-service';
 import { BrevoClient } from '../client/brevo-client';
-import { BrevoConfigManager } from '../config/brevo-config';
+import { BrevoConfigManager, resolveBrevoEnvironment } from '../config/brevo-config';
 import { logger } from '../../../utils/logger';
 
 /**
@@ -44,8 +44,9 @@ export class BrevoController {
         this.client.healthCheck(),
       ]);
 
-      const config = this.config.getConfig();
+      const config = await this.config.getRuntimeConfig();
       const overall = (emailHealthy && clientHealthy) || this.client.isSimulated();
+      const lastIssue = this.client.getLastOperationalIssue();
 
       const healthData = {
         status: overall ? 'healthy' : 'degraded',
@@ -60,6 +61,18 @@ export class BrevoController {
           sms: smsHealthy ? 'operational' : 'degraded',
           client: clientHealthy ? 'operational' : 'degraded',
         },
+        failureReason: overall ? null : lastIssue?.failureReason || 'UNKNOWN',
+        lastError: overall
+          ? null
+          : lastIssue
+            ? {
+                operation: lastIssue.operation,
+                code: lastIssue.code,
+                statusCode: lastIssue.statusCode,
+                message: lastIssue.message,
+                occurredAt: lastIssue.occurredAt,
+              }
+            : null,
 
         configuration: {
           UsuariosVerificacaoEmailEnabled: config.UsuariosVerificacaoEmail.enabled,
@@ -83,6 +96,7 @@ export class BrevoController {
           status: healthData.status,
           configured: healthData.configured,
           simulated: healthData.simulated,
+          failureReason: healthData.failureReason,
         },
         '✅ Health check concluído',
       );
@@ -170,7 +184,7 @@ export class BrevoController {
   public testEmail = async (req: Request, res: Response): Promise<void> => {
     const log = this.getLogger(req);
     // Bloqueio em produção
-    if (process.env.NODE_ENV === 'production') {
+    if (resolveBrevoEnvironment() === 'production') {
       res.status(403).json({
         success: false,
         message: 'Testes não disponíveis em produção',
@@ -250,7 +264,7 @@ export class BrevoController {
   public testSMS = async (req: Request, res: Response): Promise<void> => {
     const log = this.getLogger(req);
     // Bloqueio em produção
-    if (process.env.NODE_ENV === 'production') {
+    if (resolveBrevoEnvironment() === 'production') {
       res.status(403).json({
         success: false,
         message: 'Testes não disponíveis em produção',
@@ -314,7 +328,7 @@ export class BrevoController {
    */
   public getConfigStatus = async (req: Request, res: Response): Promise<void> => {
     const log = this.getLogger(req);
-    if (process.env.NODE_ENV === 'production') {
+    if (resolveBrevoEnvironment() === 'production') {
       res.status(403).json({
         message: 'Informações de configuração não disponíveis em produção',
       });
@@ -322,7 +336,7 @@ export class BrevoController {
     }
 
     try {
-      const config = this.config.getConfig();
+      const config = await this.config.getRuntimeConfig();
       const healthInfo = this.config.getHealthInfo();
 
       res.json({

@@ -25,6 +25,8 @@ import { startEstagiosWatcherJob } from '@/modules/cursos/cron/estagios-watcher'
 import { startTurmasStatusWatcherJob } from '@/modules/cursos/cron/turmas-status-watcher';
 import { startCobrancaAutomaticaJob } from '@/modules/empresas/cartoes/cron/cobranca-automatica';
 import { startAgendaCronJobs } from '@/modules/cursos/aulas/cron/agenda-jobs';
+import { startRecipientListRecalculationWorker } from '@/modules/website/services/recipient-lists.service';
+import { startMarketingEmailDeliveryWorker } from '@/modules/website/services/emails-marketing.service';
 
 /**
  * Aplicação principal - Advance+ API
@@ -183,6 +185,8 @@ try {
         routerLogger.warn({ err }, '⚠️ Falha ao iniciar cron de cobrança automática'),
       );
       void startAgendaCronJobs(); // Cron jobs de agenda (aulas, provas, entrevistas)
+      startRecipientListRecalculationWorker();
+      startMarketingEmailDeliveryWorker();
     } catch (e) {
       routerLogger.warn({ err: e }, '⚠️ Falha ao iniciar crons');
     }

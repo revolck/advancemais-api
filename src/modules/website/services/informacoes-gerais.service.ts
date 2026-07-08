@@ -24,6 +24,7 @@ export const informacoesGeraisService = {
         facebook: true,
         instagram: true,
         youtube: true,
+        trabalheConoscoUrl: true,
         email: true,
         WebsiteHorarioFuncionamento: {
           select: {
@@ -54,6 +55,7 @@ export const informacoesGeraisService = {
         facebook: true,
         instagram: true,
         youtube: true,
+        trabalheConoscoUrl: true,
         email: true,
         WebsiteHorarioFuncionamento: {
           select: {
@@ -81,6 +83,7 @@ export const informacoesGeraisService = {
         facebook: true,
         instagram: true,
         youtube: true,
+        trabalheConoscoUrl: true,
         email: true,
         WebsiteHorarioFuncionamento: {
           select: {
@@ -112,6 +115,7 @@ export const informacoesGeraisService = {
         facebook: true,
         instagram: true,
         youtube: true,
+        trabalheConoscoUrl: true,
         email: true,
         WebsiteHorarioFuncionamento: {
           select: {

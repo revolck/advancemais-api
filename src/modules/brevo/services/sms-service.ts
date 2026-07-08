@@ -169,12 +169,8 @@ export class SMSService {
     } catch (error) {
       log.error({ err: error }, '❌ Erro no envio via Brevo');
 
-      // Fallback para simulação em caso de erro
-      log.warn('🎭 Fallback para modo simulado');
       return {
-        success: true,
-        messageId: `sms_fallback_${Date.now()}`,
-        simulated: true,
+        success: false,
         error: error instanceof Error ? error.message : 'Erro na API',
       };
     }

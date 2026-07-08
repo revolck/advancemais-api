@@ -3,6 +3,27 @@ import { Request, Response } from 'express';
 import { informacoesGeraisService } from '@/modules/website/services/informacoes-gerais.service';
 import { respondWithCache } from '@/modules/website/utils/cache-response';
 
+function normalizeWebsiteInformacoesPayload<T extends Record<string, unknown>>(payload: T): T {
+  if (!Object.prototype.hasOwnProperty.call(payload, 'trabalheConoscoUrl')) {
+    return payload;
+  }
+
+  const rawValue = payload.trabalheConoscoUrl;
+  if (typeof rawValue !== 'string') {
+    return {
+      ...payload,
+      trabalheConoscoUrl: rawValue ?? null,
+    };
+  }
+
+  const trimmedValue = rawValue.trim();
+
+  return {
+    ...payload,
+    trabalheConoscoUrl: trimmedValue || null,
+  };
+}
+
 export class InformacoesGeraisController {
   static list = async (req: Request, res: Response) => {
     const itens = await informacoesGeraisService.list();
@@ -31,7 +52,8 @@ export class InformacoesGeraisController {
 
   static create = async (req: Request, res: Response) => {
     try {
-      const { horarios = [], ...data } = req.body;
+      const { horarios = [], ...rawData } = req.body;
+      const data = normalizeWebsiteInformacoesPayload(rawData);
       const info = await informacoesGeraisService.create({
         ...data,
         WebsiteHorarioFuncionamento: { create: horarios },
@@ -48,7 +70,8 @@ export class InformacoesGeraisController {
   static update = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { horarios, ...data } = req.body;
+      const { horarios, ...rawData } = req.body;
+      const data = normalizeWebsiteInformacoesPayload(rawData);
       const info = await informacoesGeraisService.update(id, {
         ...data,
         ...(horarios && {

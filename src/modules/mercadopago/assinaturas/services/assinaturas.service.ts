@@ -8,16 +8,16 @@ import { PreApproval, PreApprovalPlan, Payment, Preference } from 'mercadopago';
 import crypto from 'crypto';
 import { clientesService } from '@/modules/empresas/clientes/services/clientes.service';
 import {
+  validarECalcularDescontoCheckout,
+  type CupomCheckoutValidado,
+} from '@/modules/cupons/services/cupom-checkout.service';
+import {
   METODO_PAGAMENTO,
   MODELO_PAGAMENTO,
   STATUS_PAGAMENTO,
   StatusDeVagas,
   EmpresasPlanoStatus,
   EmpresasPlanoModo,
-  CuponsAplicarEm,
-  CuponsLimiteUso,
-  CuponsPeriodo,
-  WebsiteStatus,
 } from '@prisma/client';
 import type { PlanosEmpresariais } from '@prisma/client';
 import { EmailService } from '@/modules/brevo/services/email-service';
@@ -26,21 +26,13 @@ import { logger } from '@/utils/logger';
 import type { StartCheckoutInput } from '@/modules/mercadopago/assinaturas/validators/assinaturas.schema';
 
 // Tipo para resultado da validação de cupom
-type CupomValidado = {
-  valido: boolean;
-  cupomId?: string;
-  tipoDesconto?: 'PORCENTAGEM' | 'VALOR_FIXO';
-  valorPercentual?: number;
-  valorFixo?: number;
-  erro?: string;
-  mensagem?: string;
-};
+type CupomValidado = CupomCheckoutValidado;
 
 // Função para validar e calcular desconto do cupom
 async function validarECalcularDesconto(
   cupomCodigo: string | undefined,
   planosEmpresariaisId: string,
-  usuarioId: string,
+  _usuarioId: string,
   valorOriginal: number,
 ): Promise<{
   valorFinal: number;
@@ -48,146 +40,12 @@ async function validarECalcularDesconto(
   cupomId: string | null;
   cupomInfo: CupomValidado | null;
 }> {
-  if (!cupomCodigo) {
-    return { valorFinal: valorOriginal, desconto: 0, cupomId: null, cupomInfo: null };
-  }
-
-  const codigoNormalizado = cupomCodigo.trim().toUpperCase();
-
-  const cupom = await prisma.cuponsDesconto.findUnique({
-    where: { codigo: codigoNormalizado },
-    include: {
-      CuponsDescontoPlanos: true,
-    },
+  return validarECalcularDescontoCheckout({
+    cupomCodigo,
+    scope: 'SUBSCRIPTION',
+    targetId: planosEmpresariaisId,
+    valorOriginal,
   });
-
-  if (!cupom) {
-    return {
-      valorFinal: valorOriginal,
-      desconto: 0,
-      cupomId: null,
-      cupomInfo: { valido: false, erro: 'CUPOM_NAO_ENCONTRADO', mensagem: 'Cupom não encontrado' },
-    };
-  }
-
-  // Verificar se o cupom está ativo
-  if (cupom.status !== WebsiteStatus.PUBLICADO) {
-    return {
-      valorFinal: valorOriginal,
-      desconto: 0,
-      cupomId: null,
-      cupomInfo: {
-        valido: false,
-        erro: 'CUPOM_INATIVO',
-        mensagem: 'Este cupom não está mais ativo',
-      },
-    };
-  }
-
-  // Verificar período de validade
-  const agora = new Date();
-  if (cupom.periodoTipo === CuponsPeriodo.PERIODO) {
-    if (cupom.periodoInicio && agora < cupom.periodoInicio) {
-      return {
-        valorFinal: valorOriginal,
-        desconto: 0,
-        cupomId: null,
-        cupomInfo: {
-          valido: false,
-          erro: 'CUPOM_AINDA_NAO_VALIDO',
-          mensagem: 'Este cupom ainda não está válido',
-        },
-      };
-    }
-    if (cupom.periodoFim && agora > cupom.periodoFim) {
-      return {
-        valorFinal: valorOriginal,
-        desconto: 0,
-        cupomId: null,
-        cupomInfo: { valido: false, erro: 'CUPOM_EXPIRADO', mensagem: 'Este cupom já expirou' },
-      };
-    }
-  }
-
-  // Verificar limite de uso total
-  if (cupom.limiteUsoTotalTipo === CuponsLimiteUso.LIMITADO) {
-    if (cupom.limiteUsoTotalQuantidade && cupom.usosTotais >= cupom.limiteUsoTotalQuantidade) {
-      return {
-        valorFinal: valorOriginal,
-        desconto: 0,
-        cupomId: null,
-        cupomInfo: {
-          valido: false,
-          erro: 'CUPOM_ESGOTADO',
-          mensagem: 'Este cupom já atingiu o limite de uso',
-        },
-      };
-    }
-  }
-
-  // Verificar se o cupom se aplica a planos empresariais
-  if (cupom.aplicarEm === CuponsAplicarEm.APENAS_CURSOS) {
-    return {
-      valorFinal: valorOriginal,
-      desconto: 0,
-      cupomId: null,
-      cupomInfo: {
-        valido: false,
-        erro: 'CUPOM_NAO_APLICAVEL',
-        mensagem: 'Este cupom é válido apenas para cursos',
-      },
-    };
-  }
-
-  // Verificar se o cupom se aplica ao plano específico
-  if (cupom.aplicarEm === CuponsAplicarEm.APENAS_ASSINATURA && !cupom.aplicarEmTodosItens) {
-    const planoVinculado = cupom.CuponsDescontoPlanos.find(
-      (p) => p.planoId === planosEmpresariaisId,
-    );
-    if (!planoVinculado) {
-      return {
-        valorFinal: valorOriginal,
-        desconto: 0,
-        cupomId: null,
-        cupomInfo: {
-          valido: false,
-          erro: 'CUPOM_NAO_APLICAVEL_PLANO',
-          mensagem: 'Este cupom não é válido para o plano selecionado',
-        },
-      };
-    }
-  }
-
-  // Calcular desconto
-  let desconto = 0;
-  const tipoDesconto = cupom.tipoDesconto;
-
-  if (tipoDesconto === 'PORCENTAGEM' && cupom.valorPorcentagem) {
-    const percentual = Number(cupom.valorPorcentagem);
-    desconto = valorOriginal * (percentual / 100);
-  } else if (tipoDesconto === 'VALOR_FIXO' && cupom.valorFixo) {
-    desconto = Number(cupom.valorFixo);
-  }
-
-  // Desconto não pode ser maior que o valor original
-  desconto = Math.min(desconto, valorOriginal);
-  // Arredondar para 2 casas decimais
-  desconto = Math.round(desconto * 100) / 100;
-
-  const valorFinal = Math.round((valorOriginal - desconto) * 100) / 100;
-
-  return {
-    valorFinal,
-    desconto,
-    cupomId: cupom.id,
-    cupomInfo: {
-      valido: true,
-      cupomId: cupom.id,
-      tipoDesconto: tipoDesconto as 'PORCENTAGEM' | 'VALOR_FIXO',
-      valorPercentual: cupom.valorPorcentagem ? Number(cupom.valorPorcentagem) : undefined,
-      valorFixo: cupom.valorFixo ? Number(cupom.valorFixo) : undefined,
-    },
-  };
 }
 
 type MercadoPagoResponse<T = any> = {

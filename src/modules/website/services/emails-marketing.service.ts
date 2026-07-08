@@ -19,6 +19,7 @@ import type {
 } from '@/modules/website/validators/emails-marketing.schema';
 import { invalidateCacheByPrefix } from '@/utils/cache';
 import { logger } from '@/utils/logger';
+import { isPrismaMissingTableError } from '@/utils/prisma-errors';
 
 const CACHE_PREFIX = 'website:emails-marketing';
 const deliveryLogger = logger.child({ module: 'WebsiteMarketingEmailDelivery' });
@@ -777,59 +778,71 @@ export function startMarketingEmailDeliveryWorker() {
   marketingEmailDeliveryWorkerStarted = true;
 
   cron.schedule(DELIVERY_CRON_SCHEDULE, async () => {
-    const emails = await prisma.websiteMarketingEmail.findMany({
-      where: {
-        status: WebsiteStatus.PUBLICADO,
-      },
-      select: {
-        id: true,
-        settingsConfig: true,
-      },
-    });
+    try {
+      const emails = await prisma.websiteMarketingEmail.findMany({
+        where: {
+          status: WebsiteStatus.PUBLICADO,
+        },
+        select: {
+          id: true,
+          settingsConfig: true,
+        },
+      });
 
-    await Promise.all(
-      emails.map(async (email) => {
-        const settingsConfig = parseSettingsConfig(
-          email.settingsConfig as
-            | Prisma.JsonValue
-            | MarketingEmailSettingsConfigInput
-            | null
-            | undefined,
-        );
+      await Promise.all(
+        emails.map(async (email) => {
+          const settingsConfig = parseSettingsConfig(
+            email.settingsConfig as
+              | Prisma.JsonValue
+              | MarketingEmailSettingsConfigInput
+              | null
+              | undefined,
+          );
 
-        if (
-          settingsConfig.deliveryMode !== 'SCHEDULED' &&
-          settingsConfig.deliveryStatus !== 'PROCESSING'
-        ) {
-          return;
-        }
-
-        if (!isScheduledDue(settingsConfig) && !isProcessingStale(settingsConfig)) {
-          return;
-        }
-
-        try {
-          if (isProcessingStale(settingsConfig)) {
-            await failDeliveryProcessing(
-              email.id,
-              settingsConfig,
-              DELIVERY_PROCESSING_TIMEOUT_MESSAGE,
-            );
+          if (
+            settingsConfig.deliveryMode !== 'SCHEDULED' &&
+            settingsConfig.deliveryStatus !== 'PROCESSING'
+          ) {
             return;
           }
 
-          await dispatchMarketingEmail(email.id);
-        } catch (error) {
-          deliveryLogger.error(
-            {
-              err: error,
-              emailId: email.id,
-            },
-            'Erro ao processar campanha agendada',
-          );
-        }
-      }),
-    );
+          if (!isScheduledDue(settingsConfig) && !isProcessingStale(settingsConfig)) {
+            return;
+          }
+
+          try {
+            if (isProcessingStale(settingsConfig)) {
+              await failDeliveryProcessing(
+                email.id,
+                settingsConfig,
+                DELIVERY_PROCESSING_TIMEOUT_MESSAGE,
+              );
+              return;
+            }
+
+            await dispatchMarketingEmail(email.id);
+          } catch (error) {
+            deliveryLogger.error(
+              {
+                err: error,
+                emailId: email.id,
+              },
+              'Erro ao processar campanha agendada',
+            );
+          }
+        }),
+      );
+    } catch (error) {
+      if (isPrismaMissingTableError(error, ['WebsiteMarketingEmail'])) {
+        deliveryLogger.warn(
+          { err: error },
+          'Tabela de campanhas de email ausente; worker aguardara migrations',
+        );
+        return;
+      }
+
+      deliveryLogger.error({ err: error }, 'Erro ao consultar campanhas agendadas');
+    }
   });
 
   deliveryLogger.info(

@@ -27,6 +27,7 @@ import {
 } from '@/modules/website/validators/recipient-lists.schema';
 import { invalidateCacheByPrefix } from '@/utils/cache';
 import { logger } from '@/utils/logger';
+import { isPrismaMissingTableError } from '@/utils/prisma-errors';
 
 const CACHE_PREFIX = 'website:recipient-lists';
 const recalculationLogger = logger.child({ module: 'WebsiteRecipientListsRecalculation' });
@@ -1488,17 +1489,31 @@ function enqueueRecalculation(listId: string) {
 }
 
 async function rehydrateProcessingLists() {
-  const processingLists = await prisma.websiteRecipientList.findMany({
-    where: {
-      recalculationStatus: 'PROCESSING',
-    },
-    select: {
-      id: true,
-      recalculationStartedAt: true,
-    },
-    orderBy: [{ recalculationStartedAt: 'asc' }, { atualizadoEm: 'asc' }],
-    take: 50,
-  });
+  let processingLists: { id: string; recalculationStartedAt: Date | null }[];
+
+  try {
+    processingLists = await prisma.websiteRecipientList.findMany({
+      where: {
+        recalculationStatus: 'PROCESSING',
+      },
+      select: {
+        id: true,
+        recalculationStartedAt: true,
+      },
+      orderBy: [{ recalculationStartedAt: 'asc' }, { atualizadoEm: 'asc' }],
+      take: 50,
+    });
+  } catch (error) {
+    if (isPrismaMissingTableError(error, ['WebsiteRecipientList'])) {
+      recalculationLogger.warn(
+        { err: error },
+        'Tabelas de listas de destinatarios ausentes; worker desabilitado ate aplicar migrations',
+      );
+      return false;
+    }
+
+    throw error;
+  }
 
   const now = Date.now();
 
@@ -1525,6 +1540,8 @@ async function rehydrateProcessingLists() {
 
     enqueueRecalculation(list.id);
   }
+
+  return true;
 }
 
 async function buildRecipientListDetail(id: string) {
@@ -1551,14 +1568,28 @@ export function startRecipientListRecalculationWorker() {
   if (recalculationWorkerStarted) return;
   recalculationWorkerStarted = true;
 
-  void rehydrateProcessingLists().catch((error) => {
-    recalculationLogger.warn({ err: error }, 'Falha ao reidratar listas em processamento');
-  });
+  void rehydrateProcessingLists()
+    .then((enabled) => {
+      if (enabled === false && recalculationRehydrateTimer) {
+        clearInterval(recalculationRehydrateTimer);
+        recalculationRehydrateTimer = null;
+      }
+    })
+    .catch((error) => {
+      recalculationLogger.warn({ err: error }, 'Falha ao reidratar listas em processamento');
+    });
 
   recalculationRehydrateTimer = setInterval(() => {
-    void rehydrateProcessingLists().catch((error) => {
-      recalculationLogger.warn({ err: error }, 'Falha ao sincronizar fila de recalculacao');
-    });
+    void rehydrateProcessingLists()
+      .then((enabled) => {
+        if (enabled === false && recalculationRehydrateTimer) {
+          clearInterval(recalculationRehydrateTimer);
+          recalculationRehydrateTimer = null;
+        }
+      })
+      .catch((error) => {
+        recalculationLogger.warn({ err: error }, 'Falha ao sincronizar fila de recalculacao');
+      });
   }, RECALCULATION_REHYDRATE_INTERVAL_MS);
 
   recalculationRehydrateTimer.unref?.();

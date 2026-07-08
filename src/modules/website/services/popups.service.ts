@@ -16,6 +16,7 @@ import { prisma } from '@/config/prisma';
 import { WEBSITE_CACHE_TTL } from '@/modules/website/config';
 import { logger } from '@/utils/logger';
 import { getCache, invalidateCacheByPrefix, setCache } from '@/utils/cache';
+import { isPrismaMissingTableError } from '@/utils/prisma-errors';
 import type {
   ActivePopupsQuery,
   CreatePopupLeadInterestInput,
@@ -186,6 +187,10 @@ const popupActiveSelectLegacy = {
   pageRules: true,
   atualizadoEm: true,
 } satisfies Prisma.WebsitePopupSelect;
+
+type PopupActiveRow = Prisma.WebsitePopupGetPayload<{
+  select: typeof popupActiveSelect;
+}>;
 
 const contactSelect = {
   id: true,
@@ -1295,29 +1300,43 @@ export const websitePopupsService = {
       ],
     } satisfies Prisma.WebsitePopupWhereInput;
 
-    const popups = await withTriggerTargetFallback(
-      'active',
-      () =>
-        prisma.websitePopup.findMany({
-          where,
-          orderBy: [{ prioridade: 'desc' }, { atualizadoEm: 'desc' }],
-          take: 10,
-          select: popupActiveSelect,
-        }),
-      async () => {
-        const legacyPopups = await prisma.websitePopup.findMany({
-          where,
-          orderBy: [{ prioridade: 'desc' }, { atualizadoEm: 'desc' }],
-          take: 10,
-          select: popupActiveSelectLegacy,
-        });
+    let popups: PopupActiveRow[];
 
-        return legacyPopups.map((popup) => ({
-          ...popup,
-          triggerTarget: null,
-        }));
-      },
-    );
+    try {
+      popups = await withTriggerTargetFallback(
+        'active',
+        () =>
+          prisma.websitePopup.findMany({
+            where,
+            orderBy: [{ prioridade: 'desc' }, { atualizadoEm: 'desc' }],
+            take: 10,
+            select: popupActiveSelect,
+          }),
+        async () => {
+          const legacyPopups = await prisma.websitePopup.findMany({
+            where,
+            orderBy: [{ prioridade: 'desc' }, { atualizadoEm: 'desc' }],
+            take: 10,
+            select: popupActiveSelectLegacy,
+          });
+
+          return legacyPopups.map((popup) => ({
+            ...popup,
+            triggerTarget: null,
+          }));
+        },
+      );
+    } catch (error) {
+      if (isPrismaMissingTableError(error, ['WebsitePopup'])) {
+        popupsLogger.warn(
+          { err: error },
+          'Tabela de popups ausente; retornando lista publica vazia ate aplicar migrations',
+        );
+        return [];
+      }
+
+      throw error;
+    }
 
     const result = popups.filter((popup) => matchesPageRule(popup.pageRules, query.path));
     await setCache(cacheKey, result, WEBSITE_CACHE_TTL);

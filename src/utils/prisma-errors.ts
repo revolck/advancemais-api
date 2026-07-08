@@ -1,4 +1,7 @@
-import { PrismaClientInitializationError } from '@prisma/client/runtime/library';
+import {
+  PrismaClientInitializationError,
+  PrismaClientKnownRequestError,
+} from '@prisma/client/runtime/library';
 
 /**
  * Verifica se o erro é de conexão com o banco de dados
@@ -18,6 +21,23 @@ export function isPrismaConnectionError(error: unknown): boolean {
     );
   }
   return false;
+}
+
+export function isPrismaMissingTableError(error: unknown, tableNames?: string[]): boolean {
+  const message = String((error as any)?.message || '');
+  const target = String((error as any)?.meta?.target || '');
+  const table = String((error as any)?.meta?.table || '');
+  const haystack = `${message}\n${target}\n${table}`;
+
+  const missingTable =
+    (error instanceof PrismaClientKnownRequestError && (error as any).code === 'P2021') ||
+    message.includes('does not exist in the current database') ||
+    (message.includes('table') && message.includes('does not exist'));
+
+  if (!missingTable) return false;
+  if (!tableNames?.length) return true;
+
+  return tableNames.some((tableName) => haystack.includes(tableName));
 }
 
 /**

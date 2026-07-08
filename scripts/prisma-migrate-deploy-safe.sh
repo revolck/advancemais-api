@@ -17,8 +17,10 @@ fi
 if grep -q "Error: P3005" "$TMP_LOG"; then
   echo ""
   echo "⚠️ Prisma retornou P3005: banco já existente sem baseline de migrations."
-  echo "⚠️ O build seguirá sem aplicar migrations automaticamente para evitar falha no deploy."
-  echo "⚠️ Faça o baseline/manual resolve antes de voltar a exigir migrate deploy no pipeline."
+  echo "⚠️ Sincronizando o schema via prisma db push sem aceitar perda de dados."
+  echo "⚠️ Se o Prisma detectar operação destrutiva, este deploy falhará."
+  pnpm prisma db push --skip-generate
+  echo "✅ Schema sincronizado via prisma db push."
   exit 0
 fi
 

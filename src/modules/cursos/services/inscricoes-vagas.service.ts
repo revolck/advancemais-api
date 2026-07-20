@@ -3,6 +3,7 @@ import { StatusInscricao } from '@prisma/client';
 import { getRuntimeMercadoPagoConfig } from '@/config/mercadopago';
 import { prisma } from '@/config/prisma';
 import { cancelMercadoPagoOrder } from '@/modules/cursos/checkout/services/mercadopago-orders.client';
+import { cursoPagamentoNotificacoesService } from '@/modules/cursos/checkout/services/curso-pagamento-notificacoes.service';
 import { logger } from '@/utils/logger';
 
 const vagasLogger = logger.child({ module: 'CursosInscricoesVagasService' });
@@ -39,7 +40,7 @@ export async function limparReservasExpiradasDaTurma(turmaId: string, now = new 
 
   const expiradas = await prisma.cursosTurmasInscricoes.findMany({
     where: expiredWhere,
-    select: { id: true, mpOrderId: true },
+    select: { id: true, statusPagamento: true, mpOrderId: true, mpPaymentId: true },
   });
 
   if (expiradas.some((inscricao) => inscricao.mpOrderId)) {
@@ -86,6 +87,17 @@ export async function limparReservasExpiradasDaTurma(turmaId: string, now = new 
   });
 
   if (result.count > 0) {
+    for (const inscricao of expiradas) {
+      await cursoPagamentoNotificacoesService.notificarStatusInscricaoSafe({
+        inscricaoId: inscricao.id,
+        statusAnterior: inscricao.statusPagamento,
+        statusNovo: 'CANCELADO',
+        mpPaymentId: inscricao.mpPaymentId,
+        mpOrderId: inscricao.mpOrderId,
+        eventoOrigem: 'RESERVA_EXPIRADA',
+      });
+    }
+
     vagasLogger.info(
       { turmaId, reservasCanceladas: result.count },
       '[CURSOS_VAGAS] Reservas expiradas liberadas',

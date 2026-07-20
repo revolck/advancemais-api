@@ -16,7 +16,15 @@ export const listMeusPagamentosQuerySchema = z.object({
   page: parsePositiveInt(1, Number.MAX_SAFE_INTEGER),
   pageSize: parsePositiveInt(10, 100),
   status: z
-    .enum(['PENDENTE', 'PROCESSANDO', 'APROVADO', 'RECUSADO', 'CANCELADO', 'ESTORNADO'])
+    .enum([
+      'PENDENTE',
+      'PROCESSANDO',
+      'APROVADO',
+      'RECUSADO',
+      'CANCELADO',
+      'ESTORNADO',
+      'CONTESTADO',
+    ])
     .optional(),
   metodo: z.string().trim().min(1).optional(),
   cursoId: z.string().trim().min(1).optional(),

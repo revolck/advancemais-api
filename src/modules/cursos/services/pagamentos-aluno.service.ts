@@ -22,7 +22,8 @@ type StatusPagamento =
   | 'APROVADO'
   | 'RECUSADO'
   | 'CANCELADO'
-  | 'ESTORNADO';
+  | 'ESTORNADO'
+  | 'CONTESTADO';
 
 const normalizeStatus = (status?: string | null): StatusPagamento => {
   const value = String(status ?? '').toUpperCase();
@@ -37,13 +38,14 @@ const normalizeStatus = (status?: string | null): StatusPagamento => {
   ) {
     return 'PROCESSANDO';
   }
-  if (value === 'RECUSADO' || value === 'REJECTED' || value === 'CHARGED_BACK') {
-    return 'RECUSADO';
-  }
+  if (value === 'RECUSADO' || value === 'REJECTED' || value === 'FAILED') return 'RECUSADO';
   if (value === 'CANCELADO' || value === 'CANCELLED' || value === 'EXPIRED') {
     return 'CANCELADO';
   }
   if (value === 'ESTORNADO' || value === 'REFUNDED') return 'ESTORNADO';
+  if (value === 'CONTESTADO' || value === 'CHARGED_BACK' || value === 'CHARGEBACK') {
+    return 'CONTESTADO';
+  }
   return 'PENDENTE';
 };
 
@@ -73,6 +75,7 @@ const statusLabel = (status: StatusPagamento) =>
     RECUSADO: 'Recusado',
     CANCELADO: 'Cancelado',
     ESTORNADO: 'Estornado',
+    CONTESTADO: 'Contestado',
   })[status];
 
 const money = (value: number) =>
@@ -375,7 +378,15 @@ export const pagamentosAlunoService = {
         cursos,
         turmas,
         metodos: ['pix', 'boleto', 'credit_card'],
-        status: ['PENDENTE', 'PROCESSANDO', 'APROVADO', 'RECUSADO', 'CANCELADO', 'ESTORNADO'],
+        status: [
+          'PENDENTE',
+          'PROCESSANDO',
+          'APROVADO',
+          'RECUSADO',
+          'CANCELADO',
+          'ESTORNADO',
+          'CONTESTADO',
+        ],
       },
       pagination: { page, pageSize: query.pageSize, total, totalPages },
     };

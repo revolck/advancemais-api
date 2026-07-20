@@ -3,6 +3,10 @@ import * as mercadoPagoConfig from '@/config/mercadopago';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import * as mercadoPagoOrdersClient from '../services/mercadopago-orders.client';
 import { cursosCheckoutService } from '../services/cursos-checkout.service';
+import {
+  cursoPagamentoNotificacoesService,
+  mapGatewayStatusToCursoPagamentoStatus,
+} from '../services/curso-pagamento-notificacoes.service';
 
 const vi = jest;
 
@@ -52,6 +56,9 @@ describe('Cursos Checkout Service', () => {
     vi.restoreAllMocks();
     vi.spyOn(prisma.cursosTurmasInscricoes, 'updateMany').mockResolvedValue({ count: 0 } as any);
     vi.spyOn(prisma.cursosTurmasInscricoes, 'groupBy').mockResolvedValue([] as any);
+    vi.spyOn(cursoPagamentoNotificacoesService, 'notificarStatusInscricaoSafe').mockResolvedValue(
+      null,
+    );
     vi.spyOn(mercadoPagoConfig, 'assertMercadoPagoConfiguredAsync').mockResolvedValue({} as never);
     vi.spyOn(mercadoPagoConfig, 'getRuntimeMercadoPagoConfig').mockResolvedValue({
       activeMode: 'test',
@@ -90,6 +97,22 @@ describe('Cursos Checkout Service', () => {
     });
   });
 
+  describe('mapGatewayStatusToCursoPagamentoStatus', () => {
+    it('mapeia status da Orders API para status interno de matrícula', () => {
+      expect(mapGatewayStatusToCursoPagamentoStatus('processed', 'accredited')).toBe('APROVADO');
+      expect(mapGatewayStatusToCursoPagamentoStatus('processing')).toBe('PROCESSANDO');
+      expect(mapGatewayStatusToCursoPagamentoStatus('action_required')).toBe('PENDENTE');
+      expect(mapGatewayStatusToCursoPagamentoStatus('failed')).toBe('RECUSADO');
+      expect(mapGatewayStatusToCursoPagamentoStatus('canceled')).toBe('CANCELADO');
+      expect(mapGatewayStatusToCursoPagamentoStatus('expired')).toBe('CANCELADO');
+      expect(mapGatewayStatusToCursoPagamentoStatus('refunded')).toBe('ESTORNADO');
+      expect(mapGatewayStatusToCursoPagamentoStatus('processed', 'partially_refunded')).toBe(
+        'ESTORNADO',
+      );
+      expect(mapGatewayStatusToCursoPagamentoStatus('charged_back')).toBe('CONTESTADO');
+    });
+  });
+
   describe('gerarTokenAcesso', () => {
     it('deve gerar token JWT válido', () => {
       const params = {
@@ -122,6 +145,52 @@ describe('Cursos Checkout Service', () => {
       // Permitir diferença de 1 minuto
       const diff = Math.abs(expiresAt.getTime() - umAno.getTime());
       expect(diff).toBeLessThan(60000); // 1 minuto em ms
+    });
+  });
+
+  describe('aplicarStatusGatewayNaInscricao', () => {
+    it('ativa matrícula e notifica quando pagamento pendente vira aprovado', async () => {
+      const updateSpy = vi
+        .spyOn(prisma.cursosTurmasInscricoes, 'update')
+        .mockResolvedValue({ id: 'inscricao-123' } as any);
+
+      const result = await cursosCheckoutService.aplicarStatusGatewayNaInscricao(
+        {
+          id: 'inscricao-123',
+          alunoId: 'user-123',
+          turmaId: 'turma-123',
+          status: 'AGUARDANDO_PAGAMENTO',
+          statusPagamento: 'PENDENTE',
+          valorFinal: 299.9,
+          CursosTurmas: { cursoId: 'curso-123' },
+        },
+        'processed',
+        { mpPaymentId: 'pay-123', mpOrderId: 'ord-123', statusDetail: 'accredited' },
+      );
+
+      expect(result).toBe('APROVADO');
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'inscricao-123' },
+          data: expect.objectContaining({
+            status: 'INSCRITO',
+            statusPagamento: 'APROVADO',
+            valorPago: 299.9,
+            pagamentoExpiraEm: null,
+          }),
+        }),
+      );
+      expect(cursoPagamentoNotificacoesService.notificarStatusInscricaoSafe).toHaveBeenCalledWith(
+        expect.objectContaining({
+          inscricaoId: 'inscricao-123',
+          statusAnterior: 'PENDENTE',
+          statusNovo: 'APROVADO',
+          gatewayStatus: 'processed',
+          gatewayStatusDetail: 'accredited',
+          mpPaymentId: 'pay-123',
+          mpOrderId: 'ord-123',
+        }),
+      );
     });
   });
 
@@ -241,6 +310,13 @@ describe('Cursos Checkout Service', () => {
       expect(result.inscricao.status).toBe('INSCRITO');
       expect(result.inscricao.statusPagamento).toBe('APROVADO');
       expect(result.inscricao.tokenAcesso).toBeDefined();
+      expect(cursoPagamentoNotificacoesService.notificarStatusInscricaoSafe).toHaveBeenCalledWith(
+        expect.objectContaining({
+          inscricaoId: 'inscricao-123',
+          statusNovo: 'APROVADO',
+          eventoOrigem: 'CURSO_GRATUITO',
+        }),
+      );
     });
 
     it('deve registrar aceite de termos', async () => {

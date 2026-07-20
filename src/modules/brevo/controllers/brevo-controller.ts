@@ -4,6 +4,7 @@ import { SMSService } from '../services/sms-service';
 import { BrevoClient } from '../client/brevo-client';
 import { BrevoConfigManager, resolveBrevoEnvironment } from '../config/brevo-config';
 import { logger } from '../../../utils/logger';
+import { emailSandboxService } from '../services/email-sandbox.service';
 
 /**
  * Controller principal do módulo Brevo
@@ -252,6 +253,51 @@ export class BrevoController {
         message: 'Erro no teste de email',
         error: error instanceof Error ? error.message : 'Erro desconhecido',
         timestamp: new Date().toISOString(),
+      });
+    }
+  };
+
+  public listSandboxEmailRotinas = async (req: Request, res: Response): Promise<void> => {
+    const log = this.getLogger(req);
+    try {
+      res.json({
+        success: true,
+        data: emailSandboxService.listRotinas(),
+      });
+    } catch (error) {
+      log.error({ err: error }, '❌ Erro ao listar rotinas de email sandbox');
+      res.status(500).json({
+        success: false,
+        message: 'Erro ao listar rotinas de email sandbox',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        code: 'INTERNAL_ERROR',
+      });
+    }
+  };
+
+  public sendSandboxEmail = async (req: Request, res: Response): Promise<void> => {
+    const log = this.getLogger(req);
+    try {
+      const result = await emailSandboxService.sendSandboxEmail(req.user?.id, req.body ?? {}, {
+        ip: req.ip,
+        userAgent: req.get('user-agent') ?? undefined,
+      });
+
+      res.json({
+        success: true,
+        message: 'Email de sandbox enviado com sucesso',
+        data: result,
+      });
+    } catch (error) {
+      const statusCode = Number((error as any)?.statusCode || (error as any)?.status || 500);
+      const code = (error as any)?.code || 'INTERNAL_ERROR';
+      const message = error instanceof Error ? error.message : 'Erro ao enviar email de sandbox';
+
+      log.error({ err: error, statusCode, code }, '❌ Erro ao enviar email sandbox');
+      res.status(Number.isFinite(statusCode) ? statusCode : 500).json({
+        success: false,
+        message,
+        code,
       });
     }
   };

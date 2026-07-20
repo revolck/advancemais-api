@@ -3233,6 +3233,13 @@ enum NotificacaoTipo {
   RECUPERACAO_FINAL_PAGAMENTO_PENDENTE // Recuperação final aguardando pagamento
   RECUPERACAO_FINAL_PAGAMENTO_APROVADO // Pagamento da recuperação final aprovado
   RECUPERACAO_FINAL_PAGAMENTO_RECUSADO // Pagamento da recuperação final recusado
+  CURSO_PAGAMENTO_PENDENTE // Pagamento de matrícula aguardando pagamento
+  CURSO_PAGAMENTO_PROCESSANDO // Pagamento de matrícula em processamento/análise
+  CURSO_PAGAMENTO_APROVADO // Pagamento de matrícula aprovado
+  CURSO_PAGAMENTO_RECUSADO // Pagamento de matrícula recusado
+  CURSO_PAGAMENTO_CANCELADO // Pagamento de matrícula cancelado/expirado
+  CURSO_PAGAMENTO_ESTORNADO // Pagamento de matrícula estornado/reembolsado
+  CURSO_PAGAMENTO_CONTESTADO // Pagamento de matrícula contestado/chargeback
   INSTRUTOR_VINCULADO // Instrutor foi vinculado à turma
   INSTRUTOR_DESVINCULADO // Instrutor foi desvinculado
   TURMA_INICIOU // Turma iniciou

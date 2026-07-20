@@ -309,6 +309,14 @@ router.get('/status/:email', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), asy
  *            -H "Authorization: Bearer <TOKEN>"
  */
 
+router.post('/sandbox/email', supabaseAuthMiddleware(['ADMIN']), brevoController.sendSandboxEmail);
+
+router.get(
+  '/sandbox/email-rotinas',
+  supabaseAuthMiddleware(['ADMIN']),
+  brevoController.listSandboxEmailRotinas,
+);
+
 router.post(
   '/test/email',
   supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),

@@ -19,6 +19,10 @@ import {
   getMercadoPagoOrder,
   normalizeMercadoPagoOrder,
 } from './mercadopago-orders.client';
+import {
+  cursoPagamentoNotificacoesService,
+  mapGatewayStatusToCursoPagamentoStatus,
+} from './curso-pagamento-notificacoes.service';
 import { calcularDisponibilidadeTurma } from '../../services/inscricoes-vagas.service';
 
 // ========================================
@@ -27,7 +31,14 @@ import { calcularDisponibilidadeTurma } from '../../services/inscricoes-vagas.se
 
 type CupomValidado = CupomCheckoutValidado;
 
-type StatusPagamento = 'PENDENTE' | 'APROVADO' | 'RECUSADO' | 'PROCESSANDO' | 'CANCELADO';
+type StatusPagamento =
+  | 'PENDENTE'
+  | 'APROVADO'
+  | 'RECUSADO'
+  | 'PROCESSANDO'
+  | 'CANCELADO'
+  | 'ESTORNADO'
+  | 'CONTESTADO';
 
 const CHECKOUT_DOMAIN_STATUS: Record<string, number> = {
   PAYER_EMAIL_REQUIRED: 400,
@@ -54,22 +65,6 @@ const CHECKOUT_DOMAIN_STATUS: Record<string, number> = {
 // FUNÇÕES AUXILIARES (Reutilizadas de assinaturas.service.ts)
 // ========================================
 
-const PAYMENT_APPROVED_STATUSES = new Set([
-  'approved',
-  'accredited',
-  'authorized',
-  'authorized_for_collect',
-  'active',
-  'processed',
-]);
-const PAYMENT_PENDING_STATUSES = new Set(['pending', 'in_process', 'action_required']);
-const PAYMENT_REJECTED_STATUSES = new Set(['rejected', 'charged_back', 'chargeback']);
-const PAYMENT_CANCELLED_STATUSES = new Set([
-  'cancelled',
-  'cancelled_by_collector',
-  'cancelled_by_user',
-  'expired',
-]);
 const PIX_RESERVATION_TTL_MS = 30 * 60 * 1000;
 const CARD_PENDING_RESERVATION_TTL_MS = 30 * 60 * 1000;
 const BOLETO_BUSINESS_DAYS = 3;
@@ -94,13 +89,11 @@ function addBusinessDays(days: number, from = new Date()): Date {
 /**
  * Mapear status do Mercado Pago para status interno
  */
-function mapToStatusPagamento(status: string | null | undefined): StatusPagamento {
-  const normalized = typeof status === 'string' ? status.toLowerCase() : '';
-  if (PAYMENT_APPROVED_STATUSES.has(normalized)) return 'APROVADO';
-  if (PAYMENT_PENDING_STATUSES.has(normalized)) return 'PROCESSANDO';
-  if (PAYMENT_CANCELLED_STATUSES.has(normalized)) return 'CANCELADO';
-  if (PAYMENT_REJECTED_STATUSES.has(normalized)) return 'RECUSADO';
-  return 'PENDENTE';
+function mapToStatusPagamento(
+  status: string | null | undefined,
+  statusDetail?: string | null | undefined,
+): StatusPagamento {
+  return mapGatewayStatusToCursoPagamentoStatus(status, statusDetail);
 }
 
 function normalizeCardPaymentMethodId(value?: string | null): string {
@@ -700,6 +693,15 @@ export const cursosCheckoutService = {
       cursoId: params.cursoId,
     });
 
+    await cursoPagamentoNotificacoesService.notificarStatusInscricaoSafe({
+      inscricaoId: inscricaoAtualizada.id,
+      statusAnterior: 'PENDENTE',
+      statusNovo: 'APROVADO',
+      mpPaymentId: null,
+      mpOrderId: null,
+      eventoOrigem: 'CURSO_GRATUITO',
+    });
+
     return {
       success: true,
       inscricao: {
@@ -990,7 +992,20 @@ export const cursosCheckoutService = {
 
         const mpOrderId = pixOrder.orderId ?? undefined;
         const mpPaymentId = pixOrder.payment?.id ?? undefined;
-        const statusPagamento = mapToStatusPagamento(pixOrder.payment?.status ?? pixOrder.status);
+        const statusPagamento = mapToStatusPagamento(
+          pixOrder.payment?.status ?? pixOrder.status,
+          pixOrder.payment?.statusDetail ?? pixOrder.statusDetail,
+        );
+        const pixAtivo = statusPagamento === 'APROVADO';
+        const pixReserva = statusPagamento === 'PENDENTE' || statusPagamento === 'PROCESSANDO';
+        const pixAccess = pixAtivo
+          ? this.gerarTokenAcesso({
+              inscricaoId: inscricao.id,
+              alunoId: params.usuarioId,
+              cursoId: params.cursoId,
+              turmaId: params.turmaId,
+            })
+          : null;
         const transactionData = pixOrder.payment?.paymentMethod || {};
 
         // Atualizar inscrição com dados do pagamento
@@ -1001,11 +1016,25 @@ export const cursosCheckoutService = {
             mpOrderId: mpOrderId ?? null,
             statusPagamento,
             metodoPagamento: 'PIX',
-            valorPago: statusPagamento === 'APROVADO' ? valorFinal : null,
-            pixQrCode: transactionData.qr_code || null,
-            pixQrCodeBase64: transactionData.qr_code_base64 || null,
-            pagamentoExpiraEm: statusPagamento === 'APROVADO' ? null : pixExpiresAt,
+            valorPago: pixAtivo ? valorFinal : null,
+            status: pixAtivo ? 'INSCRITO' : pixReserva ? 'AGUARDANDO_PAGAMENTO' : 'CANCELADO',
+            tokenAcesso: pixAccess?.token ?? null,
+            tokenAcessoExpiraEm: pixAccess?.expiresAt ?? null,
+            pixQrCode: pixReserva ? transactionData.qr_code || null : null,
+            pixQrCodeBase64: pixReserva ? transactionData.qr_code_base64 || null : null,
+            pagamentoExpiraEm: pixReserva ? pixExpiresAt : null,
           },
+        });
+
+        await cursoPagamentoNotificacoesService.notificarStatusInscricaoSafe({
+          inscricaoId: inscricao.id,
+          statusAnterior: inscricao.statusPagamento,
+          statusNovo: statusPagamento,
+          gatewayStatus: pixOrder.payment?.status ?? pixOrder.status,
+          gatewayStatusDetail: pixOrder.payment?.statusDetail ?? pixOrder.statusDetail,
+          mpPaymentId,
+          mpOrderId,
+          eventoOrigem: 'CHECKOUT_PIX',
         });
 
         // Incrementar uso do cupom
@@ -1035,9 +1064,9 @@ export const cursosCheckoutService = {
             status: pixOrder.payment?.status ?? pixOrder.status ?? null,
             paymentId: mpPaymentId ?? mpOrderId ?? null,
             orderId: mpOrderId ?? null,
-            qrCode: transactionData.qr_code || null,
-            qrCodeBase64: transactionData.qr_code_base64 || null,
-            expiresAt: statusPagamento === 'APROVADO' ? null : pixExpiresAt.toISOString(),
+            qrCode: pixReserva ? transactionData.qr_code || null : null,
+            qrCodeBase64: pixReserva ? transactionData.qr_code_base64 || null : null,
+            expiresAt: pixReserva ? pixExpiresAt.toISOString() : null,
           },
           desconto:
             desconto > 0
@@ -1120,7 +1149,10 @@ export const cursosCheckoutService = {
 
         const mpOrderId = cardOrder.orderId ?? undefined;
         const mpPaymentId = cardOrder.payment?.id ?? undefined;
-        const statusPagamento = mapToStatusPagamento(cardOrder.payment?.status ?? cardOrder.status);
+        const statusPagamento = mapToStatusPagamento(
+          cardOrder.payment?.status ?? cardOrder.status,
+          cardOrder.payment?.statusDetail ?? cardOrder.statusDetail,
+        );
         const ativo = statusPagamento === 'APROVADO';
         const cardPendingExpiresAt =
           statusPagamento === 'PROCESSANDO' || statusPagamento === 'PENDENTE'
@@ -1181,6 +1213,17 @@ export const cursosCheckoutService = {
             mpPaymentId,
           });
         }
+
+        await cursoPagamentoNotificacoesService.notificarStatusInscricaoSafe({
+          inscricaoId: inscricao.id,
+          statusAnterior: inscricao.statusPagamento,
+          statusNovo: statusPagamento,
+          gatewayStatus: cardOrder.payment?.status ?? cardOrder.status,
+          gatewayStatusDetail: cardOrder.payment?.statusDetail ?? cardOrder.statusDetail,
+          mpPaymentId,
+          mpOrderId,
+          eventoOrigem: 'CHECKOUT_CARD',
+        });
 
         return {
           success: true,
@@ -1266,7 +1309,18 @@ export const cursosCheckoutService = {
         const mpPaymentId = boletoOrder.payment?.id ?? undefined;
         const statusPagamento = mapToStatusPagamento(
           boletoOrder.payment?.status ?? boletoOrder.status,
+          boletoOrder.payment?.statusDetail ?? boletoOrder.statusDetail,
         );
+        const boletoAtivo = statusPagamento === 'APROVADO';
+        const boletoReserva = statusPagamento === 'PENDENTE' || statusPagamento === 'PROCESSANDO';
+        const boletoAccess = boletoAtivo
+          ? this.gerarTokenAcesso({
+              inscricaoId: inscricao.id,
+              alunoId: params.usuarioId,
+              cursoId: params.cursoId,
+              turmaId: params.turmaId,
+            })
+          : null;
         const paymentMethod = boletoOrder.payment?.paymentMethod || {};
         const barcode =
           paymentMethod.barcode_content ||
@@ -1284,11 +1338,25 @@ export const cursosCheckoutService = {
             mpOrderId: mpOrderId ?? null,
             statusPagamento,
             metodoPagamento: 'BOLETO',
-            valorPago: statusPagamento === 'APROVADO' ? valorFinal : null,
-            boletoCodigo: barcode,
-            boletoUrl,
-            pagamentoExpiraEm: statusPagamento === 'APROVADO' ? null : boletoExpiresAt,
+            valorPago: boletoAtivo ? valorFinal : null,
+            status: boletoAtivo ? 'INSCRITO' : boletoReserva ? 'AGUARDANDO_PAGAMENTO' : 'CANCELADO',
+            tokenAcesso: boletoAccess?.token ?? null,
+            tokenAcessoExpiraEm: boletoAccess?.expiresAt ?? null,
+            boletoCodigo: boletoReserva ? barcode : null,
+            boletoUrl: boletoReserva ? boletoUrl : null,
+            pagamentoExpiraEm: boletoReserva ? boletoExpiresAt : null,
           },
+        });
+
+        await cursoPagamentoNotificacoesService.notificarStatusInscricaoSafe({
+          inscricaoId: inscricao.id,
+          statusAnterior: inscricao.statusPagamento,
+          statusNovo: statusPagamento,
+          gatewayStatus: boletoOrder.payment?.status ?? boletoOrder.status,
+          gatewayStatusDetail: boletoOrder.payment?.statusDetail ?? boletoOrder.statusDetail,
+          mpPaymentId,
+          mpOrderId,
+          eventoOrigem: 'CHECKOUT_BOLETO',
         });
 
         // Incrementar uso do cupom
@@ -1318,9 +1386,9 @@ export const cursosCheckoutService = {
             status: boletoOrder.payment?.status ?? boletoOrder.status ?? null,
             paymentId: mpPaymentId ?? mpOrderId ?? null,
             orderId: mpOrderId ?? null,
-            barcode,
-            boletoUrl,
-            expiresAt: statusPagamento === 'APROVADO' ? null : boletoExpiresAt.toISOString(),
+            barcode: boletoReserva ? barcode : null,
+            boletoUrl: boletoReserva ? boletoUrl : null,
+            expiresAt: boletoReserva ? boletoExpiresAt.toISOString() : null,
           },
           desconto:
             desconto > 0
@@ -1379,12 +1447,18 @@ export const cursosCheckoutService = {
   async aplicarStatusGatewayNaInscricao(
     inscricao: any,
     statusRaw: string | null | undefined,
-    identifiers: { mpPaymentId?: string | null; mpOrderId?: string | null },
+    identifiers: {
+      mpPaymentId?: string | null;
+      mpOrderId?: string | null;
+      statusDetail?: string | null;
+    },
   ) {
     const status = String(statusRaw || '').toLowerCase();
-    const statusPagamento = mapToStatusPagamento(status);
+    const statusDetail = identifiers.statusDetail ?? null;
+    const statusPagamento = mapToStatusPagamento(status, statusDetail);
+    const statusAnterior = inscricao.statusPagamento;
 
-    if (PAYMENT_APPROVED_STATUSES.has(status)) {
+    if (statusPagamento === 'APROVADO') {
       const { token, expiresAt } = this.gerarTokenAcesso({
         inscricaoId: inscricao.id,
         alunoId: inscricao.alunoId,
@@ -1410,15 +1484,31 @@ export const cursosCheckoutService = {
         status,
       });
 
+      await cursoPagamentoNotificacoesService.notificarStatusInscricaoSafe({
+        inscricaoId: inscricao.id,
+        statusAnterior,
+        statusNovo: 'APROVADO',
+        gatewayStatus: statusRaw,
+        gatewayStatusDetail: statusDetail,
+        mpPaymentId: identifiers.mpPaymentId,
+        mpOrderId: identifiers.mpOrderId,
+        eventoOrigem: 'GATEWAY_STATUS',
+      });
+
       return 'APROVADO' as StatusPagamento;
     }
 
-    if (PAYMENT_REJECTED_STATUSES.has(status) || PAYMENT_CANCELLED_STATUSES.has(status)) {
+    if (
+      statusPagamento === 'RECUSADO' ||
+      statusPagamento === 'CANCELADO' ||
+      statusPagamento === 'ESTORNADO' ||
+      statusPagamento === 'CONTESTADO'
+    ) {
       await prisma.cursosTurmasInscricoes.update({
         where: { id: inscricao.id },
         data: {
           status: 'CANCELADO',
-          statusPagamento: statusPagamento === 'CANCELADO' ? 'CANCELADO' : 'RECUSADO',
+          statusPagamento,
           tokenAcesso: null,
           tokenAcessoExpiraEm: null,
           pixQrCode: null,
@@ -1436,6 +1526,17 @@ export const cursosCheckoutService = {
         statusPagamento,
       });
 
+      await cursoPagamentoNotificacoesService.notificarStatusInscricaoSafe({
+        inscricaoId: inscricao.id,
+        statusAnterior,
+        statusNovo: statusPagamento,
+        gatewayStatus: statusRaw,
+        gatewayStatusDetail: statusDetail,
+        mpPaymentId: identifiers.mpPaymentId,
+        mpOrderId: identifiers.mpOrderId,
+        eventoOrigem: 'GATEWAY_STATUS',
+      });
+
       return statusPagamento;
     }
 
@@ -1443,6 +1544,17 @@ export const cursosCheckoutService = {
       await prisma.cursosTurmasInscricoes.update({
         where: { id: inscricao.id },
         data: { statusPagamento },
+      });
+
+      await cursoPagamentoNotificacoesService.notificarStatusInscricaoSafe({
+        inscricaoId: inscricao.id,
+        statusAnterior,
+        statusNovo: statusPagamento,
+        gatewayStatus: statusRaw,
+        gatewayStatusDetail: statusDetail,
+        mpPaymentId: identifiers.mpPaymentId,
+        mpOrderId: identifiers.mpOrderId,
+        eventoOrigem: 'GATEWAY_STATUS',
       });
     }
 
@@ -1469,6 +1581,7 @@ export const cursosCheckoutService = {
       ['PENDENTE', 'PROCESSANDO'].includes(inscricao.statusPagamento);
 
     if (isReservada && inscricao.pagamentoExpiraEm && inscricao.pagamentoExpiraEm <= now) {
+      const statusAnterior = inscricao.statusPagamento;
       await prisma.cursosTurmasInscricoes.update({
         where: { id: inscricao.id },
         data: {
@@ -1489,6 +1602,15 @@ export const cursosCheckoutService = {
         mpOrderId: inscricao.mpOrderId,
         mpPaymentId: inscricao.mpPaymentId,
       });
+
+      await cursoPagamentoNotificacoesService.notificarStatusInscricaoSafe({
+        inscricaoId: inscricao.id,
+        statusAnterior,
+        statusNovo: 'CANCELADO',
+        mpPaymentId: inscricao.mpPaymentId,
+        mpOrderId: inscricao.mpOrderId,
+        eventoOrigem: 'CONSULTA_EXPIRADA',
+      });
     } else if (isReservada && inscricao.mpOrderId) {
       const config = await getRuntimeMercadoPagoConfig();
       try {
@@ -1505,6 +1627,7 @@ export const cursosCheckoutService = {
           {
             mpOrderId: inscricao.mpOrderId,
             mpPaymentId: order.payment?.id ?? inscricao.mpPaymentId,
+            statusDetail: order.payment?.statusDetail ?? order.statusDetail,
           },
         );
       } catch (error) {
@@ -1596,6 +1719,15 @@ export const cursosCheckoutService = {
       },
     });
 
+    await cursoPagamentoNotificacoesService.notificarStatusInscricaoSafe({
+      inscricaoId: updated.id,
+      statusAnterior: inscricao.statusPagamento,
+      statusNovo: 'CANCELADO',
+      mpPaymentId: updated.mpPaymentId,
+      mpOrderId: updated.mpOrderId,
+      eventoOrigem: 'CANCELAMENTO_ALUNO',
+    });
+
     logger.info('[CURSO_CHECKOUT_CANCEL] Pagamento cancelado pelo aluno', {
       inscricaoId: updated.id,
       alunoId: params.usuarioId,
@@ -1658,10 +1790,16 @@ export const cursosCheckoutService = {
     const processarAtualizacao = async (
       inscricao: any,
       statusRaw: string | null | undefined,
-      identifiers: { mpPaymentId?: string | null; mpOrderId?: string | null },
+      identifiers: {
+        mpPaymentId?: string | null;
+        mpOrderId?: string | null;
+        statusDetail?: string | null;
+      },
     ) => {
       const status = String(statusRaw || '').toLowerCase();
-      const statusPagamento = mapToStatusPagamento(status);
+      const statusDetail = identifiers.statusDetail ?? null;
+      const statusPagamento = mapToStatusPagamento(status, statusDetail);
+      const statusAnterior = inscricao.statusPagamento;
 
       logger.info('[WEBHOOK] Processando pagamento de curso', {
         ...identifiers,
@@ -1670,7 +1808,7 @@ export const cursosCheckoutService = {
         statusPagamento,
       });
 
-      if (PAYMENT_APPROVED_STATUSES.has(status)) {
+      if (statusPagamento === 'APROVADO') {
         const { token, expiresAt } = this.gerarTokenAcesso({
           inscricaoId: inscricao.id,
           alunoId: inscricao.alunoId,
@@ -1702,15 +1840,31 @@ export const cursosCheckoutService = {
           inscricaoId: inscricao.id,
           codigo: inscricao.codigo,
         });
+
+        await cursoPagamentoNotificacoesService.notificarStatusInscricaoSafe({
+          inscricaoId: inscricao.id,
+          statusAnterior,
+          statusNovo: 'APROVADO',
+          gatewayStatus: statusRaw,
+          gatewayStatusDetail: statusDetail,
+          mpPaymentId: identifiers.mpPaymentId,
+          mpOrderId: identifiers.mpOrderId,
+          eventoOrigem: 'WEBHOOK',
+        });
         return;
       }
 
-      if (PAYMENT_REJECTED_STATUSES.has(status) || PAYMENT_CANCELLED_STATUSES.has(status)) {
+      if (
+        statusPagamento === 'RECUSADO' ||
+        statusPagamento === 'CANCELADO' ||
+        statusPagamento === 'ESTORNADO' ||
+        statusPagamento === 'CONTESTADO'
+      ) {
         await prisma.cursosTurmasInscricoes.update({
           where: { id: inscricao.id },
           data: {
             status: 'CANCELADO',
-            statusPagamento: 'RECUSADO',
+            statusPagamento,
             tokenAcesso: null,
             tokenAcessoExpiraEm: null,
             pixQrCode: null,
@@ -1726,6 +1880,17 @@ export const cursosCheckoutService = {
           inscricaoId: inscricao.id,
           status,
         });
+
+        await cursoPagamentoNotificacoesService.notificarStatusInscricaoSafe({
+          inscricaoId: inscricao.id,
+          statusAnterior,
+          statusNovo: statusPagamento,
+          gatewayStatus: statusRaw,
+          gatewayStatusDetail: statusDetail,
+          mpPaymentId: identifiers.mpPaymentId,
+          mpOrderId: identifiers.mpOrderId,
+          eventoOrigem: 'WEBHOOK',
+        });
         return;
       }
 
@@ -1733,6 +1898,17 @@ export const cursosCheckoutService = {
         await prisma.cursosTurmasInscricoes.update({
           where: { id: inscricao.id },
           data: { statusPagamento },
+        });
+
+        await cursoPagamentoNotificacoesService.notificarStatusInscricaoSafe({
+          inscricaoId: inscricao.id,
+          statusAnterior,
+          statusNovo: statusPagamento,
+          gatewayStatus: statusRaw,
+          gatewayStatusDetail: statusDetail,
+          mpPaymentId: identifiers.mpPaymentId,
+          mpOrderId: identifiers.mpOrderId,
+          eventoOrigem: 'WEBHOOK',
         });
       }
     };
@@ -1771,6 +1947,7 @@ export const cursosCheckoutService = {
       await processarAtualizacao(inscricao, order.payment?.status ?? order.status, {
         mpOrderId: eventId,
         mpPaymentId: order.payment?.id,
+        statusDetail: order.payment?.statusDetail ?? order.statusDetail,
       });
       return;
     }
@@ -1808,6 +1985,7 @@ export const cursosCheckoutService = {
       await processarAtualizacao(inscricao, status, {
         mpPaymentId,
         mpOrderId: inscricao.mpOrderId,
+        statusDetail: gatewayData?.status_detail ?? gatewayData?.statusDetail ?? null,
       });
     }
   },

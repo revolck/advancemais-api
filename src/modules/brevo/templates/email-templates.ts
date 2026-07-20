@@ -45,6 +45,27 @@ export interface PlanEmailDataBase {
   supportUrl?: string;
 }
 
+export type CoursePaymentEmailStatus =
+  | 'PENDENTE'
+  | 'PROCESSANDO'
+  | 'APROVADO'
+  | 'RECUSADO'
+  | 'CANCELADO'
+  | 'ESTORNADO'
+  | 'CONTESTADO';
+
+export interface CoursePaymentEmailData {
+  nomeCompleto: string;
+  cursoNome: string;
+  turmaNome: string;
+  status: CoursePaymentEmailStatus;
+  valorFormatado?: string | null;
+  metodoPagamento?: string | null;
+  expiraEmFormatada?: string | null;
+  paymentUrl: string;
+  courseUrl: string;
+}
+
 export interface EstagioConvocacaoLocalEmailData {
   empresaNome: string;
   endereco?: string | null;
@@ -736,6 +757,159 @@ ${this.getSignatureText()}
 
 © ${currentYear} Advance+ - Todos os direitos reservados`;
     return { subject, html, text };
+  }
+
+  public static generateCoursePaymentStatusEmail(data: CoursePaymentEmailData): EmailTemplate {
+    const firstName = data.nomeCompleto.split(' ')[0];
+    const currentYear = this.getCurrentYear();
+    const valorText = data.valorFormatado ? `Valor: ${data.valorFormatado}` : null;
+    const metodoText = data.metodoPagamento ? `Metodo: ${data.metodoPagamento}` : null;
+    const expiraText = data.expiraEmFormatada ? `Vencimento: ${data.expiraEmFormatada}` : null;
+    const details = [valorText, metodoText, expiraText].filter(Boolean) as string[];
+
+    const config: Record<
+      CoursePaymentEmailStatus,
+      { subject: string; title: string; message: string; cta: string; url: string }
+    > = {
+      PENDENTE: {
+        subject: `Pagamento pendente - ${data.cursoNome}`,
+        title: 'Pagamento pendente',
+        message:
+          `Recebemos sua solicitação de matrícula no curso ${data.cursoNome}. ` +
+          'Conclua o pagamento para liberar seu acesso ao curso.',
+        cta: 'Ver pagamento',
+        url: data.paymentUrl,
+      },
+      PROCESSANDO: {
+        subject: `Pagamento em processamento - ${data.cursoNome}`,
+        title: 'Pagamento em processamento',
+        message:
+          `Seu pagamento do curso ${data.cursoNome} está em processamento. ` +
+          'Assim que houver confirmação do gateway, avisaremos você por email e pelo sininho.',
+        cta: 'Acompanhar pagamento',
+        url: data.paymentUrl,
+      },
+      APROVADO: {
+        subject: `Bem-vindo ao curso ${data.cursoNome}`,
+        title: 'Pagamento aprovado',
+        message:
+          `Seu pagamento foi confirmado e sua matrícula no curso ${data.cursoNome} está liberada. ` +
+          'Você já pode acessar a turma e acompanhar as atividades pela plataforma.',
+        cta: 'Acessar curso',
+        url: data.courseUrl,
+      },
+      RECUSADO: {
+        subject: `Pagamento recusado - ${data.cursoNome}`,
+        title: 'Pagamento recusado',
+        message:
+          `Não foi possível aprovar o pagamento do curso ${data.cursoNome}. ` +
+          'Confira os dados do pagamento ou tente novamente por outro método.',
+        cta: 'Tentar novamente',
+        url: data.paymentUrl,
+      },
+      CANCELADO: {
+        subject: `Pagamento cancelado - ${data.cursoNome}`,
+        title: 'Pagamento cancelado',
+        message:
+          `O pagamento do curso ${data.cursoNome} foi cancelado ou expirou. ` +
+          'Para garantir sua vaga, faça uma nova tentativa de compra.',
+        cta: 'Ver pagamentos',
+        url: data.paymentUrl,
+      },
+      ESTORNADO: {
+        subject: `Pagamento estornado - ${data.cursoNome}`,
+        title: 'Pagamento estornado',
+        message:
+          `O pagamento do curso ${data.cursoNome} foi estornado ou reembolsado. ` +
+          'Se você não reconhece essa atualização, entre em contato com o suporte.',
+        cta: 'Ver pagamentos',
+        url: data.paymentUrl,
+      },
+      CONTESTADO: {
+        subject: `Pagamento em contestação - ${data.cursoNome}`,
+        title: 'Pagamento em contestação',
+        message:
+          `O pagamento do curso ${data.cursoNome} entrou em contestação. ` +
+          'Acompanhe a situação pela plataforma; se necessário, fale com o suporte.',
+        cta: 'Ver pagamentos',
+        url: data.paymentUrl,
+      },
+    };
+
+    const selected = config[data.status];
+    const detailsHtml = details.length
+      ? `
+        <div class="info-box">
+          <p class="info-text"><strong>Curso:</strong> ${data.cursoNome}</p>
+          <p class="info-text"><strong>Turma:</strong> ${data.turmaNome}</p>
+          ${details.map((item) => `<p class="info-text">${item}</p>`).join('')}
+        </div>`
+      : `
+        <div class="info-box">
+          <p class="info-text"><strong>Curso:</strong> ${data.cursoNome}</p>
+          <p class="info-text"><strong>Turma:</strong> ${data.turmaNome}</p>
+        </div>`;
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${selected.title} - Advance+</title>
+  ${this.getBaseStyles()}
+</head>
+<body>
+  <div class="email-wrapper">
+    <div class="email-container">
+      <div class="header">
+        <div class="logo">
+          <img src="https://advancemais.com/images/logos/logo_branco.png" alt="Advance+" />
+        </div>
+      </div>
+      <div class="content">
+        <div class="greeting">Olá, ${firstName}!</div>
+        <div class="message">${selected.message}</div>
+        ${detailsHtml}
+        <div style="text-align: center;">
+          <a href="${selected.url}" class="cta-button" style="color: #ffffff !important;">
+            ${selected.cta}
+          </a>
+        </div>
+        <div class="fallback-section">
+          <div class="fallback-title">Não consegue clicar no botão?</div>
+          <div>Copie e cole este link no seu navegador:</div>
+          <div style="margin-top: 8px;">
+            <a href="${selected.url}" class="fallback-link">${selected.url}</a>
+          </div>
+        </div>
+        ${this.getSignatureHtml()}
+      </div>
+      <div class="footer">
+        <div class="footer-text">Advance+ © ${currentYear} todos os direitos reservados.</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    const textDetails = [`Curso: ${data.cursoNome}`, `Turma: ${data.turmaNome}`, ...details].join(
+      '\n',
+    );
+    const text = `${selected.title}
+
+Olá, ${firstName}!
+
+${selected.message}
+
+${textDetails}
+
+${selected.cta}: ${selected.url}
+
+${this.getSignatureText()}
+
+© ${currentYear} Advance+ - Todos os direitos reservados`;
+
+    return { subject: selected.subject, html, text };
   }
 
   // ========= Cursos - Estágios =========

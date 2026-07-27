@@ -10,7 +10,10 @@ import {
   validarCNPJ,
   validarEmail,
   validarSenha,
-  limparDocumento,
+  identificarTipoDocumento,
+  normalizarCNPJ,
+  normalizarCPF,
+  normalizarDocumento,
 } from '../utils/validation';
 import { invalidateUserCache } from '../utils/cache';
 import { recordUserAuditEvent } from '../utils/user-history';
@@ -113,7 +116,7 @@ export class PasswordRecoveryController {
 
         buscarPor = { email: valorEntrada.toLowerCase() };
       } else if (entradaSelecionada.tipo === 'cpf') {
-        const documentoLimpo = limparDocumento(valorEntrada);
+        const documentoLimpo = normalizarCPF(valorEntrada);
 
         if (!validarCPF(documentoLimpo)) {
           return res.status(400).json({
@@ -123,11 +126,11 @@ export class PasswordRecoveryController {
 
         buscarPor = { cpf: documentoLimpo };
       } else if (entradaSelecionada.tipo === 'cnpj') {
-        const documentoLimpo = limparDocumento(valorEntrada);
+        const documentoLimpo = normalizarCNPJ(valorEntrada);
 
         if (!validarCNPJ(documentoLimpo)) {
           return res.status(400).json({
-            message: 'CNPJ deve conter 14 dígitos numéricos',
+            message: 'CNPJ deve conter 14 caracteres válidos',
           });
         }
 
@@ -136,16 +139,17 @@ export class PasswordRecoveryController {
         if (validarEmail(valorEntrada)) {
           buscarPor = { email: valorEntrada.toLowerCase() };
         } else {
-          const documentoLimpo = limparDocumento(valorEntrada);
+          const documentoLimpo = normalizarDocumento(valorEntrada);
+          const tipoDocumento = identificarTipoDocumento(documentoLimpo);
 
-          if (validarCPF(documentoLimpo)) {
-            buscarPor = { cpf: documentoLimpo };
-          } else if (validarCNPJ(documentoLimpo)) {
-            buscarPor = { cnpj: documentoLimpo };
+          if (tipoDocumento === 'cpf' && validarCPF(documentoLimpo)) {
+            buscarPor = { cpf: normalizarCPF(documentoLimpo) };
+          } else if (tipoDocumento === 'cnpj' && validarCNPJ(documentoLimpo)) {
+            buscarPor = { cnpj: normalizarCNPJ(documentoLimpo) };
           } else {
             return res.status(400).json({
               message:
-                'Identificador deve ser um email válido, CPF (11 dígitos) ou CNPJ (14 dígitos)',
+                'Identificador deve ser um email válido, CPF (11 dígitos) ou CNPJ (14 caracteres)',
             });
           }
         }

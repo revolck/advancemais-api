@@ -55,7 +55,7 @@ const passwordRecoveryController = new PasswordRecoveryController();
  *               documentoInvalido:
  *                 summary: Documento sem formato válido
  *                 value:
- *                   message: "Identificador deve ser um email válido, CPF (11 dígitos) ou CNPJ (14 dígitos)"
+ *                   message: "Identificador deve ser um email válido, CPF (11 dígitos) ou CNPJ (14 caracteres)"
  *       404:
  *         description: Usuário não encontrado
  *         content:

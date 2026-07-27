@@ -47,6 +47,7 @@ import { calcularFim } from '@/modules/empresas/shared/planos';
 import { LimiteVagasPlanoAtingidoError } from '@/modules/empresas/vagas/services/errors';
 import type { UsuarioEnderecoDto } from '@/modules/usuarios/utils/address';
 import { attachEnderecoResumo } from '@/modules/usuarios/utils/address';
+import { formatarCNPJ, normalizarCNPJ, normalizarCPF, validarCNPJ } from '@/modules/usuarios/utils';
 import {
   mapUsuarioInformacoes,
   mergeUsuarioInformacoes,
@@ -704,45 +705,8 @@ const sanitizeNome = (nome: string) => nome.trim();
 const sanitizeTelefone = (telefone: string) => telefone.trim();
 const sanitizeAuthId = (authId: string) => authId.trim();
 const sanitizeSenha = async (senha: string) => bcrypt.hash(senha, 12);
-const normalizeDocumento = (value: string) => value.replace(/\D/g, '');
-const formatCnpj = (value: string) =>
-  value.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
 
 const formatCpf = (value: string) => value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-
-const isValidCnpj = (value: string) => {
-  if (value.length !== 14) {
-    return false;
-  }
-
-  if (/^(\d)\1{13}$/.test(value)) {
-    return false;
-  }
-
-  const calculateDigit = (size: number) => {
-    let sum = 0;
-    let position = size - 7;
-
-    for (let i = size; i >= 1; i--) {
-      const index = size - i;
-      sum += Number(value.charAt(index)) * position--;
-      if (position < 2) {
-        position = 9;
-      }
-    }
-
-    const mod = sum % 11;
-    return mod < 2 ? 0 : 11 - mod;
-  };
-
-  const firstDigit = calculateDigit(12);
-  if (firstDigit !== Number(value.charAt(12))) {
-    return false;
-  }
-
-  const secondDigit = calculateDigit(13);
-  return secondDigit === Number(value.charAt(13));
-};
 
 const isValidCpf = (value: string) => {
   if (value.length !== 11) {
@@ -1550,9 +1514,9 @@ const buildRecursosPremiumVagasEmpresaPayload = (
 
 export const adminEmpresasService = {
   validateCnpj: async (input: string) => {
-    const normalized = normalizeDocumento(input);
-    const hasFourteenDigits = normalized.length === 14;
-    const valid = hasFourteenDigits && isValidCnpj(normalized);
+    const normalized = normalizarCNPJ(input);
+    const hasFourteenChars = normalized.length === 14;
+    const valid = hasFourteenChars && validarCNPJ(normalized);
 
     let empresaResumo: {
       id: string;
@@ -1567,7 +1531,7 @@ export const adminEmpresasService = {
       atualizadoEm: Date;
     } | null = null;
 
-    if (hasFourteenDigits) {
+    if (hasFourteenChars) {
       const empresa = await prisma.usuarios.findFirst({
         where: { cnpj: normalized },
         select: {
@@ -1605,7 +1569,7 @@ export const adminEmpresasService = {
       cnpj: {
         input,
         normalized,
-        formatted: hasFourteenDigits ? formatCnpj(normalized) : null,
+        formatted: hasFourteenChars ? formatarCNPJ(normalized) : null,
         valid,
       },
       exists: empresaResumo !== null,
@@ -1615,7 +1579,7 @@ export const adminEmpresasService = {
   },
 
   validateCpf: async (input: string) => {
-    const normalized = normalizeDocumento(input);
+    const normalized = normalizarCPF(input);
     const hasElevenDigits = normalized.length === 11;
     const valid = hasElevenDigits && isValidCpf(normalized);
 
@@ -1710,7 +1674,7 @@ export const adminEmpresasService = {
           role: Roles.EMPRESA,
           status,
           codUsuario,
-          cnpj: normalizeDocumento(input.cnpj),
+          cnpj: normalizarCNPJ(input.cnpj),
           UsuariosVerificacaoEmail: {
             create: {
               emailVerificado: true,
@@ -1865,7 +1829,7 @@ export const adminEmpresasService = {
       }
 
       if (data.cnpj !== undefined) {
-        updates.cnpj = data.cnpj === null ? null : normalizeDocumento(data.cnpj);
+        updates.cnpj = data.cnpj === null ? null : normalizarCNPJ(data.cnpj);
       }
 
       const logradouro = sanitizeOptionalValue(data.logradouro);

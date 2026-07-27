@@ -27,7 +27,8 @@ import {
   type RegisterPessoaJuridicaInput,
 } from '../validators/auth.schema';
 import {
-  limparDocumento,
+  normalizarCNPJ,
+  normalizarCPF,
   validarCNPJ,
   validarCPF,
   validarDataNascimento,
@@ -145,7 +146,7 @@ export const processUserTypeSpecificData = async (
         return { success: false, error: 'Para pessoa física é obrigatório: CPF' };
       }
 
-      const cpfLimpo = limparDocumento(dadosPF.cpf);
+      const cpfLimpo = normalizarCPF(dadosPF.cpf);
       if (!validarCPF(cpfLimpo)) {
         return { success: false, error: 'CPF deve ter 11 dígitos válidos' };
       }
@@ -188,9 +189,9 @@ export const processUserTypeSpecificData = async (
         return { success: false, error: 'Para pessoa jurídica é obrigatório: CNPJ' };
       }
 
-      const cnpjLimpo = limparDocumento(dadosPJ.cnpj);
+      const cnpjLimpo = normalizarCNPJ(dadosPJ.cnpj);
       if (!validarCNPJ(cnpjLimpo)) {
-        return { success: false, error: 'CNPJ deve ter 14 dígitos válidos' };
+        return { success: false, error: 'CNPJ deve ter 14 caracteres válidos' };
       }
 
       logInfo(scopedLogger, 'Pessoa jurídica validada com sucesso');

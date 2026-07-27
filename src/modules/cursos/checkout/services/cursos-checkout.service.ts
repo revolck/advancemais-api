@@ -24,6 +24,7 @@ import {
   mapGatewayStatusToCursoPagamentoStatus,
 } from './curso-pagamento-notificacoes.service';
 import { calcularDisponibilidadeTurma } from '../../services/inscricoes-vagas.service';
+import { normalizarCNPJ, validarCNPJ } from '@/modules/usuarios/utils';
 
 // ========================================
 // TIPOS E INTERFACES
@@ -173,26 +174,6 @@ function isValidCPF(cpf: string): boolean {
 /**
  * Validar CNPJ
  */
-function isValidCNPJ(cnpj: string): boolean {
-  if (cnpj.length !== 14) return false;
-  if (/^(\d)\1+$/.test(cnpj)) return false; // Todos dígitos iguais
-
-  const weights1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
-  const weights2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
-
-  let sum = 0;
-  for (let i = 0; i < 12; i++) sum += parseInt(cnpj[i]) * weights1[i];
-  let rest = sum % 11;
-  const digit1 = rest < 2 ? 0 : 11 - rest;
-  if (digit1 !== parseInt(cnpj[12])) return false;
-
-  sum = 0;
-  for (let i = 0; i < 13; i++) sum += parseInt(cnpj[i]) * weights2[i];
-  rest = sum % 11;
-  const digit2 = rest < 2 ? 0 : 11 - rest;
-  return digit2 === parseInt(cnpj[13]);
-}
-
 /**
  * Normalizar erro do Mercado Pago
  */
@@ -856,8 +837,11 @@ export const cursosCheckoutService = {
     const documento = (() => {
       // Priorizar dados enviados pelo frontend
       if (params.payer?.identification?.number) {
-        const docNumber = sanitizeDigits(params.payer.identification.number);
         const docType = params.payer.identification.type;
+        const docNumber =
+          docType === 'CNPJ'
+            ? normalizarCNPJ(params.payer.identification.number)
+            : sanitizeDigits(params.payer.identification.number);
 
         if (docType === 'CPF') {
           if (!isValidCPF(docNumber)) {
@@ -871,10 +855,10 @@ export const cursosCheckoutService = {
           return { type: 'CPF' as const, number: docNumber };
         }
         if (docType === 'CNPJ') {
-          if (!isValidCNPJ(docNumber)) {
+          if (!validarCNPJ(docNumber)) {
             throw Object.assign(
               new Error(
-                `CNPJ inválido: ${params.payer.identification.number}. Verifique se o CNPJ está correto (14 dígitos).`,
+                `CNPJ inválido: ${params.payer.identification.number}. Verifique se o CNPJ está correto (14 caracteres).`,
               ),
               { code: 'INVALID_CNPJ' },
             );
@@ -884,8 +868,8 @@ export const cursosCheckoutService = {
       }
 
       // Fallback: tentar usar dados do banco
-      const cnpj = sanitizeDigits(usuario.cnpj);
-      if (cnpj && isValidCNPJ(cnpj)) {
+      const cnpj = normalizarCNPJ(usuario.cnpj || '');
+      if (cnpj && validarCNPJ(cnpj)) {
         return { type: 'CNPJ' as const, number: cnpj };
       }
       const cpf = sanitizeDigits(usuario.cpf);

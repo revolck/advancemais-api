@@ -2,24 +2,90 @@
  * Utilitários de validação para o módulo de usuários
  */
 
+const CNPJ_WEIGHTS_FIRST_DIGIT = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] as const;
+const CNPJ_WEIGHTS_SECOND_DIGIT = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] as const;
+
+export type TipoDocumentoIdentificado = 'cpf' | 'cnpj';
+
+/**
+ * Normaliza CPF preservando somente dígitos.
+ */
+export const normalizarCPF = (cpf: string): string => {
+  return String(cpf || '').replace(/\D/g, '');
+};
+
+/**
+ * Normaliza CNPJ alfanumérico removendo pontuação/espaços e convertendo letras para maiúsculas.
+ */
+export const normalizarCNPJ = (cnpj: string): string => {
+  return String(cnpj || '')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .toUpperCase();
+};
+
+/**
+ * Normaliza documento de login/cadastro preservando letras quando houver CNPJ alfanumérico.
+ */
+export const normalizarDocumento = (documento: string): string => {
+  return normalizarCNPJ(documento);
+};
+
+/**
+ * Identifica o tipo do documento no campo unificado CPF ou CNPJ.
+ */
+export const identificarTipoDocumento = (documento: string): TipoDocumentoIdentificado | null => {
+  const normalized = normalizarDocumento(documento);
+  if (!normalized) return null;
+
+  const hasLetters = /[A-Z]/.test(normalized);
+  if (hasLetters) return normalized.length === 14 ? 'cnpj' : null;
+
+  if (/^\d{11}$/.test(normalized)) return 'cpf';
+  if (/^\d{14}$/.test(normalized)) return 'cnpj';
+
+  return null;
+};
+
 /**
  * Valida se um CPF tem formato correto (11 dígitos)
  * @param cpf - CPF para validar
  * @returns boolean
  */
 export const validarCPF = (cpf: string): boolean => {
-  const cpfLimpo = cpf.replace(/\D/g, '');
+  const cpfLimpo = normalizarCPF(cpf);
   return cpfLimpo.length === 11;
 };
 
+const calcularDigitoCNPJ = (base: string, weights: readonly number[]): number => {
+  const sum = weights.reduce((total, weight, index) => {
+    return total + (base.charCodeAt(index) - 48) * weight;
+  }, 0);
+  const remainder = sum % 11;
+  return remainder < 2 ? 0 : 11 - remainder;
+};
+
 /**
- * Valida se um CNPJ tem formato correto (14 dígitos)
- * @param cnpj - CNPJ para validar
- * @returns boolean
+ * Valida CNPJ alfanumérico com dígitos verificadores conforme Receita Federal.
+ * Primeiras 12 posições aceitam A-Z e 0-9; as duas últimas são numéricas.
  */
 export const validarCNPJ = (cnpj: string): boolean => {
-  const cnpjLimpo = cnpj.replace(/\D/g, '');
-  return cnpjLimpo.length === 14;
+  const cnpjLimpo = normalizarCNPJ(cnpj);
+  if (!/^[A-Z0-9]{12}\d{2}$/.test(cnpjLimpo)) return false;
+
+  const primeiroDigito = calcularDigitoCNPJ(cnpjLimpo, CNPJ_WEIGHTS_FIRST_DIGIT);
+  if (primeiroDigito !== Number(cnpjLimpo[12])) return false;
+
+  const segundoDigito = calcularDigitoCNPJ(cnpjLimpo, CNPJ_WEIGHTS_SECOND_DIGIT);
+  return segundoDigito === Number(cnpjLimpo[13]);
+};
+
+export const formatarCNPJ = (cnpj: string): string => {
+  const value = normalizarCNPJ(cnpj);
+  if (value.length !== 14) return cnpj;
+  return `${value.slice(0, 2)}.${value.slice(2, 5)}.${value.slice(5, 8)}/${value.slice(
+    8,
+    12,
+  )}-${value.slice(12, 14)}`;
 };
 
 /**
@@ -77,12 +143,12 @@ export const validarConfirmacaoSenha = (senha: string, confirmarSenha: string): 
 };
 
 /**
- * Limpa caracteres especiais de documentos
+ * Limpa caracteres especiais de documentos preservando letras de CNPJ alfanumérico.
  * @param documento - CPF ou CNPJ
- * @returns string apenas com números
+ * @returns string sem máscara, com letras em maiúsculo quando houver CNPJ
  */
 export const limparDocumento = (documento: string): string => {
-  return documento.replace(/\D/g, '');
+  return normalizarDocumento(documento);
 };
 
 /**

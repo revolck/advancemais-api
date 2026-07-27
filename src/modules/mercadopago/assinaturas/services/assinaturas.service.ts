@@ -22,6 +22,7 @@ import {
 import type { PlanosEmpresariais } from '@prisma/client';
 import { EmailService } from '@/modules/brevo/services/email-service';
 import { EmailTemplates } from '@/modules/brevo/templates/email-templates';
+import { normalizarCNPJ, validarCNPJ } from '@/modules/usuarios/utils';
 import { logger } from '@/utils/logger';
 import type { StartCheckoutInput } from '@/modules/mercadopago/assinaturas/validators/assinaturas.schema';
 
@@ -604,33 +605,15 @@ export const assinaturasService = {
       return rest === parseInt(cpf[10]);
     };
 
-    // Função para validar CNPJ
-    const isValidCNPJ = (cnpj: string): boolean => {
-      if (cnpj.length !== 14) return false;
-      if (/^(\d)\1+$/.test(cnpj)) return false; // Todos dígitos iguais
-
-      const weights1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
-      const weights2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
-
-      let sum = 0;
-      for (let i = 0; i < 12; i++) sum += parseInt(cnpj[i]) * weights1[i];
-      let rest = sum % 11;
-      const digit1 = rest < 2 ? 0 : 11 - rest;
-      if (digit1 !== parseInt(cnpj[12])) return false;
-
-      sum = 0;
-      for (let i = 0; i < 13; i++) sum += parseInt(cnpj[i]) * weights2[i];
-      rest = sum % 11;
-      const digit2 = rest < 2 ? 0 : 11 - rest;
-      return digit2 === parseInt(cnpj[13]);
-    };
-
     // Prioridade: 1) Dados do payer enviados pelo frontend, 2) Dados do usuário no banco
     const documento = (() => {
       // Se o frontend enviou dados de identificação, usar eles
       if (params.payer?.identification?.number) {
-        const docNumber = sanitizeDigits(params.payer.identification.number);
         const docType = params.payer.identification.type;
+        const docNumber =
+          docType === 'CNPJ'
+            ? normalizarCNPJ(params.payer.identification.number)
+            : sanitizeDigits(params.payer.identification.number);
 
         // Validar o documento enviado pelo frontend
         if (docType === 'CPF') {
@@ -646,13 +629,13 @@ export const assinaturasService = {
           );
         }
         if (docType === 'CNPJ') {
-          if (isValidCNPJ(docNumber)) {
+          if (validarCNPJ(docNumber)) {
             return { type: 'CNPJ' as const, number: docNumber };
           }
           // CNPJ inválido - lançar erro claro para o frontend
           throw Object.assign(
             new Error(
-              `CNPJ inválido: ${params.payer.identification.number}. Verifique se o CNPJ está correto (14 dígitos).`,
+              `CNPJ inválido: ${params.payer.identification.number}. Verifique se o CNPJ está correto (14 caracteres).`,
             ),
             { code: 'INVALID_CNPJ' },
           );
@@ -661,8 +644,8 @@ export const assinaturasService = {
 
       // Fallback: tentar usar dados do usuário no banco (apenas se frontend não enviou)
       // Tentar CNPJ primeiro (empresas)
-      const cnpj = sanitizeDigits(usuario.cnpj);
-      if (cnpj && isValidCNPJ(cnpj)) {
+      const cnpj = normalizarCNPJ(usuario.cnpj || '');
+      if (cnpj && validarCNPJ(cnpj)) {
         return { type: 'CNPJ' as const, number: cnpj };
       }
       // Se CNPJ inválido ou não existe, tentar CPF

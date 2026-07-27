@@ -9,4 +9,9 @@ export {
   validarDataNascimento,
   validarGenero,
   limparDocumento,
+  normalizarCPF,
+  normalizarCNPJ,
+  normalizarDocumento,
+  identificarTipoDocumento,
+  formatarCNPJ,
 } from './validation';

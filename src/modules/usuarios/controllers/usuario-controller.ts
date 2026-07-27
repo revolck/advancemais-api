@@ -3,7 +3,12 @@ import { randomUUID } from 'crypto';
 import { NextFunction, Request, Response } from 'express';
 
 import { prisma, retryOperation } from '@/config/prisma';
-import { limparDocumento, validarCNPJ, validarCPF } from '@/modules/usuarios/utils';
+import {
+  identificarTipoDocumento,
+  limparDocumento,
+  validarCNPJ,
+  validarCPF,
+} from '@/modules/usuarios/utils';
 import {
   clearRefreshTokenCookie,
   extractRefreshTokenFromRequest,
@@ -314,18 +319,31 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
     // Remove caracteres especiais do documento para comparação
     const documentoLimpo = limparDocumento(documento);
 
-    let campoBusca: 'cpf' | 'cnpj' | null = null;
-    if (validarCPF(documentoLimpo)) {
-      campoBusca = 'cpf';
-    } else if (validarCNPJ(documentoLimpo)) {
-      campoBusca = 'cnpj';
-    }
+    const campoBusca = identificarTipoDocumento(documentoLimpo);
 
     if (!campoBusca) {
       log.warn({ length: documentoLimpo.length }, '⚠️ Documento inválido informado');
       return res.status(400).json({
         success: false,
-        message: 'Documento deve ser um CPF (11 dígitos) ou CNPJ (14 dígitos) válido',
+        message: 'Documento deve ser um CPF (11 dígitos) ou CNPJ (14 caracteres) válido',
+        correlationId,
+      });
+    }
+
+    if (campoBusca === 'cpf' && !validarCPF(documentoLimpo)) {
+      log.warn({ length: documentoLimpo.length }, '⚠️ CPF inválido informado');
+      return res.status(400).json({
+        success: false,
+        message: 'Documento deve ser um CPF (11 dígitos) válido',
+        correlationId,
+      });
+    }
+
+    if (campoBusca === 'cnpj' && !validarCNPJ(documentoLimpo)) {
+      log.warn({ length: documentoLimpo.length }, '⚠️ CNPJ inválido informado');
+      return res.status(400).json({
+        success: false,
+        message: 'Documento deve ser um CNPJ (14 caracteres) válido',
         correlationId,
       });
     }

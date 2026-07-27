@@ -323,13 +323,13 @@ Equipe Advance+`;
       return null;
     }
 
-    const digits = cnpj.replace(/\D/g, '');
+    const normalized = cnpj.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 
-    if (digits.length !== 14) {
+    if (normalized.length !== 14) {
       return cnpj;
     }
 
-    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
+    return `${normalized.slice(0, 2)}.${normalized.slice(2, 5)}.${normalized.slice(5, 8)}/${normalized.slice(8, 12)}-${normalized.slice(12)}`;
   }
 
   /**

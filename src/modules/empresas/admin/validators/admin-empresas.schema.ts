@@ -172,7 +172,7 @@ export const adminEmpresasCreateSchema = z.object({
   cnpj: z
     .string({ required_error: 'CNPJ é obrigatório' })
     .trim()
-    .min(14, 'CNPJ deve ter 14 dígitos')
+    .min(14, 'CNPJ deve ter 14 caracteres')
     .max(18, 'CNPJ muito longo'),
   logradouro: nullableEnderecoString.optional(),
   numero: nullableEnderecoNumero.optional(),
@@ -201,7 +201,7 @@ export const adminEmpresasUpdateSchema = z
     nome: nullableString,
     email: z.string().trim().toLowerCase().email('Informe um e-mail válido').optional(),
     telefone: z.string().trim().min(10, 'Informe um telefone válido').max(20).optional().nullable(),
-    cnpj: z.string().trim().min(14, 'CNPJ deve ter 14 dígitos').max(18).optional().nullable(),
+    cnpj: z.string().trim().min(14, 'CNPJ deve ter 14 caracteres').max(18).optional().nullable(),
     logradouro: nullableEnderecoString.optional().nullable(),
     numero: nullableEnderecoNumero.optional().nullable(),
     bairro: nullableEnderecoString.optional().nullable(),

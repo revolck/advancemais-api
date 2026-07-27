@@ -1,6 +1,7 @@
 import { Customer, CustomerCard } from 'mercadopago';
 import { assertMercadoPagoConfiguredAsync, getMercadoPagoClient } from '@/config/mercadopago';
 import { prisma } from '@/config/prisma';
+import { normalizarCNPJ } from '@/modules/usuarios/utils';
 
 interface CartaoSalvo {
   id: string;
@@ -98,7 +99,7 @@ export const cartoesService = {
         first_name: empresa.nomeCompleto,
         identification: {
           type: 'CNPJ' as const,
-          number: empresa.cnpj?.replace(/\D/g, '') || '',
+          number: normalizarCNPJ(empresa.cnpj || ''),
         },
       };
 

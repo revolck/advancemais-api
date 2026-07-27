@@ -18,7 +18,7 @@ const payerDataSchema = z
     identification: z
       .object({
         type: z.enum(['CPF', 'CNPJ']),
-        number: z.string().min(11).max(14), // CPF: 11 dígitos, CNPJ: 14 dígitos
+        number: z.string().min(11).max(14), // CPF: 11 dígitos, CNPJ: 14 caracteres
       })
       .optional(),
     first_name: z.string().max(100).optional(),

@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import { prisma } from '../../../config/prisma';
 import { EmailService } from '../../brevo/services/email-service';
-import { brevoConfig } from '../../../config/env';
+import { BrevoConfigManager } from '../../brevo/config/brevo-config';
 import { logger } from '../../../utils/logger';
 import {
   validarCPF,
@@ -43,9 +43,11 @@ interface RedefinirSenhaData {
  */
 export class PasswordRecoveryController {
   private emailService: EmailService;
+  private brevoConfigManager: BrevoConfigManager;
 
   constructor() {
     this.emailService = new EmailService();
+    this.brevoConfigManager = BrevoConfigManager.getInstance();
   }
 
   private getLogger(req: Request) {
@@ -213,8 +215,9 @@ export class PasswordRecoveryController {
 
       // Verifica limite de tentativas
       const agora = new Date();
-      const cooldownMinutes = brevoConfig.passwordRecovery.cooldownMinutes;
-      const maxAttempts = brevoConfig.passwordRecovery.maxAttempts;
+      const runtimeConfig = await this.brevoConfigManager.getRuntimeConfig();
+      const { cooldownMinutes, maxAttempts, tokenExpirationMinutes } =
+        runtimeConfig.passwordRecovery;
 
       const recuperacao = usuario.UsuariosRecuperacaoSenha;
 
@@ -249,9 +252,7 @@ export class PasswordRecoveryController {
 
       // Gera token seguro
       const token = crypto.randomBytes(32).toString('hex');
-      const tokenExpiracao = new Date(
-        agora.getTime() + brevoConfig.passwordRecovery.tokenExpirationMinutes * 60000,
-      );
+      const tokenExpiracao = new Date(agora.getTime() + tokenExpirationMinutes * 60000);
 
       // Atualiza/Cria registro de recuperação com token e incrementa tentativas
       await prisma.usuariosRecuperacaoSenha.upsert({

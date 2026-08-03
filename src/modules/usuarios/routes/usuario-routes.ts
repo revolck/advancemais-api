@@ -103,6 +103,8 @@ const createAuthRateLimit = (maxRequests: number = 5, windowMinutes: number = 15
   };
 };
 
+const passwordRecoveryRequestRateLimit = createAuthRateLimit(3, 60); // 3 tentativas por hora
+
 // ===========================
 // ROTAS PÚBLICAS
 // ===========================
@@ -1108,13 +1110,19 @@ router.put(
  */
 router.use(
   '/recuperar-senha',
-  createAuthRateLimit(3, 60), // 3 tentativas por hora
   async (req, res, next) => {
     const correlationId = req.headers['x-correlation-id'];
     usuarioRoutesLogger
       .child({ correlationId, route: 'recuperar-senha' })
       .info('🔑 Solicitação de recuperação de senha');
     next();
+  },
+  (req, res, next) => {
+    if (req.method === 'POST' && (req.path === '/' || req.path === '')) {
+      return passwordRecoveryRequestRateLimit(req, res, next);
+    }
+
+    return next();
   },
   passwordRecoveryRoutes,
 );

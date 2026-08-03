@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { Customer, CustomerCard } from 'mercadopago';
 import { assertMercadoPagoConfiguredAsync, getMercadoPagoClient } from '@/config/mercadopago';
 import { prisma } from '@/config/prisma';
@@ -145,10 +146,12 @@ export const cartoesService = {
 
     // 6. Mapear dados do cartão
     const paymentMethodId = card.payment_method?.id || 'unknown';
+    const cartaoId = randomUUID();
 
     // 7. Salvar no banco
     const result = await prisma.$queryRaw<CartaoSalvo[]>`
       INSERT INTO "EmpresasCartoes" (
+        id,
         "usuarioId",
         "mpCustomerId",
         "mpCardId",
@@ -164,6 +167,7 @@ export const cartoesService = {
         "validadoEm",
         "falhasConsecutivas"
       ) VALUES (
+        ${cartaoId},
         ${empresaId},
         ${mpCustomerId},
         ${card.id},

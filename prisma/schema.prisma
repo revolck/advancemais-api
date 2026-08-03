@@ -1236,6 +1236,33 @@ model EmpresasPlano {
   @@index([cupomDescontoId])
 }
 
+model EmpresasCartoes {
+  id                  String    @id @default(uuid())
+  usuarioId           String
+  mpCustomerId        String    @db.VarChar(255)
+  mpCardId            String    @db.VarChar(255)
+  ultimos4Digitos     String    @db.VarChar(4)
+  bandeira            String    @db.VarChar(50)
+  nomeNoCartao        String    @db.VarChar(255)
+  mesExpiracao        String    @db.VarChar(2)
+  anoExpiracao        String    @db.VarChar(4)
+  isPadrao            Boolean   @default(false)
+  ativo               Boolean   @default(true)
+  tipo                String    @default("credito") @db.VarChar(20)
+  paymentMethodId     String?   @db.VarChar(50)
+  validadoEm          DateTime?
+  falhasConsecutivas  Int       @default(0)
+  ultimaFalhaEm       DateTime?
+  criadoEm            DateTime  @default(now())
+  atualizadoEm        DateTime  @default(now())
+  Usuario             Usuarios  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, ativo])
+  @@index([usuarioId, isPadrao])
+  @@index([mpCustomerId])
+  @@index([mpCardId])
+}
+
 model EmpresasRecursosPremiumVagas {
   id                  String    @id @default(uuid())
   empresaId           String    @unique
@@ -1500,6 +1527,7 @@ model Usuarios {
   googleRefreshToken                                                                                        String?                                       @db.Text
   googleCalendarId                                                                                          String?                                       @db.VarChar(255)
   googleTokenExpiraEm                                                                                       DateTime?
+  mpCustomerId                                                                                               String?                                       @db.VarChar(255)
   AuditoriaLogs                                                                                             AuditoriaLogs[]
   AuditoriaScripts                                                                                          AuditoriaScripts[]
   SistemaConfiguracoesAtualizadas                                                                           SistemaConfiguracoes[]                        @relation("SistemaConfiguracoesAtualizadoPor")
@@ -1527,6 +1555,7 @@ model Usuarios {
   EmpresasAuditoria_EmpresasAuditoria_empresaIdToUsuarios                                                   EmpresasAuditoria[]                           @relation("EmpresasAuditoria_empresaIdToUsuarios")
   EmpresasCandidatos_EmpresasCandidatos_candidatoIdToUsuarios                                               EmpresasCandidatos[]                          @relation("EmpresasCandidatos_candidatoIdToUsuarios")
   EmpresasCandidatos_EmpresasCandidatos_empresaUsuarioIdToUsuarios                                          EmpresasCandidatos[]                          @relation("EmpresasCandidatos_empresaUsuarioIdToUsuarios")
+  EmpresasCartoes                                                                                            EmpresasCartoes[]
   EmpresasPlano                                                                                             EmpresasPlano[]
   RecursosPremiumVagas                                                                                      EmpresasRecursosPremiumVagas?                 @relation("EmpresasRecursosPremiumVagasEmpresa")
   RecursosPremiumVagasAplicados                                                                             EmpresasRecursosPremiumVagas[]                @relation("EmpresasRecursosPremiumVagasAplicadoPor")
@@ -1592,6 +1621,7 @@ model Usuarios {
   // ✅ Índices adicionais para otimização de queries (índices parciais serão criados via migração SQL)
   @@index([role, status, criadoEm(sort: Desc)], map: "usuarios_role_status_criadoem_desc_idx")
   @@index([googleCalendarId])
+  @@index([mpCustomerId])
 }
 
 model UsuariosEmpresasVinculos {

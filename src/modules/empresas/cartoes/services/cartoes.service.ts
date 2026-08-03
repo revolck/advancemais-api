@@ -125,66 +125,6 @@ export const cartoesService = {
       throw new Error('Falha ao criar cartão no Mercado Pago');
     }
 
-    // 3.5. Validar cartão com transação de R$ 1,00 (e estornar)
-    let cartaoValidado = false;
-    try {
-      const { Payment } = await import('mercadopago');
-      const paymentApi = new Payment(mpClient);
-
-      // Fazer cobrança de R$ 1,00 para validar
-      const validacao = await paymentApi.create({
-        body: {
-          transaction_amount: 1.0,
-          description: 'Validação de cartão',
-          payment_method_id: card.payment_method?.id || 'credit_card',
-          payer: {
-            id: mpCustomerId,
-            type: 'customer' as const,
-          },
-          token: card.id,
-        },
-      });
-
-      if (validacao.status === 'approved' && validacao.id) {
-        cartaoValidado = true;
-
-        // Estornar imediatamente
-        try {
-          const { PaymentRefund } = await import('mercadopago');
-          const refundApi = new PaymentRefund(mpClient);
-          await refundApi.create({
-            payment_id: validacao.id,
-            body: {},
-          });
-        } catch (refundError) {
-          console.warn('[validação] Falha ao estornar, mas cartão é válido:', refundError);
-          // Continua mesmo se estorno falhar - cartão é válido
-        }
-      } else {
-        // Cartão foi recusado na validação
-        await customerCardApi.remove({
-          customerId: mpCustomerId,
-          cardId: card.id,
-        });
-
-        throw new Error(
-          `Cartão recusado na validação: ${validacao.status_detail || 'motivo desconhecido'}`,
-        );
-      }
-    } catch (validacaoError: any) {
-      // Se a validação falhar, remover o cartão
-      try {
-        await customerCardApi.remove({
-          customerId: mpCustomerId,
-          cardId: card.id,
-        });
-      } catch (removeError) {
-        console.error('[validação] Falha ao remover cartão inválido:', removeError);
-      }
-
-      throw new Error(`Falha ao validar cartão: ${validacaoError.message}`);
-    }
-
     // 4. Mapear dados do cartão
     const bandeira = this.mapearBandeira(card.payment_method?.id || 'unknown');
     const ultimos4Digitos = card.last_four_digits || '0000';
@@ -236,18 +176,22 @@ export const cartoesService = {
         TRUE,
         ${tipo},
         ${paymentMethodId},
-        ${cartaoValidado ? new Date() : null},
+        ${new Date()},
         0
       )
       RETURNING 
         id,
+        "usuarioId" as "empresaId",
         "ultimos4Digitos",
         bandeira,
         "nomeNoCartao",
         "mesExpiracao",
         "anoExpiracao",
         "isPadrao",
+        ativo as "isAtivo",
+        "validadoEm",
         "criadoEm",
+        "atualizadoEm",
         "mpCardId",
         tipo,
         "falhasConsecutivas"

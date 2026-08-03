@@ -95,7 +95,14 @@ export class CartoesController {
 
       res.status(201).json({
         success: true,
-        cartao,
+        data: {
+          cartao,
+          validacao: {
+            sucesso: true,
+            mensagem: 'Cartão cadastrado com sucesso.',
+          },
+        },
+        message: 'Cartão adicionado com sucesso',
       });
     } catch (error: any) {
       console.error('[CartoesController.adicionar] Erro:', error);

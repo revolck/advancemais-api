@@ -100,8 +100,20 @@ router.get('/', empresaOnly, CartoesController.listar);
  *               properties:
  *                 success:
  *                   type: boolean
- *                 cartao:
+ *                 data:
  *                   type: object
+ *                   properties:
+ *                     cartao:
+ *                       type: object
+ *                     validacao:
+ *                       type: object
+ *                       properties:
+ *                         sucesso:
+ *                           type: boolean
+ *                         mensagem:
+ *                           type: string
+ *                 message:
+ *                   type: string
  *       400:
  *         description: Token inválido ou dados incorretos
  *       401:

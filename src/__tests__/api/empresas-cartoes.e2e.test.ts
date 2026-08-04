@@ -39,6 +39,7 @@ describe('API - Cartões de empresas', () => {
   const app = express();
   const customerCreateSpy = jest.spyOn(Customer.prototype, 'create');
   const customerCardCreateSpy = jest.spyOn(CustomerCard.prototype, 'create');
+  const customerCardRemoveSpy = jest.spyOn(CustomerCard.prototype, 'remove');
   const paymentCreateSpy = jest.spyOn(Payment.prototype, 'create');
   const paymentRefundCreateSpy = jest.spyOn(PaymentRefund.prototype, 'create');
 
@@ -68,6 +69,8 @@ describe('API - Cartões de empresas', () => {
       expiration_month: 12,
       expiration_year: 2030,
     } as any);
+
+    customerCardRemoveSpy.mockResolvedValue(undefined as any);
 
     paymentCreateSpy.mockResolvedValue({
       id: 999,
@@ -228,5 +231,30 @@ describe('API - Cartões de empresas', () => {
     expect(paymentCreateSpy).not.toHaveBeenCalled();
     expect(paymentRefundCreateSpy).not.toHaveBeenCalled();
     expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
+  });
+
+  it('deve remover o único cartão da empresa', async () => {
+    (prisma.$queryRaw as jest.Mock)
+      .mockResolvedValueOnce([
+        {
+          id: 'cartao-1',
+          isPadrao: true,
+          mpCustomerId: 'cus_test_empresa',
+          mpCardId: 'card_test_123',
+        },
+      ])
+      .mockResolvedValueOnce([{ count: 1n }]);
+
+    const response = await request(app).delete('/api/v1/empresas/cartoes/cartao-1').expect(200);
+
+    expect(response.body).toEqual({
+      success: true,
+      message: 'Cartão removido com sucesso',
+    });
+    expect(customerCardRemoveSpy).toHaveBeenCalledWith({
+      customerId: 'cus_test_empresa',
+      cardId: 'card_test_123',
+    });
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
   });
 });

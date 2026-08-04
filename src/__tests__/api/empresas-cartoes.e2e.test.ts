@@ -107,9 +107,28 @@ describe('API - Cartões de empresas', () => {
           tipo: 'credito',
           falhasConsecutivas: 0,
         },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 'cartao-1',
+          empresaId: 'empresa-1',
+          ultimos4Digitos: '1234',
+          bandeira: 'Visa',
+          nomeNoCartao: 'EMPRESA TESTE',
+          mesExpiracao: '12',
+          anoExpiracao: '2030',
+          isPadrao: true,
+          isAtivo: true,
+          validadoEm: new Date('2026-08-03T12:00:00.000Z'),
+          criadoEm: new Date('2026-08-03T12:00:00.000Z'),
+          atualizadoEm: new Date('2026-08-03T12:00:00.000Z'),
+          mpCardId: 'card_test_123',
+          tipo: 'credito',
+          falhasConsecutivas: 0,
+        },
       ]);
 
-    const response = await request(app)
+    const addResponse = await request(app)
       .post('/api/v1/empresas/cartoes')
       .send({
         token: 'card_token_test',
@@ -118,7 +137,7 @@ describe('API - Cartões de empresas', () => {
       })
       .expect(201);
 
-    expect(response.body).toMatchObject({
+    expect(addResponse.body).toMatchObject({
       success: true,
       message: 'Cartão adicionado com sucesso',
       data: {
@@ -151,7 +170,29 @@ describe('API - Cartões de empresas', () => {
     expect(paymentCreateSpy).not.toHaveBeenCalled();
     expect(paymentRefundCreateSpy).not.toHaveBeenCalled();
 
-    expect(prisma.$queryRaw).toHaveBeenCalledTimes(3);
+    const listResponse = await request(app).get('/api/v1/empresas/cartoes').expect(200);
+
+    expect(listResponse.body).toMatchObject({
+      success: true,
+      data: [
+        {
+          id: 'cartao-1',
+          empresaId: 'empresa-1',
+          ultimos4Digitos: '1234',
+          bandeira: 'Visa',
+          nomeNoCartao: 'EMPRESA TESTE',
+          mesExpiracao: '12',
+          anoExpiracao: '2030',
+          isPadrao: true,
+          isAtivo: true,
+          mpCardId: 'card_test_123',
+          tipo: 'credito',
+          falhasConsecutivas: 0,
+        },
+      ],
+    });
+
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(4);
     expect(prisma.$executeRaw).toHaveBeenCalledTimes(2);
   });
 

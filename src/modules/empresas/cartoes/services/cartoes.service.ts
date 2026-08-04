@@ -6,14 +6,20 @@ import { normalizarCNPJ } from '@/modules/usuarios/utils';
 
 interface CartaoSalvo {
   id: string;
+  empresaId: string;
   ultimos4Digitos: string;
   bandeira: string;
   nomeNoCartao: string;
   mesExpiracao: string;
   anoExpiracao: string;
   isPadrao: boolean;
+  isAtivo: boolean;
+  validadoEm: Date | null;
   criadoEm: Date;
+  atualizadoEm: Date;
   mpCardId: string;
+  tipo: 'credito' | 'debito';
+  falhasConsecutivas: number;
 }
 
 /**
@@ -27,13 +33,17 @@ export const cartoesService = {
     const cartoes = await prisma.$queryRaw<CartaoSalvo[]>`
       SELECT 
         id,
+        "usuarioId" as "empresaId",
         "ultimos4Digitos",
         bandeira,
         "nomeNoCartao",
         "mesExpiracao",
         "anoExpiracao",
         "isPadrao",
+        ativo as "isAtivo",
+        "validadoEm",
         "criadoEm",
+        "atualizadoEm",
         "mpCardId",
         tipo,
         "falhasConsecutivas"

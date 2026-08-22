@@ -8,7 +8,10 @@ const oauthLogger = logger.child({ module: 'GoogleOAuth' });
 
 // Construir URL de callback dinamicamente (não precisa estar no .env)
 function getRedirectUri(): string {
-  const apiUrl = process.env.API_URL || `http://localhost:${process.env.PORT || 3000}`;
+  const apiUrl = (process.env.API_URL || `http://localhost:${process.env.PORT || 3000}`).replace(
+    /\/+$/,
+    '',
+  );
   return `${apiUrl}/api/v1/auth/google/callback`;
 }
 

@@ -164,6 +164,23 @@ if (!validation.isValid) {
   }
 }
 
+// Em produção, URLs públicas nunca podem apontar para localhost — um valor de
+// desenvolvimento vazado aqui redireciona os usuários para a máquina errada
+// no fim de fluxos como o callback do Google OAuth.
+if (isProduction) {
+  const localhostVars = ['FRONTEND_URL', 'API_URL'].filter((key) =>
+    process.env[key]?.toLowerCase().includes('localhost'),
+  );
+
+  if (localhostVars.length > 0) {
+    envLogger.error(
+      { vars: localhostVars },
+      `❌ Variáveis apontando para localhost em produção: ${localhostVars.join(', ')}`,
+    );
+    process.exit(1);
+  }
+}
+
 // =============================================
 // SUPABASE REMOVIDO
 // =============================================

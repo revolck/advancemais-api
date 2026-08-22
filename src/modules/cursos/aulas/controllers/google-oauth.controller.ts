@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { googleOAuthService } from '../services/google-oauth.service';
+import { serverConfig } from '@/config/env';
 import { logger } from '@/utils/logger';
+
+const frontendUrl = serverConfig.frontendUrl.replace(/\/+$/, '');
 
 export class GoogleOAuthController {
   /**
@@ -47,10 +50,10 @@ export class GoogleOAuthController {
       await googleOAuthService.handleCallback(code, usuarioId);
 
       // Redirecionar para o frontend
-      res.redirect(`${process.env.FRONTEND_URL}/dashboard/configuracoes?google=conectado`);
+      res.redirect(`${frontendUrl}/dashboard/configuracoes?google=conectado`);
     } catch (error: any) {
       logger.error('[GOOGLE_CALLBACK_ERROR]', { error: error?.message });
-      res.redirect(`${process.env.FRONTEND_URL}/dashboard/configuracoes?google=erro`);
+      res.redirect(`${frontendUrl}/dashboard/configuracoes?google=erro`);
     }
   };
 

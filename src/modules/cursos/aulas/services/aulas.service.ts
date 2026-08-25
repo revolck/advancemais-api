@@ -14,6 +14,8 @@ import type {
   UpdateProgressoInput,
 } from '../validators/aulas.schema';
 import { googleCalendarService } from './google-calendar.service';
+import { meetOrchestrationService } from './meet-orchestration.service';
+import { resolveOrganizadorId } from './meet-attendees.helper';
 import { montarCamposAlteradosMaterial } from './historico-materiais.helper';
 import { notificacoesHelper } from './notificacoes-helper.service';
 
@@ -64,6 +66,55 @@ function mapMetodoTurmaToModalidadeAula(metodo: string): string {
     SEMIPRESENCIAL: 'SEMIPRESENCIAL',
   };
   return map[metodo] || metodo;
+}
+
+function toDatePart(value: string | Date | null | undefined): string | null {
+  if (!value) return null;
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString().slice(0, 10);
+}
+
+function combineUtcDateTime(
+  dateValue: string | Date | null | undefined,
+  timeValue: string | null | undefined,
+): Date | null {
+  const datePart = toDatePart(dateValue);
+  if (!datePart || !timeValue) return null;
+
+  const [hours, minutes] = timeValue.split(':').map(Number);
+  if (
+    !Number.isFinite(hours) ||
+    !Number.isFinite(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return null;
+  }
+
+  return new Date(
+    `${datePart}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00.000Z`,
+  );
+}
+
+function calculateDurationMinutesFromPeriod(params: {
+  dataInicio?: string | Date | null;
+  dataFim?: string | Date | null;
+  horaInicio?: string | null;
+  horaFim?: string | null;
+}): number | null {
+  const inicio = combineUtcDateTime(params.dataInicio, params.horaInicio);
+  const fim = combineUtcDateTime(params.dataFim ?? params.dataInicio, params.horaFim);
+  if (!inicio || !fim) return null;
+
+  const diff = fim.getTime() - inicio.getTime();
+  if (diff <= 0) return null;
+
+  return Math.round(diff / 60000);
 }
 
 function isInstrutorVinculadoAAula(params: {
@@ -690,10 +741,9 @@ export const aulasService = {
    */
   async create(input: CreateAulaInput, usuarioLogado: any) {
     // 1. Processar data e hora (Arquitetura Ideal)
-    const precisaPeriodo =
-      input.modalidade === 'PRESENCIAL' ||
-      input.modalidade === 'AO_VIVO' ||
-      (input.modalidade === 'SEMIPRESENCIAL' && (input.dataInicio || input.horaInicio));
+    const precisaPeriodo = Boolean(
+      input.dataInicio || input.dataFim || input.horaInicio || input.horaFim,
+    );
 
     let dataInicioCompleta: Date | null = null;
     let dataFimCompleta: Date | null = null;
@@ -742,6 +792,27 @@ export const aulasService = {
         throw new Error('Aula ao vivo deve ser agendada para o futuro');
       }
     }
+
+    const duracaoCalculadaPeriodo = calculateDurationMinutesFromPeriod({
+      dataInicio: input.dataInicio,
+      dataFim: input.dataFim,
+      horaInicio: input.horaInicio,
+      horaFim: input.horaFim,
+    });
+
+    if (
+      precisaPeriodo &&
+      input.dataInicio &&
+      input.horaInicio &&
+      input.horaFim &&
+      !duracaoCalculadaPeriodo
+    ) {
+      const error: any = new Error('Data e hora de término devem ser posteriores ao início');
+      error.code = 'DATA_INVALIDA';
+      throw error;
+    }
+
+    const duracaoMinutosFinal = duracaoCalculadaPeriodo ?? input.duracaoMinutos;
 
     let turmaEmAndamento = false;
 
@@ -871,7 +942,7 @@ export const aulasService = {
         urlVideo: input.youtubeUrl || null,
         sala: input.sala || null,
         obrigatoria: input.obrigatoria,
-        duracaoMinutos: input.duracaoMinutos,
+        duracaoMinutos: duracaoMinutosFinal,
         // ✅ IMPORTANTE: Aulas devem ser criadas sempre como RASCUNHO
         // Se frontend enviar PUBLICADA, forçar RASCUNHO (publicação via endpoint específico)
         status: 'RASCUNHO',
@@ -914,55 +985,17 @@ export const aulasService = {
     });
 
     // 6. Se AO_VIVO ou SEMIPRESENCIAL com Meet, criar Google Meet
-    // ✅ Ajustado: Criar Meet mesmo se dataFim não for informado (usa dataInicio + duração)
-    if (
-      (input.modalidade === 'AO_VIVO' ||
-        (input.modalidade === 'SEMIPRESENCIAL' && input.tipoLink === 'MEET')) &&
-      input.turmaId &&
-      input.dataInicio &&
-      dataInicioCompleta &&
-      dataFimCompleta // Garantir que dataFimCompleta foi calculada (mesmo que não tenha dataFim)
-    ) {
-      try {
-        // Buscar emails dos alunos da turma
-        const inscricoes = await prisma.cursosTurmasInscricoes.findMany({
-          where: { turmaId: input.turmaId, status: 'INSCRITO' },
-          include: { Usuarios: { select: { email: true } } },
-        });
-
-        const alunoEmails = inscricoes.map((i) => i.Usuarios.email);
-
-        const meetData = await googleCalendarService.createMeetEvent({
-          titulo: input.titulo,
-          descricao: input.descricao || '',
-          dataInicio: dataInicioCompleta,
-          dataFim: dataFimCompleta,
-          instrutorId: usuarioLogado.id,
-          alunoEmails,
-        });
-
-        // Atualizar aula com dados do Meet
-        await prisma.cursosTurmasAulas.update({
-          where: { id: aula.id },
-          data: {
-            urlMeet: meetData.meetUrl,
-            meetEventId: meetData.eventId,
-          },
-        });
-
-        aula.urlMeet = meetData.meetUrl;
-        aula.meetEventId = meetData.eventId;
-
-        aulasLogger.info('[GOOGLE_MEET_CRIADO]', {
-          aulaId: aula.id,
-          meetUrl: meetData.meetUrl,
-        });
-      } catch (error: any) {
-        aulasLogger.error('[GOOGLE_MEET_ERRO]', {
-          aulaId: aula.id,
-          error: error?.message,
-        });
-        // Não falha a criação da aula se Google Meet falhar
+    // Delegado ao orquestrador (idempotente, resolve organizador/attendees pela prioridade
+    // item > turma e configura acesso restrito/moderação/gravação da sala).
+    if (input.turmaId) {
+      await meetOrchestrationService.ensureMeetParaAula(aula.id);
+      const meetInfo = await prisma.cursosTurmasAulas.findUnique({
+        where: { id: aula.id },
+        select: { urlMeet: true, meetEventId: true },
+      });
+      if (meetInfo) {
+        aula.urlMeet = meetInfo.urlMeet;
+        aula.meetEventId = meetInfo.meetEventId;
       }
     }
 
@@ -1190,6 +1223,10 @@ export const aulasService = {
         instrutorId: true,
         moduloId: true,
         status: true,
+        dataInicio: true,
+        dataFim: true,
+        horaInicio: true,
+        horaFim: true,
       },
     });
 
@@ -1359,6 +1396,26 @@ export const aulasService = {
       // Turma foi removida explicitamente; modalidade pode ser independente.
     }
 
+    const dataInicioFinal = input.dataInicio ?? aulaDbAnterior.dataInicio;
+    const dataFimFinal = input.dataFim ?? aulaDbAnterior.dataFim ?? dataInicioFinal;
+    const horaInicioFinal =
+      input.horaInicio === undefined ? aulaDbAnterior.horaInicio : input.horaInicio;
+    const horaFimFinal = input.horaFim === undefined ? aulaDbAnterior.horaFim : input.horaFim;
+    const duracaoCalculadaPeriodo = calculateDurationMinutesFromPeriod({
+      dataInicio: dataInicioFinal,
+      dataFim: dataFimFinal,
+      horaInicio: horaInicioFinal,
+      horaFim: horaFimFinal,
+    });
+
+    if (dataInicioFinal && horaInicioFinal && horaFimFinal && !duracaoCalculadaPeriodo) {
+      const error: any = new Error('Data e hora de término devem ser posteriores ao início');
+      error.code = 'DATA_INVALIDA';
+      throw error;
+    }
+
+    const duracaoMinutosFinal = duracaoCalculadaPeriodo ?? input.duracaoMinutos;
+
     // Preparar objeto de atualização
     const updateData: any = {
       nome: input.titulo,
@@ -1367,7 +1424,7 @@ export const aulasService = {
       urlVideo: input.youtubeUrl,
       sala: (input as any).sala,
       obrigatoria: input.obrigatoria,
-      duracaoMinutos: input.duracaoMinutos,
+      duracaoMinutos: duracaoMinutosFinal,
       status: statusNovo,
       dataInicio: input.dataInicio,
       dataFim: input.dataFim,
@@ -1558,6 +1615,18 @@ export const aulasService = {
       }
     }
 
+    // Fix do gap "instrutor tardio": se um instrutor foi vinculado/alterado nesta edição
+    // (fora do fluxo de publicação) e a aula já é elegível para Meet mas ainda não tem
+    // um criado, cria agora. Idempotente — não faz nada se já existir meetEventId.
+    if (
+      !estaPublicando &&
+      instrutorIdParaSalvar !== undefined &&
+      instrutorIdParaSalvar !== null &&
+      aulaAtualizada.turmaId
+    ) {
+      await meetOrchestrationService.ensureMeetParaAula(aulaId);
+    }
+
     // Ações automáticas ao publicar
     // ✅ Apenas turmaId é necessário - instrutorId pode ser adicionado depois
     if (estaPublicando && aulaAtualizada.turmaId) {
@@ -1579,35 +1648,18 @@ export const aulasService = {
           }
 
           // ✅ Criar Google Meet apenas se tiver instrutorId (pode ser adicionado depois)
+          // Delegado ao orquestrador — idempotente, então não duplica o Meet já criado
+          // em create() (bug pré-existente corrigido de graça).
           if (aulaAtualizada.instrutorId) {
-            // Buscar emails dos alunos
-            const inscricoes = await prisma.cursosTurmasInscricoes.findMany({
-              where: { turmaId: aulaAtualizada.turmaId, status: 'INSCRITO' },
-              include: { Usuarios: { select: { email: true } } },
-            });
-
-            const alunoEmails = inscricoes.map((i) => i.Usuarios.email).filter(Boolean);
-
-            const meetEvent = await googleCalendarService.createMeetEvent({
-              titulo: aulaAtualizada.nome,
-              descricao: aulaAtualizada.descricao || '',
-              dataInicio: dataInicioCompleta,
-              dataFim: dataFimCompleta,
-              instrutorId: aulaAtualizada.instrutorId,
-              alunoEmails,
-            });
-
-            // Atualizar aula com meetEventId e meetUrl
-            await prisma.cursosTurmasAulas.update({
+            await meetOrchestrationService.ensureMeetParaAula(aulaId);
+            const meetInfo = await prisma.cursosTurmasAulas.findUnique({
               where: { id: aulaId },
-              data: {
-                meetEventId: meetEvent.eventId,
-                urlMeet: meetEvent.meetUrl,
-              },
+              select: { urlMeet: true, meetEventId: true },
             });
-
-            aulaAtualizada.meetEventId = meetEvent.eventId;
-            aulaAtualizada.urlMeet = meetEvent.meetUrl;
+            if (meetInfo) {
+              aulaAtualizada.meetEventId = meetInfo.meetEventId;
+              aulaAtualizada.urlMeet = meetInfo.urlMeet;
+            }
           }
 
           // ✅ Criar evento na agenda interna sempre (com ou sem instrutor)
@@ -1657,11 +1709,15 @@ export const aulasService = {
         if (aulaAnterior.meetEventId && aulaAnterior.turmaId) {
           const turma = await prisma.cursosTurmas.findUnique({
             where: { id: aulaAnterior.turmaId },
-            select: { instrutorId: true },
+            select: {
+              instrutorId: true,
+              CursosTurmasInstrutores: { select: { instrutorId: true } },
+            },
           });
 
-          if (turma?.instrutorId) {
-            await googleCalendarService.deleteEvent(aulaAnterior.meetEventId, turma.instrutorId);
+          const organizadorId = turma && resolveOrganizadorId(aulaDbAnterior.instrutorId, turma);
+          if (organizadorId) {
+            await googleCalendarService.deleteEvent(aulaAnterior.meetEventId, organizadorId);
           }
         }
 
@@ -1952,11 +2008,15 @@ export const aulasService = {
         try {
           const turma = await prisma.cursosTurmas.findUnique({
             where: { id: aula.turmaId || undefined },
-            select: { instrutorId: true },
+            select: {
+              instrutorId: true,
+              CursosTurmasInstrutores: { select: { instrutorId: true } },
+            },
           });
 
-          if (turma?.instrutorId) {
-            await googleCalendarService.deleteEvent(aula.meetEventId, turma.instrutorId);
+          const organizadorId = turma && resolveOrganizadorId(aula.instrutorId, turma);
+          if (organizadorId) {
+            await googleCalendarService.deleteEvent(aula.meetEventId, organizadorId);
             dadosRemovidos.eventosCalendar = 1;
           }
         } catch (error: any) {

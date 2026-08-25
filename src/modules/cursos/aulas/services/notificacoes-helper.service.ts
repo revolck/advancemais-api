@@ -1,7 +1,7 @@
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import { EmailService } from '@/modules/brevo/services/email-service';
-import type { NotificacaoTipo, NotificacaoPrioridade } from '@prisma/client';
+import { Roles, Status, type NotificacaoTipo, type NotificacaoPrioridade } from '@prisma/client';
 import { createHash } from 'crypto';
 
 const notifLogger = logger.child({ module: 'NotificacoesHelper' });
@@ -148,6 +148,74 @@ export const notificacoesHelper = {
   },
 
   /**
+   * Notificar a equipe de gestão de uma turma: ADMIN/MODERADOR/PEDAGOGICO ativos
+   * (plataforma toda, sem vínculo com a turma) + instrutor(es) vinculados à turma
+   * (passados via `instrutorIds`, ex.: `resolveInstrutorAttendeeIds`). Deduplica por
+   * usuário e envia notificação + email para cada um.
+   */
+  async notificarEquipeDaTurma(params: {
+    turmaId: string;
+    instrutorIds: string[];
+    tipo: NotificacaoTipo;
+    titulo: string;
+    mensagem: string;
+    prioridade?: NotificacaoPrioridade;
+    linkAcao: string;
+    eventoId: string;
+  }) {
+    const [gestores, instrutores] = await Promise.all([
+      prisma.usuarios.findMany({
+        where: {
+          role: { in: [Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO] },
+          status: Status.ATIVO,
+        },
+        select: { id: true, nomeCompleto: true, email: true },
+      }),
+      params.instrutorIds.length
+        ? prisma.usuarios.findMany({
+            where: { id: { in: params.instrutorIds }, status: Status.ATIVO },
+            select: { id: true, nomeCompleto: true, email: true },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const destinatarios = new Map<string, { id: string; nomeCompleto: string; email: string }>();
+    for (const usuario of [...gestores, ...instrutores]) {
+      destinatarios.set(usuario.id, usuario);
+    }
+
+    for (const destinatario of destinatarios.values()) {
+      const notificacaoCriada = await this.criar({
+        usuarioId: destinatario.id,
+        tipo: params.tipo,
+        titulo: params.titulo,
+        mensagem: params.mensagem,
+        prioridade: params.prioridade,
+        linkAcao: params.linkAcao,
+        eventoId: params.eventoId,
+      });
+
+      if (notificacaoCriada) {
+        await this.enviarEmailCritico({
+          para: destinatario.email,
+          nomeDestinatario: destinatario.nomeCompleto,
+          assunto: params.titulo,
+          mensagem: params.mensagem,
+          linkAcao: `${process.env.FRONTEND_URL ?? ''}${params.linkAcao}`,
+        });
+      }
+    }
+
+    notifLogger.info('[NOTIF] Equipe da turma notificada', {
+      turmaId: params.turmaId,
+      tipo: params.tipo,
+      quantidade: destinatarios.size,
+    });
+
+    return { notificados: destinatarios.size };
+  },
+
+  /**
    * Enviar email crítico (usa Brevo - limite 1000/mês)
    */
   async enviarEmailCritico(params: {
@@ -189,6 +257,8 @@ export const notificacoesHelper = {
       'TURMA_INICIO_BLOQUEADO_ESTRUTURA',
       'TURMA_INICIO_REPROGRAMADO',
       'TURMA_NOVA_DATA_CONFIRMADA',
+      'TURMA_FREQUENCIA_ALERTA',
+      'ALUNO_FREQUENCIA_BAIXA',
     ];
 
     return tiposCriticos.includes(tipo);

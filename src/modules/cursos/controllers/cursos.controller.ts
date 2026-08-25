@@ -120,7 +120,7 @@ const buildEmptyAlunosListResponse = (page: number, limit: number) => ({
 });
 
 const getInstrutorAlunoTurmaIds = (scope: InstrutorScope) =>
-  Array.from(new Set([...scope.accessibleTurmaIds, ...scope.fullTurmaIds].filter(Boolean)));
+  Array.from(new Set([...scope.fullTurmaIds].filter(Boolean)));
 
 const buildCursoTurmaAlunoFilter = (params: {
   turmaIds?: string[];

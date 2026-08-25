@@ -64,6 +64,7 @@ const resolveTtl = (value: string | undefined, fallback: number) => {
 };
 
 const CURSOS_NOTAS_CACHE_TTL = resolveTtl(process.env.CACHE_TTL_CURSOS_NOTAS, 30);
+const CURSOS_NOTAS_CACHE_PREFIX = 'cursos:notas:v2';
 
 const viewerFromRequest = (req: Request) => ({
   userId: req.user?.id,
@@ -87,6 +88,9 @@ const sendInstrutorScopeError = (res: Response) =>
 const invalidateCursoNotasCache = async () => {
   try {
     await Promise.all([
+      invalidateCacheByPrefix(`${CURSOS_NOTAS_CACHE_PREFIX}:list-curso:`),
+      invalidateCacheByPrefix(`${CURSOS_NOTAS_CACHE_PREFIX}:list-geral:`),
+      invalidateCacheByPrefix(`${CURSOS_NOTAS_CACHE_PREFIX}:list-aluno:`),
       invalidateCacheByPrefix('cursos:notas:list-curso:'),
       invalidateCacheByPrefix('cursos:notas:list-geral:'),
       invalidateCacheByPrefix('cursos:notas:list-aluno:'),
@@ -101,7 +105,7 @@ export class NotasController {
     try {
       const query = listNotasGeralQuerySchema.parse(req.query);
       const cacheKey = generateCacheKey(
-        'cursos:notas:list-geral',
+        `${CURSOS_NOTAS_CACHE_PREFIX}:list-geral`,
         {
           cursoId: query.cursoId ?? '',
           turmaIds: query.turmaIds?.join(',') ?? '',
@@ -199,7 +203,7 @@ export class NotasController {
       }
 
       const cacheKey = generateCacheKey(
-        'cursos:notas:list-aluno',
+        `${CURSOS_NOTAS_CACHE_PREFIX}:list-aluno`,
         {
           alunoId,
           cursoId: query.cursoId,
@@ -270,7 +274,7 @@ export class NotasController {
     try {
       const query = listCursoNotasQuerySchema.parse(req.query);
       const cacheKey = generateCacheKey(
-        'cursos:notas:list-curso',
+        `${CURSOS_NOTAS_CACHE_PREFIX}:list-curso`,
         {
           cursoId,
           turmaIds: query.turmaIds.join(','),

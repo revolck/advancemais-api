@@ -9,6 +9,15 @@ import { z } from 'zod';
 import { createQuestaoSchema } from './questoes.schema';
 
 const uuid = z.string().uuid('Identificador inválido');
+const atividadeSemQuestoesTipos = new Set<CursosAtividadeTipo>([
+  CursosAtividadeTipo.PERGUNTA_RESPOSTA,
+  CursosAtividadeTipo.ENVIO_MATERIAL,
+]);
+
+const getDescricaoObrigatoriaAtividadeMessage = (tipoAtividade: CursosAtividadeTipo) =>
+  tipoAtividade === CursosAtividadeTipo.ENVIO_MATERIAL
+    ? 'Instruções de envio são obrigatórias para atividades de envio de material'
+    : 'Pergunta é obrigatória para atividades do tipo PERGUNTA_RESPOSTA';
 
 const ordemSchema = z
   .number({ invalid_type_error: 'Ordem deve ser um número' })
@@ -325,21 +334,21 @@ export const createAvaliacaoSchema = z
         }
       }
 
-      // Se tipoAtividade === PERGUNTA_RESPOSTA, não deve ter questões
-      if (data.tipoAtividade === CursosAtividadeTipo.PERGUNTA_RESPOSTA) {
+      // Atividades sem questões usam a descrição como instrução ao aluno.
+      if (data.tipoAtividade && atividadeSemQuestoesTipos.has(data.tipoAtividade)) {
         if (data.questoes && data.questoes.length > 0) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: 'Atividades do tipo PERGUNTA_RESPOSTA não devem ter questões estruturadas',
+            message: `Atividades do tipo ${data.tipoAtividade} não devem ter questões estruturadas`,
             path: ['questoes'],
           });
         }
 
-        // Pergunta é obrigatória (usa o campo descricao) e deve ter até 5000 caracteres
+        // Descrição/instrução é obrigatória e deve ter até 5000 caracteres.
         if (!data.descricao || data.descricao.trim().length === 0) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: 'Pergunta é obrigatória para atividades do tipo PERGUNTA_RESPOSTA',
+            message: getDescricaoObrigatoriaAtividadeMessage(data.tipoAtividade),
             path: ['descricao'],
           });
         }
@@ -347,7 +356,7 @@ export const createAvaliacaoSchema = z
         if (data.descricao && data.descricao.length > 5000) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: 'Pergunta deve ter no máximo 5000 caracteres',
+            message: 'Descrição deve ter no máximo 5000 caracteres',
             path: ['descricao'],
           });
         }
@@ -514,18 +523,18 @@ export const putUpdateAvaliacaoSchema = z
         }
       }
 
-      if (data.tipoAtividade === CursosAtividadeTipo.PERGUNTA_RESPOSTA) {
+      if (data.tipoAtividade && atividadeSemQuestoesTipos.has(data.tipoAtividade)) {
         if (data.questoes && data.questoes.length > 0) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: 'Atividades do tipo PERGUNTA_RESPOSTA não devem ter questões estruturadas',
+            message: `Atividades do tipo ${data.tipoAtividade} não devem ter questões estruturadas`,
             path: ['questoes'],
           });
         }
         if (!data.descricao || data.descricao.trim().length === 0) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: 'Pergunta é obrigatória para atividades do tipo PERGUNTA_RESPOSTA',
+            message: getDescricaoObrigatoriaAtividadeMessage(data.tipoAtividade),
             path: ['descricao'],
           });
         }

@@ -53,6 +53,29 @@ const requiredDate = z.preprocess(
   z.date({ invalid_type_error: 'Informe uma data válida' }),
 );
 
+const horarioSchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Horário inválido. Use o formato HH:mm');
+
+function combineDateAndTime(date: Date | null | undefined, time: string | null | undefined) {
+  if (!date || !time) return null;
+  const [hours, minutes] = time.split(':').map(Number);
+  if (
+    !Number.isFinite(hours) ||
+    !Number.isFinite(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return null;
+  }
+
+  const combined = new Date(date);
+  combined.setHours(hours, minutes, 0, 0);
+  return combined;
+}
+
 const turmaBaseSchema = z.object({
   nome: z.string().trim().min(3).max(255),
   instrutorId: uuid.optional(),
@@ -81,6 +104,8 @@ const turmaEstruturaItemSchema = z.object({
   strategy: z.enum(['CLONE', 'REFERENCE']).optional().default('CLONE'),
   startDate: optionalDate.optional(),
   endDate: optionalDate.optional(),
+  horaInicio: horarioSchema.optional(),
+  horaFim: horarioSchema.optional(),
   instructorId: uuid.optional(),
   instructorIds: z.array(uuid).optional(),
   obrigatoria: booleanOptional,
@@ -104,10 +129,6 @@ const turmaEstruturaSchema = z.object({
   modules: z.array(turmaEstruturaModuleSchema).default([]),
   standaloneItems: z.array(turmaEstruturaItemSchema).default([]),
 });
-
-const horarioSchema = z
-  .string()
-  .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Horário inválido. Use o formato HH:mm');
 
 const itemStatusSchema = z.enum(['RASCUNHO', 'PUBLICADA']);
 
@@ -316,6 +337,26 @@ export const createTurmaSchema = applyDateValidations(
         path: ['estrutura'],
         message: 'recuperacaoFinal só pode ser usado em itens do tipo PROVA',
       });
+    }
+
+    if ((item.horaInicio && !item.horaFim) || (!item.horaInicio && item.horaFim)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['estrutura'],
+        message: 'Informe horaInicio e horaFim juntos na estrutura',
+      });
+    }
+
+    if (item.horaInicio && item.horaFim) {
+      const startsAt = combineDateAndTime(item.startDate, item.horaInicio);
+      const endsAt = combineDateAndTime(item.endDate ?? item.startDate, item.horaFim);
+      if (!startsAt || !endsAt || endsAt <= startsAt) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['estrutura'],
+          message: 'Data e hora de término devem ser posteriores ao início na estrutura',
+        });
+      }
     }
   }
 

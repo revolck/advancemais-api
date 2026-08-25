@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { StatusInscricao } from '@prisma/client';
+import { CursosAvaliacaoTipo, Roles, StatusInscricao } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { notasService } from '../services/notas.service';
@@ -166,5 +166,95 @@ describe('notasService.listMeuHistoricoNota', () => {
     await expect(notasService.listMeuHistoricoNota('nota-1', alunoId)).rejects.toMatchObject({
       code: 'NOTA_NOT_FOUND',
     });
+  });
+});
+
+describe('notasService.listNotasGeral para instrutor', () => {
+  beforeEach(() => {
+    jest.restoreAllMocks();
+    jest.spyOn(prisma, '$queryRaw').mockResolvedValue([] as any);
+  });
+
+  it('calcula a mesma nota consolidada da turma completa, mesmo com escopo direto em apenas uma prova', async () => {
+    jest
+      .spyOn(prisma.cursosTurmas, 'findMany')
+      // buildInstrutorScope: instrutor não é principal da turma.
+      .mockResolvedValueOnce([] as any)
+      // buildInstrutorScope: turma vinculada por prova direta continua ativa.
+      .mockResolvedValueOnce([
+        {
+          id: 'turma-1',
+          cursoId: '33333333-3333-3333-3333-333333333333',
+        },
+      ] as any)
+      // listNotasConsolidadasParaInstrutor: turmas acessíveis via prova direta.
+      .mockResolvedValueOnce([
+        {
+          id: 'turma-1',
+          nome: 'Turma 1',
+          codigo: 'TRM001',
+          cursoId: '33333333-3333-3333-3333-333333333333',
+          Cursos: {
+            id: '33333333-3333-3333-3333-333333333333',
+            nome: 'Curso 1',
+          },
+        },
+      ] as any);
+    jest.spyOn(prisma.cursosTurmasInstrutores, 'findMany').mockResolvedValue([]);
+    jest.spyOn(prisma.cursosTurmasAulas, 'findMany').mockResolvedValue([]);
+    jest
+      .spyOn(prisma.cursosTurmasProvas, 'findMany')
+      // buildInstrutorScope: acesso direto apenas à prova-1.
+      .mockResolvedValueOnce([
+        {
+          id: 'prova-1',
+          turmaId: 'turma-1',
+          cursoId: '33333333-3333-3333-3333-333333333333',
+          tipo: CursosAvaliacaoTipo.PROVA,
+        },
+      ] as any)
+      // cálculo consolidado: turma possui prova-1 e prova-2 ativas.
+      .mockResolvedValueOnce([
+        { id: 'prova-1', turmaId: 'turma-1', tipo: CursosAvaliacaoTipo.PROVA, peso: 1 },
+        { id: 'prova-2', turmaId: 'turma-1', tipo: CursosAvaliacaoTipo.PROVA, peso: 1 },
+      ] as any);
+    jest.spyOn(prisma.cursosTurmas, 'count').mockResolvedValue(1);
+    jest.spyOn(prisma.cursosTurmasInscricoes, 'findMany').mockResolvedValue([
+      buildInscricao({
+        id: 'inscricao-1',
+        turmaId: 'turma-1',
+      }),
+    ] as any);
+    jest.spyOn(prisma.cursosTurmasProvasEnvios, 'findMany').mockResolvedValue([
+      {
+        provaId: 'prova-1',
+        inscricaoId: 'inscricao-1',
+        nota: 8,
+        atualizadoEm: new Date('2026-08-22T16:16:00.000Z'),
+      },
+    ] as any);
+    jest.spyOn(prisma.cursosNotas, 'findMany').mockResolvedValue([]);
+
+    const result = await notasService.listNotasGeral(
+      {
+        cursoId: '33333333-3333-3333-3333-333333333333',
+        turmaIds: ['turma-1'],
+        page: 1,
+        pageSize: 10,
+        orderBy: 'alunoNome',
+        order: 'asc',
+      },
+      { alunoId },
+      { userId: 'instrutor-1', role: Roles.INSTRUTOR },
+    );
+
+    expect(prisma.cursosTurmasProvasEnvios.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          provaId: { in: ['prova-1', 'prova-2'] },
+        }),
+      }),
+    );
+    expect(result.items[0].nota).toBe(4);
   });
 });

@@ -5,6 +5,7 @@ import { checkDatabaseConnection } from '@/utils/db-connection-check';
 import { parseScheduleConfig } from '@/utils/cron-helpers';
 import { notificarAulasProximas } from './notificar-aulas.cron';
 import { notificarProvasProximas } from './notificar-provas.cron';
+import { sincronizarGravacoesProximas } from './sincronizar-gravacoes.cron';
 import { runtimeConfigService } from '@/modules/configuracoes-gerais';
 
 const agendaLogger = logger.child({ module: 'AgendaCronJobs' });
@@ -47,6 +48,10 @@ async function resolveAgendaConfig(): Promise<AgendaCronConfig> {
       entrevistas: {
         enabled: process.env.AGENDA_CRON_ENTREVISTAS_ENABLED !== 'false',
         schedule: parseScheduleConfig(process.env.AGENDA_CRON_ENTREVISTAS_SCHEDULE, 15),
+      },
+      gravacoes: {
+        enabled: process.env.AGENDA_CRON_GRAVACOES_ENABLED !== 'false',
+        schedule: parseScheduleConfig(process.env.AGENDA_CRON_GRAVACOES_SCHEDULE, 60),
       },
     };
   }
@@ -186,6 +191,37 @@ export async function startEntrevistasNotificationJob(config?: AgendaCronConfig)
 }
 
 /**
+ * Iniciar cron job de sincronização de gravações do Google Meet
+ */
+export async function startGravacoesSyncJob(config?: AgendaCronConfig) {
+  if (process.env.NODE_ENV === 'test') {
+    agendaLogger.debug('Test environment detectado, pulando cron de sincronização de gravações');
+    return null;
+  }
+
+  const resolvedConfig = config ?? (await resolveAgendaConfig());
+  if (!resolvedConfig.gravacoes.enabled) {
+    agendaLogger.info('⏱️ Cron de sincronização de gravações desabilitado');
+    return null;
+  }
+
+  const schedule = resolvedConfig.gravacoes.schedule;
+
+  const task = cron.schedule(
+    schedule,
+    async () => {
+      await executeWithErrorHandling('sincronizar-gravacoes', sincronizarGravacoesProximas);
+    },
+    { scheduled: false },
+  );
+
+  task.start();
+  agendaLogger.info({ schedule }, '⏱️ Cron de sincronização de gravações iniciado');
+
+  return task;
+}
+
+/**
  * Iniciar todos os cron jobs de agenda
  */
 export async function stopAgendaCronJobs() {
@@ -209,6 +245,7 @@ export async function startAgendaCronJobs() {
       startAulasNotificationJob(config),
       startProvasNotificationJob(config),
       startEntrevistasNotificationJob(config),
+      startGravacoesSyncJob(config),
     ])
   ).filter(Boolean) as CronTask[]; // Remove nulls
 
@@ -221,6 +258,7 @@ export async function startAgendaCronJobs() {
         aulas: config.aulas.enabled,
         provas: config.provas.enabled,
         entrevistas: config.entrevistas.enabled,
+        gravacoes: config.gravacoes.enabled,
       },
     },
     '✅ Cron jobs de agenda iniciados',

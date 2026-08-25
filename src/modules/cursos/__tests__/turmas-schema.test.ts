@@ -59,6 +59,116 @@ describe('Turmas Schemas', () => {
       expect(result.success).toBe(true);
     });
 
+    it('aceita item da estrutura realizado em apenas um dia', () => {
+      const startDate = new Date(Date.now() + 35 * 24 * 60 * 60 * 1000);
+      startDate.setHours(0, 0, 0, 0);
+      const payload = {
+        ...baseCreate,
+        estrutura: {
+          modules: [
+            {
+              title: 'Módulo 1',
+              items: [
+                {
+                  type: 'AULA' as const,
+                  title: 'Aula no mesmo dia',
+                  templateId: uuidAula,
+                  startDate,
+                  endDate: startDate,
+                  horaInicio: '10:00',
+                  horaFim: '11:00',
+                },
+                {
+                  type: 'PROVA' as const,
+                  title: 'Prova 1',
+                  templateId: uuidProva,
+                },
+              ],
+            },
+          ],
+          standaloneItems: [],
+        },
+      };
+
+      const result = createTurmaSchema.safeParse(payload);
+      expect(result.success).toBe(true);
+    });
+
+    it('aceita item da estrutura atravessando dias quando término completo é posterior', () => {
+      const startDate = new Date(Date.now() + 35 * 24 * 60 * 60 * 1000);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 1);
+      const payload = {
+        ...baseCreate,
+        estrutura: {
+          modules: [
+            {
+              title: 'Módulo 1',
+              items: [
+                {
+                  type: 'AULA' as const,
+                  title: 'Aula atravessando dias',
+                  templateId: uuidAula,
+                  startDate,
+                  endDate,
+                  horaInicio: '18:00',
+                  horaFim: '07:00',
+                },
+                {
+                  type: 'PROVA' as const,
+                  title: 'Prova 1',
+                  templateId: uuidProva,
+                },
+              ],
+            },
+          ],
+          standaloneItems: [],
+        },
+      };
+
+      const result = createTurmaSchema.safeParse(payload);
+      expect(result.success).toBe(true);
+    });
+
+    it('rejeita item da estrutura com término antes do início no mesmo dia', () => {
+      const startDate = new Date(Date.now() + 35 * 24 * 60 * 60 * 1000);
+      startDate.setHours(0, 0, 0, 0);
+      const payload = {
+        ...baseCreate,
+        estrutura: {
+          modules: [
+            {
+              title: 'Módulo 1',
+              items: [
+                {
+                  type: 'AULA' as const,
+                  title: 'Aula inválida',
+                  templateId: uuidAula,
+                  startDate,
+                  endDate: startDate,
+                  horaInicio: '18:00',
+                  horaFim: '07:00',
+                },
+                {
+                  type: 'PROVA' as const,
+                  title: 'Prova 1',
+                  templateId: uuidProva,
+                },
+              ],
+            },
+          ],
+          standaloneItems: [],
+        },
+      };
+
+      const result = createTurmaSchema.safeParse(payload);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some((issue) => issue.message.includes('término'))).toBe(true);
+      }
+    });
+
     it('aceita payload válido PADRAO com standaloneItems (mínimo 1 AULA e 1 PROVA/ATIVIDADE)', () => {
       const payload = {
         ...baseCreate,

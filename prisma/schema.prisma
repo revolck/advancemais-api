@@ -630,6 +630,8 @@ model CursosTurmas {
   CursosRecuperacaoPagamentos CursosRecuperacaoPagamentos[]
   CursosTurmasRegrasAvaliacao CursosTurmasRegrasAvaliacao?
   cursosAulasProgressos       CursosAulasProgresso[]
+  CursosTurmasFrequenciaCheckpoints CursosTurmasFrequenciaCheckpoints[]
+  CursosTurmasAlertas               CursosTurmasAlertas[]
 
   @@index([cursoId])
   @@index([cursoId, criadoEm(sort: Desc)], map: "cursos_turmas_curso_criadoem_desc_idx")
@@ -650,6 +652,31 @@ model CursosTurmasInstrutores {
   @@unique([turmaId, instrutorId])
   @@index([turmaId])
   @@index([instrutorId])
+}
+
+model CursosTurmasFrequenciaCheckpoints {
+  id           String       @id @default(uuid())
+  turmaId      String
+  checkpoint   Int // 20, 40, 60, 80, 100
+  processadoEm DateTime     @default(now())
+  CursosTurmas CursosTurmas @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+
+  @@unique([turmaId, checkpoint])
+  @@index([turmaId])
+}
+
+model CursosTurmasAlertas {
+  id             String       @id @default(uuid())
+  turmaId        String
+  checkpoint     Int
+  token          String       @unique @db.VarChar(64)
+  alunosAfetados Json // snapshot: [{ alunoId, nomeCompleto, frequenciaPercentual }]
+  criadoEm       DateTime     @default(now())
+  expiraEm       DateTime
+  CursosTurmas   CursosTurmas @relation(fields: [turmaId], references: [id], onDelete: Cascade)
+
+  @@index([turmaId])
+  @@index([expiraEm])
 }
 
 model CursosTurmasAgenda {
@@ -695,11 +722,13 @@ model CursosTurmasAulas {
   status                        CursosAulaStatus                    @default(PUBLICADA)
   // Google Meet integração
   meetEventId                   String?                             @db.VarChar(255)
+  meetSpaceName                 String?                             @db.VarChar(255)
   // Configurações de gravação (apenas AO_VIVO)
   gravarAula                    Boolean?                            @default(true)
   linkGravacao                  String?                             @db.VarChar(2048)
   duracaoGravacao               Int?
   statusGravacao                String?                             @db.VarChar(50)
+  gravacaoDriveFileId           String?                             @db.VarChar(255)
   // Materiais complementares
   apenasMateriaisComplementares Boolean                             @default(false)
   // Controle de inserção
@@ -738,6 +767,7 @@ model CursosTurmasAulas {
   @@index([turmaId, ordem])
   @@index([status])
   @@index([modalidade])
+  @@index([modalidade, dataFim])
   @@index([criadoPorId])
   @@index([dataInicio, dataFim])
   @@index([deletedAt])
@@ -876,6 +906,7 @@ model CursosTurmasInscricoes {
   Usuarios                      Usuarios                             @relation(fields: [alunoId], references: [id], onDelete: Cascade)
   CursosTurmas                  CursosTurmas                         @relation(fields: [turmaId], references: [id], onDelete: Cascade)
   CursosTurmasProvasEnvios      CursosTurmasProvasEnvios[]
+  CursosTurmasProvasComentarios CursosTurmasProvasComentarios[]
   CursosTurmasRecuperacoes      CursosTurmasRecuperacoes[]
   CursosTurmasProvasRespostas   CursosTurmasProvasRespostas[]
   CursosTurmasAulasAcessos      CursosTurmasInscricoesAulasAcesso[]
@@ -957,6 +988,13 @@ model CursosTurmasProvas {
   horaTermino                   String?                              @db.VarChar(5)
   localizacao                   CursosLocalProva                     @default(TURMA)
   ordem                         Int                                  @default(0)
+  // Google Meet integração (somente modalidade AO_VIVO)
+  urlMeet                       String?                              @db.VarChar(2048)
+  meetEventId                   String?                              @db.VarChar(255)
+  meetSpaceName                 String?                              @db.VarChar(255)
+  linkGravacao                  String?                              @db.VarChar(2048)
+  gravacaoDriveFileId           String?                              @db.VarChar(255)
+  statusGravacao                String?                              @db.VarChar(50)
   criadoEm                      DateTime                             @default(now())
   atualizadoEm                  DateTime                             @default(now())
   CursosNotas                   CursosNotas[]
@@ -966,6 +1004,7 @@ model CursosTurmasProvas {
   CursosTurmasModulos           CursosTurmasModulos?                 @relation(fields: [moduloId], references: [id])
   Usuarios                      Usuarios?                            @relation(fields: [instrutorId], references: [id])
   CursosTurmasProvasEnvios      CursosTurmasProvasEnvios[]
+  CursosTurmasProvasComentarios CursosTurmasProvasComentarios[]
   CursosTurmasInscricoesAcessos CursosTurmasInscricoesProvasAcesso[]
   CursosTurmasRecuperacoes      CursosTurmasRecuperacoes[]
   CursosTurmasProvasQuestoes    CursosTurmasProvasQuestoes[]
@@ -978,6 +1017,7 @@ model CursosTurmasProvas {
   @@index([turmaId])
   @@index([instrutorId])
   @@index([status])
+  @@index([modalidade, dataFim])
 }
 
 model CursosTurmasInscricoesProvasAcesso {
@@ -1043,9 +1083,37 @@ model CursosTurmasProvasEnvios {
   CursosTurmasProvas          CursosTurmasProvas            @relation(fields: [provaId], references: [id], onDelete: Cascade)
   CursosTurmasRecuperacoes    CursosTurmasRecuperacoes[]
   CursosTurmasProvasRespostas CursosTurmasProvasRespostas[]
+  CursosTurmasProvasComentarios CursosTurmasProvasComentarios[]
 
   @@unique([provaId, inscricaoId])
   @@index([inscricaoId])
+}
+
+model CursosTurmasProvasComentarios {
+  id                       String                          @id @default(uuid())
+  provaId                  String
+  inscricaoId              String
+  envioId                  String?
+  parentId                 String?
+  autorId                  String
+  conteudo                 String                          @db.Text
+  anexos                   Json?
+  fixado                   Boolean                         @default(false)
+  deletedAt                DateTime?
+  criadoEm                 DateTime                        @default(now())
+  atualizadoEm             DateTime                        @updatedAt
+  CursosTurmasProvas       CursosTurmasProvas              @relation(fields: [provaId], references: [id], onDelete: Cascade)
+  CursosTurmasInscricoes   CursosTurmasInscricoes          @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
+  CursosTurmasProvasEnvios CursosTurmasProvasEnvios?       @relation(fields: [envioId], references: [id], onDelete: SetNull)
+  Parent                   CursosTurmasProvasComentarios?  @relation("CursosProvasComentariosThread", fields: [parentId], references: [id], onDelete: Cascade)
+  Replies                  CursosTurmasProvasComentarios[] @relation("CursosProvasComentariosThread")
+  Autor                    Usuarios                        @relation(fields: [autorId], references: [id], onDelete: Cascade)
+
+  @@index([provaId, inscricaoId])
+  @@index([envioId])
+  @@index([parentId])
+  @@index([autorId])
+  @@index([fixado, criadoEm])
 }
 
 model CursosTurmasRecuperacoes {
@@ -1550,6 +1618,7 @@ model Usuarios {
   CursosTurmas                                                                                              CursosTurmas[]
   CursosTurmasEditadas                                                                                      CursosTurmas[]                                @relation("TurmasEditadoPor")
   CursosTurmasInscricoes                                                                                    CursosTurmasInscricoes[]
+  CursosTurmasProvasComentarios                                                                             CursosTurmasProvasComentarios[]
   CursosRecuperacaoPagamentos                                                                               CursosRecuperacaoPagamentos[]
   EmpresasAuditoria_EmpresasAuditoria_alteradoPorToUsuarios                                                 EmpresasAuditoria[]                           @relation("EmpresasAuditoria_alteradoPorToUsuarios")
   EmpresasAuditoria_EmpresasAuditoria_empresaIdToUsuarios                                                   EmpresasAuditoria[]                           @relation("EmpresasAuditoria_empresaIdToUsuarios")
@@ -2736,6 +2805,7 @@ enum CursosAvaliacaoTipo {
 enum CursosAtividadeTipo {
   QUESTOES
   PERGUNTA_RESPOSTA
+  ENVIO_MATERIAL
 }
 
 enum CursosTipoQuestao {
@@ -3278,6 +3348,8 @@ enum NotificacaoTipo {
   TURMA_INICIO_BLOQUEADO_ESTRUTURA // Turma não iniciou por falta de estrutura
   TURMA_INICIO_REPROGRAMADO // Alunos avisados sobre reprogramação do início
   TURMA_NOVA_DATA_CONFIRMADA // Nova data da turma confirmada
+  TURMA_FREQUENCIA_ALERTA // Equipe: alunos abaixo do esperado num checkpoint de frequência
+  ALUNO_FREQUENCIA_BAIXA // Aluno: sua própria frequência está abaixo do esperado
   // Notificações gerais
   SISTEMA // Notificação do sistema
 }

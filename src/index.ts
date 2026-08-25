@@ -23,6 +23,7 @@ import { startBoletoWatcherJob } from '@/modules/mercadopago/assinaturas/cron/bo
 import { startBloqueiosWatcherJob } from '@/modules/usuarios/bloqueios/cron/bloqueio-watcher';
 import { startEstagiosWatcherJob } from '@/modules/cursos/cron/estagios-watcher';
 import { startTurmasStatusWatcherJob } from '@/modules/cursos/cron/turmas-status-watcher';
+import { startFrequenciaTurmaWatcherJob } from '@/modules/cursos/cron/frequencia-turma-watcher.cron';
 import { startCobrancaAutomaticaJob } from '@/modules/empresas/cartoes/cron/cobranca-automatica';
 import { startAgendaCronJobs } from '@/modules/cursos/aulas/cron/agenda-jobs';
 import { startRecipientListRecalculationWorker } from '@/modules/website/services/recipient-lists.service';
@@ -181,6 +182,7 @@ try {
       startBloqueiosWatcherJob();
       startEstagiosWatcherJob();
       startTurmasStatusWatcherJob();
+      startFrequenciaTurmaWatcherJob();
       void startCobrancaAutomaticaJob().catch((err) =>
         routerLogger.warn({ err }, '⚠️ Falha ao iniciar cron de cobrança automática'),
       );

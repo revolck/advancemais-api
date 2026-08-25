@@ -148,6 +148,7 @@ export const mapProva = (
     turmaId: prova.turmaId,
     moduloId: prova.moduloId ?? null,
     tipo: (prova as any).tipo ?? 'PROVA',
+    tipoAtividade: (prova as any).tipoAtividade ?? null,
     recuperacaoFinal: (prova as any).recuperacaoFinal ?? false,
     titulo: prova.titulo,
     etiqueta: prova.etiqueta,
@@ -159,6 +160,18 @@ export const mapProva = (
     ordem: prova.ordem,
     criadoEm: prova.criadoEm.toISOString(),
     atualizadoEm: prova.atualizadoEm.toISOString(),
+    // Instrutor, agendamento e Google Meet (somente modalidade AO_VIVO)
+    instrutorId: (prova as any).instrutorId ?? null,
+    instrutor: (prova as any).Usuarios
+      ? { id: (prova as any).Usuarios.id, nome: (prova as any).Usuarios.nomeCompleto }
+      : null,
+    modalidade: (prova as any).modalidade ?? 'ONLINE',
+    dataInicio: (prova as any).dataInicio?.toISOString() ?? null,
+    dataFim: (prova as any).dataFim?.toISOString() ?? null,
+    horaInicio: (prova as any).horaInicio ?? null,
+    horaTermino: (prova as any).horaTermino ?? null,
+    meetUrl: (prova as any).urlMeet ?? null,
+    meetEventId: (prova as any).meetEventId ?? null,
     // Campos para visão geral
     nome: prova.titulo,
     curso: prova.Cursos?.nome ?? null,

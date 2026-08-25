@@ -1146,15 +1146,8 @@ const listNotasConsolidadasParaInstrutor = async (
     },
   });
 
-  const provasAcessiveis = provas.filter((prova) =>
-    canAccessOrigemInScope(scope, {
-      turmaId: prova.turmaId ?? '',
-      tipoOrigem: prova.tipo === CursosAvaliacaoTipo.PROVA ? 'PROVA' : 'ATIVIDADE',
-      origemId: prova.id,
-    }),
-  );
   const provaMeta = new Map(
-    provasAcessiveis.map((prova) => [
+    provas.map((prova) => [
       prova.id,
       {
         turmaId: prova.turmaId ?? '',
@@ -1163,11 +1156,11 @@ const listNotasConsolidadasParaInstrutor = async (
     ]),
   );
 
-  const envios = provasAcessiveis.length
+  const envios = provas.length
     ? await prisma.cursosTurmasProvasEnvios.findMany({
         where: {
           inscricaoId: { in: inscricaoIds },
-          provaId: { in: provasAcessiveis.map((prova) => prova.id) },
+          provaId: { in: provas.map((prova) => prova.id) },
         },
         select: {
           inscricaoId: true,
@@ -1218,7 +1211,7 @@ const listNotasConsolidadasParaInstrutor = async (
       atualizadoEm: string | null;
     }
   >();
-  for (const manual of manuaisAcessiveis) {
+  for (const manual of manuais) {
     const current = manuaisPorInscricao.get(manual.inscricaoId) ?? {
       soma: 0,
       atualizadoEm: null,
@@ -1239,25 +1232,41 @@ const listNotasConsolidadasParaInstrutor = async (
       atualizadoEm: string | null;
     }
   >();
-  for (const envio of envios) {
-    const meta = provaMeta.get(envio.provaId);
-    if (!meta) {
-      continue;
-    }
 
-    const current = enviosPorInscricao.get(envio.inscricaoId) ?? {
+  const enviosPorInscricaoProva = new Map<string, (typeof envios)[number]>();
+  for (const envio of envios) {
+    enviosPorInscricaoProva.set(`${envio.inscricaoId}:${envio.provaId}`, envio);
+  }
+
+  for (const inscricao of inscricoes) {
+    const current = {
       somaPonderada: 0,
       somaPesos: 0,
-      atualizadoEm: null,
+      atualizadoEm: null as string | null,
     };
-    const peso = Number(meta.peso ?? 0);
-    current.somaPonderada += Number(envio.nota ?? 0) * peso;
-    current.somaPesos += peso;
-    const atualizadoEm = envio.atualizadoEm.toISOString();
-    if (!current.atualizadoEm || compareNullableDates(current.atualizadoEm, atualizadoEm) < 0) {
-      current.atualizadoEm = atualizadoEm;
+
+    for (const prova of provas) {
+      const meta = provaMeta.get(prova.id);
+      if (!meta || meta.turmaId !== inscricao.turmaId) {
+        continue;
+      }
+
+      const peso = Number(meta.peso ?? 0);
+      const envio = enviosPorInscricaoProva.get(`${inscricao.id}:${prova.id}`);
+      current.somaPonderada += Number(envio?.nota ?? 0) * peso;
+      current.somaPesos += peso;
+
+      if (envio?.atualizadoEm) {
+        const atualizadoEm = envio.atualizadoEm.toISOString();
+        if (!current.atualizadoEm || compareNullableDates(current.atualizadoEm, atualizadoEm) < 0) {
+          current.atualizadoEm = atualizadoEm;
+        }
+      }
     }
-    enviosPorInscricao.set(envio.inscricaoId, current);
+
+    if (current.somaPesos > 0) {
+      enviosPorInscricao.set(inscricao.id, current);
+    }
   }
 
   const items = inscricoes.map((inscricao) => {

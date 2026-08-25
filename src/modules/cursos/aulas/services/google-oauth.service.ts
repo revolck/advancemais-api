@@ -18,6 +18,10 @@ function getRedirectUri(): string {
 const SCOPES = [
   'https://www.googleapis.com/auth/calendar',
   'https://www.googleapis.com/auth/calendar.events',
+  // Configurar a sala do Meet (accessType, moderação, gravação automática)
+  'https://www.googleapis.com/auth/meetings.space.settings',
+  // Ler conferenceRecords/recordings após a aula ao vivo terminar
+  'https://www.googleapis.com/auth/meetings.space.readonly',
 ];
 
 async function getGoogleOAuthCredentials() {
@@ -90,20 +94,24 @@ export const googleOAuthService = {
 
   /**
    * Gerar URL de autorização Google
+   * `returnTo` (opcional, caminho relativo já validado pelo controller) é embutido no
+   * `state` para o callback saber para onde redirecionar o navegador ao final.
    */
-  async generateAuthUrl(usuarioId: string): Promise<string> {
+  async generateAuthUrl(usuarioId: string, returnTo?: string): Promise<string> {
     const { clientId, clientSecret } = await getGoogleOAuthCredentials();
 
     const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, getRedirectUri());
+
+    const state = returnTo ? `${usuarioId}::${encodeURIComponent(returnTo)}` : usuarioId;
 
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: SCOPES,
       prompt: 'consent', // Força refresh token
-      state: usuarioId, // Passar usuarioId no state para recuperar no callback
+      state,
     });
 
-    oauthLogger.info('[OAUTH] URL de autorização gerada', { usuarioId });
+    oauthLogger.info('[OAUTH] URL de autorização gerada', { usuarioId, returnTo });
 
     return authUrl;
   },

@@ -29,10 +29,30 @@ import {
   provaWithEnviosInclude,
   provaWithEnviosAndQuestoesInclude,
 } from './provas.mapper';
+import { meetOrchestrationService } from '../aulas/services/meet-orchestration.service';
+import { googleCalendarService } from '../aulas/services/google-calendar.service';
+import { resolveOrganizadorId } from '../aulas/services/meet-attendees.helper';
 
 type PrismaClientOrTx = Prisma.TransactionClient | typeof prisma;
 
 const provasLogger = logger.child({ module: 'CursosProvasService' });
+
+// Mapear modalidade do input para enum do banco (API → Banco) — mesma convenção de aulas.service.ts
+function mapModalidade(modalidade: string): any {
+  const map: Record<string, string> = {
+    ONLINE: 'ONLINE',
+    PRESENCIAL: 'PRESENCIAL',
+    AO_VIVO: 'LIVE',
+    SEMIPRESENCIAL: 'SEMIPRESENCIAL',
+  };
+  return map[modalidade] || modalidade;
+}
+
+function combinarDataHora(dataYmd?: string | null, horaHm?: string | null): Date | null {
+  if (!dataYmd) return null;
+  if (!horaHm) return new Date(`${dataYmd}T00:00:00.000Z`);
+  return new Date(`${dataYmd}T${horaHm}:00.000Z`);
+}
 
 const turmaJaFoiIniciada = (turma: {
   status?: CursoStatus | null;
@@ -494,13 +514,20 @@ export const provasService = {
       ativo?: boolean;
       ordem?: number | null;
       tipo?: 'PROVA' | 'ATIVIDADE';
+      tipoAtividade?: 'QUESTOES' | 'TEXTO' | 'PERGUNTA_RESPOSTA' | 'ENVIO_MATERIAL' | null;
+      instrutorId?: string | null;
+      modalidade?: 'ONLINE' | 'PRESENCIAL' | 'AO_VIVO' | 'SEMIPRESENCIAL';
+      dataInicio?: string;
+      dataFim?: string;
+      horaInicio?: string;
+      horaFim?: string;
     },
     criadoPor?: string,
     ip?: string,
     userAgent?: string,
     usuarioLogado?: { id?: string | null; role?: Roles | null },
   ) {
-    return prisma.$transaction(async (tx) => {
+    const provaId = await prisma.$transaction(async (tx) => {
       const turma = await tx.cursosTurmas.findFirst({
         where: { id: turmaId, cursoId, deletedAt: null },
         select: {
@@ -555,6 +582,12 @@ export const provasService = {
 
       const ordem = data.ordem ?? (await tx.cursosTurmasProvas.count({ where: { turmaId } })) + 1;
       const tipo = data.tipo ?? 'PROVA';
+      const tipoAtividade =
+        tipo === 'ATIVIDADE'
+          ? data.tipoAtividade === 'TEXTO'
+            ? 'PERGUNTA_RESPOSTA'
+            : (data.tipoAtividade ?? null)
+          : null;
 
       const prova = await tx.cursosTurmasProvas.create({
         data: {
@@ -562,6 +595,7 @@ export const provasService = {
           turmaId,
           moduloId: data.moduloId ?? null,
           tipo: tipo as any,
+          tipoAtividade: tipoAtividade as any,
           titulo: data.titulo,
           etiqueta: data.etiqueta,
           descricao: data.descricao ?? null,
@@ -570,6 +604,14 @@ export const provasService = {
           ativo: data.ativo ?? true,
           ordem,
           localizacao: data.moduloId ? CursosLocalProva.MODULO : CursosLocalProva.TURMA,
+          instrutorId:
+            data.instrutorId ??
+            (usuarioLogado?.role === Roles.INSTRUTOR ? (usuarioLogado.id ?? null) : null),
+          modalidade: data.modalidade ? mapModalidade(data.modalidade) : undefined,
+          dataInicio: combinarDataHora(data.dataInicio, data.horaInicio),
+          dataFim: combinarDataHora(data.dataFim, data.horaFim),
+          horaInicio: data.horaInicio ?? null,
+          horaTermino: data.horaFim ?? null,
         },
         ...provaDefaultInclude,
       });
@@ -611,9 +653,6 @@ export const provasService = {
         }
       }
 
-      // Buscar informações do criador para retornar
-      const criadoPorInfo = criadoPor ? await fetchCriadorInfo(prova.id) : null;
-
       if (usuarioLogado?.role === Roles.PEDAGOGICO && turmaJaFoiIniciada(turma)) {
         try {
           await notificacoesHelper.notificarAlunosDaTurma(turmaId, {
@@ -638,8 +677,13 @@ export const provasService = {
         }
       }
 
-      return mapProva(prova, criadoPorInfo);
+      return prova.id;
     });
+
+    // Fora da transação: chamadas à Google API não devem segurar conexão/lock do Postgres.
+    await meetOrchestrationService.ensureMeetParaProvaOuAtividade(provaId);
+
+    return fetchProva(prisma, provaId);
   },
 
   async update(
@@ -655,10 +699,18 @@ export const provasService = {
       moduloId?: string | null;
       ativo?: boolean;
       ordem?: number | null;
+      tipo?: 'PROVA' | 'ATIVIDADE';
+      tipoAtividade?: 'QUESTOES' | 'TEXTO' | 'PERGUNTA_RESPOSTA' | 'ENVIO_MATERIAL' | null;
+      instrutorId?: string | null;
+      modalidade?: 'ONLINE' | 'PRESENCIAL' | 'AO_VIVO' | 'SEMIPRESENCIAL';
+      dataInicio?: string;
+      dataFim?: string;
+      horaInicio?: string;
+      horaFim?: string;
     },
     usuarioLogado?: { id?: string | null; role?: Roles | null },
   ) {
-    return prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx) => {
       await ensureProvaBelongsToTurma(tx, cursoId, turmaId, provaId, { forEdit: true });
 
       if (usuarioLogado?.role === Roles.INSTRUTOR) {
@@ -679,6 +731,15 @@ export const provasService = {
       await tx.cursosTurmasProvas.update({
         where: { id: provaId },
         data: {
+          tipo: data.tipo ?? undefined,
+          tipoAtividade:
+            data.tipo === 'ATIVIDADE'
+              ? data.tipoAtividade === 'TEXTO'
+                ? 'PERGUNTA_RESPOSTA'
+                : (data.tipoAtividade ?? null)
+              : data.tipo === 'PROVA'
+                ? null
+                : undefined,
           titulo: data.titulo ?? undefined,
           etiqueta: data.etiqueta ?? undefined,
           descricao: data.descricao ?? undefined,
@@ -693,13 +754,30 @@ export const provasService = {
                 ? CursosLocalProva.MODULO
                 : CursosLocalProva.TURMA
               : undefined,
+          instrutorId: data.instrutorId === undefined ? undefined : data.instrutorId,
+          modalidade: data.modalidade ? mapModalidade(data.modalidade) : undefined,
+          dataInicio:
+            data.dataInicio !== undefined
+              ? combinarDataHora(data.dataInicio, data.horaInicio)
+              : undefined,
+          dataFim:
+            data.dataFim !== undefined ? combinarDataHora(data.dataFim, data.horaFim) : undefined,
+          horaInicio: data.horaInicio ?? undefined,
+          horaTermino: data.horaFim ?? undefined,
         },
       });
 
       provasLogger.info({ turmaId, provaId }, 'Prova atualizada com sucesso');
-
-      return fetchProva(tx, provaId);
     });
+
+    // Fix "instrutor tardio": se o instrutor foi vinculado nesta edição, tenta criar o
+    // Meet agora (idempotente — ensureMeetParaProvaOuAtividade não faz nada se já existir
+    // meetEventId ou a prova não for elegível).
+    if (data.instrutorId !== undefined && data.instrutorId !== null) {
+      await meetOrchestrationService.ensureMeetParaProvaOuAtividade(provaId);
+    }
+
+    return fetchProva(prisma, provaId);
   },
 
   async remove(
@@ -708,7 +786,7 @@ export const provasService = {
     provaId: string,
     usuarioLogado?: { id?: string | null; role?: Roles | null },
   ) {
-    return prisma.$transaction(async (tx) => {
+    const provaRemovida = await prisma.$transaction(async (tx) => {
       await ensureProvaBelongsToTurma(tx, cursoId, turmaId, provaId);
 
       if (usuarioLogado?.role === Roles.INSTRUTOR) {
@@ -722,12 +800,37 @@ export const provasService = {
         await ensureInstrutorPodeAcessarProva(tx, provaId, scope);
       }
 
+      const provaAnterior = await tx.cursosTurmasProvas.findUnique({
+        where: { id: provaId },
+        select: { meetEventId: true, instrutorId: true },
+      });
+
       await tx.cursosTurmasProvas.delete({ where: { id: provaId } });
 
       provasLogger.info({ turmaId, provaId }, 'Prova removida com sucesso');
 
-      return { success: true } as const;
+      return provaAnterior;
     });
+
+    if (provaRemovida?.meetEventId) {
+      try {
+        const turma = await prisma.cursosTurmas.findUnique({
+          where: { id: turmaId },
+          select: { instrutorId: true, CursosTurmasInstrutores: { select: { instrutorId: true } } },
+        });
+        const organizadorId = turma && resolveOrganizadorId(provaRemovida.instrutorId, turma);
+        if (organizadorId) {
+          await googleCalendarService.deleteEvent(provaRemovida.meetEventId, organizadorId);
+        }
+      } catch (error: any) {
+        provasLogger.warn(
+          { err: error, provaId },
+          'Falha ao cancelar evento do Meet ao remover prova',
+        );
+      }
+    }
+
+    return { success: true } as const;
   },
 
   async registrarNota(

@@ -8,6 +8,7 @@ import { CursosController } from '../controllers/cursos.controller';
 import { CategoriasController } from '../controllers/categorias.controller';
 import { AulasController } from '../controllers/aulas.controller';
 import { TurmasController } from '../controllers/turmas.controller';
+import { TurmaAlertasController } from '../controllers/turma-alertas.controller';
 import { ModulosController } from '../controllers/modulos.controller';
 import { ProvasController } from '../controllers/provas.controller';
 import { QuestoesController } from '../controllers/questoes.controller';
@@ -148,6 +149,55 @@ router.patch(
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   cursosAvaliacoesInvalidateCacheOnMutation,
   AvaliacoesController.corrigirResposta,
+);
+router.get(
+  '/avaliacoes/:avaliacaoId/respostas/:respostaId/comentarios',
+  supabaseAuthMiddleware([
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.PEDAGOGICO,
+    Roles.INSTRUTOR,
+    Roles.ALUNO_CANDIDATO,
+  ]),
+  AvaliacoesController.listComentariosResposta,
+);
+router.post(
+  '/avaliacoes/:avaliacaoId/respostas/:respostaId/comentarios',
+  supabaseAuthMiddleware([
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.PEDAGOGICO,
+    Roles.INSTRUTOR,
+    Roles.ALUNO_CANDIDATO,
+  ]),
+  AvaliacoesController.createComentarioResposta,
+);
+router.put(
+  '/avaliacoes/:avaliacaoId/respostas/:respostaId/comentarios/:comentarioId',
+  supabaseAuthMiddleware([
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.PEDAGOGICO,
+    Roles.INSTRUTOR,
+    Roles.ALUNO_CANDIDATO,
+  ]),
+  AvaliacoesController.updateComentarioResposta,
+);
+router.delete(
+  '/avaliacoes/:avaliacaoId/respostas/:respostaId/comentarios/:comentarioId',
+  supabaseAuthMiddleware([
+    Roles.ADMIN,
+    Roles.MODERADOR,
+    Roles.PEDAGOGICO,
+    Roles.INSTRUTOR,
+    Roles.ALUNO_CANDIDATO,
+  ]),
+  AvaliacoesController.deleteComentarioResposta,
+);
+router.patch(
+  '/avaliacoes/:avaliacaoId/respostas/:respostaId/comentarios/:comentarioId/fixar',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  AvaliacoesController.fixarComentarioResposta,
 );
 router.put(
   '/avaliacoes/:id',
@@ -4558,6 +4608,16 @@ router.delete(
   '/:cursoId/turmas/:turmaId/frequencias/:frequenciaId',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
   FrequenciaController.delete,
+);
+
+/**
+ * Detalhe de um alerta de qualidade/frequência da turma (token válido por 7 dias).
+ * GET /api/v1/cursos/turmas/:turmaId/alertas/:token
+ */
+router.get(
+  '/turmas/:turmaId/alertas/:token',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  TurmaAlertasController.get,
 );
 
 /**

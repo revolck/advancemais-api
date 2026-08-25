@@ -10,6 +10,16 @@ const GOOGLE_MEET_URI_REGEX =
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * Extrai o código da sala (ex: "abc-defg-hij") de uma URL do Google Meet.
+ * Usado para montar o nome de recurso "spaces/{code}" da Meet REST API.
+ */
+export const extractMeetingCodeFromUrl = (meetUrl: string | null | undefined): string | null => {
+  if (!meetUrl) return null;
+  const match = meetUrl.match(/meet\.google\.com\/([a-z]{3}-[a-z]{4}-[a-z]{3})/i);
+  return match ? match[1] : null;
+};
+
 const extractMeetUrlFromEvent = (event: any): string | null => {
   const hangoutLink = event?.hangoutLink?.trim();
   if (hangoutLink && GOOGLE_MEET_URI_REGEX.test(hangoutLink)) {
@@ -45,6 +55,12 @@ export const googleCalendarService = {
     dataFim: Date;
     instrutorId: string;
     alunoEmails?: string[];
+    /**
+     * E-mails adicionados após a criação, via patch com sendUpdates:'none'
+     * (ex: ADMIN/MODERADOR/PEDAGOGICO/institucionais) — não recebem e-mail de convite,
+     * evitando ruído de agenda para uma lista potencialmente grande de gestores.
+     */
+    adicionaisSilenciosos?: string[];
     requestId?: string;
     externalReferenceId?: string;
   }): Promise<{ eventId: string; meetUrl: string }> {
@@ -115,6 +131,28 @@ export const googleCalendarService = {
 
       if (!meetUrl) {
         throw new Error('Google não retornou uma URL válida do Meet para o evento criado.');
+      }
+
+      if (params.adicionaisSilenciosos?.length) {
+        try {
+          await calendar.events.patch({
+            calendarId: 'primary',
+            eventId,
+            sendUpdates: 'none',
+            requestBody: {
+              // events.patch substitui a lista inteira de attendees — reenviar quem já foi convidado
+              attendees: [
+                ...(params.alunoEmails ?? []).map((email) => ({ email })),
+                ...params.adicionaisSilenciosos.map((email) => ({ email })),
+              ],
+            },
+          });
+        } catch (error: any) {
+          calendarLogger.warn('[MEET_ADICIONAIS_SILENCIOSOS_ERRO]', {
+            eventId,
+            error: error?.message,
+          });
+        }
       }
 
       calendarLogger.info('[MEET_CRIADO]', {

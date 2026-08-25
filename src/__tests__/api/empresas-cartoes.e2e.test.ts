@@ -6,16 +6,13 @@ import { prisma } from '@/config/prisma';
 import { cartoesRoutes } from '@/modules/empresas/cartoes';
 
 jest.mock('@/modules/usuarios/auth', () => ({
-  supabaseAuthMiddleware: jest.fn(
-    () =>
-      (req: any, _res: any, next: any): void => {
-        req.user = {
-          id: 'empresa-1',
-          role: 'EMPRESA',
-        };
-        next();
-      },
-  ),
+  supabaseAuthMiddleware: jest.fn(() => (req: any, _res: any, next: any): void => {
+    req.user = {
+      id: 'empresa-1',
+      role: 'EMPRESA',
+    };
+    next();
+  }),
 }));
 
 jest.mock('@/config/mercadopago', () => {
@@ -200,17 +197,15 @@ describe('API - Cartões de empresas', () => {
   });
 
   it('deve retornar INVALID_CARD_TOKEN quando Mercado Pago rejeita token do cartão', async () => {
-    (prisma.$queryRaw as jest.Mock)
-      .mockResolvedValueOnce([{ count: 0n }])
-      .mockResolvedValueOnce([
-        {
-          id: 'empresa-1',
-          nomeCompleto: 'Empresa Token Inválido Teste',
-          email: 'empresa-cartao-token-invalido@test.com',
-          cnpj: '33444555000166',
-          mpCustomerId: null,
-        },
-      ]);
+    (prisma.$queryRaw as jest.Mock).mockResolvedValueOnce([{ count: 0n }]).mockResolvedValueOnce([
+      {
+        id: 'empresa-1',
+        nomeCompleto: 'Empresa Token Inválido Teste',
+        email: 'empresa-cartao-token-invalido@test.com',
+        cnpj: '33444555000166',
+        mpCustomerId: null,
+      },
+    ]);
     customerCardCreateSpy.mockRejectedValueOnce(new Error('invalid card token'));
 
     await request(app)

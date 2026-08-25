@@ -160,8 +160,9 @@ const getAvaliacao = async (avaliacaoId: string, usuarioLogado: UsuarioLogado) =
     cursoId: string | null;
     turmaId: string | null;
     titulo: string;
+    descricao?: string | null;
     tipo: 'PROVA' | 'ATIVIDADE';
-    tipoAtividade: 'QUESTOES' | 'PERGUNTA_RESPOSTA' | null;
+    tipoAtividade: 'QUESTOES' | 'PERGUNTA_RESPOSTA' | 'ENVIO_MATERIAL' | null;
     peso: number;
     valePonto: boolean;
     questoes?: {
@@ -692,7 +693,11 @@ export const avaliacoesRespostasService = {
     const ipPorEntidade = mapIpPorEntidade(logsIp);
     const ipEnvio = ipPorEntidade.get(context.groupId) ?? null;
 
-    if (avaliacao.tipo === 'ATIVIDADE' && avaliacao.tipoAtividade === 'PERGUNTA_RESPOSTA') {
+    if (
+      avaliacao.tipo === 'ATIVIDADE' &&
+      (avaliacao.tipoAtividade === 'PERGUNTA_RESPOSTA' ||
+        avaliacao.tipoAtividade === 'ENVIO_MATERIAL')
+    ) {
       const questao = avaliacao.questoes?.[0] ?? null;
       const resposta = respostas[0] ?? null;
       const anexos = respostas
@@ -714,7 +719,7 @@ export const avaliacoesRespostasService = {
             nomeCompleto: inscricao.Usuarios.nomeCompleto,
             cpf: inscricao.Usuarios.cpf,
           },
-          enunciado: questao?.enunciado ?? avaliacao.titulo,
+          enunciado: questao?.enunciado ?? avaliacao.descricao ?? avaliacao.titulo,
           respostaAluno: {
             texto: resposta?.respostaTexto ?? null,
             anexos,

@@ -1,5 +1,32 @@
 import { z } from 'zod';
 
+const modalidadeEnum = z.enum(['ONLINE', 'PRESENCIAL', 'AO_VIVO', 'SEMIPRESENCIAL']);
+const tipoAvaliacaoEnum = z.enum(['PROVA', 'ATIVIDADE']);
+const tipoAtividadeEnum = z.enum(['QUESTOES', 'TEXTO', 'PERGUNTA_RESPOSTA', 'ENVIO_MATERIAL']);
+
+const dataYmdSchema = z
+  .preprocess(
+    (value) => {
+      if (!value || value === '') return undefined;
+      const strValue = value instanceof Date ? value.toISOString() : String(value);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(strValue)) return strValue;
+      const dateMatch = strValue.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (dateMatch) return dateMatch[1];
+      const date = new Date(strValue);
+      return Number.isNaN(date.getTime()) ? strValue : date.toISOString().split('T')[0];
+    },
+    z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato: YYYY-MM-DD')
+      .optional(),
+  )
+  .optional();
+
+const horaHmSchema = z
+  .string()
+  .regex(/^\d{2}:\d{2}$/, 'Formato: HH:MM')
+  .optional();
+
 const ordemSchema = z
   .number({ invalid_type_error: 'Ordem deve ser um número' })
   .int('Ordem deve ser inteiro')
@@ -54,6 +81,8 @@ const dataSchema = z
 const provaBaseSchema = z.object({
   titulo: z.string().trim().min(3).max(255),
   etiqueta: z.string().trim().min(1).max(30),
+  tipo: tipoAvaliacaoEnum.optional().default('PROVA'),
+  tipoAtividade: tipoAtividadeEnum.optional().nullable(),
   descricao: z
     .string({ invalid_type_error: 'Descrição deve ser um texto' })
     .trim()
@@ -67,6 +96,19 @@ const provaBaseSchema = z.object({
     .nullish(),
   ativo: z.boolean().optional(),
   ordem: ordemSchema.optional(),
+  // Instrutor responsável e agendamento — usados apenas quando modalidade === 'AO_VIVO'
+  // para criar a sala do Google Meet (ver meetOrchestrationService.ensureMeetParaProvaOuAtividade)
+  instrutorId: z
+    .string({ invalid_type_error: 'Identificador do instrutor deve ser um texto' })
+    .uuid('Identificador de instrutor inválido')
+    .nullish(),
+  modalidade: modalidadeEnum.optional(),
+  dataInicio: dataYmdSchema,
+  dataFim: dataYmdSchema,
+  horaInicio: horaHmSchema,
+  // O frontend envia "horaFim" (não "horaTermino") no payload desta rota — mapeado para
+  // a coluna `horaTermino` do Prisma dentro de provas.service.ts.
+  horaFim: horaHmSchema,
 });
 
 export const createProvaSchema = provaBaseSchema;

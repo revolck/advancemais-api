@@ -1239,13 +1239,13 @@ export const avaliacoesService = {
 
       // Questões:
       // - PROVA e ATIVIDADE(QUESTOES): substitui pelo payload
-      // - ATIVIDADE(PERGUNTA_RESPOSTA): remove quaisquer questões antigas
+      // - ATIVIDADE sem questões: remove quaisquer questões antigas
       if (data.questoes) {
         await tx.cursosTurmasProvasQuestoes.deleteMany({ where: { provaId: avaliacaoId } });
         await createQuestoes(tx, avaliacaoId, data.questoes);
       } else if (
         data.tipo === CursosAvaliacaoTipo.ATIVIDADE &&
-        data.tipoAtividade === CursosAtividadeTipo.PERGUNTA_RESPOSTA
+        data.tipoAtividade !== CursosAtividadeTipo.QUESTOES
       ) {
         await tx.cursosTurmasProvasQuestoes.deleteMany({ where: { provaId: avaliacaoId } });
       }

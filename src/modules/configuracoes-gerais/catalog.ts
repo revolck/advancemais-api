@@ -566,6 +566,22 @@ export const CONFIG_DEFINITIONS: ConfigDefinition[] = [
     envKeys: ['AGENDA_CRON_ENTREVISTAS_SCHEDULE'],
     defaultValue: '15',
   },
+  {
+    category: 'agenda',
+    key: 'agenda_cron_gravacoes_enabled',
+    label: 'Cron de sincronização de gravações ativo',
+    type: 'boolean',
+    envKeys: ['AGENDA_CRON_GRAVACOES_ENABLED'],
+    defaultValue: true,
+  },
+  {
+    category: 'agenda',
+    key: 'agenda_cron_gravacoes_schedule',
+    label: 'Agenda cron gravações',
+    type: 'cron',
+    envKeys: ['AGENDA_CRON_GRAVACOES_SCHEDULE'],
+    defaultValue: '60',
+  },
 
   // Logs
   {
@@ -628,6 +644,14 @@ export const CONFIG_DEFINITIONS: ConfigDefinition[] = [
     type: 'string',
     envKeys: ['GOOGLE_CLIENT_SECRET'],
     secret: true,
+  },
+  {
+    category: 'integracoes',
+    key: 'google_meet_institutional_admin_emails',
+    label: 'E-mails institucionais administradores das salas do Meet',
+    type: 'csv',
+    envKeys: ['GOOGLE_MEET_INSTITUTIONAL_ADMIN_EMAILS'],
+    defaultValue: 'aulas@advancerh.page,pedagogico@advancerh.com.br',
   },
 ];
 

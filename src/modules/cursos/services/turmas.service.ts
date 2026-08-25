@@ -23,6 +23,7 @@ import {
 import { logger } from '@/utils/logger';
 
 import { notificacoesHelper } from '../aulas/services/notificacoes-helper.service';
+import { meetOrchestrationService } from '../aulas/services/meet-orchestration.service';
 import { generateUniqueInscricaoCode, generateUniqueTurmaCode } from '../utils/code-generator';
 import { aulaWithMateriaisInclude } from './aulas.mapper';
 import { moduloDetailedInclude } from './modulos.mapper';
@@ -40,6 +41,8 @@ type TurmaEstruturaItemInput = {
   strategy?: 'CLONE' | 'REFERENCE';
   startDate?: Date;
   endDate?: Date;
+  horaInicio?: string;
+  horaFim?: string;
   instructorId?: string;
   instructorIds?: string[];
   obrigatoria?: boolean;
@@ -1048,6 +1051,8 @@ const cloneAulaTemplateToTurma = async (
     title?: string;
     dataInicio?: Date;
     dataFim?: Date;
+    horaInicio?: string | null;
+    horaFim?: string | null;
     instrutorId?: string | null;
     obrigatoria?: boolean;
     criadoPorId?: string | null;
@@ -1129,8 +1134,8 @@ const cloneAulaTemplateToTurma = async (
           adicionadaAposCriacao: false,
           dataInicio: params.dataInicio ?? template.dataInicio ?? null,
           dataFim: params.dataFim ?? template.dataFim ?? null,
-          horaInicio: template.horaInicio ?? null,
-          horaFim: template.horaFim ?? null,
+          horaInicio: params.horaInicio ?? template.horaInicio ?? null,
+          horaFim: params.horaFim ?? template.horaFim ?? null,
           criadoPorId: params.criadoPorId ?? null,
         },
         select: { id: true },
@@ -1183,6 +1188,8 @@ const cloneAvaliacaoTemplateToTurma = async (
     title?: string;
     dataInicio?: Date;
     dataFim?: Date;
+    horaInicio?: string | null;
+    horaFim?: string | null;
     instrutorId?: string | null;
     obrigatoria?: boolean;
     recuperacaoFinal?: boolean;
@@ -1264,8 +1271,8 @@ const cloneAvaliacaoTemplateToTurma = async (
       obrigatoria: params.obrigatoria ?? template.obrigatoria ?? true,
       dataInicio: params.dataInicio ?? template.dataInicio ?? null,
       dataFim: params.dataFim ?? template.dataFim ?? null,
-      horaInicio: template.horaInicio ?? null,
-      horaTermino: template.horaTermino ?? null,
+      horaInicio: params.horaInicio ?? template.horaInicio ?? null,
+      horaTermino: params.horaFim ?? template.horaTermino ?? null,
       ordem: params.ordem,
       localizacao: params.moduloId ? 'MODULO' : 'TURMA',
     },
@@ -2122,6 +2129,8 @@ export const turmasService = {
               title: item.title,
               dataInicio: dataInicioResolved,
               dataFim: dataFimResolved,
+              horaInicio: item.horaInicio,
+              horaFim: item.horaFim,
               instrutorId: instrutorIdResolved,
               obrigatoria: item.obrigatoria,
               criadoPorId: actor?.id ?? null,
@@ -2145,6 +2154,8 @@ export const turmasService = {
               title: item.title,
               dataInicio: dataInicioResolved,
               dataFim: dataFimResolved,
+              horaInicio: item.horaInicio,
+              horaFim: item.horaFim,
               instrutorId: instrutorIdResolved,
               obrigatoria: item.obrigatoria,
               recuperacaoFinal: item.recuperacaoFinal,
@@ -2176,6 +2187,8 @@ export const turmasService = {
             title: item.title,
             dataInicio: item.startDate,
             dataFim: item.endDate,
+            horaInicio: item.horaInicio,
+            horaFim: item.horaFim,
             instrutorId: instrutorIdResolved,
             obrigatoria: item.obrigatoria,
             criadoPorId: actor?.id ?? null,
@@ -2199,6 +2212,8 @@ export const turmasService = {
             title: item.title,
             dataInicio: item.startDate,
             dataFim: item.endDate,
+            horaInicio: item.horaInicio,
+            horaFim: item.horaFim,
             instrutorId: instrutorIdResolved,
             obrigatoria: item.obrigatoria,
             recuperacaoFinal: item.recuperacaoFinal,
@@ -2218,6 +2233,17 @@ export const turmasService = {
         mapping,
       };
     });
+
+    // Fora da transação: aulas/provas clonadas para a turma (cloneAulaTemplateToTurma/
+    // cloneAvaliacaoTemplateToTurma) não passam por aulas.service.ts/provas.service.ts,
+    // então o hook de criação do Meet precisa ser disparado aqui explicitamente.
+    for (const item of created.mapping) {
+      if (item.tipo === 'AULA') {
+        await meetOrchestrationService.ensureMeetParaAula(item.instanceId);
+      } else {
+        await meetOrchestrationService.ensureMeetParaProvaOuAtividade(item.instanceId);
+      }
+    }
 
     const turmaDetailed = await fetchTurmaDetailed(prisma, created.turmaId);
     return {
@@ -2623,7 +2649,7 @@ export const turmasService = {
     payload: AppendTurmaEstruturaItemInput,
     actor?: { id?: string | null; role?: Roles | null },
   ) {
-    const { result, notificacaoPendente } = await prisma.$transaction(async (tx) => {
+    const { result, notificacaoPendente, createdItemId } = await prisma.$transaction(async (tx) => {
       const turma = await tx.cursosTurmas.findFirst({
         where: { id: turmaId, cursoId, deletedAt: null },
         select: {
@@ -2877,6 +2903,7 @@ export const turmasService = {
           },
         },
         notificacaoPendente,
+        createdItemId,
       };
     });
 
@@ -2889,6 +2916,14 @@ export const turmasService = {
           'Falha ao notificar alunos após append operacional na estrutura da turma',
         );
       }
+    }
+
+    // Fora da transação: mesmo motivo do create() com estrutura — este caminho grava
+    // direto no Prisma sem passar por aulas.service.ts/provas.service.ts.
+    if (payload.type === 'AULA') {
+      await meetOrchestrationService.ensureMeetParaAula(createdItemId);
+    } else {
+      await meetOrchestrationService.ensureMeetParaProvaOuAtividade(createdItemId);
     }
 
     return result;

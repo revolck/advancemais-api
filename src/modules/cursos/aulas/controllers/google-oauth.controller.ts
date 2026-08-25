@@ -5,6 +5,29 @@ import { logger } from '@/utils/logger';
 
 const frontendUrl = serverConfig.frontendUrl.replace(/\/+$/, '');
 
+const DEFAULT_RETURN_TO = '/dashboard/configuracoes';
+
+/**
+ * Só aceita caminhos relativos internos (começando com "/", nunca "//" nem contendo
+ * "://") — evita que `returnTo` seja usado para um open redirect.
+ */
+function isSafeReturnPath(path: unknown): path is string {
+  return (
+    typeof path === 'string' &&
+    path.startsWith('/') &&
+    !path.startsWith('//') &&
+    !path.includes('://')
+  );
+}
+
+/** Extrai `{usuarioId, returnTo}` do `state` gerado por `generateAuthUrl`. */
+function parseState(state: string): { usuarioId: string; returnTo: string } {
+  const [usuarioId, encodedReturnTo] = state.split('::');
+  const decoded = encodedReturnTo ? decodeURIComponent(encodedReturnTo) : null;
+  const returnTo = isSafeReturnPath(decoded) ? decoded : DEFAULT_RETURN_TO;
+  return { usuarioId, returnTo };
+}
+
 export class GoogleOAuthController {
   /**
    * GET /api/v1/auth/google/connect
@@ -13,7 +36,10 @@ export class GoogleOAuthController {
   static connect = async (req: Request, res: Response) => {
     try {
       const usuarioId = req.user!.id;
-      const authUrl = await googleOAuthService.generateAuthUrl(usuarioId);
+      const returnToParam = req.query.returnTo;
+      const returnTo = isSafeReturnPath(returnToParam) ? returnToParam : undefined;
+
+      const authUrl = await googleOAuthService.generateAuthUrl(usuarioId, returnTo);
 
       res.json({
         success: true,
@@ -34,26 +60,26 @@ export class GoogleOAuthController {
    * Callback após autorização
    */
   static callback = async (req: Request, res: Response) => {
+    const { code, state } = req.query as { code?: string; state?: string };
+
+    if (!code || !state) {
+      return res.status(400).json({
+        success: false,
+        code: 'MISSING_PARAMS',
+        message: 'Código ou state ausente',
+      });
+    }
+
+    const { usuarioId, returnTo } = parseState(state);
+
     try {
-      const { code, state } = req.query as { code?: string; state?: string };
-
-      if (!code || !state) {
-        return res.status(400).json({
-          success: false,
-          code: 'MISSING_PARAMS',
-          message: 'Código ou state ausente',
-        });
-      }
-
-      const usuarioId = state; // state contém o usuarioId
-
       await googleOAuthService.handleCallback(code, usuarioId);
 
-      // Redirecionar para o frontend
-      res.redirect(`${frontendUrl}/dashboard/configuracoes?google=conectado`);
+      // Redirecionar para o frontend, de volta pra onde a conexão foi iniciada
+      res.redirect(`${frontendUrl}${returnTo}?google=conectado`);
     } catch (error: any) {
       logger.error('[GOOGLE_CALLBACK_ERROR]', { error: error?.message });
-      res.redirect(`${frontendUrl}/dashboard/configuracoes?google=erro`);
+      res.redirect(`${frontendUrl}${returnTo}?google=erro`);
     }
   };
 

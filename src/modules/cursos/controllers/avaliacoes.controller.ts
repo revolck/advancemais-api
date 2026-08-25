@@ -4,6 +4,7 @@ import { ZodError } from 'zod';
 import { prisma } from '@/config/prisma';
 
 import { avaliacoesService } from '../services/avaliacoes.service';
+import { avaliacoesComentariosService } from '../services/avaliacoes-comentarios.service';
 import { avaliacoesRespostasService } from '../services/avaliacoes-respostas.service';
 import {
   clonarAvaliacaoSchema,
@@ -13,9 +14,13 @@ import {
   putUpdateAvaliacaoSchema,
 } from '../validators/avaliacoes.schema';
 import {
+  createAvaliacaoRespostaComentarioSchema,
   corrigirAvaliacaoRespostaSchema,
+  fixarAvaliacaoRespostaComentarioSchema,
+  listAvaliacaoRespostaComentariosQuerySchema,
   listAvaliacaoHistoricoQuerySchema,
   listAvaliacaoRespostasQuerySchema,
+  updateAvaliacaoRespostaComentarioSchema,
 } from '../validators/avaliacoes-respostas.schema';
 
 const parseUuid = (raw: unknown) => {
@@ -23,10 +28,63 @@ const parseUuid = (raw: unknown) => {
   return raw.trim();
 };
 
+const parseRespostaId = (raw: unknown) => {
+  const value = parseUuid(raw);
+  if (!value) return null;
+  return value === 'me' ? value : value;
+};
+
 // Validação de UUID v4
 const isValidUuid = (value: string): boolean => {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   return uuidRegex.test(value);
+};
+
+const getRequestMetadata = (req: Request) => ({
+  ip: req.ip || req.socket.remoteAddress || undefined,
+  userAgent: req.get('user-agent') || undefined,
+});
+
+const handleComentarioError = (res: Response, error: any) => {
+  if (error instanceof ZodError) {
+    return res.status(400).json({
+      success: false,
+      code: 'VALIDATION_ERROR',
+      message: 'Dados inválidos para comentários da resposta',
+      issues: error.flatten().fieldErrors,
+    });
+  }
+
+  if (error?.code === 'RESPOSTA_NOT_FOUND') {
+    return res.status(404).json({
+      success: false,
+      code: 'RESPOSTA_NOT_FOUND',
+      message: 'Resposta não encontrada para a avaliação informada',
+    });
+  }
+
+  if (error?.code === 'COMENTARIO_NOT_FOUND') {
+    return res.status(404).json({
+      success: false,
+      code: 'COMENTARIO_NOT_FOUND',
+      message: 'Comentário não encontrado',
+    });
+  }
+
+  if (error?.code === 'FORBIDDEN') {
+    return res.status(403).json({
+      success: false,
+      code: 'FORBIDDEN',
+      message: error?.message || 'Sem permissão para manipular comentários desta resposta',
+    });
+  }
+
+  return res.status(500).json({
+    success: false,
+    code: 'AVALIACAO_RESPOSTA_COMENTARIOS_ERROR',
+    message: 'Erro ao processar comentários da resposta',
+    error: error?.message,
+  });
 };
 
 export class AvaliacoesController {
@@ -367,6 +425,144 @@ export class AvaliacoesController {
         message: 'Erro ao corrigir resposta da avaliação',
         error: error?.message,
       });
+    }
+  };
+
+  static listComentariosResposta = async (req: Request, res: Response) => {
+    const avaliacaoId = parseUuid(req.params.avaliacaoId);
+    const respostaId = parseRespostaId(req.params.respostaId);
+
+    if (!avaliacaoId || !respostaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificadores de avaliação ou resposta inválidos',
+      });
+    }
+
+    try {
+      const query = listAvaliacaoRespostaComentariosQuerySchema.parse(req.query);
+      const result = await avaliacoesComentariosService.list(
+        avaliacaoId,
+        respostaId,
+        query,
+        req.user!,
+      );
+      res.json(result);
+    } catch (error: any) {
+      return handleComentarioError(res, error);
+    }
+  };
+
+  static createComentarioResposta = async (req: Request, res: Response) => {
+    const avaliacaoId = parseUuid(req.params.avaliacaoId);
+    const respostaId = parseRespostaId(req.params.respostaId);
+
+    if (!avaliacaoId || !respostaId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificadores de avaliação ou resposta inválidos',
+      });
+    }
+
+    try {
+      const payload = createAvaliacaoRespostaComentarioSchema.parse(req.body);
+      const result = await avaliacoesComentariosService.create(
+        avaliacaoId,
+        respostaId,
+        payload,
+        req.user!,
+        getRequestMetadata(req),
+      );
+      res.status(201).json(result);
+    } catch (error: any) {
+      return handleComentarioError(res, error);
+    }
+  };
+
+  static updateComentarioResposta = async (req: Request, res: Response) => {
+    const avaliacaoId = parseUuid(req.params.avaliacaoId);
+    const respostaId = parseRespostaId(req.params.respostaId);
+    const comentarioId = parseUuid(req.params.comentarioId);
+
+    if (!avaliacaoId || !respostaId || !comentarioId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificadores de avaliação, resposta ou comentário inválidos',
+      });
+    }
+
+    try {
+      const payload = updateAvaliacaoRespostaComentarioSchema.parse(req.body);
+      const result = await avaliacoesComentariosService.update(
+        avaliacaoId,
+        respostaId,
+        comentarioId,
+        payload,
+        req.user!,
+        getRequestMetadata(req),
+      );
+      res.json(result);
+    } catch (error: any) {
+      return handleComentarioError(res, error);
+    }
+  };
+
+  static deleteComentarioResposta = async (req: Request, res: Response) => {
+    const avaliacaoId = parseUuid(req.params.avaliacaoId);
+    const respostaId = parseRespostaId(req.params.respostaId);
+    const comentarioId = parseUuid(req.params.comentarioId);
+
+    if (!avaliacaoId || !respostaId || !comentarioId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificadores de avaliação, resposta ou comentário inválidos',
+      });
+    }
+
+    try {
+      const result = await avaliacoesComentariosService.remove(
+        avaliacaoId,
+        respostaId,
+        comentarioId,
+        req.user!,
+        getRequestMetadata(req),
+      );
+      res.json(result);
+    } catch (error: any) {
+      return handleComentarioError(res, error);
+    }
+  };
+
+  static fixarComentarioResposta = async (req: Request, res: Response) => {
+    const avaliacaoId = parseUuid(req.params.avaliacaoId);
+    const respostaId = parseRespostaId(req.params.respostaId);
+    const comentarioId = parseUuid(req.params.comentarioId);
+
+    if (!avaliacaoId || !respostaId || !comentarioId) {
+      return res.status(400).json({
+        success: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Identificadores de avaliação, resposta ou comentário inválidos',
+      });
+    }
+
+    try {
+      const payload = fixarAvaliacaoRespostaComentarioSchema.parse(req.body);
+      const result = await avaliacoesComentariosService.fixar(
+        avaliacaoId,
+        respostaId,
+        comentarioId,
+        payload,
+        req.user!,
+        getRequestMetadata(req),
+      );
+      res.json(result);
+    } catch (error: any) {
+      return handleComentarioError(res, error);
     }
   };
 

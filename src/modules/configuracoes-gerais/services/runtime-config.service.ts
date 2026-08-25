@@ -494,6 +494,14 @@ class RuntimeConfigService {
     };
   }
 
+  async getGoogleMeetInstitutionalEmails(): Promise<string[]> {
+    const raw = await this.getString('integracoes', 'google_meet_institutional_admin_emails');
+    return (raw || 'aulas@advancerh.page,pedagogico@advancerh.com.br')
+      .split(',')
+      .map((email) => email.trim())
+      .filter(Boolean);
+  }
+
   async getUploadConfig() {
     const [maxFileSize, allowedMimeTypes] = await Promise.all([
       this.getNumber('uploads', 'max_file_size', 10485760),
@@ -530,6 +538,13 @@ class RuntimeConfigService {
         schedule: parseScheduleConfig(
           await this.getString('agenda', 'agenda_cron_entrevistas_schedule'),
           15,
+        ),
+      },
+      gravacoes: {
+        enabled: await this.getBoolean('agenda', 'agenda_cron_gravacoes_enabled', true),
+        schedule: parseScheduleConfig(
+          await this.getString('agenda', 'agenda_cron_gravacoes_schedule'),
+          60,
         ),
       },
     };

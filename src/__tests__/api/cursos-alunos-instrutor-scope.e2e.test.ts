@@ -261,7 +261,7 @@ describe('API - Cursos Alunos escopados para INSTRUTOR', () => {
     }
   });
 
-  it('lista apenas alunos dentro do escopo do instrutor e calcula ultimoCurso dentro do proprio escopo', async () => {
+  it('lista apenas alunos em turmas vinculadas ao instrutor e calcula ultimoCurso dentro do proprio escopo', async () => {
     const response = await request(app)
       .get('/api/v1/cursos/alunos')
       .set('Authorization', `Bearer ${instrutorEscopo.token}`)
@@ -288,21 +288,22 @@ describe('API - Cursos Alunos escopados para INSTRUTOR', () => {
       expect.objectContaining({
         id: alunoMultiEscopo.id,
         ultimoCurso: expect.objectContaining({
-          inscricaoId: inscricaoAulaEscopoId,
-          statusInscricao: 'EM_ANDAMENTO',
+          inscricaoId: inscricaoTurmaEscopoId,
+          statusInscricao: 'INSCRITO',
           turma: expect.objectContaining({
-            id: turmaAulaEscopoId,
+            id: turmaTurmaEscopoId,
           }),
           curso: expect.objectContaining({
-            id: cursoAulaEscopoId,
+            id: cursoTurmaEscopoId,
           }),
         }),
       }),
     );
+    expect(alunoMultiPayload.ultimoCurso.inscricaoId).not.toBe(inscricaoAulaEscopoId);
     expect(alunoMultiPayload.ultimoCurso.inscricaoId).not.toBe(inscricaoForaEscopoId);
   });
 
-  it('retorna detalhe apenas com inscricoes em escopo e bloqueia aluno fora do escopo do instrutor', async () => {
+  it('retorna detalhe apenas com inscricoes de turmas vinculadas e bloqueia aluno fora do escopo do instrutor', async () => {
     const detailResponse = await request(app)
       .get(`/api/v1/cursos/alunos/${alunoMultiEscopo.id}`)
       .set('Authorization', `Bearer ${instrutorEscopo.token}`)
@@ -313,9 +314,9 @@ describe('API - Cursos Alunos escopados para INSTRUTOR', () => {
         success: true,
         data: expect.objectContaining({
           id: alunoMultiEscopo.id,
-          totalInscricoes: 2,
+          totalInscricoes: 1,
           estatisticas: {
-            cursosAtivos: 2,
+            cursosAtivos: 1,
             cursosConcluidos: 0,
             cursosCancelados: 0,
           },
@@ -325,7 +326,7 @@ describe('API - Cursos Alunos escopados para INSTRUTOR', () => {
 
     const inscricaoIds = detailResponse.body.data.inscricoes.map((item: any) => item.id);
     expect(inscricaoIds).toContain(inscricaoTurmaEscopoId);
-    expect(inscricaoIds).toContain(inscricaoAulaEscopoId);
+    expect(inscricaoIds).not.toContain(inscricaoAulaEscopoId);
     expect(inscricaoIds).not.toContain(inscricaoForaEscopoId);
 
     const forbiddenResponse = await request(app)

@@ -49,8 +49,8 @@ const ensureAlunoPodeAcessarProva = async (
   turmaId: string,
   provaId: string,
   inscricaoId?: string,
-) => {
-  if (req.user?.role !== Roles.ALUNO_CANDIDATO) return;
+): Promise<string | null> => {
+  if (req.user?.role !== Roles.ALUNO_CANDIDATO) return null;
 
   const inscricao = await prisma.cursosTurmasInscricoes.findFirst({
     where: {
@@ -77,6 +77,8 @@ const ensureAlunoPodeAcessarProva = async (
     error.code = 'RECUPERACAO_PAGAMENTO_PENDENTE';
     throw error;
   }
+
+  return inscricao.id;
 };
 
 const respondAcessoNegado = (res: Response, error: any) => {
@@ -108,8 +110,12 @@ export class QuestoesController {
         provaId,
         req.query.inscricaoId as string | undefined,
       );
+      const aluno = req.user?.role === Roles.ALUNO_CANDIDATO;
+      const gabarito = aluno
+        ? await questoesService.gabaritoDisponivel(cursoId, turmaId, provaId)
+        : { disponivel: true };
       const questoes = await questoesService.list(cursoId, turmaId, provaId, {
-        includeRespostaCorreta: req.user?.role !== Roles.ALUNO_CANDIDATO,
+        includeRespostaCorreta: !aluno || gabarito.disponivel,
       });
       res.json({ data: questoes });
     } catch (error: any) {
@@ -160,8 +166,12 @@ export class QuestoesController {
         provaId,
         req.query.inscricaoId as string | undefined,
       );
+      const aluno = req.user?.role === Roles.ALUNO_CANDIDATO;
+      const gabarito = aluno
+        ? await questoesService.gabaritoDisponivel(cursoId, turmaId, provaId)
+        : { disponivel: true };
       const questao = await questoesService.get(cursoId, turmaId, provaId, questaoId, {
-        includeRespostaCorreta: req.user?.role !== Roles.ALUNO_CANDIDATO,
+        includeRespostaCorreta: !aluno || gabarito.disponivel,
       });
       res.json(questao);
     } catch (error: any) {
@@ -356,7 +366,14 @@ export class QuestoesController {
 
     try {
       const data = responderQuestaoSchema.parse(req.body);
-      const inscricaoId = req.body.inscricaoId || req.user?.id;
+      const inscricaoSolicitada = req.body.inscricaoId as string | undefined;
+      const inscricaoAlunoId = await ensureAlunoPodeAcessarProva(
+        req,
+        turmaId,
+        provaId,
+        inscricaoSolicitada,
+      );
+      const inscricaoId = inscricaoAlunoId ?? inscricaoSolicitada;
 
       if (!inscricaoId) {
         return res.status(400).json({
@@ -366,7 +383,6 @@ export class QuestoesController {
         });
       }
 
-      await ensureAlunoPodeAcessarProva(req, turmaId, provaId, inscricaoId);
       const resposta = await questoesService.responder(
         cursoId,
         turmaId,
@@ -376,6 +392,7 @@ export class QuestoesController {
         data,
         {
           usuarioId: req.user?.id,
+          usuarioRole: req.user?.role as Roles | undefined,
           ip: req.ip || req.socket.remoteAddress || undefined,
           userAgent: req.get('user-agent') || undefined,
         },
@@ -395,9 +412,22 @@ export class QuestoesController {
       if (
         error?.code === 'QUESTAO_NOT_FOUND' ||
         error?.code === 'INSCRICAO_NOT_FOUND' ||
-        error?.code === 'VALIDATION_ERROR'
+        error?.code === 'VALIDATION_ERROR' ||
+        error?.code === 'ATIVIDADE_ENVIO_ENDPOINT_REQUIRED'
       ) {
         return res.status(400).json({
+          success: false,
+          code: error.code,
+          message: error.message,
+        });
+      }
+
+      if (
+        error?.code === 'AVALIACAO_FORA_DO_PERIODO' ||
+        error?.code === 'AVALIACAO_INDISPONIVEL' ||
+        error?.code === 'AVALIACAO_JA_ENVIADA'
+      ) {
+        return res.status(409).json({
           success: false,
           code: error.code,
           message: error.message,
@@ -491,13 +521,23 @@ export class QuestoesController {
     }
 
     try {
-      await ensureAlunoPodeAcessarProva(req, turmaId, provaId, inscricaoId);
+      const inscricaoAlunoId = await ensureAlunoPodeAcessarProva(
+        req,
+        turmaId,
+        provaId,
+        inscricaoId,
+      );
+      const aluno = req.user?.role === Roles.ALUNO_CANDIDATO;
+      const gabarito = aluno
+        ? await questoesService.gabaritoDisponivel(cursoId, turmaId, provaId)
+        : { disponivel: true };
       const respostas = await questoesService.listarRespostas(
         cursoId,
         turmaId,
         provaId,
         questaoId,
-        inscricaoId,
+        inscricaoAlunoId ?? inscricaoId,
+        { includeResultado: !aluno || gabarito.disponivel },
       );
       res.json({ data: respostas });
     } catch (error: any) {

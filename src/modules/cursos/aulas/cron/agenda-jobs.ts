@@ -5,6 +5,7 @@ import { checkDatabaseConnection } from '@/utils/db-connection-check';
 import { parseScheduleConfig } from '@/utils/cron-helpers';
 import { notificarAulasProximas } from './notificar-aulas.cron';
 import { notificarProvasProximas } from './notificar-provas.cron';
+import { notificarGabaritosDisponiveis } from './notificar-gabaritos.cron';
 import { sincronizarGravacoesProximas } from './sincronizar-gravacoes.cron';
 import { runtimeConfigService } from '@/modules/configuracoes-gerais';
 
@@ -152,6 +153,25 @@ export async function startProvasNotificationJob(config?: AgendaCronConfig) {
   return task;
 }
 
+export async function startGabaritosNotificationJob(config?: AgendaCronConfig) {
+  if (process.env.NODE_ENV === 'test') return null;
+
+  const resolvedConfig = config ?? (await resolveAgendaConfig());
+  if (!resolvedConfig.provas.enabled) return null;
+
+  const task = cron.schedule(
+    '* * * * *',
+    async () => {
+      await executeWithErrorHandling('notificar-gabaritos', notificarGabaritosDisponiveis);
+    },
+    { scheduled: false },
+  );
+
+  task.start();
+  agendaLogger.info('Cron de liberação de gabaritos iniciado');
+  return task;
+}
+
 /**
  * Iniciar cron job de notificações de entrevistas
  */
@@ -244,6 +264,7 @@ export async function startAgendaCronJobs() {
     await Promise.all([
       startAulasNotificationJob(config),
       startProvasNotificationJob(config),
+      startGabaritosNotificationJob(config),
       startEntrevistasNotificationJob(config),
       startGravacoesSyncJob(config),
     ])

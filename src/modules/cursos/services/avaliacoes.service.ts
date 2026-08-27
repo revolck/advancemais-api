@@ -433,6 +433,36 @@ const createQuestoes = async (
   }
 };
 
+const createImplicitActivityQuestion = async (
+  client: PrismaClientOrTx,
+  provaId: string,
+  data: CreateAvaliacaoInput,
+) => {
+  if (
+    data.tipo !== CursosAvaliacaoTipo.ATIVIDADE ||
+    (data.tipoAtividade !== CursosAtividadeTipo.PERGUNTA_RESPOSTA &&
+      data.tipoAtividade !== CursosAtividadeTipo.ENVIO_MATERIAL)
+  ) {
+    return;
+  }
+
+  const enunciado = data.descricao?.trim();
+  if (!enunciado) return;
+
+  await createQuestoes(client, provaId, [
+    {
+      enunciado,
+      tipo:
+        data.tipoAtividade === CursosAtividadeTipo.ENVIO_MATERIAL
+          ? CursosTipoQuestao.ANEXO
+          : CursosTipoQuestao.TEXTO,
+      ordem: 1,
+      peso: (data.valePonto ?? true) ? data.peso : undefined,
+      obrigatoria: data.obrigatoria ?? true,
+    },
+  ]);
+};
+
 export const avaliacoesService = {
   async list(query: ListAvaliacoesQuery, usuarioLogado: any) {
     const {
@@ -1035,6 +1065,8 @@ export const avaliacoesService = {
       // Criar questões (se houver)
       if (data.questoes && data.questoes.length > 0) {
         await createQuestoes(tx, avaliacao.id, data.questoes);
+      } else {
+        await createImplicitActivityQuestion(tx, avaliacao.id, data);
       }
 
       avaliacoesLogger.info(

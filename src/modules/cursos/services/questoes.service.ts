@@ -1,14 +1,15 @@
 import {
   AuditoriaCategoria,
   CursosAulaStatus,
-  CursosNotasTipo,
   CursosTipoQuestao,
   Prisma,
+  Roles,
 } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { auditoriaService } from '@/modules/auditoria/services/auditoria.service';
 import { logger } from '@/utils/logger';
+import { combinarDataHoraAvaliacao, obterLiberacaoGabarito } from '../utils/gabarito';
 
 import { pagamentosAlunoService } from './pagamentos-aluno.service';
 
@@ -87,13 +88,6 @@ const toDecimal = (value: number | null | undefined) => {
   return new Prisma.Decimal(value);
 };
 
-const toDecimalOptional = (value: number | null | undefined) => {
-  if (value === null || value === undefined) {
-    return undefined;
-  }
-  return new Prisma.Decimal(value);
-};
-
 const toOneDecimal = (value: number) => Math.round(value * 10) / 10;
 
 const hasQuestaoResposta = (
@@ -132,6 +126,21 @@ const calcularPesosNormalizados = (
 };
 
 export const questoesService = {
+  async gabaritoDisponivel(cursoId: string, turmaId: string, provaId: string, agora = new Date()) {
+    const prova = await prisma.cursosTurmasProvas.findFirst({
+      where: { id: provaId, cursoId, turmaId, ativo: true },
+      select: { dataFim: true, horaTermino: true },
+    });
+
+    if (!prova) {
+      const error = new Error('Prova não encontrada para a turma informada');
+      (error as any).code = 'PROVA_NOT_FOUND';
+      throw error;
+    }
+
+    return obterLiberacaoGabarito(prova.dataFim, prova.horaTermino, agora);
+  },
+
   async list(
     cursoId: string,
     turmaId: string,
@@ -407,6 +416,7 @@ export const questoesService = {
     },
     contexto?: {
       usuarioId?: string;
+      usuarioRole?: Roles;
       ip?: string;
       userAgent?: string;
     },
@@ -421,7 +431,12 @@ export const questoesService = {
         const [questao, prova] = await Promise.all([
           tx.cursosTurmasProvasQuestoes.findUnique({
             where: { id: questaoId },
-            select: { tipo: true },
+            select: {
+              tipo: true,
+              CursosTurmasProvasQuestoesAlternativas: {
+                select: { id: true },
+              },
+            },
           }),
           tx.cursosTurmasProvas.findUnique({
             where: { id: provaId },
@@ -431,6 +446,12 @@ export const questoesService = {
               titulo: true,
               descricao: true,
               peso: true,
+              ativo: true,
+              status: true,
+              dataInicio: true,
+              dataFim: true,
+              horaInicio: true,
+              horaTermino: true,
             },
           }),
         ]);
@@ -447,9 +468,55 @@ export const questoesService = {
           throw error;
         }
 
+        if (prova.tipo === 'ATIVIDADE' && contexto?.usuarioRole === Roles.ALUNO_CANDIDATO) {
+          const error = new Error(
+            'Use o envio completo da atividade para registrar ou editar a resposta',
+          );
+          (error as any).code = 'ATIVIDADE_ENVIO_ENDPOINT_REQUIRED';
+          throw error;
+        }
+
+        if (prova.tipo === 'PROVA' && contexto?.usuarioRole === Roles.ALUNO_CANDIDATO) {
+          if (
+            !prova.ativo ||
+            prova.status === CursosAulaStatus.RASCUNHO ||
+            prova.status === CursosAulaStatus.CANCELADA
+          ) {
+            const error = new Error('Esta prova não está disponível para resposta');
+            (error as any).code = 'AVALIACAO_INDISPONIVEL';
+            throw error;
+          }
+
+          const agora = new Date();
+          const inicio = combinarDataHoraAvaliacao(prova.dataInicio, prova.horaInicio);
+          const fim = combinarDataHoraAvaliacao(prova.dataFim, prova.horaTermino);
+          if (inicio && agora < inicio) {
+            const error = new Error('O período desta prova ainda não começou');
+            (error as any).code = 'AVALIACAO_FORA_DO_PERIODO';
+            throw error;
+          }
+          if (fim && agora > fim) {
+            const error = new Error('O período desta prova foi encerrado');
+            (error as any).code = 'AVALIACAO_FORA_DO_PERIODO';
+            throw error;
+          }
+        }
+
         // Validar tipo de resposta
         if (questao.tipo === CursosTipoQuestao.MULTIPLA_ESCOLHA && !data.alternativaId) {
           const error = new Error('Questão de múltipla escolha requer alternativaId');
+          (error as any).code = 'VALIDATION_ERROR';
+          throw error;
+        }
+
+        if (
+          questao.tipo === CursosTipoQuestao.MULTIPLA_ESCOLHA &&
+          data.alternativaId &&
+          !questao.CursosTurmasProvasQuestoesAlternativas.some(
+            (alternativa) => alternativa.id === data.alternativaId,
+          )
+        ) {
+          const error = new Error('A alternativa informada não pertence a esta questão');
           (error as any).code = 'VALIDATION_ERROR';
           throw error;
         }
@@ -483,8 +550,15 @@ export const questoesService = {
           select: {
             id: true,
             realizadoEm: true,
+            bloqueadoEdicaoEm: true,
           },
         });
+
+        if (envio.bloqueadoEdicaoEm && contexto?.usuarioRole === Roles.ALUNO_CANDIDATO) {
+          const error = new Error('Esta prova já foi enviada e não pode mais ser alterada');
+          (error as any).code = 'AVALIACAO_JA_ENVIADA';
+          throw error;
+        }
 
         const resposta = await tx.cursosTurmasProvasRespostas.upsert({
           where: {
@@ -545,6 +619,11 @@ export const questoesService = {
           const respostasPorQuestao = new Map(
             respostasDaProva.map((respostaItem) => [respostaItem.questaoId, respostaItem]),
           );
+          const provaObjetiva =
+            questoesDaProva.length > 0 &&
+            questoesDaProva.every(
+              (questaoItem) => questaoItem.tipo === CursosTipoQuestao.MULTIPLA_ESCOLHA,
+            );
           const pesosNormalizados = calcularPesosNormalizados(
             Number(prova.peso ?? 0),
             questoesDaProva.map((questaoItem) => ({ peso: questaoItem.peso })),
@@ -555,6 +634,10 @@ export const questoesService = {
               (questaoItem) => questaoItem.id === respostaItem.questaoId,
             );
             if (!questaoDaResposta) {
+              return null;
+            }
+
+            if (questaoDaResposta.tipo !== CursosTipoQuestao.MULTIPLA_ESCOLHA) {
               return null;
             }
 
@@ -589,7 +672,7 @@ export const questoesService = {
               hasQuestaoResposta(questaoItem.tipo, respostasPorQuestao.get(questaoItem.id) ?? null),
             );
 
-          if (todasObrigatoriasRespondidas) {
+          if (provaObjetiva && todasObrigatoriasRespondidas) {
             const notaFinalRaw = questoesDaProva.reduce((acc, questaoItem, index) => {
               const respostaItem = respostasPorQuestao.get(questaoItem.id);
               if (!respostaItem) return acc;
@@ -611,36 +694,9 @@ export const questoesService = {
               where: { id: envio.id },
               data: {
                 nota: toDecimal(notaFinal),
+                pesoTotal: toDecimal(Number(prova.peso ?? 0)),
                 realizadoEm,
-              },
-            });
-
-            await tx.cursosNotas.upsert({
-              where: {
-                inscricaoId_provaId: {
-                  inscricaoId,
-                  provaId,
-                },
-              },
-              update: {
-                nota: toDecimalOptional(notaFinal),
-                peso: toDecimalOptional(Number(prova.peso ?? 0)),
-                dataReferencia: realizadoEm,
-                titulo: prova.titulo,
-                descricao: prova.descricao ?? null,
-              },
-              create: {
-                turmaId,
-                inscricaoId,
-                tipo: CursosNotasTipo.PROVA,
-                provaId,
-                titulo: prova.titulo,
-                descricao: prova.descricao ?? null,
-                nota: toDecimal(notaFinal),
-                peso: toDecimal(Number(prova.peso ?? 0)),
-                valorMaximo: null,
-                dataReferencia: realizadoEm,
-                observacoes: null,
+                bloqueadoEdicaoEm: realizadoEm,
               },
             });
 
@@ -754,6 +810,13 @@ export const questoesService = {
         },
       });
 
+      if (respostaAtualizada.corrigida) {
+        await tx.cursosTurmasProvasEnvios.updateMany({
+          where: { provaId, inscricaoId },
+          data: { bloqueadoEdicaoEm: new Date() },
+        });
+      }
+
       questoesLogger.info({ turmaId, provaId, questaoId, inscricaoId }, 'Resposta corrigida');
 
       return {
@@ -779,6 +842,7 @@ export const questoesService = {
     provaId: string,
     questaoId?: string,
     inscricaoId?: string,
+    options?: { includeResultado?: boolean },
   ) {
     await ensureProvaBelongsToTurma(prisma, cursoId, turmaId, provaId);
 
@@ -823,14 +887,17 @@ export const questoesService = {
         ? {
             id: resposta.CursosTurmasProvasQuestoesAlternativas.id,
             texto: resposta.CursosTurmasProvasQuestoesAlternativas.texto,
-            correta: resposta.CursosTurmasProvasQuestoesAlternativas.correta,
+            ...(options?.includeResultado === false
+              ? {}
+              : { correta: resposta.CursosTurmasProvasQuestoesAlternativas.correta }),
           }
         : null,
       anexoUrl: resposta.anexoUrl,
       anexoNome: resposta.anexoNome,
-      corrigida: resposta.corrigida,
-      nota: resposta.nota ? Number(resposta.nota) : null,
-      observacoes: resposta.observacoes,
+      corrigida: options?.includeResultado === false ? false : resposta.corrigida,
+      nota:
+        options?.includeResultado === false ? null : resposta.nota ? Number(resposta.nota) : null,
+      observacoes: options?.includeResultado === false ? null : resposta.observacoes,
       criadoEm: resposta.criadoEm.toISOString(),
       atualizadoEm: resposta.atualizadoEm.toISOString(),
     }));

@@ -1,11 +1,22 @@
 import request from 'supertest';
-import { CursosAvaliacaoTipo, CursosAtividadeTipo, CursosAulaStatus } from '@prisma/client';
+import {
+  CursosAvaliacaoTipo,
+  CursosAtividadeTipo,
+  CursosAulaStatus,
+  CursosTipoQuestao,
+} from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 import { getTestApp } from '../helpers/test-setup';
 import { cleanupTestUsers, createTestUser, type TestUser } from '../helpers/auth-helper';
 
 jest.setTimeout(45000);
+
+const dateInDays = (days: number): string => {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+};
 
 describe('API - Criação de Avaliações (Provas e Atividades)', () => {
   let app: any;
@@ -63,8 +74,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
         instrutorId: instrutorId,
         vagasTotais: 30,
         vagasDisponiveis: 30,
-        dataInicio: new Date('2026-02-01'),
-        dataFim: new Date('2026-06-30'),
+        dataInicio: new Date(dateInDays(1)),
+        dataFim: new Date(dateInDays(365)),
         status: 'INSCRICOES_ABERTAS',
       },
     });
@@ -105,8 +116,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
           valePonto: true,
           obrigatoria: true,
           modalidade: 'PRESENCIAL',
-          dataInicio: '2026-03-15',
-          dataFim: '2026-03-15',
+          dataInicio: dateInDays(10),
+          dataFim: dateInDays(10),
           horaInicio: '14:00',
           horaTermino: '16:00',
           questoes: [
@@ -145,8 +156,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
           peso: 8,
           valePonto: true,
           modalidade: 'ONLINE',
-          dataInicio: '2026-04-10',
-          dataFim: '2026-04-10',
+          dataInicio: dateInDays(20),
+          dataFim: dateInDays(20),
           horaInicio: '10:00',
           horaTermino: '12:00',
           questoes: [
@@ -180,8 +191,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
           titulo: 'Prova com Instrutor',
           peso: 10,
           modalidade: 'ONLINE',
-          dataInicio: '2026-05-01',
-          dataFim: '2026-05-01',
+          dataInicio: dateInDays(30),
+          dataFim: dateInDays(30),
           horaInicio: '09:00',
           horaTermino: '11:00',
           questoes: [
@@ -214,8 +225,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
           titulo: 'Prova Sem Instrutor',
           peso: 7,
           modalidade: 'ONLINE',
-          dataInicio: '2026-06-01',
-          dataFim: '2026-06-01',
+          dataInicio: dateInDays(40),
+          dataFim: dateInDays(40),
           horaInicio: '14:00',
           horaTermino: '16:00',
           questoes: [
@@ -248,8 +259,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
           peso: 10,
           valePonto: true,
           modalidade: 'ONLINE',
-          dataInicio: '2026-07-01',
-          dataFim: '2026-07-01',
+          dataInicio: dateInDays(50),
+          dataFim: dateInDays(50),
           horaInicio: '08:00',
           horaTermino: '10:00',
           questoes: [
@@ -282,8 +293,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
           peso: 5,
           valePonto: false,
           modalidade: 'ONLINE',
-          dataInicio: '2026-08-01',
-          dataFim: '2026-08-01',
+          dataInicio: dateInDays(60),
+          dataFim: dateInDays(60),
           horaInicio: '10:00',
           horaTermino: '12:00',
           questoes: [
@@ -317,8 +328,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
           valePonto: true, // Obrigatório quando recuperacaoFinal = true
           recuperacaoFinal: true,
           modalidade: 'PRESENCIAL',
-          dataInicio: '2026-12-15',
-          dataFim: '2026-12-15',
+          dataInicio: dateInDays(70),
+          dataFim: dateInDays(70),
           horaInicio: '14:00',
           horaTermino: '17:00',
           questoes: [
@@ -350,8 +361,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
           valePonto: false, // Inválido!
           recuperacaoFinal: true,
           modalidade: 'ONLINE',
-          dataInicio: '2026-12-20',
-          dataFim: '2026-12-20',
+          dataInicio: dateInDays(80),
+          dataFim: dateInDays(80),
           horaInicio: '14:00',
           horaTermino: '16:00',
           questoes: [
@@ -384,8 +395,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
           peso: 8,
           recuperacaoFinal: false,
           modalidade: 'ONLINE',
-          dataInicio: '2026-09-01',
-          dataFim: '2026-09-01',
+          dataInicio: dateInDays(90),
+          dataFim: dateInDays(90),
           horaInicio: '13:00',
           horaTermino: '15:00',
           questoes: [
@@ -420,8 +431,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
           valePonto: true,
           obrigatoria: true,
           modalidade: 'ONLINE',
-          dataInicio: '2026-10-01',
-          dataFim: '2026-10-05',
+          dataInicio: dateInDays(100),
+          dataFim: dateInDays(104),
           horaInicio: '08:00',
           horaTermino: '23:59',
           questoes: [
@@ -464,8 +475,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
           titulo: 'Atividade Sem Questões',
           peso: 5,
           modalidade: 'ONLINE',
-          dataInicio: '2026-10-10',
-          dataFim: '2026-10-15',
+          dataInicio: dateInDays(110),
+          dataFim: dateInDays(115),
           horaInicio: '08:00',
           horaTermino: '23:59',
           questoes: [], // Vazio - inválido!
@@ -493,8 +504,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
           valePonto: true,
           obrigatoria: true,
           modalidade: 'ONLINE',
-          dataInicio: '2026-11-01',
-          dataFim: '2026-11-07',
+          dataInicio: dateInDays(120),
+          dataFim: dateInDays(126),
           horaInicio: '00:00',
           horaTermino: '23:59',
         })
@@ -503,7 +514,37 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
       expect(response.body.avaliacao.tipo).toBe(CursosAvaliacaoTipo.ATIVIDADE);
       expect(response.body.avaliacao.tipoAtividade).toBe(CursosAtividadeTipo.PERGUNTA_RESPOSTA);
       expect(response.body.avaliacao.descricao).toContain('programação');
-      expect(response.body.avaliacao.questoes).toHaveLength(0); // Não tem questões estruturadas
+      expect(response.body.avaliacao.questoes).toHaveLength(1);
+      expect(response.body.avaliacao.questoes[0].tipo).toBe(CursosTipoQuestao.TEXTO);
+      expect(response.body.avaliacao.questoes[0].enunciado).toContain('programação');
+    });
+
+    it('deve criar uma questão interna ANEXO para ENVIO_MATERIAL', async () => {
+      const response = await request(app)
+        .post('/api/v1/cursos/avaliacoes')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          cursoId,
+          turmaId,
+          tipo: CursosAvaliacaoTipo.ATIVIDADE,
+          tipoAtividade: CursosAtividadeTipo.ENVIO_MATERIAL,
+          titulo: 'Envio de material',
+          descricao: 'Envie o arquivo produzido ou informe o link do material.',
+          peso: 4,
+          valePonto: true,
+          obrigatoria: true,
+          modalidade: 'ONLINE',
+          dataInicio: dateInDays(130),
+          dataFim: dateInDays(136),
+          horaInicio: '00:00',
+          horaTermino: '23:59',
+        })
+        .expect(201);
+
+      expect(response.body.avaliacao.tipoAtividade).toBe(CursosAtividadeTipo.ENVIO_MATERIAL);
+      expect(response.body.avaliacao.questoes).toHaveLength(1);
+      expect(response.body.avaliacao.questoes[0].tipo).toBe(CursosTipoQuestao.ANEXO);
+      expect(response.body.avaliacao.questoes[0].enunciado).toContain('arquivo produzido');
     });
 
     it('deve rejeitar PERGUNTA_RESPOSTA sem descrição', async () => {
@@ -517,8 +558,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
           titulo: 'Atividade Sem Pergunta',
           peso: 3,
           modalidade: 'ONLINE',
-          dataInicio: '2026-11-10',
-          dataFim: '2026-11-15',
+          dataInicio: dateInDays(140),
+          dataFim: dateInDays(145),
           horaInicio: '08:00',
           horaTermino: '23:59',
           // descricao ausente - inválido!
@@ -542,8 +583,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
           descricao: descricaoLonga,
           peso: 3,
           modalidade: 'ONLINE',
-          dataInicio: '2026-11-20',
-          dataFim: '2026-11-25',
+          dataInicio: dateInDays(150),
+          dataFim: dateInDays(155),
           horaInicio: '08:00',
           horaTermino: '23:59',
         })
@@ -594,8 +635,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
           titulo: 'Prova Datas Invertidas',
           peso: 10,
           modalidade: 'ONLINE',
-          dataInicio: '2026-12-31',
-          dataFim: '2026-12-01', // Antes do início
+          dataInicio: dateInDays(200),
+          dataFim: dateInDays(190), // Antes do início
           horaInicio: '14:00',
           horaTermino: '16:00',
           questoes: [
@@ -624,8 +665,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
           titulo: 'Prova Horário Inválido',
           peso: 10,
           modalidade: 'ONLINE',
-          dataInicio: '2026-12-15',
-          dataFim: '2026-12-15',
+          dataInicio: dateInDays(160),
+          dataFim: dateInDays(160),
           horaInicio: '16:00',
           horaTermino: '14:00', // Antes do início
           questoes: [
@@ -656,8 +697,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
           titulo: 'Prova Peso Inválido',
           peso: 15, // Máximo é 10
           modalidade: 'ONLINE',
-          dataInicio: '2026-12-20',
-          dataFim: '2026-12-20',
+          dataInicio: dateInDays(170),
+          dataFim: dateInDays(170),
           horaInicio: '14:00',
           horaTermino: '16:00',
           questoes: [
@@ -686,8 +727,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
           titulo: 'Prova Peso Decimal',
           peso: 7.5,
           modalidade: 'ONLINE',
-          dataInicio: '2027-01-15',
-          dataFim: '2027-01-15',
+          dataInicio: dateInDays(180),
+          dataFim: dateInDays(180),
           horaInicio: '14:00',
           horaTermino: '16:00',
           questoes: [
@@ -727,8 +768,8 @@ describe('API - Criação de Avaliações (Provas e Atividades)', () => {
           titulo: 'Prova com Muitas Questões',
           peso: 10,
           modalidade: 'ONLINE',
-          dataInicio: '2027-02-01',
-          dataFim: '2027-02-01',
+          dataInicio: dateInDays(190),
+          dataFim: dateInDays(190),
           horaInicio: '14:00',
           horaTermino: '17:00',
           questoes,

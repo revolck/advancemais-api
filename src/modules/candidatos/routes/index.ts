@@ -731,6 +731,30 @@ router.get(
 );
 
 router.get(
+  '/cursos/:cursoId/turmas/:turmaId/estrutura',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  CandidatoCursosController.getTurmaEstrutura,
+);
+
+router.get(
+  '/cursos/:cursoId/turmas/:turmaId/aulas/:aulaId',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  CandidatoCursosController.getAulaDetalhe,
+);
+
+router.get(
+  '/cursos/:cursoId/turmas/:turmaId/atividades/:atividadeId',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  CandidatoCursosController.getAtividadeDetalhe,
+);
+
+router.put(
+  '/cursos/:cursoId/turmas/:turmaId/atividades/:atividadeId/resposta',
+  supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
+  CandidatoCursosController.enviarAtividadeResposta,
+);
+
+router.get(
   '/cursos',
   supabaseAuthMiddleware([Roles.ALUNO_CANDIDATO]),
   CandidatoCursosController.listCursos,

@@ -2084,8 +2084,14 @@ export const aulasService = {
    */
   async updateProgresso(aulaId: string, input: UpdateProgressoInput, alunoId: string) {
     // Validar inscrição
-    const inscricao = await prisma.cursosTurmasInscricoes.findUnique({
-      where: { id: input.inscricaoId, alunoId },
+    const inscricao = await prisma.cursosTurmasInscricoes.findFirst({
+      where: {
+        id: input.inscricaoId,
+        alunoId,
+        CursosTurmas: {
+          CursosTurmasAulas: { some: { id: aulaId, deletedAt: null } },
+        },
+      },
     });
 
     if (!inscricao) throw new Error('Inscrição não encontrada');
@@ -2115,7 +2121,7 @@ export const aulasService = {
 
     // Marcar como concluída aos 90%
     if (input.percentualAssistido >= 90 && !progresso.concluida) {
-      await prisma.cursosAulasProgresso.update({
+      return prisma.cursosAulasProgresso.update({
         where: { id: progresso.id },
         data: {
           concluida: true,
@@ -2123,9 +2129,6 @@ export const aulasService = {
           percentualAssistido: 100,
         },
       });
-
-      // TODO: Verificar se completou todas obrigatórias
-      // await this.verificarConclusaoCurso(alunoId, inscricao.turmaId);
     }
 
     return progresso;

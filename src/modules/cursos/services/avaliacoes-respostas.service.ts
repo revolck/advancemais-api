@@ -72,6 +72,22 @@ const getResumo = (
   return { questoesTotal, questoesRespondidas, questoesCorretas };
 };
 
+const getEdicoesResumo = (
+  envio?: {
+    tentativasEnvio?: number | null;
+    atualizadoEm?: Date | null;
+  } | null,
+) => {
+  const tentativasEnvio = envio?.tentativasEnvio ?? 0;
+  const edicoesRealizadas = Math.max(0, tentativasEnvio - 1);
+
+  return {
+    tentativasEnvio,
+    edicoesRealizadas,
+    ultimaEdicaoEm: edicoesRealizadas > 0 ? toIso(envio?.atualizadoEm) : null,
+  };
+};
+
 const mapIpPorEntidade = (
   logs: { entidadeId: string | null; ip: string | null; acao: string | null }[],
 ) => {
@@ -443,7 +459,14 @@ export const avaliacoesRespostasService = {
         },
         CursosTurmasProvasEnvios: {
           where: { provaId: avaliacaoId },
-          select: { id: true, nota: true, realizadoEm: true, criadoEm: true },
+          select: {
+            id: true,
+            nota: true,
+            realizadoEm: true,
+            criadoEm: true,
+            atualizadoEm: true,
+            tentativasEnvio: true,
+          },
           take: 1,
           orderBy: { criadoEm: 'desc' },
         },
@@ -485,6 +508,7 @@ export const avaliacoesRespostasService = {
         envio?.nota ?? null,
         respostas.map((resposta) => resposta.corrigida),
       );
+      const edicoesResumo = getEdicoesResumo(envio);
 
       const nota =
         toNumber(envio?.nota) ??
@@ -519,6 +543,7 @@ export const avaliacoesRespostasService = {
         valePonto: avaliacao.valePonto ?? true,
         concluidoEm: toIso(concluidoEm),
         ipEnvio: null as string | null,
+        ...edicoesResumo,
         resumo,
       };
     });
@@ -625,6 +650,7 @@ export const avaliacoesRespostasService = {
           realizadoEm: true,
           observacoes: true,
           atualizadoEm: true,
+          tentativasEnvio: true,
         },
       }),
       prisma.cursosTurmasProvasRespostas.findMany({
@@ -692,6 +718,7 @@ export const avaliacoesRespostasService = {
     );
     const ipPorEntidade = mapIpPorEntidade(logsIp);
     const ipEnvio = ipPorEntidade.get(context.groupId) ?? null;
+    const edicoesResumo = getEdicoesResumo(envio);
 
     if (
       avaliacao.tipo === 'ATIVIDADE' &&
@@ -732,6 +759,7 @@ export const avaliacoesRespostasService = {
           valePonto: avaliacao.valePonto ?? true,
           concluidoEm: toIso(concluidoEm),
           ipEnvio,
+          ...edicoesResumo,
           corrigidoEm: ultimaCorrecao?.criadoEm?.toISOString() ?? null,
           corrigidoPor: ultimaCorrecao?.Usuarios
             ? { id: ultimaCorrecao.Usuarios.id, nome: ultimaCorrecao.Usuarios.nomeCompleto }
@@ -798,6 +826,7 @@ export const avaliacoesRespostasService = {
         nota,
         concluidoEm: toIso(concluidoEm),
         ipEnvio,
+        ...edicoesResumo,
         corrigidoEm: ultimaCorrecao?.criadoEm?.toISOString() ?? null,
         corrigidoPor: ultimaCorrecao?.Usuarios
           ? { id: ultimaCorrecao.Usuarios.id, nome: ultimaCorrecao.Usuarios.nomeCompleto }
@@ -923,6 +952,16 @@ export const avaliacoesRespostasService = {
         observacoes: input.feedback ?? undefined,
       },
     });
+
+    if (corrigida) {
+      await prisma.cursosTurmasProvasEnvios.updateMany({
+        where: {
+          provaId: avaliacaoId,
+          inscricaoId: context.inscricaoId,
+        },
+        data: { bloqueadoEdicaoEm: new Date() },
+      });
+    }
 
     const envioDepois = await prisma.cursosTurmasProvasEnvios.findUnique({
       where: {

@@ -1073,6 +1073,8 @@ model CursosTurmasProvasEnvios {
   id                          String                        @id @default(uuid())
   provaId                     String
   inscricaoId                 String
+  tentativasEnvio             Int                           @default(0)
+  bloqueadoEdicaoEm           DateTime?
   nota                        Decimal?                      @db.Decimal(4, 1)
   pesoTotal                   Decimal?                      @db.Decimal(5, 2)
   realizadoEm                 DateTime?

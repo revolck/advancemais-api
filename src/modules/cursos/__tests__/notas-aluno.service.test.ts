@@ -69,7 +69,7 @@ describe('notasService.listMinhasNotas', () => {
     expect(findArgs.where.status.in).not.toContain(StatusInscricao.AGUARDANDO_PAGAMENTO);
   });
 
-  it('aplica situação, período e paginação sobre notas consolidadas reais', async () => {
+  it('aplica turma, situação, período e paginação sobre notas consolidadas reais', async () => {
     jest.spyOn(prisma.cursosTurmasInscricoes, 'findMany').mockResolvedValue([
       buildInscricao(),
       buildInscricao({
@@ -112,6 +112,7 @@ describe('notasService.listMinhasNotas', () => {
     jest.spyOn(prisma.cursosNotas, 'findMany').mockResolvedValue([]);
 
     const result = await notasService.listMinhasNotas(alunoId, {
+      turmaId: 'turma-1',
       situacao: 'APROVADO',
       dataInicio: '2026-05-01',
       dataFim: '2026-05-31',

@@ -225,6 +225,7 @@ const dataFiltroSchema = z
 
 export const listMinhasNotasQuerySchema = z.object({
   cursoId: uuid.optional(),
+  turmaId: uuid.optional(),
   situacao: z.enum(['APROVADO', 'RECUPERACAO', 'REPROVADO']).optional(),
   dataInicio: dataFiltroSchema,
   dataFim: dataFiltroSchema,

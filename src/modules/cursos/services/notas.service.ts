@@ -1475,8 +1475,13 @@ export const notasService = {
     const inscricoesFiltradasPorCurso = query.cursoId
       ? inscricoes.filter((inscricao) => inscricao.CursosTurmas.Cursos.id === query.cursoId)
       : inscricoes;
+    const inscricoesFiltradas = query.turmaId
+      ? inscricoesFiltradasPorCurso.filter(
+          (inscricao) => inscricao.CursosTurmas.id === query.turmaId,
+        )
+      : inscricoesFiltradasPorCurso;
 
-    if (inscricoesFiltradasPorCurso.length === 0) {
+    if (inscricoesFiltradas.length === 0) {
       return {
         items: [],
         pagination: {
@@ -1495,9 +1500,9 @@ export const notasService = {
       };
     }
 
-    const inscricaoIds = inscricoesFiltradasPorCurso.map((inscricao) => inscricao.id);
+    const inscricaoIds = inscricoesFiltradas.map((inscricao) => inscricao.id);
     const turmaIds = Array.from(
-      new Set(inscricoesFiltradasPorCurso.map((inscricao) => inscricao.CursosTurmas.id)),
+      new Set(inscricoesFiltradas.map((inscricao) => inscricao.CursosTurmas.id)),
     );
 
     const [provas, envios, notas] = await Promise.all([
@@ -1572,7 +1577,7 @@ export const notasService = {
     const { notaAtualIdPorInscricao, historicoNotaIdPorInscricao } =
       await resolveNotaHistoryReferences(inscricaoIds, turmaIds, manuais);
 
-    const itemsCalculados = inscricoesFiltradasPorCurso.map((inscricao) => {
+    const itemsCalculados = inscricoesFiltradas.map((inscricao) => {
       const provasDaTurma = provasByTurma.get(inscricao.CursosTurmas.id) ?? [];
       let somaPonderada = 0;
       let somaPesos = 0;

@@ -1,0 +1,2238 @@
+[
+  {
+    "codigo": "EMP-MIG-03998",
+    "linhaOrigem": 2,
+    "cnpj": "38240209000103",
+    "razaoSocial": "LC ENGENHARIA E EMPREENDIMENTOS LTDA",
+    "nomeFantasia": "LC ENGENHARIA E EMPREENDIMENTOS LTDA",
+    "email": "empresa.migracao.38240209000103@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8296271515",
+    "endereco": {
+      "logradouro": "Avenida Doutor Antonio Gomes de Barros",
+      "numero": "637",
+      "bairro": "Jatiuca",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57036000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 2 | Nome fantasia: LC ENGENHARIA E EMPREENDIMENTOS LTDA | Cadastro legado: 15/06/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "LC ENGENHARIA E EMPREENDIMENTOS LTDA",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-03999",
+    "linhaOrigem": 3,
+    "cnpj": "06100661000175",
+    "razaoSocial": "RA CRISPIM",
+    "nomeFantasia": "CRISPIM IMPERMEABILIZANTES",
+    "email": "empresa.migracao.06100661000175@sem-email.local",
+    "emailGerado": true,
+    "telefone": "NAO_INFORMADO",
+    "endereco": {
+      "logradouro": null,
+      "numero": null,
+      "bairro": "Jatiuca",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57035430"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 3 | Nome fantasia: CRISPIM IMPERMEABILIZANTES | Cadastro legado: 15/06/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "R A CRISPIM",
+      "nomeFantasia": "CRISPIM IMPERMEABILIZANTES",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04000",
+    "linhaOrigem": 4,
+    "cnpj": "62844025000200",
+    "razaoSocial": "CLEA MARIA ALBUQUERQUE",
+    "nomeFantasia": "AMERICAN CRIME",
+    "email": "empresa.migracao.62844025000200@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8296865544",
+    "endereco": {
+      "logradouro": "Avenida Comendador Gustavo Paiva",
+      "numero": "5945",
+      "bairro": "Cruz das Almas",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57038000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 4 | Nome fantasia: AMERICAN CRIME | Cadastro legado: 16/06/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "CLEA MARIA ALBUQUERQUE GUERRA LTDA",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "FILIAL"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04001",
+    "linhaOrigem": 5,
+    "cnpj": "65878601000147",
+    "razaoSocial": "MARCELLE MOURA LIMA FARIAS",
+    "nomeFantasia": "BATATA E CIA",
+    "email": "empresa.migracao.65878601000147@sem-email.local",
+    "emailGerado": true,
+    "telefone": "NAO_INFORMADO",
+    "endereco": {
+      "logradouro": null,
+      "numero": null,
+      "bairro": "Poco",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57025065"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 5 | Nome fantasia: BATATA E CIA | Cadastro legado: 16/06/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "65.878.601 MARCELLE MOURA LIMA FARIAS",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04002",
+    "linhaOrigem": 6,
+    "cnpj": "12097161000124",
+    "razaoSocial": "A M LOCACAO LTDA",
+    "nomeFantasia": "A M LOCACAO",
+    "email": "empresa.migracao.12097161000124@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8296430215",
+    "endereco": {
+      "logradouro": "Avenida Alberto Santos Dumont",
+      "numero": "119",
+      "bairro": "Centro",
+      "cidade": "Satuba",
+      "estado": "AL",
+      "cep": "57120000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 6 | Nome fantasia: A M LOCACAO | Cadastro legado: 18/06/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: razao social, nome fantasia, telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "A M LOCACAO LTDA",
+      "nomeFantasia": "A M LOCACAO",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04003",
+    "linhaOrigem": 7,
+    "cnpj": "49622099000152",
+    "razaoSocial": "R DA S MELO AURUM CONSTRUTORA, SERVICOS E COMERCIO",
+    "nomeFantasia": "AURUM CONSTRUTORA, SERVICOS E COMERCIO",
+    "email": "empresa.migracao.49622099000152@sem-email.local",
+    "emailGerado": true,
+    "telefone": "NAO_INFORMADO",
+    "endereco": {
+      "logradouro": null,
+      "numero": null,
+      "bairro": "Barro Duro",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57045682"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 7 | Nome fantasia: AURUM CONSTRUTORA, SERVICOS E COMERCIO | Cadastro legado: 18/06/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "R DA S MELO AURUM CONSTRUTORA, SERVICOS E COMERCIO",
+      "nomeFantasia": "AURUM CONSTRUTORA, SERVICOS E COMERCIO",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04004",
+    "linhaOrigem": 8,
+    "cnpj": "66515402000137",
+    "razaoSocial": "AURUM ENGENHARIA, SERVICOS E COMERCIO LTDA",
+    "nomeFantasia": "AURUM ENGENHARIA, SERVICOS E COMERCIO",
+    "email": "empresa.migracao.66515402000137@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8796333738",
+    "endereco": {
+      "logradouro": "Avenida Comendador Gustavo Paiva",
+      "numero": "5945",
+      "bairro": "Cruz das Almas",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57038000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 8 | Nome fantasia: AURUM ENGENHARIA, SERVICOS E COMERCIO | Cadastro legado: 18/06/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "AURUM ENGENHARIA, SERVICOS E COMERCIO LTDA",
+      "nomeFantasia": "AURUM ENGENHARIA, SERVICOS E COMERCIO",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04005",
+    "linhaOrigem": 9,
+    "cnpj": "05405445000175",
+    "razaoSocial": "CONVEM IPANEMA MOTOS LTDA",
+    "nomeFantasia": "CONVEM",
+    "email": "empresa.migracao.05405445000175@sem-email.local",
+    "emailGerado": true,
+    "telefone": "NAO_INFORMADO",
+    "endereco": {
+      "logradouro": "Avenida Pancracio Rocha",
+      "numero": "537",
+      "bairro": "Monumento",
+      "cidade": "Santana do Ipanema",
+      "estado": "AL",
+      "cep": "57500000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 9 | Nome fantasia: CONVEM | Cadastro legado: 19/06/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "CONVEM IPANEMA MOTOS LTDA EM RECUPERACAO JUDICIAL",
+      "nomeFantasia": "CONVEM",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04006",
+    "linhaOrigem": 10,
+    "cnpj": "52632788000152",
+    "razaoSocial": "JV CONSULTORIA DO RH E DP",
+    "nomeFantasia": "JV CONSULTORIA EM RH E DP",
+    "email": "empresa.migracao.52632788000152@sem-email.local",
+    "emailGerado": true,
+    "telefone": "NAO_INFORMADO",
+    "endereco": {
+      "logradouro": null,
+      "numero": null,
+      "bairro": "Alto Jose Bonifacio",
+      "cidade": "Recife",
+      "estado": "PE",
+      "cep": "52080010"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 10 | Nome fantasia: JV CONSULTORIA EM RH E DP | Cadastro legado: 23/06/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "52.632.788 JONATAS VELOSO DA SILVA",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04007",
+    "linhaOrigem": 11,
+    "cnpj": "30116034000107",
+    "razaoSocial": "SOLUTHI",
+    "nomeFantasia": "SOLUTHI",
+    "email": "empresa.migracao.30116034000107@sem-email.local",
+    "emailGerado": true,
+    "telefone": "7981201292",
+    "endereco": {
+      "logradouro": "Avenida Fernandes Lima",
+      "numero": "382",
+      "bairro": "Farol",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57055000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 11 | Nome fantasia: SOLUTHI | Cadastro legado: 04/08/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "LHT SERVICOS ADMINISTRATIVOS LTDA",
+      "nomeFantasia": "LHT SERVICOS",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04008",
+    "linhaOrigem": 13,
+    "cnpj": "25223831000153",
+    "razaoSocial": "X1 REPASSE LTDA",
+    "nomeFantasia": "X1 REPASSE",
+    "email": "empresa.migracao.25223831000153@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8299935482",
+    "endereco": {
+      "logradouro": "Avenida Menino Marcelo",
+      "numero": "9350",
+      "bairro": "Serraria",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57046000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 13 | Nome fantasia: X1 REPASSE | Cadastro legado: 30/04/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "X1 REPASSE LTDA",
+      "nomeFantasia": "X1 REPASSE",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04009",
+    "linhaOrigem": 14,
+    "cnpj": "21333870000403",
+    "razaoSocial": "ARAUJO & SILVIO PITZZARIA LTDA",
+    "nomeFantasia": "CALABRIA",
+    "email": "empresa.migracao.21333870000403@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8299428181",
+    "endereco": {
+      "logradouro": "Avenida Brasil",
+      "numero": "950",
+      "bairro": "Poco",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57025070"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 14 | Nome fantasia: CALABRIA | Cadastro legado: 02/05/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "ARAUJO & SILVIO PITZZARIA LTDA",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "FILIAL"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04010",
+    "linhaOrigem": 15,
+    "cnpj": "03746272000123",
+    "razaoSocial": "SIAN ENGENHARIA LTDA",
+    "nomeFantasia": "SIAN ENGENHARIA",
+    "email": "empresa.migracao.03746272000123@sem-email.local",
+    "emailGerado": true,
+    "telefone": "7133586666",
+    "endereco": {
+      "logradouro": "Avenida Antonio Carlos Magalhaes",
+      "numero": "2573",
+      "bairro": "Brotas",
+      "cidade": "Salvador",
+      "estado": "BA",
+      "cep": "40280902"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 15 | Nome fantasia: SIAN ENGENHARIA | Cadastro legado: 04/05/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "SIAN ENGENHARIA LTDA",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04011",
+    "linhaOrigem": 16,
+    "cnpj": "18114889000101",
+    "razaoSocial": "CONDOMINIO RESIDENCIAL PARQUE PETROPOLIS I",
+    "nomeFantasia": "CONDOMINIO RESIDENCIAL PARQUE PETROPOLIS I",
+    "email": "empresa.migracao.18114889000101@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8232011660",
+    "endereco": {
+      "logradouro": "Rua Existente",
+      "numero": "408",
+      "bairro": "Petropolis",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57010000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 16 | Nome fantasia: CONDOMINIO RESIDENCIAL PARQUE PETROPOLIS I | Cadastro legado: 07/05/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "CONDOMINIO RESIDENCIAL PARQUE PETROPOLIS I",
+      "nomeFantasia": "CONDOMINIO RESIDENCIAL PARQUE PETROPOLIS I",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04012",
+    "linhaOrigem": 17,
+    "cnpj": "05207553000133",
+    "razaoSocial": "INSTITUTO 7 ELLOS LTDA",
+    "nomeFantasia": "TELES CONSULTORIA",
+    "email": "empresa.migracao.05207553000133@sem-email.local",
+    "emailGerado": true,
+    "telefone": "7591088425",
+    "endereco": {
+      "logradouro": "Rua Doutor Americo Alves de Oliveira",
+      "numero": "145",
+      "bairro": "General Dutra",
+      "cidade": "Paulo Afonso",
+      "estado": "BA",
+      "cep": "48607295"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 17 | Nome fantasia: TELES CONSULTORIA | Cadastro legado: 07/05/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "SETE ELLOS CONSULTORIA LTDA",
+      "nomeFantasia": "SETE ELLOS CONSULTORIA",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04013",
+    "linhaOrigem": 18,
+    "cnpj": "64683166000132",
+    "razaoSocial": "FN REFRIGERAÇÃO",
+    "nomeFantasia": "FN REFRIGERAÇÃO",
+    "email": "empresa.migracao.64683166000132@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8299450404",
+    "endereco": {
+      "logradouro": "Rua Abelardo Pugliese",
+      "numero": "65",
+      "bairro": "Jatiúca",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57036020"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 18 | Nome fantasia: FN REFRIGERAÇÃO | Cadastro legado: 11/05/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "FN REFRIGERACAO INDUSTRIAL LTDA",
+      "nomeFantasia": "FN REFRIGERACAO",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04014",
+    "linhaOrigem": 19,
+    "cnpj": "43072590000170",
+    "razaoSocial": "CLINAF SERVICOS MEDICOS E LATORATORIAS LTDA",
+    "nomeFantasia": "CLINAF",
+    "email": "empresa.migracao.43072590000170@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8299548720",
+    "endereco": {
+      "logradouro": "Rua Comendador Palmeira",
+      "numero": "612",
+      "bairro": "Farol",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57051150"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 19 | Nome fantasia: CLINAF | Cadastro legado: 11/05/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "CLINAF SERVICOS MEDICOS E LABORATORIAIS LTDA",
+      "nomeFantasia": "CLINAF",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04015",
+    "linhaOrigem": 20,
+    "cnpj": "10836884000172",
+    "razaoSocial": "G 4 PLUS EMPREENDIMENTOS E PARTICIPACOES LTDA",
+    "nomeFantasia": "G4 PLUS",
+    "email": "empresa.migracao.10836884000172@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8233137983",
+    "endereco": {
+      "logradouro": "Avenida da Paz",
+      "numero": "1864",
+      "bairro": "Centro",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57020440"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 20 | Nome fantasia: G4 PLUS | Cadastro legado: 12/05/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: razao social, telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "G 4 PLUS EMPREENDIMENTOS E PARTICIPACOES LTDA",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04016",
+    "linhaOrigem": 21,
+    "cnpj": "55523108000150",
+    "razaoSocial": "PRODELAR MOVEIS PLANEJADOS LTDA",
+    "nomeFantasia": "PRODELAR",
+    "email": "empresa.migracao.55523108000150@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8234357900",
+    "endereco": {
+      "logradouro": "Avenida Almirante Álvaro Calheiros",
+      "numero": "47",
+      "bairro": "Jatiúca",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57035558"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 21 | Nome fantasia: PRODELAR | Cadastro legado: 13/05/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "PRODELAR MOVEIS PLANEJADOS LTDA",
+      "nomeFantasia": "PRODELAR",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04017",
+    "linhaOrigem": 22,
+    "cnpj": "66553813000117",
+    "razaoSocial": "CDI CENTRO DE IMAGEM , DIAGNOSTICO E TRATAMENTO LTDA",
+    "nomeFantasia": "IMAGEM PLENA",
+    "email": "empresa.migracao.66553813000117@sem-email.local",
+    "emailGerado": true,
+    "telefone": "NAO_INFORMADO",
+    "endereco": {
+      "logradouro": null,
+      "numero": null,
+      "bairro": "Tabuleiro do Martins",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57060100"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 22 | Nome fantasia: IMAGEM PLENA | Cadastro legado: 14/05/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "66.553.813 CINTHYA ELIDA DAMASCENO BURQUEZ SANTOS",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04018",
+    "linhaOrigem": 23,
+    "cnpj": "19424170000121",
+    "razaoSocial": "L S DO NASCIMENTO SERVICOS",
+    "nomeFantasia": "PLATEC",
+    "email": "empresa.migracao.19424170000121@sem-email.local",
+    "emailGerado": true,
+    "telefone": "NAO_INFORMADO",
+    "endereco": {
+      "logradouro": null,
+      "numero": null,
+      "bairro": "Clima Bom",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57071210"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 23 | Nome fantasia: PLATEC | Cadastro legado: 20/05/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: razao social, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "L S DO NASCIMENTO SERVICOS",
+      "nomeFantasia": "PLATEC",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04019",
+    "linhaOrigem": 24,
+    "cnpj": "03636036001983",
+    "razaoSocial": "ASA BRANCA DISTRIBUIDORA",
+    "nomeFantasia": "ASA BRANCA",
+    "email": "empresa.migracao.03636036001983@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8235229300",
+    "endereco": {
+      "logradouro": "Rua Jose Vieira",
+      "numero": "188",
+      "bairro": "Tabuleiro do Martins",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57081520"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 24 | Nome fantasia: ASA BRANCA | Cadastro legado: 20/05/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "ASA BRANCA INDL. COML. E IMPORTADORA LTDA",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "FILIAL"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04020",
+    "linhaOrigem": 25,
+    "cnpj": "34626528000192",
+    "razaoSocial": "CLINICA ALENCAR E SAMPAIO LTDA",
+    "nomeFantasia": "CLINICA IRIS ALENCAR",
+    "email": "empresa.migracao.34626528000192@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8293226313",
+    "endereco": {
+      "logradouro": "Rua Engenheiro Mario de Gusmao",
+      "numero": "90",
+      "bairro": "Ponta Verde",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57035000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 25 | Nome fantasia: CLINICA IRIS ALENCAR | Cadastro legado: 22/05/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "CLINICA ALENCAR E SAMPAIO LTDA",
+      "nomeFantasia": "CLINICA IRIS ALENCAR",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04021",
+    "linhaOrigem": 26,
+    "cnpj": "26033481000125",
+    "razaoSocial": "MAFRA TURISMO LTDA-ME",
+    "nomeFantasia": "POUSADA ECOMACEIÓ",
+    "email": "empresa.migracao.26033481000125@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8233178551",
+    "endereco": {
+      "logradouro": "Avenida Desembargador Valente de Lima",
+      "numero": "204",
+      "bairro": "Jatiuca",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57035556"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 26 | Nome fantasia: POUSADA ECOMACEIÓ | Cadastro legado: 25/05/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "MAFRA TURISMO LTDA",
+      "nomeFantasia": "POUSADA ECOMACEIO",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04022",
+    "linhaOrigem": 27,
+    "cnpj": "14163580000142",
+    "razaoSocial": "ALLSERV BRASIL LTDA ME",
+    "nomeFantasia": "FACIT BRASIL",
+    "email": "empresa.migracao.14163580000142@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8233177489",
+    "endereco": {
+      "logradouro": "Avenida Brasil",
+      "numero": "886",
+      "bairro": "Poco",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57025070"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 27 | Nome fantasia: FACIT BRASIL | Cadastro legado: 25/05/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "ALLSERVBRASIL LTDA",
+      "nomeFantasia": "FACITBRASIL",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04023",
+    "linhaOrigem": 28,
+    "cnpj": "44695288000131",
+    "razaoSocial": "F MORAES LTDA",
+    "nomeFantasia": "FABIO MORAES CONTABILIDADE",
+    "email": "empresa.migracao.44695288000131@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8296802120",
+    "endereco": {
+      "logradouro": "Avenida Comendador Gustavo Paiva",
+      "numero": "3506",
+      "bairro": "Mangabeiras",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57037285"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 28 | Nome fantasia: FABIO MORAES CONTABILIDADE | Cadastro legado: 26/05/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "F MORAES LTDA",
+      "nomeFantasia": "FABIO MORAES CONTABILIDADE",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04024",
+    "linhaOrigem": 29,
+    "cnpj": "60642379000165",
+    "razaoSocial": "INSTITUTO TEACOLHER CUIDANDO DE QUEM CUIDA",
+    "nomeFantasia": "TEACOLHER",
+    "email": "empresa.migracao.60642379000165@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8299429122",
+    "endereco": {
+      "logradouro": "Rua A-18",
+      "numero": "165",
+      "bairro": "Benedito Bentes",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57084018"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 29 | Nome fantasia: TEACOLHER | Cadastro legado: 27/05/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "INSTITUTO TEACOLHER CUIDANDO DE QUEM CUIDA",
+      "nomeFantasia": "TEACOLHER",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04025",
+    "linhaOrigem": 30,
+    "cnpj": "10867473000144",
+    "razaoSocial": "VERCONT CONSULTORIA E AUDITORIA CONTABIL",
+    "nomeFantasia": "VERCONT CONSULTORIA E AUDITORIA CONTABIL",
+    "email": "empresa.migracao.10867473000144@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8233261875",
+    "endereco": {
+      "logradouro": "Rua Durval Coelho Normande",
+      "numero": "48",
+      "bairro": "Farol",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57055210"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 30 | Nome fantasia: VERCONT CONSULTORIA E AUDITORIA CONTABIL | Cadastro legado: 28/05/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "VERCONT-CONSULTORIA E AUDITORIA CONTABIL LTDA",
+      "nomeFantasia": "VERCONT-ESCRITORIO CONTABIL",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04026",
+    "linhaOrigem": 31,
+    "cnpj": "27660282000100",
+    "razaoSocial": "ACAITERIA JATIUCA",
+    "nomeFantasia": "ACAITERIA JATIUCA",
+    "email": "empresa.migracao.27660282000100@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8281527351",
+    "endereco": {
+      "logradouro": "Avenida Doutor Antonio Gomes de Barros",
+      "numero": "836",
+      "bairro": "Jatiuca",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57036000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 31 | Nome fantasia: ACAITERIA JATIUCA | Cadastro legado: 28/05/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "ACAITERIA JATIUCA LTDA",
+      "nomeFantasia": "ACAITERIA JATIUCA",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04027",
+    "linhaOrigem": 32,
+    "cnpj": "55084720000174",
+    "razaoSocial": "ACAI AMOR DE FRUTA MACEIO LTDA",
+    "nomeFantasia": "ACAI AMOR DE FRUTA CENTRO",
+    "email": "empresa.migracao.55084720000174@sem-email.local",
+    "emailGerado": true,
+    "telefone": "7592021985",
+    "endereco": {
+      "logradouro": "Rua Dois de Dezembro",
+      "numero": "90",
+      "bairro": "Centro",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57020120"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 32 | Nome fantasia: ACAI AMOR DE FRUTA CENTRO | Cadastro legado: 28/05/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "ACAI AMOR DE FRUTA MACEIO LTDA",
+      "nomeFantasia": "ACAI AMOR DE FRUTA MACEIO",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04028",
+    "linhaOrigem": 33,
+    "cnpj": "51285894000144",
+    "razaoSocial": "G A GESTAO EMPRESARIAL LTDA",
+    "nomeFantasia": "G A GESTAO",
+    "email": "empresa.migracao.51285894000144@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8293733963",
+    "endereco": {
+      "logradouro": "Rua Josefa Gouveia de Arola",
+      "numero": "83",
+      "bairro": "Centro",
+      "cidade": "Novo Lino",
+      "estado": "AL",
+      "cep": "57970000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 33 | Nome fantasia: G A GESTAO | Cadastro legado: 29/05/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "G A GESTAO EMPRESARIAL LTDA",
+      "nomeFantasia": "G A GESTAO EMPRESARIAL LTDA",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04029",
+    "linhaOrigem": 34,
+    "cnpj": "04740705000104",
+    "razaoSocial": "CONDOMINIO RESIDENCIAL ILHA VITORIA",
+    "nomeFantasia": "ILHA VITORIA",
+    "email": "empresa.migracao.04740705000104@sem-email.local",
+    "emailGerado": true,
+    "telefone": "000000000000",
+    "endereco": {
+      "logradouro": "Rua do Sossego",
+      "numero": "551",
+      "bairro": "Farol",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57057420"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 34 | Nome fantasia: ILHA VITORIA | Cadastro legado: 05/06/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "CONDOMINIO RESIDENCIAL ILHA VITORIA",
+      "nomeFantasia": "CONDOMINIO ILHA VITORIA",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04030",
+    "linhaOrigem": 35,
+    "cnpj": "23035864000144",
+    "razaoSocial": "G CAVALCANTI DO NASCIMENTO ASSESSORIA",
+    "nomeFantasia": "CALCONT ASSESSORIA E CONSULTORIA",
+    "email": "empresa.migracao.23035864000144@sem-email.local",
+    "emailGerado": true,
+    "telefone": "NAO_INFORMADO",
+    "endereco": {
+      "logradouro": null,
+      "numero": null,
+      "bairro": "Antares",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57083141"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 35 | Nome fantasia: CALCONT ASSESSORIA E CONSULTORIA | Cadastro legado: 08/06/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "G CAVALCANTI DO NASCIMENTO ASSESSORIA",
+      "nomeFantasia": "CALCONT ASSESSORIA E CONSULTORIA",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04031",
+    "linhaOrigem": 36,
+    "cnpj": "62780983000183",
+    "razaoSocial": "REDE MAIS ALIMENTOS LTDA",
+    "nomeFantasia": "SUPERMECADO REDE MAIS",
+    "email": "empresa.migracao.62780983000183@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8296320054",
+    "endereco": {
+      "logradouro": "Avenida Manoel Affonso de Melo",
+      "numero": "1878",
+      "bairro": "Santa Lúcia",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57082095"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 36 | Nome fantasia: SUPERMECADO REDE MAIS | Cadastro legado: 08/06/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "REDE MAIS ALIMENTOS LTDA",
+      "nomeFantasia": "REDE MAIS ALIMENTOS",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04032",
+    "linhaOrigem": 37,
+    "cnpj": "01259626000180",
+    "razaoSocial": "ASSISTA - ASSOCIACAO DE PAIS E AMIGOS DO AUTISTA",
+    "nomeFantasia": "ASSISTA",
+    "email": "empresa.migracao.01259626000180@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8288582618",
+    "endereco": {
+      "logradouro": "Avenida Doutor Jorge Montenegro Barros",
+      "numero": "15",
+      "bairro": "Santa Amelia",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57063000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 37 | Nome fantasia: ASSISTA | Cadastro legado: 09/06/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: razao social, telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "ASSISTA - ASSOCIACAO DE PAIS E AMIGOS DO AUTISTA",
+      "nomeFantasia": "ASSISTA",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04033",
+    "linhaOrigem": 38,
+    "cnpj": "04408182000195",
+    "razaoSocial": "CLENIO PACHECO FRANCO",
+    "nomeFantasia": "CPF ADVOGADOS",
+    "email": "empresa.migracao.04408182000195@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8233366620",
+    "endereco": {
+      "logradouro": "Rua Doutor Jose de Castro Azevedo",
+      "numero": "77",
+      "bairro": "Pitanguinha",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57052240"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 38 | Nome fantasia: CPF ADVOGADOS | Cadastro legado: 10/06/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "CLENIO PACHECO FRANCO, ADVOGADOS E CONSULTORES JURIDICOS",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04034",
+    "linhaOrigem": 39,
+    "cnpj": "50781601000157",
+    "razaoSocial": "NEW CONVERSARIA LTDA",
+    "nomeFantasia": "NEW CONVERSARIA",
+    "email": "empresa.migracao.50781601000157@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8296714805",
+    "endereco": {
+      "logradouro": "Avenida Comendador Gustavo Paiva",
+      "numero": "2990",
+      "bairro": "Mangabeiras",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57037901"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 39 | Nome fantasia: NEW CONVERSARIA | Cadastro legado: 25/06/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "NEW CONVERSARIA LTDA.",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04035",
+    "linhaOrigem": 40,
+    "cnpj": "48958088000185",
+    "razaoSocial": "F JERONIMO LTDA",
+    "nomeFantasia": "OSACRE",
+    "email": "empresa.migracao.48958088000185@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8299868036",
+    "endereco": {
+      "logradouro": "Rua Cicero Bezerra Soares",
+      "numero": "360",
+      "bairro": "Camoxinga",
+      "cidade": "Santana do Ipanema",
+      "estado": "AL",
+      "cep": "57500000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 40 | Nome fantasia: OSACRE | Cadastro legado: 25/06/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "F JERONIMO LTDA",
+      "nomeFantasia": "OSACRE",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04036",
+    "linhaOrigem": 41,
+    "cnpj": "32565821000161",
+    "razaoSocial": "FELIPE FELINTO DE FRANCA",
+    "nomeFantasia": "FF TOLDOS E SERVIÇOS",
+    "email": "empresa.migracao.32565821000161@sem-email.local",
+    "emailGerado": true,
+    "telefone": "NAO_INFORMADO",
+    "endereco": {
+      "logradouro": null,
+      "numero": null,
+      "bairro": "Poco",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57025100"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 41 | Nome fantasia: FF TOLDOS E SERVIÇOS | Cadastro legado: 02/07/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: razao social, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "FELIPE FELINTO DE FRANCA",
+      "nomeFantasia": "FF TOLDOS E SERVICOS",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04037",
+    "linhaOrigem": 42,
+    "cnpj": "52867519000175",
+    "razaoSocial": "BENICIO E MELO ADVOGADOS ASSOCIADOS",
+    "nomeFantasia": "BENICIO E MELO ADVOGADOS ASSOCIADOS",
+    "email": "empresa.migracao.52867519000175@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8288770963",
+    "endereco": {
+      "logradouro": "Avenida Arthur Valente Juca",
+      "numero": "437",
+      "bairro": "Benedito Bentes",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57084610"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 42 | Nome fantasia: BENICIO E MELO ADVOGADOS ASSOCIADOS | Cadastro legado: 03/07/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "BENICIO E MELO ADVOGADOS ASSOCIADOS",
+      "nomeFantasia": "BENICIO E MELO ADVOGADOS ASSOCIADOS",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04038",
+    "linhaOrigem": 43,
+    "cnpj": "33512451000167",
+    "razaoSocial": "ESPACO DE DEPILACAO E ESTETICA LTDA",
+    "nomeFantasia": "FIOLASER",
+    "email": "empresa.migracao.33512451000167@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8293234272",
+    "endereco": {
+      "logradouro": "Avenida Comendador Gustavo Paiva",
+      "numero": "5945",
+      "bairro": "Cruz das Almas",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57038000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 43 | Nome fantasia: FIOLASER | Cadastro legado: 06/09/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: razao social, telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "ESPACO DE DEPILACAO E ESTETICA LTDA",
+      "nomeFantasia": "FIOLASER MACEIO",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04039",
+    "linhaOrigem": 44,
+    "cnpj": "46042619000160",
+    "razaoSocial": "TIO FERREIRA LTDA",
+    "nomeFantasia": "TIO FERREIRA SUPERMERCADOS",
+    "email": "empresa.migracao.46042619000160@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8299284062",
+    "endereco": {
+      "logradouro": "Avenida Doutor Manoel Valente de Lima",
+      "numero": "SN",
+      "bairro": "Cidade Universitária",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57072245"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 44 | Nome fantasia: TIO FERREIRA SUPERMERCADOS | Cadastro legado: 06/07/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "TIO FERREIRA LTDA",
+      "nomeFantasia": "TIO FERREIRA SUPERMERCADOS",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04040",
+    "linhaOrigem": 45,
+    "cnpj": "24166316000205",
+    "razaoSocial": "IPLAC INDUSTRIA PLASTICA CAETES LTDA",
+    "nomeFantasia": "GRUPO ULTRA",
+    "email": "empresa.migracao.24166316000205@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8221211809",
+    "endereco": {
+      "logradouro": "Rua Joao Jose Pereira Filho",
+      "numero": "1600",
+      "bairro": "Tabuleiro do Martins",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57081000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 45 | Nome fantasia: GRUPO ULTRA | Cadastro legado: 07/07/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "IPLAC INDUSTRIA PLASTICA CAETES LTDA",
+      "nomeFantasia": "ULTRATALHER",
+      "email": null,
+      "matrizFilial": "FILIAL"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04041",
+    "linhaOrigem": 46,
+    "cnpj": "61418720000166",
+    "razaoSocial": "LIANETA VASCONCELOS DALDINO DA SILVA",
+    "nomeFantasia": "LIAH GALLDINO",
+    "email": "empresa.migracao.61418720000166@sem-email.local",
+    "emailGerado": true,
+    "telefone": "NAO_INFORMADO",
+    "endereco": {
+      "logradouro": null,
+      "numero": null,
+      "bairro": "Jatiuca",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57035690"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 46 | Nome fantasia: LIAH GALLDINO | Cadastro legado: 07/07/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "61.418.720 LIANETA VASCONCELOS GALDINO DA SILVA",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04042",
+    "linhaOrigem": 47,
+    "cnpj": "19427967000263",
+    "razaoSocial": "STA MOTORS VEICULOS",
+    "nomeFantasia": "STA MOTORS VEICULOS E SERVICOS LTDA",
+    "email": "empresa.migracao.19427967000263@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8433441700",
+    "endereco": {
+      "logradouro": "Avenida Comendador Calaca",
+      "numero": "1553",
+      "bairro": "Poco",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57025640"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 47 | Nome fantasia: STA MOTORS VEICULOS E SERVICOS LTDA | Cadastro legado: 07/07/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "STA MOTORS VEICULOS E SERVICOS LTDA",
+      "nomeFantasia": "STA MOTORS VEICULOS",
+      "email": null,
+      "matrizFilial": "FILIAL"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04043",
+    "linhaOrigem": 48,
+    "cnpj": "48825912000129",
+    "razaoSocial": "ELLO SERVICOS CONDOMINIAIS E IMOBILIARIO LTDA",
+    "nomeFantasia": "ELLO SERVICOS CONDOMINIAIS E IMOBILIARIO",
+    "email": "empresa.migracao.48825912000129@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8293125454",
+    "endereco": {
+      "logradouro": "Rua Doutor Antônio Cansanção",
+      "numero": "575",
+      "bairro": "Ponta Verde",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57035190"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 48 | Nome fantasia: ELLO SERVICOS CONDOMINIAIS E IMOBILIARIO | Cadastro legado: 10/07/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: nome fantasia, telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "ELLO SERVICOS CONDOMINIAIS E IMOBILIARIO LTDA",
+      "nomeFantasia": "ELLO SERVICOS CONDOMINIAIS E IMOBILIARIO",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04044",
+    "linhaOrigem": 49,
+    "cnpj": "47804093000170",
+    "razaoSocial": "ALAGOAS APOIO ADMINISTRATIVO LTDA",
+    "nomeFantasia": "REDE LUFER",
+    "email": "empresa.migracao.47804093000170@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8288441026",
+    "endereco": {
+      "logradouro": "Vila dos Bancários",
+      "numero": "11",
+      "bairro": "Poço",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57025290"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 49 | Nome fantasia: REDE LUFER | Cadastro legado: 10/07/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "ALAGOAS APOIO ADMINISTRATIVO LTDA",
+      "nomeFantasia": "ALAGOAS APOIO ADMINSTRATIVO",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04045",
+    "linhaOrigem": 50,
+    "cnpj": "42400324000167",
+    "razaoSocial": "42.400.324 MICAELE CINTIA LOURENCO DA SILVA",
+    "nomeFantasia": "EMIS STUDIO",
+    "email": "empresa.migracao.42400324000167@sem-email.local",
+    "emailGerado": true,
+    "telefone": "NAO_INFORMADO",
+    "endereco": {
+      "logradouro": null,
+      "numero": null,
+      "bairro": "Jatiuca",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57035590"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 50 | Nome fantasia: EMIS STUDIO | Cadastro legado: 14/07/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "42.400.324 MICAELE CINTIA LOURENCO DA SILVA",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04046",
+    "linhaOrigem": 51,
+    "cnpj": "60483869000166",
+    "razaoSocial": "MESTRE CUCA RESTAURANTES LTDA",
+    "nomeFantasia": "MESTRE CUCA",
+    "email": "empresa.migracao.60483869000166@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8233271970",
+    "endereco": {
+      "logradouro": "Rua Doutor Odilon Vasconcelos",
+      "numero": "500",
+      "bairro": "Ponta Verde",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57035226"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 51 | Nome fantasia: MESTRE CUCA | Cadastro legado: 20/07/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "MESTRE CUCA RESTAURANTES LTDA",
+      "nomeFantasia": "MESTRE CUCA",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04047",
+    "linhaOrigem": 52,
+    "cnpj": "17025066000139",
+    "razaoSocial": "NEGOCIO EMPREENDIMENTOS IMOBILIARIOS LTDA",
+    "nomeFantasia": "NI",
+    "email": "empresa.migracao.17025066000139@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8233168570",
+    "endereco": {
+      "logradouro": "Avenida Comendador Gustavo Paiva",
+      "numero": "5945",
+      "bairro": "Cruz das Almas",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57038000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 52 | Nome fantasia: NI | Cadastro legado: 20/07/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: razao social, telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "NEGOCIO EMPREENDIMENTOS IMOBILIARIOS LTDA",
+      "nomeFantasia": "NEGOCIO EMPREENDIMENTOS IMOBILIARIOS",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04048",
+    "linhaOrigem": 53,
+    "cnpj": "47895196000193",
+    "razaoSocial": "REFINADA ESMALTERIA LTDA",
+    "nomeFantasia": "REFINADA BEAUTY",
+    "email": "empresa.migracao.47895196000193@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8296545861",
+    "endereco": {
+      "logradouro": "Rua Formosa",
+      "numero": "916",
+      "bairro": "Levada",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57017000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 53 | Nome fantasia: REFINADA BEAUTY | Cadastro legado: 20/07/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "REFINADA ESMALTERIA LTDA",
+      "nomeFantasia": "REFINADA ESMALTERIA",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04049",
+    "linhaOrigem": 54,
+    "cnpj": "19968808000195",
+    "razaoSocial": "N NOBRE CAJAZEIRA",
+    "nomeFantasia": "NOBRE ODONTOLOGIA",
+    "email": "empresa.migracao.19968808000195@sem-email.local",
+    "emailGerado": true,
+    "telefone": "NAO_INFORMADO",
+    "endereco": {
+      "logradouro": null,
+      "numero": null,
+      "bairro": "Feitosa",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57042610"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 54 | Nome fantasia: NOBRE ODONTOLOGIA | Cadastro legado: 21/07/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "M NOBRE CAJAZEIRA",
+      "nomeFantasia": "NOBRE ODONTOLOGIA E SAUDE",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04050",
+    "linhaOrigem": 55,
+    "cnpj": "60184337000128",
+    "razaoSocial": "HIPER LOGISTICA FARMACEUTICA",
+    "nomeFantasia": "A G D DA SILVA",
+    "email": "empresa.migracao.60184337000128@sem-email.local",
+    "emailGerado": true,
+    "telefone": "NAO_INFORMADO",
+    "endereco": {
+      "logradouro": null,
+      "numero": null,
+      "bairro": "Boa Vista",
+      "cidade": "Arapiraca",
+      "estado": "AL",
+      "cep": "57303291"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 55 | Nome fantasia: A G D DA SILVA | Cadastro legado: 23/07/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "A G D DA SILVA",
+      "nomeFantasia": "HIPER LOGISTICA FARMACEUTICA",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04051",
+    "linhaOrigem": 56,
+    "cnpj": "16646237000184",
+    "razaoSocial": "CAFE BRASIL REFEICOES COLETIVAS LTDA",
+    "nomeFantasia": "CAFE BRASIL",
+    "email": "empresa.migracao.16646237000184@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8232418871",
+    "endereco": {
+      "logradouro": "Rua Conego Machado",
+      "numero": "806",
+      "bairro": "Farol",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57051160"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 56 | Nome fantasia: CAFE BRASIL | Cadastro legado: 24/07/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: nome fantasia, telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "CAFE BRASIL REFEICOES COLETIVAS LTDA",
+      "nomeFantasia": "CAFE BRASIL",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04052",
+    "linhaOrigem": 57,
+    "cnpj": "59663540000106",
+    "razaoSocial": "CLARABOIA - ASSOCIACAO SOLAR",
+    "nomeFantasia": "CLARABOIA ENERGIA",
+    "email": "empresa.migracao.59663540000106@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8299891515",
+    "endereco": {
+      "logradouro": "Avenida Governador Osman Loureiro",
+      "numero": "49",
+      "bairro": "Mangabeiras",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57037630"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 57 | Nome fantasia: CLARABOIA ENERGIA | Cadastro legado: 04/08/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "CLARABOIA - ASSOCIACAO SOLAR",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04053",
+    "linhaOrigem": 58,
+    "cnpj": "09080623000196",
+    "razaoSocial": "VIPETRO CONSTRUCOES E MONTAGENS INDUSTRIAIS LTDA.",
+    "nomeFantasia": "VIPETRO CONSTRUCOES E MONTAGENS INDUSTRIAIS",
+    "email": "empresa.migracao.09080623000196@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8433167000",
+    "endereco": {
+      "logradouro": "Rua Vicente Fernandes",
+      "numero": "179",
+      "bairro": "Aeroporto",
+      "cidade": "Mossoró",
+      "estado": "RN",
+      "cep": "59607685"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 58 | Nome fantasia: VIPETRO CONSTRUCOES E MONTAGENS INDUSTRIAIS | Cadastro legado: 04/08/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: razao social, nome fantasia, telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "VIPETRO CONSTRUCOES E MONTAGENS INDUSTRIAIS LTDA.",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04054",
+    "linhaOrigem": 59,
+    "cnpj": "57708829000160",
+    "razaoSocial": "INTEGRACAO IV CENTRO DE DESENVOLVIMENTO INFANTIL LTDA",
+    "nomeFantasia": "CLINICA INTEGRACAO",
+    "email": "empresa.migracao.57708829000160@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8235120401",
+    "endereco": {
+      "logradouro": "Rua Hugo Jobim",
+      "numero": "S/N",
+      "bairro": "Pitanguinha",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57052100"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 59 | Nome fantasia: CLINICA INTEGRACAO | Cadastro legado: 04/08/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "INTEGRACAO IV CENTRO DE DESENVOLVIMENTO INFANTIL LTDA",
+      "nomeFantasia": "CHSA - CENTRO DE HABILIDADES SOCIAIS E AUTONOMIA",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04055",
+    "linhaOrigem": 60,
+    "cnpj": "83475913004774",
+    "razaoSocial": "PBG SA",
+    "nomeFantasia": "POINTER",
+    "email": "empresa.migracao.83475913004774@sem-email.local",
+    "emailGerado": true,
+    "telefone": "4832792587",
+    "endereco": {
+      "logradouro": "Rodovia Divaldo Suruagy",
+      "numero": "SN",
+      "bairro": "Polo Multifabril Industrial Jose Aprigio Vilela",
+      "cidade": "Marechal Deodoro",
+      "estado": "AL",
+      "cep": "57160000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 60 | Nome fantasia: POINTER | Cadastro legado: 05/08/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "PBG S/A",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "FILIAL"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04056",
+    "linhaOrigem": 61,
+    "cnpj": "01334368000159",
+    "razaoSocial": "ULTRAPLAST INDUSTRIA DE SACOLAS PLASTICAS LTDA",
+    "nomeFantasia": "ULTRAPLAST",
+    "email": "empresa.migracao.01334368000159@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8221211835",
+    "endereco": {
+      "logradouro": "Rua Joao Jose Pereira Filho",
+      "numero": "S/N",
+      "bairro": "Tabuleiro do Martins",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57081000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 61 | Nome fantasia: ULTRAPLAST | Cadastro legado: 05/08/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "ULTRAPLAST IND.E COM.DE SACOLAS PLASTICAS LTDA",
+      "nomeFantasia": "ULTRAPLAST",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04057",
+    "linhaOrigem": 62,
+    "cnpj": "51708629000121",
+    "razaoSocial": "BORA SELECT LTDA",
+    "nomeFantasia": "BORA SELECT",
+    "email": "empresa.migracao.51708629000121@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8281844449",
+    "endereco": {
+      "logradouro": "Avenida Comendador Gustavo Paiva",
+      "numero": "4360 C",
+      "bairro": "Mangabeiras",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57037285"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 62 | Nome fantasia: BORA SELECT | Cadastro legado: 06/08/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "BORA SELECT LTDA",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04058",
+    "linhaOrigem": 63,
+    "cnpj": "10547384000110",
+    "razaoSocial": "ACESSO10 INTERNET LTDA",
+    "nomeFantasia": "ACESSO10 INTERNET",
+    "email": "empresa.migracao.10547384000110@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8235211010",
+    "endereco": {
+      "logradouro": "Rua Curitiba",
+      "numero": "73",
+      "bairro": "Centro",
+      "cidade": "Arapiraca",
+      "estado": "AL",
+      "cep": "57300430"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 63 | Nome fantasia: ACESSO10 INTERNET | Cadastro legado: 07/08/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "ACESSO10 INTERNET LTDA",
+      "nomeFantasia": "ACESSO10 TELECOM",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04059",
+    "linhaOrigem": 64,
+    "cnpj": "41778506000294",
+    "razaoSocial": "HUG LIFE SKILL EDUCATION S/A",
+    "nomeFantasia": "HUG EDUCATION",
+    "email": "empresa.migracao.41778506000294@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8299999999",
+    "endereco": {
+      "logradouro": "Avenida Walter Ananias",
+      "numero": "139",
+      "bairro": "Jaragua",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57022063"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 64 | Nome fantasia: HUG EDUCATION | Cadastro legado: 07/08/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "HUG LIFE SKILL EDUCATION S/A",
+      "nomeFantasia": "HUG EDUCATION",
+      "email": null,
+      "matrizFilial": "FILIAL"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04060",
+    "linhaOrigem": 65,
+    "cnpj": "52159278000100",
+    "razaoSocial": "AB CONSULTORIA EM RH ALAGOAS LTDA",
+    "nomeFantasia": "RHF TALENTOS MACEIO ALAGOAS",
+    "email": "empresa.migracao.52159278000100@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8291074816",
+    "endereco": {
+      "logradouro": "Avenida Álvaro Otacílio",
+      "numero": "3731",
+      "bairro": "Jatiúca",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57036850"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 65 | Nome fantasia: RHF TALENTOS MACEIO ALAGOAS | Cadastro legado: 10/08/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "AB CONSULTORIA EM RH ALAGOAS LTDA",
+      "nomeFantasia": "RHF TALENTOS MACEIO ALAGOAS",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04061",
+    "linhaOrigem": 66,
+    "cnpj": "24464109000148",
+    "razaoSocial": "UNIVERSIDADE FEDERAL DE ALAGOAS",
+    "nomeFantasia": "CENTRO DE INOVAÇÃO",
+    "email": "empresa.migracao.24464109000148@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8232141006",
+    "endereco": {
+      "logradouro": "Avenida Lourival Melo Mota",
+      "numero": "SN",
+      "bairro": "Tabuleiro do Martins",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57072900"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 66 | Nome fantasia: CENTRO DE INOVAÇÃO | Cadastro legado: 10/08/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: razao social, nome fantasia, telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "UNIVERSIDADE FEDERAL DE ALAGOAS",
+      "nomeFantasia": "UFAL",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04062",
+    "linhaOrigem": 67,
+    "cnpj": "43707005000161",
+    "razaoSocial": "LCAA CONSULTORIA LTDA",
+    "nomeFantasia": "AC SERVICOS",
+    "email": "empresa.migracao.43707005000161@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8230214141",
+    "endereco": {
+      "logradouro": "Rodovia Ib Gatto Falcao",
+      "numero": "11895",
+      "bairro": "Frances",
+      "cidade": "Marechal Deodoro",
+      "estado": "AL",
+      "cep": "57160000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 67 | Nome fantasia: AC SERVICOS | Cadastro legado: 11/08/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "LCAA CONSULTORIA LTDA",
+      "nomeFantasia": "AC SERVICOS",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04063",
+    "linhaOrigem": 68,
+    "cnpj": "48928548000122",
+    "razaoSocial": "CYCOSA MOTORS LTDA",
+    "nomeFantasia": "CYCOSA MOTORS",
+    "email": "empresa.migracao.48928548000122@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8221268888",
+    "endereco": {
+      "logradouro": "Avenida Doutor Durval de Gois Monteiro",
+      "numero": "5345",
+      "bairro": "Santo Amaro",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57062830"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 68 | Nome fantasia: CYCOSA MOTORS | Cadastro legado: 11/08/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "CYCOSA MOTORS LTDA",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04064",
+    "linhaOrigem": 69,
+    "cnpj": "52999151000107",
+    "razaoSocial": "HABILE GESTAO CONDOMINIAL LTDA",
+    "nomeFantasia": "HABILE GESTAO",
+    "email": "empresa.migracao.52999151000107@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8211111111",
+    "endereco": {
+      "logradouro": "Avenida Fernandes Lima",
+      "numero": "8",
+      "bairro": "Farol",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57050000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 69 | Nome fantasia: HABILE GESTAO | Cadastro legado: 11/08/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "HABILE GESTAO CONDOMINIAL LTDA",
+      "nomeFantasia": "APTA GESTAO E CONSULTORIA",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04065",
+    "linhaOrigem": 70,
+    "cnpj": "07224991001107",
+    "razaoSocial": "NAZARIA DISTRIBUIDORA DE PRODUTOS FARMACEUTICOS LTDA",
+    "nomeFantasia": "NAZARIA DISTRIBUIDORA DE PRODUTOS FARMACEUTICOS LTDA",
+    "email": "empresa.migracao.07224991001107@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8632164600",
+    "endereco": {
+      "logradouro": "Rua Alameda Principal",
+      "numero": "S/N",
+      "bairro": "Zona Rural",
+      "cidade": "Marechal Deodoro",
+      "estado": "AL",
+      "cep": "57160000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 70 | Nome fantasia: NAZARIA DISTRIBUIDORA DE PRODUTOS FARMACEUTICOS LTDA | Cadastro legado: 12/08/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "NAZARIA DISTRIBUIDORA DE PRODUTOS FARMACEUTICOS LTDA",
+      "nomeFantasia": "NAZARIA DISTRIBUIDORA",
+      "email": null,
+      "matrizFilial": "FILIAL"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04066",
+    "linhaOrigem": 71,
+    "cnpj": "55249915000127",
+    "razaoSocial": "55.249.915 KAIO ARTHUR PEIXOTO MACEDO",
+    "nomeFantasia": "SR. PEIXOTO BARBEARIA",
+    "email": "empresa.migracao.55249915000127@sem-email.local",
+    "emailGerado": true,
+    "telefone": "NAO_INFORMADO",
+    "endereco": {
+      "logradouro": null,
+      "numero": null,
+      "bairro": "Santos Dumont",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57075762"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 71 | Nome fantasia: SR. PEIXOTO BARBEARIA | Cadastro legado: 14/08/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "55.249.915 KAIO ARTHUR PEIXOTO MACEDO",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04067",
+    "linhaOrigem": 72,
+    "cnpj": "49380301000187",
+    "razaoSocial": "FIORE ADMINISTRADORA E GESTORA LTDA",
+    "nomeFantasia": "FIORE ADMINISTRADORA E GESTORA",
+    "email": "empresa.migracao.49380301000187@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8233175951",
+    "endereco": {
+      "logradouro": "Rua Jangadeiros Alagoanos",
+      "numero": "619",
+      "bairro": "Pajuçara",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57030000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 72 | Nome fantasia: FIORE ADMINISTRADORA E GESTORA | Cadastro legado: 14/08/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "FIORE ADMINISTRADORA E GESTORA LTDA",
+      "nomeFantasia": "FIORE ADMINISTRADORA E GESTORA",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04068",
+    "linhaOrigem": 73,
+    "cnpj": "63290559000113",
+    "razaoSocial": "MORAIS CONSTRUCOES LTDA",
+    "nomeFantasia": "MORAIS CONSTRUCOES LTDA",
+    "email": "empresa.migracao.63290559000113@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8299407681",
+    "endereco": {
+      "logradouro": "Rua Antônio Raimundo de Lima",
+      "numero": "10",
+      "bairro": "Trapiche da Barra",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57010500"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 73 | Nome fantasia: MORAIS CONSTRUCOES LTDA | Cadastro legado: 18/08/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "MORAIS CONSTRUCOES LTDA",
+      "nomeFantasia": "MORAIS CONSTRUCOES LTDA",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04069",
+    "linhaOrigem": 74,
+    "cnpj": "66510591000155",
+    "razaoSocial": "FRANCA TAPETES E BOMBONAS",
+    "nomeFantasia": "EZEQUIAS LEMOS",
+    "email": "empresa.migracao.66510591000155@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8296707308",
+    "endereco": {
+      "logradouro": "Avenida Doutor Durval de Góis Monteiro",
+      "numero": "8780",
+      "bairro": "Santa Lúcia",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57082160"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 74 | Nome fantasia: EZEQUIAS LEMOS | Cadastro legado: 21/08/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "FRANCA TAPETES E BOMBONAS LTDA",
+      "nomeFantasia": "FRANCA TAPETES E BOMBONAS",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04070",
+    "linhaOrigem": 75,
+    "cnpj": "41157967000169",
+    "razaoSocial": "ENGENHARIA DE MATERIAIS LTDA",
+    "nomeFantasia": "ENGEMAT",
+    "email": "empresa.migracao.41157967000169@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8287098817",
+    "endereco": {
+      "logradouro": "Avenida Hamilton de Barros Soutinho",
+      "numero": "797",
+      "bairro": "Jatiuca",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57035690"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 75 | Nome fantasia: ENGEMAT | Cadastro legado: 01/09/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "ENGENHARIA DE MATERIAIS LTDA",
+      "nomeFantasia": "ENGEMAT",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04071",
+    "linhaOrigem": 76,
+    "cnpj": "58186233000100",
+    "razaoSocial": "ABSOLUTE CONTABIL LTDA",
+    "nomeFantasia": "ABSOLUTE CONTABIL LTDA",
+    "email": "empresa.migracao.58186233000100@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8298234648",
+    "endereco": {
+      "logradouro": "Avenida Comendador Gustavo Paiva",
+      "numero": "3506",
+      "bairro": "Mangabeiras",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57037285"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 76 | Nome fantasia: ABSOLUTE CONTABIL LTDA | Cadastro legado: 09/09/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "ABSOLUTE CONTABIL LTDA",
+      "nomeFantasia": "ABSOLUTE CONTABIL",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04072",
+    "linhaOrigem": 77,
+    "cnpj": "33495057000168",
+    "razaoSocial": "MERCADO 101 COMERCIO DE ALIMENTO LTDA",
+    "nomeFantasia": "MERCADO 101",
+    "email": "empresa.migracao.33495057000168@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8281651001",
+    "endereco": {
+      "logradouro": "Rodovia Ib Gatto Falcao",
+      "numero": "SN",
+      "bairro": "Santa Rita",
+      "cidade": "Marechal Deodoro",
+      "estado": "AL",
+      "cep": "57160000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 77 | Nome fantasia: MERCADO 101 | Cadastro legado: 09/09/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "MERCADO 101 COMERCIO DE ALIMENTOS LTDA",
+      "nomeFantasia": "MERCADO 101",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04073",
+    "linhaOrigem": 78,
+    "cnpj": "52402081000150",
+    "razaoSocial": "TEIXEIRA ARAUJO EVENTOS E CURSOS LTDA",
+    "nomeFantasia": "ESCOLA TECNICA RESIDENCIA SAUDE",
+    "email": "empresa.migracao.52402081000150@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8288261928",
+    "endereco": {
+      "logradouro": "Avenida Fernandes Lima",
+      "numero": "926",
+      "bairro": "Pitanguinha",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57052050"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 78 | Nome fantasia: ESCOLA TECNICA RESIDENCIA SAUDE | Cadastro legado: 17/09/2026 | Situacao Receita: INAPTA | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "INAPTA",
+      "razaoSocial": "TEIXEIRA ARAUJO EVENTOS E CURSOS LTDA",
+      "nomeFantasia": "ESCOLA TECNICA RESIDENCIA SAUDE",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04074",
+    "linhaOrigem": 79,
+    "cnpj": "61282211000159",
+    "razaoSocial": "GRACIELA PEREIRA COSTA",
+    "nomeFantasia": "GRACIELA COSTA",
+    "email": "empresa.migracao.61282211000159@sem-email.local",
+    "emailGerado": true,
+    "telefone": "NAO_INFORMADO",
+    "endereco": {
+      "logradouro": null,
+      "numero": null,
+      "bairro": "Santa Amelia",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57063640"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 79 | Nome fantasia: GRACIELA COSTA | Cadastro legado: 17/09/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "61.282.211 GRACIELA PEREIRA COSTA",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04075",
+    "linhaOrigem": 80,
+    "cnpj": "49206615000168",
+    "razaoSocial": "49206615 ANNE KAROLLYNE FEITOSA DE OLIVEIRA",
+    "nomeFantasia": "49206615 ANNE KAROLLYNE FEITOSA DE OLIVEIRA",
+    "email": "empresa.migracao.49206615000168@sem-email.local",
+    "emailGerado": true,
+    "telefone": "NAO_INFORMADO",
+    "endereco": {
+      "logradouro": null,
+      "numero": null,
+      "bairro": "Cidade Universitaria",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57073510"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 80 | Nome fantasia: 49206615 ANNE KAROLLYNE FEITOSA DE OLIVEIRA | Cadastro legado: 17/09/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "49.206.615 ANNE KAROLLYNE FEITOSA DE OLIVEIRA",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04076",
+    "linhaOrigem": 81,
+    "cnpj": "26424857000122",
+    "razaoSocial": "MUSE MEIOS DE PAGAMENTOS LTDA",
+    "nomeFantasia": "MUSE",
+    "email": "empresa.migracao.26424857000122@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8221800196",
+    "endereco": {
+      "logradouro": "Avenida Joao Davino",
+      "numero": "195",
+      "bairro": "Jatiuca",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57035554"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 81 | Nome fantasia: MUSE | Cadastro legado: 17/09/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "MUSE MEIOS DE PAGAMENTOS LTDA",
+      "nomeFantasia": "MUSE BRASIL",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04077",
+    "linhaOrigem": 82,
+    "cnpj": "33734175000181",
+    "razaoSocial": "PASSOS COMERCIO DE BEBIDAS LTDA",
+    "nomeFantasia": "PASSOS COMERCIO DE BEBIDAS LTDA",
+    "email": "empresa.migracao.33734175000181@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8291929265",
+    "endereco": {
+      "logradouro": "Rua Coronel Alcides de Barros Ferreira",
+      "numero": "83",
+      "bairro": "Jatiuca",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57036480"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 82 | Nome fantasia: PASSOS COMERCIO DE BEBIDAS LTDA | Cadastro legado: 21/09/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "PASSOS COMERCIO DE BEBIDAS LTDA",
+      "nomeFantasia": "KAIMARIA",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04078",
+    "linhaOrigem": 83,
+    "cnpj": "49398145000181",
+    "razaoSocial": "F G D SERVICOS MEDICOS LTDA",
+    "nomeFantasia": "INSTITUTO ROSA GAIA",
+    "email": "empresa.migracao.49398145000181@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8296073332",
+    "endereco": {
+      "logradouro": "Avenida Doutor Antônio Gomes de Barros",
+      "numero": "625",
+      "bairro": "Jatiúca",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57036001"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 83 | Nome fantasia: INSTITUTO ROSA GAIA | Cadastro legado: 22/09/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: razao social, telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "F G D SERVICOS MEDICOS LTDA",
+      "nomeFantasia": "INSTITUTO ROSA GAIA CONSULTAS",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04079",
+    "linhaOrigem": 84,
+    "cnpj": "34586704000100",
+    "razaoSocial": "DIVINAS GULOSEIMAS",
+    "nomeFantasia": "DIVINAS GULOSEIMAS",
+    "email": "empresa.migracao.34586704000100@sem-email.local",
+    "emailGerado": true,
+    "telefone": "8288539450",
+    "endereco": {
+      "logradouro": "Rua Doutor Geraldo Pereira Brazil (cj Morada do Bosque",
+      "numero": "09 A",
+      "bairro": "Petropolis",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57062584"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 84 | Nome fantasia: DIVINAS GULOSEIMAS | Cadastro legado: 22/09/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "DIVINAS GULOSEIMAS LTDA",
+      "nomeFantasia": "DIVINAS GULOSEIMAS",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04080",
+    "linhaOrigem": 85,
+    "cnpj": "39505336000222",
+    "razaoSocial": "GOMMA DISTRIBUIDORA DE PNEUS LTDA",
+    "nomeFantasia": "GOMMA DISTRIBUIDORA DE PNEUS",
+    "email": "empresa.migracao.39505336000222@sem-email.local",
+    "emailGerado": true,
+    "telefone": "4121046779",
+    "endereco": {
+      "logradouro": "Rodovia Dr. Geraldo Cavalcante Cajueiro",
+      "numero": "110",
+      "bairro": "Canafistula",
+      "cidade": "Arapiraca",
+      "estado": "AL",
+      "cep": "57300970"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 85 | Nome fantasia: GOMMA DISTRIBUIDORA DE PNEUS | Cadastro legado: 22/09/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "GOMMA DISTRIBUIDORA DE PNEUS LTDA",
+      "nomeFantasia": "GOMMA PNEUS",
+      "email": null,
+      "matrizFilial": "FILIAL"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04081",
+    "linhaOrigem": 86,
+    "cnpj": "62991194000191",
+    "razaoSocial": "J A DE OLIVEIRA SERVICOS",
+    "nomeFantasia": "JEANE AVELINO - CONSULTORIA DE RH",
+    "email": "empresa.migracao.62991194000191@sem-email.local",
+    "emailGerado": true,
+    "telefone": "NAO_INFORMADO",
+    "endereco": {
+      "logradouro": null,
+      "numero": null,
+      "bairro": "Farol",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57050050"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 86 | Nome fantasia: JEANE AVELINO - CONSULTORIA DE RH | Cadastro legado: 24/09/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: razao social, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "J A DE OLIVEIRA SERVICOS",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04082",
+    "linhaOrigem": 87,
+    "cnpj": "68409605000174",
+    "razaoSocial": "CERÂMICA POINTER LTDA",
+    "nomeFantasia": "CERÂMICA POINTER LTDA",
+    "email": "empresa.migracao.68409605000174@sem-email.local",
+    "emailGerado": true,
+    "telefone": "4832792587",
+    "endereco": {
+      "logradouro": "Rodovia Br-424",
+      "numero": "S/N",
+      "bairro": "Polo Mutifabril Jose Aprigio Vilela",
+      "cidade": "Marechal Deodoro",
+      "estado": "AL",
+      "cep": "57160000"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 87 | Nome fantasia: CERÂMICA POINTER LTDA | Cadastro legado: 25/09/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "PARATY LTDA",
+      "nomeFantasia": "",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  },
+  {
+    "codigo": "EMP-MIG-04083",
+    "linhaOrigem": 88,
+    "cnpj": "34036631000182",
+    "razaoSocial": "MACEIO LANCHONETE SORVETES E SIMILARES LTDA",
+    "nomeFantasia": "MR SHAKE",
+    "email": "empresa.migracao.34036631000182@sem-email.local",
+    "emailGerado": true,
+    "telefone": "3799933444",
+    "endereco": {
+      "logradouro": "Avenida Doutor Antonio Gouveia",
+      "numero": "475",
+      "bairro": "Pajucara",
+      "cidade": "Maceió",
+      "estado": "AL",
+      "cep": "57030170"
+    },
+    "descricao": "Origem: grid_empresas - 29-04 a 25-09.xlsx | Linha(s): 88 | Nome fantasia: MR SHAKE | Cadastro legado: 25/09/2026 | Complementado via Receita Federal (BrasilAPI) em 30/09/2026: telefone, endereco | E-mail sintetico gerado para atender unicidade do cadastro",
+    "receita": {
+      "situacao": "ATIVA",
+      "razaoSocial": "MACEIO LANCHONETE SORVETES E SIMILARES SLU LTDA",
+      "nomeFantasia": "MR SHAKE",
+      "email": null,
+      "matrizFilial": "MATRIZ"
+    }
+  }
+]

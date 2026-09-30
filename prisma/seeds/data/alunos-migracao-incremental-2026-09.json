@@ -1,0 +1,3306 @@
+{
+  "metadata": {
+    "source": "migracao/grid_w_aluno - 04-05 a 30-09.xlsx",
+    "sheet": "Alunos",
+    "generatedAt": "2026-09-30",
+    "linhas": 144,
+    "alunos": 141,
+    "inscricoes": 140
+  },
+  "alunos": [
+    {
+      "cpf": "02378443463",
+      "nome": "ADEILTON SANTOS LINS",
+      "telefone": "82988091678",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-06-01",
+      "linhasOrigem": [
+        2
+      ]
+    },
+    {
+      "cpf": "14400387402",
+      "nome": "ALBERTO BATISTA RAMOS",
+      "telefone": "82996195684",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-06-08",
+      "linhasOrigem": [
+        3
+      ]
+    },
+    {
+      "cpf": "06181862471",
+      "nome": "ALBERTO KENISON SANTOS DE MELO",
+      "telefone": "82988892799",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-21",
+      "linhasOrigem": [
+        4
+      ]
+    },
+    {
+      "cpf": "10167327402",
+      "nome": "ALDICLÊS PEDRO VIEIRA SANTOS",
+      "telefone": "82993479977",
+      "cidade": "MARECHAL DEODORO",
+      "estado": "AL",
+      "cadastro": "2026-07-07",
+      "linhasOrigem": [
+        5
+      ]
+    },
+    {
+      "cpf": "07808079448",
+      "nome": "ALESSANDRA ALVES ARAGÃO",
+      "telefone": "82988521874",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-09-17",
+      "linhasOrigem": [
+        6
+      ]
+    },
+    {
+      "cpf": "04681393460",
+      "nome": "ALINE DA SILVA LINS",
+      "telefone": "82998057798",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-14",
+      "linhasOrigem": [
+        7
+      ]
+    },
+    {
+      "cpf": "11851208402",
+      "nome": "ANDRESSA KARINA ELIZIÁRIO DA SILVA SANTOS",
+      "telefone": "82988457889",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-15",
+      "linhasOrigem": [
+        8
+      ]
+    },
+    {
+      "cpf": "13068726425",
+      "nome": "ANNE BEATRIZ DA SILVA SOUZA",
+      "telefone": "82999094301",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-06-15",
+      "linhasOrigem": [
+        9
+      ]
+    },
+    {
+      "cpf": "15747768433",
+      "nome": "ARTHUR EDEILDO DE LIMA FELIX",
+      "telefone": "82996005641",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-09-17",
+      "linhasOrigem": [
+        10
+      ]
+    },
+    {
+      "cpf": "15844012496",
+      "nome": "ATHIRSON MARTINS PARNAÍBA",
+      "telefone": "83998446763",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-05-25",
+      "linhasOrigem": [
+        11
+      ]
+    },
+    {
+      "cpf": "06975405450",
+      "nome": "BEATRIZ CIQUEIRA GOMES",
+      "telefone": "82991860121",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-05-21",
+      "linhasOrigem": [
+        12
+      ]
+    },
+    {
+      "cpf": "14253767460",
+      "nome": "BERNARDO FERREIRA FELIX",
+      "telefone": "82987133453",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-06-10",
+      "linhasOrigem": [
+        13
+      ]
+    },
+    {
+      "cpf": "10259786411",
+      "nome": "CAIO RUAN MELHOR FROIS",
+      "telefone": "82999515871",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-05-25",
+      "linhasOrigem": [
+        14
+      ]
+    },
+    {
+      "cpf": "02620852404",
+      "nome": "CARLA MARIA SILVA DE BARROS",
+      "telefone": "82988423177",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-09-01",
+      "linhasOrigem": [
+        15
+      ]
+    },
+    {
+      "cpf": "15087021441",
+      "nome": "CARLOS DANIEL DA SILVA GALDINO",
+      "telefone": "82996853142",
+      "cidade": "MARECHAL DEODORO",
+      "estado": "AL",
+      "cadastro": "2026-07-17",
+      "linhasOrigem": [
+        16
+      ]
+    },
+    {
+      "cpf": "14493992409",
+      "nome": "CARLOS EDUARDO SILVA DOS SANTOS",
+      "telefone": "82987354520",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-14",
+      "linhasOrigem": [
+        17
+      ]
+    },
+    {
+      "cpf": "11606641450",
+      "nome": "CARLOS JORGE SANTOS JUNIOR",
+      "telefone": "82993534736",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-05-09",
+      "linhasOrigem": [
+        18
+      ]
+    },
+    {
+      "cpf": "08084529404",
+      "nome": "CARLOS MATHEUS DA SILVA MEYER",
+      "telefone": "82987217970",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-30",
+      "linhasOrigem": [
+        19
+      ]
+    },
+    {
+      "cpf": "11249921465",
+      "nome": "CASSIO HENRIQUE DA SILVA",
+      "telefone": "82993525494",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-05-21",
+      "linhasOrigem": [
+        20
+      ]
+    },
+    {
+      "cpf": "09163975564",
+      "nome": "CAUÃ DA SILVA FELIX",
+      "telefone": "82996487444",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-07",
+      "linhasOrigem": [
+        21
+      ]
+    },
+    {
+      "cpf": "11876533498",
+      "nome": "CÍCERO ANTÔNIO DA SILVA FILHO",
+      "telefone": "82988022527",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-20",
+      "linhasOrigem": [
+        22
+      ]
+    },
+    {
+      "cpf": "12601826495",
+      "nome": "CÍCERO FERNANDO FERREIRA DOS SANTOS",
+      "telefone": "82988882298",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-16",
+      "linhasOrigem": [
+        23
+      ]
+    },
+    {
+      "cpf": "10481955461",
+      "nome": "CLAUDEVAN MARINHO",
+      "telefone": "82996478846",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-05-18",
+      "linhasOrigem": [
+        24
+      ]
+    },
+    {
+      "cpf": "02129921396",
+      "nome": "CLAUDIANA PEREIRA DE CARVALHO",
+      "telefone": "11984884460",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-14",
+      "linhasOrigem": [
+        25
+      ]
+    },
+    {
+      "cpf": "16117314450",
+      "nome": "DANIEL GOMES DE ARAÚJO",
+      "telefone": "82987858628",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-03",
+      "linhasOrigem": [
+        26
+      ]
+    },
+    {
+      "cpf": "13498219421",
+      "nome": "DAVI DEWYSSON SANTOS REIS",
+      "telefone": "82993713613",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-31",
+      "linhasOrigem": [
+        27,
+        28
+      ]
+    },
+    {
+      "cpf": "11840334479",
+      "nome": "DAVI SANTOS DA SILVA",
+      "telefone": "82993480528",
+      "cidade": "SATUBA",
+      "estado": "AL",
+      "cadastro": "2026-07-16",
+      "linhasOrigem": [
+        29
+      ]
+    },
+    {
+      "cpf": "08046978418",
+      "nome": "DAVID GABRIEL BARROS DE OLIVEIRA",
+      "telefone": "82999375460",
+      "cidade": "RIO LARGO",
+      "estado": "AL",
+      "cadastro": "2026-07-09",
+      "linhasOrigem": [
+        30
+      ]
+    },
+    {
+      "cpf": "10969968477",
+      "nome": "DEIVANI SWHENDY DOS SANTOS ROCHA",
+      "telefone": "82999894266",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-07",
+      "linhasOrigem": [
+        31
+      ]
+    },
+    {
+      "cpf": "02810495483",
+      "nome": "DENISSON VOLNEY URTIGA",
+      "telefone": "82991385643",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-06-16",
+      "linhasOrigem": [
+        32
+      ]
+    },
+    {
+      "cpf": "06683635412",
+      "nome": "DIEGO RAFAEL TENORIO DA SILVA",
+      "telefone": "82993938762",
+      "cidade": "RIO LARGO",
+      "estado": "AL",
+      "cadastro": "2026-07-03",
+      "linhasOrigem": [
+        33
+      ]
+    },
+    {
+      "cpf": "08434566478",
+      "nome": "DIEGO SILVA FARIAS",
+      "telefone": "82998325559",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-03",
+      "linhasOrigem": [
+        34
+      ]
+    },
+    {
+      "cpf": "11265177473",
+      "nome": "EDILANE LIMA DA SILVA",
+      "telefone": "82994086873",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-09-04",
+      "linhasOrigem": [
+        35
+      ]
+    },
+    {
+      "cpf": "03246761400",
+      "nome": "EDLANE SIMÕES DUARTE DOS SANTOS",
+      "telefone": "82998390973",
+      "cidade": "MARECHAL DEODORO",
+      "estado": "AL",
+      "cadastro": "2026-09-08",
+      "linhasOrigem": [
+        36
+      ]
+    },
+    {
+      "cpf": "04920938497",
+      "nome": "EDSON CABRAL DA SILVA",
+      "telefone": "82993825340",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-27",
+      "linhasOrigem": [
+        37
+      ]
+    },
+    {
+      "cpf": "11453518401",
+      "nome": "EDSON RODRIGO DA SILVA",
+      "telefone": "82996767545",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-06",
+      "linhasOrigem": [
+        38
+      ]
+    },
+    {
+      "cpf": "11828272418",
+      "nome": "ELIANE MARIA DA SILVA PAZ",
+      "telefone": "82988191446",
+      "cidade": "SATUBA",
+      "estado": "AL",
+      "cadastro": "2026-08-10",
+      "linhasOrigem": [
+        39
+      ]
+    },
+    {
+      "cpf": "04517488403",
+      "nome": "ELISÂNGELA RENOVATO DOS SANTOS",
+      "telefone": "82988298575",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-06-15",
+      "linhasOrigem": [
+        40
+      ]
+    },
+    {
+      "cpf": "10670880400",
+      "nome": "ELTON EDUARDO BARROS DE FARIAS",
+      "telefone": "82991209539",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-20",
+      "linhasOrigem": [
+        41
+      ]
+    },
+    {
+      "cpf": "70236474227",
+      "nome": "EMANUEL FERREIRA MARINHO",
+      "telefone": "82996638902",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-05-12",
+      "linhasOrigem": [
+        42
+      ]
+    },
+    {
+      "cpf": "11996427466",
+      "nome": "EMILLY MARIANA FERREIRA DA SILVA MORAES",
+      "telefone": "82988962630",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-06",
+      "linhasOrigem": [
+        43
+      ]
+    },
+    {
+      "cpf": "11191373495",
+      "nome": "ERICKA MARIA DA SILVA",
+      "telefone": "82998074182",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-30",
+      "linhasOrigem": [
+        44
+      ]
+    },
+    {
+      "cpf": "14152388471",
+      "nome": "FABIANO DA SILVA SANTOS",
+      "telefone": "82993237451",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-09-28",
+      "linhasOrigem": [
+        45
+      ]
+    },
+    {
+      "cpf": "05951298466",
+      "nome": "FAUBER VICENTE DOS SANTOS",
+      "telefone": "82987053715",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-14",
+      "linhasOrigem": [
+        46
+      ]
+    },
+    {
+      "cpf": "13636858483",
+      "nome": "FILIPE CLEOPAS CÂNDIDO SANTOS",
+      "telefone": "82998033354",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-31",
+      "linhasOrigem": [
+        47
+      ]
+    },
+    {
+      "cpf": "15219352466",
+      "nome": "FRANCISCO MONTEIRO DA SILVA",
+      "telefone": "87981528173",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-06-15",
+      "linhasOrigem": [
+        48
+      ]
+    },
+    {
+      "cpf": "86783028526",
+      "nome": "GABRIEL BARBOSA OLIVEIRA",
+      "telefone": "71986681776",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-24",
+      "linhasOrigem": [
+        49
+      ]
+    },
+    {
+      "cpf": "13968174410",
+      "nome": "GABRIEL LUCAS DA SILVA",
+      "telefone": "82994157367",
+      "cidade": "SATUBA",
+      "estado": "AL",
+      "cadastro": "2026-09-21",
+      "linhasOrigem": [
+        50
+      ]
+    },
+    {
+      "cpf": "87074664472",
+      "nome": "GAUDENCIO CICERO TOMAZ ALVES",
+      "telefone": "82993362670",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-09-21",
+      "linhasOrigem": [
+        51
+      ]
+    },
+    {
+      "cpf": "01816180440",
+      "nome": "GENIVALDO AFONSO DOS SANTOS",
+      "telefone": "82994000380",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-05-15",
+      "linhasOrigem": [
+        52
+      ]
+    },
+    {
+      "cpf": "11342643488",
+      "nome": "GEORGE NICOLAS DE OLIVEIRA GOMES",
+      "telefone": "82991090821",
+      "cidade": "ATALAIA",
+      "estado": "AL",
+      "cadastro": "2026-08-21",
+      "linhasOrigem": [
+        53
+      ]
+    },
+    {
+      "cpf": "07381231450",
+      "nome": "GISELE MAYARA PEREIRA DA SILVA",
+      "telefone": "82996573613",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-14",
+      "linhasOrigem": [
+        54
+      ]
+    },
+    {
+      "cpf": "15157587457",
+      "nome": "GRAZYELLE ARAUJO DE ALMEIDA",
+      "telefone": "82999387586",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-26",
+      "linhasOrigem": [
+        55,
+        56
+      ]
+    },
+    {
+      "cpf": "11393809405",
+      "nome": "HENRIQUE EVELTON DE ALMEIDA GOMES",
+      "telefone": "82991086192",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-21",
+      "linhasOrigem": [
+        57
+      ]
+    },
+    {
+      "cpf": "14249005496",
+      "nome": "HWEVANYS BECKHAM FERREIRA DA SILVA",
+      "telefone": "82987115579",
+      "cidade": "RIO LARGO",
+      "estado": "AL",
+      "cadastro": "2026-06-10",
+      "linhasOrigem": [
+        58
+      ]
+    },
+    {
+      "cpf": "14978973430",
+      "nome": "ISAAC GABRIEL DA SILVA AMORIM",
+      "telefone": "82998446984",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-03",
+      "linhasOrigem": [
+        59
+      ]
+    },
+    {
+      "cpf": "09455786443",
+      "nome": "ITALO BRUNO DE JESUS MELO",
+      "telefone": "82987219545",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-05-05",
+      "linhasOrigem": [
+        60
+      ]
+    },
+    {
+      "cpf": "05963376475",
+      "nome": "IVANA FABRÍCIA CARDOSO DOS SANTOS",
+      "telefone": "82988226051",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-31",
+      "linhasOrigem": [
+        61
+      ]
+    },
+    {
+      "cpf": "11415489416",
+      "nome": "IVONEIDE FERNANDES DA SILVA",
+      "telefone": "82996137369",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-28",
+      "linhasOrigem": [
+        62
+      ]
+    },
+    {
+      "cpf": "10146680421",
+      "nome": "IZABELLA DE ASSIS SILVA",
+      "telefone": "82991082642",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-06-02",
+      "linhasOrigem": [
+        63
+      ]
+    },
+    {
+      "cpf": "13659869422",
+      "nome": "JACIARA MARIA LIMA DE SOUZA",
+      "telefone": "82988683518",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-27",
+      "linhasOrigem": [
+        64
+      ]
+    },
+    {
+      "cpf": "14999728494",
+      "nome": "JAIR PINHEIRO DOS SANTOS",
+      "telefone": "82987441443",
+      "cidade": "SATUBA",
+      "estado": "AL",
+      "cadastro": "2026-09-22",
+      "linhasOrigem": [
+        65
+      ]
+    },
+    {
+      "cpf": "12141064473",
+      "nome": "JAMERSON FRANCISCO DA SILVA",
+      "telefone": "82996497734",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-14",
+      "linhasOrigem": [
+        66
+      ]
+    },
+    {
+      "cpf": "04709118400",
+      "nome": "JEANE MUNIZ GOUVEIA",
+      "telefone": "82981617003",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-05-27",
+      "linhasOrigem": [
+        67
+      ]
+    },
+    {
+      "cpf": "14730519400",
+      "nome": "JOÃO GABRIEL PEREIRA DOS SANTOS",
+      "telefone": "82993554438",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-07",
+      "linhasOrigem": [
+        68
+      ]
+    },
+    {
+      "cpf": "10453184421",
+      "nome": "JOÃO VICTOR ALVES",
+      "telefone": "82988887588",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-09",
+      "linhasOrigem": [
+        69
+      ]
+    },
+    {
+      "cpf": "02944066463",
+      "nome": "JOEBSON LOPES DA SILVA",
+      "telefone": "82994325565",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-06",
+      "linhasOrigem": [
+        70
+      ]
+    },
+    {
+      "cpf": "07549643458",
+      "nome": "JOHN DE OLIVEIRA SILVA",
+      "telefone": "82994002670",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-09-18",
+      "linhasOrigem": [
+        71
+      ]
+    },
+    {
+      "cpf": "14197751460",
+      "nome": "JONATHAN MARIANO JOSÉ DA SILVA",
+      "telefone": "82999809643",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-09",
+      "linhasOrigem": [
+        72
+      ]
+    },
+    {
+      "cpf": "14106209489",
+      "nome": "JOSÉ ARMANDO SOARES MATIAS",
+      "telefone": "82988583412",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-09-22",
+      "linhasOrigem": [
+        73
+      ]
+    },
+    {
+      "cpf": "01339086409",
+      "nome": "JOSÉ CÍCERO DA SILVA",
+      "telefone": "82991748221",
+      "cidade": "MURICI",
+      "estado": "AL",
+      "cadastro": "2026-08-11",
+      "linhasOrigem": [
+        74
+      ]
+    },
+    {
+      "cpf": "18932401420",
+      "nome": "JOSÉ LINS RODRIGUES FILHO",
+      "telefone": "82991207818",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-06-02",
+      "linhasOrigem": [
+        75
+      ]
+    },
+    {
+      "cpf": "14058518480",
+      "nome": "JOSE LUCAS VIEIRA MONTEIRO",
+      "telefone": "82982074802",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-09-28",
+      "linhasOrigem": [
+        76
+      ]
+    },
+    {
+      "cpf": "71327408490",
+      "nome": "JOSÉ OTÁVIO FERREIRA CAVALCANTE",
+      "telefone": "82991763721",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-09-18",
+      "linhasOrigem": [
+        77
+      ]
+    },
+    {
+      "cpf": "88954854400",
+      "nome": "JOSÉ PEREIRA DA SILVA JUNIOR",
+      "telefone": "82998107505",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-06",
+      "linhasOrigem": [
+        78
+      ]
+    },
+    {
+      "cpf": "81635877415",
+      "nome": "JOSÉ RUBENS VIANA",
+      "telefone": "82988460875",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-11",
+      "linhasOrigem": [
+        79
+      ]
+    },
+    {
+      "cpf": "05173018496",
+      "nome": "JOSEMEIRY GARCIA COSTA",
+      "telefone": "82988745412",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-06-15",
+      "linhasOrigem": [
+        80
+      ]
+    },
+    {
+      "cpf": "70007867441",
+      "nome": "JOSIMAR ROCHA DE SOUZA",
+      "telefone": "82991887455",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-20",
+      "linhasOrigem": [
+        81
+      ]
+    },
+    {
+      "cpf": "09923646475",
+      "nome": "JOSUEL PEREIRA DA SILVA",
+      "telefone": "82982215484",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-06-12",
+      "linhasOrigem": [
+        82
+      ]
+    },
+    {
+      "cpf": "12905096462",
+      "nome": "JOZIVALDO SILVA DOS SANTOS JUNIOR",
+      "telefone": "82991877455",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-06-08",
+      "linhasOrigem": [
+        83
+      ]
+    },
+    {
+      "cpf": "01018128417",
+      "nome": "JURANDIR CALISTO DE AZEVEDO",
+      "telefone": "82999755913",
+      "cidade": "SATUBA",
+      "estado": "AL",
+      "cadastro": "2026-06-23",
+      "linhasOrigem": [
+        84
+      ]
+    },
+    {
+      "cpf": "03666826440",
+      "nome": "KATIA DE CASSIA LOPES CHAGAS",
+      "telefone": "82991510969",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-09-23",
+      "linhasOrigem": [
+        85
+      ]
+    },
+    {
+      "cpf": "12360649418",
+      "nome": "KLEBERSON MATHEUS DOS SANTOS LIMA",
+      "telefone": "82999173905",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-27",
+      "linhasOrigem": [
+        86
+      ]
+    },
+    {
+      "cpf": "01450216455",
+      "nome": "KLEFFERSON WILLIAMS DOS SANTOS",
+      "telefone": "82996293515",
+      "cidade": "RIO LARGO",
+      "estado": "AL",
+      "cadastro": "2026-08-18",
+      "linhasOrigem": [
+        87
+      ]
+    },
+    {
+      "cpf": "14168751406",
+      "nome": "KRISLANE LIMA DOS SANTOS",
+      "telefone": "82987785906",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-31",
+      "linhasOrigem": [
+        88
+      ]
+    },
+    {
+      "cpf": "14076155483",
+      "nome": "LAERTE ALVINO FELIPE",
+      "telefone": "82993118733",
+      "cidade": "RIO LARGO",
+      "estado": "AL",
+      "cadastro": "2026-08-29",
+      "linhasOrigem": [
+        89
+      ]
+    },
+    {
+      "cpf": "11424118425",
+      "nome": "LAUANI ESTEFANNY DOS ANJOS FERREIRA",
+      "telefone": "82988904988",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-06-17",
+      "linhasOrigem": [
+        90
+      ]
+    },
+    {
+      "cpf": "02013295499",
+      "nome": "LAUDEIR DOS SANTOS SOUZA",
+      "telefone": "82988540464",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-05-25",
+      "linhasOrigem": [
+        91
+      ]
+    },
+    {
+      "cpf": "13227406403",
+      "nome": "LETÍCIA CALHEIROS MACENA DA SILVA",
+      "telefone": "82999204389",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-14",
+      "linhasOrigem": [
+        92
+      ]
+    },
+    {
+      "cpf": "13393974475",
+      "nome": "LINCOLN FELIPE LEAL VASCONCELOS",
+      "telefone": "82993132025",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-09-25",
+      "linhasOrigem": [
+        93
+      ]
+    },
+    {
+      "cpf": "15195587400",
+      "nome": "LUAN BARROS DA SILVA CAMPELO",
+      "telefone": "82993525643",
+      "cidade": "SATUBA",
+      "estado": "AL",
+      "cadastro": "2026-05-07",
+      "linhasOrigem": [
+        94
+      ]
+    },
+    {
+      "cpf": "13184995429",
+      "nome": "LUCAS DA SILVA MOTA",
+      "telefone": "82981606414",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-08",
+      "linhasOrigem": [
+        95
+      ]
+    },
+    {
+      "cpf": "10446408476",
+      "nome": "LUCAS DANIEL JAMBO LAGES",
+      "telefone": "82994332000",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-07",
+      "linhasOrigem": [
+        96
+      ]
+    },
+    {
+      "cpf": "12479356477",
+      "nome": "LUCAS GABRIEL DA SILVA CAVALCANTE MOREIRA",
+      "telefone": "82999348727",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-09-25",
+      "linhasOrigem": [
+        97
+      ]
+    },
+    {
+      "cpf": "13444224460",
+      "nome": "LUCAS MATHEUS MORAES LINS DA SILVA",
+      "telefone": "82981338562",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-09-14",
+      "linhasOrigem": [
+        98
+      ]
+    },
+    {
+      "cpf": "61992348472",
+      "nome": "LUCIANO FERREIRA DE ARAÚJO BARROS",
+      "telefone": "82988524465",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-31",
+      "linhasOrigem": [
+        99
+      ]
+    },
+    {
+      "cpf": "12590513402",
+      "nome": "LUIZ EDUARDO SANTOS SILVA",
+      "telefone": "82987141265",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-05-25",
+      "linhasOrigem": [
+        100
+      ]
+    },
+    {
+      "cpf": "13250106429",
+      "nome": "LUIZ GUILHERME DA SILVA FERREIRA",
+      "telefone": "82999818609",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-06-05",
+      "linhasOrigem": [
+        101
+      ]
+    },
+    {
+      "cpf": "13266171411",
+      "nome": "LUIZ HENRIQUE ALMEIDA DA SILVA",
+      "telefone": "82994018356",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-06-08",
+      "linhasOrigem": [
+        102
+      ]
+    },
+    {
+      "cpf": "14980027490",
+      "nome": "LUIZ HENRIQUE GOMES DOS SANTOS SILVA",
+      "telefone": "82988519402",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-08",
+      "linhasOrigem": [
+        103
+      ]
+    },
+    {
+      "cpf": "07011828494",
+      "nome": "MANUEL SILVA CORDEIRO",
+      "telefone": "82993048340",
+      "cidade": "RIO LARGO",
+      "estado": "AL",
+      "cadastro": "2026-07-27",
+      "linhasOrigem": [
+        104
+      ]
+    },
+    {
+      "cpf": "08375448400",
+      "nome": "MANUELA ARAÚJO DOS SANTOS",
+      "telefone": "82988738553",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-06",
+      "linhasOrigem": [
+        105
+      ]
+    },
+    {
+      "cpf": "10737937459",
+      "nome": "MARCELO BATISTA GREGÓRIO",
+      "telefone": "82996639683",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-13",
+      "linhasOrigem": [
+        106
+      ]
+    },
+    {
+      "cpf": "09633441455",
+      "nome": "MARIA ANDREZA LINS CORREIA",
+      "telefone": "82988189732",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-06-11",
+      "linhasOrigem": [
+        107
+      ]
+    },
+    {
+      "cpf": "05004416427",
+      "nome": "MARIA HELENA DOS SANTOS",
+      "telefone": "82987054259",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-14",
+      "linhasOrigem": [
+        108
+      ]
+    },
+    {
+      "cpf": "15154414403",
+      "nome": "MARIA LETICIA COSTA DE BARROS",
+      "telefone": "82993518939",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-05-29",
+      "linhasOrigem": [
+        109
+      ]
+    },
+    {
+      "cpf": "13081461405",
+      "nome": "MARIA VITÓRIA DOS SANTOS",
+      "telefone": "82991594043",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-07",
+      "linhasOrigem": [
+        110
+      ]
+    },
+    {
+      "cpf": "12293627462",
+      "nome": "MARIVALDO VIEIRA DOS SANTOS",
+      "telefone": "82987678664",
+      "cidade": "SATUBA",
+      "estado": "AL",
+      "cadastro": "2026-08-21",
+      "linhasOrigem": [
+        111
+      ]
+    },
+    {
+      "cpf": "08763902460",
+      "nome": "MARLENE LOPES RAMOS",
+      "telefone": "82999357617",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-22",
+      "linhasOrigem": [
+        112
+      ]
+    },
+    {
+      "cpf": "71364400413",
+      "nome": "MATHEUS EMMANUEL MONTEIRO DA SILVA",
+      "telefone": "82987099418",
+      "cidade": "RIO LARGO",
+      "estado": "AL",
+      "cadastro": "2026-08-07",
+      "linhasOrigem": [
+        113
+      ]
+    },
+    {
+      "cpf": "12480849422",
+      "nome": "MATHEUS SOARES DOS SANTOS",
+      "telefone": "82988701410",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-11",
+      "linhasOrigem": [
+        114
+      ]
+    },
+    {
+      "cpf": "06940054448",
+      "nome": "MAYARA FATIMA RIBEIRO DE OLIVEIRA",
+      "telefone": "82991072989",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-14",
+      "linhasOrigem": [
+        115
+      ]
+    },
+    {
+      "cpf": "05352905438",
+      "nome": "MICHELE OLIVEIRA FEITOSA",
+      "telefone": "82987212466",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-09-21",
+      "linhasOrigem": [
+        116
+      ]
+    },
+    {
+      "cpf": "12640223445",
+      "nome": "NATHALIA SILVA DOS SANTOS",
+      "telefone": "82982298981",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-14",
+      "linhasOrigem": [
+        117
+      ]
+    },
+    {
+      "cpf": "14215484456",
+      "nome": "NAYARA LIMA DOS SANTOS",
+      "telefone": "82993979261",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-31",
+      "linhasOrigem": [
+        118
+      ]
+    },
+    {
+      "cpf": "13349243410",
+      "nome": "NIKAEL JOÃO DA SILVA",
+      "telefone": "82999142459",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-09-28",
+      "linhasOrigem": [
+        119
+      ]
+    },
+    {
+      "cpf": "06476110403",
+      "nome": "NIVEO RODRIGUES DA SILVA",
+      "telefone": "82994026540",
+      "cidade": "MARECHAL DEODORO",
+      "estado": "AL",
+      "cadastro": "2026-08-25",
+      "linhasOrigem": [
+        120
+      ]
+    },
+    {
+      "cpf": "09977190445",
+      "nome": "PAULO DA SILVA SANTOS",
+      "telefone": "82981928919",
+      "cidade": "BARRA DE SÃO MIGUEL",
+      "estado": "AL",
+      "cadastro": "2026-05-17",
+      "linhasOrigem": [
+        121,
+        122
+      ]
+    },
+    {
+      "cpf": "00807013455",
+      "nome": "PAULO HENRIQUE SANTOS DE MELO",
+      "telefone": "82996977896",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-09-25",
+      "linhasOrigem": [
+        123
+      ]
+    },
+    {
+      "cpf": "08833754430",
+      "nome": "ROBSON CARLOS DE OLIVEIRA",
+      "telefone": "82998016409",
+      "cidade": "MARECHAL DEODORO",
+      "estado": "AL",
+      "cadastro": "2026-08-28",
+      "linhasOrigem": [
+        124
+      ]
+    },
+    {
+      "cpf": "06676230437",
+      "nome": "RODRIGO CICERO DA SILVA",
+      "telefone": "82991415736",
+      "cidade": "TANQUE D'ARCA",
+      "estado": "AL",
+      "cadastro": "2026-08-24",
+      "linhasOrigem": [
+        125
+      ]
+    },
+    {
+      "cpf": "04362016406",
+      "nome": "ROSANGELA MARIA DA SILVA",
+      "telefone": "82988635848",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-06-19",
+      "linhasOrigem": [
+        126
+      ]
+    },
+    {
+      "cpf": "11855172437",
+      "nome": "RUAN VICTOR DOS SANTOS SILVA",
+      "telefone": "82991424646",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-09-03",
+      "linhasOrigem": [
+        127
+      ]
+    },
+    {
+      "cpf": "08116066439",
+      "nome": "SILVANIA SANTOS DE MELO SILVA",
+      "telefone": "82993214270",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-05-18",
+      "linhasOrigem": [
+        128
+      ]
+    },
+    {
+      "cpf": "07679065438",
+      "nome": "SOFIA INGRID DE LIMA VASCONCELOS",
+      "telefone": "81993235751",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-05-27",
+      "linhasOrigem": [
+        129
+      ]
+    },
+    {
+      "cpf": "07938120464",
+      "nome": "SOLANGE FERREIRA DE MELO",
+      "telefone": "82987118442",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-06-22",
+      "linhasOrigem": [
+        130
+      ]
+    },
+    {
+      "cpf": "07475925439",
+      "nome": "TALMA SILVA CERQUEIRA",
+      "telefone": "82996700020",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-06-08",
+      "linhasOrigem": [
+        131
+      ]
+    },
+    {
+      "cpf": "11632028433",
+      "nome": "THAYANNE GOMES DOS SANTOS",
+      "telefone": "82996504278",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-07",
+      "linhasOrigem": [
+        132
+      ]
+    },
+    {
+      "cpf": "00765517418",
+      "nome": "TIAKSON RAMOS DE MIRANDA",
+      "telefone": "82993953509",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-16",
+      "linhasOrigem": [
+        133
+      ]
+    },
+    {
+      "cpf": "35274474829",
+      "nome": "VALDECIR AVELINO DA SILVA",
+      "telefone": "82996317532",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-13",
+      "linhasOrigem": [
+        134
+      ]
+    },
+    {
+      "cpf": "07488802403",
+      "nome": "VALDENILTON TAVARES SILVA DOS SANTOS",
+      "telefone": "82999308404",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-24",
+      "linhasOrigem": [
+        135
+      ]
+    },
+    {
+      "cpf": "05564960432",
+      "nome": "VALÉRIA OLIVEIRA DE MELO",
+      "telefone": "82993481727",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-24",
+      "linhasOrigem": [
+        136
+      ]
+    },
+    {
+      "cpf": "12649397446",
+      "nome": "VALMIRO DA SILVA LIMA",
+      "telefone": "82993674421",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-06-01",
+      "linhasOrigem": [
+        137
+      ]
+    },
+    {
+      "cpf": "08399201480",
+      "nome": "VANESSA LÚCIA DO NASCIMENTO SILVA",
+      "telefone": "82982055914",
+      "cidade": "MESSIAS",
+      "estado": "AL",
+      "cadastro": "2026-07-15",
+      "linhasOrigem": [
+        138
+      ]
+    },
+    {
+      "cpf": "03762687439",
+      "nome": "VILMA DE ARAÚJO MOURA",
+      "telefone": "82996965061",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-31",
+      "linhasOrigem": [
+        139
+      ]
+    },
+    {
+      "cpf": "14225911403",
+      "nome": "VITOR ADRIANO DA SILVA DIAS",
+      "telefone": "82999912665",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-13",
+      "linhasOrigem": [
+        140
+      ]
+    },
+    {
+      "cpf": "07383852478",
+      "nome": "VITORIA CRISTINA SILVA DOS SANTOS CRUZ",
+      "telefone": "82987337884",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-08-21",
+      "linhasOrigem": [
+        141
+      ]
+    },
+    {
+      "cpf": "10070489483",
+      "nome": "VITÓRIA POLYANE SANTOS DE OLIVEIRA",
+      "telefone": "82996413633",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-07-22",
+      "linhasOrigem": [
+        142
+      ]
+    },
+    {
+      "cpf": "07945070426",
+      "nome": "WANDERSON DOS SANTOS DANIEL",
+      "telefone": "82991851574",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-06-10",
+      "linhasOrigem": [
+        143
+      ]
+    },
+    {
+      "cpf": "12859756426",
+      "nome": "WESLEY KAIKE DA SILVA",
+      "telefone": "82998322293",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-05-22",
+      "linhasOrigem": [
+        144
+      ]
+    },
+    {
+      "cpf": "15176468476",
+      "nome": "YASMIM CRISTINA DE LIMA SANTOS",
+      "telefone": "82994185127",
+      "cidade": "MACEIÓ",
+      "estado": "AL",
+      "cadastro": "2026-09-15",
+      "linhasOrigem": [
+        145
+      ]
+    }
+  ],
+  "inscricoes": [
+    {
+      "linhaOrigem": 2,
+      "cpf": "02378443463",
+      "cursoNome": "CURSO DE FRENTISTA COM NR 20 COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-01",
+      "dataFim": "2026-10-29",
+      "horario": "N",
+      "valorCurso": 350.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-06-01",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 3,
+      "cpf": "14400387402",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-06-08",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 4,
+      "cpf": "06181862471",
+      "cursoNome": "CURSO de LOGÍSTICA - - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-12-12",
+      "horario": "",
+      "valorCurso": 450.0,
+      "cargaHoraria": 40,
+      "cadastro": "2026-07-21",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 5,
+      "cpf": "10167327402",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-07-07",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 6,
+      "cpf": "07808079448",
+      "cursoNome": "CAMAREIRA (O) EM MEIOS DE HOSPEDAGEM COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-09-30",
+      "dataFim": "2026-10-28",
+      "horario": "N",
+      "valorCurso": 350.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-09-17",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 7,
+      "cpf": "04681393460",
+      "cursoNome": "ATENDENTE DE CLÍNICAS, CONSULTÓRIOS E HOSPITAIS COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-06",
+      "dataFim": "2026-11-03",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-14",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 8,
+      "cpf": "11851208402",
+      "cursoNome": "CURSO DE RECEPCIONISTA DE HOTEL COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-06",
+      "dataFim": "2026-11-03",
+      "horario": "N",
+      "valorCurso": 350.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-15",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 9,
+      "cpf": "13068726425",
+      "cursoNome": "OPERADOR DE PORTARIA REMOTA/CFTV - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-07",
+      "dataFim": "2026-11-04",
+      "horario": "",
+      "valorCurso": 350.0,
+      "cargaHoraria": 18,
+      "cadastro": "2026-06-15",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 10,
+      "cpf": "15747768433",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-09-17",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 11,
+      "cpf": "15844012496",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-05-25",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 12,
+      "cpf": "06975405450",
+      "cursoNome": "GESTÃO DE RECURSOS HUMANOS E DEPARTAMENTO DE PESSOAL - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-17",
+      "dataFim": "2027-03-27",
+      "horario": "",
+      "valorCurso": 450.0,
+      "cargaHoraria": 88,
+      "cadastro": "2026-05-21",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 13,
+      "cpf": "14253767460",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-06-10",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 14,
+      "cpf": "10259786411",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-05-25",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 15,
+      "cpf": "02620852404",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-09-01",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 16,
+      "cpf": "15087021441",
+      "cursoNome": "CURSO DE FRENTISTA COM NR 20 COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-01",
+      "dataFim": "2026-10-29",
+      "horario": "N",
+      "valorCurso": 350.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-17",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 17,
+      "cpf": "14493992409",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-14",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 18,
+      "cpf": "11606641450",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-05-09",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 19,
+      "cpf": "08084529404",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-30",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 20,
+      "cpf": "11249921465",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-05-21",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 21,
+      "cpf": "09163975564",
+      "cursoNome": "CURSO DE FRENTISTA COM NR 20 COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-01",
+      "dataFim": "2026-10-29",
+      "horario": "N",
+      "valorCurso": 350.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-07",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 22,
+      "cpf": "11876533498",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-20",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 23,
+      "cpf": "12601826495",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-07-16",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 24,
+      "cpf": "10481955461",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-05-18",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 25,
+      "cpf": "02129921396",
+      "cursoNome": "EXCEL (DO BÁSICO AO AVANÇADO) - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-25",
+      "horario": "",
+      "valorCurso": 380.0,
+      "cargaHoraria": 48,
+      "cadastro": "2026-07-14",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 26,
+      "cpf": "16117314450",
+      "cursoNome": "CURSO DE FRENTISTA COM NR 20 COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-01",
+      "dataFim": "2026-10-29",
+      "horario": "N",
+      "valorCurso": 350.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-08-03",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 27,
+      "cpf": "13498219421",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-08-31",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 28,
+      "cpf": "13498219421",
+      "cursoNome": "OPERADOR DE PORTARIA REMOTA/CFTV - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-07",
+      "dataFim": "2026-11-04",
+      "horario": "",
+      "valorCurso": 350.0,
+      "cargaHoraria": 18,
+      "cadastro": "2026-08-31",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 29,
+      "cpf": "11840334479",
+      "cursoNome": "CURSO DE FRENTISTA COM NR 20 COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-01",
+      "dataFim": "2026-10-29",
+      "horario": "N",
+      "valorCurso": 350.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-16",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 30,
+      "cpf": "08046978418",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-07-09",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 31,
+      "cpf": "10969968477",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-07-07",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 32,
+      "cpf": "02810495483",
+      "cursoNome": "ATENDENTE DE CLÍNICAS, CONSULTÓRIOS E HOSPITAIS COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-06",
+      "dataFim": "2026-11-03",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-06-16",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 33,
+      "cpf": "06683635412",
+      "cursoNome": "OPERAÇÕES COM CAMINHÃO GUINDAUTO (MUNCK) - CURSO 100% ONLINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-07-03",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 34,
+      "cpf": "08434566478",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-08-03",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 35,
+      "cpf": "11265177473",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-09-04",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 36,
+      "cpf": "03246761400",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-09-08",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 37,
+      "cpf": "04920938497",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-07-27",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 38,
+      "cpf": "11453518401",
+      "cursoNome": "CURSO de LOGÍSTICA - - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-12-12",
+      "horario": "",
+      "valorCurso": 450.0,
+      "cargaHoraria": 40,
+      "cadastro": "2026-07-06",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 39,
+      "cpf": "11828272418",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-08-10",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 40,
+      "cpf": "04517488403",
+      "cursoNome": "ATENDENTE DE CLÍNICAS, CONSULTÓRIOS E HOSPITAIS COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-06",
+      "dataFim": "2026-11-03",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-06-15",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 41,
+      "cpf": "10670880400",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-08-20",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 42,
+      "cpf": "70236474227",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-05-12",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 43,
+      "cpf": "11996427466",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-06",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 44,
+      "cpf": "11191373495",
+      "cursoNome": "CURSO DE FRENTISTA COM NR 20 COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-01",
+      "dataFim": "2026-10-29",
+      "horario": "N",
+      "valorCurso": 350.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-30",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 45,
+      "cpf": "14152388471",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-09-28",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 46,
+      "cpf": "05951298466",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-07-14",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 47,
+      "cpf": "13636858483",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-08-31",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 48,
+      "cpf": "15219352466",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-06-15",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 49,
+      "cpf": "86783028526",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-08-24",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 50,
+      "cpf": "13968174410",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-09-21",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 51,
+      "cpf": "87074664472",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-09-21",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 52,
+      "cpf": "01816180440",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-05-15",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 53,
+      "cpf": "11342643488",
+      "cursoNome": "CURSO de LOGÍSTICA - - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-12-12",
+      "horario": "",
+      "valorCurso": 450.0,
+      "cargaHoraria": 40,
+      "cadastro": "2026-08-21",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 54,
+      "cpf": "07381231450",
+      "cursoNome": "GESTÃO DE RECURSOS HUMANOS E DEPARTAMENTO DE PESSOAL - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-17",
+      "dataFim": "2027-03-27",
+      "horario": "",
+      "valorCurso": 450.0,
+      "cargaHoraria": 88,
+      "cadastro": "2026-07-14",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 55,
+      "cpf": "15157587457",
+      "cursoNome": "CURSO DE RECEPCIONISTA DE HOTEL COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-06",
+      "dataFim": "2026-11-03",
+      "horario": "N",
+      "valorCurso": 350.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-08-26",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 56,
+      "cpf": "15157587457",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-08-26",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 57,
+      "cpf": "11393809405",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-08-21",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 58,
+      "cpf": "14249005496",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-06-10",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 59,
+      "cpf": "14978973430",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-08-03",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 60,
+      "cpf": "09455786443",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-05-05",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 61,
+      "cpf": "05963376475",
+      "cursoNome": "OPERADOR(A) DE CAIXA COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 350.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-31",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 62,
+      "cpf": "11415489416",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-08-28",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 63,
+      "cpf": "10146680421",
+      "cursoNome": "AUXILIAR DE FARMÁCIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- 100% ONLINE",
+      "dataInicio": "2026-10-07",
+      "dataFim": "2026-11-04",
+      "horario": "",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-06-02",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 64,
+      "cpf": "13659869422",
+      "cursoNome": "GESTÃO DE RECURSOS HUMANOS E DEPARTAMENTO DE PESSOAL - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-17",
+      "dataFim": "2027-03-27",
+      "horario": "",
+      "valorCurso": 450.0,
+      "cargaHoraria": 88,
+      "cadastro": "2026-07-27",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 65,
+      "cpf": "14999728494",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-09-22",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 66,
+      "cpf": "12141064473",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-08-14",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 67,
+      "cpf": "04709118400",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-05-27",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 68,
+      "cpf": "14730519400",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-07",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 69,
+      "cpf": "10453184421",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-09",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 70,
+      "cpf": "02944066463",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-07-06",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 71,
+      "cpf": "07549643458",
+      "cursoNome": "CURSO DE FRENTISTA COM NR 20 COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-01",
+      "dataFim": "2026-10-29",
+      "horario": "N",
+      "valorCurso": 350.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-09-18",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 72,
+      "cpf": "14197751460",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-09",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 73,
+      "cpf": "14106209489",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-09-22",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 74,
+      "cpf": "01339086409",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-08-11",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 75,
+      "cpf": "18932401420",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-06-02",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 76,
+      "cpf": "14058518480",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-09-28",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 77,
+      "cpf": "71327408490",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-09-18",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 78,
+      "cpf": "88954854400",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-06",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 79,
+      "cpf": "81635877415",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-11",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 80,
+      "cpf": "05173018496",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-06-15",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 81,
+      "cpf": "70007867441",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-20",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 82,
+      "cpf": "09923646475",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-06-12",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 84,
+      "cpf": "01018128417",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-06-23",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 85,
+      "cpf": "03666826440",
+      "cursoNome": "AUXILIAR DE FARMÁCIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- 100% ONLINE",
+      "dataInicio": "2026-10-07",
+      "dataFim": "2026-11-04",
+      "horario": "",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-09-23",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 86,
+      "cpf": "12360649418",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-27",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 87,
+      "cpf": "01450216455",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-08-18",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 88,
+      "cpf": "14168751406",
+      "cursoNome": "AUXILIAR DE FARMÁCIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- 100% ONLINE",
+      "dataInicio": "2026-10-07",
+      "dataFim": "2026-11-04",
+      "horario": "",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-08-31",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 89,
+      "cpf": "14076155483",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-08-29",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 91,
+      "cpf": "02013295499",
+      "cursoNome": "OPERAÇÕES COM CAMINHÃO GUINDAUTO (MUNCK) - CURSO 100% ONLINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-05-25",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 92,
+      "cpf": "13227406403",
+      "cursoNome": "CURSO DE FRENTISTA COM NR 20 COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-01",
+      "dataFim": "2026-10-29",
+      "horario": "N",
+      "valorCurso": 350.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-08-14",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 93,
+      "cpf": "13393974475",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-09-25",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 94,
+      "cpf": "15195587400",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-05-07",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 95,
+      "cpf": "13184995429",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-07-08",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 96,
+      "cpf": "10446408476",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-08-07",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 97,
+      "cpf": "12479356477",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-09-25",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 98,
+      "cpf": "13444224460",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-09-14",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 99,
+      "cpf": "61992348472",
+      "cursoNome": "EXCEL (DO BÁSICO AO AVANÇADO) - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-25",
+      "horario": "",
+      "valorCurso": 380.0,
+      "cargaHoraria": 48,
+      "cadastro": "2026-07-31",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 100,
+      "cpf": "12590513402",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-05-25",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 101,
+      "cpf": "13250106429",
+      "cursoNome": "CURSO DE FRENTISTA COM NR 20 COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-01",
+      "dataFim": "2026-10-29",
+      "horario": "N",
+      "valorCurso": 350.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-06-05",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 102,
+      "cpf": "13266171411",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-06-08",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 103,
+      "cpf": "14980027490",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-08",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 104,
+      "cpf": "07011828494",
+      "cursoNome": "CURSO de LOGÍSTICA - - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-12-12",
+      "horario": "",
+      "valorCurso": 450.0,
+      "cargaHoraria": 40,
+      "cadastro": "2026-07-27",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 105,
+      "cpf": "08375448400",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-06",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 106,
+      "cpf": "10737937459",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-07-13",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 108,
+      "cpf": "05004416427",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-08-14",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 109,
+      "cpf": "15154414403",
+      "cursoNome": "CURSO de AUXILIAR ADMINISTRATIVO - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2027-03-20",
+      "horario": "",
+      "valorCurso": 450.0,
+      "cargaHoraria": 88,
+      "cadastro": "2026-05-29",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 110,
+      "cpf": "13081461405",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-08-07",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 111,
+      "cpf": "12293627462",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-08-21",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 112,
+      "cpf": "08763902460",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-08-22",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 113,
+      "cpf": "71364400413",
+      "cursoNome": "PACOTE OFFICE -- 100% ONLINE",
+      "dataInicio": "2026-10-20",
+      "dataFim": "2026-12-09",
+      "horario": "",
+      "valorCurso": 380.0,
+      "cargaHoraria": 48,
+      "cadastro": "2026-08-07",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 114,
+      "cpf": "12480849422",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-07-11",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 115,
+      "cpf": "06940054448",
+      "cursoNome": "GESTÃO DE RECURSOS HUMANOS E DEPARTAMENTO DE PESSOAL - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-17",
+      "dataFim": "2027-03-27",
+      "horario": "",
+      "valorCurso": 450.0,
+      "cargaHoraria": 88,
+      "cadastro": "2026-08-14",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 116,
+      "cpf": "05352905438",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-09-21",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 117,
+      "cpf": "12640223445",
+      "cursoNome": "CURSO DE FRENTISTA COM NR 20 COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-01",
+      "dataFim": "2026-10-29",
+      "horario": "N",
+      "valorCurso": 350.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-14",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 118,
+      "cpf": "14215484456",
+      "cursoNome": "AUXILIAR DE FARMÁCIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- 100% ONLINE",
+      "dataInicio": "2026-10-07",
+      "dataFim": "2026-11-04",
+      "horario": "",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-08-31",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 119,
+      "cpf": "13349243410",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-09-28",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 120,
+      "cpf": "06476110403",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-08-25",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 121,
+      "cpf": "09977190445",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-05-17",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 122,
+      "cpf": "09977190445",
+      "cursoNome": "CURSO DE FRENTISTA COM NR 20 COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-01",
+      "dataFim": "2026-10-29",
+      "horario": "N",
+      "valorCurso": 350.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-05-17",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 123,
+      "cpf": "00807013455",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-09-25",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 124,
+      "cpf": "08833754430",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-08-28",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 125,
+      "cpf": "06676230437",
+      "cursoNome": "OPERAÇÕES COM CAMINHÃO GUINDAUTO (MUNCK) - CURSO 100% ONLINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-08-24",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 126,
+      "cpf": "04362016406",
+      "cursoNome": "CAMAREIRA (O) EM MEIOS DE HOSPEDAGEM COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-09-30",
+      "dataFim": "2026-10-28",
+      "horario": "N",
+      "valorCurso": 350.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-06-19",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 127,
+      "cpf": "11855172437",
+      "cursoNome": "CURSO DE FRENTISTA COM NR 20 COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-01",
+      "dataFim": "2026-10-29",
+      "horario": "N",
+      "valorCurso": 350.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-09-03",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 128,
+      "cpf": "08116066439",
+      "cursoNome": "ATENDENTE DE CLÍNICAS, CONSULTÓRIOS E HOSPITAIS COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-06",
+      "dataFim": "2026-11-03",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-05-18",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 129,
+      "cpf": "07679065438",
+      "cursoNome": "ATENDENTE DE CLÍNICAS, CONSULTÓRIOS E HOSPITAIS COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-06",
+      "dataFim": "2026-11-03",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-05-27",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 131,
+      "cpf": "07475925439",
+      "cursoNome": "OPERADOR(A) DE CAIXA COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 350.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-06-08",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 132,
+      "cpf": "11632028433",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-07",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 133,
+      "cpf": "00765517418",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-07-16",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 134,
+      "cpf": "35274474829",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-08-13",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 135,
+      "cpf": "07488802403",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-24",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 136,
+      "cpf": "05564960432",
+      "cursoNome": "PACOTE OFFICE -- 100% ONLINE",
+      "dataInicio": "2026-10-20",
+      "dataFim": "2026-12-09",
+      "horario": "",
+      "valorCurso": 380.0,
+      "cargaHoraria": 48,
+      "cadastro": "2026-08-24",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 137,
+      "cpf": "12649397446",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-06-01",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 138,
+      "cpf": "08399201480",
+      "cursoNome": "DEPARTAMENTO PESSOAL - CURSO 100% ON-LINE.",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-11-07",
+      "horario": "N",
+      "valorCurso": 350.0,
+      "cargaHoraria": 20,
+      "cadastro": "2026-07-15",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 139,
+      "cpf": "03762687439",
+      "cursoNome": "ATENDENTE DE CLÍNICAS, CONSULTÓRIOS E HOSPITAIS COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-06",
+      "dataFim": "2026-11-03",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-31",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 140,
+      "cpf": "14225911403",
+      "cursoNome": "OPERADOR DE EMPILHADEIRA – Movimentação de Cargas – Com Prática na Empilhadeira - CURSO 100% ON-LINE",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2026-10-24",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 16,
+      "cadastro": "2026-08-13",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 141,
+      "cpf": "07383852478",
+      "cursoNome": "GESTÃO FINANCEIRA",
+      "dataInicio": "2026-10-10",
+      "dataFim": "2027-03-20",
+      "horario": "",
+      "valorCurso": 450.0,
+      "cargaHoraria": 88,
+      "cadastro": "2026-08-21",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 142,
+      "cpf": "10070489483",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-07-22",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 143,
+      "cpf": "07945070426",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-06-10",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 144,
+      "cpf": "12859756426",
+      "cursoNome": "AGENTE DE PORTARIA COM PRÁTICA PROFISSIONAL SUPERVISIONADA --- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-05",
+      "dataFim": "2026-11-02",
+      "horario": "N",
+      "valorCurso": 380.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-05-22",
+      "statusCurso": "S"
+    },
+    {
+      "linhaOrigem": 145,
+      "cpf": "15176468476",
+      "cursoNome": "CURSO DE FRENTISTA COM NR 20 COM PRÁTICA PROFISSIONAL SUPERVISIONADA -- CURSO 100% ONLINE",
+      "dataInicio": "2026-10-01",
+      "dataFim": "2026-10-29",
+      "horario": "N",
+      "valorCurso": 350.0,
+      "cargaHoraria": 35,
+      "cadastro": "2026-09-15",
+      "statusCurso": "S"
+    }
+  ],
+  "correcoes": [
+    {
+      "linha": 3,
+      "cpf": "14400387402",
+      "campo": "telefone",
+      "de": "8296195684",
+      "para": "82996195684",
+      "motivo": "celular sem o nono digito"
+    },
+    {
+      "linha": 26,
+      "cpf": "16117314450",
+      "campo": "telefone",
+      "de": "8287858628",
+      "para": "82987858628",
+      "motivo": "celular sem o nono digito"
+    },
+    {
+      "linha": 41,
+      "cpf": "10670880400",
+      "campo": "telefone",
+      "de": "8291209539",
+      "para": "82991209539",
+      "motivo": "celular sem o nono digito"
+    },
+    {
+      "linha": 47,
+      "cpf": "13636858483",
+      "campo": "estado",
+      "de": "AC",
+      "para": "AL",
+      "motivo": "MACEIÓ fica em AL"
+    },
+    {
+      "linha": 86,
+      "cpf": "12360649418",
+      "campo": "telefone",
+      "de": "8299173905",
+      "para": "82999173905",
+      "motivo": "celular sem o nono digito"
+    },
+    {
+      "linha": 138,
+      "cpf": "08399201480",
+      "campo": "estado",
+      "de": "RN",
+      "para": "AL",
+      "motivo": "MESSIAS fica em AL"
+    },
+    {
+      "linha": 140,
+      "cpf": "14225911403",
+      "campo": "telefone",
+      "de": "8299912665",
+      "para": "82999912665",
+      "motivo": "celular sem o nono digito"
+    }
+  ]
+}

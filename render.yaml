@@ -5,7 +5,7 @@ services:
     env: node
     region: oregon
     plan: starter
-    buildCommand: pnpm install --frozen-lockfile && pnpm run build:prod
+    buildCommand: pnpm install --frozen-lockfile --prod=false && pnpm run build:prod
     startCommand: pnpm run start
     healthCheckPath: /health
     envVars:

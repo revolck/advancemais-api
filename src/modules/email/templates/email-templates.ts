@@ -105,6 +105,22 @@ export interface EstagioEncerramentoEmailData {
  * Templates de email com design limpo e profissional
  * Foco na legibilidade e experiência do usuário
  */
+export interface PlatformWelcomeEmailData {
+  /** Nome completo do destinatário */
+  nomeCompleto: string;
+  /** Link principal (login/área do aluno) */
+  platformUrl: string;
+  coursesUrl: string;
+  jobsUrl: string;
+  resumeUrl: string;
+  /** Quantidade máxima de currículos por candidato */
+  maxCurriculos: number;
+  /** Imagem ou GIF animado opcional no topo do e-mail (URL pública) */
+  heroImageUrl?: string;
+  /** Link de descadastro (obrigatório em envios em massa) */
+  unsubscribeUrl?: string;
+}
+
 export class EmailTemplates {
   /**
    * Retorna o ano atual para uso nos templates
@@ -1289,6 +1305,156 @@ Se não reconhece esta ação ou precisa de suporte, acesse nosso centro de ajud
   ${this.getSignatureText()}
 
   © ${currentYear} Advance+ - Todos os direitos reservados`;
+    return { subject, html, text };
+  }
+
+  /**
+   * Comunicado "Nossa plataforma mudou" para alunos e candidatos
+   */
+  public static generatePlatformWelcomeEmail(data: PlatformWelcomeEmailData): EmailTemplate {
+    const firstName = data.nomeCompleto.trim().split(' ')[0] || 'tudo bem';
+    const currentYear = this.getCurrentYear();
+    const subject = 'A Advance+ mudou: cursos, estudos e vagas em um só lugar';
+    const preheader = `Compre seu curso, estude pela plataforma e cadastre até ${data.maxCurriculos} currículos para se candidatar às vagas.`;
+
+    const features = [
+      {
+        icon: '🛒',
+        title: 'Compre seu curso direto pela plataforma',
+        text: 'Escolha o curso e a turma, pague com Pix, boleto ou cartão e comece sem burocracia.',
+      },
+      {
+        icon: '🎓',
+        title: 'Estude quando e onde quiser',
+        text: 'Aulas, atividades, provas, notas, frequência e certificados reunidos na sua área do aluno.',
+      },
+      {
+        icon: '💼',
+        title: `Até ${data.maxCurriculos} currículos para se candidatar`,
+        text: `Cadastre até ${data.maxCurriculos} currículos e envie o mais adequado para cada vaga, acompanhando suas candidaturas.`,
+      },
+    ];
+
+    const featureRows = features
+      .map(
+        (feature) => `
+            <tr>
+              <td style="padding: 0 0 16px 0;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                  <tr>
+                    <td width="56" valign="top" style="padding: 20px 0 20px 20px; font-size: 28px; line-height: 1;">${feature.icon}</td>
+                    <td valign="top" style="padding: 20px 20px 20px 12px;">
+                      <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">${feature.title}</div>
+                      <div style="font-size: 14px; line-height: 1.6; color: #475569;">${feature.text}</div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>`,
+      )
+      .join('');
+
+    const logoHtml = `<img src="https://advancemais.com/images/logos/logo_branco.png" alt="Advance+" width="180" style="display: block; margin: 0 auto; width: 180px; max-width: 60%; height: auto; border: 0;" />`;
+
+    // Com imagem/GIF: logo no cabeçalho + imagem. Sem imagem: bloco único com logo e título.
+    const hero = data.heroImageUrl
+      ? `
+        <div style="background-color: #00257d; padding: 28px 24px;">${logoHtml}</div>
+        <img src="${data.heroImageUrl}" alt="Conheça a nova plataforma Advance+" width="560" style="display: block; width: 100%; max-width: 560px; height: auto; border: 0;" />`
+      : `
+        <div style="background-color: #00257d; background-image: linear-gradient(135deg, #00257d 0%, #1e40af 100%); padding: 32px 24px 40px; text-align: center;">
+          ${logoHtml}
+          <div style="display: inline-block; background-color: rgba(255,255,255,0.14); color: #ffffff; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 6px 14px; border-radius: 999px; margin: 28px 0 16px;">Novidade</div>
+          <div style="font-size: 26px; line-height: 1.3; font-weight: 800; color: #ffffff;">A Advance+ mudou.<br />E ficou muito mais completa.</div>
+        </div>`;
+
+    const unsubscribeHtml = data.unsubscribeUrl
+      ? `<br /><a href="${data.unsubscribeUrl}" style="color: #64748b; text-decoration: underline;">Não quero mais receber estes e-mails</a>`
+      : '';
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nova plataforma - Advance+</title>
+  ${this.getBaseStyles()}
+</head>
+<body>
+  <div style="display: none; max-height: 0; overflow: hidden; opacity: 0;">${preheader}</div>
+  <div class="email-wrapper">
+    <div class="email-container">
+
+      ${hero}
+
+      <div class="content">
+        <div class="greeting">Olá, ${firstName}!</div>
+
+        <div class="message" style="margin-bottom: 24px;">
+          Temos novidades: a plataforma da Advance+ foi renovada para você fazer tudo em um só lugar,
+          do primeiro curso até a próxima vaga de emprego. Veja o que mudou:
+        </div>
+
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          ${featureRows}
+        </table>
+
+        <div style="text-align: center; margin-top: 16px;">
+          <a href="${data.platformUrl}" class="cta-button" style="color: #ffffff !important;">
+            Acessar a plataforma
+          </a>
+        </div>
+
+        <div style="text-align: center; font-size: 14px; color: #475569; margin-top: -12px;">
+          <a href="${data.coursesUrl}" style="color: #00257d; font-weight: 600; text-decoration: none;">Ver cursos</a>
+          &nbsp;&nbsp;•&nbsp;&nbsp;
+          <a href="${data.jobsUrl}" style="color: #00257d; font-weight: 600; text-decoration: none;">Ver vagas</a>
+          &nbsp;&nbsp;•&nbsp;&nbsp;
+          <a href="${data.resumeUrl}" style="color: #00257d; font-weight: 600; text-decoration: none;">Meus currículos</a>
+        </div>
+
+        <div class="info-box">
+          <p class="info-text">
+            <strong>Já tem conta?</strong> Use o mesmo e-mail e senha de sempre. Se não lembrar a senha,
+            clique em "Esqueci minha senha" na tela de login.
+          </p>
+        </div>
+
+        ${this.getSignatureHtml()}
+
+      </div>
+
+      <div class="footer">
+        <div class="footer-text">
+          Você recebeu este e-mail porque tem uma conta na Advance+.${unsubscribeHtml}<br />
+          Advance+ © ${currentYear} todos os direitos reservados.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>`;
+
+    const text = `${subject}
+
+Olá, ${firstName}!
+
+Temos novidades: a plataforma da Advance+ foi renovada para você fazer tudo em um só lugar, do primeiro curso até a próxima vaga de emprego.
+
+${features.map((feature) => `- ${feature.title}: ${feature.text}`).join('\n')}
+
+Acesse a plataforma: ${data.platformUrl}
+Ver cursos: ${data.coursesUrl}
+Ver vagas: ${data.jobsUrl}
+Meus currículos: ${data.resumeUrl}
+
+Já tem conta? Use o mesmo e-mail e senha de sempre. Se não lembrar a senha, clique em "Esqueci minha senha" na tela de login.
+
+${this.getSignatureText()}
+${data.unsubscribeUrl ? `\nNão quer mais receber estes e-mails? ${data.unsubscribeUrl}\n` : ''}
+© ${currentYear} Advance+ - Todos os direitos reservados`;
+
     return { subject, html, text };
   }
 }

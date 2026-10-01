@@ -10,6 +10,7 @@ import {
   type EmailTemplate,
 } from '../templates/email-templates';
 import { EmailService } from './email-service';
+import { MAX_CURRICULOS } from '@/modules/candidatos/curriculos/services';
 
 export type SandboxEmailRotina =
   | 'NOVO_CADASTRO'
@@ -29,7 +30,8 @@ export type SandboxEmailRotina =
   | 'ESTAGIO_CONVOCACAO'
   | 'ESTAGIO_ENCERRAMENTO'
   | 'USUARIO_BLOQUEADO'
-  | 'USUARIO_DESBLOQUEADO';
+  | 'USUARIO_DESBLOQUEADO'
+  | 'COMUNICADO_NOVA_PLATAFORMA';
 
 export interface SandboxEmailRotinaCatalogItem {
   value: SandboxEmailRotina;
@@ -125,6 +127,12 @@ const SANDBOX_EMAIL_ROTINAS: SandboxEmailRotinaCatalogItem[] = [
     value: 'USUARIO_DESBLOQUEADO',
     label: 'Usuário desbloqueado',
     group: 'Bloqueios',
+  },
+  {
+    value: 'COMUNICADO_NOVA_PLATAFORMA',
+    label: 'Comunicado: a plataforma mudou',
+    group: 'Comunicados',
+    description: 'Boas-vindas à nova plataforma para alunos e candidatos.',
   },
 ];
 
@@ -276,6 +284,7 @@ export class EmailSandboxService {
   ): Promise<EmailTemplate> {
     const runtimeConfig = await this.config.getRuntimeConfig();
     const frontendUrl = runtimeConfig.urls.frontend.replace(/\/$/, '');
+    const authUrl = runtimeConfig.urls.verification.replace(/\/verify-email$/, '');
     const verificationUrl = `${runtimeConfig.urls.verification}?token=sandbox-confirmacao-conta`;
     const recoveryUrl = `${runtimeConfig.urls.passwordRecovery}?tp=sandbox-recuperacao-senha&ep=${encodeURIComponent(
       recipient,
@@ -382,6 +391,15 @@ export class EmailSandboxService {
         });
       case 'USUARIO_DESBLOQUEADO':
         return EmailTemplates.generateUserUnblockedEmail({ nomeCompleto });
+      case 'COMUNICADO_NOVA_PLATAFORMA':
+        return EmailTemplates.generatePlatformWelcomeEmail({
+          nomeCompleto,
+          platformUrl: `${authUrl}/login`,
+          coursesUrl: `${frontendUrl}/cursos`,
+          jobsUrl: `${frontendUrl}/vagas`,
+          resumeUrl: `${frontendUrl}/dashboard/curriculo`,
+          maxCurriculos: MAX_CURRICULOS,
+        });
       default:
         throw createHttpError('Rotina de sandbox inválida', 'INVALID_SANDBOX_ROUTINE', 400);
     }

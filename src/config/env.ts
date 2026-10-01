@@ -256,6 +256,19 @@ export const authSessionConfig = {
 
 const smtpPort = parseInt(process.env.SMTP_PORT || '465', 10);
 
+export type EmailProviderName = 'smtp' | 'brevo';
+
+export function parseProviderList(
+  raw: string | undefined,
+  fallback: EmailProviderName[],
+): EmailProviderName[] {
+  const parsed = (raw || '')
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter((item): item is EmailProviderName => item === 'smtp' || item === 'brevo');
+  return parsed.length > 0 ? Array.from(new Set(parsed)) : fallback;
+}
+
 export const emailConfig = {
   // Remetente
   fromEmail: process.env.SMTP_FROM_EMAIL || 'noreply@advancemais.com',
@@ -268,6 +281,20 @@ export const emailConfig = {
     secure: smtpPort === 465, // true para 465 (SSL), false para 587 (STARTTLS)
     user: process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL || 'noreply@advancemais.com',
     password: process.env.SMTP_PASSWORD || '',
+    dailyLimit: parseInt(process.env.SMTP_DAILY_LIMIT || '100', 10),
+  },
+
+  // Brevo (API HTTP) - canal de reserva e de campanhas
+  brevo: {
+    apiKey: process.env.BREVO_API_KEY || '',
+    dailyLimit: parseInt(process.env.BREVO_DAILY_LIMIT || '300', 10),
+  },
+
+  // Ordem dos canais por tipo de envio e reserva diária dos e-mails do sistema
+  routing: {
+    transactional: parseProviderList(process.env.EMAIL_PROVIDERS, ['smtp', 'brevo']),
+    marketing: parseProviderList(process.env.EMAIL_MARKETING_PROVIDERS, ['brevo']),
+    transactionalReserve: parseInt(process.env.EMAIL_TRANSACTIONAL_RESERVE || '50', 10),
   },
 
   timeout: parseInt(process.env.SMTP_TIMEOUT || '15000', 10),

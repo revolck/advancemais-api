@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '@/config/prisma';
 import { parseScheduleConfig } from '@/utils/cron-helpers';
 import { logger } from '@/utils/logger';
+import { parseProviderList } from '@/config/env';
 import {
   CONFIG_CATEGORIES,
   CONFIG_DEFINITIONS,
@@ -402,6 +403,12 @@ class RuntimeConfigService {
       emailVerificationExpirationHours,
       emailVerificationMaxResend,
       emailVerificationCooldownMinutes,
+      smtpDailyLimit,
+      brevoApiKey,
+      brevoDailyLimit,
+      transactionalProviders,
+      marketingProviders,
+      transactionalReserve,
     ] = await Promise.all([
       this.getString('emails', 'smtp_from_email'),
       this.getString('emails', 'smtp_from_name'),
@@ -417,6 +424,12 @@ class RuntimeConfigService {
       this.getNumber('emails', 'email_verification_expiration_hours', 72),
       this.getNumber('emails', 'email_verification_max_resend', 3),
       this.getNumber('emails', 'email_verification_cooldown_minutes', 5),
+      this.getNumber('emails', 'smtp_daily_limit', 100),
+      this.getString('emails', 'brevo_api_key'),
+      this.getNumber('emails', 'brevo_daily_limit', 300),
+      this.getString('emails', 'email_providers'),
+      this.getString('emails', 'email_marketing_providers'),
+      this.getNumber('emails', 'email_transactional_reserve', 50),
     ]);
 
     const resolvedFromEmail = fromEmail || 'noreply@advancemais.com';
@@ -432,6 +445,17 @@ class RuntimeConfigService {
         secure: smtpPort === 465,
         user: resolvedUser,
         password: smtpPassword,
+        dailyLimit: smtpDailyLimit,
+      },
+      brevo: {
+        apiKey: brevoApiKey,
+        dailyLimit: brevoDailyLimit,
+        isConfigured: Boolean(brevoApiKey && resolvedFromEmail),
+      },
+      routing: {
+        transactional: parseProviderList(transactionalProviders, ['smtp', 'brevo']),
+        marketing: parseProviderList(marketingProviders, ['brevo']),
+        transactionalReserve: Math.max(0, transactionalReserve),
       },
       timeout,
       passwordRecovery: {

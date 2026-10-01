@@ -713,7 +713,9 @@ async function dispatchMarketingEmail(emailId: string) {
         }
 
         const result = await Promise.race([
-          emailService.sendGeneric(recipient.email, recipient.nome, subject, html, text),
+          emailService.sendGeneric(recipient.email, recipient.nome, subject, html, text, {
+            channel: 'marketing',
+          }),
           new Promise<{ success: false; error: string }>((resolve) => {
             setTimeout(() => {
               resolve({

@@ -1,4 +1,4 @@
-import { SmtpClient } from '@/modules/email/client/smtp-client';
+import { EmailDispatcher } from '@/modules/email/client/email-dispatcher';
 import { EmailConfigManager } from '@/modules/email/config/email-config';
 import { EmailTemplates } from '@/modules/email/templates';
 import { logger } from '@/utils/logger';
@@ -55,7 +55,7 @@ type EstagioAvisoEncerramentoInput = {
   observacoes?: string | null;
 };
 
-const smtpClient = SmtpClient.getInstance();
+const emailDispatcher = EmailDispatcher.getInstance();
 
 export const estagiosEmailService = {
   async enviarConvocacao(data: EstagioConvocacaoEmailInput) {
@@ -90,7 +90,7 @@ export const estagiosEmailService = {
       'Enviando email de convocação de estágio',
     );
 
-    const result = await smtpClient.sendEmail({
+    const result = await emailDispatcher.send({
       to: destinatario,
       toName: data.alunoNome,
       subject: emailContent.subject,
@@ -125,7 +125,7 @@ export const estagiosEmailService = {
       'Enviando aviso de encerramento de estágio',
     );
 
-    return smtpClient.sendEmail({
+    return emailDispatcher.send({
       to: data.adminEmail,
       toName: data.adminNome ?? data.adminEmail,
       subject: emailContent.subject,

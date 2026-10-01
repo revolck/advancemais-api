@@ -36,7 +36,10 @@ const runtimeConfig = {
     secure: true,
     user: 'noreply@advancemais.com',
     password: 'smtp-password',
+    dailyLimit: 100,
   },
+  brevo: { apiKey: '', dailyLimit: 300, isConfigured: false },
+  routing: { transactional: ['smtp', 'brevo'], marketing: ['brevo'], transactionalReserve: 50 },
   timeout: 15000,
   isConfigured: true,
   environment: 'production',
@@ -181,24 +184,103 @@ describe('SMTP hardening', () => {
     expect(mockSendMail).not.toHaveBeenCalled();
   });
 
-  it('exposes the operational failure reason in the SMTP health endpoint', async () => {
+  it('exposes per-provider status and the failure reason in the health endpoint', async () => {
     const { EmailController } = await import('../controllers/email-controller');
     const controller = new EmailController();
 
-    (controller as any).emailService = {
-      checkHealth: jest.fn().mockResolvedValue(false),
-    };
     (controller as any).client = {
-      healthCheck: jest.fn().mockResolvedValue(false),
-      isSimulated: jest.fn().mockReturnValue(false),
-      isOperational: jest.fn().mockReturnValue(true),
-      getLastOperationalIssue: jest.fn().mockReturnValue({
-        operation: 'health_check',
-        failureReason: 'AUTHENTICATION_FAILED',
-        message: '535 5.7.8 Error: authentication failed',
-        responseCode: 535,
-        code: 'EAUTH',
-        occurredAt: '2026-10-01T00:00:00.000Z',
+      getHealthReport: jest.fn().mockResolvedValue({
+        status: 'degraded',
+        simulated: false,
+        routing: runtimeConfig.routing,
+        providers: [
+          {
+            name: 'smtp',
+            configured: true,
+            healthy: false,
+            dailyLimit: 100,
+            usedToday: 3,
+            lastIssue: {
+              operation: 'health_check',
+              failureReason: 'AUTHENTICATION_FAILED',
+              message: '535 5.7.8 Error: authentication failed',
+              responseCode: 535,
+              code: 'EAUTH',
+              occurredAt: '2026-10-01T00:00:00.000Z',
+            },
+          },
+          {
+            name: 'brevo',
+            configured: true,
+            healthy: true,
+            dailyLimit: 300,
+            usedToday: 10,
+            lastIssue: null,
+          },
+        ],
+      }),
+    };
+    (controller as any).config = {
+      getRuntimeConfig: jest.fn().mockResolvedValue(runtimeConfig),
+      getConfig: jest.fn().mockReturnValue(runtimeConfig),
+      getHealthInfo: jest.fn().mockReturnValue({}),
+    };
+
+    const app = express();
+    app.get('/health', controller.healthCheck);
+
+    const res = await request(app).get('/health');
+
+    // Um canal ainda funciona: degradado, mas não indisponível
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('degraded');
+    expect(res.body.module).toBe('email');
+    expect(res.body.services).toMatchObject({ smtp: 'degraded', brevo: 'operational' });
+    expect(res.body.failureReason).toBe('AUTHENTICATION_FAILED');
+    expect(res.body.lastError).toEqual(
+      expect.objectContaining({ provider: 'smtp', code: 'EAUTH', responseCode: 535 }),
+    );
+    expect(res.body.providers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'brevo', usedToday: 10, dailyLimit: 300 }),
+      ]),
+    );
+    expect(res.body.configuration.smtpHost).toBe('smtp.hostinger.com');
+  });
+
+  it('returns 503 when no configured provider is healthy', async () => {
+    const { EmailController } = await import('../controllers/email-controller');
+    const controller = new EmailController();
+
+    (controller as any).client = {
+      getHealthReport: jest.fn().mockResolvedValue({
+        status: 'unhealthy',
+        simulated: false,
+        routing: runtimeConfig.routing,
+        providers: [
+          {
+            name: 'smtp',
+            configured: true,
+            healthy: false,
+            dailyLimit: 100,
+            usedToday: 0,
+            lastIssue: {
+              operation: 'health_check',
+              failureReason: 'TIMEOUT',
+              message: 'Connection timeout',
+              code: 'ETIMEDOUT',
+              occurredAt: '2026-10-01T00:00:00.000Z',
+            },
+          },
+          {
+            name: 'brevo',
+            configured: false,
+            healthy: null,
+            dailyLimit: 300,
+            usedToday: 0,
+            lastIssue: null,
+          },
+        ],
       }),
     };
     (controller as any).config = {
@@ -213,17 +295,8 @@ describe('SMTP hardening', () => {
     const res = await request(app).get('/health');
 
     expect(res.status).toBe(503);
-    expect(res.body.status).toBe('degraded');
-    expect(res.body.module).toBe('email');
-    expect(res.body.failureReason).toBe('AUTHENTICATION_FAILED');
-    expect(res.body.lastError).toEqual(
-      expect.objectContaining({
-        operation: 'health_check',
-        code: 'EAUTH',
-        responseCode: 535,
-      }),
-    );
-    expect(res.body.services).not.toHaveProperty('sms');
-    expect(res.body.configuration.smtpHost).toBe('smtp.hostinger.com');
+    expect(res.body.status).toBe('unhealthy');
+    expect(res.body.services).toMatchObject({ smtp: 'degraded', brevo: 'not_configured' });
+    expect(res.body.failureReason).toBe('TIMEOUT');
   });
 });

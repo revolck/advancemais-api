@@ -1,5 +1,5 @@
 /**
- * Módulo de e-mail (SMTP) - Exportações principais
+ * Módulo de e-mail (SMTP + Brevo) - Exportações principais
  * Sistema completo de email e verificação
  */
 
@@ -8,6 +8,8 @@ export { EmailService } from './services/email-service';
 
 // Cliente e configuração
 export { SmtpClient } from './client/smtp-client';
+export { BrevoClient } from './client/brevo-client';
+export { EmailDispatcher } from './client/email-dispatcher';
 export { EmailConfigManager } from './config/email-config';
 
 // Templates

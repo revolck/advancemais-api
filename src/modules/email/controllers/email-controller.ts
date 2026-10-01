@@ -1,22 +1,22 @@
 import { Request, Response } from 'express';
 import { EmailService } from '../services/email-service';
-import { SmtpClient } from '../client/smtp-client';
+import { EmailDispatcher } from '../client/email-dispatcher';
 import { EmailConfigManager, resolveEmailEnvironment } from '../config/email-config';
 import { logger } from '../../../utils/logger';
 import { emailSandboxService } from '../services/email-sandbox.service';
 
 /**
- * Controller principal do módulo de e-mail (SMTP)
+ * Controller principal do módulo de e-mail (SMTP + Brevo)
  * Gerencia endpoints de status, testes e informações
  */
 export class EmailController {
   private emailService: EmailService;
-  private client: SmtpClient;
+  private client: EmailDispatcher;
   private config: EmailConfigManager;
 
   constructor() {
     this.emailService = new EmailService();
-    this.client = SmtpClient.getInstance();
+    this.client = EmailDispatcher.getInstance();
     this.config = EmailConfigManager.getInstance();
   }
 
@@ -34,41 +34,60 @@ export class EmailController {
   public healthCheck = async (req: Request, res: Response): Promise<void> => {
     const log = this.getLogger(req);
     try {
-      log.info('🔍 Executando health check do SMTP...');
+      log.info('🔍 Executando health check dos canais de e-mail...');
 
-      const [emailHealthy, clientHealthy] = await Promise.all([
-        this.emailService.checkHealth(),
-        this.client.healthCheck(),
+      const [report, config] = await Promise.all([
+        this.client.getHealthReport(),
+        this.config.getRuntimeConfig(),
       ]);
 
-      const config = await this.config.getRuntimeConfig();
-      const overall = (emailHealthy && clientHealthy) || this.client.isSimulated();
-      const lastIssue = this.client.getLastOperationalIssue();
+      const overall = report.status !== 'unhealthy';
+      const failing = report.providers.find((provider) => provider.configured && !provider.healthy);
+      const lastIssue = failing?.lastIssue ?? null;
+      const configuredProviders = report.providers.filter((provider) => provider.configured);
 
       const healthData = {
-        status: overall ? 'healthy' : 'degraded',
+        status: report.status,
         module: 'email',
-        configured: config.isConfigured,
-        simulated: this.client.isSimulated(),
-        operational: this.client.isOperational(),
+        configured: configuredProviders.length > 0,
+        simulated: report.simulated,
+        operational: configuredProviders.some((provider) => provider.healthy),
         timestamp: new Date().toISOString(),
 
         services: {
-          email: emailHealthy ? 'operational' : 'degraded',
-          client: clientHealthy ? 'operational' : 'degraded',
+          email: overall ? 'operational' : 'degraded',
+          ...Object.fromEntries(
+            report.providers.map((provider) => [
+              provider.name,
+              !provider.configured
+                ? 'not_configured'
+                : provider.healthy
+                  ? 'operational'
+                  : 'degraded',
+            ]),
+          ),
         },
-        failureReason: overall ? null : lastIssue?.failureReason || 'UNKNOWN',
-        lastError: overall
-          ? null
-          : lastIssue
-            ? {
+        providers: report.providers.map((provider) => ({
+          name: provider.name,
+          configured: provider.configured,
+          healthy: provider.healthy,
+          dailyLimit: provider.dailyLimit,
+          usedToday: provider.usedToday,
+          failureReason: provider.lastIssue?.failureReason ?? null,
+        })),
+        routing: report.routing,
+        failureReason: report.status === 'healthy' ? null : lastIssue?.failureReason || 'UNKNOWN',
+        lastError:
+          report.status === 'healthy' || !lastIssue
+            ? null
+            : {
+                provider: failing?.name,
                 operation: lastIssue.operation,
                 code: lastIssue.code,
                 responseCode: lastIssue.responseCode,
                 message: lastIssue.message,
                 occurredAt: lastIssue.occurredAt,
-              }
-            : null,
+              },
 
         configuration: {
           UsuariosVerificacaoEmailEnabled: config.UsuariosVerificacaoEmail.enabled,
@@ -121,12 +140,17 @@ export class EmailController {
       const config = this.config.getConfig();
 
       res.json({
-        module: 'Email Module (SMTP)',
-        version: '8.0.0',
+        module: 'Email Module (SMTP + Brevo)',
+        version: '8.1.0',
         description: 'Sistema completo de comunicação e verificação de email',
         status: 'active',
-        configured: config.isConfigured,
-        simulated: this.client.isSimulated(),
+        configured: config.isConfigured || config.brevo.isConfigured,
+        simulated: !config.isConfigured && !config.brevo.isConfigured,
+        providers: {
+          smtp: config.isConfigured,
+          brevo: config.brevo.isConfigured,
+        },
+        routing: config.routing,
 
         features: {
           transactionalEmails: true,
@@ -324,6 +348,10 @@ export class EmailController {
           smtpPort: config.smtp.port,
           smtpUser: config.smtp.user,
           smtpPasswordProvided: !!config.smtp.password,
+          smtpDailyLimit: config.smtp.dailyLimit,
+          brevoApiKeyProvided: config.brevo.isConfigured,
+          brevoDailyLimit: config.brevo.dailyLimit,
+          routing: config.routing,
           fromEmail: config.fromEmail,
           fromName: config.fromName,
         },
@@ -332,8 +360,8 @@ export class EmailController {
         urls: config.urls,
 
         client: {
-          operational: this.client.isOperational(),
-          simulated: this.client.isSimulated(),
+          operational: config.isConfigured || config.brevo.isConfigured,
+          simulated: !config.isConfigured && !config.brevo.isConfigured,
         },
 
         healthInfo,

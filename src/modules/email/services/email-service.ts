@@ -1,4 +1,5 @@
-import { SmtpClient } from '../client/smtp-client';
+import { EmailDispatcher } from '../client/email-dispatcher';
+import type { EmailChannel } from '../client/types';
 import { EmailConfigManager } from '../config/email-config';
 import { EmailTemplates } from '../templates/email-templates';
 import { prisma } from '../../../config/prisma';
@@ -25,12 +26,12 @@ export interface WelcomeEmailData {
 }
 
 export class EmailService {
-  private client: SmtpClient;
+  private client: EmailDispatcher;
   private config: EmailConfigManager;
   private readonly log = logger.child({ module: 'EmailService' });
 
   constructor() {
-    this.client = SmtpClient.getInstance();
+    this.client = EmailDispatcher.getInstance();
     this.config = EmailConfigManager.getInstance();
   }
 
@@ -41,8 +42,9 @@ export class EmailService {
     subject: string,
     html: string,
     text: string,
+    options: { channel?: EmailChannel } = {},
   ) {
-    return this.client.sendEmail({ to, toName, subject, html, text });
+    return this.client.send({ to, toName, subject, html, text }, options);
   }
 
   public async sendWelcomeEmail(userData: WelcomeEmailData): Promise<EmailResult> {
@@ -106,7 +108,7 @@ export class EmailService {
 
       const emailContent = EmailTemplates.generateWelcomeEmail(templateData);
 
-      const result = await this.client.sendEmail({
+      const result = await this.client.send({
         to: userData.email,
         toName: userData.nomeCompleto,
         subject: emailContent.subject,
@@ -175,7 +177,7 @@ export class EmailService {
 
       const emailContent = EmailTemplates.generateVerificationEmail(templateData);
 
-      const result = await this.client.sendEmail({
+      const result = await this.client.send({
         to: userData.email,
         toName: userData.nomeCompleto,
         subject: emailContent.subject,
@@ -216,7 +218,7 @@ export class EmailService {
 
       const emailContent = EmailTemplates.generateWelcomeEmail(templateData);
 
-      const result = await this.client.sendEmail({
+      const result = await this.client.send({
         to: userData.email,
         toName: userData.nomeCompleto,
         subject: emailContent.subject,
@@ -249,7 +251,7 @@ export class EmailService {
       method: 'sendAssinaturaNotificacao',
     });
     try {
-      const result = await this.client.sendEmail({
+      const result = await this.client.send({
         to: usuario.email,
         toName: usuario.nomeCompleto,
         subject: content.subject,
@@ -304,7 +306,7 @@ export class EmailService {
 
       const emailContent = EmailTemplates.generatePasswordRecoveryEmail(templateData);
 
-      const result = await this.client.sendEmail({
+      const result = await this.client.send({
         to: usuario.email,
         toName: usuario.nomeCompleto,
         subject: emailContent.subject,

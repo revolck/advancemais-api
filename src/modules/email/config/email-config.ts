@@ -1,4 +1,4 @@
-import { emailConfig } from '../../../config/env';
+import { emailConfig, type EmailProviderName } from '../../../config/env';
 import { logger } from '@/utils/logger';
 import { runtimeConfigService } from '@/modules/configuracoes-gerais';
 
@@ -46,6 +46,17 @@ export interface EmailConfiguration {
     secure: boolean;
     user: string;
     password: string;
+    dailyLimit: number;
+  };
+  brevo: {
+    apiKey: string;
+    dailyLimit: number;
+    isConfigured: boolean;
+  };
+  routing: {
+    transactional: EmailProviderName[];
+    marketing: EmailProviderName[];
+    transactionalReserve: number;
   };
   timeout: number;
   isConfigured: boolean;
@@ -109,6 +120,8 @@ export class EmailConfigManager {
       fromEmail: runtimeConfig.fromEmail,
       fromName: runtimeConfig.fromName,
       smtp: runtimeConfig.smtp,
+      brevo: runtimeConfig.brevo,
+      routing: runtimeConfig.routing,
       timeout: runtimeConfig.timeout,
       isConfigured: runtimeConfig.isConfigured,
       environment: resolveEmailEnvironment(),
@@ -195,6 +208,17 @@ export class EmailConfigManager {
         secure: emailConfig.smtp.secure,
         user: emailConfig.smtp.user,
         password: emailConfig.smtp.password,
+        dailyLimit: emailConfig.smtp.dailyLimit,
+      },
+      brevo: {
+        apiKey: emailConfig.brevo.apiKey,
+        dailyLimit: emailConfig.brevo.dailyLimit,
+        isConfigured: Boolean(emailConfig.brevo.apiKey),
+      },
+      routing: {
+        transactional: [...emailConfig.routing.transactional],
+        marketing: [...emailConfig.routing.marketing],
+        transactionalReserve: emailConfig.routing.transactionalReserve,
       },
       timeout: emailConfig.timeout,
       isConfigured: emailConfig.isValid(),
@@ -235,9 +259,11 @@ export class EmailConfigManager {
         environment: this.config.environment,
         smtpHost: this.config.smtp.host,
         smtpPort: this.config.smtp.port,
+        brevoConfigured: this.config.brevo.isConfigured,
+        routing: this.config.routing,
         UsuariosVerificacaoEmailEnabled: this.config.UsuariosVerificacaoEmail.enabled,
       },
-      '✅ Módulo de e-mail (SMTP) configurado',
+      '✅ Módulo de e-mail (SMTP + Brevo) configurado',
     );
   }
 }

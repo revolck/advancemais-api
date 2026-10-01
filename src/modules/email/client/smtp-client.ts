@@ -1,6 +1,7 @@
 import nodemailer, { type Transporter } from 'nodemailer';
 import type SMTPPool from 'nodemailer/lib/smtp-pool';
 import { EmailConfigManager, EmailConfiguration } from '../config/email-config';
+import type { EmailSendInput, EmailSendResult } from './types';
 import { logger } from '@/utils/logger';
 
 type SmtpFailureReason =
@@ -10,6 +11,7 @@ type SmtpFailureReason =
   | 'CONNECTION_FAILED'
   | 'TIMEOUT'
   | 'RECIPIENT_REJECTED'
+  | 'QUOTA_EXCEEDED'
   | 'SEND_FAILED';
 
 interface SmtpOperationalIssue {
@@ -210,18 +212,7 @@ export class SmtpClient {
   /**
    * Envia email transacional
    */
-  public async sendEmail(emailData: {
-    to: string;
-    toName: string;
-    subject: string;
-    html: string;
-    text: string;
-  }): Promise<{
-    success: boolean;
-    messageId?: string;
-    error?: string;
-    simulated?: boolean;
-  }> {
+  public async sendEmail(emailData: EmailSendInput): Promise<EmailSendResult> {
     await this.ensureRuntimeConfig();
 
     // Modo simulado
@@ -296,6 +287,8 @@ export class SmtpClient {
       return {
         success: false,
         error: details.message,
+        failureReason: details.failureReason,
+        deliveryUncertain: this.isDeliveryUncertain(error),
       };
     } finally {
       clearTimeout(timeoutHandle);
@@ -330,7 +323,9 @@ export class SmtpClient {
     );
 
     let failureReason: SmtpFailureReason = 'SEND_FAILED';
-    if (code === 'EAUTH' || responseCode === 535 || responseCode === 534) {
+    if (responseCode && /quota|limit|exceed|too many|rate/i.test(message)) {
+      failureReason = 'QUOTA_EXCEEDED';
+    } else if (code === 'EAUTH' || responseCode === 535 || responseCode === 534) {
       failureReason = 'AUTHENTICATION_FAILED';
     } else if (code === 'ETIMEDOUT') {
       failureReason = 'TIMEOUT';
@@ -341,5 +336,22 @@ export class SmtpClient {
     }
 
     return { message, responseCode, code, failureReason };
+  }
+
+  /**
+   * Falha "incerta": o servidor pode ter aceitado a mensagem (timeout durante
+   * o DATA ou no nosso limite de tempo). Recusas explícitas (com código de
+   * resposta) ou falhas antes do envio do conteúdo são seguras para trocar de canal.
+   */
+  private isDeliveryUncertain(error: unknown): boolean {
+    const errorRecord = error as
+      | { message?: string; responseCode?: number; command?: string }
+      | undefined;
+
+    if (errorRecord?.message === 'SMTP_EMAIL_TIMEOUT') return true;
+    if (typeof errorRecord?.responseCode === 'number') return false;
+
+    const command = String(errorRecord?.command || '').toUpperCase();
+    return command.startsWith('DATA') || command === 'MESSAGE';
   }
 }

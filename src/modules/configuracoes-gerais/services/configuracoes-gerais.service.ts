@@ -22,6 +22,100 @@ export interface UpdateConfigPayload {
 }
 
 const auditoriaService = new AuditoriaService();
+
+type EmailRuntimeConfig = Awaited<ReturnType<typeof runtimeConfigService.getEmailConfig>>;
+
+interface EmailChannelCheck {
+  key: string;
+  label: string;
+  ok: boolean;
+  configured: boolean;
+  message: string;
+}
+
+async function testSmtpConnection(emailConfig: EmailRuntimeConfig): Promise<EmailChannelCheck> {
+  const base = { key: 'smtp', label: 'SMTP' };
+  if (!emailConfig.isConfigured) {
+    return {
+      ...base,
+      ok: false,
+      configured: false,
+      message: 'SMTP: configure host, usuário, senha e remetente.',
+    };
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: emailConfig.smtp.host,
+    port: emailConfig.smtp.port,
+    secure: emailConfig.smtp.secure,
+    auth: { user: emailConfig.smtp.user, pass: emailConfig.smtp.password },
+    connectionTimeout: emailConfig.timeout,
+    greetingTimeout: emailConfig.timeout,
+    socketTimeout: emailConfig.timeout,
+  });
+
+  try {
+    await transporter.verify();
+    return {
+      ...base,
+      ok: true,
+      configured: true,
+      message: `SMTP: conexão autenticada em ${emailConfig.smtp.host}:${emailConfig.smtp.port}.`,
+    };
+  } catch (error) {
+    const smtpError = error as { message?: string; code?: string };
+    return {
+      ...base,
+      ok: false,
+      configured: true,
+      message:
+        smtpError.code === 'EAUTH'
+          ? 'SMTP: o servidor recusou o usuário ou a senha.'
+          : `SMTP: falha ao conectar (${smtpError.message ?? 'erro desconhecido'}).`,
+    };
+  } finally {
+    transporter.close();
+  }
+}
+
+async function testBrevoConnection(emailConfig: EmailRuntimeConfig): Promise<EmailChannelCheck> {
+  const base = { key: 'brevo', label: 'Brevo' };
+  if (!emailConfig.brevo.isConfigured) {
+    return { ...base, ok: false, configured: false, message: 'Brevo: API key não configurada.' };
+  }
+
+  const controller = new globalThis.AbortController();
+  const timeoutHandle = setTimeout(() => controller.abort(), emailConfig.timeout);
+  try {
+    const response = await fetch('https://api.brevo.com/v3/account', {
+      headers: { 'api-key': emailConfig.brevo.apiKey, accept: 'application/json' },
+      signal: controller.signal,
+    });
+    if (response.ok) {
+      return { ...base, ok: true, configured: true, message: 'Brevo: API key válida.' };
+    }
+
+    const body = (await response.json().catch(() => null)) as { message?: string } | null;
+    const reason = String(body?.message || `HTTP ${response.status}`);
+    return {
+      ...base,
+      ok: false,
+      configured: true,
+      message: /unrecogni[sz]ed ip/i.test(reason)
+        ? 'Brevo: IP do servidor não autorizado (Brevo → Segurança → IPs autorizados).'
+        : `Brevo: chamada recusada (${reason}).`,
+    };
+  } catch (error) {
+    return {
+      ...base,
+      ok: false,
+      configured: true,
+      message: `Brevo: falha ao conectar (${error instanceof Error ? error.message : 'erro desconhecido'}).`,
+    };
+  } finally {
+    clearTimeout(timeoutHandle);
+  }
+}
 const serviceLogger = logger.child({ module: 'ConfiguracoesGeraisService' });
 
 type RuntimeCategorySnapshot = Awaited<ReturnType<typeof runtimeConfigService.listCategory>>;
@@ -441,46 +535,28 @@ class ConfiguracoesGeraisService {
           fromEmail: emailConfig.fromEmail,
           fromName: emailConfig.fromName,
           hasPassword: Boolean(emailConfig.smtp.password),
+          hasBrevoApiKey: emailConfig.brevo.isConfigured,
+          routing: emailConfig.routing,
         };
 
-        if (!emailConfig.isConfigured) {
-          return {
-            success: false,
-            message: 'Configure host, usuário, senha SMTP e remetente.',
-            details,
-          };
-        }
+        const [smtpCheck, brevoCheck] = await Promise.all([
+          testSmtpConnection(emailConfig),
+          testBrevoConnection(emailConfig),
+        ]);
+        const configuredChecks = [smtpCheck, brevoCheck].filter((check) => check.configured);
+        const success = configuredChecks.length > 0 && configuredChecks.every((check) => check.ok);
 
-        const transporter = nodemailer.createTransport({
-          host: emailConfig.smtp.host,
-          port: emailConfig.smtp.port,
-          secure: emailConfig.smtp.secure,
-          auth: { user: emailConfig.smtp.user, pass: emailConfig.smtp.password },
-          connectionTimeout: emailConfig.timeout,
-          greetingTimeout: emailConfig.timeout,
-          socketTimeout: emailConfig.timeout,
-        });
-
-        try {
-          await transporter.verify();
-          return {
-            success: true,
-            message: `Conexão SMTP autenticada em ${emailConfig.smtp.host}:${emailConfig.smtp.port}.`,
-            details,
-          };
-        } catch (error) {
-          const smtpError = error as { message?: string; code?: string; responseCode?: number };
-          return {
-            success: false,
-            message:
-              smtpError.code === 'EAUTH'
-                ? 'O servidor SMTP recusou o usuário ou a senha.'
-                : `Falha ao conectar no servidor SMTP: ${smtpError.message ?? 'erro desconhecido'}`,
-            details: { ...details, code: smtpError.code, responseCode: smtpError.responseCode },
-          };
-        } finally {
-          transporter.close();
-        }
+        return {
+          category: 'emails',
+          ok: success,
+          success,
+          checks: [smtpCheck, brevoCheck].map(({ configured: _configured, ...check }) => check),
+          message:
+            configuredChecks.length === 0
+              ? 'Configure o SMTP ou a API key da Brevo.'
+              : [smtpCheck, brevoCheck].map((check) => check.message).join(' '),
+          details,
+        };
       }
       case 'integracoes': {
         const googleConfig = await runtimeConfigService.getGoogleOAuthConfig();

@@ -1598,6 +1598,9 @@ model Usuarios {
   googleCalendarId                                                                                          String?                                       @db.VarChar(255)
   googleTokenExpiraEm                                                                                       DateTime?
   mpCustomerId                                                                                               String?                                       @db.VarChar(255)
+  // Primeiro acesso: senha provisória que precisa ser trocada no próximo login
+  precisaTrocarSenha                                                                                        Boolean                                       @default(false)
+  senhaProvisoriaEm                                                                                         DateTime?
   AuditoriaLogs                                                                                             AuditoriaLogs[]
   AuditoriaScripts                                                                                          AuditoriaScripts[]
   SistemaConfiguracoesAtualizadas                                                                           SistemaConfiguracoes[]                        @relation("SistemaConfiguracoesAtualizadoPor")

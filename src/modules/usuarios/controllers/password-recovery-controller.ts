@@ -495,6 +495,8 @@ export class PasswordRecoveryController {
           where: { id: recuperacao.Usuarios.id },
           data: {
             senha: novaSenhaHash,
+            precisaTrocarSenha: false,
+            senhaProvisoriaEm: null,
             atualizadoEm: new Date(),
           },
         });

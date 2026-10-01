@@ -92,6 +92,7 @@ interface UsuarioPerfil {
   emailVerificado: boolean;
   emailVerificadoEm: Date | null;
   ultimoLogin: Date | null;
+  precisaTrocarSenha?: boolean;
   criadoEm: Date;
   atualizadoEm: Date;
   cidade: string | null;
@@ -388,6 +389,7 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
             tipoUsuario: true,
             authId: true,
             ultimoLogin: true,
+            precisaTrocarSenha: true,
             criadoEm: true,
             UsuariosRedesSociais: {
               select: {
@@ -649,6 +651,7 @@ export const loginUsuario = async (req: Request, res: Response, next: NextFuncti
       emailVerificadoEm: usuario.emailVerificadoEm,
       UsuariosVerificacaoEmail: usuario.UsuariosVerificacaoEmail,
       ultimoLogin: new Date().toISOString(),
+      precisaTrocarSenha: Boolean(usuario.precisaTrocarSenha),
       codUsuario: usuario.codUsuario,
       cidade: usuario.cidade,
       estado: usuario.estado,
@@ -854,6 +857,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
               },
             },
             ultimoLogin: true,
+            precisaTrocarSenha: true,
             UsuariosInformation: {
               select: usuarioInformacoesSelect,
             },
@@ -1046,6 +1050,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
       authId: usuario.authId,
       emailVerificado: usuario.emailVerificado,
       ultimoLogin: updatedUser.ultimoLogin,
+      precisaTrocarSenha: Boolean(usuario.precisaTrocarSenha),
       codUsuario: usuario.codUsuario,
       cidade: usuario.cidade,
       estado: usuario.estado,
@@ -1157,6 +1162,7 @@ export const obterPerfil = async (req: Request, res: Response, next: NextFunctio
         tipoUsuario: true,
         authId: true,
         ultimoLogin: true,
+        precisaTrocarSenha: true,
         criadoEm: true,
         atualizadoEm: true,
         UsuariosRedesSociais: {

@@ -1,8 +1,8 @@
-import { brevoConfig } from '../../../config/env';
+import { emailConfig } from '../../../config/env';
 import { logger } from '@/utils/logger';
 import { runtimeConfigService } from '@/modules/configuracoes-gerais';
 
-export function resolveBrevoEnvironment(): 'development' | 'production' | 'test' {
+export function resolveEmailEnvironment(): 'development' | 'production' | 'test' {
   const rawNodeEnv = process.env.NODE_ENV?.trim().toLowerCase();
   if (rawNodeEnv === 'production' || rawNodeEnv === 'development' || rawNodeEnv === 'test') {
     return rawNodeEnv;
@@ -34,14 +34,19 @@ export function resolveBrevoEnvironment(): 'development' | 'production' | 'test'
 }
 
 /**
- * Configuração simplificada e robusta do módulo Brevo
+ * Configuração do módulo de e-mail (SMTP)
  * Implementa configuração centralizada com validação
  */
-export interface BrevoConfiguration {
-  apiKey: string;
+export interface EmailConfiguration {
   fromEmail: string;
   fromName: string;
-  maxRetries: number;
+  smtp: {
+    host: string;
+    port: number;
+    secure: boolean;
+    user: string;
+    password: string;
+  };
   timeout: number;
   isConfigured: boolean;
   environment: string;
@@ -69,45 +74,44 @@ export interface BrevoConfiguration {
 }
 
 /**
- * Manager simplificado de configuração
+ * Manager de configuração do e-mail
  */
-export class BrevoConfigManager {
-  private static instance: BrevoConfigManager;
-  private config: BrevoConfiguration;
-  private readonly log = logger.child({ module: 'BrevoConfigManager' });
+export class EmailConfigManager {
+  private static instance: EmailConfigManager;
+  private config: EmailConfiguration;
+  private readonly log = logger.child({ module: 'EmailConfigManager' });
 
   private constructor() {
     this.config = this.buildConfiguration();
     this.logConfiguration();
   }
 
-  public static getInstance(): BrevoConfigManager {
-    if (!BrevoConfigManager.instance) {
-      BrevoConfigManager.instance = new BrevoConfigManager();
+  public static getInstance(): EmailConfigManager {
+    if (!EmailConfigManager.instance) {
+      EmailConfigManager.instance = new EmailConfigManager();
     }
-    return BrevoConfigManager.instance;
+    return EmailConfigManager.instance;
   }
 
   /**
    * Retorna configuração
    */
-  public getConfig(): BrevoConfiguration {
+  public getConfig(): EmailConfiguration {
     return this.config;
   }
 
-  public async getRuntimeConfig(): Promise<BrevoConfiguration> {
-    const runtimeConfig = await runtimeConfigService.getBrevoConfig();
+  public async getRuntimeConfig(): Promise<EmailConfiguration> {
+    const runtimeConfig = await runtimeConfigService.getEmailConfig();
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const authUrl = process.env.AUTH_FRONTEND_URL || `${frontendUrl}/auth`;
 
     return {
-      apiKey: runtimeConfig.apiKey,
       fromEmail: runtimeConfig.fromEmail,
       fromName: runtimeConfig.fromName,
-      maxRetries: runtimeConfig.sending.maxRetries,
-      timeout: runtimeConfig.sending.timeout,
+      smtp: runtimeConfig.smtp,
+      timeout: runtimeConfig.timeout,
       isConfigured: runtimeConfig.isConfigured,
-      environment: resolveBrevoEnvironment(),
+      environment: resolveEmailEnvironment(),
       urls: {
         frontend: frontendUrl,
         verification: `${authUrl}/verify-email`,
@@ -178,19 +182,23 @@ export class BrevoConfigManager {
   /**
    * Constrói configuração completa
    */
-  private buildConfiguration(): BrevoConfiguration {
-    const isConfigured = !!(brevoConfig.apiKey && brevoConfig.fromEmail);
+  private buildConfiguration(): EmailConfiguration {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const authUrl = process.env.AUTH_FRONTEND_URL || `${frontendUrl}/auth`;
 
     return {
-      apiKey: brevoConfig.apiKey || '',
-      fromEmail: brevoConfig.fromEmail || 'noreply@advancemais.com',
-      fromName: brevoConfig.fromName || 'Advance+',
-      maxRetries: 3,
-      timeout: 30000,
-      isConfigured,
-      environment: resolveBrevoEnvironment(),
+      fromEmail: emailConfig.fromEmail,
+      fromName: emailConfig.fromName,
+      smtp: {
+        host: emailConfig.smtp.host,
+        port: emailConfig.smtp.port,
+        secure: emailConfig.smtp.secure,
+        user: emailConfig.smtp.user,
+        password: emailConfig.smtp.password,
+      },
+      timeout: emailConfig.timeout,
+      isConfigured: emailConfig.isValid(),
+      environment: resolveEmailEnvironment(),
 
       urls: {
         frontend: frontendUrl,
@@ -205,9 +213,9 @@ export class BrevoConfigManager {
         resendCooldownMinutes: parseInt(process.env.EMAIL_VERIFICATION_COOLDOWN_MINUTES || '5', 10),
       },
       passwordRecovery: {
-        tokenExpirationMinutes: brevoConfig.passwordRecovery.tokenExpirationMinutes,
-        maxAttempts: brevoConfig.passwordRecovery.maxAttempts,
-        cooldownMinutes: brevoConfig.passwordRecovery.cooldownMinutes,
+        tokenExpirationMinutes: emailConfig.passwordRecovery.tokenExpirationMinutes,
+        maxAttempts: emailConfig.passwordRecovery.maxAttempts,
+        cooldownMinutes: emailConfig.passwordRecovery.cooldownMinutes,
       },
     };
   }
@@ -217,23 +225,19 @@ export class BrevoConfigManager {
    */
   private logConfiguration(): void {
     if (!this.config.isConfigured) {
-      this.log.warn('⚠️ Brevo não configurado - emails serão simulados');
+      this.log.warn('⚠️ SMTP não configurado - emails serão simulados');
     }
 
     this.log.info(
       {
-        module: 'Brevo',
+        module: 'Email',
         configured: this.config.isConfigured,
         environment: this.config.environment,
+        smtpHost: this.config.smtp.host,
+        smtpPort: this.config.smtp.port,
         UsuariosVerificacaoEmailEnabled: this.config.UsuariosVerificacaoEmail.enabled,
-        features: {
-          transactionalEmails: true,
-          UsuariosVerificacaoEmail: this.config.UsuariosVerificacaoEmail.enabled,
-          passwordRecovery: true,
-          welcomeEmails: true,
-        },
       },
-      '✅ Brevo configurado com sucesso',
+      '✅ Módulo de e-mail (SMTP) configurado',
     );
   }
 }

@@ -151,8 +151,8 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
 
       // === INFRAESTRUTURA ===
       {
-        name: 'Brevo',
-        description: '📧 E-mails Transacionais - Envio de e-mails, SMS e notificações',
+        name: 'Email',
+        description: '📧 E-mails Transacionais (SMTP) - Envio de e-mails e verificação',
       },
       {
         name: 'Website',
@@ -182,7 +182,7 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
       },
       {
         name: '🔌 Integrações',
-        tags: ['Brevo', 'Website'],
+        tags: ['Email', 'Website'],
       },
     ],
     components: {
@@ -3411,7 +3411,7 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
               additionalProperties: { type: 'string' },
               example: {
                 usuarios: '/api/v1/usuarios',
-                brevo: '/api/v1/brevo',
+                email: '/api/v1/email',
                 website: '/api/v1/website',
                 empresas: '/api/v1/empresas',
                 candidatos: '/api/v1/candidatos',
@@ -3445,7 +3445,7 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
               type: 'object',
               properties: {
                 usuarios: { type: 'string', example: '✅ active' },
-                brevo: { type: 'string', example: '✅ active' },
+                email: { type: 'string', example: '✅ active' },
                 website: { type: 'string', example: '✅ active' },
                 empresas: { type: 'string', example: '✅ active' },
                 candidatos: { type: 'string', example: '✅ active' },
@@ -3472,14 +3472,14 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
             },
           },
         },
-        BrevoModuleInfo: {
+        EmailModuleInfo: {
           type: 'object',
           properties: {
             module: {
               type: 'string',
-              example: 'Brevo Communication Module',
+              example: 'Email Module (SMTP)',
             },
-            version: { type: 'string', example: '7.3.0' },
+            version: { type: 'string', example: '8.0.0' },
             description: {
               type: 'string',
               example: 'Sistema completo de comunicação e verificação de email',
@@ -3494,11 +3494,11 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
             },
           },
         },
-        BrevoHealthResponse: {
+        EmailHealthResponse: {
           type: 'object',
           properties: {
             status: { type: 'string', example: 'healthy' },
-            module: { type: 'string', example: 'brevo' },
+            module: { type: 'string', example: 'email' },
             configured: { type: 'boolean', example: true },
             simulated: { type: 'boolean', example: false },
             operational: { type: 'boolean', example: true },
@@ -3511,16 +3511,15 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
               type: 'object',
               properties: {
                 email: { type: 'string', example: 'operational' },
-                sms: { type: 'string', example: 'operational' },
                 client: { type: 'string', example: 'operational' },
               },
             },
           },
         },
-        BrevoConfigStatus: {
+        EmailConfigStatus: {
           type: 'object',
           properties: {
-            module: { type: 'string', example: 'Brevo Configuration Status' },
+            module: { type: 'string', example: 'Email Configuration Status' },
             timestamp: {
               type: 'string',
               format: 'date-time',
@@ -3531,8 +3530,11 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
               properties: {
                 isConfigured: { type: 'boolean', example: true },
                 environment: { type: 'string', example: 'development' },
-                apiKeyProvided: { type: 'boolean', example: true },
-                fromEmailConfigured: { type: 'boolean', example: true },
+                smtpHost: { type: 'string', example: 'smtp.hostinger.com' },
+                smtpPort: { type: 'integer', example: 465 },
+                smtpUser: { type: 'string', example: 'noreply@advancemais.com' },
+                smtpPasswordProvided: { type: 'boolean', example: true },
+                fromEmail: { type: 'string', example: 'noreply@advancemais.com' },
                 fromName: { type: 'string', example: 'Advance+' },
               },
             },
@@ -3552,7 +3554,7 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
             },
           },
         },
-        BrevoVerifyEmailResponse: {
+        EmailVerifyEmailResponse: {
           type: 'object',
           properties: {
             success: { type: 'boolean', example: true },
@@ -3570,7 +3572,7 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
             },
           },
         },
-        BrevoResendVerificationRequest: {
+        EmailResendVerificationRequest: {
           type: 'object',
           required: ['email'],
           properties: {
@@ -3581,7 +3583,7 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
             },
           },
         },
-        BrevoResendVerificationResponse: {
+        EmailResendVerificationResponse: {
           type: 'object',
           properties: {
             success: { type: 'boolean', example: true },
@@ -3593,7 +3595,7 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
             messageId: { type: 'string', example: 'msg_123' },
           },
         },
-        BrevoVerificationStatusResponse: {
+        EmailVerificationStatusResponse: {
           type: 'object',
           properties: {
             success: { type: 'boolean', example: true },
@@ -3643,7 +3645,7 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
             },
           },
         },
-        BrevoTestEmailRequest: {
+        EmailTestEmailRequest: {
           type: 'object',
           required: ['email'],
           properties: {
@@ -3656,7 +3658,7 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
             type: { type: 'string', example: 'welcome' },
           },
         },
-        BrevoTestEmailResponse: {
+        EmailTestEmailResponse: {
           type: 'object',
           properties: {
             success: { type: 'boolean', example: true },
@@ -3671,44 +3673,6 @@ Veja mais detalhes em: \`docs/PERFORMANCE_OPTIMIZATIONS.md\``,
                 recipient: { type: 'string', example: 'user@example.com' },
                 simulated: { type: 'boolean', example: false },
                 messageId: { type: 'string', example: 'msg_123' },
-              },
-            },
-            timestamp: {
-              type: 'string',
-              format: 'date-time',
-              example: '2024-01-01T12:00:00Z',
-            },
-          },
-        },
-        BrevoTestSMSRequest: {
-          type: 'object',
-          required: ['to'],
-          properties: {
-            to: { type: 'string', example: '+55 11 99999-9999' },
-            message: {
-              type: 'string',
-              example: 'Teste de SMS do Advance+ - Sistema funcionando!',
-            },
-          },
-        },
-        BrevoTestSMSResponse: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean', example: true },
-            message: { type: 'string', example: 'Teste de SMS executado' },
-            data: {
-              type: 'object',
-              properties: {
-                recipient: {
-                  type: 'string',
-                  example: '+55 11 99999-9999',
-                },
-                message: {
-                  type: 'string',
-                  example: 'Teste de SMS do Advance+ - Sistema funcionando!',
-                },
-                simulated: { type: 'boolean', example: false },
-                messageId: { type: 'string', example: 'sms_123' },
               },
             },
             timestamp: {
@@ -12371,7 +12335,7 @@ export function setupSwagger(app: Application): void {
               'Auditoria',
               'Status Processo',
               // Integrações
-              'Brevo',
+              'Email',
               'Website',
             ];
             const ai = order.indexOf(a);
@@ -12564,7 +12528,7 @@ export function setupSwagger(app: Application): void {
               { re: /^\/api\/v1\/usuarios\/password\/?$/, w: 4015 },
 
               // ===== OUTROS MÓDULOS =====
-              { re: /^\/api\/v1\/brevo\/?$/, w: 6000 },
+              { re: /^\/api\/v1\/email\/?$/, w: 6000 },
               { re: /^\/api\/v1\/website\/?$/, w: 7000 },
               { re: /^\/api\/v1\/cupons\/?$/, w: 8000 },
               { re: /^\/api\/v1\/mercadopago\/?$/, w: 9000 },

@@ -26,8 +26,8 @@ import {
 
 import { serverConfig } from '@/config/env';
 import { prisma, retryOperation } from '@/config/prisma';
-import { EmailService } from '@/modules/brevo/services/email-service';
-import { EmailTemplates } from '@/modules/brevo/templates/email-templates';
+import { EmailService } from '@/modules/email/services/email-service';
+import { EmailTemplates } from '@/modules/email/templates/email-templates';
 import type {
   AdminEmpresasBloqueioInput,
   AdminEmpresasCreateInput,

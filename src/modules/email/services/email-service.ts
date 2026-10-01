@@ -1,5 +1,5 @@
-import { BrevoClient } from '../client/brevo-client';
-import { BrevoConfigManager } from '../config/brevo-config';
+import { SmtpClient } from '../client/smtp-client';
+import { EmailConfigManager } from '../config/email-config';
 import { EmailTemplates } from '../templates/email-templates';
 import { prisma } from '../../../config/prisma';
 import { invalidateUserCache } from '../../usuarios/utils/cache';
@@ -25,13 +25,13 @@ export interface WelcomeEmailData {
 }
 
 export class EmailService {
-  private client: BrevoClient;
-  private config: BrevoConfigManager;
+  private client: SmtpClient;
+  private config: EmailConfigManager;
   private readonly log = logger.child({ module: 'EmailService' });
 
   constructor() {
-    this.client = BrevoClient.getInstance();
-    this.config = BrevoConfigManager.getInstance();
+    this.client = SmtpClient.getInstance();
+    this.config = EmailConfigManager.getInstance();
   }
 
   // Expor método simples para envio genérico (assinaturas etc.)

@@ -1,6 +1,6 @@
-import { BrevoClient } from '@/modules/brevo/client/brevo-client';
-import { BrevoConfigManager } from '@/modules/brevo/config/brevo-config';
-import { EmailTemplates } from '@/modules/brevo/templates';
+import { SmtpClient } from '@/modules/email/client/smtp-client';
+import { EmailConfigManager } from '@/modules/email/config/email-config';
+import { EmailTemplates } from '@/modules/email/templates';
 import { logger } from '@/utils/logger';
 
 const emailLogger = logger.child({ module: 'CursosEstagiosEmailService' });
@@ -11,7 +11,7 @@ const formatDate = (value: Date | string) => {
 };
 
 const buildConfirmacaoUrl = (token: string) => {
-  const config = BrevoConfigManager.getInstance().getConfig();
+  const config = EmailConfigManager.getInstance().getConfig();
   const baseUrl = config.urls.frontend.replace(/\/$/, '');
   const confirmPath = process.env.FRONTEND_ESTAGIO_CONFIRM_PATH || '/estagios/confirmacao';
   return `${baseUrl}${confirmPath}?token=${token}`;
@@ -55,7 +55,7 @@ type EstagioAvisoEncerramentoInput = {
   observacoes?: string | null;
 };
 
-const brevoClient = BrevoClient.getInstance();
+const smtpClient = SmtpClient.getInstance();
 
 export const estagiosEmailService = {
   async enviarConvocacao(data: EstagioConvocacaoEmailInput) {
@@ -90,7 +90,7 @@ export const estagiosEmailService = {
       'Enviando email de convocação de estágio',
     );
 
-    const result = await brevoClient.sendEmail({
+    const result = await smtpClient.sendEmail({
       to: destinatario,
       toName: data.alunoNome,
       subject: emailContent.subject,
@@ -125,7 +125,7 @@ export const estagiosEmailService = {
       'Enviando aviso de encerramento de estágio',
     );
 
-    return brevoClient.sendEmail({
+    return smtpClient.sendEmail({
       to: data.adminEmail,
       toName: data.adminNome ?? data.adminEmail,
       subject: emailContent.subject,

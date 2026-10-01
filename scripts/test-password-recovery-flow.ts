@@ -2,7 +2,7 @@
  * Script para testar o fluxo completo de recuperação de senha
  */
 import 'dotenv/config';
-import { EmailService } from '../src/modules/brevo/services/email-service';
+import { EmailService } from '../src/modules/email/services/email-service';
 import { prisma } from '../src/config/prisma';
 import { logger } from '../src/utils/logger';
 

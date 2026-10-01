@@ -20,8 +20,8 @@ import {
   EmpresasPlanoModo,
 } from '@prisma/client';
 import type { PlanosEmpresariais } from '@prisma/client';
-import { EmailService } from '@/modules/brevo/services/email-service';
-import { EmailTemplates } from '@/modules/brevo/templates/email-templates';
+import { EmailService } from '@/modules/email/services/email-service';
+import { EmailTemplates } from '@/modules/email/templates/email-templates';
 import { normalizarCNPJ, validarCNPJ } from '@/modules/usuarios/utils';
 import { logger } from '@/utils/logger';
 import type { StartCheckoutInput } from '@/modules/mercadopago/assinaturas/validators/assinaturas.schema';

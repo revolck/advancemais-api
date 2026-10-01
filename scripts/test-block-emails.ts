@@ -1,16 +1,16 @@
 /**
- * Script para testar envio de emails de bloqueio e desbloqueio via Brevo
+ * Script para testar envio de emails de bloqueio e desbloqueio via SMTP
  *
  * Uso: pnpm tsx scripts/test-block-emails.ts
  */
 
 import 'dotenv/config';
-import { EmailService } from '../src/modules/brevo/services/email-service';
-import { EmailTemplates } from '../src/modules/brevo/templates/email-templates';
+import { EmailService } from '../src/modules/email/services/email-service';
+import { EmailTemplates } from '../src/modules/email/templates/email-templates';
 import { TiposDeBloqueios } from '@prisma/client';
 
 async function testBlockEmails() {
-  console.log('📧 Testando envio de emails de bloqueio/desbloqueio via Brevo...\n');
+  console.log('📧 Testando envio de emails de bloqueio/desbloqueio via SMTP...\n');
 
   const emailService = new EmailService();
   const testEmail = 'devfilipemarques@gmail.com';

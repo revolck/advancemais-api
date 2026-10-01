@@ -1,25 +1,27 @@
 /**
- * Script para testar envio de email via Brevo
+ * Script para testar envio de email via SMTP
  *
  * Uso: pnpm ts-node scripts/test-email.ts
  */
 
 import 'dotenv/config';
-import { BrevoClient } from '../src/modules/brevo/client/brevo-client';
+import { SmtpClient } from '../src/modules/email/client/smtp-client';
 
 async function testEmail() {
-  console.log('📧 Testando envio de email via Brevo...\n');
+  console.log('📧 Testando envio de email via SMTP...\n');
 
-  const client = BrevoClient.getInstance();
+  const client = SmtpClient.getInstance();
 
-  // Verificar se está configurado (mas não bloquear se falhar - pode ser apenas IP não autorizado)
+  // Health check: conecta e autentica no servidor SMTP
   const health = await client.healthCheck();
-  console.log(
-    `✅ Health check: ${health ? 'OK' : 'FALHOU (pode ser apenas IP não autorizado - tentaremos enviar mesmo assim)'}\n`,
-  );
-
-  // Não bloquear se health check falhar - pode ser apenas restrição de IP
-  // O envio de email pode funcionar mesmo assim
+  console.log(`${health ? '✅' : '❌'} Health check SMTP: ${health ? 'OK' : 'FALHOU'}`);
+  if (!health) {
+    console.log(client.getLastOperationalIssue());
+  }
+  if (client.isSimulated()) {
+    console.log('⚠️  SMTP não configurado: o envio será simulado');
+  }
+  console.log('');
 
   // Email de teste
   const testEmail = 'devfilipemarques@gmail.com';
@@ -32,18 +34,18 @@ async function testEmail() {
             🎉 Teste de Email
           </h1>
           <p style="color: #666; font-size: 16px; line-height: 1.6;">
-            Este é um email de teste enviado da API Advance+ usando o serviço Brevo.
+            Este é um email de teste enviado da API Advance+ via SMTP.
           </p>
           <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #4CAF50; margin: 20px 0;">
             <p style="margin: 0; color: #555;">
               <strong>Data/Hora:</strong> ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
             </p>
             <p style="margin: 5px 0 0 0; color: #555;">
-              <strong>Serviço:</strong> Brevo API
+              <strong>Serviço:</strong> SMTP (${client.getConfig().smtp.host})
             </p>
           </div>
           <p style="color: #666; font-size: 14px; margin-top: 30px;">
-            Se você recebeu este email, significa que a configuração do Brevo está funcionando corretamente! ✅
+            Se você recebeu este email, significa que a configuração SMTP está funcionando corretamente! ✅
           </p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
           <p style="color: #999; font-size: 12px; text-align: center;">
@@ -57,12 +59,12 @@ async function testEmail() {
   const testText = `
 Teste de Email - Advance+ API
 
-Este é um email de teste enviado da API Advance+ usando o serviço Brevo.
+Este é um email de teste enviado da API Advance+ via SMTP.
 
 Data/Hora: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
-Serviço: Brevo API
+Serviço: SMTP (${client.getConfig().smtp.host})
 
-Se você recebeu este email, significa que a configuração do Brevo está funcionando corretamente! ✅
+Se você recebeu este email, significa que a configuração SMTP está funcionando corretamente! ✅
 
 ---
 Advance+ API - Sistema de Email

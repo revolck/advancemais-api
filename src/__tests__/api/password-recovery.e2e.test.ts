@@ -5,7 +5,7 @@ import { prisma } from '@/config/prisma';
 import { cleanupTestUsers, createTestUser, type TestUser } from '../helpers/auth-helper';
 import { getTestApp } from '../helpers/test-setup';
 
-jest.mock('@/modules/brevo/services/email-service', () => ({
+jest.mock('@/modules/email/services/email-service', () => ({
   EmailService: jest.fn().mockImplementation(() => ({
     enviarEmailRecuperacaoSenha: jest.fn().mockResolvedValue({
       success: true,

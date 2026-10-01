@@ -21,18 +21,6 @@ export interface UserTemplateData {
 }
 
 /**
- * Configuração do módulo Brevo
- */
-export interface BrevoConfiguration {
-  apiKey: string;
-  fromEmail: string;
-  fromName: string;
-  maxRetries: number;
-  timeout: number;
-  isConfigured: boolean;
-}
-
-/**
  * Status de health check
  */
 export interface HealthStatus {
@@ -66,25 +54,6 @@ export interface PasswordRecoveryData {
 }
 
 /**
- * Dados para SMS
- */
-export interface SMSData {
-  to: string;
-  message: string;
-  sender?: string;
-}
-
-/**
- * Resultado de operação de SMS
- */
-export interface SMSResult {
-  success: boolean;
-  messageId?: string;
-  error?: string;
-  simulated?: boolean;
-}
-
-/**
  * Enums para tipos de email
  */
 export enum EmailType {
@@ -101,13 +70,4 @@ export enum SendStatus {
   SENT = 'ENVIADO',
   FAILED = 'FALHA',
   PENDING = 'PENDENTE',
-}
-
-/**
- * Enums para tipos de SMS
- */
-export enum SMSType {
-  VERIFICATION = 'VERIFICACAO',
-  NOTIFICATION = 'NOTIFICACAO',
-  MARKETING = 'MARKETING',
 }

@@ -1,6 +1,6 @@
-import { resolveBrevoEnvironment } from '../config/brevo-config';
+import { resolveEmailEnvironment } from '../config/email-config';
 
-describe('resolveBrevoEnvironment', () => {
+describe('resolveEmailEnvironment', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
@@ -16,6 +16,6 @@ describe('resolveBrevoEnvironment', () => {
     process.env.RENDER = 'true';
     process.env.FRONTEND_URL = 'https://advancemais.com';
 
-    expect(resolveBrevoEnvironment()).toBe('production');
+    expect(resolveEmailEnvironment()).toBe('production');
   });
 });

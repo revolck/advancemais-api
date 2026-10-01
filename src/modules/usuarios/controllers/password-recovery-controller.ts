@@ -2,8 +2,8 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import { prisma } from '../../../config/prisma';
-import { EmailService } from '../../brevo/services/email-service';
-import { BrevoConfigManager } from '../../brevo/config/brevo-config';
+import { EmailService } from '../../email/services/email-service';
+import { EmailConfigManager } from '../../email/config/email-config';
 import { logger } from '../../../utils/logger';
 import {
   validarCPF,
@@ -43,11 +43,11 @@ interface RedefinirSenhaData {
  */
 export class PasswordRecoveryController {
   private emailService: EmailService;
-  private brevoConfigManager: BrevoConfigManager;
+  private emailConfigManager: EmailConfigManager;
 
   constructor() {
     this.emailService = new EmailService();
-    this.brevoConfigManager = BrevoConfigManager.getInstance();
+    this.emailConfigManager = EmailConfigManager.getInstance();
   }
 
   private getLogger(req: Request) {
@@ -215,7 +215,7 @@ export class PasswordRecoveryController {
 
       // Verifica limite de tentativas
       const agora = new Date();
-      const runtimeConfig = await this.brevoConfigManager.getRuntimeConfig();
+      const runtimeConfig = await this.emailConfigManager.getRuntimeConfig();
       const { cooldownMinutes, maxAttempts, tokenExpirationMinutes } =
         runtimeConfig.passwordRecovery;
 

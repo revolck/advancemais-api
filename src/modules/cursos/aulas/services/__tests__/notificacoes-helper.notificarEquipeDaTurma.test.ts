@@ -6,7 +6,7 @@ jest.mock('@/config/prisma', () => ({
   },
 }));
 
-jest.mock('@/modules/brevo/services/email-service', () => ({
+jest.mock('@/modules/email/services/email-service', () => ({
   EmailService: jest.fn().mockImplementation(() => ({ sendGeneric: jest.fn() })),
 }));
 

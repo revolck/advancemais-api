@@ -8,7 +8,7 @@ import {
   atualizarPerfil,
 } from '../controllers';
 import { supabaseAuthMiddleware } from '../auth';
-import { WelcomeEmailMiddleware } from '../../brevo/middlewares/welcome-email-middleware';
+import { WelcomeEmailMiddleware } from '../../email/middlewares/welcome-email-middleware';
 import passwordRecoveryRoutes from './password-recovery';
 import { asyncHandler } from '../../../utils/asyncHandler';
 import { logger } from '@/utils/logger';

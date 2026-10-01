@@ -7,7 +7,7 @@ import {
 import cron from 'node-cron';
 
 import { prisma } from '@/config/prisma';
-import { EmailService } from '@/modules/brevo/services/email-service';
+import { EmailService } from '@/modules/email/services/email-service';
 import { runtimeConfigService } from '@/modules/configuracoes-gerais/services/runtime-config.service';
 import type {
   CreateMarketingEmailInput,
@@ -155,9 +155,9 @@ function toNullableString(value?: string | null) {
 async function resolveDefaultSender(
   customSender?: MarketingEmailSenderConfigInput | null,
 ): Promise<MarketingEmailSenderConfigInput> {
-  const brevoConfig = await runtimeConfigService.getBrevoConfig();
-  const fromEmail = customSender?.fromEmail?.trim() || brevoConfig.fromEmail;
-  const fallbackName = customSender?.fromName?.trim() || brevoConfig.fromName;
+  const emailConfig = await runtimeConfigService.getEmailConfig();
+  const fromEmail = customSender?.fromEmail?.trim() || emailConfig.fromEmail;
+  const fallbackName = customSender?.fromName?.trim() || emailConfig.fromName;
   const displayName = customSender?.displayName?.trim() || fallbackName;
 
   return {
@@ -986,7 +986,7 @@ export const websiteEmailsMarketingService = {
   },
 
   async getRecipientOptions(): Promise<RecipientOptionsResponse> {
-    const [brevoSender, contatos, lists] = await Promise.all([
+    const [defaultSender, contatos, lists] = await Promise.all([
       resolveDefaultSender(),
       prisma.websitePopupLead.findMany({
         where: {
@@ -1016,7 +1016,7 @@ export const websiteEmailsMarketingService = {
     ]);
 
     return {
-      sender: brevoSender,
+      sender: defaultSender,
       contatos: contatos.map((contato: LeadRecipientRow) => ({
         id: contato.id,
         nome: contato.nome?.trim() || contato.email || 'Contato sem nome',

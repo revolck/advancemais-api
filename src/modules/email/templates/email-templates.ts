@@ -121,6 +121,14 @@ export interface PlatformWelcomeEmailData {
   videoUrl?: string;
   /** Link de descadastro (obrigatório em envios em massa) */
   unsubscribeUrl?: string;
+  /**
+   * Dados de primeiro acesso (alunos migrados): login por CPF com senha
+   * provisória individual, trocada obrigatoriamente no primeiro login.
+   */
+  primeiroAcesso?: {
+    cpf: string;
+    senhaProvisoria: string;
+  };
 }
 
 export class EmailTemplates {
@@ -1310,6 +1318,13 @@ Se não reconhece esta ação ou precisa de suporte, acesse nosso centro de ajud
     return { subject, html, text };
   }
 
+  /** CPF parcialmente oculto para exibição em e-mail: ***.456.789-** */
+  private static maskCpf(cpf: string): string {
+    const digits = cpf.replace(/\D/g, '');
+    if (digits.length !== 11) return '***';
+    return `***.${digits.slice(3, 6)}.${digits.slice(6, 9)}-**`;
+  }
+
   /**
    * Comunicado "Nossa plataforma mudou" para alunos e candidatos
    */
@@ -1383,6 +1398,38 @@ Se não reconhece esta ação ou precisa de suporte, acesse nosso centro de ajud
           <div style="font-size: 26px; line-height: 1.3; font-weight: 800; color: #ffffff;">${headline}</div>
         </div>`;
 
+    const access = data.primeiroAcesso;
+    const accessHtml = access
+      ? `
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 8px 0 24px; border: 2px solid #00257d; border-radius: 12px;">
+          <tr>
+            <td style="padding: 20px 24px;">
+              <div style="font-size: 16px; font-weight: 800; color: #00257d; margin-bottom: 12px;">🔐 Seu primeiro acesso</div>
+              <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: #64748b;">Login</div>
+              <div style="font-size: 15px; font-weight: 700; color: #0f172a; margin: 4px 0 14px;">Seu CPF (${this.maskCpf(access.cpf)})</div>
+              <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: #64748b;">Senha provisória</div>
+              <div style="margin-top: 6px;"><span style="display: inline-block; white-space: nowrap; font-family: 'Courier New', monospace; font-size: 18px; font-weight: 700; letter-spacing: 2px; color: #0f172a; background-color: #f1f5f9; border: 1px dashed #94a3b8; border-radius: 6px; padding: 6px 12px;">${access.senhaProvisoria}</span></div>
+              <div style="font-size: 13px; line-height: 1.6; color: #7f1d1d; background-color: #fef2f2; border-radius: 8px; padding: 12px 14px; margin-top: 14px;">
+                <strong>Importante:</strong> por segurança, no primeiro acesso você vai criar uma nova senha.
+                A senha provisória é só sua: não compartilhe com ninguém.
+              </div>
+            </td>
+          </tr>
+        </table>`
+      : `
+        <div class="info-box">
+          <p class="info-text">
+            <strong>Já tem conta?</strong> Use o mesmo e-mail e senha de sempre. Se não lembrar a senha,
+            clique em "Esqueci minha senha" na tela de login.
+          </p>
+        </div>`;
+    const accessText = access
+      ? `SEU PRIMEIRO ACESSO
+Login: seu CPF (${this.maskCpf(access.cpf)})
+Senha provisória: ${access.senhaProvisoria}
+Importante: por segurança, no primeiro acesso você vai criar uma nova senha. A senha provisória é só sua: não compartilhe com ninguém.`
+      : 'Já tem conta? Use o mesmo e-mail e senha de sempre. Se não lembrar a senha, clique em "Esqueci minha senha" na tela de login.';
+
     const unsubscribeHtml = data.unsubscribeUrl
       ? `<br /><a href="${data.unsubscribeUrl}" style="color: #64748b; text-decoration: underline;">Não quero mais receber estes e-mails</a>`
       : '';
@@ -1415,9 +1462,11 @@ Se não reconhece esta ação ou precisa de suporte, acesse nosso centro de ajud
           ${featureRows}
         </table>
 
+        ${access ? accessHtml : ''}
+
         <div style="text-align: center; margin-top: 16px;">
           <a href="${data.platformUrl}" class="cta-button" style="color: #ffffff !important;">
-            Acessar a plataforma
+            ${access ? 'Fazer meu primeiro acesso' : 'Acessar a plataforma'}
           </a>
         </div>
 
@@ -1429,12 +1478,7 @@ Se não reconhece esta ação ou precisa de suporte, acesse nosso centro de ajud
           <a href="${data.resumeUrl}" style="color: #00257d; font-weight: 600; text-decoration: none;">Meus currículos</a>
         </div>
 
-        <div class="info-box">
-          <p class="info-text">
-            <strong>Já tem conta?</strong> Use o mesmo e-mail e senha de sempre. Se não lembrar a senha,
-            clique em "Esqueci minha senha" na tela de login.
-          </p>
-        </div>
+        ${access ? '' : accessHtml}
 
         ${this.getSignatureHtml()}
 
@@ -1465,7 +1509,7 @@ ${data.videoUrl ? `Assista ao vídeo: ${data.videoUrl}\n` : ''}Ver cursos: ${dat
 Ver vagas: ${data.jobsUrl}
 Meus currículos: ${data.resumeUrl}
 
-Já tem conta? Use o mesmo e-mail e senha de sempre. Se não lembrar a senha, clique em "Esqueci minha senha" na tela de login.
+${accessText}
 
 ${this.getSignatureText()}
 ${data.unsubscribeUrl ? `\nNão quer mais receber estes e-mails? ${data.unsubscribeUrl}\n` : ''}

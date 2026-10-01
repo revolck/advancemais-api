@@ -401,6 +401,8 @@ export class EmailSandboxService {
           maxCurriculos: MAX_CURRICULOS,
           heroImageUrl: `${frontendUrl}/images/emails/nova-plataforma.gif`,
           videoUrl: `${frontendUrl}/images/emails/novo-site-advancemais.mp4`,
+          // Exemplo fictício: no envio real cada aluno recebe a própria senha provisória
+          primeiroAcesso: { cpf: '12345678909', senhaProvisoria: 'Exemplo7Kq4' },
         });
       default:
         throw createHttpError('Rotina de sandbox inválida', 'INVALID_SANDBOX_ROUTINE', 400);

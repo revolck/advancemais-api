@@ -57,4 +57,20 @@ describe('EmailTemplates.generatePlatformWelcomeEmail', () => {
       'Assista ao vídeo: https://advancemais.com/videos/novo-site-advancemais.mp4',
     );
   });
+
+  it('mostra login por CPF mascarado, senha provisória e troca obrigatória no primeiro acesso', () => {
+    const email = EmailTemplates.generatePlatformWelcomeEmail({
+      ...baseData,
+      primeiroAcesso: { cpf: '123.456.789-09', senhaProvisoria: 'Kq7-mPz4-Rt' },
+    });
+
+    expect(email.html).toContain('Seu primeiro acesso');
+    expect(email.html).toContain('Seu CPF (***.456.789-**)');
+    expect(email.html).not.toContain('123.456.789-09');
+    expect(email.html).toContain('Kq7-mPz4-Rt');
+    expect(email.html).toContain('no primeiro acesso você vai criar uma nova senha');
+    expect(email.html).toContain('Fazer meu primeiro acesso');
+    expect(email.html).not.toContain('Use o mesmo e-mail e senha de sempre');
+    expect(email.text).toContain('Senha provisória: Kq7-mPz4-Rt');
+  });
 });

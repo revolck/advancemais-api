@@ -4,9 +4,9 @@ import redis from '@/config/redis';
 import { publicCache } from '@/middlewares/cache-control';
 import { docsRoutes } from '@/modules/docs';
 import { getBloqueiosWatcherMetrics } from '@/modules/usuarios/bloqueios/cron/bloqueio-watcher';
-import { brevoRoutes } from '@/modules/brevo/routes';
+import { emailRoutes } from '@/modules/email/routes';
 import { mercadopagoRoutes } from '@/modules/mercadopago';
-import { EmailVerificationController } from '@/modules/brevo/controllers/email-verification-controller';
+import { EmailVerificationController } from '@/modules/email/controllers/email-verification-controller';
 import googleAuthRoutes from '@/modules/auth/google/routes';
 import { usuarioRoutes } from '@/modules/usuarios';
 import { websiteRoutes } from '@/modules/website';
@@ -90,7 +90,7 @@ router.get('/', publicCache, (req, res) => {
     express_version: '4.x',
     endpoints: {
       usuarios: '/api/v1/usuarios',
-      brevo: '/api/v1/brevo',
+      email: '/api/v1/email',
       website: '/api/v1/website',
       empresas: '/api/v1/empresas',
       candidatos: '/api/v1/candidatos',
@@ -133,8 +133,8 @@ router.get('/', publicCache, (req, res) => {
       },
       {
         icon: '📧',
-        name: 'E-mail (Brevo)',
-        path: data.endpoints.brevo,
+        name: 'E-mail (SMTP)',
+        path: data.endpoints.email,
         description: 'Serviço de envio de e-mails e verificação',
       },
     ],
@@ -1036,7 +1036,7 @@ router.get('/health', async (req, res) => {
     database: databaseStatus,
     modules: {
       usuarios: '✅ active',
-      brevo: '✅ active',
+      email: '✅ active',
       website: '✅ active',
       empresas: '✅ active',
       candidatos: '✅ active',
@@ -1105,18 +1105,18 @@ if (googleAuthRoutes) {
 }
 
 /**
- * Módulo Brevo - COM VALIDAÇÃO
- * /api/v1/brevo/*
+ * Módulo de e-mail (SMTP) - COM VALIDAÇÃO
+ * /api/v1/email/*
  */
-if (brevoRoutes) {
+if (emailRoutes) {
   try {
-    router.use('/api/v1/brevo', brevoRoutes);
-    routesLogger.info({ feature: 'BrevoModule' }, '✅ Módulo Brevo registrado com sucesso');
+    router.use('/api/v1/email', emailRoutes);
+    routesLogger.info({ feature: 'EmailModule' }, '✅ Módulo de e-mail registrado com sucesso');
   } catch (error) {
-    routesLogger.error({ feature: 'BrevoModule', err: error }, '❌ ERRO - Módulo Brevo');
+    routesLogger.error({ feature: 'EmailModule', err: error }, '❌ ERRO - Módulo de e-mail');
   }
 } else {
-  routesLogger.error({ feature: 'BrevoModule' }, '❌ brevoRoutes não está definido');
+  routesLogger.error({ feature: 'EmailModule' }, '❌ emailRoutes não está definido');
 }
 
 /**

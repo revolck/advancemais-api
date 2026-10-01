@@ -2,8 +2,8 @@ import cron from 'node-cron';
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import { AcoesDeLogDeBloqueio, Status, StatusDeBloqueios } from '@prisma/client';
-import { EmailService } from '@/modules/brevo/services/email-service';
-import { EmailTemplates } from '@/modules/brevo/templates/email-templates';
+import { EmailService } from '@/modules/email/services/email-service';
+import { EmailTemplates } from '@/modules/email/templates/email-templates';
 import { handlePrismaConnectionError } from '@/utils/prisma-errors';
 import { checkDatabaseConnection } from '@/utils/db-connection-check';
 

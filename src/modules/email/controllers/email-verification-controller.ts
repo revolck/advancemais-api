@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { EmailService } from '../services/email-service';
 import { prisma } from '../../../config/prisma';
-import { BrevoConfigManager } from '../config/brevo-config';
+import { EmailConfigManager } from '../config/email-config';
 import { logger } from '../../../utils/logger';
 import {
   UsuariosVerificacaoEmailSelect,
@@ -14,11 +14,11 @@ import {
  */
 export class EmailVerificationController {
   private emailService: EmailService;
-  private config: BrevoConfigManager;
+  private config: EmailConfigManager;
 
   constructor() {
     this.emailService = new EmailService();
-    this.config = BrevoConfigManager.getInstance();
+    this.config = EmailConfigManager.getInstance();
   }
 
   private getLogger(req: Request) {

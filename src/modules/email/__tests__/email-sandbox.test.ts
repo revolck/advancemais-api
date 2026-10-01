@@ -31,8 +31,8 @@ jest.mock('@/modules/auditoria/services/auditoria.service', () => ({
   })),
 }));
 
-jest.mock('../config/brevo-config', () => ({
-  BrevoConfigManager: {
+jest.mock('../config/email-config', () => ({
+  EmailConfigManager: {
     getInstance: () => ({
       getRuntimeConfig: mockGetRuntimeConfig,
     }),
@@ -53,7 +53,7 @@ describe('EmailSandboxService', () => {
     mockGetRuntimeConfig.mockResolvedValue(runtimeConfig);
     mockSendGeneric.mockResolvedValue({
       success: true,
-      messageId: 'brevo-message-id',
+      messageId: 'smtp-message-id',
       simulated: false,
     });
   });
@@ -119,7 +119,7 @@ describe('EmailSandboxService', () => {
 
     expect(mockRegistrarLog).toHaveBeenCalledWith(
       expect.objectContaining({
-        tipo: 'BREVO_SANDBOX_EMAIL_ENVIADO',
+        tipo: 'EMAIL_SANDBOX_ENVIADO',
         dadosNovos: expect.objectContaining({ status: 'FALHA', error: 'INVALID_PASSWORD' }),
       }),
     );
@@ -164,7 +164,7 @@ describe('EmailSandboxService', () => {
       rotina: 'RECUPERACAO_SENHA',
       recipient: 'destino@teste.com',
       simulated: false,
-      messageId: 'brevo-message-id',
+      messageId: 'smtp-message-id',
     });
     expect(mockSendGeneric).toHaveBeenCalledWith(
       'destino@teste.com',
@@ -175,7 +175,7 @@ describe('EmailSandboxService', () => {
     );
     expect(mockRegistrarLog).toHaveBeenCalledWith(
       expect.objectContaining({
-        tipo: 'BREVO_SANDBOX_EMAIL_ENVIADO',
+        tipo: 'EMAIL_SANDBOX_ENVIADO',
         dadosNovos: expect.objectContaining({ status: 'ENVIADO' }),
       }),
     );

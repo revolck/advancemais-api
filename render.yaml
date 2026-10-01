@@ -29,5 +29,5 @@ services:
         sync: false
       - key: MERCADOPAGO_ACCESS_TOKEN
         sync: false
-      - key: BREVO_API_KEY
+      - key: SMTP_PASSWORD
         sync: false

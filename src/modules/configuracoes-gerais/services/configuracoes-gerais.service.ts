@@ -1,4 +1,5 @@
 import type { Request } from 'express';
+import nodemailer from 'nodemailer';
 import { AuditoriaCategoria, Prisma } from '@prisma/client';
 import { prisma } from '@/config/prisma';
 import { AuditoriaService } from '@/modules/auditoria/services/auditoria.service';
@@ -432,18 +433,54 @@ class ConfiguracoesGeraisService {
         };
       }
       case 'emails': {
-        const brevoConfig = await runtimeConfigService.getBrevoConfig();
-        return {
-          success: brevoConfig.isConfigured,
-          message: brevoConfig.isConfigured
-            ? 'Brevo configurado.'
-            : 'Configure API key e remetente.',
-          details: {
-            fromEmail: brevoConfig.fromEmail,
-            fromName: brevoConfig.fromName,
-            hasApiKey: Boolean(brevoConfig.apiKey),
-          },
+        const emailConfig = await runtimeConfigService.getEmailConfig();
+        const details = {
+          host: emailConfig.smtp.host,
+          port: emailConfig.smtp.port,
+          user: emailConfig.smtp.user,
+          fromEmail: emailConfig.fromEmail,
+          fromName: emailConfig.fromName,
+          hasPassword: Boolean(emailConfig.smtp.password),
         };
+
+        if (!emailConfig.isConfigured) {
+          return {
+            success: false,
+            message: 'Configure host, usuário, senha SMTP e remetente.',
+            details,
+          };
+        }
+
+        const transporter = nodemailer.createTransport({
+          host: emailConfig.smtp.host,
+          port: emailConfig.smtp.port,
+          secure: emailConfig.smtp.secure,
+          auth: { user: emailConfig.smtp.user, pass: emailConfig.smtp.password },
+          connectionTimeout: emailConfig.timeout,
+          greetingTimeout: emailConfig.timeout,
+          socketTimeout: emailConfig.timeout,
+        });
+
+        try {
+          await transporter.verify();
+          return {
+            success: true,
+            message: `Conexão SMTP autenticada em ${emailConfig.smtp.host}:${emailConfig.smtp.port}.`,
+            details,
+          };
+        } catch (error) {
+          const smtpError = error as { message?: string; code?: string; responseCode?: number };
+          return {
+            success: false,
+            message:
+              smtpError.code === 'EAUTH'
+                ? 'O servidor SMTP recusou o usuário ou a senha.'
+                : `Falha ao conectar no servidor SMTP: ${smtpError.message ?? 'erro desconhecido'}`,
+            details: { ...details, code: smtpError.code, responseCode: smtpError.responseCode },
+          };
+        } finally {
+          transporter.close();
+        }
       }
       case 'integracoes': {
         const googleConfig = await runtimeConfigService.getGoogleOAuthConfig();

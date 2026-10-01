@@ -3,7 +3,7 @@ import { AuditoriaCategoria, Roles } from '@prisma/client';
 import { prisma } from '@/config/prisma';
 import { AuditoriaService } from '@/modules/auditoria/services/auditoria.service';
 import { logger } from '@/utils/logger';
-import { BrevoConfigManager } from '../config/brevo-config';
+import { EmailConfigManager } from '../config/email-config';
 import {
   EmailTemplates,
   type CoursePaymentEmailStatus,
@@ -154,7 +154,7 @@ function courseStatusFromRotina(rotina: SandboxEmailRotina): CoursePaymentEmailS
 
 export class EmailSandboxService {
   private readonly emailService = new EmailService();
-  private readonly config = BrevoConfigManager.getInstance();
+  private readonly config = EmailConfigManager.getInstance();
   private readonly auditoriaService = new AuditoriaService();
   private readonly log = logger.child({ module: 'EmailSandboxService' });
 
@@ -242,12 +242,12 @@ export class EmailSandboxService {
         status: 'FALHA',
         simulated: result.simulated,
         messageId: result.messageId,
-        error: result.error || 'BREVO_DELIVERY_FAILED',
+        error: result.error || 'EMAIL_DELIVERY_FAILED',
         context,
       });
       throw createHttpError(
         result.error || 'Não foi possível enviar o email de sandbox',
-        'BREVO_DELIVERY_FAILED',
+        'EMAIL_DELIVERY_FAILED',
         502,
       );
     }
@@ -400,11 +400,11 @@ export class EmailSandboxService {
     try {
       await this.auditoriaService.registrarLog({
         categoria: AuditoriaCategoria.SISTEMA,
-        tipo: 'BREVO_SANDBOX_EMAIL_ENVIADO',
+        tipo: 'EMAIL_SANDBOX_ENVIADO',
         acao: 'ENVIAR_EMAIL_SANDBOX',
         usuarioId: params.actorId,
         entidadeId: params.rotina,
-        entidadeTipo: 'BREVO_EMAIL_SANDBOX',
+        entidadeTipo: 'EMAIL_SANDBOX',
         descricao: `Envio de email sandbox ${params.status.toLowerCase()} para ${params.recipient}`,
         dadosNovos: {
           rotina: params.rotina,

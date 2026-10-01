@@ -141,7 +141,7 @@ const coreRequiredVars = ['DATABASE_URL', 'DIRECT_URL', 'JWT_SECRET', 'JWT_REFRE
 
 // Validação específica por ambiente
 const environmentSpecificVars = {
-  production: [...coreRequiredVars, 'BREVO_API_KEY', 'FRONTEND_URL'],
+  production: [...coreRequiredVars, 'SMTP_PASSWORD', 'FRONTEND_URL'],
   development: coreRequiredVars,
   test: coreRequiredVars,
 };
@@ -251,79 +251,54 @@ export const authSessionConfig = {
 } as const;
 
 // =============================================
-// CONFIGURAÇÕES DO BREVO
+// CONFIGURAÇÕES DE E-MAIL (SMTP)
 // =============================================
 
-export const brevoConfig = {
-  // Configurações básicas
-  apiKey: process.env.BREVO_API_KEY || '',
-  fromEmail: process.env.BREVO_FROM_EMAIL || 'noreply@advancemais.com',
-  fromName: process.env.BREVO_FROM_NAME || 'Advance+',
+const smtpPort = parseInt(process.env.SMTP_PORT || '465', 10);
 
-  // Configurações SMTP (backup)
+export const emailConfig = {
+  // Remetente
+  fromEmail: process.env.SMTP_FROM_EMAIL || 'noreply@advancemais.com',
+  fromName: process.env.SMTP_FROM_NAME || 'Advance+',
+
+  // Servidor SMTP
   smtp: {
-    host: process.env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com',
-    port: parseInt(process.env.BREVO_SMTP_PORT || '587', 10),
-    secure: false, // true para 465, false para 587
-    auth: {
-      user: process.env.BREVO_SMTP_USER || '',
-      pass: process.env.BREVO_SMTP_PASSWORD || '',
-    },
-    connectionTimeout: 60000,
-    greetingTimeout: 30000,
-    socketTimeout: 60000,
+    host: process.env.SMTP_HOST || 'smtp.hostinger.com',
+    port: smtpPort,
+    secure: smtpPort === 465, // true para 465 (SSL), false para 587 (STARTTLS)
+    user: process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL || 'noreply@advancemais.com',
+    password: process.env.SMTP_PASSWORD || '',
   },
 
-  // URLs da API
-  apiUrls: {
-    base: 'https://api.brevo.com/v3',
-    email: 'https://api.brevo.com/v3/smtp/email',
-    sms: 'https://api.brevo.com/v3/transactionalSMS',
-    account: 'https://api.brevo.com/v3/account',
-  },
+  timeout: parseInt(process.env.SMTP_TIMEOUT || '15000', 10),
 
   // Configurações de recuperação de senha
   passwordRecovery: {
     tokenExpirationMinutes:
-      parseInt(process.env.BREVO_PASSWORD_RECOVERY_EXPIRATION_HOURS || '72', 10) * 60,
-    maxAttempts: parseInt(process.env.BREVO_PASSWORD_RECOVERY_MAX_ATTEMPTS || '3', 10),
-    cooldownMinutes: parseInt(process.env.BREVO_PASSWORD_RECOVERY_COOLDOWN_MINUTES || '15', 10),
-  },
-
-  // Configurações de envio
-  sending: {
-    maxRetries: parseInt(process.env.BREVO_MAX_RETRIES || '3', 10),
-    retryDelay: parseInt(process.env.BREVO_RETRY_DELAY || '1000', 10),
-    timeout: parseInt(process.env.BREVO_TIMEOUT || '30000', 10),
-
-    // Limites diários (ajuste conforme seu plano)
-    dailyEmailLimit: parseInt(process.env.BREVO_DAILY_EMAIL_LIMIT || '10000', 10),
-    dailySMSLimit: parseInt(process.env.BREVO_DAILY_SMS_LIMIT || '1000', 10),
-
-    // Configurações de SMS
-    defaultSMSSender: process.env.BREVO_SMS_SENDER || 'Advance+',
-    smsUnicodeEnabled: process.env.BREVO_SMS_UNICODE === 'true',
-  },
-
-  // Configurações de template
-  templates: {
-    cacheEnabled: process.env.BREVO_TEMPLATE_CACHE !== 'false',
-    preloadOnStart: process.env.BREVO_PRELOAD_TEMPLATES !== 'false',
-    customTemplateDir: process.env.BREVO_CUSTOM_TEMPLATE_DIR || '',
+      parseInt(process.env.PASSWORD_RECOVERY_EXPIRATION_HOURS || '72', 10) * 60,
+    maxAttempts: parseInt(process.env.PASSWORD_RECOVERY_MAX_ATTEMPTS || '3', 10),
+    cooldownMinutes: parseInt(process.env.PASSWORD_RECOVERY_COOLDOWN_MINUTES || '15', 10),
   },
 
   // Validação da configuração
   isValid(): boolean {
-    return !!(this.apiKey && EnvironmentValidator.isValidEmail(this.fromEmail));
+    return !!(
+      this.smtp.host &&
+      this.smtp.user &&
+      this.smtp.password &&
+      EnvironmentValidator.isValidEmail(this.fromEmail)
+    );
   },
 
   // Status da configuração
   getStatus(): { configured: boolean; issues: string[] } {
     const issues: string[] = [];
 
-    if (!this.apiKey) issues.push('BREVO_API_KEY não configurado');
+    if (!this.smtp.host) issues.push('SMTP_HOST não configurado');
+    if (!this.smtp.user) issues.push('SMTP_USER não configurado');
+    if (!this.smtp.password) issues.push('SMTP_PASSWORD não configurado');
     if (!EnvironmentValidator.isValidEmail(this.fromEmail)) {
-      issues.push('BREVO_FROM_EMAIL deve ser um email válido');
+      issues.push('SMTP_FROM_EMAIL deve ser um email válido');
     }
 
     // Verifica se não está usando credenciais de desenvolvimento em produção
@@ -545,7 +520,7 @@ const defaultRateLimitAllowedPaths = [
   '/api-docs',
   '/favicon.ico',
   '/robots.txt',
-  '/api/v1/brevo/health',
+  '/api/v1/email/health',
 ];
 
 export const rateLimitConfig = {
@@ -599,7 +574,7 @@ export class ConfigurationManager {
       server: serverConfig.getStatus(),
       database: databaseConfig.getStatus(),
       jwt: jwtConfig.getStatus(),
-      brevo: brevoConfig.getStatus(),
+      email: emailConfig.getStatus(),
       mercadopago: mercadopagoConfig.getStatus(),
     };
 
@@ -669,7 +644,7 @@ export const appConfig = {
   server: serverConfig,
   database: databaseConfig,
   jwt: jwtConfig,
-  brevo: brevoConfig,
+  email: emailConfig,
   security: securityConfig,
   rateLimit: rateLimitConfig,
   upload: uploadConfig,

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { BrevoController } from '../controllers/brevo-controller';
+import { EmailController } from '../controllers/email-controller';
 import { EmailVerificationController } from '../controllers/email-verification-controller';
 import { prisma } from '../../../config/prisma';
 import { supabaseAuthMiddleware } from '../../usuarios/auth';
@@ -11,72 +11,72 @@ import {
 
 const router = Router();
 
-const brevoController = new BrevoController();
+const emailController = new EmailController();
 const UsuariosVerificacaoEmailController = new EmailVerificationController();
-const brevoRoutesLogger = logger.child({ module: 'BrevoRoutes' });
+const emailRoutesLogger = logger.child({ module: 'EmailRoutes' });
 
 /**
  * @openapi
- * /api/v1/brevo:
+ * /api/v1/email:
  *   get:
- *     summary: Informações do módulo Brevo
- *     tags: [Brevo]
+ *     summary: Informações do módulo de e-mail
+ *     tags: [Email]
  *     responses:
  *       200:
  *         description: Detalhes do módulo
  *         content:
  *           application/json:
  *             schema:
- *               $ref: "#/components/schemas/BrevoModuleInfo"
+ *               $ref: "#/components/schemas/EmailModuleInfo"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X GET "http://localhost:3000/api/v1/brevo"
+ *           curl -X GET "http://localhost:3000/api/v1/email"
  */
-router.get('/', brevoController.getModuleInfo);
+router.get('/', emailController.getModuleInfo);
 
 /**
  * @openapi
- * /api/v1/brevo/health:
+ * /api/v1/email/health:
  *   get:
- *     summary: Health check do módulo Brevo
- *     tags: [Brevo]
+ *     summary: Health check do módulo de e-mail (SMTP)
+ *     tags: [Email]
  *     responses:
  *       200:
  *         description: Status de saúde
  *         content:
  *           application/json:
  *             schema:
- *               $ref: "#/components/schemas/BrevoHealthResponse"
+ *               $ref: "#/components/schemas/EmailHealthResponse"
  *       503:
  *         description: Serviço indisponível
  *         content:
  *           application/json:
  *             schema:
- *               $ref: "#/components/schemas/BrevoHealthResponse"
+ *               $ref: "#/components/schemas/EmailHealthResponse"
  *     x-codeSamples:
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X GET "http://localhost:3000/api/v1/brevo/health"
+ *           curl -X GET "http://localhost:3000/api/v1/email/health"
  */
-router.get('/health', brevoController.healthCheck);
+router.get('/health', emailController.healthCheck);
 /**
  * @openapi
- * /api/v1/brevo/config:
+ * /api/v1/email/config:
  *   get:
- *     summary: Obter status de configuração do Brevo
- *     tags: [Brevo]
+ *     summary: Obter status de configuração do SMTP
+ *     tags: [Email]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Configurações do Brevo
+ *         description: Configurações do SMTP
  *         content:
  *           application/json:
  *             schema:
- *               $ref: "#/components/schemas/BrevoConfigStatus"
+ *               $ref: "#/components/schemas/EmailConfigStatus"
  *       403:
  *         description: Acesso negado
  *         content:
@@ -87,20 +87,20 @@ router.get('/health', brevoController.healthCheck);
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X GET "http://localhost:3000/api/v1/brevo/config" \\
+ *           curl -X GET "http://localhost:3000/api/v1/email/config" \\
  *            -H "Authorization: Bearer <TOKEN>"
  */
 router.get(
   '/config',
   supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
-  brevoController.getConfigStatus,
+  emailController.getConfigStatus,
 );
 /**
  * @openapi
- * /api/v1/brevo/verificar-email:
+ * /api/v1/email/verificar-email:
  *   get:
  *     summary: Verificar email de usuário
- *     tags: [Brevo]
+ *     tags: [Email]
  *     parameters:
  *       - in: query
  *         name: token
@@ -113,7 +113,7 @@ router.get(
  *         content:
  *           application/json:
  *             schema:
- *               $ref: "#/components/schemas/BrevoVerifyEmailResponse"
+ *               $ref: "#/components/schemas/EmailVerifyEmailResponse"
  *       400:
  *         description: Token inválido ou ausente
  *         content:
@@ -124,28 +124,28 @@ router.get(
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X GET "http://localhost:3000/api/v1/brevo/verificar-email?token=TOKEN"
+ *           curl -X GET "http://localhost:3000/api/v1/email/verificar-email?token=TOKEN"
  */
 router.get('/verificar-email', UsuariosVerificacaoEmailController.verifyEmail);
 /**
  * @openapi
- * /api/v1/brevo/reenviar-verificacao:
+ * /api/v1/email/reenviar-verificacao:
  *   post:
  *     summary: Reenviar email de verificação
- *     tags: [Brevo]
+ *     tags: [Email]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: "#/components/schemas/BrevoResendVerificationRequest"
+ *             $ref: "#/components/schemas/EmailResendVerificationRequest"
  *     responses:
  *       200:
  *         description: Email reenviado
  *         content:
  *           application/json:
  *             schema:
- *               $ref: "#/components/schemas/BrevoResendVerificationResponse"
+ *               $ref: "#/components/schemas/EmailResendVerificationResponse"
  *       400:
  *         description: Requisição inválida
  *         content:
@@ -162,7 +162,7 @@ router.get('/verificar-email', UsuariosVerificacaoEmailController.verifyEmail);
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X POST "http://localhost:3000/api/v1/brevo/reenviar-verificacao" \\
+ *           curl -X POST "http://localhost:3000/api/v1/email/reenviar-verificacao" \\
  *            -H "Content-Type: application/json" \\
  *            -d '{"email":"user@example.com"}'
  */
@@ -171,10 +171,10 @@ router.get('/status-verificacao/:userId', UsuariosVerificacaoEmailController.get
 
 /**
  * @openapi
- * /api/v1/brevo/status-verificacao/{userId}:
+ * /api/v1/email/status-verificacao/{userId}:
  *   get:
  *     summary: Consultar status de verificação de email
- *     tags: [Brevo]
+ *     tags: [Email]
  *     parameters:
  *       - in: path
  *         name: userId
@@ -187,7 +187,7 @@ router.get('/status-verificacao/:userId', UsuariosVerificacaoEmailController.get
  *         content:
  *           application/json:
  *             schema:
- *               $ref: "#/components/schemas/BrevoVerificationStatusResponse"
+ *               $ref: "#/components/schemas/EmailVerificationStatusResponse"
  *       404:
  *         description: Usuário não encontrado
  *         content:
@@ -198,11 +198,11 @@ router.get('/status-verificacao/:userId', UsuariosVerificacaoEmailController.get
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X GET "http://localhost:3000/api/v1/brevo/status-verificacao/USER_ID"
+ *           curl -X GET "http://localhost:3000/api/v1/email/status-verificacao/USER_ID"
  */
 
 router.get('/status/:email', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), async (req, res) => {
-  const log = brevoRoutesLogger.child({
+  const log = emailRoutesLogger.child({
     correlationId: req.id,
     path: req.path,
     method: req.method,
@@ -276,10 +276,10 @@ router.get('/status/:email', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), asy
 
 /**
  * @openapi
- * /api/v1/brevo/status/{email}:
+ * /api/v1/email/status/{email}:
  *   get:
  *     summary: Consultar status por email
- *     tags: [Brevo]
+ *     tags: [Email]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -294,7 +294,7 @@ router.get('/status/:email', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), asy
  *         content:
  *           application/json:
  *             schema:
- *               $ref: "#/components/schemas/BrevoVerificationStatusResponse"
+ *               $ref: "#/components/schemas/EmailVerificationStatusResponse"
  *       404:
  *         description: Usuário não encontrado
  *         content:
@@ -305,30 +305,30 @@ router.get('/status/:email', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), asy
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X GET "http://localhost:3000/api/v1/brevo/status/user%40example.com" \\
+ *           curl -X GET "http://localhost:3000/api/v1/email/status/user%40example.com" \\
  *            -H "Authorization: Bearer <TOKEN>"
  */
 
-router.post('/sandbox/email', supabaseAuthMiddleware(['ADMIN']), brevoController.sendSandboxEmail);
+router.post('/sandbox/email', supabaseAuthMiddleware(['ADMIN']), emailController.sendSandboxEmail);
 
 router.get(
   '/sandbox/email-rotinas',
   supabaseAuthMiddleware(['ADMIN']),
-  brevoController.listSandboxEmailRotinas,
+  emailController.listSandboxEmailRotinas,
 );
 
 router.post(
   '/test/email',
   supabaseAuthMiddleware(['ADMIN', 'MODERADOR']),
-  brevoController.testEmail,
+  emailController.testEmail,
 );
 
 /**
  * @openapi
- * /api/v1/brevo/test/email:
+ * /api/v1/email/test/email:
  *   post:
  *     summary: Enviar email de teste
- *     tags: [Brevo]
+ *     tags: [Email]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -336,14 +336,14 @@ router.post(
  *       content:
  *         application/json:
  *           schema:
- *             $ref: "#/components/schemas/BrevoTestEmailRequest"
+ *             $ref: "#/components/schemas/EmailTestEmailRequest"
  *     responses:
  *       200:
  *         description: Email enviado
  *         content:
  *           application/json:
  *             schema:
- *               $ref: "#/components/schemas/BrevoTestEmailResponse"
+ *               $ref: "#/components/schemas/EmailTestEmailResponse"
  *       400:
  *         description: Requisição inválida
  *         content:
@@ -360,64 +360,20 @@ router.post(
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X POST "http://localhost:3000/api/v1/brevo/test/email" \\
+ *           curl -X POST "http://localhost:3000/api/v1/email/test/email" \\
  *            -H "Authorization: Bearer <TOKEN>" \\
  *            -H "Content-Type: application/json" \\
  *            -d '{"email":"user@example.com"}'
- */
-router.post('/test/sms', supabaseAuthMiddleware(['ADMIN', 'MODERADOR']), brevoController.testSMS);
-
-/**
- * @openapi
- * /api/v1/brevo/test/sms:
- *   post:
- *     summary: Enviar SMS de teste
- *     tags: [Brevo]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: "#/components/schemas/BrevoTestSMSRequest"
- *     responses:
- *       200:
- *         description: SMS enviado
- *         content:
- *           application/json:
- *             schema:
- *               $ref: "#/components/schemas/BrevoTestSMSResponse"
- *       400:
- *         description: Requisição inválida
- *         content:
- *           application/json:
- *             schema:
- *               $ref: "#/components/schemas/ErrorResponse"
- *       403:
- *         description: Bloqueado em produção
- *         content:
- *           application/json:
- *             schema:
- *               $ref: "#/components/schemas/ErrorResponse"
- *     x-codeSamples:
- *       - lang: cURL
- *         label: Exemplo
- *         source: |
- *           curl -X POST "http://localhost:3000/api/v1/brevo/test/sms" \\
- *            -H "Authorization: Bearer <TOKEN>" \\
- *            -H "Content-Type: application/json" \\
- *            -d '{"to":"+5511999999999"}'
  */
 router.get('/verificar', UsuariosVerificacaoEmailController.verifyEmail);
 router.post('/reenviar', UsuariosVerificacaoEmailController.resendVerification);
 
 /**
  * @openapi
- * /api/v1/brevo/verificar:
+ * /api/v1/email/verificar:
  *   get:
  *     summary: Verificar email (alias)
- *     tags: [Brevo]
+ *     tags: [Email]
  *     parameters:
  *       - in: query
  *         name: token
@@ -430,7 +386,7 @@ router.post('/reenviar', UsuariosVerificacaoEmailController.resendVerification);
  *         content:
  *           application/json:
  *             schema:
- *               $ref: "#/components/schemas/BrevoVerifyEmailResponse"
+ *               $ref: "#/components/schemas/EmailVerifyEmailResponse"
  *       400:
  *         description: Token inválido ou ausente
  *         content:
@@ -441,24 +397,24 @@ router.post('/reenviar', UsuariosVerificacaoEmailController.resendVerification);
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X GET "http://localhost:3000/api/v1/brevo/verificar?token=TOKEN"
- * /api/v1/brevo/reenviar:
+ *           curl -X GET "http://localhost:3000/api/v1/email/verificar?token=TOKEN"
+ * /api/v1/email/reenviar:
  *   post:
  *     summary: Reenviar verificação (alias)
- *     tags: [Brevo]
+ *     tags: [Email]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: "#/components/schemas/BrevoResendVerificationRequest"
+ *             $ref: "#/components/schemas/EmailResendVerificationRequest"
  *     responses:
  *       200:
  *         description: Reenvio realizado
  *         content:
  *           application/json:
  *             schema:
- *               $ref: "#/components/schemas/BrevoResendVerificationResponse"
+ *               $ref: "#/components/schemas/EmailResendVerificationResponse"
  *       400:
  *         description: Requisição inválida
  *         content:
@@ -475,7 +431,7 @@ router.post('/reenviar', UsuariosVerificacaoEmailController.resendVerification);
  *       - lang: cURL
  *         label: Exemplo
  *         source: |
- *           curl -X POST "http://localhost:3000/api/v1/brevo/reenviar" \\
+ *           curl -X POST "http://localhost:3000/api/v1/email/reenviar" \\
  *            -H "Content-Type: application/json" \\
  *            -d '{"email":"user@example.com"}'
  */
@@ -485,25 +441,25 @@ router.use((err: any, req: any, res: any, _next: any) => {
   const correlationId = Array.isArray(rawCorrelationId)
     ? rawCorrelationId[0]
     : rawCorrelationId || req.id || 'unknown';
-  const errorId = `brevo-err-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
-  const log = brevoRoutesLogger.child({
+  const errorId = `email-err-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+  const log = emailRoutesLogger.child({
     correlationId,
     path: req.path,
     method: req.method,
     errorId,
   });
 
-  log.error({ err }, '❌ Erro no módulo Brevo');
+  log.error({ err }, '❌ Erro no módulo de e-mail');
 
   res.status(err.status || 500).json({
     success: false,
-    message: err.message || 'Erro interno no módulo Brevo',
-    code: err.code || 'BREVO_ERROR',
+    message: err.message || 'Erro interno no módulo de e-mail',
+    code: err.code || 'EMAIL_ERROR',
     errorId,
     correlationId,
     timestamp: new Date().toISOString(),
   });
 });
 
-export { router as brevoRoutes };
+export { router as emailRoutes };
 export default router;

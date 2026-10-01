@@ -386,90 +386,58 @@ class RuntimeConfigService {
     return client;
   }
 
-  async getBrevoConfig() {
+  async getEmailConfig() {
     const [
-      apiKey,
       fromEmail,
       fromName,
       smtpHost,
       smtpPort,
       smtpUser,
       smtpPassword,
+      timeout,
       passwordRecoveryExpirationHours,
       passwordRecoveryMaxAttempts,
       passwordRecoveryCooldownMinutes,
-      maxRetries,
-      retryDelay,
-      timeout,
-      dailyEmailLimit,
-      dailySMSLimit,
-      smsSender,
-      smsUnicodeEnabled,
-      templateCacheEnabled,
-      preloadTemplates,
       emailVerificationRequired,
       emailVerificationExpirationHours,
       emailVerificationMaxResend,
       emailVerificationCooldownMinutes,
     ] = await Promise.all([
-      this.getString('emails', 'brevo_api_key'),
-      this.getString('emails', 'brevo_from_email'),
-      this.getString('emails', 'brevo_from_name'),
-      this.getString('emails', 'brevo_smtp_host'),
-      this.getNumber('emails', 'brevo_smtp_port', 587),
-      this.getString('emails', 'brevo_smtp_user'),
-      this.getString('emails', 'brevo_smtp_password'),
-      this.getNumber('emails', 'brevo_password_recovery_expiration_hours', 72),
-      this.getNumber('emails', 'brevo_password_recovery_max_attempts', 3),
-      this.getNumber('emails', 'brevo_password_recovery_cooldown_minutes', 15),
-      this.getNumber('emails', 'brevo_max_retries', 3),
-      this.getNumber('emails', 'brevo_retry_delay', 1000),
-      this.getNumber('emails', 'brevo_timeout', 30000),
-      this.getNumber('emails', 'brevo_daily_email_limit', 10000),
-      this.getNumber('emails', 'brevo_daily_sms_limit', 1000),
-      this.getString('emails', 'brevo_sms_sender'),
-      this.getBoolean('emails', 'brevo_sms_unicode', false),
-      this.getBoolean('emails', 'brevo_template_cache', true),
-      this.getBoolean('emails', 'brevo_preload_templates', true),
+      this.getString('emails', 'smtp_from_email'),
+      this.getString('emails', 'smtp_from_name'),
+      this.getString('emails', 'smtp_host'),
+      this.getNumber('emails', 'smtp_port', 465),
+      this.getString('emails', 'smtp_user'),
+      this.getString('emails', 'smtp_password'),
+      this.getNumber('emails', 'smtp_timeout', 15000),
+      this.getNumber('emails', 'password_recovery_expiration_hours', 72),
+      this.getNumber('emails', 'password_recovery_max_attempts', 3),
+      this.getNumber('emails', 'password_recovery_cooldown_minutes', 15),
       this.getBoolean('emails', 'email_verification_required', true),
       this.getNumber('emails', 'email_verification_expiration_hours', 72),
       this.getNumber('emails', 'email_verification_max_resend', 3),
       this.getNumber('emails', 'email_verification_cooldown_minutes', 5),
     ]);
 
+    const resolvedFromEmail = fromEmail || 'noreply@advancemais.com';
+    const resolvedHost = smtpHost || 'smtp.hostinger.com';
+    const resolvedUser = smtpUser || resolvedFromEmail;
+
     return {
-      apiKey,
-      fromEmail: fromEmail || 'noreply@advancemais.com',
+      fromEmail: resolvedFromEmail,
       fromName: fromName || 'Advance+',
       smtp: {
-        host: smtpHost || 'smtp-relay.brevo.com',
+        host: resolvedHost,
         port: smtpPort,
         secure: smtpPort === 465,
-        auth: {
-          user: smtpUser,
-          pass: smtpPassword,
-        },
-        connectionTimeout: 60000,
-        greetingTimeout: 30000,
-        socketTimeout: 60000,
+        user: resolvedUser,
+        password: smtpPassword,
       },
+      timeout,
       passwordRecovery: {
         tokenExpirationMinutes: passwordRecoveryExpirationHours * 60,
         maxAttempts: passwordRecoveryMaxAttempts,
         cooldownMinutes: passwordRecoveryCooldownMinutes,
-      },
-      sending: {
-        maxRetries,
-        retryDelay,
-        timeout,
-        dailyEmailLimit,
-        dailySMSLimit,
-        defaultSMSSender: smsSender || 'Advance+',
-        smsUnicodeEnabled,
-      },
-      templates: {
-        cacheEnabled: templateCacheEnabled,
-        preloadOnStart: preloadTemplates,
       },
       emailVerification: {
         enabled: emailVerificationRequired,
@@ -477,7 +445,7 @@ class RuntimeConfigService {
         maxResendAttempts: emailVerificationMaxResend,
         resendCooldownMinutes: emailVerificationCooldownMinutes,
       },
-      isConfigured: Boolean(apiKey && fromEmail),
+      isConfigured: Boolean(resolvedHost && resolvedUser && smtpPassword && resolvedFromEmail),
     };
   }
 

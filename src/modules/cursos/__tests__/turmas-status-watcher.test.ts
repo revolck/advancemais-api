@@ -4,7 +4,7 @@ import { CursoStatus, Roles, Status } from '@prisma/client';
 import { prisma } from '@/config/prisma';
 import { processTurmasStatusWatcherTick } from '../cron/turmas-status-watcher';
 
-jest.mock('@/modules/brevo/services/email-service', () => ({
+jest.mock('@/modules/email/services/email-service', () => ({
   EmailService: jest.fn().mockImplementation(() => ({
     sendGeneric: jest.fn().mockResolvedValue(undefined),
   })),

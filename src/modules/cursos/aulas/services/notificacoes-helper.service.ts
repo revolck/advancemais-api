@@ -1,6 +1,6 @@
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
-import { EmailService } from '@/modules/brevo/services/email-service';
+import { EmailService } from '@/modules/email/services/email-service';
 import { Roles, Status, type NotificacaoTipo, type NotificacaoPrioridade } from '@prisma/client';
 import { createHash } from 'crypto';
 
@@ -216,7 +216,7 @@ export const notificacoesHelper = {
   },
 
   /**
-   * Enviar email crítico (usa Brevo - limite 1000/mês)
+   * Enviar email crítico (via SMTP)
    */
   async enviarEmailCritico(params: {
     para: string;

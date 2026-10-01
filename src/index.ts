@@ -160,7 +160,7 @@ setupSwagger(app);
 
 /**
  * Carrega todas as rotas através do router centralizado
- * Inclui automaticamente: usuários, brevo, health checks
+ * Inclui automaticamente: usuários, e-mail, health checks
  */
 const routerLogger = bootstrapLogger.child({ context: 'RouterInit' });
 
@@ -271,7 +271,7 @@ if (!isTestEnv) {
         endpoints: {
           health: `http://localhost:${serverConfig.port}/health`,
           usuarios: `http://localhost:${serverConfig.port}/api/v1/usuarios`,
-          brevo: `http://localhost:${serverConfig.port}/api/v1/brevo`,
+          email: `http://localhost:${serverConfig.port}/api/v1/email`,
           website: `http://localhost:${serverConfig.port}/api/v1/website`,
           cursos: `http://localhost:${serverConfig.port}/api/v1/cursos`,
         },
@@ -283,7 +283,7 @@ if (!isTestEnv) {
       {
         commands: [
           `curl http://localhost:${serverConfig.port}/health`,
-          `curl http://localhost:${serverConfig.port}/api/v1/brevo/health`,
+          `curl http://localhost:${serverConfig.port}/api/v1/email/health`,
         ],
       },
       '🧪 Testes rápidos',

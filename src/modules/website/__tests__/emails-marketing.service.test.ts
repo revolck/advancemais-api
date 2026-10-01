@@ -30,7 +30,7 @@ jest.mock('../../../utils/cache', () => ({
 
 jest.mock('../../../modules/configuracoes-gerais/services/runtime-config.service', () => ({
   runtimeConfigService: {
-    getBrevoConfig: jest.fn().mockResolvedValue({
+    getEmailConfig: jest.fn().mockResolvedValue({
       fromEmail: 'developer@advancemais.com',
       fromName: 'Advance+',
     }),

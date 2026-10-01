@@ -1,11 +1,11 @@
 import { createHash } from 'crypto';
 
 import { prisma } from '@/config/prisma';
-import { EmailService } from '@/modules/brevo/services/email-service';
+import { EmailService } from '@/modules/email/services/email-service';
 import {
   EmailTemplates,
   type CoursePaymentEmailStatus,
-} from '@/modules/brevo/templates/email-templates';
+} from '@/modules/email/templates/email-templates';
 import { logger } from '@/utils/logger';
 import type { NotificacaoPrioridade } from '@prisma/client';
 

@@ -7,8 +7,8 @@
  * @version 1.0.0
  */
 import { prisma } from '@/config/prisma';
-import { EmailService } from '@/modules/brevo/services/email-service';
-import { EmailTemplates } from '@/modules/brevo/templates/email-templates';
+import { EmailService } from '@/modules/email/services/email-service';
+import { EmailTemplates } from '@/modules/email/templates/email-templates';
 import { logger } from '@/utils/logger';
 import {
   AcoesDeLogDeBloqueio,

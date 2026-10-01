@@ -13,7 +13,7 @@ describe('EmailTemplates.generatePlatformWelcomeEmail', () => {
   it('personaliza o primeiro nome e mostra o limite de currículos', () => {
     const email = EmailTemplates.generatePlatformWelcomeEmail(baseData);
 
-    expect(email.subject).toBe('A Advance+ mudou: cursos, estudos e vagas em um só lugar');
+    expect(email.subject).toBe('A nova Advance+ está no ar 💻');
     expect(email.html).toContain('Olá, Maria!');
     expect(email.html).toContain('Até 5 currículos para se candidatar');
     expect(email.html).toContain('href="https://auth.advancemais.com/login"');
@@ -39,6 +39,22 @@ describe('EmailTemplates.generatePlatformWelcomeEmail', () => {
     });
 
     expect(email.html).toContain('src="https://advancemais.com/images/emails/nova-plataforma.gif"');
-    expect(email.html).not.toContain('E ficou muito mais completa.');
+    expect(email.html).not.toContain('Novidade</div>');
+  });
+
+  it('liga o GIF e o link "Assistir ao vídeo" ao vídeo completo', () => {
+    const email = EmailTemplates.generatePlatformWelcomeEmail({
+      ...baseData,
+      heroImageUrl: 'https://advancemais.com/images/emails/nova-plataforma.gif',
+      videoUrl: 'https://advancemais.com/videos/novo-site-advancemais.mp4',
+    });
+
+    expect(email.html).toContain('Assistir ao vídeo completo');
+    expect(
+      email.html.match(/href="https:\/\/advancemais.com\/videos\/novo-site-advancemais.mp4"/g),
+    ).toHaveLength(2);
+    expect(email.text).toContain(
+      'Assista ao vídeo: https://advancemais.com/videos/novo-site-advancemais.mp4',
+    );
   });
 });

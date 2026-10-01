@@ -117,6 +117,8 @@ export interface PlatformWelcomeEmailData {
   maxCurriculos: number;
   /** Imagem ou GIF animado opcional no topo do e-mail (URL pública) */
   heroImageUrl?: string;
+  /** Vídeo completo (o GIF e o link "Assistir ao vídeo" apontam para ele) */
+  videoUrl?: string;
   /** Link de descadastro (obrigatório em envios em massa) */
   unsubscribeUrl?: string;
 }
@@ -1314,8 +1316,8 @@ Se não reconhece esta ação ou precisa de suporte, acesse nosso centro de ajud
   public static generatePlatformWelcomeEmail(data: PlatformWelcomeEmailData): EmailTemplate {
     const firstName = data.nomeCompleto.trim().split(' ')[0] || 'tudo bem';
     const currentYear = this.getCurrentYear();
-    const subject = 'A Advance+ mudou: cursos, estudos e vagas em um só lugar';
-    const preheader = `Compre seu curso, estude pela plataforma e cadastre até ${data.maxCurriculos} currículos para se candidatar às vagas.`;
+    const subject = 'A nova Advance+ está no ar 💻';
+    const preheader = `Um espaço moderno e interativo: compre seu curso, estude pela plataforma e cadastre até ${data.maxCurriculos} currículos para se candidatar às vagas.`;
 
     const features = [
       {
@@ -1356,16 +1358,29 @@ Se não reconhece esta ação ou precisa de suporte, acesse nosso centro de ajud
 
     const logoHtml = `<img src="https://advancemais.com/images/logos/logo_branco.png" alt="Advance+" width="180" style="display: block; margin: 0 auto; width: 180px; max-width: 60%; height: auto; border: 0;" />`;
 
-    // Com imagem/GIF: logo no cabeçalho + imagem. Sem imagem: bloco único com logo e título.
+    const headline = 'A nova Advance+ está no ar 💻';
+    const mediaLink = data.videoUrl || data.platformUrl;
+
+    // Com imagem/GIF: logo + mídia clicável + título. Sem imagem: bloco único com logo e título.
     const hero = data.heroImageUrl
       ? `
         <div style="background-color: #00257d; padding: 28px 24px;">${logoHtml}</div>
-        <img src="${data.heroImageUrl}" alt="Conheça a nova plataforma Advance+" width="560" style="display: block; width: 100%; max-width: 560px; height: auto; border: 0;" />`
+        <div style="background-color: #ffffff; text-align: center; padding: 24px 24px 0;">
+          <a href="${mediaLink}" style="display: block; text-decoration: none;">
+            <img src="${data.heroImageUrl}" alt="O novo site da Advance+" width="400" style="display: block; margin: 0 auto; width: 400px; max-width: 100%; height: auto; border: 0; border-radius: 12px;" />
+          </a>
+          ${
+            data.videoUrl
+              ? `<a href="${data.videoUrl}" style="display: inline-block; margin-top: 12px; color: #00257d; font-size: 14px; font-weight: 700; text-decoration: none;">▶ Assistir ao vídeo completo</a>`
+              : ''
+          }
+          <div style="font-size: 24px; line-height: 1.3; font-weight: 800; color: #0f172a; margin-top: 20px;">${headline}</div>
+        </div>`
       : `
         <div style="background-color: #00257d; background-image: linear-gradient(135deg, #00257d 0%, #1e40af 100%); padding: 32px 24px 40px; text-align: center;">
           ${logoHtml}
           <div style="display: inline-block; background-color: rgba(255,255,255,0.14); color: #ffffff; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 6px 14px; border-radius: 999px; margin: 28px 0 16px;">Novidade</div>
-          <div style="font-size: 26px; line-height: 1.3; font-weight: 800; color: #ffffff;">A Advance+ mudou.<br />E ficou muito mais completa.</div>
+          <div style="font-size: 26px; line-height: 1.3; font-weight: 800; color: #ffffff;">${headline}</div>
         </div>`;
 
     const unsubscribeHtml = data.unsubscribeUrl
@@ -1391,8 +1406,9 @@ Se não reconhece esta ação ou precisa de suporte, acesse nosso centro de ajud
         <div class="greeting">Olá, ${firstName}!</div>
 
         <div class="message" style="margin-bottom: 24px;">
-          Temos novidades: a plataforma da Advance+ foi renovada para você fazer tudo em um só lugar,
-          do primeiro curso até a próxima vaga de emprego. Veja o que mudou:
+          Apresentamos a nova Advance+: um espaço moderno, interativo e cheio de novidades para quem
+          acredita no poder das conexões certas. Agora você faz tudo em um só lugar, do primeiro curso
+          até a próxima vaga de emprego. Veja o que mudou:
         </div>
 
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
@@ -1440,12 +1456,12 @@ Se não reconhece esta ação ou precisa de suporte, acesse nosso centro de ajud
 
 Olá, ${firstName}!
 
-Temos novidades: a plataforma da Advance+ foi renovada para você fazer tudo em um só lugar, do primeiro curso até a próxima vaga de emprego.
+Apresentamos a nova Advance+: um espaço moderno, interativo e cheio de novidades para quem acredita no poder das conexões certas. Agora você faz tudo em um só lugar, do primeiro curso até a próxima vaga de emprego.
 
 ${features.map((feature) => `- ${feature.title}: ${feature.text}`).join('\n')}
 
 Acesse a plataforma: ${data.platformUrl}
-Ver cursos: ${data.coursesUrl}
+${data.videoUrl ? `Assista ao vídeo: ${data.videoUrl}\n` : ''}Ver cursos: ${data.coursesUrl}
 Ver vagas: ${data.jobsUrl}
 Meus currículos: ${data.resumeUrl}
 

@@ -399,6 +399,8 @@ export class EmailSandboxService {
           jobsUrl: `${frontendUrl}/vagas`,
           resumeUrl: `${frontendUrl}/dashboard/curriculo`,
           maxCurriculos: MAX_CURRICULOS,
+          heroImageUrl: `${frontendUrl}/images/emails/nova-plataforma.gif`,
+          videoUrl: `${frontendUrl}/images/emails/novo-site-advancemais.mp4`,
         });
       default:
         throw createHttpError('Rotina de sandbox inválida', 'INVALID_SANDBOX_ROUTINE', 400);

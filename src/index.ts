@@ -21,6 +21,7 @@ import { logger } from '@/utils/logger';
 import { startAssinaturasReconJob } from '@/modules/mercadopago/assinaturas/cron/reconcile';
 import { startBoletoWatcherJob } from '@/modules/mercadopago/assinaturas/cron/boleto-watcher';
 import { startBloqueiosWatcherJob } from '@/modules/usuarios/bloqueios/cron/bloqueio-watcher';
+import { startComunicadoPrimeiroAcessoJob } from '@/modules/email/comunicados/primeiro-acesso.cron';
 import { startEstagiosWatcherJob } from '@/modules/cursos/cron/estagios-watcher';
 import { startTurmasStatusWatcherJob } from '@/modules/cursos/cron/turmas-status-watcher';
 import { startFrequenciaTurmaWatcherJob } from '@/modules/cursos/cron/frequencia-turma-watcher.cron';
@@ -189,6 +190,7 @@ try {
       void startAgendaCronJobs(); // Cron jobs de agenda (aulas, provas, entrevistas)
       startRecipientListRecalculationWorker();
       startMarketingEmailDeliveryWorker();
+      startComunicadoPrimeiroAcessoJob();
     } catch (e) {
       routerLogger.warn({ err: e }, '⚠️ Falha ao iniciar crons');
     }

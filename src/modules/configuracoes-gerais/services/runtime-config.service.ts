@@ -473,6 +473,14 @@ class RuntimeConfigService {
     };
   }
 
+  async getComunicadoPrimeiroAcessoConfig() {
+    const [ativo, lote] = await Promise.all([
+      this.getBoolean('emails', 'comunicado_primeiro_acesso_ativo', false),
+      this.getNumber('emails', 'comunicado_primeiro_acesso_lote', 80),
+    ]);
+    return { ativo, lote: Math.min(Math.max(Math.trunc(lote), 1), 500) };
+  }
+
   async getGoogleOAuthConfig() {
     const [clientId, clientSecret] = await Promise.all([
       this.getString('integracoes', 'google_client_id'),

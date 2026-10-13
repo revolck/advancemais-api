@@ -1645,6 +1645,7 @@ model Usuarios {
   UsuariosInformation                                                                                       UsuariosInformation?
   UsuariosRecuperacaoSenha                                                                                  UsuariosRecuperacaoSenha?
   UsuariosRedesSociais                                                                                      UsuariosRedesSociais?
+  ComunicadosEnvios                                                                                         ComunicadosEnvios[]
   UsuariosSessoes                                                                                           UsuariosSessoes[]
   UsuariosVerificacaoEmail                                                                                  UsuariosVerificacaoEmail?
   status_processo                                                                                           StatusProcessosCandidatos[]
@@ -1696,6 +1697,27 @@ model Usuarios {
   @@index([role, status, criadoEm(sort: Desc)], map: "usuarios_role_status_criadoem_desc_idx")
   @@index([googleCalendarId])
   @@index([mpCustomerId])
+}
+
+/// Envio de comunicados em massa (um registro por usuário e comunicado)
+model ComunicadosEnvios {
+  id           String    @id @default(uuid())
+  comunicado   String    @db.VarChar(80)
+  usuarioId    String
+  email        String    @db.VarChar(255)
+  /// ENVIADO | FALHA | INCERTO | DESCARTADO
+  status       String    @db.VarChar(30)
+  tentativas   Int       @default(0)
+  provider     String?   @db.VarChar(20)
+  messageId    String?   @db.VarChar(255)
+  erro         String?   @db.VarChar(500)
+  enviadoEm    DateTime?
+  criadoEm     DateTime  @default(now())
+  atualizadoEm DateTime  @updatedAt
+  Usuario      Usuarios  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([comunicado, usuarioId])
+  @@index([comunicado, status])
 }
 
 model UsuariosEmpresasVinculos {

@@ -474,11 +474,16 @@ class RuntimeConfigService {
   }
 
   async getComunicadoPrimeiroAcessoConfig() {
-    const [ativo, lote] = await Promise.all([
+    const [ativo, lote, maxDevolucao] = await Promise.all([
       this.getBoolean('emails', 'comunicado_primeiro_acesso_ativo', false),
       this.getNumber('emails', 'comunicado_primeiro_acesso_lote', 80),
+      this.getNumber('emails', 'comunicado_primeiro_acesso_max_devolucao', 5),
     ]);
-    return { ativo, lote: Math.min(Math.max(Math.trunc(lote), 1), 500) };
+    return {
+      ativo,
+      lote: Math.min(Math.max(Math.trunc(lote), 1), 500),
+      maxDevolucao: Math.min(Math.max(maxDevolucao, 0), 100),
+    };
   }
 
   async getGoogleOAuthConfig() {

@@ -466,6 +466,16 @@ export const CONFIG_DEFINITIONS: ConfigDefinition[] = [
   },
   {
     category: 'emails',
+    key: 'comunicado_primeiro_acesso_max_devolucao',
+    label: 'Comunicado: devolução máxima (%)',
+    type: 'number',
+    envKeys: ['COMUNICADO_PRIMEIRO_ACESSO_MAX_DEVOLUCAO'],
+    defaultValue: 5,
+    description:
+      'Se a taxa de e-mails devolvidos passar deste percentual (após 50 envios), o envio pausa sozinho para proteger a conta da Brevo.',
+  },
+  {
+    category: 'emails',
     key: 'password_recovery_expiration_hours',
     label: 'Expiração recuperação (horas)',
     type: 'number',

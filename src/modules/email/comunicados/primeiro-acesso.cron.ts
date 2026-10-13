@@ -2,7 +2,14 @@ import cron from 'node-cron';
 import { logger } from '@/utils/logger';
 import { runtimeConfigService } from '@/modules/configuracoes-gerais';
 import { handlePrismaConnectionError } from '@/utils/prisma-errors';
-import { processarLote, type ResultadoLote } from './primeiro-acesso.service';
+import {
+  avaliarTaxaDevolucao,
+  contagemPorStatus,
+  inicioJanelaDevolucao,
+  processarLote,
+  sincronizarDevolucoes,
+  type ResultadoLote,
+} from './primeiro-acesso.service';
 
 const log = logger.child({ module: 'ComunicadoPrimeiroAcessoJob' });
 
@@ -17,6 +24,35 @@ export async function executarCicloComunicado(limite?: number): Promise<Resultad
   emExecucao = true;
   try {
     const config = await runtimeConfigService.getComunicadoPrimeiroAcessoConfig();
+
+    // Antes de enviar mais: registra devoluções e respeita o limite de devolução
+    // (calculado sobre os envios das últimas 24h)
+    try {
+      await sincronizarDevolucoes();
+    } catch (err) {
+      log.warn({ err }, '⚠️ Não foi possível consultar devoluções na Brevo neste ciclo');
+    }
+    const devolucao = avaliarTaxaDevolucao(
+      await contagemPorStatus(inicioJanelaDevolucao()),
+      config.maxDevolucao,
+    );
+    if (devolucao.pausado) {
+      const resultado: ResultadoLote = {
+        processados: 0,
+        enviados: 0,
+        falhas: 0,
+        incertos: 0,
+        descartados: 0,
+        interrompidoPor: 'TAXA_DEVOLUCAO_ALTA',
+      };
+      ultimaExecucao = { em: new Date().toISOString(), resultado };
+      log.warn(
+        { taxa: devolucao.taxaPercentual, limite: config.maxDevolucao },
+        '⏸️ Comunicado pausado: taxa de devolução acima do limite',
+      );
+      return resultado;
+    }
+
     const resultado = await processarLote(limite ?? config.lote);
     ultimaExecucao = { em: new Date().toISOString(), resultado };
     if (resultado.processados > 0 || resultado.interrompidoPor) {

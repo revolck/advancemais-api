@@ -4,6 +4,15 @@ import { logger } from '@/utils/logger';
 
 const BREVO_API_BASE = 'https://api.brevo.com/v3';
 
+export interface BrevoEmailEvent {
+  email: string;
+  date: string;
+  event: string;
+  messageId: string;
+  reason?: string;
+  subject?: string;
+}
+
 type BrevoFailureReason =
   | 'BREVO_NOT_CONFIGURED'
   | 'IP_NOT_AUTHORIZED'
@@ -174,6 +183,30 @@ export class BrevoClient {
         deliveryUncertain: details.deliveryUncertain,
       };
     }
+  }
+
+  /**
+   * Eventos de e-mails transacionais (ex.: hardBounces, invalid, blocked, spam).
+   * Usado para detectar devoluções depois do envio.
+   */
+  public async listarEventos(params: {
+    event: string;
+    days?: number;
+    limit?: number;
+    offset?: number;
+  }): Promise<BrevoEmailEvent[]> {
+    await this.ensureRuntimeConfig();
+    if (!this.isConfigured()) return [];
+
+    const query = new URLSearchParams({
+      event: params.event,
+      days: String(params.days ?? 7),
+      limit: String(params.limit ?? 2500),
+      offset: String(params.offset ?? 0),
+      sort: 'desc',
+    });
+    const body = await this.request('GET', `/smtp/statistics/events?${query.toString()}`);
+    return Array.isArray(body?.events) ? (body.events as BrevoEmailEvent[]) : [];
   }
 
   private async request(method: 'GET' | 'POST', path: string, payload?: unknown): Promise<any> {

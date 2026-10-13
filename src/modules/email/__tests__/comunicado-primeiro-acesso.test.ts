@@ -5,6 +5,10 @@ const mockSend = jest.fn();
 const mockResolveMx = jest.fn();
 const mockAudit = jest.fn();
 const mockInvalidate = jest.fn();
+const mockEnviosFindMany = jest.fn();
+const mockEnviosUpdate = jest.fn();
+const mockListarEventos = jest.fn();
+const mockGroupBy = jest.fn();
 
 jest.mock('@/config/prisma', () => ({
   prisma: {
@@ -12,7 +16,12 @@ jest.mock('@/config/prisma', () => ({
       findMany: (...a: unknown[]) => mockFindMany(...a),
       update: (...a: unknown[]) => mockUpdate(...a),
     },
-    comunicadosEnvios: { upsert: (...a: unknown[]) => mockUpsert(...a) },
+    comunicadosEnvios: {
+      upsert: (...a: unknown[]) => mockUpsert(...a),
+      findMany: (...a: unknown[]) => mockEnviosFindMany(...a),
+      update: (...a: unknown[]) => mockEnviosUpdate(...a),
+      groupBy: (...a: unknown[]) => mockGroupBy(...a),
+    },
   },
 }));
 jest.mock('dns', () => ({ promises: { resolveMx: (...a: unknown[]) => mockResolveMx(...a) } }));
@@ -44,14 +53,23 @@ jest.mock('../config/email-config', () => ({
     }),
   },
 }));
+jest.mock('../client/brevo-client', () => ({
+  BrevoClient: {
+    getInstance: () => ({ listarEventos: (...a: unknown[]) => mockListarEventos(...a) }),
+  },
+}));
 jest.mock('../client/email-dispatcher', () => ({
   EmailDispatcher: { getInstance: () => ({ send: (...a: unknown[]) => mockSend(...a) }) },
 }));
 
 import {
+  avaliarTaxaDevolucao,
+  contagemPorStatus,
   filtroElegiveis,
+  inicioJanelaDevolucao,
   limparCacheMx,
   processarLote,
+  sincronizarDevolucoes,
 } from '../comunicados/primeiro-acesso.service';
 
 const aluno = (n: number) => ({
@@ -86,6 +104,7 @@ describe('comunicado de primeiro acesso', () => {
       'ENVIADO',
       'DESCARTADO',
       'INCERTO',
+      'DEVOLVIDO',
     ]);
   });
 
@@ -200,5 +219,64 @@ describe('comunicado de primeiro acesso', () => {
     expect(r).toMatchObject({ enviados: 0, interrompidoPor: 'SIMULATED' });
     expect(passwordUpdates().some((u) => u.data.senha === 'hash-antigo-1')).toBe(true);
     expect(mockUpsert).not.toHaveBeenCalled();
+  });
+
+  it('marca como DEVOLVIDO os envios com hard bounce/bloqueio na Brevo', async () => {
+    mockListarEventos.mockImplementation(async ({ event }: { event: string }) =>
+      event === 'hardBounces'
+        ? [
+            {
+              messageId: '<ABC@smtp-relay.mailin.fr>',
+              event: 'hardBounces',
+              reason: 'user unknown',
+            },
+          ]
+        : event === 'blocked'
+          ? [{ messageId: '<def@smtp-relay.mailin.fr>', event: 'blocked' }]
+          : [],
+    );
+    mockEnviosFindMany.mockResolvedValue([
+      { id: 'e1', messageId: '<abc@smtp-relay.mailin.fr>' },
+      { id: 'e2', messageId: '<def@smtp-relay.mailin.fr>' },
+      { id: 'e3', messageId: '<ok@smtp-relay.mailin.fr>' },
+    ]);
+
+    const r = await sincronizarDevolucoes();
+
+    expect(r.marcados).toBe(2);
+    expect(mockEnviosUpdate).toHaveBeenCalledWith({
+      where: { id: 'e1' },
+      data: { status: 'DEVOLVIDO', erro: 'hardBounces: user unknown' },
+    });
+    expect(mockEnviosUpdate.mock.calls.map(([a]) => a.where.id)).toEqual(['e1', 'e2']);
+  });
+
+  it('pausa quando a taxa de devolução passa do limite após 50 envios', () => {
+    // piloto real: 17 de 99 devolvidos
+    expect(avaliarTaxaDevolucao({ ENVIADO: 82, DEVOLVIDO: 17 }, 5)).toMatchObject({
+      taxaPercentual: 17.2,
+      pausado: true,
+    });
+    expect(avaliarTaxaDevolucao({ ENVIADO: 97, DEVOLVIDO: 3 }, 5).pausado).toBe(false);
+    // com poucos envios ainda não avalia
+    expect(avaliarTaxaDevolucao({ ENVIADO: 10, DEVOLVIDO: 5 }, 5).pausado).toBe(false);
+  });
+
+  it('avalia a pausa só com os envios das últimas 24h', async () => {
+    const agora = new Date('2026-10-14T12:00:00Z');
+    const desde = inicioJanelaDevolucao(agora);
+    expect(desde.toISOString()).toBe('2026-10-13T12:00:00.000Z');
+    mockGroupBy.mockResolvedValue([
+      { status: 'ENVIADO', _count: { _all: 60 } },
+      { status: 'DEVOLVIDO', _count: { _all: 1 } },
+    ]);
+
+    const contagem = await contagemPorStatus(desde);
+
+    expect(mockGroupBy.mock.calls[0][0].where).toEqual({
+      comunicado: 'PRIMEIRO_ACESSO_NOVA_PLATAFORMA_2026',
+      enviadoEm: { gte: desde },
+    });
+    expect(contagem).toEqual({ ENVIADO: 60, DEVOLVIDO: 1 });
   });
 });

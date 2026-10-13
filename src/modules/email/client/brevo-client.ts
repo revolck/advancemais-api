@@ -11,6 +11,13 @@ export interface BrevoEmailEvent {
   messageId: string;
   reason?: string;
   subject?: string;
+  tag?: string;
+}
+
+export interface BrevoBlockedContact {
+  email: string;
+  blockedAt?: string;
+  reason?: { code?: string; message?: string };
 }
 
 type BrevoFailureReason =
@@ -156,6 +163,7 @@ export class BrevoClient {
         subject: emailData.subject,
         htmlContent: emailData.html,
         textContent: emailData.text,
+        ...(emailData.tags?.length ? { tags: emailData.tags } : {}),
       });
 
       const messageId = String(body?.messageId || `brevo_${Date.now()}`);
@@ -195,8 +203,7 @@ export class BrevoClient {
     limit?: number;
     offset?: number;
   }): Promise<BrevoEmailEvent[]> {
-    await this.ensureRuntimeConfig();
-    if (!this.isConfigured()) return [];
+    await this.exigirConfiguracao();
 
     const query = new URLSearchParams({
       event: params.event,
@@ -207,6 +214,49 @@ export class BrevoClient {
     });
     const body = await this.request('GET', `/smtp/statistics/events?${query.toString()}`);
     return Array.isArray(body?.events) ? (body.events as BrevoEmailEvent[]) : [];
+  }
+
+  /**
+   * Contatos bloqueados para e-mails transacionais (hard bounce, spam, descadastro,
+   * bloqueio manual). A Brevo recusa envios para eles.
+   */
+  public async listarContatosBloqueados(params: { limit?: number; offset?: number } = {}) {
+    await this.exigirConfiguracao();
+    const query = new URLSearchParams({
+      limit: String(params.limit ?? 100),
+      offset: String(params.offset ?? 0),
+      sort: 'desc',
+    });
+    const body = await this.request('GET', `/smtp/blockedContacts?${query.toString()}`);
+    return {
+      count: Number(body?.count ?? 0),
+      contacts: Array.isArray(body?.contacts) ? (body.contacts as BrevoBlockedContact[]) : [],
+    };
+  }
+
+  /**
+   * Créditos de envio restantes no plano (soma das linhas "sendLimit" de /account).
+   * Retorna null se a conta não informar; quem chama deve tratar como desconhecido.
+   */
+  public async obterCreditosEnvio(): Promise<number | null> {
+    await this.exigirConfiguracao();
+    const body = await this.request('GET', '/account');
+    const planos: { credits?: unknown; creditsType?: unknown }[] = Array.isArray(body?.plan)
+      ? body.plan
+      : [];
+    const limites = planos.filter(
+      (plano) => plano.creditsType === 'sendLimit' && Number.isFinite(Number(plano.credits)),
+    );
+    if (limites.length === 0) return null;
+    return limites.reduce((total, plano) => total + Number(plano.credits), 0);
+  }
+
+  /** Consultas de controle nunca podem "passar" em silêncio sem a chave */
+  private async exigirConfiguracao(): Promise<void> {
+    await this.ensureRuntimeConfig();
+    if (!this.isConfigured()) {
+      throw new Error('BREVO_API_KEY não configurada');
+    }
   }
 
   private async request(method: 'GET' | 'POST', path: string, payload?: unknown): Promise<any> {

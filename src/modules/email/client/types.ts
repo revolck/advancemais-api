@@ -10,6 +10,8 @@ export interface EmailSendInput {
   subject: string;
   html: string;
   text: string;
+  /** Etiquetas da Brevo (filtram estatísticas e eventos); ignoradas pelo SMTP */
+  tags?: string[];
 }
 
 export interface EmailSendResult {

@@ -1705,19 +1705,47 @@ model ComunicadosEnvios {
   comunicado   String    @db.VarChar(80)
   usuarioId    String
   email        String    @db.VarChar(255)
-  /// ENVIADO | FALHA | INCERTO | DESCARTADO
+  /// PROCESSANDO | ENVIADO | DEVOLVIDO | DEVOLUCAO_TEMPORARIA | FALHA | INCERTO | DESCARTADO | REABERTO | REVOGADO
   status       String    @db.VarChar(30)
   tentativas   Int       @default(0)
   provider     String?   @db.VarChar(20)
   messageId    String?   @db.VarChar(255)
   erro         String?   @db.VarChar(500)
   enviadoEm    DateTime?
+  /// Confirmação de entrega pela Brevo (evento delivered)
+  entregueEm   DateTime?
+  /// Última devolução definitiva (hard bounce, inválido, bloqueado ou spam). Não é apagada ao reabrir.
+  devolvidoEm  DateTime?
   criadoEm     DateTime  @default(now())
   atualizadoEm DateTime  @updatedAt
   Usuario      Usuarios  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@unique([comunicado, usuarioId])
   @@index([comunicado, status])
+  @@index([comunicado, enviadoEm])
+  @@index([messageId])
+}
+
+/// Resultado da validação de cada endereço de e-mail (reaproveitado entre campanhas)
+model EmailsValidacoes {
+  id                 String    @id @default(uuid())
+  /// Endereço normalizado (sem espaços, minúsculo)
+  email              String    @unique @db.VarChar(255)
+  /// VALIDO | INVALIDO | RISCO | DESCONHECIDO | TEMPORARIO | BLOQUEADO | PENDENTE
+  resultado          String    @db.VarChar(20)
+  /// LOCAL | BREVO | ZEROBOUNCE | NEVERBOUNCE | KICKBOX
+  fonte              String    @db.VarChar(20)
+  motivo             String?   @db.VarChar(255)
+  /// Correção sugerida (nunca aplicada automaticamente)
+  sugestao           String?   @db.VarChar(255)
+  tentativas         Int       @default(1)
+  detalhes           Json?
+  validadoEm         DateTime  @default(now())
+  proximaTentativaEm DateTime?
+  criadoEm           DateTime  @default(now())
+  atualizadoEm       DateTime  @updatedAt
+
+  @@index([resultado])
 }
 
 model UsuariosEmpresasVinculos {

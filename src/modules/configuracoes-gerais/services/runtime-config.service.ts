@@ -474,15 +474,34 @@ class RuntimeConfigService {
   }
 
   async getComunicadoPrimeiroAcessoConfig() {
-    const [ativo, lote, maxDevolucao] = await Promise.all([
+    const [ativo, lote, maxDevolucao, rampaInicial, maxDiario] = await Promise.all([
       this.getBoolean('emails', 'comunicado_primeiro_acesso_ativo', false),
       this.getNumber('emails', 'comunicado_primeiro_acesso_lote', 80),
       this.getNumber('emails', 'comunicado_primeiro_acesso_max_devolucao', 5),
+      this.getNumber('emails', 'comunicado_primeiro_acesso_rampa_inicial', 100),
+      this.getNumber('emails', 'comunicado_primeiro_acesso_max_diario', 1000),
     ]);
+    const maxDiarioNormalizado = Math.min(Math.max(Math.trunc(maxDiario), 1), 5000);
     return {
       ativo,
       lote: Math.min(Math.max(Math.trunc(lote), 1), 500),
       maxDevolucao: Math.min(Math.max(maxDevolucao, 0), 100),
+      rampaInicial: Math.min(Math.max(Math.trunc(rampaInicial), 1), maxDiarioNormalizado),
+      maxDiario: maxDiarioNormalizado,
+    };
+  }
+
+  async getEmailValidacaoConfig() {
+    const [provedor, apiKey] = await Promise.all([
+      this.getString('emails', 'email_validacao_provedor'),
+      this.getString('emails', 'email_validacao_api_key'),
+    ]);
+    const provedorNormalizado = String(provedor ?? '')
+      .trim()
+      .toLowerCase();
+    return {
+      provedor: provedorNormalizado || null,
+      apiKey: String(apiKey ?? '').trim(),
     };
   }
 

@@ -4,11 +4,7 @@ import { EmailVerificationController } from '../controllers/email-verification-c
 import { prisma } from '../../../config/prisma';
 import { supabaseAuthMiddleware } from '../../usuarios/auth';
 import { logger } from '@/utils/logger';
-import { obterProgresso } from '../comunicados/primeiro-acesso.service';
-import {
-  executarCicloComunicado,
-  getUltimaExecucaoComunicado,
-} from '../comunicados/primeiro-acesso.cron';
+import { comunicadoPrimeiroAcessoRoutes } from './comunicado-primeiro-acesso';
 import {
   UsuariosVerificacaoEmailSelect,
   normalizeEmailVerification,
@@ -441,72 +437,7 @@ router.post('/reenviar', UsuariosVerificacaoEmailController.resendVerification);
  *            -d '{"email":"user@example.com"}'
  */
 
-/**
- * @openapi
- * /api/v1/email/comunicados/primeiro-acesso:
- *   get:
- *     summary: Progresso do comunicado de primeiro acesso (alunos migrados)
- *     tags: [Email]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Contagem de enviados, falhas, incertos, descartados e restantes
- * /api/v1/email/comunicados/primeiro-acesso/ciclo:
- *   post:
- *     summary: Executa um ciclo do comunicado agora
- *     tags: [Email]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               limite: { type: integer, minimum: 1, maximum: 500 }
- *     responses:
- *       200:
- *         description: Resultado do ciclo
- *       409:
- *         description: Já existe um ciclo em execução
- */
-router.get(
-  '/comunicados/primeiro-acesso',
-  supabaseAuthMiddleware(['ADMIN']),
-  async (_req, res, next) => {
-    try {
-      const progresso = await obterProgresso();
-      res.json({ success: true, data: { ...progresso, ...getUltimaExecucaoComunicado() } });
-    } catch (error) {
-      next(error);
-    }
-  },
-);
-
-router.post(
-  '/comunicados/primeiro-acesso/ciclo',
-  supabaseAuthMiddleware(['ADMIN']),
-  async (req, res, next) => {
-    try {
-      const limiteBruto = Number(req.body?.limite);
-      const limite = Number.isFinite(limiteBruto)
-        ? Math.min(Math.max(Math.trunc(limiteBruto), 1), 500)
-        : undefined;
-      const resultado = await executarCicloComunicado(limite);
-      if (!resultado) {
-        return res.status(409).json({
-          success: false,
-          message: 'Já existe um ciclo do comunicado em execução',
-          code: 'CICLO_EM_EXECUCAO',
-        });
-      }
-      res.json({ success: true, data: resultado });
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+router.use('/comunicados/primeiro-acesso', comunicadoPrimeiroAcessoRoutes);
 
 router.use((err: any, req: any, res: any, _next: any) => {
   const rawCorrelationId = req.headers['x-correlation-id'];

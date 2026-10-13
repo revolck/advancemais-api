@@ -4,7 +4,7 @@ import type { CurriculoCreateInput, CurriculoUpdateInput } from './validators';
 import { candidatoLogsService } from '@/modules/candidatos/logs/service';
 import { candidaturasService } from '@/modules/candidatos/candidaturas/services';
 
-const MAX_CURRICULOS = 5;
+export const MAX_CURRICULOS = 5;
 
 export interface CurriculosFiltros {
   busca?: string; // Busca em título ou resumo

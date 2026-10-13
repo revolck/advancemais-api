@@ -10,6 +10,7 @@ import {
 import { supabaseAuthMiddleware } from '../auth';
 import { WelcomeEmailMiddleware } from '../../email/middlewares/welcome-email-middleware';
 import passwordRecoveryRoutes from './password-recovery';
+import { alterarSenha } from '../controllers/alterar-senha-controller';
 import { asyncHandler } from '../../../utils/asyncHandler';
 import { logger } from '@/utils/logger';
 
@@ -1099,6 +1100,44 @@ router.put(
     next();
   },
   asyncHandler(atualizarPerfil),
+);
+
+/**
+ * @openapi
+ * /api/v1/usuarios/perfil/alterar-senha:
+ *   put:
+ *     summary: Alterar a senha do usuário autenticado
+ *     description: |
+ *       Troca a senha do usuário logado. Também conclui o primeiro acesso de quem
+ *       está com senha provisória (`precisaTrocarSenha`); enquanto isso não acontece,
+ *       as demais rotas autenticadas respondem 403 `PASSWORD_CHANGE_REQUIRED`.
+ *     tags: [Usuários - Perfil]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [senhaAntiga, senhaNova, confirmarSenha]
+ *             properties:
+ *               senhaAntiga: { type: string, description: 'Senha atual ou provisória' }
+ *               senhaNova: { type: string, description: '8+ caracteres, maiúscula, minúscula, número e caractere especial' }
+ *               confirmarSenha: { type: string }
+ *     responses:
+ *       200:
+ *         description: Senha alterada
+ *       400:
+ *         description: 'Dados inválidos (MISSING_FIELDS, WEAK_PASSWORD, PASSWORD_MISMATCH, INVALID_CURRENT_PASSWORD, SAME_PASSWORD)'
+ *       401:
+ *         description: Não autenticado
+ */
+router.put(
+  '/perfil/alterar-senha',
+  createAuthRateLimit(10, 15),
+  supabaseAuthMiddleware(),
+  asyncHandler(alterarSenha),
 );
 
 // ===========================

@@ -5,6 +5,10 @@ import { prisma, retryOperation } from '@/config/prisma';
 import { jwtConfig } from '@/config/env';
 import { getCache, setCache } from '@/utils/cache';
 import { logger } from '@/utils/logger';
+import {
+  isAllowedDuringPasswordChange,
+  PASSWORD_CHANGE_REQUIRED_CODE,
+} from './password-change-gate';
 
 const authLogger = logger.child({ module: 'JWTAuthMiddleware' });
 
@@ -104,6 +108,7 @@ export const jwtAuthMiddleware =
           tipoUsuario: true,
           authId: true,
           ultimoLogin: true,
+          precisaTrocarSenha: true,
           UsuariosInformation: {
             select: { telefone: true },
           },
@@ -187,6 +192,19 @@ export const jwtAuthMiddleware =
             success: false,
             message: `Acesso negado: usuário está ${usuario.status.toLowerCase()}`,
             code: 'USER_INACTIVE',
+          });
+        }
+
+        // Senha provisória: só libera as rotas necessárias para a troca de senha
+        if (
+          usuario.precisaTrocarSenha &&
+          !isAllowedDuringPasswordChange(req.method, req.originalUrl)
+        ) {
+          clearTimeout(authTimeout);
+          return res.status(403).json({
+            success: false,
+            message: 'Troque sua senha provisória para continuar',
+            code: PASSWORD_CHANGE_REQUIRED_CODE,
           });
         }
 
@@ -281,6 +299,7 @@ export const optionalJWTAuth = () => async (req: Request, res: Response, next: N
       tipoUsuario: true,
       authId: true,
       ultimoLogin: true,
+      precisaTrocarSenha: true,
       UsuariosInformation: {
         select: { telefone: true },
       },

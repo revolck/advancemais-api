@@ -24,6 +24,8 @@ export const USER_HISTORY_TIPOS = [
   'USUARIO_EMAIL_LIBERADO',
   'USUARIO_EMAIL_VERIFICADO',
   'USUARIO_SENHA_RESETADA',
+  'USUARIO_SENHA_ALTERADA',
+  'USUARIO_SENHA_PROVISORIA_DEFINIDA',
   'USUARIO_LOGIN',
   'USUARIO_LOGOUT',
   'USUARIO_ENDERECO_ATUALIZADO',
@@ -139,6 +141,18 @@ const actionConfigMap: Record<string, UserHistoryActionConfig> = {
     tipo: 'USUARIO_SENHA_RESETADA',
     categoria: 'SEGURANCA',
     titulo: 'Senha resetada',
+    auditoriaCategoria: AuditoriaCategoria.SEGURANCA,
+  },
+  USUARIO_SENHA_ALTERADA: {
+    tipo: 'USUARIO_SENHA_ALTERADA',
+    categoria: 'SEGURANCA',
+    titulo: 'Senha alterada',
+    auditoriaCategoria: AuditoriaCategoria.SEGURANCA,
+  },
+  USUARIO_SENHA_PROVISORIA_DEFINIDA: {
+    tipo: 'USUARIO_SENHA_PROVISORIA_DEFINIDA',
+    categoria: 'SEGURANCA',
+    titulo: 'Senha provisória definida',
     auditoriaCategoria: AuditoriaCategoria.SEGURANCA,
   },
   USUARIO_LOGIN: {

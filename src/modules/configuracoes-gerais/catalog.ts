@@ -447,6 +447,25 @@ export const CONFIG_DEFINITIONS: ConfigDefinition[] = [
   },
   {
     category: 'emails',
+    key: 'comunicado_primeiro_acesso_ativo',
+    label: 'Envio do comunicado de primeiro acesso',
+    type: 'boolean',
+    envKeys: ['COMUNICADO_PRIMEIRO_ACESSO_ATIVO'],
+    defaultValue: false,
+    description:
+      'Liga o envio automático do comunicado "A nova Advance+ está no ar" (com senha provisória) para os alunos migrados.',
+  },
+  {
+    category: 'emails',
+    key: 'comunicado_primeiro_acesso_lote',
+    label: 'Comunicado: e-mails por ciclo (a cada 10 min)',
+    type: 'number',
+    envKeys: ['COMUNICADO_PRIMEIRO_ACESSO_LOTE'],
+    defaultValue: 80,
+    description: 'Quantidade enviada a cada 10 minutos (80 = ~480 por hora).',
+  },
+  {
+    category: 'emails',
     key: 'password_recovery_expiration_hours',
     label: 'Expiração recuperação (horas)',
     type: 'number',

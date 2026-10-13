@@ -105,6 +105,32 @@ export interface EstagioEncerramentoEmailData {
  * Templates de email com design limpo e profissional
  * Foco na legibilidade e experiência do usuário
  */
+export interface PlatformWelcomeEmailData {
+  /** Nome completo do destinatário */
+  nomeCompleto: string;
+  /** Link principal (login/área do aluno) */
+  platformUrl: string;
+  coursesUrl: string;
+  jobsUrl: string;
+  resumeUrl: string;
+  /** Quantidade máxima de currículos por candidato */
+  maxCurriculos: number;
+  /** Imagem ou GIF animado opcional no topo do e-mail (URL pública) */
+  heroImageUrl?: string;
+  /** Vídeo completo (o GIF e o link "Assistir ao vídeo" apontam para ele) */
+  videoUrl?: string;
+  /** Link de descadastro (obrigatório em envios em massa) */
+  unsubscribeUrl?: string;
+  /**
+   * Dados de primeiro acesso (alunos migrados): login por CPF com senha
+   * provisória individual, trocada obrigatoriamente no primeiro login.
+   */
+  primeiroAcesso?: {
+    cpf: string;
+    senhaProvisoria: string;
+  };
+}
+
 export class EmailTemplates {
   /**
    * Retorna o ano atual para uso nos templates
@@ -1289,6 +1315,206 @@ Se não reconhece esta ação ou precisa de suporte, acesse nosso centro de ajud
   ${this.getSignatureText()}
 
   © ${currentYear} Advance+ - Todos os direitos reservados`;
+    return { subject, html, text };
+  }
+
+  /** CPF parcialmente oculto para exibição em e-mail: ***.456.789-** */
+  private static maskCpf(cpf: string): string {
+    const digits = cpf.replace(/\D/g, '');
+    if (digits.length !== 11) return '***';
+    return `***.${digits.slice(3, 6)}.${digits.slice(6, 9)}-**`;
+  }
+
+  /**
+   * Comunicado "Nossa plataforma mudou" para alunos e candidatos
+   */
+  public static generatePlatformWelcomeEmail(data: PlatformWelcomeEmailData): EmailTemplate {
+    const firstName = data.nomeCompleto.trim().split(' ')[0] || 'tudo bem';
+    const currentYear = this.getCurrentYear();
+    const subject = 'A nova Advance+ está no ar 💻';
+    const preheader = `Um espaço moderno e interativo: compre seu curso, estude pela plataforma e cadastre até ${data.maxCurriculos} currículos para se candidatar às vagas.`;
+
+    const features = [
+      {
+        icon: '🛒',
+        title: 'Compre seu curso direto pela plataforma',
+        text: 'Escolha o curso e a turma, pague com Pix, boleto ou cartão e comece sem burocracia.',
+      },
+      {
+        icon: '🎓',
+        title: 'Estude quando e onde quiser',
+        text: 'Aulas, atividades, provas, notas, frequência e certificados reunidos na sua área do aluno.',
+      },
+      {
+        icon: '💼',
+        title: `Até ${data.maxCurriculos} currículos para se candidatar`,
+        text: `Cadastre até ${data.maxCurriculos} currículos e envie o mais adequado para cada vaga, acompanhando suas candidaturas.`,
+      },
+    ];
+
+    const featureRows = features
+      .map(
+        (feature) => `
+            <tr>
+              <td style="padding: 0 0 16px 0;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                  <tr>
+                    <td width="56" valign="top" style="padding: 20px 0 20px 20px; font-size: 28px; line-height: 1;">${feature.icon}</td>
+                    <td valign="top" style="padding: 20px 20px 20px 12px;">
+                      <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">${feature.title}</div>
+                      <div style="font-size: 14px; line-height: 1.6; color: #475569;">${feature.text}</div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>`,
+      )
+      .join('');
+
+    const logoHtml = `<img src="https://advancemais.com/images/logos/logo_branco.png" alt="Advance+" width="180" style="display: block; margin: 0 auto; width: 180px; max-width: 60%; height: auto; border: 0;" />`;
+
+    const headline = 'A nova Advance+ está no ar 💻';
+    const mediaLink = data.videoUrl || data.platformUrl;
+
+    // Com imagem/GIF: logo + mídia clicável + título. Sem imagem: bloco único com logo e título.
+    const hero = data.heroImageUrl
+      ? `
+        <div style="background-color: #00257d; padding: 28px 24px;">${logoHtml}</div>
+        <div style="background-color: #ffffff; text-align: center; padding: 24px 24px 0;">
+          <a href="${mediaLink}" style="display: block; text-decoration: none;">
+            <img src="${data.heroImageUrl}" alt="O novo site da Advance+" width="400" style="display: block; margin: 0 auto; width: 400px; max-width: 100%; height: auto; border: 0; border-radius: 12px;" />
+          </a>
+          ${
+            data.videoUrl
+              ? `<a href="${data.videoUrl}" style="display: inline-block; margin-top: 12px; color: #00257d; font-size: 14px; font-weight: 700; text-decoration: none;">▶ Assistir ao vídeo completo</a>`
+              : ''
+          }
+          <div style="font-size: 24px; line-height: 1.3; font-weight: 800; color: #0f172a; margin-top: 20px;">${headline}</div>
+        </div>`
+      : `
+        <div style="background-color: #00257d; background-image: linear-gradient(135deg, #00257d 0%, #1e40af 100%); padding: 32px 24px 40px; text-align: center;">
+          ${logoHtml}
+          <div style="display: inline-block; background-color: rgba(255,255,255,0.14); color: #ffffff; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 6px 14px; border-radius: 999px; margin: 28px 0 16px;">Novidade</div>
+          <div style="font-size: 26px; line-height: 1.3; font-weight: 800; color: #ffffff;">${headline}</div>
+        </div>`;
+
+    const access = data.primeiroAcesso;
+    const accessHtml = access
+      ? `
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 8px 0 24px; border: 2px solid #00257d; border-radius: 12px;">
+          <tr>
+            <td style="padding: 20px 24px;">
+              <div style="font-size: 16px; font-weight: 800; color: #00257d; margin-bottom: 12px;">🔐 Seu primeiro acesso</div>
+              <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: #64748b;">Login</div>
+              <div style="font-size: 15px; font-weight: 700; color: #0f172a; margin: 4px 0 14px;">Seu CPF (${this.maskCpf(access.cpf)})</div>
+              <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: #64748b;">Senha provisória</div>
+              <div style="margin-top: 6px;"><span style="display: inline-block; white-space: nowrap; font-family: 'Courier New', monospace; font-size: 18px; font-weight: 700; letter-spacing: 2px; color: #0f172a; background-color: #f1f5f9; border: 1px dashed #94a3b8; border-radius: 6px; padding: 6px 12px;">${access.senhaProvisoria}</span></div>
+              <div style="font-size: 13px; line-height: 1.6; color: #7f1d1d; background-color: #fef2f2; border-radius: 8px; padding: 12px 14px; margin-top: 14px;">
+                <strong>Importante:</strong> por segurança, no primeiro acesso você vai criar uma nova senha.
+                A senha provisória é só sua: não compartilhe com ninguém.
+              </div>
+            </td>
+          </tr>
+        </table>`
+      : `
+        <div class="info-box">
+          <p class="info-text">
+            <strong>Já tem conta?</strong> Use o mesmo e-mail e senha de sempre. Se não lembrar a senha,
+            clique em "Esqueci minha senha" na tela de login.
+          </p>
+        </div>`;
+    const accessText = access
+      ? `SEU PRIMEIRO ACESSO
+Login: seu CPF (${this.maskCpf(access.cpf)})
+Senha provisória: ${access.senhaProvisoria}
+Importante: por segurança, no primeiro acesso você vai criar uma nova senha. A senha provisória é só sua: não compartilhe com ninguém.`
+      : 'Já tem conta? Use o mesmo e-mail e senha de sempre. Se não lembrar a senha, clique em "Esqueci minha senha" na tela de login.';
+
+    const unsubscribeHtml = data.unsubscribeUrl
+      ? `<br /><a href="${data.unsubscribeUrl}" style="color: #64748b; text-decoration: underline;">Não quero mais receber estes e-mails</a>`
+      : '';
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nova plataforma - Advance+</title>
+  ${this.getBaseStyles()}
+</head>
+<body>
+  <div style="display: none; max-height: 0; overflow: hidden; opacity: 0;">${preheader}</div>
+  <div class="email-wrapper">
+    <div class="email-container">
+
+      ${hero}
+
+      <div class="content">
+        <div class="greeting">Olá, ${firstName}!</div>
+
+        <div class="message" style="margin-bottom: 24px;">
+          Apresentamos a nova Advance+: um espaço moderno, interativo e cheio de novidades para quem
+          acredita no poder das conexões certas. Agora você faz tudo em um só lugar, do primeiro curso
+          até a próxima vaga de emprego. Veja o que mudou:
+        </div>
+
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          ${featureRows}
+        </table>
+
+        ${access ? accessHtml : ''}
+
+        <div style="text-align: center; margin-top: 16px;">
+          <a href="${data.platformUrl}" class="cta-button" style="color: #ffffff !important;">
+            ${access ? 'Fazer meu primeiro acesso' : 'Acessar a plataforma'}
+          </a>
+        </div>
+
+        <div style="text-align: center; font-size: 14px; color: #475569; margin-top: -12px;">
+          <a href="${data.coursesUrl}" style="color: #00257d; font-weight: 600; text-decoration: none;">Ver cursos</a>
+          &nbsp;&nbsp;•&nbsp;&nbsp;
+          <a href="${data.jobsUrl}" style="color: #00257d; font-weight: 600; text-decoration: none;">Ver vagas</a>
+          &nbsp;&nbsp;•&nbsp;&nbsp;
+          <a href="${data.resumeUrl}" style="color: #00257d; font-weight: 600; text-decoration: none;">Meus currículos</a>
+        </div>
+
+        ${access ? '' : accessHtml}
+
+        ${this.getSignatureHtml()}
+
+      </div>
+
+      <div class="footer">
+        <div class="footer-text">
+          Você recebeu este e-mail porque tem uma conta na Advance+.${unsubscribeHtml}<br />
+          Advance+ © ${currentYear} todos os direitos reservados.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>`;
+
+    const text = `${subject}
+
+Olá, ${firstName}!
+
+Apresentamos a nova Advance+: um espaço moderno, interativo e cheio de novidades para quem acredita no poder das conexões certas. Agora você faz tudo em um só lugar, do primeiro curso até a próxima vaga de emprego.
+
+${features.map((feature) => `- ${feature.title}: ${feature.text}`).join('\n')}
+
+Acesse a plataforma: ${data.platformUrl}
+${data.videoUrl ? `Assista ao vídeo: ${data.videoUrl}\n` : ''}Ver cursos: ${data.coursesUrl}
+Ver vagas: ${data.jobsUrl}
+Meus currículos: ${data.resumeUrl}
+
+${accessText}
+
+${this.getSignatureText()}
+${data.unsubscribeUrl ? `\nNão quer mais receber estes e-mails? ${data.unsubscribeUrl}\n` : ''}
+© ${currentYear} Advance+ - Todos os direitos reservados`;
+
     return { subject, html, text };
   }
 }

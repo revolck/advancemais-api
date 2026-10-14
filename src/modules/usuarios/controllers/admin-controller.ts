@@ -333,6 +333,33 @@ export class AdminController {
   };
 
   /**
+   * O que a pessoa perde de acesso ao sair de aluno/candidato (contagens)
+   */
+  public impactoTrocaDeFuncao = async (req: Request, res: Response, next: NextFunction) => {
+    const { userId } = req.params;
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+      return res.status(400).json({
+        success: false,
+        code: 'INVALID_ID',
+        message: 'ID do usuário inválido. Deve ser um UUID válido.',
+      });
+    }
+    try {
+      const data = await this.adminService.impactoTrocaDeFuncao(userId);
+      return res.json({ success: true, data });
+    } catch (error) {
+      if ((error as any)?.code === 'USER_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          code: 'USER_NOT_FOUND',
+          message: 'Usuário não encontrado',
+        });
+      }
+      return next(error);
+    }
+  };
+
+  /**
    * Atualiza role do usuário
    */
   public atualizarRole = async (req: Request, res: Response, next: NextFunction) => {

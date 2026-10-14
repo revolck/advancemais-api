@@ -1202,6 +1202,34 @@ router.patch(
   asyncHandler(adminController.atualizarRole),
 );
 
+/**
+ * @openapi
+ * /api/v1/usuarios/usuarios/{userId}/role/impacto:
+ *   get:
+ *     summary: O que a pessoa tem como aluno/candidato antes de trocar a função
+ *     description: Inscrições ativas, cursos concluídos, currículos e candidaturas. Nada é apagado na troca.
+ *     tags: [Usuários]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Contagens do usuário
+ *       404:
+ *         description: Usuário não encontrado
+ */
+router.get(
+  '/usuarios/:userId/role/impacto',
+  supabaseAuthMiddleware(adminRoles),
+  asyncHandler(adminController.impactoTrocaDeFuncao),
+);
+
 // =============================================
 // ROTAS DE BLOQUEIO DE ALUNOS
 // =============================================

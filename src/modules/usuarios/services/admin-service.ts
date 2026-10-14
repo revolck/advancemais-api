@@ -1684,6 +1684,40 @@ export class AdminService {
   }
 
   /**
+   * O que a pessoa tem como aluno/candidato. Mostrado antes de trocar a função e
+   * guardado na auditoria: nada é apagado, só deixa de ser acessível pela área do aluno.
+   */
+  async impactoTrocaDeFuncao(userId: string) {
+    const usuario = await prisma.usuarios.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true },
+    });
+    if (!usuario) {
+      throw this.createServiceError('Usuário não encontrado', 404, 'USER_NOT_FOUND');
+    }
+
+    const [inscricoesAtivas, cursosConcluidos, curriculos, candidaturas] = await Promise.all([
+      prisma.cursosTurmasInscricoes.count({
+        where: {
+          alunoId: userId,
+          status: { in: ['AGUARDANDO_PAGAMENTO', 'INSCRITO', 'EM_ANDAMENTO', 'EM_ESTAGIO'] },
+        },
+      }),
+      prisma.cursosTurmasInscricoes.count({ where: { alunoId: userId, status: 'CONCLUIDO' } }),
+      prisma.usuariosCurriculos.count({ where: { usuarioId: userId } }),
+      prisma.empresasCandidatos.count({ where: { candidatoId: userId } }),
+    ]);
+
+    return {
+      role: usuario.role,
+      inscricoesAtivas,
+      cursosConcluidos,
+      curriculos,
+      candidaturas,
+    };
+  }
+
+  /**
    * Atualiza role do usuário - TIPAGEM CORRETA
    */
   async atualizarRole(
@@ -1773,21 +1807,32 @@ export class AdminService {
       );
     }
 
-    const usuario = await prisma.usuarios.update({
-      where: { id: userId },
-      data: { role: roleEnum as Roles },
-      select: {
-        id: true,
-        email: true,
-        nomeCompleto: true,
-        role: true,
-        status: true,
-        atualizadoEm: true,
-        UsuariosVerificacaoEmail: {
-          select: UsuariosVerificacaoEmailSelect,
+    const impactoAluno =
+      usuarioAntes.role === Roles.ALUNO_CANDIDATO ? await this.impactoTrocaDeFuncao(userId) : null;
+
+    // Nova função exige novo login: o painel e os menus vêm da função da sessão
+    const agora = new Date();
+    const [usuario] = await prisma.$transaction([
+      prisma.usuarios.update({
+        where: { id: userId },
+        data: { role: roleEnum as Roles, refreshToken: null },
+        select: {
+          id: true,
+          email: true,
+          nomeCompleto: true,
+          role: true,
+          status: true,
+          atualizadoEm: true,
+          UsuariosVerificacaoEmail: {
+            select: UsuariosVerificacaoEmailSelect,
+          },
         },
-      },
-    });
+      }),
+      prisma.usuariosSessoes.updateMany({
+        where: { usuarioId: userId, revogadoEm: null },
+        data: { revogadoEm: agora },
+      }),
+    ]);
 
     await invalidateUserCache(usuario);
     await this.invalidateListCache();
@@ -1810,6 +1855,8 @@ export class AdminService {
           motivo: motivo ?? null,
           origem: 'PAINEL_ADMIN',
           statusAtual: usuarioAntes.status,
+          sessoesEncerradas: true,
+          ...(impactoAluno ? { impactoAluno } : {}),
         },
         ip: options?.ip ?? null,
         userAgent: options?.userAgent ?? null,

@@ -16,6 +16,7 @@ import {
   normalizarDocumento,
 } from '../utils/validation';
 import { invalidateUserCache } from '../utils/cache';
+import { documentoDeLogin } from '../utils/documento-login';
 import { recordUserAuditEvent } from '../utils/user-history';
 import {
   enviarBoasVindasComLink,
@@ -477,6 +478,8 @@ export class PasswordRecoveryController {
               email: true,
               nomeCompleto: true,
               senha: true,
+              cpf: true,
+              cnpj: true,
             },
           },
         },
@@ -557,6 +560,8 @@ export class PasswordRecoveryController {
 
       res.json({
         message: 'Senha redefinida com sucesso',
+        // Mostra na tela com qual documento entrar (evita tentar com outro CPF/CNPJ)
+        login: documentoDeLogin(recuperacao.Usuarios),
       });
     } catch (error) {
       log.error({ err: error }, 'Erro na redefinição de senha');

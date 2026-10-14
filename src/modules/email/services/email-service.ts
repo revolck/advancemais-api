@@ -10,6 +10,7 @@ import {
   normalizeEmailVerification,
 } from '@/modules/usuarios/utils/email-verification';
 import { recordUserAuditEvent } from '@/modules/usuarios/utils/user-history';
+import { documentoDeLogin } from '@/modules/usuarios/utils/documento-login';
 
 export interface EmailResult {
   success: boolean;
@@ -280,7 +281,13 @@ export class EmailService {
   }
 
   public async enviarEmailRecuperacaoSenha(
-    usuario: { id: string; email: string; nomeCompleto: string },
+    usuario: {
+      id: string;
+      email: string;
+      nomeCompleto: string;
+      cpf?: string | null;
+      cnpj?: string | null;
+    },
     token: string,
   ): Promise<EmailResult> {
     const correlationId = this.generateCorrelationId();
@@ -302,6 +309,7 @@ export class EmailService {
         linkRecuperacao,
         expiracaoHoras: runtimeConfig.passwordRecovery.tokenExpirationMinutes / 60,
         maxTentativas: runtimeConfig.passwordRecovery.maxAttempts,
+        loginDocumento: documentoDeLogin(usuario),
       };
 
       const emailContent = EmailTemplates.generatePasswordRecoveryEmail(templateData);

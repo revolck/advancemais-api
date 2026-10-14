@@ -22,6 +22,8 @@ export interface PasswordRecoveryData {
   maxTentativas: number;
   // Token opcional apenas para compatibilidade
   token?: string;
+  /** Documento do login (mascarado), para o usuário saber como entrar depois */
+  loginDocumento?: { tipo: 'CPF' | 'CNPJ'; mascarado: string } | null;
 }
 
 export interface EmailTemplate {
@@ -509,6 +511,13 @@ Equipe Advance+`;
           Recebemos uma solicitação para redefinir a senha da sua conta. 
           Se foi você quem solicitou, clique no botão abaixo para criar uma nova senha.
         </div>
+        ${
+          data.loginDocumento
+            ? `<div class="message" style="background-color: #eff6ff; border-radius: 8px; padding: 12px 16px;">
+          🔐 Depois de criar a senha, entre com o seu <strong>${data.loginDocumento.tipo} (${data.loginDocumento.mascarado})</strong> e a nova senha.
+        </div>`
+            : ''
+        }
         
         <div style="text-align: center;">
           <a
@@ -561,7 +570,7 @@ Equipe Advance+`;
   </div>
 </body>
 </html>`,
-      text: `Redefinir senha da sua conta Advance+\n\nOlá, ${firstName}\n\nRecebemos uma solicitação para redefinir a senha da sua conta. Se foi você quem solicitou, use o link abaixo para criar uma nova senha:\n\n${data.linkRecuperacao}\n\nEste link expira em ${data.expiracaoHoras} horas por motivos de segurança. Você pode realizar até ${data.maxTentativas} tentativas de recuperação.\n\nSe você não solicitou esta alteração, pode ignorar este email. Sua senha não será alterada.\n\n${this.getSignatureText()}\n\n© ${currentYear} Advance+ - Todos os direitos reservados`,
+      text: `Redefinir senha da sua conta Advance+\n\nOlá, ${firstName}\n\nRecebemos uma solicitação para redefinir a senha da sua conta. Se foi você quem solicitou, use o link abaixo para criar uma nova senha:\n\n${data.linkRecuperacao}\n\n${data.loginDocumento ? `Depois de criar a senha, entre com o seu ${data.loginDocumento.tipo} (${data.loginDocumento.mascarado}) e a nova senha.\n\n` : ''}Este link expira em ${data.expiracaoHoras} horas por motivos de segurança. Você pode realizar até ${data.maxTentativas} tentativas de recuperação.\n\nSe você não solicitou esta alteração, pode ignorar este email. Sua senha não será alterada.\n\n${this.getSignatureText()}\n\n© ${currentYear} Advance+ - Todos os direitos reservados`,
     };
   }
 

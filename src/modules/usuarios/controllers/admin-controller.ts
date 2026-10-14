@@ -1015,9 +1015,18 @@ export class AdminController {
         return res.status(400).json({
           success: false,
           code: 'VALIDATION_ERROR',
-          message: 'Dados inválidos para bloqueio',
+          message: error.issues[0]?.message ?? 'Dados inválidos para bloqueio',
           issues: formatZodErrors(error),
         });
+      }
+
+      const code = (error as any)?.code;
+      if (
+        code === 'FORBIDDEN_SELF_BLOCK' ||
+        code === 'FORBIDDEN_USER_ROLE' ||
+        code === 'ADMIN_REQUIRED'
+      ) {
+        return res.status(403).json({ success: false, code, message: err.message });
       }
 
       if ((error as any)?.code === 'USER_NOT_FOUND') {

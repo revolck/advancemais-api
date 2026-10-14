@@ -9,6 +9,7 @@
 import { prisma } from '@/config/prisma';
 import { EmailService } from '@/modules/email/services/email-service';
 import { EmailTemplates } from '@/modules/email/templates/email-templates';
+import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
 import { logger } from '@/utils/logger';
 import {
   AcoesDeLogDeBloqueio,
@@ -204,6 +205,9 @@ export async function aplicarBloqueioInstrutor(
     return novoBloqueio;
   });
 
+  // O acesso é conferido com o usuário em cache: o bloqueio vale na hora
+  await invalidateUserCache(instrutorId);
+
   bloqueioLogger.info(
     {
       instrutorId,
@@ -283,6 +287,8 @@ export async function revogarBloqueioInstrutor(
     // Atualiza status do usuário para ATIVO
     await tx.usuarios.update({ where: { id: instrutorId }, data: { status: Status.ATIVO } });
   });
+
+  await invalidateUserCache(instrutorId);
 
   bloqueioLogger.info(
     {

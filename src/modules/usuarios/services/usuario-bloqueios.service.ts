@@ -8,6 +8,7 @@
 import { prisma } from '@/config/prisma';
 import { EmailService } from '@/modules/email/services/email-service';
 import { EmailTemplates } from '@/modules/email/templates/email-templates';
+import { invalidateUserCache } from '@/modules/usuarios/utils/cache';
 import { logger } from '@/utils/logger';
 import {
   AcoesDeLogDeBloqueio,
@@ -164,10 +165,28 @@ export async function aplicarBloqueioUsuario(
       });
     }
 
-    // Atualiza status do usuário para BLOQUEADO
+    if (usuario.id === admin.id) {
+      throw Object.assign(new Error('Você não pode bloquear a própria conta.'), {
+        code: 'FORBIDDEN_SELF_BLOCK',
+      });
+    }
+
+    // Mesma hierarquia da troca de função: moderador não age sobre admin/moderador
+    if (admin.role === 'MODERADOR' && ['ADMIN', 'MODERADOR'].includes(usuario.role)) {
+      throw Object.assign(
+        new Error('Moderador não pode bloquear administradores nem moderadores.'),
+        { code: 'FORBIDDEN_USER_ROLE' },
+      );
+    }
+
+    // Atualiza status do usuário para BLOQUEADO e encerra as sessões abertas
     await tx.usuarios.update({
       where: { id: userId },
-      data: { status: Status.BLOQUEADO },
+      data: { status: Status.BLOQUEADO, refreshToken: null },
+    });
+    await tx.usuariosSessoes.updateMany({
+      where: { usuarioId: userId, revogadoEm: null },
+      data: { revogadoEm: inicio },
     });
 
     // Cria registro de bloqueio
@@ -196,6 +215,8 @@ export async function aplicarBloqueioUsuario(
 
     return novoBloqueio;
   });
+
+  await invalidateUserCache(userId);
 
   bloqueioLogger.info(
     {
@@ -276,6 +297,8 @@ export async function revogarBloqueioUsuario(
     // Atualiza status do usuário para ATIVO
     await tx.usuarios.update({ where: { id: userId }, data: { status: Status.ATIVO } });
   });
+
+  await invalidateUserCache(userId);
 
   bloqueioLogger.info(
     {

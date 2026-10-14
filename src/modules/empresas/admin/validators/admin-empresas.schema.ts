@@ -90,8 +90,10 @@ const diasTesteSchema = z
   .positive('Dias de teste deve ser maior que zero')
   .max(365, 'Máximo de 365 dias');
 
+// null precisa vir antes: z.coerce.date(null) vira 01/01/1970 e o cron de
+// reconciliação cancelava o plano por "carência vencida"
 const nullableDate = z
-  .union([z.coerce.date({ invalid_type_error: 'Informe uma data válida' }), z.null()])
+  .union([z.null(), z.coerce.date({ invalid_type_error: 'Informe uma data válida' })])
   .optional();
 
 const adminEmpresasPlanoBase = z.object({

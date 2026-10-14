@@ -8,6 +8,7 @@ import { vagasSolicitacoesRoutes } from '@/modules/empresas/vagas-solicitacoes/r
 import { visaoGeralRoutes } from '@/modules/empresas/visao-geral';
 import { pagamentosRoutes } from '@/modules/empresas/pagamentos';
 import { cartoesRoutes } from '@/modules/empresas/cartoes';
+import { bonificacaoRoutes } from '@/modules/empresas/bonificacao/routes';
 import { MinhaEmpresaController } from '@/modules/empresas/controllers/minha-empresa.controller';
 import { supabaseAuthMiddleware } from '@/modules/usuarios/auth';
 import { Roles } from '@/modules/usuarios/enums/Roles';
@@ -112,6 +113,8 @@ router.use('/pagamentos', pagamentosRoutes);
 // Rota de gerenciamento de cartões
 router.use('/cartoes', cartoesRoutes);
 // Centraliza operações administrativas sob o caminho principal de empresas
+router.use('/bonificacao', bonificacaoRoutes);
+
 router.use('/', adminEmpresasRoutes);
 
 export { router as empresasRoutes };

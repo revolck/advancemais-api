@@ -1,6 +1,8 @@
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import { MAX_CURRICULOS } from '@/modules/candidatos/curriculos/services';
+import { situacaoDaEmpresa } from '@/modules/empresas/bonificacao/bonificacao-inauguracao.service';
 import { EmailDispatcher } from '../client/email-dispatcher';
 import type { EmailSendResult } from '../client/types';
 import { EmailConfigManager } from '../config/email-config';
@@ -77,34 +79,75 @@ export function mascararEmail(email: string): string {
   return `${local.slice(0, 2)}***@${dominio}`;
 }
 
+// ---------------------------------------------------------------------------
+// Públicos do primeiro acesso: alunos e empresas importados
+// ---------------------------------------------------------------------------
+
+export const COMUNICADO_PRIMEIRO_ACESSO_EMPRESAS = 'PRIMEIRO_ACESSO_EMPRESAS_2026';
+export type PublicoPrimeiroAcesso = 'ALUNO' | 'EMPRESA';
+
+/** Empresas importadas da base antiga, ativas e com e-mail real */
+export function filtroPopulacaoEmpresas(): Prisma.UsuariosWhereInput {
+  return {
+    role: 'EMPRESA',
+    status: 'ATIVO',
+    authId: { startsWith: 'migracao-empresa-' },
+    NOT: { email: { endsWith: '@sem-email.local' } },
+  };
+}
+
+const PUBLICOS: Record<
+  PublicoPrimeiroAcesso,
+  { comunicado: string; filtro: () => Prisma.UsuariosWhereInput; quem: string }
+> = {
+  ALUNO: { comunicado: COMUNICADO_PRIMEIRO_ACESSO, filtro: filtroPopulacao, quem: 'Aluno' },
+  EMPRESA: {
+    comunicado: COMUNICADO_PRIMEIRO_ACESSO_EMPRESAS,
+    filtro: filtroPopulacaoEmpresas,
+    quem: 'Empresa',
+  },
+};
+
+async function publicoDoUsuario(
+  usuarioId: string,
+): Promise<{ publico: PublicoPrimeiroAcesso; email: string } | null> {
+  for (const publico of ['ALUNO', 'EMPRESA'] as const) {
+    const usuario = await prisma.usuarios.findFirst({
+      where: { id: usuarioId, ...PUBLICOS[publico].filtro() },
+      select: { email: true },
+    });
+    if (usuario) return { publico, email: usuario.email };
+  }
+  return null;
+}
+
 /**
- * O aluno abriu o link e definiu a própria senha: o e-mail funciona e ele já tem
- * acesso. Tira o aluno da fila do comunicado (que trocaria a senha dele por uma
- * provisória) e registra o endereço como válido. Nunca derruba a redefinição.
+ * Abriu o link e definiu a própria senha: o e-mail funciona e o usuário já tem acesso.
+ * Sai da fila do comunicado (que trocaria a senha por uma provisória) e o endereço fica
+ * registrado como válido. Nunca derruba a redefinição.
  */
 export async function registrarAcessoPeloAluno(usuarioId: string): Promise<void> {
   try {
-    const usuario = await prisma.usuarios.findFirst({
-      where: { id: usuarioId, ...filtroPopulacao() },
-      select: { email: true },
-    });
-    if (!usuario) return;
-    const email = normalizarEmail(usuario.email);
+    const encontrado = await publicoDoUsuario(usuarioId);
+    if (!encontrado) return;
+    const { comunicado, quem } = PUBLICOS[encontrado.publico];
+    const email = normalizarEmail(encontrado.email);
     const agora = new Date();
 
+    const chave = { comunicado_usuarioId: { comunicado, usuarioId } };
     const atual = await prisma.comunicadosEnvios.findUnique({
-      where: { comunicado_usuarioId: { comunicado: COMUNICADO_PRIMEIRO_ACESSO, usuarioId } },
+      where: chave,
       select: { status: true },
     });
     if (atual?.status !== 'PROCESSANDO') {
       const dados = {
         email,
         status: 'CONCLUIDO_PELO_ALUNO',
-        erro: 'Aluno definiu a própria senha pela recuperação de senha (CPF)',
+        erro: `${quem} definiu a própria senha pela recuperação de senha`,
       };
       await prisma.comunicadosEnvios.upsert({
-        where: { comunicado_usuarioId: { comunicado: COMUNICADO_PRIMEIRO_ACESSO, usuarioId } },
-        create: { comunicado: COMUNICADO_PRIMEIRO_ACESSO, usuarioId, tentativas: 0, ...dados },
+        where: chave,
+        create: { comunicado, usuarioId, tentativas: 0, ...dados },
         update: dados,
       });
     }
@@ -125,56 +168,104 @@ export async function registrarAcessoPeloAluno(usuarioId: string): Promise<void>
       });
     }
   } catch (error) {
-    log.error(
-      { err: error, usuarioId },
-      '⚠️ Não foi possível registrar o primeiro acesso pelo aluno',
-    );
+    log.error({ err: error, usuarioId }, '⚠️ Não foi possível registrar o primeiro acesso');
   }
 }
 
+/** Alias com nome neutro (vale para alunos e empresas) */
+export const registrarPrimeiroAcessoConcluido = registrarAcessoPeloAluno;
+
 // ---------------------------------------------------------------------------
-// Boas-vindas no primeiro pedido de recuperação do aluno migrado
+// Boas-vindas no primeiro pedido de recuperação (aluno ou empresa importados)
 // ---------------------------------------------------------------------------
 
 /**
- * Aluno importado que ainda não fez o primeiro acesso: recebe o e-mail de boas-vindas
- * (com o link de criar senha) em vez do e-mail padrão de recuperação. Depois que ele
- * cria a senha (CONCLUIDO_PELO_ALUNO) ou entra na plataforma, volta a receber o padrão.
- * Quem se cadastrou sozinho nunca entra aqui.
+ * Importado que ainda não fez o primeiro acesso recebe o e-mail de boas-vindas (com o
+ * link de criar senha) em vez do e-mail padrão de recuperação. Depois que cria a senha
+ * (CONCLUIDO_PELO_ALUNO) ou entra na plataforma, volta a receber o padrão. Quem se
+ * cadastrou sozinho nunca entra aqui. Retorna o público ou null (e-mail padrão).
  */
+export async function publicoBoasVindas(usuarioId: string): Promise<PublicoPrimeiroAcesso | null> {
+  for (const publico of ['ALUNO', 'EMPRESA'] as const) {
+    const { comunicado, filtro } = PUBLICOS[publico];
+    const usuario = await prisma.usuarios.findFirst({
+      where: { id: usuarioId, ...filtro(), ultimoLogin: null },
+      select: { ComunicadosEnvios: { where: { comunicado }, select: { status: true } } },
+    });
+    if (usuario) {
+      return usuario.ComunicadosEnvios[0]?.status === 'CONCLUIDO_PELO_ALUNO' ? null : publico;
+    }
+  }
+  return null;
+}
+
+/** Compatível com a versão só de alunos */
 export async function deveEnviarBoasVindas(usuarioId: string): Promise<boolean> {
-  const usuario = await prisma.usuarios.findFirst({
-    where: { id: usuarioId, ...filtroPopulacao(), ultimoLogin: null },
-    select: {
-      ComunicadosEnvios: {
-        where: { comunicado: COMUNICADO_PRIMEIRO_ACESSO },
-        select: { status: true },
-      },
-    },
+  return (await publicoBoasVindas(usuarioId)) !== null;
+}
+
+async function montarEmailBoasVindas(
+  usuario: {
+    id: string;
+    email: string;
+    nomeCompleto: string;
+    cpf: string | null;
+    cnpj?: string | null;
+  },
+  linkCriarSenha: string,
+  validadeHoras: number,
+  publico: PublicoPrimeiroAcesso,
+) {
+  const links = await montarLinks();
+  if (publico === 'EMPRESA') {
+    const { bonificacao } = await situacaoDaEmpresa(usuario.id);
+    return EmailTemplates.generateCompanyWelcomeEmail({
+      nomeEmpresa: usuario.nomeCompleto,
+      cnpj: usuario.cnpj ?? null,
+      linkCriarSenha,
+      validadeHoras,
+      platformUrl: links.platformUrl,
+      heroImageUrl: links.heroImageUrl,
+      videoUrl: links.videoUrl,
+      bonificacao: bonificacao
+        ? {
+            planoNome: bonificacao.planoNome,
+            quantidadeVagas: bonificacao.quantidadeVagas,
+            validoAte: new Date(bonificacao.validoAte),
+          }
+        : null,
+    });
+  }
+  return EmailTemplates.generatePlatformWelcomeEmail({
+    nomeCompleto: usuario.nomeCompleto,
+    ...links,
+    maxCurriculos: MAX_CURRICULOS,
+    primeiroAcesso: { cpf: usuario.cpf ?? '', linkCriarSenha, validadeHoras },
   });
-  if (!usuario) return false;
-  return usuario.ComunicadosEnvios[0]?.status !== 'CONCLUIDO_PELO_ALUNO';
 }
 
 /** Envia o e-mail de boas-vindas com o link de criar senha (token da recuperação) */
 export async function enviarBoasVindasComLink(
-  usuario: { id: string; email: string; nomeCompleto: string; cpf: string | null },
+  usuario: {
+    id: string;
+    email: string;
+    nomeCompleto: string;
+    cpf: string | null;
+    cnpj?: string | null;
+  },
   token: string,
+  publico: PublicoPrimeiroAcesso = 'ALUNO',
 ): Promise<EmailSendResult> {
   const config = await EmailConfigManager.getInstance().getRuntimeConfig();
   const linkCriarSenha = `${config.urls.passwordRecovery}?tp=${token}&ep=${encodeURIComponent(
     usuario.email,
   )}`;
-  const template = EmailTemplates.generatePlatformWelcomeEmail({
-    nomeCompleto: usuario.nomeCompleto,
-    ...(await montarLinks()),
-    maxCurriculos: MAX_CURRICULOS,
-    primeiroAcesso: {
-      cpf: usuario.cpf ?? '',
-      linkCriarSenha,
-      validadeHoras: config.passwordRecovery.tokenExpirationMinutes / 60,
-    },
-  });
+  const template = await montarEmailBoasVindas(
+    usuario,
+    linkCriarSenha,
+    config.passwordRecovery.tokenExpirationMinutes / 60,
+    publico,
+  );
 
   const resultado = await EmailDispatcher.getInstance().send({
     to: normalizarEmail(usuario.email),
@@ -182,11 +273,11 @@ export async function enviarBoasVindasComLink(
     subject: template.subject,
     html: template.html,
     text: template.text,
-    tags: [TAG_COMUNICADO],
+    tags: [publico === 'EMPRESA' ? TAG_EMPRESAS : TAG_COMUNICADO],
   });
 
   if (resultado.success && !resultado.simulated) {
-    await registrarBoasVindasEnviadas(usuario.id, usuario.email, resultado);
+    await registrarBoasVindasEnviadas(usuario.id, usuario.email, resultado, publico);
   }
   try {
     await prisma.logEmail.create({
@@ -206,17 +297,22 @@ export async function enviarBoasVindasComLink(
   return resultado;
 }
 
+/** Etiqueta na Brevo para as boas-vindas das empresas */
+export const TAG_EMPRESAS = 'boas-vindas-empresas';
+
 /**
- * Registra no comunicado: o aluno recebeu as boas-vindas (fica fora do envio em massa,
- * que mandaria outra senha) e a entrega/devolução é acompanhada pela sincronização.
+ * Registra no comunicado: recebeu as boas-vindas (fica fora do envio em massa, que
+ * mandaria outra senha) e a entrega/devolução é acompanhada pela sincronização.
  */
 export async function registrarBoasVindasEnviadas(
   usuarioId: string,
   email: string,
   envio: { provider?: string | null; messageId?: string | null },
+  publico: PublicoPrimeiroAcesso = 'ALUNO',
 ): Promise<void> {
   try {
-    const chave = { comunicado_usuarioId: { comunicado: COMUNICADO_PRIMEIRO_ACESSO, usuarioId } };
+    const { comunicado, quem } = PUBLICOS[publico];
+    const chave = { comunicado_usuarioId: { comunicado, usuarioId } };
     const atual = await prisma.comunicadosEnvios.findUnique({
       where: chave,
       select: { status: true },
@@ -231,11 +327,11 @@ export async function registrarBoasVindasEnviadas(
       messageId: envio.messageId ?? null,
       enviadoEm: agora,
       entregueEm: null,
-      erro: 'Boas-vindas com link de criar senha (pedido do aluno em "Esqueci minha senha")',
+      erro: `Boas-vindas com link de criar senha (pedido ${quem === 'Empresa' ? 'da empresa' : 'do aluno'} em "Esqueci minha senha")`,
     };
     await prisma.comunicadosEnvios.upsert({
       where: chave,
-      create: { comunicado: COMUNICADO_PRIMEIRO_ACESSO, usuarioId, tentativas: 1, ...dados },
+      create: { comunicado, usuarioId, tentativas: 1, ...dados },
       update: { ...dados, tentativas: { increment: 1 } },
     });
   } catch (error) {

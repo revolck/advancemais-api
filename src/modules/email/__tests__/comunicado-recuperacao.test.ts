@@ -19,6 +19,10 @@ jest.mock('@/config/prisma', () => ({
   },
 }));
 jest.mock('@/modules/candidatos/curriculos/services', () => ({ MAX_CURRICULOS: 5 }));
+const mockSituacaoEmpresa = jest.fn();
+jest.mock('@/modules/empresas/bonificacao/bonificacao-inauguracao.service', () => ({
+  situacaoDaEmpresa: (...a: unknown[]) => mockSituacaoEmpresa(...a),
+}));
 jest.mock('../client/email-dispatcher', () => ({
   EmailDispatcher: { getInstance: () => ({ send: (...a: unknown[]) => mockSend(...a) }) },
 }));
@@ -52,6 +56,7 @@ jest.mock('../comunicados/primeiro-acesso.service', () => ({
 import {
   deveEnviarBoasVindas,
   enviarBoasVindasComLink,
+  publicoBoasVindas,
   mascararEmail,
   registrarAcessoPeloAluno,
   verificarEnvioRecuperacao,
@@ -192,8 +197,8 @@ describe('boas-vindas no primeiro pedido de recuperação', () => {
       ComunicadosEnvios: [{ status: 'CONCLUIDO_PELO_ALUNO' }],
     });
     expect(await deveEnviarBoasVindas('u1')).toBe(false);
-    // fora do filtro (cadastro próprio, ou ultimoLogin preenchido)
-    mockUsuarioFindFirst.mockResolvedValueOnce(null);
+    // fora do filtro de alunos e de empresas (cadastro próprio, ou ultimoLogin preenchido)
+    mockUsuarioFindFirst.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
     expect(await deveEnviarBoasVindas('u-novo')).toBe(false);
   });
 
@@ -287,5 +292,68 @@ describe('template de boas-vindas', () => {
     expect(t.html).toContain('Abc@2345xyZ9');
     expect(t.html).toContain('Fazer meu primeiro acesso');
     expect(t.html).not.toContain('Criar minha senha');
+  });
+});
+
+describe('boas-vindas para empresas importadas', () => {
+  const empresa = {
+    id: 'emp1',
+    email: 'RH@Empresa.com.br',
+    nomeCompleto: 'Atlântica Motos Ltda',
+    cpf: null,
+    cnpj: '25089257000192',
+  };
+
+  it('empresa importada sem primeiro acesso recebe as boas-vindas de empresa', async () => {
+    mockUsuarioFindFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ ComunicadosEnvios: [] });
+    expect(await publicoBoasVindas('emp1')).toBe('EMPRESA');
+    const whereEmpresa = mockUsuarioFindFirst.mock.calls[1][0].where;
+    expect(whereEmpresa).toMatchObject({
+      role: 'EMPRESA',
+      authId: { startsWith: 'migracao-empresa-' },
+      ultimoLogin: null,
+    });
+  });
+
+  it('e-mail com o mês grátis quando a bonificação existe', async () => {
+    mockSituacaoEmpresa.mockResolvedValue({
+      bonificacao: {
+        planoNome: 'Inicial',
+        quantidadeVagas: 3,
+        validoAte: '2026-11-15T02:59:59.999Z',
+      },
+    });
+    mockSend.mockResolvedValue({ success: true, provider: 'smtp', messageId: 'm-emp' });
+    mockEnvioFindUnique.mockResolvedValue(null);
+
+    await enviarBoasVindasComLink(empresa, 'tok', 'EMPRESA');
+
+    const [email] = mockSend.mock.calls[0];
+    expect(email.subject).toBe('A nova Advance+ está no ar: 1 mês grátis para a sua empresa 🎁');
+    expect(email.tags).toEqual(['boas-vindas-empresas']);
+    expect(email.html).toContain('1 mês grátis do plano Inicial');
+    expect(email.html).toContain('até 3 vagas publicadas');
+    expect(email.html).toContain('válido até 14/11/2026');
+    expect(email.html).toContain('Seu CNPJ (**.***.257/0001-**)');
+    expect(email.html).toContain('Criar minha senha');
+    expect(mockEnvioUpsert.mock.calls[0][0].create).toMatchObject({
+      comunicado: 'PRIMEIRO_ACESSO_EMPRESAS_2026',
+      usuarioId: 'emp1',
+      status: 'ENVIADO',
+    });
+  });
+
+  it('sem bonificação ativa, não promete mês grátis', async () => {
+    mockSituacaoEmpresa.mockResolvedValue({ bonificacao: null });
+    mockSend.mockResolvedValue({ success: true, provider: 'smtp', messageId: 'm' });
+    mockEnvioFindUnique.mockResolvedValue(null);
+
+    await enviarBoasVindasComLink(empresa, 'tok', 'EMPRESA');
+
+    const [email] = mockSend.mock.calls[0];
+    expect(email.subject).toBe('A nova Advance+ está no ar 💼');
+    expect(email.html).not.toContain('mês grátis');
   });
 });

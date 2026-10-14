@@ -129,6 +129,29 @@ export interface PlatformWelcomeEmailData {
   primeiroAcesso?: PrimeiroAcessoComSenha | PrimeiroAcessoComLink;
 }
 
+export interface CompanyWelcomeEmailData {
+  nomeEmpresa: string;
+  cnpj?: string | null;
+  /** Link único de criação de senha (mesmo fluxo seguro da recuperação) */
+  linkCriarSenha: string;
+  validadeHoras: number;
+  platformUrl: string;
+  heroImageUrl?: string;
+  videoUrl?: string;
+  /** Mês grátis da inauguração: só aparece se a empresa realmente tiver */
+  bonificacao?: { planoNome: string; quantidadeVagas: number; validoAte: Date } | null;
+}
+
+export interface FreePlanNoticeEmailData {
+  nomeEmpresa: string;
+  planoNome: string;
+  /** Último dia de uso (exibido como dd/mm/aaaa) */
+  validoAte: Date;
+  planosUrl: string;
+  /** true = mês grátis da inauguração; false = período de teste comum */
+  inauguracao: boolean;
+}
+
 export interface PrimeiroAcessoComSenha {
   cpf: string;
   senhaProvisoria: string;
@@ -1555,6 +1578,309 @@ ${this.getSignatureText()}
 ${data.unsubscribeUrl ? `\nNão quer mais receber estes e-mails? ${data.unsubscribeUrl}\n` : ''}
 © ${currentYear} Advance+ - Todos os direitos reservados`;
 
+    return { subject, html, text };
+  }
+
+  private static formatarDataBr(data: Date): string {
+    return data.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+  }
+
+  /** CNPJ com só o meio visível: **.***.257/0001-** */
+  private static maskCnpj(cnpj?: string | null): string {
+    const digits = (cnpj ?? '').replace(/\D/g, '');
+    if (digits.length !== 14) return 'seu CNPJ';
+    return `**.***.${digits.slice(5, 8)}/${digits.slice(8, 12)}-**`;
+  }
+
+  /**
+   * Boas-vindas da nova plataforma para empresas importadas (primeiro pedido de
+   * "Esqueci minha senha"), com o link de criar senha e, se houver, o mês grátis.
+   */
+  public static generateCompanyWelcomeEmail(data: CompanyWelcomeEmailData): EmailTemplate {
+    const currentYear = this.getCurrentYear();
+    const bonus = data.bonificacao ?? null;
+    const subject = bonus
+      ? 'A nova Advance+ está no ar: 1 mês grátis para a sua empresa 🎁'
+      : 'A nova Advance+ está no ar 💼';
+    const validoAte = bonus ? this.formatarDataBr(bonus.validoAte) : '';
+    const vagasTexto = bonus
+      ? `até ${bonus.quantidadeVagas} vaga${bonus.quantidadeVagas === 1 ? '' : 's'} publicada${bonus.quantidadeVagas === 1 ? '' : 's'}`
+      : '';
+    const preheader = bonus
+      ? `Sua empresa ganhou 1 mês grátis do plano ${bonus.planoNome} para publicar vagas e encontrar talentos.`
+      : 'Publique vagas, organize candidatos e agende entrevistas em um só lugar.';
+    const horas = Math.round(data.validadeHoras);
+    const validadeTexto =
+      data.validadeHoras >= 1
+        ? `${horas} hora${horas === 1 ? '' : 's'}`
+        : `${Math.round(data.validadeHoras * 60)} minutos`;
+
+    const features = [
+      {
+        icon: '📢',
+        title: 'Publique vagas em minutos',
+        text: 'Descreva a oportunidade e comece a receber candidatos no mesmo dia.',
+      },
+      {
+        icon: '🎯',
+        title: 'Organize seus candidatos',
+        text: 'Acompanhe cada etapa do processo seletivo sem planilhas.',
+      },
+      {
+        icon: '📅',
+        title: 'Agende entrevistas',
+        text: 'Marque e acompanhe as entrevistas direto pela plataforma.',
+      },
+    ];
+
+    const featureRows = features
+      .map(
+        (feature) => `
+            <tr>
+              <td style="padding: 0 0 16px 0;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                  <tr>
+                    <td width="56" valign="top" style="padding: 20px 0 20px 20px; font-size: 28px; line-height: 1;">${feature.icon}</td>
+                    <td valign="top" style="padding: 20px 20px 20px 12px;">
+                      <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">${feature.title}</div>
+                      <div style="font-size: 14px; line-height: 1.6; color: #475569;">${feature.text}</div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>`,
+      )
+      .join('');
+
+    const logoHtml = `<img src="https://advancemais.com/images/logos/logo_branco.png" alt="Advance+" width="180" style="display: block; margin: 0 auto; width: 180px; max-width: 60%; height: auto; border: 0;" />`;
+    const headline = 'A nova Advance+ está no ar 💼';
+    const mediaLink = data.videoUrl || data.platformUrl;
+    const hero = data.heroImageUrl
+      ? `
+        <div style="background-color: #00257d; padding: 28px 24px;">${logoHtml}</div>
+        <div style="background-color: #ffffff; text-align: center; padding: 24px 24px 0;">
+          <a href="${mediaLink}" style="display: block; text-decoration: none;">
+            <img src="${data.heroImageUrl}" alt="O novo site da Advance+" width="400" style="display: block; margin: 0 auto; width: 400px; max-width: 100%; height: auto; border: 0; border-radius: 12px;" />
+          </a>
+          ${
+            data.videoUrl
+              ? `<a href="${data.videoUrl}" style="display: inline-block; margin-top: 12px; color: #00257d; font-size: 14px; font-weight: 700; text-decoration: none;">▶ Assistir ao vídeo completo</a>`
+              : ''
+          }
+          <div style="font-size: 24px; line-height: 1.3; font-weight: 800; color: #0f172a; margin-top: 20px;">${headline}</div>
+        </div>`
+      : `
+        <div style="background-color: #00257d; background-image: linear-gradient(135deg, #00257d 0%, #1e40af 100%); padding: 32px 24px 40px; text-align: center;">
+          ${logoHtml}
+          <div style="font-size: 26px; line-height: 1.3; font-weight: 800; color: #ffffff; margin-top: 28px;">${headline}</div>
+        </div>`;
+
+    const bonusHtml = bonus
+      ? `
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 8px 0 16px; background-color: #ecfdf5; border: 2px solid #10b981; border-radius: 12px;">
+          <tr>
+            <td style="padding: 20px 24px;">
+              <div style="font-size: 16px; font-weight: 800; color: #065f46; margin-bottom: 8px;">🎁 Presente de inauguração</div>
+              <div style="font-size: 14px; line-height: 1.6; color: #064e3b;">
+                Sua empresa ganhou <strong>1 mês grátis do plano ${bonus.planoNome}</strong>, com ${vagasTexto},
+                <strong>válido até ${validoAte}</strong>. Não precisa cadastrar cartão.
+              </div>
+            </td>
+          </tr>
+        </table>`
+      : '';
+
+    const accessHtml = `
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 8px 0 24px; border: 2px solid #00257d; border-radius: 12px;">
+          <tr>
+            <td style="padding: 20px 24px;">
+              <div style="font-size: 16px; font-weight: 800; color: #00257d; margin-bottom: 12px;">🔐 Seu primeiro acesso</div>
+              <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: #64748b;">Login</div>
+              <div style="font-size: 15px; font-weight: 700; color: #0f172a; margin: 4px 0 14px;">Seu CNPJ (${this.maskCnpj(data.cnpj)})</div>
+              <div style="font-size: 14px; line-height: 1.6; color: #334155;">
+                Clique em <strong>Criar minha senha</strong> e escolha a senha da sua empresa.
+              </div>
+              <div style="font-size: 13px; line-height: 1.6; color: #7f1d1d; background-color: #fef2f2; border-radius: 8px; padding: 12px 14px; margin-top: 14px;">
+                <strong>Importante:</strong> o link vale por ${validadeTexto} e só pode ser usado uma vez.
+                Se você não pediu este acesso, ignore este e-mail.
+              </div>
+            </td>
+          </tr>
+        </table>`;
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nova plataforma - Advance+</title>
+  ${this.getBaseStyles()}
+</head>
+<body>
+  <div style="display: none; max-height: 0; overflow: hidden; opacity: 0;">${preheader}</div>
+  <div class="email-wrapper">
+    <div class="email-container">
+
+      ${hero}
+
+      <div class="content">
+        <div class="greeting">Olá, ${data.nomeEmpresa}!</div>
+
+        <div class="message" style="margin-bottom: 24px;">
+          A Advance+ está de cara nova! Criamos uma plataforma moderna para conectar a sua empresa
+          aos talentos certos, com tudo em um só lugar:
+        </div>
+
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          ${featureRows}
+        </table>
+
+        ${bonusHtml}
+
+        ${accessHtml}
+
+        <div style="text-align: center; margin-top: 16px;">
+          <a href="${data.linkCriarSenha}" class="cta-button" style="color: #ffffff !important;">Criar minha senha</a>
+        </div>
+
+        ${this.getSignatureHtml()}
+
+      </div>
+
+      <div class="footer">
+        <div class="footer-text">
+          Você recebeu este e-mail porque pediu acesso à conta da sua empresa na Advance+.<br />
+          Advance+ © ${currentYear} todos os direitos reservados.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>`;
+
+    const text = `${subject}
+
+Olá, ${data.nomeEmpresa}!
+
+A Advance+ está de cara nova! Criamos uma plataforma moderna para conectar a sua empresa aos talentos certos, com tudo em um só lugar:
+
+${features.map((feature) => `- ${feature.title}: ${feature.text}`).join('\n')}
+${
+  bonus
+    ? `
+PRESENTE DE INAUGURAÇÃO
+Sua empresa ganhou 1 mês grátis do plano ${bonus.planoNome}, com ${vagasTexto}, válido até ${validoAte}. Não precisa cadastrar cartão.
+`
+    : ''
+}
+SEU PRIMEIRO ACESSO
+Login: seu CNPJ (${this.maskCnpj(data.cnpj)})
+Crie sua senha: ${data.linkCriarSenha}
+Importante: o link vale por ${validadeTexto} e só pode ser usado uma vez. Se você não pediu este acesso, ignore este e-mail.
+
+${this.getSignatureText()}
+
+© ${currentYear} Advance+ - Todos os direitos reservados`;
+
+    return { subject, html, text };
+  }
+
+  /** Aviso de que o plano gratuito termina em poucos dias */
+  public static generateFreePlanEndingEmail(data: FreePlanNoticeEmailData): EmailTemplate {
+    const periodo = data.inauguracao ? 'mês grátis' : 'período gratuito';
+    const ate = this.formatarDataBr(data.validoAte);
+    const subject = `Faltam poucos dias para o fim do seu ${periodo} na Advance+`;
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+  ${this.getBaseStyles()}
+</head>
+<body>
+  <div class="email-wrapper">
+    <div class="email-container">
+      <div class="header"><div class="logo"><img src="https://advancemais.com/images/logos/logo_branco.png" alt="Advance+" /></div></div>
+      <div class="content">
+        <div class="greeting">Olá, ${data.nomeEmpresa}!</div>
+        <div class="message">
+          Seu plano <strong>${data.planoNome}</strong> gratuito termina em <strong>${ate}</strong>.
+          Para manter suas vagas publicadas, é só escolher um plano em "Planos e pagamentos".
+          Se não fizer nada, as vagas ficam salvas como rascunho.
+        </div>
+        <div style="text-align: center; margin-top: 16px;">
+          <a href="${data.planosUrl}" class="cta-button" style="color: #ffffff !important;">Ver planos</a>
+        </div>
+        ${this.getSignatureHtml()}
+      </div>
+      <div class="footer"><div class="footer-text">Advance+ © ${this.getCurrentYear()} todos os direitos reservados.</div></div>
+    </div>
+  </div>
+</body>
+</html>`;
+    const text = `${subject}
+
+Olá, ${data.nomeEmpresa}!
+
+Seu plano ${data.planoNome} gratuito termina em ${ate}. Para manter suas vagas publicadas, é só escolher um plano em "Planos e pagamentos". Se não fizer nada, as vagas ficam salvas como rascunho.
+
+Ver planos: ${data.planosUrl}
+
+${this.getSignatureText()}`;
+    return { subject, html, text };
+  }
+
+  /** Aviso de que o plano gratuito terminou (vagas salvas como rascunho) */
+  public static generateFreePlanEndedEmail(
+    data: Omit<FreePlanNoticeEmailData, 'validoAte'>,
+  ): EmailTemplate {
+    const periodo = data.inauguracao ? 'mês grátis' : 'período gratuito';
+    const subject = `Seu ${periodo} na Advance+ chegou ao fim`;
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+  ${this.getBaseStyles()}
+</head>
+<body>
+  <div class="email-wrapper">
+    <div class="email-container">
+      <div class="header"><div class="logo"><img src="https://advancemais.com/images/logos/logo_branco.png" alt="Advance+" /></div></div>
+      <div class="content">
+        <div class="greeting">Olá, ${data.nomeEmpresa}!</div>
+        <div class="message">
+          ⏳ Seu ${periodo} do plano <strong>${data.planoNome}</strong> chegou ao fim.
+          Esperamos que a nova Advance+ tenha ajudado a sua empresa a encontrar ótimos talentos!
+        </div>
+        <div class="message">
+          Suas vagas foram salvas como <strong>rascunho</strong>, então nada foi perdido.
+          Escolha um plano para republicá-las e continuar recebendo candidatos.
+        </div>
+        <div style="text-align: center; margin-top: 16px;">
+          <a href="${data.planosUrl}" class="cta-button" style="color: #ffffff !important;">Ver planos</a>
+        </div>
+        ${this.getSignatureHtml()}
+      </div>
+      <div class="footer"><div class="footer-text">Advance+ © ${this.getCurrentYear()} todos os direitos reservados.</div></div>
+    </div>
+  </div>
+</body>
+</html>`;
+    const text = `${subject}
+
+Olá, ${data.nomeEmpresa}!
+
+Seu ${periodo} do plano ${data.planoNome} chegou ao fim. Esperamos que a nova Advance+ tenha ajudado a sua empresa a encontrar ótimos talentos!
+
+Suas vagas foram salvas como rascunho, então nada foi perdido. Escolha um plano para republicá-las e continuar recebendo candidatos.
+
+Ver planos: ${data.planosUrl}
+
+${this.getSignatureText()}`;
     return { subject, html, text };
   }
 }

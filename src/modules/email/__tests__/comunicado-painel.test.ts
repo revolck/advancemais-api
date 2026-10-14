@@ -67,6 +67,16 @@ describe('pendências', () => {
     ).toBe(tipo);
   });
 
+  it('quem ativou o acesso pelo CPF não é pendência', () => {
+    expect(
+      classificarPendencia(
+        { email: 'a@gmail.com', precisaTrocarSenha: false },
+        envio('CONCLUIDO_PELO_ALUNO'),
+        validacao('INVALIDO'),
+      ),
+    ).toBeNull();
+  });
+
   it('falha e devolução temporária só viram pendência depois do limite de tentativas', () => {
     const u = { email: 'a@gmail.com', precisaTrocarSenha: false };
     expect(classificarPendencia(u, envio('FALHA', { tentativas: 2 }), undefined)).toBeNull();

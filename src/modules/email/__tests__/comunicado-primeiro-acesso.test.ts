@@ -134,11 +134,20 @@ describe('público e elegibilidade', () => {
       status: 'ATIVO',
       authId: { startsWith: 'migracao-aluno-' },
       NOT: { email: { endsWith: '@sem-email.local' } },
+      // quem já entrou na plataforma nova nunca recebe senha provisória
+      ultimoLogin: null,
     });
     const regras = where.ComunicadosEnvios.none.OR;
     // nunca reenviar para quem já recebeu, voltou, está em dúvida ou foi revogado
     expect(regras[0].status.in).toEqual(
-      expect.arrayContaining(['ENVIADO', 'DEVOLVIDO', 'INCERTO', 'PROCESSANDO', 'REVOGADO']),
+      expect.arrayContaining([
+        'ENVIADO',
+        'DEVOLVIDO',
+        'INCERTO',
+        'PROCESSANDO',
+        'REVOGADO',
+        'CONCLUIDO_PELO_ALUNO',
+      ]),
     );
     expect(regras[0].status.in).not.toContain('REABERTO');
     expect(regras[1]).toEqual({ tentativas: { gte: 3 } });

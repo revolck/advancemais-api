@@ -118,6 +118,8 @@ export function classificarPendencia(
           motivo: envio.erro ?? 'Domínio não recebe e-mail',
           sugestao: null,
         };
+      case 'CONCLUIDO_PELO_ALUNO':
+        return null;
       default:
       // PROCESSANDO e REABERTO: vale a validação do e-mail atual
     }
@@ -491,6 +493,7 @@ export async function obterPainel(agora = new Date()) {
       incertos: porStatus.INCERTO ?? 0,
       reabertos: porStatus.REABERTO ?? 0,
       revogados: porStatus.REVOGADO ?? 0,
+      ativaramPeloCpf: porStatus.CONCLUIDO_PELO_ALUNO ?? 0,
       emProcessamento: porStatus.PROCESSANDO ?? 0,
       porStatus,
     },

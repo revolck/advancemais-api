@@ -17,6 +17,11 @@ import {
 } from '../utils/validation';
 import { invalidateUserCache } from '../utils/cache';
 import { recordUserAuditEvent } from '../utils/user-history';
+import {
+  mascararEmail,
+  registrarAcessoPeloAluno,
+  verificarEnvioRecuperacao,
+} from '../../email/comunicados/primeiro-acesso.recuperacao';
 
 /**
  * Interface para solicitação de recuperação de senha
@@ -213,6 +218,19 @@ export class PasswordRecoveryController {
         '✅ Usuário encontrado',
       );
 
+      // Não gera devolução: e-mail fictício, devolvido, bloqueado ou com erro de digitação
+      const decisaoEnvio = await verificarEnvioRecuperacao(usuario.email);
+      if (!decisaoEnvio.permitido) {
+        log.warn(
+          { usuarioId: usuario.id, codigo: decisaoEnvio.codigo },
+          '⚠️ Recuperação não enviada: e-mail do cadastro não recebe mensagens',
+        );
+        return res.status(422).json({
+          code: decisaoEnvio.codigo,
+          message: decisaoEnvio.mensagem,
+        });
+      }
+
       // Verifica limite de tentativas
       const agora = new Date();
       const runtimeConfig = await this.emailConfigManager.getRuntimeConfig();
@@ -315,6 +333,7 @@ export class PasswordRecoveryController {
       res.json({
         message:
           'Se o identificador estiver correto, você receberá um email com instruções para recuperação',
+        emailMascarado: mascararEmail(usuario.email),
       });
     } catch (error) {
       log.error({ err: error }, 'Erro na solicitação de recuperação');
@@ -525,6 +544,8 @@ export class PasswordRecoveryController {
       });
 
       await invalidateUserCache(recuperacao.Usuarios);
+      // Aluno migrado que ativou o acesso sozinho sai da fila do comunicado
+      await registrarAcessoPeloAluno(recuperacao.Usuarios.id);
 
       res.json({
         message: 'Senha redefinida com sucesso',

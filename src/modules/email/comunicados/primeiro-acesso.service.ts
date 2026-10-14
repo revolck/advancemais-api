@@ -40,7 +40,9 @@ export type StatusEnvio =
   | 'INCERTO'
   | 'DESCARTADO'
   | 'REABERTO'
-  | 'REVOGADO';
+  | 'REVOGADO'
+  /** O aluno definiu a própria senha pela recuperação (CPF): já tem acesso */
+  | 'CONCLUIDO_PELO_ALUNO';
 
 /** Já atendidos ou à espera de decisão humana: o ciclo automático não envia de novo */
 const STATUS_CONCLUIDOS: StatusEnvio[] = [
@@ -50,6 +52,7 @@ const STATUS_CONCLUIDOS: StatusEnvio[] = [
   'INCERTO',
   'DESCARTADO',
   'REVOGADO',
+  'CONCLUIDO_PELO_ALUNO',
 ];
 /** Podem receber nova tentativa, respeitando espera e limite */
 const STATUS_REPROCESSAVEIS: StatusEnvio[] = ['FALHA', 'DEVOLUCAO_TEMPORARIA', 'REABERTO'];
@@ -86,6 +89,8 @@ export function filtroPopulacao(): Prisma.UsuariosWhereInput {
 export function filtroElegiveis(agora = new Date()): Prisma.UsuariosWhereInput {
   return {
     ...filtroPopulacao(),
+    // Quem já entrou na plataforma nova tem acesso: a senha dele nunca é trocada
+    ultimoLogin: null,
     ComunicadosEnvios: {
       none: {
         comunicado: COMUNICADO_PRIMEIRO_ACESSO,

@@ -9,6 +9,7 @@ jest.mock('../comunicados/primeiro-acesso.cron', () => ({
 import {
   avaliarSituacao,
   classificarPendencia,
+  classificarProgresso,
   mascararCpf,
   type EntradaSituacao,
 } from '../comunicados/primeiro-acesso.painel';
@@ -118,6 +119,44 @@ describe('pendências', () => {
   it('mascara o CPF', () => {
     expect(mascararCpf('123.456.789-09')).toBe('***.456.789-**');
     expect(mascararCpf(null)).toBeNull();
+  });
+});
+
+describe('progresso dos alunos', () => {
+  const semLogin = { ultimoLogin: null };
+  const pendencia = { tipo: 'EMAIL_DEVOLVIDO' as const, motivo: 'x', sugestao: null };
+
+  it('pendência vem primeiro, para bater com a lista de pendências', () => {
+    expect(classificarProgresso({ ultimoLogin: new Date() }, undefined, pendencia, false)).toBe(
+      'precisamAtencao',
+    );
+  });
+
+  it('já acessou: entrou na plataforma ou criou a senha pela recuperação', () => {
+    expect(classificarProgresso({ ultimoLogin: new Date() }, undefined, null, false)).toBe(
+      'jaAcessaram',
+    );
+    expect(
+      classificarProgresso(
+        semLogin,
+        { status: 'CONCLUIDO_PELO_ALUNO', enviadoEm: null },
+        null,
+        false,
+      ),
+    ).toBe('jaAcessaram');
+  });
+
+  it('recebeu o comunicado e ainda não entrou', () => {
+    expect(
+      classificarProgresso(semLogin, { status: 'ENVIADO', enviadoEm: new Date() }, null, false),
+    ).toBe('receberamComunicado');
+  });
+
+  it('na fila sem envio; o resto está em processamento ou nova tentativa', () => {
+    expect(classificarProgresso(semLogin, undefined, null, true)).toBe('aguardandoPrimeiroAcesso');
+    expect(classificarProgresso(semLogin, { status: 'FALHA', enviadoEm: null }, null, false)).toBe(
+      'emAndamento',
+    );
   });
 });
 

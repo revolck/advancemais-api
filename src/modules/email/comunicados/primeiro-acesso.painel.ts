@@ -141,6 +141,34 @@ export function classificarPendencia(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Progresso (cada aluno conta em uma única faixa; a soma é o total da campanha)
+// ---------------------------------------------------------------------------
+
+export const FAIXAS_PROGRESSO = [
+  'precisamAtencao',
+  'jaAcessaram',
+  'receberamComunicado',
+  'aguardandoPrimeiroAcesso',
+  'emAndamento',
+] as const;
+export type FaixaProgresso = (typeof FAIXAS_PROGRESSO)[number];
+
+/** Pendência primeiro (bate com a lista de pendências), depois quem já tem acesso */
+export function classificarProgresso(
+  usuario: { ultimoLogin: Date | null },
+  envio: { status: string; enviadoEm: Date | null } | undefined,
+  pendencia: Pendencia | null,
+  naFila: boolean,
+): FaixaProgresso {
+  if (pendencia) return 'precisamAtencao';
+  if (usuario.ultimoLogin || envio?.status === 'CONCLUIDO_PELO_ALUNO') return 'jaAcessaram';
+  if (envio?.enviadoEm) return 'receberamComunicado';
+  if (naFila) return 'aguardandoPrimeiroAcesso';
+  // processando agora ou aguardando nova tentativa
+  return 'emAndamento';
+}
+
 export const mascararCpf = (cpf: string | null) => {
   const digitos = (cpf ?? '').replace(/\D/g, '');
   return digitos.length === 11 ? `***.${digitos.slice(3, 6)}.${digitos.slice(6, 9)}-**` : null;
@@ -156,6 +184,7 @@ async function carregarBase() {
         email: true,
         cpf: true,
         precisaTrocarSenha: true,
+        ultimoLogin: true,
         UsuariosInformation: { select: { telefone: true } },
       },
       orderBy: { nomeCompleto: 'asc' },
@@ -420,14 +449,21 @@ export async function obterPainel(agora = new Date()) {
 
   let precisamCorrecao = 0;
   let senhasPossivelmenteExpostas = 0;
+  const naFila = new Set(elegiveis.map((e) => e.id));
+  const progresso = Object.fromEntries(FAIXAS_PROGRESSO.map((f) => [f, 0])) as Record<
+    FaixaProgresso,
+    number
+  >;
   for (const usuario of usuarios) {
+    const envio = envios.get(usuario.id);
     const pendencia = classificarPendencia(
       usuario,
-      envios.get(usuario.id),
+      envio,
       validacoes.get(normalizarEmail(usuario.email)),
     );
     if (pendencia) precisamCorrecao += 1;
     if (pendencia?.tipo === 'SENHA_POSSIVELMENTE_EXPOSTA') senhasPossivelmenteExpostas += 1;
+    progresso[classificarProgresso(usuario, envio, pendencia, naFila.has(usuario.id))] += 1;
   }
 
   let creditosBrevo: number | null = null;
@@ -476,6 +512,7 @@ export async function obterPainel(agora = new Date()) {
       validadorConfigurado: temValidador,
     },
     totalAlunos: usuarios.length,
+    progresso,
     fila: {
       restantes: elegiveis.length,
       prontosParaEnvio,

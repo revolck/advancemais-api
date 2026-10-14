@@ -152,12 +152,9 @@ export const clientesService = {
       include: { PlanosEmpresariais: true },
     });
 
-    if (!plano) return null;
-
-    return {
-      ...(plano.PlanosEmpresariais as any),
-      modo: plano.modo,
-    };
+    // Contrato da empresa (id = EmpresasPlano) com o plano dentro: quem chama lê
+    // PlanosEmpresariais.quantidadeVagas (limite) e usa o id para os destaques
+    return plano;
   },
 
   assign: async (data: CreateClientePlanoInput) => {

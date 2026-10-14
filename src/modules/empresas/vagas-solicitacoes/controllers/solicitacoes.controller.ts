@@ -113,6 +113,16 @@ export class SolicitacoesController {
         });
       }
 
+      if (error?.code === 'PLANO_EMPRESARIAL_LIMIT_VAGAS') {
+        const limite = Number(error.limite) || 0;
+        return res.status(409).json({
+          success: false,
+          code: 'PLANO_EMPRESARIAL_LIMIT_VAGAS',
+          limite,
+          message: `A empresa já tem ${limite} vaga${limite === 1 ? '' : 's'} publicada${limite === 1 ? '' : 's'}, o limite do plano. Para aprovar esta, encerre ou pause uma vaga publicada ou faça upgrade do plano.`,
+        });
+      }
+
       if (error?.code === 'SOLICITACAO_INVALID_STATUS') {
         return res.status(400).json({
           success: false,

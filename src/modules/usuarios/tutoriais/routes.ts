@@ -27,7 +27,7 @@ const router = Router();
  *         description: "Mapa chave → { status, em }"
  * /api/v1/usuarios/tutoriais/{chave}:
  *   put:
- *     summary: Marca um tutorial como CONCLUIDO ou PULADO
+ *     summary: Marca um tutorial como CONCLUIDO ou PULADO (ou o assistente como OCULTO/VISIVEL)
  *     tags: [Usuários]
  *     security:
  *       - bearerAuth: []
@@ -39,7 +39,7 @@ const router = Router();
  *             type: object
  *             required: [status]
  *             properties:
- *               status: { type: string, enum: [CONCLUIDO, PULADO] }
+ *               status: { type: string, enum: [CONCLUIDO, PULADO, OCULTO, VISIVEL] }
  *     responses:
  *       200:
  *         description: Registrado

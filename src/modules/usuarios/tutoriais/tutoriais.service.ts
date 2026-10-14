@@ -2,7 +2,8 @@ import { prisma } from '@/config/prisma';
 
 /** Chaves aceitas: maiúsculas, números e "_" (ex.: EMPRESA_PRIMEIRO_ACESSO_V1) */
 export const CHAVE_TUTORIAL = /^[A-Z][A-Z0-9_]{2,59}$/;
-export const STATUS_TUTORIAL = ['CONCLUIDO', 'PULADO'] as const;
+/** CONCLUIDO/PULADO para tours; OCULTO/VISIVEL para a chave ASSISTENTE (botão do robô) */
+export const STATUS_TUTORIAL = ['CONCLUIDO', 'PULADO', 'OCULTO', 'VISIVEL'] as const;
 export type StatusTutorial = (typeof STATUS_TUTORIAL)[number];
 
 /** Tutoriais/mensagens do assistente que o usuário já concluiu ou pulou */

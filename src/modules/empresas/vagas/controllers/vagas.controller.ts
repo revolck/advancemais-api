@@ -16,6 +16,7 @@ import {
 } from '@/modules/empresas/vagas/services/errors';
 import {
   createVagaSchema,
+  detalharErrosVaga,
   updateVagaSchema,
 } from '@/modules/empresas/vagas/validators/vagas.schema';
 
@@ -241,11 +242,15 @@ export class VagasController {
       res.status(201).json(vaga);
     } catch (error: any) {
       if (error instanceof ZodError) {
+        const { campos, primeira } = detalharErrosVaga(error);
         return res.status(400).json({
           success: false,
           code: 'VALIDATION_ERROR',
-          message: 'Dados inválidos para criação da vaga',
+          message: primeira
+            ? `Dados inválidos para criação da vaga: ${primeira}`
+            : 'Dados inválidos para criação da vaga',
           issues: error.flatten().fieldErrors,
+          campos,
         });
       }
 
@@ -337,11 +342,15 @@ export class VagasController {
       res.json(vaga);
     } catch (error: any) {
       if (error instanceof ZodError) {
+        const { campos, primeira } = detalharErrosVaga(error);
         return res.status(400).json({
           success: false,
           code: 'VALIDATION_ERROR',
-          message: 'Dados inválidos para atualização da vaga',
+          message: primeira
+            ? `Dados inválidos para atualização da vaga: ${primeira}`
+            : 'Dados inválidos para atualização da vaga',
           issues: error.flatten().fieldErrors,
+          campos,
         });
       }
 

@@ -22,6 +22,9 @@ const descricaoOpcional = z
   .max(8000, 'A descrição deve ter no máximo 8000 caracteres')
   .optional();
 
+/** Itens de requisitos/atividades/benefícios (guardados em JSON, sem limite no banco) */
+export const MAX_CARACTERES_ITEM_VAGA = 1000;
+
 const stringArrayField = (field: string) =>
   z
     .array(
@@ -29,7 +32,10 @@ const stringArrayField = (field: string) =>
         .string({ invalid_type_error: `${field} deve ser um texto` })
         .trim()
         .min(1, `${field} deve ter pelo menos 1 caractere`)
-        .max(255, `${field} deve ter no máximo 255 caracteres`),
+        .max(
+          MAX_CARACTERES_ITEM_VAGA,
+          `${field} deve ter no máximo ${MAX_CARACTERES_ITEM_VAGA} caracteres`,
+        ),
       { invalid_type_error: `${field} deve ser uma lista de textos` },
     )
     .max(50, `${field} deve conter no máximo 50 itens`);
@@ -279,3 +285,15 @@ export const updateVagaSchema = baseVagaSchemaRaw
 
 export type CreateVagaInput = z.infer<typeof createVagaSchema>;
 export type UpdateVagaInput = z.infer<typeof updateVagaSchema>;
+
+/**
+ * Erros de validação com o caminho completo (ex.: requisitos.obrigatorios.0), para a
+ * tela apontar o campo certo, e a primeira mensagem para mostrar no aviso.
+ */
+export function detalharErrosVaga(error: z.ZodError) {
+  const campos = error.issues.map((issue) => ({
+    campo: issue.path.join('.'),
+    mensagem: issue.message,
+  }));
+  return { campos, primeira: campos[0]?.mensagem ?? null };
+}

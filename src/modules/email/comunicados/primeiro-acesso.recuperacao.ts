@@ -1,12 +1,22 @@
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
+import { MAX_CURRICULOS } from '@/modules/candidatos/curriculos/services';
+import { EmailDispatcher } from '../client/email-dispatcher';
+import type { EmailSendResult } from '../client/types';
+import { EmailConfigManager } from '../config/email-config';
+import { EmailTemplates } from '../templates/email-templates';
 import {
   carregarValidacoes,
   ehBloqueioDefinitivo,
   normalizarEmail,
   verificarLocalmente,
 } from '../validacao';
-import { COMUNICADO_PRIMEIRO_ACESSO, filtroPopulacao } from './primeiro-acesso.service';
+import {
+  COMUNICADO_PRIMEIRO_ACESSO,
+  TAG_COMUNICADO,
+  filtroPopulacao,
+  montarLinks,
+} from './primeiro-acesso.service';
 
 /**
  * Primeiro acesso pelo próprio aluno: em "Esqueci minha senha" ele informa o CPF e
@@ -119,5 +129,116 @@ export async function registrarAcessoPeloAluno(usuarioId: string): Promise<void>
       { err: error, usuarioId },
       '⚠️ Não foi possível registrar o primeiro acesso pelo aluno',
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Boas-vindas no primeiro pedido de recuperação do aluno migrado
+// ---------------------------------------------------------------------------
+
+/**
+ * Aluno importado que ainda não fez o primeiro acesso: recebe o e-mail de boas-vindas
+ * (com o link de criar senha) em vez do e-mail padrão de recuperação. Depois que ele
+ * cria a senha (CONCLUIDO_PELO_ALUNO) ou entra na plataforma, volta a receber o padrão.
+ * Quem se cadastrou sozinho nunca entra aqui.
+ */
+export async function deveEnviarBoasVindas(usuarioId: string): Promise<boolean> {
+  const usuario = await prisma.usuarios.findFirst({
+    where: { id: usuarioId, ...filtroPopulacao(), ultimoLogin: null },
+    select: {
+      ComunicadosEnvios: {
+        where: { comunicado: COMUNICADO_PRIMEIRO_ACESSO },
+        select: { status: true },
+      },
+    },
+  });
+  if (!usuario) return false;
+  return usuario.ComunicadosEnvios[0]?.status !== 'CONCLUIDO_PELO_ALUNO';
+}
+
+/** Envia o e-mail de boas-vindas com o link de criar senha (token da recuperação) */
+export async function enviarBoasVindasComLink(
+  usuario: { id: string; email: string; nomeCompleto: string; cpf: string | null },
+  token: string,
+): Promise<EmailSendResult> {
+  const config = await EmailConfigManager.getInstance().getRuntimeConfig();
+  const linkCriarSenha = `${config.urls.passwordRecovery}?tp=${token}&ep=${encodeURIComponent(
+    usuario.email,
+  )}`;
+  const template = EmailTemplates.generatePlatformWelcomeEmail({
+    nomeCompleto: usuario.nomeCompleto,
+    ...(await montarLinks()),
+    maxCurriculos: MAX_CURRICULOS,
+    primeiroAcesso: {
+      cpf: usuario.cpf ?? '',
+      linkCriarSenha,
+      validadeHoras: config.passwordRecovery.tokenExpirationMinutes / 60,
+    },
+  });
+
+  const resultado = await EmailDispatcher.getInstance().send({
+    to: normalizarEmail(usuario.email),
+    toName: usuario.nomeCompleto,
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
+    tags: [TAG_COMUNICADO],
+  });
+
+  if (resultado.success && !resultado.simulated) {
+    await registrarBoasVindasEnviadas(usuario.id, usuario.email, resultado);
+  }
+  try {
+    await prisma.logEmail.create({
+      data: {
+        usuarioId: usuario.id,
+        email: '',
+        tipoEmail: 'BOAS_VINDAS',
+        status: resultado.success ? 'ENVIADO' : 'FALHA',
+        messageId: resultado.messageId ?? '',
+        erro: resultado.success ? null : (resultado.error ?? 'Erro desconhecido'),
+        tentativas: 1,
+      },
+    });
+  } catch (error) {
+    log.warn({ err: error }, '⚠️ Erro ao registrar log do e-mail de boas-vindas');
+  }
+  return resultado;
+}
+
+/**
+ * Registra no comunicado: o aluno recebeu as boas-vindas (fica fora do envio em massa,
+ * que mandaria outra senha) e a entrega/devolução é acompanhada pela sincronização.
+ */
+export async function registrarBoasVindasEnviadas(
+  usuarioId: string,
+  email: string,
+  envio: { provider?: string | null; messageId?: string | null },
+): Promise<void> {
+  try {
+    const chave = { comunicado_usuarioId: { comunicado: COMUNICADO_PRIMEIRO_ACESSO, usuarioId } };
+    const atual = await prisma.comunicadosEnvios.findUnique({
+      where: chave,
+      select: { status: true },
+    });
+    if (atual?.status === 'PROCESSANDO' || atual?.status === 'CONCLUIDO_PELO_ALUNO') return;
+
+    const agora = new Date();
+    const dados = {
+      email: normalizarEmail(email),
+      status: 'ENVIADO',
+      provider: envio.provider ?? null,
+      messageId: envio.messageId ?? null,
+      enviadoEm: agora,
+      entregueEm: null,
+      erro: 'Boas-vindas com link de criar senha (pedido do aluno em "Esqueci minha senha")',
+    };
+    await prisma.comunicadosEnvios.upsert({
+      where: chave,
+      create: { comunicado: COMUNICADO_PRIMEIRO_ACESSO, usuarioId, tentativas: 1, ...dados },
+      update: { ...dados, tentativas: { increment: 1 } },
+    });
+  } catch (error) {
+    log.error({ err: error, usuarioId }, '⚠️ Não foi possível registrar as boas-vindas enviadas');
   }
 }

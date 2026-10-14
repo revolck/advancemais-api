@@ -192,7 +192,8 @@ async function concluirEnvio(
   });
 }
 
-async function montarLinks() {
+/** Links do comunicado (plataforma, cursos, vagas, currículo e mídia) */
+export async function montarLinks() {
   const config = await EmailConfigManager.getInstance().getRuntimeConfig();
   const frontendUrl = config.urls.frontend.replace(/\/$/, '');
   const authUrl = config.urls.verification.replace(/\/verify-email$/, '');

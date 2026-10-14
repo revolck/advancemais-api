@@ -122,13 +122,23 @@ export interface PlatformWelcomeEmailData {
   /** Link de descadastro (obrigatório em envios em massa) */
   unsubscribeUrl?: string;
   /**
-   * Dados de primeiro acesso (alunos migrados): login por CPF com senha
-   * provisória individual, trocada obrigatoriamente no primeiro login.
+   * Dados de primeiro acesso (alunos migrados), login por CPF:
+   * - com senha provisória individual (comunicado em massa), trocada no primeiro login; ou
+   * - com link para o aluno criar a própria senha (pedido em "Esqueci minha senha").
    */
-  primeiroAcesso?: {
-    cpf: string;
-    senhaProvisoria: string;
-  };
+  primeiroAcesso?: PrimeiroAcessoComSenha | PrimeiroAcessoComLink;
+}
+
+export interface PrimeiroAcessoComSenha {
+  cpf: string;
+  senhaProvisoria: string;
+}
+
+export interface PrimeiroAcessoComLink {
+  cpf: string;
+  /** Link único de criação de senha (mesmo fluxo seguro da recuperação) */
+  linkCriarSenha: string;
+  validadeHoras: number;
 }
 
 export class EmailTemplates {
@@ -1399,16 +1409,41 @@ Se não reconhece esta ação ou precisa de suporte, acesse nosso centro de ajud
         </div>`;
 
     const access = data.primeiroAcesso;
-    const accessHtml = access
+    const accessLink = access && 'linkCriarSenha' in access ? access : null;
+    const accessSenha = access && 'senhaProvisoria' in access ? access : null;
+    const validadeTexto = accessLink
+      ? accessLink.validadeHoras >= 1
+        ? `${Math.round(accessLink.validadeHoras)} hora${Math.round(accessLink.validadeHoras) === 1 ? '' : 's'}`
+        : `${Math.round(accessLink.validadeHoras * 60)} minutos`
+      : '';
+    const accessHtml = accessLink
       ? `
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 8px 0 24px; border: 2px solid #00257d; border-radius: 12px;">
           <tr>
             <td style="padding: 20px 24px;">
               <div style="font-size: 16px; font-weight: 800; color: #00257d; margin-bottom: 12px;">🔐 Seu primeiro acesso</div>
               <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: #64748b;">Login</div>
-              <div style="font-size: 15px; font-weight: 700; color: #0f172a; margin: 4px 0 14px;">Seu CPF (${this.maskCpf(access.cpf)})</div>
+              <div style="font-size: 15px; font-weight: 700; color: #0f172a; margin: 4px 0 14px;">Seu CPF (${this.maskCpf(accessLink.cpf)})</div>
+              <div style="font-size: 14px; line-height: 1.6; color: #334155;">
+                Clique em <strong>Criar minha senha</strong> e escolha a senha que você vai usar na plataforma.
+              </div>
+              <div style="font-size: 13px; line-height: 1.6; color: #7f1d1d; background-color: #fef2f2; border-radius: 8px; padding: 12px 14px; margin-top: 14px;">
+                <strong>Importante:</strong> o link vale por ${validadeTexto} e só pode ser usado uma vez.
+                Se você não pediu este acesso, ignore este e-mail.
+              </div>
+            </td>
+          </tr>
+        </table>`
+      : accessSenha
+        ? `
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 8px 0 24px; border: 2px solid #00257d; border-radius: 12px;">
+          <tr>
+            <td style="padding: 20px 24px;">
+              <div style="font-size: 16px; font-weight: 800; color: #00257d; margin-bottom: 12px;">🔐 Seu primeiro acesso</div>
+              <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: #64748b;">Login</div>
+              <div style="font-size: 15px; font-weight: 700; color: #0f172a; margin: 4px 0 14px;">Seu CPF (${this.maskCpf(accessSenha.cpf)})</div>
               <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: #64748b;">Senha provisória</div>
-              <div style="margin-top: 6px;"><span style="display: inline-block; white-space: nowrap; font-family: 'Courier New', monospace; font-size: 18px; font-weight: 700; letter-spacing: 2px; color: #0f172a; background-color: #f1f5f9; border: 1px dashed #94a3b8; border-radius: 6px; padding: 6px 12px;">${access.senhaProvisoria}</span></div>
+              <div style="margin-top: 6px;"><span style="display: inline-block; white-space: nowrap; font-family: 'Courier New', monospace; font-size: 18px; font-weight: 700; letter-spacing: 2px; color: #0f172a; background-color: #f1f5f9; border: 1px dashed #94a3b8; border-radius: 6px; padding: 6px 12px;">${accessSenha.senhaProvisoria}</span></div>
               <div style="font-size: 13px; line-height: 1.6; color: #7f1d1d; background-color: #fef2f2; border-radius: 8px; padding: 12px 14px; margin-top: 14px;">
                 <strong>Importante:</strong> por segurança, no primeiro acesso você vai criar uma nova senha.
                 A senha provisória é só sua: não compartilhe com ninguém.
@@ -1416,19 +1451,24 @@ Se não reconhece esta ação ou precisa de suporte, acesse nosso centro de ajud
             </td>
           </tr>
         </table>`
-      : `
+        : `
         <div class="info-box">
           <p class="info-text">
             <strong>Já tem conta?</strong> Use o mesmo e-mail e senha de sempre. Se não lembrar a senha,
             clique em "Esqueci minha senha" na tela de login.
           </p>
         </div>`;
-    const accessText = access
+    const accessText = accessLink
       ? `SEU PRIMEIRO ACESSO
-Login: seu CPF (${this.maskCpf(access.cpf)})
-Senha provisória: ${access.senhaProvisoria}
+Login: seu CPF (${this.maskCpf(accessLink.cpf)})
+Crie sua senha: ${accessLink.linkCriarSenha}
+Importante: o link vale por ${validadeTexto} e só pode ser usado uma vez. Se você não pediu este acesso, ignore este e-mail.`
+      : accessSenha
+        ? `SEU PRIMEIRO ACESSO
+Login: seu CPF (${this.maskCpf(accessSenha.cpf)})
+Senha provisória: ${accessSenha.senhaProvisoria}
 Importante: por segurança, no primeiro acesso você vai criar uma nova senha. A senha provisória é só sua: não compartilhe com ninguém.`
-      : 'Já tem conta? Use o mesmo e-mail e senha de sempre. Se não lembrar a senha, clique em "Esqueci minha senha" na tela de login.';
+        : 'Já tem conta? Use o mesmo e-mail e senha de sempre. Se não lembrar a senha, clique em "Esqueci minha senha" na tela de login.';
 
     const unsubscribeHtml = data.unsubscribeUrl
       ? `<br /><a href="${data.unsubscribeUrl}" style="color: #64748b; text-decoration: underline;">Não quero mais receber estes e-mails</a>`
@@ -1465,8 +1505,8 @@ Importante: por segurança, no primeiro acesso você vai criar uma nova senha. A
         ${access ? accessHtml : ''}
 
         <div style="text-align: center; margin-top: 16px;">
-          <a href="${data.platformUrl}" class="cta-button" style="color: #ffffff !important;">
-            ${access ? 'Fazer meu primeiro acesso' : 'Acessar a plataforma'}
+          <a href="${accessLink ? accessLink.linkCriarSenha : data.platformUrl}" class="cta-button" style="color: #ffffff !important;">
+            ${accessLink ? 'Criar minha senha' : access ? 'Fazer meu primeiro acesso' : 'Acessar a plataforma'}
           </a>
         </div>
 

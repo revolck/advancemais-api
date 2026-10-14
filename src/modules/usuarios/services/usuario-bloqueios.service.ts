@@ -171,12 +171,11 @@ export async function aplicarBloqueioUsuario(
       });
     }
 
-    // Mesma hierarquia da troca de função: moderador não age sobre admin/moderador
-    if (admin.role === 'MODERADOR' && ['ADMIN', 'MODERADOR'].includes(usuario.role)) {
-      throw Object.assign(
-        new Error('Moderador não pode bloquear administradores nem moderadores.'),
-        { code: 'FORBIDDEN_USER_ROLE' },
-      );
+    // Admin bloqueia qualquer usuário; moderador bloqueia todos, menos administrador
+    if (admin.role === 'MODERADOR' && usuario.role === 'ADMIN') {
+      throw Object.assign(new Error('Moderador não pode bloquear administradores.'), {
+        code: 'FORBIDDEN_USER_ROLE',
+      });
     }
 
     // Atualiza status do usuário para BLOQUEADO e encerra as sessões abertas

@@ -54,14 +54,24 @@ describe('bloqueio de usuários pelo painel', () => {
     expect(invalidateUserCache).toHaveBeenCalledWith('alvo');
   });
 
-  it('moderador não bloqueia administrador nem moderador', async () => {
-    for (const role of ['ADMIN', 'MODERADOR']) {
-      const tx = montarTx({ id: 'alvo', role }, MODERADOR);
-      await expect(aplicarBloqueioUsuario('alvo', MODERADOR.id, entrada)).rejects.toMatchObject({
-        code: 'FORBIDDEN_USER_ROLE',
-      });
-      expect(tx.usuarios.update).not.toHaveBeenCalled();
-    }
+  it('moderador não bloqueia administrador', async () => {
+    const tx = montarTx({ id: 'alvo', role: 'ADMIN' }, MODERADOR);
+    await expect(aplicarBloqueioUsuario('alvo', MODERADOR.id, entrada)).rejects.toMatchObject({
+      code: 'FORBIDDEN_USER_ROLE',
+    });
+    expect(tx.usuarios.update).not.toHaveBeenCalled();
+  });
+
+  it('moderador bloqueia outro moderador', async () => {
+    const tx = montarTx({ id: 'alvo', role: 'MODERADOR' }, MODERADOR);
+    await aplicarBloqueioUsuario('alvo', MODERADOR.id, entrada);
+    expect(tx.usuarios.update).toHaveBeenCalled();
+  });
+
+  it('admin bloqueia outro admin', async () => {
+    const tx = montarTx({ id: 'alvo', role: 'ADMIN' }, ADMIN);
+    await aplicarBloqueioUsuario('alvo', ADMIN.id, entrada);
+    expect(tx.usuarios.update).toHaveBeenCalled();
   });
 
   it('moderador bloqueia recrutador normalmente', async () => {

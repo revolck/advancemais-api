@@ -296,6 +296,8 @@ function normalizeMercadoPagoError(error: unknown): { message: string; payload?:
   return { message: String(error ?? 'erro desconhecido'), payload: error };
 }
 
+const DATA_MINIMA_VALIDA = new Date('2000-01-01T00:00:00.000Z');
+
 async function setVagasToDraft(usuarioId: string) {
   await prisma.empresasVagas.updateMany({
     where: {
@@ -1760,8 +1762,14 @@ export const assinaturasService = {
       where: {
         status: EmpresasPlanoStatus.ATIVO,
         OR: [
-          { graceUntil: { lt: now } },
-          { proximaCobranca: { lt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000) } },
+          // Datas antes de 2000 são lixo (ex.: null gravado como 01/01/1970), não carência real
+          { graceUntil: { lt: now, gt: DATA_MINIMA_VALIDA } },
+          {
+            proximaCobranca: {
+              lt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000),
+              gt: DATA_MINIMA_VALIDA,
+            },
+          },
         ],
       },
     });

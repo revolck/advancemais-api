@@ -5,6 +5,7 @@
  * @author Sistema Advance+
  * @version 3.0.4 - ESTRUTURA ORIGINAL com verificações de segurança
  */
+import { tutoriaisRoutes } from '../tutoriais/routes';
 import { Router } from 'express';
 import { logger } from '@/utils/logger';
 
@@ -94,6 +95,8 @@ try {
 /**
  * Rotas básicas de usuário - ÚLTIMO (mais genéricas)
  */
+router.use('/tutoriais', tutoriaisRoutes);
+
 if (usuarioRoutes) {
   router.use('/', usuarioRoutes);
   usuarioModuleLogger.info('✅ Rotas básicas de usuário registradas');

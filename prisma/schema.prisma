@@ -1655,6 +1655,7 @@ model Usuarios {
   UsuariosRecuperacaoSenha                                                                                  UsuariosRecuperacaoSenha?
   UsuariosRedesSociais                                                                                      UsuariosRedesSociais?
   ComunicadosEnvios                                                                                         ComunicadosEnvios[]
+  UsuariosTutoriais UsuariosTutoriais[]
   UsuariosSessoes                                                                                           UsuariosSessoes[]
   UsuariosVerificacaoEmail                                                                                  UsuariosVerificacaoEmail?
   status_processo                                                                                           StatusProcessosCandidatos[]
@@ -1733,6 +1734,21 @@ model ComunicadosEnvios {
   @@index([comunicado, status])
   @@index([comunicado, enviadoEm])
   @@index([messageId])
+}
+
+/// Tutoriais e mensagens do assistente já concluídos ou pulados pelo usuário
+model UsuariosTutoriais {
+  id           String   @id @default(uuid())
+  usuarioId    String
+  /// Ex.: EMPRESA_PRIMEIRO_ACESSO_V1
+  chave        String   @db.VarChar(60)
+  /// CONCLUIDO | PULADO
+  status       String   @db.VarChar(20)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+  Usuario      Usuarios @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, chave])
 }
 
 /// Resultado da validação de cada endereço de e-mail (reaproveitado entre campanhas)

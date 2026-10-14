@@ -18,8 +18,8 @@ import {
 import { invalidateUserCache } from '../utils/cache';
 import { recordUserAuditEvent } from '../utils/user-history';
 import {
-  deveEnviarBoasVindas,
   enviarBoasVindasComLink,
+  publicoBoasVindas,
   mascararEmail,
   registrarAcessoPeloAluno,
   verificarEnvioRecuperacao,
@@ -189,6 +189,7 @@ export class PasswordRecoveryController {
           email: true,
           nomeCompleto: true,
           cpf: true,
+          cnpj: true,
           UsuariosRecuperacaoSenha: {
             select: {
               tokenRecuperacao: true,
@@ -308,9 +309,9 @@ export class PasswordRecoveryController {
 
       // Aluno importado no primeiro acesso recebe as boas-vindas (com o link de criar
       // senha); depois disso, e para quem se cadastrou sozinho, vale o e-mail padrão
-      const primeiroAcesso = await deveEnviarBoasVindas(usuario.id);
-      const emailResult = primeiroAcesso
-        ? await enviarBoasVindasComLink(usuario, token)
+      const publicoPrimeiroAcesso = await publicoBoasVindas(usuario.id);
+      const emailResult = publicoPrimeiroAcesso
+        ? await enviarBoasVindasComLink(usuario, token, publicoPrimeiroAcesso)
         : await this.emailService.enviarEmailRecuperacaoSenha(usuario, token);
 
       if (!emailResult.success) {

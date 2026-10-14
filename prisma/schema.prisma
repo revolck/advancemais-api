@@ -1294,6 +1294,14 @@ model EmpresasPlano {
   valorOriginal          Decimal?                @db.Decimal(12, 2)
   valorDesconto          Decimal?                @db.Decimal(12, 2)
   valorFinal             Decimal?                @db.Decimal(12, 2)
+  /// Campanha que originou o plano (ex.: INAUGURACAO_2026 = mês grátis de inauguração)
+  campanha               String?                 @db.VarChar(40)
+  /// Quando a empresa viu o aviso da bonificação (modal exibida uma única vez)
+  bonificacaoExibidaEm   DateTime?
+  /// Aviso de "faltam poucos dias" do plano gratuito já enviado
+  lembreteExpiracaoEm    DateTime?
+  /// Aviso de "plano gratuito terminou" já enviado
+  expiracaoNotificadaEm  DateTime?
   PlanosEmpresariais     PlanosEmpresariais      @relation(fields: [planosEmpresariaisId], references: [id])
   Usuarios               Usuarios                @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   CuponsDesconto         CuponsDesconto?         @relation(fields: [cupomDescontoId], references: [id])
@@ -1304,6 +1312,7 @@ model EmpresasPlano {
   @@index([planosEmpresariaisId])
   @@index([usuarioId, status])
   @@index([cupomDescontoId])
+  @@index([campanha])
 }
 
 model EmpresasCartoes {

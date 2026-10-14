@@ -1,3 +1,4 @@
+import { processarPlanosGratuitos } from '@/modules/empresas/bonificacao/bonificacao-inauguracao.service';
 import { prisma } from '@/config/prisma';
 import {
   assertMercadoPagoConfiguredAsync,
@@ -17,7 +18,6 @@ import {
   STATUS_PAGAMENTO,
   StatusDeVagas,
   EmpresasPlanoStatus,
-  EmpresasPlanoModo,
 } from '@prisma/client';
 import type { PlanosEmpresariais } from '@prisma/client';
 import { EmailService } from '@/modules/email/services/email-service';
@@ -1741,16 +1741,10 @@ export const assinaturasService = {
     // Expira trials vencidos e encerra assinaturas vencidas além da tolerância
     const now = new Date();
 
-    // 1) Trials vencidos
-    const trialsToExpire = await prisma.empresasPlano.findMany({
-      where: { modo: EmpresasPlanoModo.TESTE, status: EmpresasPlanoStatus.ATIVO, fim: { lt: now } },
-      select: { id: true, usuarioId: true },
-    });
-    for (const trial of trialsToExpire) {
-      await prisma.empresasPlano.update({
-        where: { id: trial.id },
-        data: { status: EmpresasPlanoStatus.EXPIRADO },
-      });
+    // 1) Planos gratuitos: lembrete antes do fim; vencidos viram EXPIRADO, vagas em
+    // rascunho e a empresa é avisada para contratar um plano
+    const gratuitos = await processarPlanosGratuitos(now);
+    for (const trial of gratuitos.expiradosIds) {
       await this.logEvent({
         usuarioId: trial.usuarioId,
         empresasPlanoId: trial.id,
@@ -1808,6 +1802,14 @@ export const assinaturasService = {
       }
     }
 
-    return { processed: overdue.length };
+    return {
+      processed: overdue.length,
+      gratuitos: {
+        lembretes: gratuitos.lembretes,
+        expirados: gratuitos.expirados,
+        vagasParaRascunho: gratuitos.vagasParaRascunho,
+        emails: gratuitos.emails,
+      },
+    };
   },
 };

@@ -159,6 +159,8 @@ export const cursoHistoricoInscricoesQuerySchema = paginationQueryBaseSchema
     turmaId: z.string().uuid().optional(),
     statusPagamento: z.union([z.string(), z.array(z.string())]).optional(),
     includeProgress: z.preprocess(parseBooleanQuery, z.boolean().optional()),
+    /** Removidos da turma pela equipe: escondidos por padrão; "somente" ou "incluir" */
+    removidas: z.enum(['somente', 'incluir']).optional(),
   })
   .transform(
     (data: {
@@ -168,6 +170,7 @@ export const cursoHistoricoInscricoesQuerySchema = paginationQueryBaseSchema
       turmaId?: string;
       statusPagamento?: string | string[];
       includeProgress?: boolean;
+      removidas?: 'somente' | 'incluir';
     }) => {
       // Normalizar paginação
       const pagination = withDefaultPaginationValues(data);
@@ -222,6 +225,7 @@ export const cursoHistoricoInscricoesQuerySchema = paginationQueryBaseSchema
         status: statusArray,
         turmaId: data.turmaId,
         statusPagamento: statusPagamentoArray,
+        removidas: data.removidas,
         // Default otimizado para listagens grandes da aba de inscrições.
         // O frontend pode solicitar explicitamente com includeProgress=true.
         includeProgress: data.includeProgress ?? false,

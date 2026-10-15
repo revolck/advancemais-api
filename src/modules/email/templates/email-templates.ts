@@ -144,6 +144,16 @@ export interface CompanyWelcomeEmailData {
   bonificacao?: { planoNome: string; quantidadeVagas: number; validoAte: Date } | null;
 }
 
+export interface MatriculaEquipeEmailData {
+  nomeAluno: string;
+  cursoNome: string;
+  turmaNome: string;
+  /** true = cobrança pendente: o e-mail leva para o pagamento */
+  pagamentoPendente: boolean;
+  /** Link do curso no painel ou do pagamento */
+  link: string;
+}
+
 export interface FreePlanNoticeEmailData {
   nomeEmpresa: string;
   planoNome: string;
@@ -1888,6 +1898,60 @@ Seu ${periodo} do plano ${data.planoNome} chegou ao fim. Esperamos que a nova Ad
 Suas vagas foram salvas como rascunho, então nada foi perdido. Escolha um plano para republicá-las e continuar recebendo candidatos.
 
 Ver planos: ${data.planosUrl}
+
+${this.getSignatureText()}`;
+    return { subject, html, text };
+  }
+
+  /** Aluno matriculado em uma turma pela equipe (painel ou pagamento pendente) */
+  public static generateMatriculaEquipeEmail(data: MatriculaEquipeEmailData): EmailTemplate {
+    const esc = (v: string) =>
+      v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const subject = data.pagamentoPendente
+      ? `Sua vaga no curso ${data.cursoNome} está reservada`
+      : `Você foi matriculado(a) no curso ${data.cursoNome}`;
+    const corpo = data.pagamentoPendente
+      ? 'Reservamos a sua vaga. Para começar o curso, conclua o pagamento pelo link abaixo.'
+      : 'Seu acesso já está liberado. É só entrar na plataforma para começar.';
+    const botao = data.pagamentoPendente ? 'Concluir pagamento' : 'Acessar o curso';
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${esc(subject)}</title>
+  ${this.getBaseStyles()}
+</head>
+<body>
+  <div class="email-wrapper">
+    <div class="email-container">
+      <div class="header"><div class="logo"><img src="https://advancemais.com/images/logos/logo_branco.png" alt="Advance+" /></div></div>
+      <div class="content">
+        <div class="greeting">Olá, ${esc(data.nomeAluno)}!</div>
+        <div class="message">
+          Você foi matriculado(a) na turma <strong>${esc(data.turmaNome)}</strong> do curso
+          <strong>${esc(data.cursoNome)}</strong>.
+        </div>
+        <div class="message">${corpo}</div>
+        <div style="text-align: center; margin-top: 16px;">
+          <a href="${esc(data.link)}" class="cta-button" style="color: #ffffff !important;">${botao}</a>
+        </div>
+        ${this.getSignatureHtml()}
+      </div>
+      <div class="footer"><div class="footer-text">Advance+ © ${this.getCurrentYear()} todos os direitos reservados.</div></div>
+    </div>
+  </div>
+</body>
+</html>`;
+    const text = `${subject}
+
+Olá, ${data.nomeAluno}!
+
+Você foi matriculado(a) na turma ${data.turmaNome} do curso ${data.cursoNome}.
+
+${corpo}
+
+${botao}: ${data.link}
 
 ${this.getSignatureText()}`;
     return { subject, html, text };

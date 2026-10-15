@@ -902,6 +902,13 @@ model CursosTurmasInscricoes {
   valorOriginal                 Decimal?                             @db.Decimal(10, 2)
   valorDesconto                 Decimal?                             @db.Decimal(10, 2)
   valorFinal                    Decimal?                             @db.Decimal(10, 2)
+  /// Matrícula pela equipe e remoção (desvínculo que preserva o histórico)
+  origem                        String?                              @db.VarChar(20)
+  adicionadaPorId               String?
+  removidaEm                    DateTime?
+  removidaPorId                 String?
+  motivoRemocao                 String?                              @db.VarChar(500)
+  statusAntesRemocao            StatusInscricao?
   CursosCertificadosEmitidos    CursosCertificadosEmitidos[]
   CursosEstagios                CursosEstagios[]
   CursosEstagiosProgramasAlunos CursosEstagiosProgramasAlunos[]
@@ -3406,6 +3413,10 @@ enum NotificacaoTipo {
   VAGA_LIMITE_PLANO // Limite de vagas do plano atingido
   // Notificações para a EQUIPE (setor de vagas, moderador, admin)
   VAGA_AGUARDANDO_APROVACAO // Vagas na fila de aprovação (aviso agrupado)
+  // Matrícula pela equipe
+  TURMA_MATRICULA_ADICIONADA // Aluno adicionado a uma turma pela equipe
+  TURMA_MATRICULA_REMOVIDA // Aluno removido de uma turma pela equipe
+  TURMA_SITUACAO_ALTERADA // Situação do aluno na turma alterada pela equipe
   PLANO_EXPIRANDO // Plano irá expirar em breve (5, 3, 1 dia ou horas)
   PLANO_EXPIRADO // Plano expirou
   ASSINATURA_RENOVADA // Assinatura foi renovada automaticamente

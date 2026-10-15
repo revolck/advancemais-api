@@ -1,3 +1,17 @@
+import { StatusInscricao } from '@prisma/client';
+import { prisma } from '@/config/prisma';
+import { alterarSituacaoEmLote, type Situacao } from '../services/inscricoes-situacao.service';
+import { registrarStatusAvulso, removerAlunoDaTurma } from '../services/inscricoes-equipe.service';
+
+/** Status da rota antiga → situação com regra (certificado, auditoria) */
+const SITUACAO_POR_STATUS: Partial<Record<StatusInscricao, Situacao>> = {
+  CONCLUIDO: 'CONCLUIU',
+  CANCELADO: 'NAO_CONCLUIU',
+  REPROVADO: 'REPROVADO',
+  TRANCADO: 'TRANCADO',
+  INSCRITO: 'CURSANDO',
+};
+
 import { Request, Response } from 'express';
 import { CursoStatus, Roles } from '@prisma/client';
 import { ZodError } from 'zod';
@@ -888,8 +902,23 @@ export class TurmasController {
     }
 
     try {
-      const turma = await turmasService.unenroll(cursoId, turmaId, alunoId);
+      // Remove sem apagar (desvincula preservando o histórico), com auditoria
+      await removerAlunoDaTurma(
+        cursoId,
+        turmaId,
+        alunoId,
+        typeof req.body?.motivo === 'string' && req.body.motivo.trim().length >= 5
+          ? req.body.motivo
+          : 'Removido pela equipe',
+        {
+          id: req.user!.id,
+          role: req.user?.role ?? null,
+          ip: req.ip ?? null,
+          userAgent: req.get('user-agent') ?? null,
+        },
+      );
       await invalidateTurmasCache();
+      const turma = await turmasService.get(cursoId, turmaId);
       res.json(turma);
     } catch (error: any) {
       if (error?.code === 'TURMA_NOT_FOUND' || error?.code === 'CURSO_NOT_FOUND') {
@@ -940,12 +969,49 @@ export class TurmasController {
 
     try {
       const payload = updateInscricaoStatusSchema.parse(req.body);
+      const ator = {
+        id: req.user!.id,
+        role: req.user?.role ?? null,
+        ip: req.ip ?? null,
+        userAgent: req.get('user-agent') ?? null,
+      };
+      const motivo =
+        typeof req.body?.motivo === 'string' && req.body.motivo.trim().length >= 5
+          ? req.body.motivo
+          : 'Alteração individual de situação';
+      // Situações com regra própria (certificado e auditoria) passam pelo mesmo serviço do lote
+      const situacao = SITUACAO_POR_STATUS[payload.status];
+      if (situacao) {
+        await alterarSituacaoEmLote(
+          { cursoId, turmaId, inscricaoIds: [inscricaoId], situacao, motivo },
+          ator,
+        ).catch((error: any) => {
+          if (error?.code === 'SITUACAO_SEM_ALUNOS') {
+            throw Object.assign(new Error('Inscrição não encontrada'), {
+              code: 'INSCRICAO_NOT_FOUND',
+            });
+          }
+          throw error;
+        });
+      }
+      const anterior = situacao
+        ? null
+        : await prisma.cursosTurmasInscricoes.findUnique({
+            where: { id: inscricaoId },
+            select: { status: true },
+          });
       const inscricao = await turmasService.updateInscricaoStatus(
         cursoId,
         turmaId,
         inscricaoId,
         payload.status,
       );
+      if (!situacao && anterior && anterior.status !== payload.status) {
+        await registrarStatusAvulso(
+          { cursoId, turmaId, inscricaoId, de: anterior.status, para: payload.status, motivo },
+          ator,
+        );
+      }
 
       await invalidateTurmasCache();
 

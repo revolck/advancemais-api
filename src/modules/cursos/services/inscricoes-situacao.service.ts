@@ -7,6 +7,7 @@ import {
 } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
+import { notificacoesService } from '@/modules/notificacoes/services/notificacoes.service';
 import { invalidateCacheByPrefix } from '@/utils/cache';
 import { logger } from '@/utils/logger';
 
@@ -29,6 +30,8 @@ export interface InscricaoParaSituacao {
   id: string;
   status: StatusInscricao;
   cpf: string | null;
+  alunoId?: string;
+  alunoNome?: string | null;
   certificados: { id: string; formato: CursosCertificadosTipos; revogadoEm: Date | null }[];
 }
 
@@ -130,6 +133,8 @@ export async function alterarSituacaoEmLote(
     simular?: boolean;
     /** Quantos a prévia mostrou: se mudou, pede nova prévia */
     totalEsperado?: number;
+    /** Notificação no painel para quem teve a situação alterada (padrão: não) */
+    avisar?: boolean;
   },
   ator: AtorSituacao,
 ) {
@@ -145,11 +150,13 @@ export async function alterarSituacaoEmLote(
   }
 
   const registros = await prisma.cursosTurmasInscricoes.findMany({
-    where: { turmaId: params.turmaId },
+    // Removidos pela equipe ficam de fora: a situação deles não muda por aqui
+    where: { turmaId: params.turmaId, removidaEm: null },
     select: {
       id: true,
       status: true,
-      Usuarios: { select: { cpf: true } },
+      alunoId: true,
+      Usuarios: { select: { cpf: true, nomeCompleto: true } },
       CursosCertificadosEmitidos: { select: { id: true, formato: true, revogadoEm: true } },
     },
   });
@@ -157,6 +164,8 @@ export async function alterarSituacaoEmLote(
     id: r.id,
     status: r.status,
     cpf: r.Usuarios?.cpf ?? null,
+    alunoId: r.alunoId,
+    alunoNome: r.Usuarios?.nomeCompleto ?? null,
     certificados: r.CursosCertificadosEmitidos,
   }));
 
@@ -234,6 +243,10 @@ export async function alterarSituacaoEmLote(
             metadata: {
               cursoId: params.cursoId,
               turmaId: params.turmaId,
+              turmaNome: turma.nome,
+              alunoId: m.inscricao.alunoId ?? null,
+              alunoNome: m.inscricao.alunoNome ?? null,
+              motivo,
               situacao: params.situacao,
               certificadosRevogados: m.revogar.map((c) => c.id),
               certificadosRestaurados: m.restaurar.map((c) => c.id),
@@ -257,6 +270,29 @@ export async function alterarSituacaoEmLote(
     { turmaId: params.turmaId, situacao: params.situacao, ...plano.resumo, atorId: ator.id },
     'Situação das inscrições alterada em lote',
   );
+
+  if (params.avisar) {
+    const nomeDaSituacao: Record<Situacao, string> = {
+      CONCLUIU: 'Concluiu',
+      NAO_CONCLUIU: 'Não concluiu',
+      REPROVADO: 'Reprovado',
+      TRANCADO: 'Trancado',
+      CURSANDO: 'Cursando',
+    };
+    for (const m of plano.mudancas.filter((x) => x.mudaStatus && x.inscricao.alunoId)) {
+      await notificacoesService
+        .criar({
+          usuarioId: m.inscricao.alunoId!,
+          tipo: 'TURMA_SITUACAO_ALTERADA',
+          titulo: 'Sua situação em uma turma mudou',
+          mensagem: `Na turma "${turma.nome}", sua situação agora é: ${nomeDaSituacao[params.situacao]}.`,
+          prioridade: 'NORMAL',
+        } as any)
+        .catch((error: unknown) =>
+          log.error({ err: error, inscricaoId: m.inscricao.id }, 'Falha ao notificar o aluno'),
+        );
+    }
+  }
 
   return { aplicado: true, ...plano.resumo };
 }

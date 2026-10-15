@@ -7,6 +7,7 @@ export const USER_HISTORY_CATEGORIAS = [
   'ACESSO',
   'STATUS',
   'ADMINISTRATIVO',
+  'CURSOS',
 ] as const;
 
 export const USER_HISTORY_TIPOS = [
@@ -33,6 +34,9 @@ export const USER_HISTORY_TIPOS = [
   'USUARIO_AVATAR_ATUALIZADO',
   'USUARIO_CPF_ATUALIZADO',
   'USUARIO_TELEFONE_ATUALIZADO',
+  'USUARIO_TURMA_ADICIONADO',
+  'USUARIO_TURMA_REMOVIDO',
+  'USUARIO_TURMA_SITUACAO_ALTERADA',
 ] as const;
 
 export type UserHistoryCategoria = (typeof USER_HISTORY_CATEGORIAS)[number];
@@ -53,6 +57,31 @@ const defaultActionConfig: UserHistoryActionConfig = {
 };
 
 const actionConfigMap: Record<string, UserHistoryActionConfig> = {
+  // Matrícula pela equipe (registros de inscrição, entidade CURSO_INSCRICAO)
+  INSCRICAO_ADICIONADA_PELA_EQUIPE: {
+    tipo: 'USUARIO_TURMA_ADICIONADO',
+    categoria: 'CURSOS',
+    titulo: 'Adicionado(a) a uma turma',
+    auditoriaCategoria: AuditoriaCategoria.CURSO,
+  },
+  INSCRICAO_REATIVADA: {
+    tipo: 'USUARIO_TURMA_ADICIONADO',
+    categoria: 'CURSOS',
+    titulo: 'Reativado(a) em uma turma',
+    auditoriaCategoria: AuditoriaCategoria.CURSO,
+  },
+  INSCRICAO_REMOVIDA: {
+    tipo: 'USUARIO_TURMA_REMOVIDO',
+    categoria: 'CURSOS',
+    titulo: 'Removido(a) de uma turma',
+    auditoriaCategoria: AuditoriaCategoria.CURSO,
+  },
+  INSCRICAO_SITUACAO_ALTERADA: {
+    tipo: 'USUARIO_TURMA_SITUACAO_ALTERADA',
+    categoria: 'CURSOS',
+    titulo: 'Situação em turma alterada',
+    auditoriaCategoria: AuditoriaCategoria.CURSO,
+  },
   USUARIO_CRIADO: {
     tipo: 'USUARIO_CRIADO',
     categoria: 'CADASTRO',

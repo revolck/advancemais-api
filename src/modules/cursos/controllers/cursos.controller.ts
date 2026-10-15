@@ -2097,7 +2097,8 @@ export class CursosController {
 
       // Validar e parsear query params
       const query = cursoHistoricoInscricoesQuerySchema.parse(req.query);
-      const { page, pageSize, status, turmaId, statusPagamento, includeProgress } = query;
+      const { page, pageSize, status, turmaId, statusPagamento, includeProgress, removidas } =
+        query;
       const skip = (page - 1) * pageSize;
       const cacheKey = generateCacheKey(
         'cursos:historico-inscricoes-curso',
@@ -2109,6 +2110,7 @@ export class CursosController {
           statusPagamento: statusPagamento?.join(',') || '',
           includeProgress: includeProgress ? '1' : '0',
           turmaId: turmaId || '',
+          removidas: removidas || '',
           role: req.user?.role || '',
         },
         { excludeKeys: [] },
@@ -2139,6 +2141,13 @@ export class CursosController {
             where.statusPagamento = { in: statusPagamento };
           }
 
+          // Removidos pela equipe ficam fora da lista, salvo quando pedidos
+          if (removidas === 'somente') {
+            where.removidaEm = { not: null };
+          } else if (removidas !== 'incluir') {
+            where.removidaEm = null;
+          }
+
           // Buscar inscrições com paginação
           const [total, inscricoes] = await Promise.all([
             prisma.cursosTurmasInscricoes.count({ where }),
@@ -2153,6 +2162,9 @@ export class CursosController {
                 statusPagamento: true,
                 criadoEm: true,
                 alunoId: true,
+                origem: true,
+                removidaEm: true,
+                motivoRemocao: true,
                 CursosTurmas: {
                   select: {
                     id: true,
@@ -2223,6 +2235,9 @@ export class CursosController {
             statusInscricao: inscricao.status,
             statusPagamento: inscricao.statusPagamento,
             criadoEm: inscricao.criadoEm,
+            origem: inscricao.origem ?? null,
+            removidaEm: inscricao.removidaEm ?? null,
+            motivoRemocao: inscricao.motivoRemocao ?? null,
             progresso: includeProgress ? (progressoMap[inscricao.id] ?? 0) : null,
             aluno: {
               id: inscricao.Usuarios.id,

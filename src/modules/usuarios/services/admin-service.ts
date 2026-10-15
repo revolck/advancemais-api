@@ -1342,8 +1342,15 @@ export class AdminService {
     const alvo = await this.ensureHistoryTarget(userId, options?.userRole);
 
     const auditWhere: Prisma.AuditoriaLogsWhereInput = {
-      entidadeId: userId,
-      entidadeTipo: 'USUARIO',
+      AND: [
+        {
+          OR: [
+            { entidadeId: userId, entidadeTipo: 'USUARIO' },
+            // Entradas, saídas e situação nas turmas (registros de inscrição do aluno)
+            { entidadeTipo: 'CURSO_INSCRICAO', metadata: { path: ['alunoId'], equals: userId } },
+          ],
+        },
+      ],
     };
 
     if (query.atorId) {
@@ -1369,26 +1376,28 @@ export class AdminService {
     }
 
     if (query.search) {
-      auditWhere.OR = [
-        {
-          descricao: {
-            contains: query.search,
-            mode: 'insensitive',
+      (auditWhere.AND as Prisma.AuditoriaLogsWhereInput[]).push({
+        OR: [
+          {
+            descricao: {
+              contains: query.search,
+              mode: 'insensitive',
+            },
           },
-        },
-        {
-          acao: {
-            contains: query.search,
-            mode: 'insensitive',
+          {
+            acao: {
+              contains: query.search,
+              mode: 'insensitive',
+            },
           },
-        },
-        {
-          tipo: {
-            contains: query.search,
-            mode: 'insensitive',
+          {
+            tipo: {
+              contains: query.search,
+              mode: 'insensitive',
+            },
           },
-        },
-      ];
+        ],
+      });
     }
 
     const [auditLogs, bloqueioLogs] = await Promise.all([

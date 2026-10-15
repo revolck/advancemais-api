@@ -18,6 +18,7 @@ import { meetOrchestrationService } from './meet-orchestration.service';
 import { resolveOrganizadorId } from './meet-attendees.helper';
 import { montarCamposAlteradosMaterial } from './historico-materiais.helper';
 import { notificacoesHelper } from './notificacoes-helper.service';
+import { filtroInscricaoAtiva } from '@/modules/cursos/utils/inscricao-ativa';
 
 const aulasLogger = logger.child({ module: 'AulasService' });
 
@@ -2088,6 +2089,7 @@ export const aulasService = {
       where: {
         id: input.inscricaoId,
         alunoId,
+        ...filtroInscricaoAtiva(),
         CursosTurmas: {
           CursosTurmasAulas: { some: { id: aulaId, deletedAt: null } },
         },

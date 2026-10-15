@@ -4,6 +4,7 @@ import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 
 import { agendaWithRelations, mapAgendaItem } from './agenda.mapper';
+import { filtroInscricaoAtiva } from '@/modules/cursos/utils/inscricao-ativa';
 
 const agendaLogger = logger.child({ module: 'CursosAgendaService' });
 
@@ -364,7 +365,8 @@ export const agendaService = {
     } = {},
   ) {
     const inscricoes = await prisma.cursosTurmasInscricoes.findMany({
-      where: { alunoId },
+      // Só turmas em que o aluno continua matriculado (removido não vê a agenda da turma)
+      where: { alunoId, ...filtroInscricaoAtiva() },
       select: {
         id: true,
         turmaId: true,

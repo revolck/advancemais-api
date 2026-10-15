@@ -1,4 +1,5 @@
 import {
+  AuditoriaCategoria,
   CursoStatus,
   CursosAtividadeTipo,
   CursosAvaliacaoTipo,
@@ -30,7 +31,10 @@ import { aulaWithMateriaisInclude } from './aulas.mapper';
 import { moduloDetailedInclude } from './modulos.mapper';
 import { provaDefaultInclude } from './provas.mapper';
 import { cursosTurmasMapper, mapTurmaSummaryWithInscricoes } from './cursos.service';
-import { countInscricoesQueOcupamVagaPorTurma } from './inscricoes-vagas.service';
+import {
+  countInscricoesQueOcupamVagaPorTurma,
+  inscricaoOcupaVaga,
+} from './inscricoes-vagas.service';
 
 const turmasLogger = logger.child({ module: 'CursosTurmasService' });
 const TURMA_PERIODO_OBRIGATORIO_PUBLICACAO = 'TURMA_PERIODO_OBRIGATORIO_PUBLICACAO';
@@ -1448,7 +1452,7 @@ const calculateLateEnrollmentDeadline = (
   return prazoBase;
 };
 
-const createLateEnrollmentAccessRecords = async (
+export const createLateEnrollmentAccessRecords = async (
   tx: Prisma.TransactionClient,
   params: {
     turmaId: string;
@@ -1838,18 +1842,8 @@ export const turmasService = {
       if (includeAlunos) {
         const inscricoesRaw = (turmaRaw as any).CursosTurmasInscricoes || [];
         const now = new Date();
-        inscricoesCount = inscricoesRaw.filter(
-          (inscricao: any) =>
-            [
-              StatusInscricao.INSCRITO,
-              StatusInscricao.EM_ANDAMENTO,
-              StatusInscricao.EM_ESTAGIO,
-              StatusInscricao.CONCLUIDO,
-            ].includes(inscricao?.status) ||
-            (inscricao?.status === StatusInscricao.AGUARDANDO_PAGAMENTO &&
-              ['PENDENTE', 'PROCESSANDO'].includes(String(inscricao?.statusPagamento || '')) &&
-              inscricao?.pagamentoExpiraEm &&
-              new Date(inscricao.pagamentoExpiraEm).getTime() > now.getTime()),
+        inscricoesCount = inscricoesRaw.filter((inscricao: any) =>
+          inscricaoOcupaVaga(inscricao ?? {}, now),
         ).length;
       } else {
         inscricoesCount = inscricoesCountMap?.[turmaId] || 0;
@@ -3089,12 +3083,40 @@ export const turmasService = {
         });
       }
 
+      // Matrícula pela equipe: acesso concedido (antes nascia com pagamento PENDENTE e o
+      // aluno não abria provas), com origem e registro na auditoria
       const inscricao = await tx.cursosTurmasInscricoes.create({
         data: {
           turmaId,
           alunoId,
+          origem: 'EQUIPE',
+          adicionadaPorId: actor?.id ?? null,
+          statusPagamento: 'APROVADO',
+          metodoPagamento: 'ADMINISTRATIVO',
+          valorPago: 0,
+          valorFinal: 0,
         },
         select: { id: true },
+      });
+      await tx.auditoriaLogs.create({
+        data: {
+          categoria: AuditoriaCategoria.CURSO,
+          tipo: 'CURSO_INSCRICAO',
+          acao: 'INSCRICAO_ADICIONADA_PELA_EQUIPE',
+          usuarioId: actor?.id ?? null,
+          entidadeId: inscricao.id,
+          entidadeTipo: 'CURSO_INSCRICAO',
+          descricao: 'Adicionado(a) à turma pela equipe',
+          dadosNovos: { status: 'INSCRITO', statusPagamento: 'APROVADO' },
+          metadata: {
+            cursoId,
+            turmaId,
+            alunoId,
+            origem: 'ROTA_ANTIGA',
+            pagamento: 'CONCEDIDO',
+            actorRole: actor?.role ?? null,
+          },
+        },
       });
 
       if (turmaJaFoiIniciada(turma)) {
@@ -3235,66 +3257,6 @@ export const turmasService = {
             : null,
         },
       };
-    });
-  },
-
-  async unenroll(cursoId: string, turmaId: string, alunoId: string) {
-    return prisma.$transaction(async (tx) => {
-      const turma = await tx.cursosTurmas.findFirst({
-        where: { id: turmaId, cursoId, deletedAt: null },
-        select: { id: true },
-      });
-
-      if (!turma) {
-        const error = new Error('Turma não encontrada para o curso informado');
-        (error as any).code = 'TURMA_NOT_FOUND';
-        throw error;
-      }
-
-      const inscricao = await tx.cursosTurmasInscricoes.findUnique({
-        where: { turmaId_alunoId: { turmaId, alunoId } },
-        select: {
-          id: true,
-          status: true,
-          _count: {
-            select: {
-              CursosCertificadosEmitidos: true,
-              CursosNotas: true,
-              CursosFrequenciaAlunos: true,
-              CursosAulasProgresso: true,
-            },
-          },
-        },
-      });
-
-      if (!inscricao) {
-        const error = new Error('Aluno não está inscrito nesta turma');
-        (error as any).code = 'ALUNO_NAO_INSCRITO';
-        throw error;
-      }
-
-      // Apagar a inscrição apaga junto certificado, notas, frequência e progresso.
-      // Com histórico, o caminho é a situação "Não concluiu" (desvincula sem apagar).
-      const historico = inscricao._count;
-      if (
-        inscricao.status === 'CONCLUIDO' ||
-        historico.CursosCertificadosEmitidos > 0 ||
-        historico.CursosNotas > 0 ||
-        historico.CursosFrequenciaAlunos > 0 ||
-        historico.CursosAulasProgresso > 0
-      ) {
-        const error = new Error(
-          'Esta inscrição tem histórico (certificado, notas, frequência ou aulas assistidas). Use a situação "Não concluiu" para desvincular sem apagar o histórico.',
-        );
-        (error as any).code = 'INSCRICAO_COM_HISTORICO';
-        throw error;
-      }
-
-      await tx.cursosTurmasInscricoes.delete({
-        where: { turmaId_alunoId: { turmaId, alunoId } },
-      });
-
-      return fetchTurmaDetailed(tx, turmaId);
     });
   },
 

@@ -55,6 +55,10 @@ describe('Cursos Checkout Service', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(prisma.cursosTurmasInscricoes, 'updateMany').mockResolvedValue({ count: 0 } as any);
+    // Leituras sem simulação iriam para o banco do .env: padrão "sem inscrição"
+    vi.spyOn(prisma.cursosTurmasInscricoes, 'findUnique').mockResolvedValue(null as any);
+    vi.spyOn(prisma.cursosTurmasInscricoes, 'findFirst').mockResolvedValue(null as any);
+    vi.spyOn(prisma.cursosTurmasInscricoes, 'findMany').mockResolvedValue([] as any);
     vi.spyOn(prisma.cursosTurmasInscricoes, 'groupBy').mockResolvedValue([] as any);
     vi.spyOn(cursoPagamentoNotificacoesService, 'notificarStatusInscricaoSafe').mockResolvedValue(
       null,

@@ -3705,15 +3705,41 @@ router.post(
   TurmaSituacaoController.emitirParaConcluintes,
 );
 
+/**
+ * Matrícula pela equipe: adicionar/reativar e remover alunos (desvínculo que preserva o
+ * histórico), com prévia (simular), motivo, avisos e auditoria por aluno.
+ * Só administração, moderação e pedagógico.
+ */
+router.post(
+  '/:cursoId/turmas/:turmaId/inscricoes/equipe',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  cursosAlunosInvalidateCacheOnMutation,
+  TurmaSituacaoController.adicionarAlunos,
+);
+
+router.post(
+  '/:cursoId/turmas/:turmaId/inscricoes/remover',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  cursosAlunosInvalidateCacheOnMutation,
+  TurmaSituacaoController.removerAlunos,
+);
+
+router.get(
+  '/:cursoId/turmas/:turmaId/inscricoes/historico',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  TurmaSituacaoController.historico,
+);
+
+// Rotas antigas: só a equipe (antes o instrutor também), passando pelos mesmos serviços
 router.patch(
   '/:cursoId/turmas/:turmaId/inscricoes/:inscricaoId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
   TurmasController.updateInscricaoStatus,
 );
 
 router.delete(
   '/:cursoId/turmas/:turmaId/inscricoes/:alunoId',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
   TurmasController.unenroll,
 );
 
@@ -5733,9 +5759,10 @@ router.get(
  *     security:
  *       - bearerAuth: []
  */
+// Emitir certificado: só a equipe (administração, moderação e pedagógico)
 router.post(
   '/certificados',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
   cursosAlunosInvalidateCacheOnMutation,
   CertificadosController.emitirGlobal,
 );
@@ -5855,7 +5882,7 @@ router.get(
  */
 router.post(
   '/:cursoId/turmas/:turmaId/certificados',
-  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
   cursosAlunosInvalidateCacheOnMutation,
   CertificadosController.emitir,
 );

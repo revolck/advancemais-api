@@ -11,6 +11,7 @@ import {
   responderQuestaoSchema,
   corrigirRespostaSchema,
 } from '../validators/questoes.schema';
+import { filtroInscricaoAtiva } from '@/modules/cursos/utils/inscricao-ativa';
 
 const parseCursoId = (raw: string): string | null => {
   if (!raw || typeof raw !== 'string') {
@@ -58,6 +59,8 @@ const ensureAlunoPodeAcessarProva = async (
       alunoId: req.user.id,
       turmaId,
       statusPagamento: 'APROVADO',
+      // Removido da turma ou "não concluiu": sem acesso às provas (antes só olhava o pagamento)
+      ...filtroInscricaoAtiva(),
     },
     select: { id: true },
   });

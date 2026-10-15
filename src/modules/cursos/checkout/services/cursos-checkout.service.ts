@@ -481,6 +481,9 @@ export const cursosCheckoutService = {
       select: {
         id: true,
         status: true,
+        statusPagamento: true,
+        origem: true,
+        removidaEm: true,
         _count: {
           select: {
             CursosCertificadosEmitidos: true,
@@ -539,6 +542,19 @@ export const cursosCheckoutService = {
       }
     }
 
+    // Cobrança pendente criada pela equipe: o aluno está concluindo o pagamento dela
+    const cobrancaDaEquipe =
+      existing.origem === 'EQUIPE' &&
+      existing.status === 'AGUARDANDO_PAGAMENTO' &&
+      existing.statusPagamento === 'PENDENTE' &&
+      !existing.removidaEm;
+    if (cobrancaDaEquipe) {
+      return prisma.cursosTurmasInscricoes.update({
+        where: { id: existing.id },
+        data: payload,
+      });
+    }
+
     // Só reaproveita inscrição cancelada sem histórico (ex.: pagamento cancelado);
     // concluída, reprovada, trancada ou com histórico não é sobrescrita
     const historico = existing._count;
@@ -559,7 +575,14 @@ export const cursosCheckoutService = {
 
     return prisma.cursosTurmasInscricoes.update({
       where: { id: existing.id },
-      data: payload,
+      // Recompra de inscrição removida pela equipe: volta a ser uma matrícula normal
+      data: {
+        ...payload,
+        removidaEm: null,
+        removidaPorId: null,
+        motivoRemocao: null,
+        statusAntesRemocao: null,
+      },
     });
   },
 
@@ -767,19 +790,33 @@ export const cursosCheckoutService = {
       });
     }
 
-    // 3. Validar vagas disponíveis
-    const temVaga = await this.validarVagasDisponiveis(params.turmaId);
-    if (!temVaga) {
-      throw Object.assign(new Error('Não há vagas disponíveis nesta turma'), {
-        code: 'SEM_VAGAS',
-        statusCode: CHECKOUT_DOMAIN_STATUS.SEM_VAGAS,
-      });
-    }
+    // Matrícula com cobrança pendente feita pela equipe: a vaga já é do aluno e a
+    // inscrição é a mesma; o checkout só conclui o pagamento dela
+    const inscricaoAtual = await prisma.cursosTurmasInscricoes.findUnique({
+      where: { turmaId_alunoId: { turmaId: params.turmaId, alunoId: params.usuarioId } },
+      select: { origem: true, status: true, statusPagamento: true, removidaEm: true },
+    });
+    const reservaDaEquipe =
+      inscricaoAtual?.origem === 'EQUIPE' &&
+      inscricaoAtual.status === 'AGUARDANDO_PAGAMENTO' &&
+      inscricaoAtual.statusPagamento === 'PENDENTE' &&
+      !inscricaoAtual.removidaEm;
 
-    // 4. Validar se aluno já está inscrito
-    const jaInscrito = await this.validarInscricaoDuplicada(params.usuarioId, params.turmaId);
-    if (jaInscrito) {
-      throw new Error('Você já possui inscrição ativa nesta turma');
+    if (!reservaDaEquipe) {
+      // 3. Validar vagas disponíveis
+      const temVaga = await this.validarVagasDisponiveis(params.turmaId);
+      if (!temVaga) {
+        throw Object.assign(new Error('Não há vagas disponíveis nesta turma'), {
+          code: 'SEM_VAGAS',
+          statusCode: CHECKOUT_DOMAIN_STATUS.SEM_VAGAS,
+        });
+      }
+
+      // 4. Validar se aluno já está inscrito
+      const jaInscrito = await this.validarInscricaoDuplicada(params.usuarioId, params.turmaId);
+      if (jaInscrito) {
+        throw new Error('Você já possui inscrição ativa nesta turma');
+      }
     }
 
     // 5. Buscar dados do usuário

@@ -16,6 +16,8 @@ const STATUS_INSCRICAO_OCUPA_VAGA: StatusInscricao[] = [
 ];
 
 const STATUS_PAGAMENTO_RESERVA = ['PENDENTE', 'PROCESSANDO'];
+/** Matrícula com cobrança pendente criada pela equipe: reserva sem prazo de expiração */
+const ORIGEM_EQUIPE = 'EQUIPE';
 
 export function buildInscricaoOcupaVagaWhere(now = new Date()) {
   return {
@@ -26,8 +28,34 @@ export function buildInscricaoOcupaVagaWhere(now = new Date()) {
         statusPagamento: { in: STATUS_PAGAMENTO_RESERVA },
         pagamentoExpiraEm: { gt: now },
       },
+      {
+        status: StatusInscricao.AGUARDANDO_PAGAMENTO,
+        statusPagamento: { in: STATUS_PAGAMENTO_RESERVA },
+        origem: ORIGEM_EQUIPE,
+        removidaEm: null,
+      },
     ],
   };
+}
+
+/** Mesma regra, para listas já carregadas em memória */
+export function inscricaoOcupaVaga(
+  inscricao: {
+    status?: string | null;
+    statusPagamento?: string | null;
+    pagamentoExpiraEm?: Date | string | null;
+    origem?: string | null;
+    removidaEm?: Date | string | null;
+  },
+  now = new Date(),
+) {
+  if (STATUS_INSCRICAO_OCUPA_VAGA.includes(inscricao.status as StatusInscricao)) return true;
+  if (inscricao.status !== StatusInscricao.AGUARDANDO_PAGAMENTO) return false;
+  if (!STATUS_PAGAMENTO_RESERVA.includes(String(inscricao.statusPagamento ?? ''))) return false;
+  if (inscricao.origem === ORIGEM_EQUIPE && !inscricao.removidaEm) return true;
+  return Boolean(
+    inscricao.pagamentoExpiraEm && new Date(inscricao.pagamentoExpiraEm).getTime() > now.getTime(),
+  );
 }
 
 export async function limparReservasExpiradasDaTurma(turmaId: string, now = new Date()) {
@@ -35,7 +63,12 @@ export async function limparReservasExpiradasDaTurma(turmaId: string, now = new 
     turmaId,
     status: StatusInscricao.AGUARDANDO_PAGAMENTO,
     statusPagamento: { in: STATUS_PAGAMENTO_RESERVA },
-    OR: [{ pagamentoExpiraEm: null }, { pagamentoExpiraEm: { lte: now } }],
+    AND: [
+      { OR: [{ pagamentoExpiraEm: null }, { pagamentoExpiraEm: { lte: now } }] },
+      // A cobrança pendente criada pela equipe não expira sozinha (a equipe remove se preciso).
+      // origem nula = inscrições anteriores, que continuam sendo limpas como antes.
+      { OR: [{ origem: null }, { origem: { not: ORIGEM_EQUIPE } }] },
+    ],
   };
 
   const expiradas = await prisma.cursosTurmasInscricoes.findMany({

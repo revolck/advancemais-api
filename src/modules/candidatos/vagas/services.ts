@@ -139,12 +139,14 @@ export const vagasPublicasService = {
       senioridade: v.senioridade,
       cidade: (v.localizacao as any)?.cidade ?? null,
       estado: (v.localizacao as any)?.estado ?? null,
+      modoAnonimo: v.modoAnonimo,
       empresa: v.modoAnonimo
-        ? { id: null, nome: 'Oportunidade Confidencial', avatarUrl: null }
+        ? { id: null, nome: 'Oportunidade Confidencial', avatarUrl: null, modoAnonimo: true }
         : {
             id: v.Usuarios?.id ?? null,
             nome: v.Usuarios?.nomeCompleto ?? null,
             avatarUrl: v.Usuarios?.UsuariosInformation?.avatarUrl ?? null,
+            modoAnonimo: false,
           },
     }));
 

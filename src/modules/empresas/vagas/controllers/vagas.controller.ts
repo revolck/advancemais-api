@@ -167,14 +167,21 @@ export class VagasController {
         usuarioIdFiltro = _req.user.id;
       }
 
+      const papel = _req.user?.role;
       const vagas = await vagasService.list({
         status: statusesFilter,
         usuarioId: usuarioIdFiltro,
+        // Equipe vê os dados completos; o público (e outras empresas) só a vitrine
+        interno:
+          papel === Roles.ADMIN || papel === Roles.MODERADOR || papel === Roles.SETOR_DE_VAGAS,
         page: page ? Math.max(1, parseInt(page, 10) || 1) : undefined,
         pageSize: pageSize ? Math.max(1, Math.min(100, parseInt(pageSize, 10) || 10)) : undefined,
       });
       const ttl = Number(process.env.VAGAS_CACHE_TTL || DEFAULT_TTL);
       const etag = setCacheHeaders(res, vagas, ttl);
+      // Situação da vaga muda por ação de alguém (despublicar, expirar): sempre conferir
+      // com o servidor (ETag → 304). Com login, nunca em cache compartilhado.
+      res.set('Cache-Control', `${_req.user ? 'private' : 'public'}, no-cache`);
       const ifNoneMatch = _req.headers['if-none-match'];
       const tags = Array.isArray(ifNoneMatch)
         ? ifNoneMatch

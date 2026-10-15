@@ -61,6 +61,7 @@ export class RecrutadorEmpresasController {
           : await vagasService.list({
               ids: vagaIds,
               status: DEFAULT_RECRUITER_STATUSES,
+              interno: true,
             });
 
       return res.json({

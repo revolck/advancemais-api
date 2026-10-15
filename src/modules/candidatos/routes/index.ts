@@ -1,6 +1,6 @@
 import { Router } from 'express';
 
-import { publicCache } from '@/middlewares/cache-control';
+import { publicCache, revalidarSempre } from '@/middlewares/cache-control';
 
 import { areasInteresseRoutes } from '../areas-interesse/routes';
 import { subareasInteresseRoutes } from '../areas-interesse/routes/subareas';
@@ -121,7 +121,8 @@ router.use('/curriculos', curriculosRoutes);
  *                 pagination:
  *                   $ref: '#/components/schemas/PaginationMeta'
  */
-router.get('/vagas', publicCache, async (req, res) => {
+// Vaga despublicada/expirada precisa sumir do site na hora: sem cache de 60s
+router.get('/vagas', revalidarSempre, async (req, res) => {
   // Helper para aceitar valores simples, arrays (?param=A&param=B) ou CSV (?param=A,B)
   const parseList = <T = string>(input: unknown, map?: (v: string) => T): T[] | undefined => {
     if (!input) return undefined;

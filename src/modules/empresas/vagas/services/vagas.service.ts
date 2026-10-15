@@ -545,12 +545,17 @@ const sanitizeUpdateData = (data: UpdateVagaData): Prisma.EmpresasVagasUnchecked
 };
 
 /**
- * Moderação (motivo da rejeição, observação da aprovação) é conversa entre o setor de
- * vagas e a empresa: só sai nas respostas do painel, nunca na vaga pública.
+ * Vaga para resposta da API.
+ * - interno (painel da equipe, empresa dona, recrutador vinculado): dados completos da
+ *   empresa e a moderação (motivo da rejeição, observação da aprovação).
+ * - público (site, candidatos): só a vitrine da empresa, sem o cadastro bruto, telefone
+ *   ou dados pessoais; vaga confidencial não identifica a empresa (nome, CNPJ, endereço,
+ *   código e id ficam de fora).
  */
-const transformVaga = (vaga: VagaWithEmpresa, opcoes?: { moderacao?: boolean }) => {
+const transformVaga = (vaga: VagaWithEmpresa, opcoes?: { interno?: boolean }) => {
   if (!vaga) return null;
 
+  const interno = Boolean(opcoes?.interno);
   const {
     destaque,
     EmpresasVagasDestaque: destaqueInfo,
@@ -559,20 +564,21 @@ const transformVaga = (vaga: VagaWithEmpresa, opcoes?: { moderacao?: boolean }) 
     motivoRejeicao,
     observacoesAprovacao,
     moderadaEm,
+    Usuarios: usuarioBruto,
     ...vagaSemMetadados
   } = vaga;
-  const moderacao = opcoes?.moderacao
+  const moderacao = interno
     ? {
         motivoRejeicao: motivoRejeicao ?? null,
         observacoesAprovacao: observacoesAprovacao ?? null,
         moderadaEm: moderadaEm ?? null,
       }
     : {};
+  const confidencialPublica = !interno && vagaSemMetadados.modoAnonimo;
 
   const empresaUsuarioRaw =
-    vagaSemMetadados.Usuarios &&
-    vagaSemMetadados.Usuarios.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
-      ? vagaSemMetadados.Usuarios
+    usuarioBruto && usuarioBruto.tipoUsuario === TiposDeUsuarios.PESSOA_JURIDICA
+      ? usuarioBruto
       : null;
   const empresaUsuario = empresaUsuarioRaw
     ? attachEnderecoResumo(mergeUsuarioInformacoes(empresaUsuarioRaw))!
@@ -589,23 +595,40 @@ const transformVaga = (vaga: VagaWithEmpresa, opcoes?: { moderacao?: boolean }) 
       ? rawDescricao.trim()
       : (rawDescricao ?? null);
 
-  const empresa = empresaUsuario
+  const empresa = confidencialPublica
     ? {
-        id: empresaUsuario.id,
-        nome: empresaUsuario.nomeCompleto,
-        cnpj: vagaSemMetadados.modoAnonimo ? null : ((empresaUsuario as any).cnpj ?? null), // CNPJ da empresa
-        avatarUrl: vagaSemMetadados.modoAnonimo ? null : empresaUsuario.avatarUrl,
-        cidade: empresaUsuario.cidade,
-        estado: empresaUsuario.estado,
-        descricao: displayDescription,
-        socialLinks: vagaSemMetadados.modoAnonimo
-          ? null
-          : mapSocialLinks(empresaUsuario.redesSociais),
-        codUsuario: empresaUsuario.codUsuario,
-        enderecos: empresaUsuario.UsuariosEnderecos,
-        informacoes: empresaUsuario.informacoes,
+        id: null,
+        nome: displayName,
+        cnpj: null,
+        avatarUrl: null,
+        cidade: null,
+        estado: null,
+        descricao: ANON_DESCRIPTION,
+        socialLinks: null,
+        codUsuario: null,
+        enderecos: [],
+        informacoes: null,
+        modoAnonimo: true,
       }
-    : null;
+    : empresaUsuario
+      ? {
+          id: empresaUsuario.id,
+          nome: empresaUsuario.nomeCompleto,
+          cnpj: vagaSemMetadados.modoAnonimo ? null : ((empresaUsuario as any).cnpj ?? null), // CNPJ da empresa
+          avatarUrl: vagaSemMetadados.modoAnonimo ? null : empresaUsuario.avatarUrl,
+          cidade: empresaUsuario.cidade,
+          estado: empresaUsuario.estado,
+          descricao: displayDescription,
+          socialLinks: vagaSemMetadados.modoAnonimo
+            ? null
+            : mapSocialLinks(empresaUsuario.redesSociais),
+          codUsuario: empresaUsuario.codUsuario,
+          enderecos: empresaUsuario.UsuariosEnderecos,
+          // Telefone e dados pessoais do cadastro só no painel
+          informacoes: interno ? empresaUsuario.informacoes : null,
+          modoAnonimo: Boolean(vagaSemMetadados.modoAnonimo),
+        }
+      : null;
 
   const destaqueDetalhes = destaqueInfo
     ? {
@@ -619,6 +642,9 @@ const transformVaga = (vaga: VagaWithEmpresa, opcoes?: { moderacao?: boolean }) 
 
   return {
     ...vagaSemMetadados,
+    ...(confidencialPublica ? { usuarioId: null } : {}),
+    // Cadastro bruto da empresa (com telefone e dados pessoais) só no painel
+    ...(interno ? { Usuarios: usuarioBruto } : {}),
     ...moderacao,
     areaInteresse: areaInteresse
       ? {
@@ -745,6 +771,8 @@ export const vagasService = {
     ids?: string[];
     page?: number;
     pageSize?: number;
+    /** Painel (equipe, empresa dona, recrutador vinculado): dados completos */
+    interno?: boolean;
   }) => {
     await syncExpiredPublishedVagas({
       empresaUsuarioIds: params?.usuarioIds ?? (params?.usuarioId ? [params.usuarioId] : undefined),
@@ -774,7 +802,7 @@ export const vagasService = {
       ...(skip ? { skip } : {}),
     });
 
-    return vagas.map((vaga) => transformVaga(vaga));
+    return vagas.map((vaga) => transformVaga(vaga, { interno: params?.interno }));
   },
 
   getForInternalViewer: async (params: {
@@ -795,7 +823,7 @@ export const vagasService = {
       ...includeEmpresa,
     });
 
-    return vaga ? transformVaga(vaga, { moderacao: true }) : null;
+    return vaga ? transformVaga(vaga, { interno: true }) : null;
   },
 
   get: async (id: string) => {
@@ -955,7 +983,7 @@ export const vagasService = {
             await avisosDaVaga.planoCompleto(vagaDoAviso, ocupacao.limite);
           }
         }
-        return { ...transformVaga(vaga, { moderacao: true }), avisoStatus };
+        return { ...transformVaga(vaga, { interno: true }), avisoStatus };
       } catch (error) {
         if (isUniqueConstraintForField(error, 'slug')) {
           continue;
@@ -1117,7 +1145,7 @@ export const vagasService = {
     });
 
     return {
-      ...transformVaga(vaga, { moderacao: true }),
+      ...transformVaga(vaga, { interno: true }),
       avisoStatus: voltaParaAnalise
         ? 'Alterações salvas. A vaga saiu do ar e voltou para a aprovação do setor de vagas.'
         : null,
@@ -1201,7 +1229,7 @@ export const vagasService = {
         await avisosDaVaga.planoCompleto(vagaDoAviso, ocupacao.limite);
       }
     }
-    return transformVaga(atualizada, { moderacao: true });
+    return transformVaga(atualizada, { interno: true });
   },
 
   /** Publicada → despublicada; em análise → volta a rascunho. Libera espaço no plano. */
@@ -1245,7 +1273,7 @@ export const vagasService = {
         ator.role !== Roles.EMPRESA,
       );
     }
-    return transformVaga(atualizada, { moderacao: true });
+    return transformVaga(atualizada, { interno: true });
   },
 
   /** Excluir de vez só a própria vaga e só sem candidatos (com candidatos: despublique) */

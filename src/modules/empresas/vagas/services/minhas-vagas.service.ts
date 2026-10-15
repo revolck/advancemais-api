@@ -22,6 +22,7 @@ export const minhasVagasService = {
     const vagas = await vagasService.list({
       status,
       usuarioId: empresaId,
+      interno: true,
       page,
       pageSize,
     });

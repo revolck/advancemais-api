@@ -12,6 +12,7 @@ export type AcaoHistoricoVaga =
   | 'VAGA_REJEITADA'
   | 'VAGA_DESPUBLICADA'
   | 'VAGA_ENVIO_CANCELADO'
+  | 'VAGA_EXPIRADA'
   | 'VAGA_EXCLUIDA';
 
 export interface RegistroHistoricoVaga {

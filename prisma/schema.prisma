@@ -3399,6 +3399,11 @@ enum NotificacaoTipo {
   VAGA_APROVADA // Vaga foi aprovada e publicada
   NOVO_CANDIDATO // Novo candidato se inscreveu na vaga
   VAGA_PREENCHIDA // Vaga atingiu limite de currículos desejados
+  VAGA_EM_ANALISE // Vaga entrou na fila de aprovação (cadastro, envio ou edição)
+  VAGA_DESPUBLICADA // Vaga saiu do ar (pela empresa ou pelo setor de vagas)
+  VAGA_EXPIRADA // Prazo de inscrições terminou
+  VAGA_SITUACAO_ALTERADA // Setor de vagas mudou a situação (encerrada, pausada...)
+  VAGA_LIMITE_PLANO // Limite de vagas do plano atingido
   PLANO_EXPIRANDO // Plano irá expirar em breve (5, 3, 1 dia ou horas)
   PLANO_EXPIRADO // Plano expirou
   ASSINATURA_RENOVADA // Assinatura foi renovada automaticamente

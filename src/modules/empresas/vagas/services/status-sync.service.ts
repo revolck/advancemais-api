@@ -1,6 +1,8 @@
 import { Prisma, StatusDeVagas } from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
+import { avisosDaVaga } from '@/modules/empresas/vagas/utils/avisos-vaga';
+import { registrarHistoricoVaga } from '@/modules/empresas/vagas/utils/historico-vaga';
 
 type SyncExpiredPublishedVagasParams = {
   now?: Date;
@@ -35,14 +37,36 @@ const buildWhere = (
   return and.length === 1 ? and[0] : { AND: and };
 };
 
+/**
+ * Publicadas com prazo de inscrições vencido → EXPIRADO. Uma a uma, para avisar a empresa
+ * e registrar no histórico só quem de fato expirou nesta execução (se duas execuções
+ * rodarem juntas, só uma consegue mudar cada vaga, e só ela avisa).
+ */
 export const syncExpiredPublishedVagas = async (params?: SyncExpiredPublishedVagasParams) => {
   const now = params?.now ?? new Date();
 
-  return prisma.empresasVagas.updateMany({
+  const vencidas = await prisma.empresasVagas.findMany({
     where: buildWhere(params, now),
-    data: {
-      status: StatusDeVagas.EXPIRADO,
-      atualizadoEm: now,
-    },
+    select: { id: true, usuarioId: true, titulo: true },
   });
+
+  let count = 0;
+  for (const vaga of vencidas) {
+    const { count: mudou } = await prisma.empresasVagas.updateMany({
+      where: { id: vaga.id, status: StatusDeVagas.PUBLICADO },
+      data: { status: StatusDeVagas.EXPIRADO, atualizadoEm: now },
+    });
+    if (mudou === 0) continue;
+    count += 1;
+    await registrarHistoricoVaga({
+      vagaId: vaga.id,
+      acao: 'VAGA_EXPIRADA',
+      descricao: 'Prazo de inscrições terminou: vaga expirada automaticamente',
+      de: StatusDeVagas.PUBLICADO,
+      para: StatusDeVagas.EXPIRADO,
+    });
+    await avisosDaVaga.expirada(vaga);
+  }
+
+  return { count };
 };

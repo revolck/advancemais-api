@@ -5,6 +5,7 @@ jest.mock('@/config/prisma', () => ({
     empresasRecursosPremiumVagas: { findUnique: jest.fn() },
     empresasVagasCategorias: { findUnique: jest.fn() },
     auditoriaLogs: { create: jest.fn() },
+    notificacoes: { create: jest.fn(), findFirst: jest.fn() },
     empresasVagas: {
       findUnique: jest.fn(),
       count: jest.fn(),
@@ -287,6 +288,8 @@ describe('editar vaga', () => {
     db.empresasVagas.findUniqueOrThrow = jest.fn(() =>
       Promise.resolve({
         id: VAGA,
+        usuarioId: EMPRESA,
+        titulo: 'Analista fiscal',
         status: salva?.status ?? 'PUBLICADO',
         modoAnonimo: false,
         Usuarios: null,
@@ -302,6 +305,13 @@ describe('editar vaga', () => {
     expect(dadosSalvos()).toMatchObject({ titulo: 'Novo título', status: 'EM_ANALISE' });
     expect(vaga.status).toBe('EM_ANALISE');
     expect(vaga.avisoStatus).toMatch(/voltou para a aprovação/);
+    expect(db.notificacoes.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        tipo: 'VAGA_EM_ANALISE',
+        titulo: 'Vaga voltou para aprovação',
+        usuarioId: EMPRESA,
+      }),
+    });
   });
 
   it('empresa edita rascunho ou vaga em análise: a situação não muda', async () => {
@@ -345,6 +355,20 @@ describe('editar vaga', () => {
     await expect(vagasService.update(VAGA, { titulo: 'x' }, { ator })).rejects.toMatchObject({
       code: 'VAGA_NAO_EDITAVEL',
       statusCode: 409,
+    });
+  });
+
+  it('equipe encerra a vaga pela edição: empresa é avisada da nova situação', async () => {
+    db.empresasVagas.findUnique.mockResolvedValue(vagaAtual('PUBLICADO'));
+    await vagasService.update(VAGA, { status: 'ENCERRADA' } as any, {
+      ator: { id: 'setor-1', role: 'SETOR_DE_VAGAS' },
+    });
+    expect(db.notificacoes.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        tipo: 'VAGA_SITUACAO_ALTERADA',
+        titulo: 'Vaga encerrada',
+        dados: { status: 'ENCERRADA' },
+      }),
     });
   });
 

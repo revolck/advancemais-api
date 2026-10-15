@@ -1,0 +1,6 @@
+-- Avisos para a empresa sobre cada mudança na vaga (antes só aprovada/rejeitada)
+ALTER TYPE "NotificacaoTipo" ADD VALUE IF NOT EXISTS 'VAGA_EM_ANALISE';
+ALTER TYPE "NotificacaoTipo" ADD VALUE IF NOT EXISTS 'VAGA_DESPUBLICADA';
+ALTER TYPE "NotificacaoTipo" ADD VALUE IF NOT EXISTS 'VAGA_EXPIRADA';
+ALTER TYPE "NotificacaoTipo" ADD VALUE IF NOT EXISTS 'VAGA_SITUACAO_ALTERADA';
+ALTER TYPE "NotificacaoTipo" ADD VALUE IF NOT EXISTS 'VAGA_LIMITE_PLANO';

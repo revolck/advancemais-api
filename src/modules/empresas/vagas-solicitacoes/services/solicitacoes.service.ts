@@ -4,6 +4,8 @@ import { adminVagasService } from '@/modules/empresas/admin/services/admin-vagas
 import { notificacoesService } from '@/modules/notificacoes/services/notificacoes.service';
 import { logger } from '@/utils/logger';
 import { registrarHistoricoVaga } from '@/modules/empresas/vagas/utils/historico-vaga';
+import { avisosDaVaga } from '@/modules/empresas/vagas/utils/avisos-vaga';
+import { LimiteVagasPlanoAtingidoError } from '@/modules/empresas/vagas/services/errors';
 import { Prisma, StatusDeVagas } from '@prisma/client';
 import type {
   AprovarSolicitacaoInput,
@@ -268,7 +270,15 @@ export const solicitacoesService = {
     }
 
     // Usar o serviço existente de aprovação de vagas
-    await adminEmpresasService.approveVaga(vaga.usuarioId, vaga.id);
+    try {
+      await adminEmpresasService.approveVaga(vaga.usuarioId, vaga.id);
+    } catch (error) {
+      // Plano cheio: a empresa precisa saber por que a vaga não foi ao ar
+      if (error instanceof LimiteVagasPlanoAtingidoError) {
+        await avisosDaVaga.limiteNoEnvio(vaga, { limite: error.limite, emUso: error.limite });
+      }
+      throw error;
+    }
 
     // Moderação em campos próprios (as observações da vaga são da empresa)
     await prisma.empresasVagas.update({

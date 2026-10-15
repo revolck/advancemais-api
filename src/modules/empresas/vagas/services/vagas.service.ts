@@ -20,6 +20,7 @@ import {
 } from '@/modules/empresas/vagas/services/errors';
 import { syncExpiredPublishedVagas } from '@/modules/empresas/vagas/services/status-sync.service';
 import { registrarHistoricoVaga } from '@/modules/empresas/vagas/utils/historico-vaga';
+import { avisosDaVaga } from '@/modules/empresas/vagas/utils/avisos-vaga';
 import type {
   CreateVagaInput,
   UpdateVagaInput,
@@ -867,10 +868,11 @@ export const vagasService = {
     // cheio, fica salva como rascunho (nada do que foi digitado se perde) com o aviso.
     let statusInicial: StatusDeVagas = StatusDeVagas.EM_ANALISE;
     let avisoStatus: string | null = null;
+    let ocupacao: Awaited<ReturnType<typeof ocupacaoDoPlano>> | null = null;
     if (recursosPremiumAtivos) {
       statusInicial = StatusDeVagas.PUBLICADO;
     } else {
-      const ocupacao = await ocupacaoDoPlano(data.usuarioId, planoAtivo);
+      ocupacao = await ocupacaoDoPlano(data.usuarioId, planoAtivo);
       if (ocupacao.cheio) {
         statusInicial = StatusDeVagas.RASCUNHO;
         avisoStatus = `Vaga salva como rascunho. ${mensagemLimiteDoPlano(ocupacao)}`;
@@ -937,6 +939,17 @@ export const vagasService = {
                 : 'Vaga criada como rascunho (limite do plano)',
           para: statusInicial,
         });
+        const vagaDoAviso = { id: vaga.id, usuarioId: vaga.usuarioId, titulo: vaga.titulo };
+        if (statusInicial === StatusDeVagas.PUBLICADO) {
+          await avisosDaVaga.publicadaDireto(vagaDoAviso);
+        } else if (statusInicial === StatusDeVagas.RASCUNHO && ocupacao) {
+          await avisosDaVaga.limiteNoCadastro(vagaDoAviso, ocupacao);
+        } else {
+          await avisosDaVaga.emAnalise(vagaDoAviso, 'CADASTRADA');
+          if (ocupacao?.limite && ocupacao.emUso + 1 >= ocupacao.limite) {
+            await avisosDaVaga.planoCompleto(vagaDoAviso, ocupacao.limite);
+          }
+        }
         return { ...transformVaga(vaga, { moderacao: true }), avisoStatus };
       } catch (error) {
         if (isUniqueConstraintForField(error, 'slug')) {
@@ -1066,6 +1079,13 @@ export const vagasService = {
       });
     });
 
+    const vagaDoAviso = { id: vaga.id, usuarioId: vaga.usuarioId, titulo: vaga.titulo };
+    if (voltaParaAnalise) {
+      await avisosDaVaga.emAnalise(vagaDoAviso, 'EDITADA');
+    } else if (!editadaPelaEmpresa && vaga.status !== vagaAtual.status) {
+      await avisosDaVaga.situacaoAlteradaPelaEquipe(vagaDoAviso, vaga.status);
+    }
+
     await registrarHistoricoVaga({
       vagaId: id,
       usuarioId: ator?.id ?? null,
@@ -1113,14 +1133,17 @@ export const vagasService = {
 
     const premium = await hasRecursosPremiumVagasAtivos(vaga.usuarioId);
     let novoStatus: StatusDeVagas = StatusDeVagas.EM_ANALISE;
+    let ocupacao: Awaited<ReturnType<typeof ocupacaoDoPlano>> | null = null;
+    const vagaDoAviso = { id: vaga.id, usuarioId: vaga.usuarioId, titulo: vaga.titulo };
     if (premium) {
       novoStatus = StatusDeVagas.PUBLICADO;
     } else {
       const plano = canBypassPlanoAtivo(ator.role)
         ? undefined
         : await ensurePlanoAtivoParaUsuario(vaga.usuarioId);
-      const ocupacao = await ocupacaoDoPlano(vaga.usuarioId, plano);
+      ocupacao = await ocupacaoDoPlano(vaga.usuarioId, plano);
       if (ocupacao.cheio) {
+        await avisosDaVaga.limiteNoEnvio(vagaDoAviso, ocupacao);
         throw Object.assign(erroVaga('LIMITE_VAGAS_PLANO', mensagemLimiteDoPlano(ocupacao), 409), {
           limite: ocupacao.limite,
           emUso: ocupacao.emUso,
@@ -1149,6 +1172,14 @@ export const vagasService = {
       de: vaga.status,
       para: novoStatus,
     });
+    if (novoStatus === StatusDeVagas.PUBLICADO) {
+      await avisosDaVaga.publicadaDireto(vagaDoAviso);
+    } else {
+      await avisosDaVaga.emAnalise(vagaDoAviso, 'ENVIADA');
+      if (ocupacao?.limite && ocupacao.emUso + 1 >= ocupacao.limite) {
+        await avisosDaVaga.planoCompleto(vagaDoAviso, ocupacao.limite);
+      }
+    }
     return transformVaga(atualizada, { moderacao: true });
   },
 
@@ -1184,6 +1215,12 @@ export const vagasService = {
       de: vaga.status,
       para: destino,
     });
+    if (destino === StatusDeVagas.DESPUBLICADA) {
+      await avisosDaVaga.despublicada(
+        { id: vaga.id, usuarioId: vaga.usuarioId, titulo: vaga.titulo },
+        ator.role !== Roles.EMPRESA,
+      );
+    }
     return transformVaga(atualizada, { moderacao: true });
   },
 

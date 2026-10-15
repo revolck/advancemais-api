@@ -3404,6 +3404,8 @@ enum NotificacaoTipo {
   VAGA_EXPIRADA // Prazo de inscrições terminou
   VAGA_SITUACAO_ALTERADA // Setor de vagas mudou a situação (encerrada, pausada...)
   VAGA_LIMITE_PLANO // Limite de vagas do plano atingido
+  // Notificações para a EQUIPE (setor de vagas, moderador, admin)
+  VAGA_AGUARDANDO_APROVACAO // Vagas na fila de aprovação (aviso agrupado)
   PLANO_EXPIRANDO // Plano irá expirar em breve (5, 3, 1 dia ou horas)
   PLANO_EXPIRADO // Plano expirou
   ASSINATURA_RENOVADA // Assinatura foi renovada automaticamente

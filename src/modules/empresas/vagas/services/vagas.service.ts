@@ -20,7 +20,7 @@ import {
 } from '@/modules/empresas/vagas/services/errors';
 import { syncExpiredPublishedVagas } from '@/modules/empresas/vagas/services/status-sync.service';
 import { registrarHistoricoVaga } from '@/modules/empresas/vagas/utils/historico-vaga';
-import { avisosDaVaga } from '@/modules/empresas/vagas/utils/avisos-vaga';
+import { atualizarAvisoDaFila, avisosDaVaga } from '@/modules/empresas/vagas/utils/avisos-vaga';
 import type {
   CreateVagaInput,
   UpdateVagaInput,
@@ -946,6 +946,11 @@ export const vagasService = {
           await avisosDaVaga.limiteNoCadastro(vagaDoAviso, ocupacao);
         } else {
           await avisosDaVaga.emAnalise(vagaDoAviso, 'CADASTRADA');
+          await atualizarAvisoDaFila({
+            novaVaga: { ...vagaDoAviso, empresaNome: vaga.Usuarios?.nomeCompleto },
+            motivo: 'CADASTRADA',
+            atorId: options?.actorId,
+          });
           if (ocupacao?.limite && ocupacao.emUso + 1 >= ocupacao.limite) {
             await avisosDaVaga.planoCompleto(vagaDoAviso, ocupacao.limite);
           }
@@ -1082,8 +1087,19 @@ export const vagasService = {
     const vagaDoAviso = { id: vaga.id, usuarioId: vaga.usuarioId, titulo: vaga.titulo };
     if (voltaParaAnalise) {
       await avisosDaVaga.emAnalise(vagaDoAviso, 'EDITADA');
+      await atualizarAvisoDaFila({
+        novaVaga: { ...vagaDoAviso, empresaNome: vaga.Usuarios?.nomeCompleto },
+        motivo: 'EDITADA',
+        atorId: ator?.id,
+      });
     } else if (!editadaPelaEmpresa && vaga.status !== vagaAtual.status) {
       await avisosDaVaga.situacaoAlteradaPelaEquipe(vagaDoAviso, vaga.status);
+      if (
+        vaga.status === StatusDeVagas.EM_ANALISE ||
+        vagaAtual.status === StatusDeVagas.EM_ANALISE
+      ) {
+        await atualizarAvisoDaFila({});
+      }
     }
 
     await registrarHistoricoVaga({
@@ -1176,6 +1192,11 @@ export const vagasService = {
       await avisosDaVaga.publicadaDireto(vagaDoAviso);
     } else {
       await avisosDaVaga.emAnalise(vagaDoAviso, 'ENVIADA');
+      await atualizarAvisoDaFila({
+        novaVaga: { ...vagaDoAviso, empresaNome: atualizada.Usuarios?.nomeCompleto },
+        motivo: 'ENVIADA',
+        atorId: ator.id,
+      });
       if (ocupacao?.limite && ocupacao.emUso + 1 >= ocupacao.limite) {
         await avisosDaVaga.planoCompleto(vagaDoAviso, ocupacao.limite);
       }
@@ -1215,6 +1236,9 @@ export const vagasService = {
       de: vaga.status,
       para: destino,
     });
+    if (vaga.status === StatusDeVagas.EM_ANALISE) {
+      await atualizarAvisoDaFila({});
+    }
     if (destino === StatusDeVagas.DESPUBLICADA) {
       await avisosDaVaga.despublicada(
         { id: vaga.id, usuarioId: vaga.usuarioId, titulo: vaga.titulo },
@@ -1235,6 +1259,9 @@ export const vagasService = {
       );
     }
     await prisma.empresasVagas.delete({ where: { id } });
+    if (vaga.status === StatusDeVagas.EM_ANALISE) {
+      await atualizarAvisoDaFila({});
+    }
     await registrarHistoricoVaga({
       vagaId: id,
       usuarioId: ator.id,

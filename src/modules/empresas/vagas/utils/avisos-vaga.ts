@@ -1,4 +1,4 @@
-import { NotificacaoStatus, StatusDeVagas } from '@prisma/client';
+import { NotificacaoStatus, Roles, Status, StatusDeVagas } from '@prisma/client';
 import { prisma } from '@/config/prisma';
 import { notificacoesService } from '@/modules/notificacoes/services/notificacoes.service';
 import type { CriarNotificacaoInput } from '@/modules/notificacoes/validators/notificacoes.schema';
@@ -161,3 +161,110 @@ export const avisosDaVaga = {
       { semRepetir: true },
     ),
 };
+
+// ---------------------------------------------------------------------------
+// Aviso para a equipe: vagas aguardando aprovação
+// ---------------------------------------------------------------------------
+
+const LINK_FILA = '/dashboard/empresas/solicitacoes';
+/** Quem aprova vagas: setor de vagas, moderador e admin */
+const PAPEIS_QUE_APROVAM = [Roles.SETOR_DE_VAGAS, Roles.MODERADOR, Roles.ADMIN];
+
+export interface VagaNaFila extends VagaDoAviso {
+  empresaNome?: string | null;
+}
+
+const tituloDaFila = (pendentes: number) =>
+  pendentes === 1 ? '1 vaga aguardando aprovação' : `${pendentes} vagas aguardando aprovação`;
+
+/**
+ * Um aviso só por pessoa da equipe, agrupado: "N vagas aguardando aprovação". Vaga nova
+ * na fila atualiza (e sobe) o aviso não lido em vez de criar outro. Quando a fila esvazia,
+ * o aviso não lido é marcado como lido para não ficar dizendo que há vagas pendentes.
+ */
+export async function atualizarAvisoDaFila(opcoes: {
+  /** Vaga que acabou de entrar na fila (sem ela, só atualiza a contagem) */
+  novaVaga?: VagaNaFila;
+  motivo?: 'CADASTRADA' | 'ENVIADA' | 'EDITADA';
+  /** Quem fez a ação não precisa ser avisado dela */
+  atorId?: string | null;
+}) {
+  try {
+    const pendentes = await prisma.empresasVagas.count({
+      where: { status: StatusDeVagas.EM_ANALISE },
+    });
+    const avisosAbertos = await prisma.notificacoes.findMany({
+      where: { tipo: 'VAGA_AGUARDANDO_APROVACAO', status: NotificacaoStatus.NAO_LIDA },
+      select: { id: true, usuarioId: true },
+    });
+
+    if (pendentes === 0) {
+      if (avisosAbertos.length > 0) {
+        await prisma.notificacoes.updateMany({
+          where: { id: { in: avisosAbertos.map((a) => a.id) } },
+          data: { status: NotificacaoStatus.LIDA, lidaEm: new Date() },
+        });
+      }
+      return;
+    }
+
+    const nova = opcoes.novaVaga;
+    const empresa = nova?.empresaNome ? ` (${nova.empresaNome})` : '';
+    const mensagem = nova
+      ? opcoes.motivo === 'EDITADA'
+        ? `A vaga "${nova.titulo}"${empresa} foi editada e voltou para aprovação.`
+        : `Nova na fila: "${nova.titulo}"${empresa}.`
+      : 'Revise as vagas que estão esperando aprovação do setor de vagas.';
+    const conteudo = {
+      titulo: tituloDaFila(pendentes),
+      mensagem,
+      dados: { pendentes, ...(nova ? { ultimaVagaId: nova.id } : {}) },
+    };
+
+    // Sem vaga nova (aprovação/rejeição): só corrige a contagem dos avisos abertos
+    if (!nova) {
+      for (const aviso of avisosAbertos) {
+        await prisma.notificacoes.update({ where: { id: aviso.id }, data: conteudo });
+      }
+      return;
+    }
+
+    const equipe = await prisma.usuarios.findMany({
+      where: { role: { in: PAPEIS_QUE_APROVAM }, status: Status.ATIVO },
+      select: { id: true },
+    });
+    const abertoPorUsuario = new Map(avisosAbertos.map((a) => [a.usuarioId, a.id]));
+    for (const pessoa of equipe) {
+      if (pessoa.id === opcoes.atorId) continue;
+      const aberto = abertoPorUsuario.get(pessoa.id);
+      // Falha no aviso de uma pessoa não pode deixar as outras sem aviso
+      try {
+        if (aberto) {
+          // criadoEm atualizado: o aviso volta para o topo da lista
+          await prisma.notificacoes.update({
+            where: { id: aberto },
+            data: { ...conteudo, criadoEm: new Date() },
+          });
+        } else {
+          await notificacoesService.criar({
+            usuarioId: pessoa.id,
+            tipo: 'VAGA_AGUARDANDO_APROVACAO',
+            ...conteudo,
+            prioridade: 'NORMAL',
+            linkAcao: LINK_FILA,
+          });
+        }
+      } catch (error) {
+        avisosLogger.error(
+          { err: error, usuarioId: pessoa.id, vagaId: nova.id },
+          'Não foi possível avisar esta pessoa da equipe sobre a fila',
+        );
+      }
+    }
+  } catch (error) {
+    avisosLogger.error(
+      { err: error, vagaId: opcoes.novaVaga?.id },
+      'Não foi possível atualizar o aviso da fila de aprovação',
+    );
+  }
+}

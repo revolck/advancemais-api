@@ -4,7 +4,7 @@ import { adminVagasService } from '@/modules/empresas/admin/services/admin-vagas
 import { notificacoesService } from '@/modules/notificacoes/services/notificacoes.service';
 import { logger } from '@/utils/logger';
 import { registrarHistoricoVaga } from '@/modules/empresas/vagas/utils/historico-vaga';
-import { avisosDaVaga } from '@/modules/empresas/vagas/utils/avisos-vaga';
+import { atualizarAvisoDaFila, avisosDaVaga } from '@/modules/empresas/vagas/utils/avisos-vaga';
 import { LimiteVagasPlanoAtingidoError } from '@/modules/empresas/vagas/services/errors';
 import { Prisma, StatusDeVagas } from '@prisma/client';
 import type {
@@ -291,6 +291,9 @@ export const solicitacoesService = {
       },
     });
 
+    // Saiu da fila: corrige a contagem do aviso da equipe
+    await atualizarAvisoDaFila({});
+
     // Quem aprovou fica no histórico da vaga
     await registrarHistoricoVaga({
       vagaId: vaga.id,
@@ -366,6 +369,8 @@ export const solicitacoesService = {
         atualizadoEm: new Date(),
       },
     });
+
+    await atualizarAvisoDaFila({});
 
     await registrarHistoricoVaga({
       vagaId: vaga.id,

@@ -1,4 +1,10 @@
-import { CursosAulaStatus, CursosAvaliacaoTipo, Status, type Prisma } from '@prisma/client';
+import {
+  CursosAulaStatus,
+  CursosAvaliacaoTipo,
+  Status,
+  StatusInscricao,
+  type Prisma,
+} from '@prisma/client';
 
 import { prisma } from '@/config/prisma';
 
@@ -378,6 +384,9 @@ export const instrutorOverviewService = {
         ? prisma.cursosTurmasInscricoes.findMany({
             where: {
               turmaId: { in: turmaIds },
+              // Removido pela equipe não é aluno da turma; cobrança pendente ainda não é
+              removidaEm: null,
+              status: { not: StatusInscricao.AGUARDANDO_PAGAMENTO },
             },
             distinct: ['alunoId'],
             select: {
@@ -389,6 +398,7 @@ export const instrutorOverviewService = {
         ? prisma.cursosNotas.findMany({
             where: {
               turmaId: { in: turmaIds },
+              CursosTurmasInscricoes: { removidaEm: null },
             },
             select: {
               nota: true,
@@ -400,6 +410,7 @@ export const instrutorOverviewService = {
             where: {
               provaId: { in: provaIds },
               nota: null,
+              CursosTurmasInscricoes: { removidaEm: null },
             },
           })
         : Promise.resolve(0),

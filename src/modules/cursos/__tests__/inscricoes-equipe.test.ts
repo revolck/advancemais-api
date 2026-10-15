@@ -25,6 +25,7 @@ jest.mock('../utils/code-generator', () => ({
 jest.mock('../services/turmas.service', () => ({
   createLateEnrollmentAccessRecords: jest.fn(),
 }));
+jest.mock('../services/agenda-matricula', () => ({ atualizarAgenda: jest.fn() }));
 jest.mock('@/modules/notificacoes/services/notificacoes.service', () => ({
   notificacoesService: { criar: jest.fn().mockResolvedValue({ id: 'n1' }) },
 }));
@@ -43,6 +44,7 @@ jest.mock('@/modules/email/config/email-config', () => ({
 import { prisma } from '@/config/prisma';
 import { notificacoesService } from '@/modules/notificacoes/services/notificacoes.service';
 import { createLateEnrollmentAccessRecords } from '../services/turmas.service';
+import { atualizarAgenda } from '../services/agenda-matricula';
 import { adicionarAlunos, removerAlunos } from '../services/inscricoes-equipe.service';
 
 const db = prisma as any;
@@ -241,6 +243,8 @@ describe('adicionar alunos: aplicar', () => {
         pagamento: 'CONCEDIDO',
       }),
     });
+    // Acesso liberado: entra na agenda e nos convites do Meet
+    expect(atualizarAgenda).toHaveBeenCalledWith(['a1'], TURMA, 'entrou');
   });
 
   it('cobrança pendente: aguarda pagamento e o e-mail leva para pagar', async () => {
@@ -267,6 +271,8 @@ describe('adicionar alunos: aplicar', () => {
       }),
     );
     expect(sendGeneric.mock.calls[0][2]).toMatch(/reservada/);
+    // Sem pagar, não recebe a agenda com o link da sala
+    expect(atualizarAgenda).not.toHaveBeenCalled();
   });
 
   it('sem aviso: não notifica nem manda e-mail', async () => {
@@ -373,6 +379,8 @@ describe('remover alunos', () => {
     expect(notificacoesService.criar).toHaveBeenCalledWith(
       expect.objectContaining({ tipo: 'TURMA_MATRICULA_REMOVIDA', usuarioId: 'a1' }),
     );
+    // Sai dos convites do Meet e da própria agenda
+    expect(atualizarAgenda).toHaveBeenCalledWith(['a1'], TURMA, 'saiu');
   });
 
   it('cobrança pendente é cancelada junto', async () => {

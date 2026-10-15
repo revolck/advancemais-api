@@ -14,6 +14,7 @@ import { EmailService } from '@/modules/email/services/email-service';
 import { EmailTemplates } from '@/modules/email/templates/email-templates';
 import { notificacoesService } from '@/modules/notificacoes/services/notificacoes.service';
 import { invalidateCacheByPrefix } from '@/utils/cache';
+import { atualizarAgenda } from './agenda-matricula';
 import { logger } from '@/utils/logger';
 import { generateUniqueInscricaoCode } from '../utils/code-generator';
 import { createLateEnrollmentAccessRecords } from './turmas.service';
@@ -374,10 +375,14 @@ export async function adicionarAlunos(pedido: PedidoAdicao, ator: AtorEquipe) {
   if (pedido.avisar !== false) {
     await avisarAdicao(novos, alunoPorId, turma, pedido.pagamento);
   }
-  sincronizarAgenda(
-    novos.map((a) => a.alunoId),
-    turma.id,
-  );
+  // Cobrança pendente só ganha a agenda (com o link da sala) quando pagar
+  if (pedido.pagamento === 'CONCEDIDO') {
+    atualizarAgenda(
+      novos.map((a) => a.alunoId),
+      turma.id,
+      'entrou',
+    );
+  }
 
   return { aplicado: true, ...resumo, inscricaoIds };
 }
@@ -505,6 +510,11 @@ export async function removerAlunos(pedido: PedidoRemocao, ator: AtorEquipe) {
   log.info(
     { turmaId: turma.id, removidos: alvo.length, atorId: ator.id },
     'Alunos removidos da turma',
+  );
+  atualizarAgenda(
+    alvo.map((i) => i.alunoId),
+    turma.id,
+    'saiu',
   );
 
   if (pedido.avisar !== false) {
@@ -688,6 +698,9 @@ async function invalidarCaches() {
   await Promise.all([
     invalidateCacheByPrefix('cursos:historico-inscricoes-curso'),
     invalidateCacheByPrefix('cursos:alunos'),
+    // Totais da visão geral e da turma mudam com quem entra e sai
+    invalidateCacheByPrefix('visaogeral:'),
+    invalidateCacheByPrefix('cursos:turmas:'),
   ]).catch(() => undefined);
 }
 
@@ -759,20 +772,4 @@ async function avisarAdicao(
       log.error({ err: error, alunoId: aluno.alunoId }, 'Falha ao enviar e-mail de matrícula');
     }
   }
-}
-
-function sincronizarAgenda(alunoIds: string[], turmaId: string) {
-  if (alunoIds.length === 0) return;
-  setImmediate(async () => {
-    try {
-      const {
-        googleCalendarService,
-      } = require('@/modules/cursos/aulas/services/google-calendar.service');
-      for (const alunoId of alunoIds) {
-        await googleCalendarService.sincronizarAgendaAluno({ alunoId, turmaId });
-      }
-    } catch (error: any) {
-      log.error({ err: error, turmaId }, 'Falha ao sincronizar a agenda dos alunos adicionados');
-    }
-  });
 }

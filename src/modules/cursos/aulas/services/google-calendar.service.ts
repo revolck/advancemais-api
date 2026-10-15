@@ -2,6 +2,7 @@ import { google } from 'googleapis';
 import { prisma } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import { googleOAuthService } from './google-oauth.service';
+import { resolveOrganizadorId } from './meet-attendees.helper';
 import crypto from 'crypto';
 
 const calendarLogger = logger.child({ module: 'GoogleCalendar' });
@@ -312,6 +313,8 @@ export const googleCalendarService = {
     dataFim: Date;
     location?: string;
     link?: string;
+    /** Marca o evento com a turma, para achá-lo e apagá-lo se o aluno sair dela */
+    marcador?: { turmaId: string; itemId: string };
   }): Promise<{ eventId: string }> {
     const oauth2Client = await googleOAuthService.getOAuth2Client(params.usuarioId);
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
@@ -338,6 +341,16 @@ export const googleCalendarService = {
               { method: 'popup', minutes: 15 }, // 15min antes
             ],
           },
+          ...(params.marcador
+            ? {
+                extendedProperties: {
+                  private: {
+                    advanceTurmaId: params.marcador.turmaId,
+                    advanceItemId: params.marcador.itemId,
+                  },
+                },
+              }
+            : {}),
         },
       });
 
@@ -357,6 +370,203 @@ export const googleCalendarService = {
       });
       throw new Error(`Erro ao criar evento no Google Calendar: ${error?.message}`);
     }
+  },
+
+  /**
+   * Põe ou tira o aluno da lista de convidados das salas do Meet das aulas e provas
+   * futuras da turma (eventos do instrutor organizador). Sem e-mail de aviso do Google.
+   * events.patch substitui a lista inteira: lê a lista atual e devolve com o ajuste.
+   */
+  async ajustarConviteDoAluno(params: {
+    alunoId: string;
+    turmaId: string;
+    acao: 'adicionar' | 'remover';
+  }): Promise<{ alterados: number; erros: number }> {
+    const aluno = await prisma.usuarios.findUnique({
+      where: { id: params.alunoId },
+      select: { email: true },
+    });
+    if (!aluno?.email) return { alterados: 0, erros: 0 };
+    const email = aluno.email.trim().toLowerCase();
+
+    const agora = new Date();
+    const futuro = {
+      OR: [{ dataFim: { gte: agora } }, { dataFim: null, dataInicio: { gte: agora } }],
+    };
+    const turma = await prisma.cursosTurmas.findUnique({
+      where: { id: params.turmaId },
+      select: {
+        instrutorId: true,
+        CursosTurmasInstrutores: { select: { instrutorId: true } },
+        CursosTurmasAulas: {
+          where: { meetEventId: { not: null }, deletedAt: null, ...futuro },
+          select: { id: true, meetEventId: true, instrutorId: true },
+        },
+        CursosTurmasProvas: {
+          where: { meetEventId: { not: null }, ativo: true, ...futuro },
+          select: { id: true, meetEventId: true, instrutorId: true },
+        },
+      },
+    });
+    if (!turma) return { alterados: 0, erros: 0 };
+
+    const clientes = new Map<string, ReturnType<typeof google.calendar>>();
+    const agendaDo = async (organizadorId: string) => {
+      if (!clientes.has(organizadorId)) {
+        const auth = await googleOAuthService.getOAuth2Client(organizadorId);
+        clientes.set(organizadorId, google.calendar({ version: 'v3', auth }));
+      }
+      return clientes.get(organizadorId)!;
+    };
+
+    let alterados = 0;
+    let erros = 0;
+    for (const item of [...turma.CursosTurmasAulas, ...turma.CursosTurmasProvas]) {
+      const organizadorId = resolveOrganizadorId(item.instrutorId, turma);
+      if (!organizadorId || !item.meetEventId) continue;
+      try {
+        const calendar = await agendaDo(organizadorId);
+        const { data } = await calendar.events.get({
+          calendarId: 'primary',
+          eventId: item.meetEventId,
+        });
+        const convidados = data.attendees ?? [];
+        const jaConvidado = convidados.some((c) => c.email?.trim().toLowerCase() === email);
+        if (params.acao === 'remover' ? !jaConvidado : jaConvidado) continue;
+
+        await calendar.events.patch({
+          calendarId: 'primary',
+          eventId: item.meetEventId,
+          sendUpdates: 'none',
+          requestBody: {
+            attendees:
+              params.acao === 'remover'
+                ? convidados.filter((c) => c.email?.trim().toLowerCase() !== email)
+                : [...convidados, { email: aluno.email }],
+          },
+        });
+        alterados++;
+      } catch (error: any) {
+        erros++;
+        calendarLogger.warn('[CONVITE_ALUNO_ERRO]', {
+          acao: params.acao,
+          itemId: item.id,
+          turmaId: params.turmaId,
+          alunoId: params.alunoId,
+          error: error?.message,
+        });
+      }
+    }
+    return { alterados, erros };
+  },
+
+  /**
+   * Apaga da agenda do aluno (Google conectado) os eventos futuros que a plataforma criou
+   * para a turma: os marcados com a turma e, dos antigos sem marcador, os criados pelo
+   * próprio aluno com o mesmo título e horário de uma aula ou prova da turma.
+   */
+  async apagarEventosDoAluno(params: {
+    alunoId: string;
+    turmaId: string;
+  }): Promise<{ apagados: number; erros: number }> {
+    const aluno = await prisma.usuarios.findUnique({
+      where: { id: params.alunoId },
+      select: { googleAccessToken: true },
+    });
+    if (!aluno?.googleAccessToken) return { apagados: 0, erros: 0 };
+
+    const agora = new Date();
+    const turma = await prisma.cursosTurmas.findUnique({
+      where: { id: params.turmaId },
+      select: {
+        CursosTurmasAulas: {
+          where: { dataInicio: { gte: agora }, deletedAt: null },
+          select: { nome: true, dataInicio: true, dataFim: true },
+        },
+        CursosTurmasProvas: {
+          where: { dataInicio: { gte: agora } },
+          select: { titulo: true, tipo: true, dataInicio: true, dataFim: true },
+        },
+      },
+    });
+    if (!turma) return { apagados: 0, erros: 0 };
+
+    // Mesmos títulos usados em sincronizarAgendaAluno
+    const esperados = new Set<string>();
+    let fimDaJanela = new Date(agora.getTime() + 24 * 60 * 60 * 1000);
+    const esperar = (titulo: string, inicio: Date | null, fim: Date | null) => {
+      if (!inicio) return;
+      esperados.add(`${titulo}|${inicio.getTime()}`);
+      const limite = fim ?? inicio;
+      if (limite > fimDaJanela) fimDaJanela = new Date(limite.getTime() + 60 * 60 * 1000);
+    };
+    turma.CursosTurmasAulas.forEach((a) => esperar(`📚 ${a.nome}`, a.dataInicio, a.dataFim));
+    turma.CursosTurmasProvas.forEach((p) =>
+      esperar(
+        `${p.tipo === 'PROVA' ? '📝 Prova' : '📋 Atividade'}: ${p.titulo}`,
+        p.dataInicio,
+        p.dataFim,
+      ),
+    );
+
+    let apagados = 0;
+    let erros = 0;
+    try {
+      const auth = await googleOAuthService.getOAuth2Client(params.alunoId);
+      const calendar = google.calendar({ version: 'v3', auth });
+      const paraApagar: string[] = [];
+      let pageToken: string | undefined;
+      do {
+        const { data } = await calendar.events.list({
+          calendarId: 'primary',
+          timeMin: agora.toISOString(),
+          timeMax: fimDaJanela.toISOString(),
+          singleEvents: true,
+          maxResults: 2500,
+          pageToken,
+        });
+        for (const evento of data.items ?? []) {
+          if (!evento.id) continue;
+          const marcado = evento.extendedProperties?.private?.advanceTurmaId === params.turmaId;
+          const inicio = evento.start?.dateTime ? new Date(evento.start.dateTime).getTime() : NaN;
+          const antigo =
+            evento.organizer?.self === true && esperados.has(`${evento.summary ?? ''}|${inicio}`);
+          if (marcado || antigo) paraApagar.push(evento.id);
+        }
+        pageToken = data.nextPageToken ?? undefined;
+      } while (pageToken);
+
+      for (const eventId of paraApagar) {
+        try {
+          await calendar.events.delete({ calendarId: 'primary', eventId, sendUpdates: 'none' });
+          apagados++;
+        } catch (error: any) {
+          erros++;
+          calendarLogger.warn('[AGENDA_ALUNO_APAGAR_ERRO]', { eventId, error: error?.message });
+        }
+      }
+    } catch (error: any) {
+      erros++;
+      calendarLogger.warn('[AGENDA_ALUNO_LISTAR_ERRO]', {
+        alunoId: params.alunoId,
+        turmaId: params.turmaId,
+        error: error?.message,
+      });
+    }
+    return { apagados, erros };
+  },
+
+  /** Aluno saiu da turma (ou perdeu o acesso): some dos convites do Meet e da própria agenda */
+  async removerAlunoDaAgendaDaTurma(params: { alunoId: string; turmaId: string }) {
+    const convites = await this.ajustarConviteDoAluno({ ...params, acao: 'remover' });
+    const agenda = await this.apagarEventosDoAluno(params);
+    calendarLogger.info('[AGENDA_ALUNO_REMOVIDO_DA_TURMA]', {
+      ...params,
+      convitesRemovidos: convites.alterados,
+      eventosApagados: agenda.apagados,
+      erros: convites.erros + agenda.erros,
+    });
+    return { convitesRemovidos: convites.alterados, eventosApagados: agenda.apagados };
   },
 
   /**
@@ -431,6 +641,7 @@ export const googleCalendarService = {
           dataFim,
           location: aula.sala || undefined,
           link: aula.urlMeet || aula.urlVideo || undefined,
+          marcador: { turmaId, itemId: aula.id },
         });
 
         sincronizados++;
@@ -456,6 +667,7 @@ export const googleCalendarService = {
           descricao: `${prova.tipo === 'PROVA' ? 'Prova' : 'Atividade'}: ${prova.titulo}\nCurso: ${turma.Cursos.nome}\nTurma: ${turma.nome}${prova.descricao ? `\n\n${prova.descricao}` : ''}`,
           dataInicio: prova.dataInicio,
           dataFim: prova.dataFim,
+          marcador: { turmaId, itemId: prova.id },
         });
 
         sincronizados++;

@@ -173,9 +173,9 @@ async function buscarMetricasGerais(): Promise<{
           (SELECT COUNT(*) FROM "CursosTurmas")                         AS "totalTurmas",
           (SELECT COUNT(*) FROM "CursosTurmas" WHERE "status" = 'EM_ANDAMENTO') AS "turmasAtivas",
           (SELECT COUNT(*) FROM "CursosTurmas" WHERE "status" = 'INSCRICOES_ABERTAS') AS "turmasInscricoesAbertas",
-          (SELECT COUNT(*) FROM "CursosTurmasInscricoes")               AS "totalAlunosInscritos",
-          (SELECT COUNT(*) FROM "CursosTurmasInscricoes" WHERE "status" IN ('INSCRITO', 'EM_ANDAMENTO')) AS "totalAlunosAtivos",
-          (SELECT COUNT(*) FROM "CursosTurmasInscricoes" WHERE "status" = 'CONCLUIDO') AS "totalAlunosConcluidos"
+          (SELECT COUNT(*) FROM "CursosTurmasInscricoes" WHERE "removidaEm" IS NULL) AS "totalAlunosInscritos",
+          (SELECT COUNT(*) FROM "CursosTurmasInscricoes" WHERE "removidaEm" IS NULL AND "status" IN ('INSCRITO', 'EM_ANDAMENTO')) AS "totalAlunosAtivos",
+          (SELECT COUNT(*) FROM "CursosTurmasInscricoes" WHERE "removidaEm" IS NULL AND "status" = 'CONCLUIDO') AS "totalAlunosConcluidos"
       `,
     3, // maxRetries
     1000, // delayMs
@@ -532,7 +532,7 @@ async function buscarPerformanceCursos(): Promise<{
             COUNT(DISTINCT ct.id)::bigint as "totalTurmas"
           FROM "Cursos" c
           LEFT JOIN "CursosTurmas" ct ON ct."cursoId" = c.id
-          LEFT JOIN "CursosTurmasInscricoes" ti ON ti."turmaId" = ct.id
+          LEFT JOIN "CursosTurmasInscricoes" ti ON ti."turmaId" = ct.id AND ti."removidaEm" IS NULL
           GROUP BY c.id, c.nome, c.codigo
           ORDER BY "totalInscricoes" DESC
           LIMIT 10
@@ -554,6 +554,7 @@ async function buscarPerformanceCursos(): Promise<{
             COUNT(*)::bigint as "totalInscricoes",
             COUNT(CASE WHEN status = 'CONCLUIDO' THEN 1 END)::bigint as "totalConcluidos"
           FROM "CursosTurmasInscricoes"
+          WHERE "removidaEm" IS NULL
         `,
       3, // maxRetries
       1000, // delayMs
@@ -580,7 +581,7 @@ async function buscarPerformanceCursos(): Promise<{
             COUNT(CASE WHEN ti.status = 'CONCLUIDO' THEN 1 END)::bigint as "totalConcluidos"
           FROM "Cursos" c
           INNER JOIN "CursosTurmas" ct ON ct."cursoId" = c.id
-          INNER JOIN "CursosTurmasInscricoes" ti ON ti."turmaId" = ct.id
+          INNER JOIN "CursosTurmasInscricoes" ti ON ti."turmaId" = ct.id AND ti."removidaEm" IS NULL
           GROUP BY c.id, c.nome, c.codigo
           HAVING COUNT(ti.id) > 0
           ORDER BY 

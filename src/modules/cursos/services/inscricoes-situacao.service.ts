@@ -9,6 +9,7 @@ import {
 import { prisma } from '@/config/prisma';
 import { notificacoesService } from '@/modules/notificacoes/services/notificacoes.service';
 import { invalidateCacheByPrefix } from '@/utils/cache';
+import { atualizarAgenda } from './agenda-matricula';
 import { logger } from '@/utils/logger';
 
 const log = logger.child({ module: 'InscricoesSituacao' });
@@ -270,6 +271,17 @@ export async function alterarSituacaoEmLote(
     { turmaId: params.turmaId, situacao: params.situacao, ...plano.resumo, atorId: ator.id },
     'Situação das inscrições alterada em lote',
   );
+
+  // Não concluiu e trancado perdem o acesso (saem da agenda e dos convites do Meet);
+  // voltar para cursando devolve
+  const alunosQueMudaram = plano.mudancas
+    .filter((m) => m.mudaStatus && m.inscricao.alunoId)
+    .map((m) => m.inscricao.alunoId!);
+  if (params.situacao === 'NAO_CONCLUIU' || params.situacao === 'TRANCADO') {
+    atualizarAgenda(alunosQueMudaram, params.turmaId, 'saiu');
+  } else if (params.situacao === 'CURSANDO') {
+    atualizarAgenda(alunosQueMudaram, params.turmaId, 'entrou');
+  }
 
   if (params.avisar) {
     const nomeDaSituacao: Record<Situacao, string> = {

@@ -242,6 +242,10 @@ model CursosCertificadosEmitidos {
   emitidoPorId                           String?
   emitidoEm                              DateTime                                @default(now())
   observacoes                            String?                                 @db.VarChar(500)
+  /// Revogado: deixa de valer (aluno não concluiu); o registro e o código ficam guardados
+  revogadoEm                             DateTime?
+  revogadoPorId                          String?
+  motivoRevogacao                        String?                                 @db.VarChar(500)
   Usuarios                               Usuarios?                               @relation(fields: [emitidoPorId], references: [id])
   CursosTurmasInscricoes                 CursosTurmasInscricoes                  @relation(fields: [inscricaoId], references: [id], onDelete: Cascade)
   CursosCertificadosLogs                 CursosCertificadosLogs[]
@@ -2784,6 +2788,8 @@ enum CursosCertificados {
 enum CursosCertificadosLogAcao {
   EMISSAO
   VISUALIZACAO
+  REVOGACAO
+  RESTAURACAO
 }
 
 enum CursosCertificadosTipos {

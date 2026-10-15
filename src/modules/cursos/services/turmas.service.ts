@@ -3234,12 +3234,40 @@ export const turmasService = {
 
       const inscricao = await tx.cursosTurmasInscricoes.findUnique({
         where: { turmaId_alunoId: { turmaId, alunoId } },
-        select: { id: true },
+        select: {
+          id: true,
+          status: true,
+          _count: {
+            select: {
+              CursosCertificadosEmitidos: true,
+              CursosNotas: true,
+              CursosFrequenciaAlunos: true,
+              CursosAulasProgresso: true,
+            },
+          },
+        },
       });
 
       if (!inscricao) {
         const error = new Error('Aluno não está inscrito nesta turma');
         (error as any).code = 'ALUNO_NAO_INSCRITO';
+        throw error;
+      }
+
+      // Apagar a inscrição apaga junto certificado, notas, frequência e progresso.
+      // Com histórico, o caminho é a situação "Não concluiu" (desvincula sem apagar).
+      const historico = inscricao._count;
+      if (
+        inscricao.status === 'CONCLUIDO' ||
+        historico.CursosCertificadosEmitidos > 0 ||
+        historico.CursosNotas > 0 ||
+        historico.CursosFrequenciaAlunos > 0 ||
+        historico.CursosAulasProgresso > 0
+      ) {
+        const error = new Error(
+          'Esta inscrição tem histórico (certificado, notas, frequência ou aulas assistidas). Use a situação "Não concluiu" para desvincular sem apagar o histórico.',
+        );
+        (error as any).code = 'INSCRICAO_COM_HISTORICO';
         throw error;
       }
 

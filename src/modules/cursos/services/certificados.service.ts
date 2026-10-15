@@ -155,6 +155,14 @@ const ensureInscricaoBelongsToTurma = async (
   }
 };
 
+/** Situações que nunca recebem certificado */
+const SITUACOES_SEM_CERTIFICADO: StatusInscricao[] = [
+  StatusInscricao.REPROVADO,
+  StatusInscricao.CANCELADO,
+  StatusInscricao.TRANCADO,
+  StatusInscricao.AGUARDANDO_PAGAMENTO,
+];
+
 const findInscricaoForAlunoNaTurma = async (
   client: PrismaClientOrTx,
   turmaId: string,
@@ -165,7 +173,7 @@ const findInscricaoForAlunoNaTurma = async (
       turmaId,
       alunoId,
       status: {
-        notIn: [StatusInscricao.REPROVADO, StatusInscricao.CANCELADO],
+        notIn: SITUACOES_SEM_CERTIFICADO,
       },
     },
     select: { id: true, turmaId: true, CursosTurmas: { select: { cursoId: true } } },
@@ -187,6 +195,7 @@ const emitirCertificadoNoClient = async (
   turmaId: string,
   data: EmitirCertificadoData,
   emitidoPorId?: string,
+  opcoes: { permitirReemissao?: boolean } = {},
 ) => {
   await ensureTurmaBelongsToCurso(client, cursoId, turmaId);
   await ensureInscricaoBelongsToTurma(client, turmaId, data.inscricaoId);
@@ -225,6 +234,27 @@ const emitirCertificadoNoClient = async (
     const error = new Error('Inscrição não encontrada');
     (error as any).code = 'INSCRICAO_NOT_FOUND';
     throw error;
+  }
+
+  // Certificado é só de quem concluiu: nunca para cancelado, reprovado, trancado ou sem pagamento
+  if (SITUACOES_SEM_CERTIFICADO.includes(inscricao.status)) {
+    const error = new Error(
+      `Certificado só pode ser emitido para quem concluiu o curso (situação atual: ${inscricao.status}).`,
+    );
+    (error as any).code = 'INSCRICAO_NAO_ELEGIVEL';
+    throw error;
+  }
+
+  if (!opcoes.permitirReemissao) {
+    const ativo = await client.cursosCertificadosEmitidos.findFirst({
+      where: { inscricaoId: data.inscricaoId, revogadoEm: null },
+      select: { id: true },
+    });
+    if (ativo) {
+      const error = new Error('Certificado já existe para esta inscrição');
+      (error as any).code = 'CERTIFICADO_JA_EXISTE';
+      throw error;
+    }
   }
 
   if (inscricao.CursosTurmas.Cursos.estagioObrigatorio) {
@@ -290,6 +320,14 @@ const emitirCertificadoNoClient = async (
     },
     include: certificadoWithRelations.include,
   });
+
+  // Quem recebe certificado concluiu o curso
+  if (inscricao.status !== StatusInscricao.CONCLUIDO) {
+    await client.cursosTurmasInscricoes.update({
+      where: { id: data.inscricaoId },
+      data: { status: StatusInscricao.CONCLUIDO },
+    });
+  }
 
   certificadosLogger.info(
     { certificadoId: certificado.id, inscricaoId: data.inscricaoId, turmaId },
@@ -1187,6 +1225,7 @@ export const certificadosService = {
           turmaId,
           CursosTurmas: { cursoId },
         },
+        revogadoEm: null,
         ...(filtros.inscricaoId ? { inscricaoId: filtros.inscricaoId } : {}),
         ...(filtros.tipo ? { tipo: filtros.tipo } : {}),
         ...(filtros.formato ? { formato: filtros.formato } : {}),
@@ -1248,7 +1287,12 @@ export const certificadosService = {
       ];
     }
 
-    if (query.status && query.status !== 'EMITIDO') {
+    // EMITIDO (padrão) lista os válidos; REVOGADO lista os revogados
+    if (query.status === 'REVOGADO') {
+      where.revogadoEm = { not: null };
+    } else if (!query.status || query.status === 'EMITIDO') {
+      where.revogadoEm = null;
+    } else {
       return {
         success: true,
         data: {
@@ -1322,7 +1366,7 @@ export const certificadosService = {
       }
 
       const existente = await tx.cursosCertificadosEmitidos.findFirst({
-        where: { inscricaoId: inscricao.id },
+        where: { inscricaoId: inscricao.id, revogadoEm: null },
         include: certificadoWithRelations.include,
         orderBy: { emitidoEm: 'desc' },
       });
@@ -1348,6 +1392,7 @@ export const certificadosService = {
           conteudoProgramatico: data.conteudoProgramatico,
         },
         emitidoPorId,
+        { permitirReemissao: true },
       );
 
       return {
@@ -1367,6 +1412,75 @@ export const certificadosService = {
         },
       };
     }, CERTIFICADOS_EMISSAO_TX_OPTIONS);
+  },
+
+  /**
+   * Emite os certificados de quem está como "Concluiu" e ainda não tem certificado.
+   * Processa até `limite` por chamada (turmas grandes): a tela repete enquanto houver
+   * `restantes`. Falhas (ex.: estágio obrigatório não concluído) são listadas, sem parar.
+   */
+  async emitirParaConcluintes(
+    cursoId: string,
+    turmaId: string,
+    opcoes: { simular?: boolean; limite?: number } = {},
+    emitidoPorId?: string,
+  ) {
+    await ensureTurmaBelongsToCurso(prisma, cursoId, turmaId);
+    const pendentes = await prisma.cursosTurmasInscricoes.findMany({
+      where: {
+        turmaId,
+        status: StatusInscricao.CONCLUIDO,
+        CursosCertificadosEmitidos: { none: {} },
+      },
+      select: { id: true },
+      orderBy: { criadoEm: 'asc' },
+    });
+    if (opcoes.simular) {
+      return { pendentes: pendentes.length, emitidos: 0, falhas: [], restantes: pendentes.length };
+    }
+
+    const limite = Math.min(Math.max(opcoes.limite ?? 100, 1), 200);
+    const lote = pendentes.slice(0, limite);
+    const falhas: { inscricaoId: string; codigo: string; motivo: string }[] = [];
+    let emitidos = 0;
+    for (const { id } of lote) {
+      try {
+        await prisma.$transaction(
+          (tx) =>
+            emitirCertificadoNoClient(
+              tx,
+              cursoId,
+              turmaId,
+              {
+                inscricaoId: id,
+                tipo: CursosCertificados.CONCLUSAO,
+                formato: CursosCertificadosTipos.VERIFICAVEL,
+                modeloId: CERTIFICADO_MODELO_DEFAULT,
+              },
+              emitidoPorId,
+            ),
+          CERTIFICADOS_EMISSAO_TX_OPTIONS,
+        );
+        emitidos += 1;
+      } catch (error: any) {
+        falhas.push({
+          inscricaoId: id,
+          codigo: error?.code ?? 'ERRO',
+          motivo: error?.message ?? 'Não foi possível emitir',
+        });
+      }
+    }
+
+    certificadosLogger.info(
+      { turmaId, emitidos, falhas: falhas.length, restantes: pendentes.length - lote.length },
+      'Certificados emitidos para concluintes',
+    );
+    return {
+      pendentes: pendentes.length,
+      emitidos,
+      falhas,
+      restantes: pendentes.length - lote.length,
+    };
   },
 
   async getById(certificadoId: string) {
@@ -1546,7 +1660,7 @@ export const certificadosService = {
 
   async listarDoAluno(usuarioId: string) {
     const certificados = await prisma.cursosCertificadosEmitidos.findMany({
-      where: { CursosTurmasInscricoes: { alunoId: usuarioId } },
+      where: { CursosTurmasInscricoes: { alunoId: usuarioId }, revogadoEm: null },
       orderBy: { emitidoEm: 'desc' },
       include: certificadoWithRelations.include,
     });
@@ -1557,8 +1671,10 @@ export const certificadosService = {
   async listarDoAlunoPaginado(usuarioId: string, query: ListarMeCertificadosQuery) {
     const escopoAluno: Prisma.CursosCertificadosEmitidosWhereInput = {
       CursosTurmasInscricoes: { alunoId: usuarioId },
+      revogadoEm: null,
     };
     const where: Prisma.CursosCertificadosEmitidosWhereInput = {
+      revogadoEm: null,
       CursosTurmasInscricoes: {
         alunoId: usuarioId,
         ...(query.turmaId ? { turmaId: query.turmaId } : {}),
@@ -1700,12 +1816,13 @@ export const certificadosService = {
     return {
       success: true,
       data: {
-        valido: true,
+        valido: !certificado.revogadoEm,
         codigo: certificado.codigo,
         alunoNome: certificado.alunoNome,
         cursoNome: certificado.CursosTurmasInscricoes.CursosTurmas.Cursos.nome,
         emitidoEm: certificado.emitidoEm.toISOString(),
-        status: 'EMITIDO',
+        status: certificado.revogadoEm ? 'REVOGADO' : 'EMITIDO',
+        revogadoEm: certificado.revogadoEm?.toISOString() ?? null,
       },
     };
   },

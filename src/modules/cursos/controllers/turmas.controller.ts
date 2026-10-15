@@ -884,6 +884,14 @@ export class TurmasController {
         });
       }
 
+      if (error?.code === 'INSCRICAO_COM_HISTORICO') {
+        return res.status(409).json({
+          success: false,
+          code: 'INSCRICAO_COM_HISTORICO',
+          message: error.message,
+        });
+      }
+
       if (error?.code === 'ALUNO_NAO_INSCRITO') {
         return res.status(404).json({
           success: false,

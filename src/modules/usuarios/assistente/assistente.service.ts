@@ -104,7 +104,7 @@ export async function contextoAluno(usuarioId: string, agora = new Date()) {
       }),
       prisma.cursosTurmasInscricoes.count({ where: { alunoId: usuarioId, status: 'CONCLUIDO' } }),
       prisma.cursosCertificadosEmitidos.count({
-        where: { CursosTurmasInscricoes: { alunoId: usuarioId } },
+        where: { CursosTurmasInscricoes: { alunoId: usuarioId }, revogadoEm: null },
       }),
       prisma.usuariosCurriculos.count({ where: { usuarioId } }),
       prisma.empresasCandidatos.count({ where: { candidatoId: usuarioId } }),

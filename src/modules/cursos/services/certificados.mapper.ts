@@ -94,6 +94,16 @@ const formatDateTimePtBr = (value: Date) =>
     timeZone: 'America/Sao_Paulo',
   }).format(value);
 
+/** EMITIDO ou REVOGADO (aluno não concluiu): o certificado revogado não vale mais */
+export const situacaoDoCertificado = (certificado: {
+  revogadoEm?: Date | null;
+  motivoRevogacao?: string | null;
+}) => ({
+  status: certificado.revogadoEm ? ('REVOGADO' as const) : ('EMITIDO' as const),
+  revogadoEm: certificado.revogadoEm ? certificado.revogadoEm.toISOString() : null,
+  motivoRevogacao: certificado.motivoRevogacao ?? null,
+});
+
 export const mapCertificado = (
   certificado: CertificadoWithRelations,
   { maskCpf = false, includeLogs = true }: { maskCpf?: boolean; includeLogs?: boolean } = {},
@@ -112,6 +122,7 @@ export const mapCertificado = (
     emitidoEm: certificado.emitidoEm,
     emitidoEmDisplay: `Emitido em ${formatDateTimePtBr(certificado.emitidoEm).replace(',', ' às')}`,
     observacoes: certificado.observacoes,
+    ...situacaoDoCertificado(certificado),
     aluno: {
       id: certificado.CursosTurmasInscricoes.Usuarios.id,
       nome: certificado.CursosTurmasInscricoes.Usuarios.nomeCompleto,
@@ -183,7 +194,7 @@ export const mapCertificadoDashboard = (
     codigo: certificado.codigo,
     codigoDisplay: `N° Cert. ${certificado.codigo}`,
     numero: getNumeroFromCodigo(certificado.codigo),
-    status: 'EMITIDO',
+    ...situacaoDoCertificado(certificado),
     emitidoEm: certificado.emitidoEm.toISOString(),
     emitidoEmDisplay: `Emitido em ${formatDateTimePtBr(certificado.emitidoEm).replace(',', ' às')}`,
     tipo: certificado.tipo,

@@ -656,8 +656,8 @@ function buildUserConditionWhere(
     case 'student.hasCertificate':
       if (condition.operator === 'IS') {
         return condition.value
-          ? { CursosCertificadosEmitidos: { some: {} } }
-          : { CursosCertificadosEmitidos: { none: {} } };
+          ? { CursosCertificadosEmitidos: { some: { revogadoEm: null } } }
+          : { CursosCertificadosEmitidos: { none: { revogadoEm: null } } };
       }
       return null;
     case 'company.hasPlan':
@@ -992,6 +992,7 @@ async function fetchUserCandidates(
     ...(needsCertificates
       ? {
           CursosCertificadosEmitidos: {
+            where: { revogadoEm: null },
             select: { id: true },
           },
         }

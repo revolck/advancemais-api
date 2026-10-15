@@ -72,7 +72,8 @@ describe('certificadosService.listarDoAlunoPaginado', () => {
     expect(result.data.filters.turmas).toHaveLength(2);
     const filterQuery = (prisma.cursosCertificadosEmitidos.findMany as jest.Mock).mock
       .calls[0][0] as any;
-    expect(filterQuery.where).toEqual({ CursosTurmasInscricoes: { alunoId } });
+    // Certificado revogado (aluno não concluiu) não aparece para o aluno
+    expect(filterQuery.where).toEqual({ CursosTurmasInscricoes: { alunoId }, revogadoEm: null });
     const pagedQuery = (prisma.cursosCertificadosEmitidos.findMany as jest.Mock).mock
       .calls[1][0] as any;
     expect(pagedQuery.where.emitidoEm).toEqual({

@@ -115,6 +115,14 @@ export class CertificadosController {
         });
       }
 
+      if (error?.code === 'INSCRICAO_NAO_ELEGIVEL') {
+        return res.status(409).json({
+          success: false,
+          code: 'INSCRICAO_NAO_ELEGIVEL',
+          message: error.message,
+        });
+      }
+
       if (error?.code === 'ALUNO_FORA_DA_TURMA') {
         return res.status(400).json({
           success: false,
@@ -174,6 +182,15 @@ export class CertificadosController {
         });
       }
 
+      // Revogado (não concluiu): o aluno não abre nem baixa; a equipe vê com a marca
+      if (req.user?.role === Roles.ALUNO_CANDIDATO && result.data.status === 'REVOGADO') {
+        return res.status(404).json({
+          success: false,
+          code: 'CERTIFICADO_REVOGADO',
+          message: 'Este certificado foi revogado.',
+        });
+      }
+
       return res.json(result);
     } catch (error: any) {
       if (error?.code === 'MODELO_CERTIFICADO_INVALIDO') {
@@ -222,6 +239,15 @@ export class CertificadosController {
           success: false,
           code: 'FORBIDDEN',
           message: 'Você não possui acesso a este certificado',
+        });
+      }
+
+      // Revogado (não concluiu): o aluno não abre nem baixa; a equipe vê com a marca
+      if (req.user?.role === Roles.ALUNO_CANDIDATO && scoped.data.status === 'REVOGADO') {
+        return res.status(404).json({
+          success: false,
+          code: 'CERTIFICADO_REVOGADO',
+          message: 'Este certificado foi revogado.',
         });
       }
 
@@ -277,6 +303,15 @@ export class CertificadosController {
           success: false,
           code: 'FORBIDDEN',
           message: 'Você não possui acesso a este certificado',
+        });
+      }
+
+      // Revogado (não concluiu): o aluno não abre nem baixa; a equipe vê com a marca
+      if (req.user?.role === Roles.ALUNO_CANDIDATO && scoped.data.status === 'REVOGADO') {
+        return res.status(404).json({
+          success: false,
+          code: 'CERTIFICADO_REVOGADO',
+          message: 'Este certificado foi revogado.',
         });
       }
 
@@ -364,6 +399,22 @@ export class CertificadosController {
           success: false,
           code: 'INVALID_CARGA_HORARIA',
           message: 'Informe uma carga horária válida para o certificado',
+        });
+      }
+
+      if (error?.code === 'INSCRICAO_NAO_ELEGIVEL') {
+        return res.status(409).json({
+          success: false,
+          code: 'INSCRICAO_NAO_ELEGIVEL',
+          message: error.message,
+        });
+      }
+
+      if (error?.code === 'CERTIFICADO_JA_EXISTE') {
+        return res.status(409).json({
+          success: false,
+          code: 'CERTIFICADO_JA_EXISTE',
+          message: 'Este aluno já tem certificado válido nesta turma.',
         });
       }
 

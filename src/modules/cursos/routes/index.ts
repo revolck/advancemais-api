@@ -8,6 +8,7 @@ import { CursosController } from '../controllers/cursos.controller';
 import { CategoriasController } from '../controllers/categorias.controller';
 import { AulasController } from '../controllers/aulas.controller';
 import { TurmasController } from '../controllers/turmas.controller';
+import { TurmaSituacaoController } from '../controllers/turma-situacao.controller';
 import { TurmaAlertasController } from '../controllers/turma-alertas.controller';
 import { ModulosController } from '../controllers/modulos.controller';
 import { ProvasController } from '../controllers/provas.controller';
@@ -3658,6 +3659,52 @@ router.post(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/inscricoes/situacao:
+ *   post:
+ *     summary: Muda a situação de várias inscrições da turma (seleção ou lista de CPFs)
+ *     description: |
+ *       Situações: CONCLUIU, NAO_CONCLUIU (desvincula sem apagar), REPROVADO, TRANCADO,
+ *       CURSANDO. Quem deixa de "concluiu" tem o certificado revogado (o código fica
+ *       guardado e a consulta pública mostra "revogado"); voltar para CONCLUIU restaura.
+ *       Use `simular: true` para a prévia e `aplicarAosDemais` para "só estes concluíram".
+ *     tags: [Cursos - Turmas]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Resumo (atingidos, mudam, certificados revogados/restaurados, CPFs não encontrados)
+ *       400:
+ *         description: Dados inválidos ou nenhum aluno corresponde
+ *       409:
+ *         description: A turma mudou desde a prévia
+ */
+router.post(
+  '/:cursoId/turmas/:turmaId/inscricoes/situacao',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  TurmaSituacaoController.alterarSituacao,
+);
+
+/**
+ * @openapi
+ * /api/v1/cursos/{cursoId}/turmas/{turmaId}/certificados/concluintes:
+ *   post:
+ *     summary: Emite certificados para quem está como "Concluiu" e ainda não tem
+ *     description: Processa até `limite` (padrão 100) por chamada; repita enquanto houver `restantes`.
+ *     tags: [Cursos - Certificados]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: "{ pendentes, emitidos, falhas, restantes }"
+ */
+router.post(
+  '/:cursoId/turmas/:turmaId/certificados/concluintes',
+  supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO]),
+  TurmaSituacaoController.emitirParaConcluintes,
+);
+
 router.patch(
   '/:cursoId/turmas/:turmaId/inscricoes/:inscricaoId',
   supabaseAuthMiddleware([Roles.ADMIN, Roles.MODERADOR, Roles.PEDAGOGICO, Roles.INSTRUTOR]),

@@ -164,7 +164,7 @@ const buildAlunoCertificadoInscricaoFilter = (params: {
 }): Prisma.CursosTurmasInscricoesWhereInput => ({
   CursosTurmas: buildCursoTurmaAlunoFilter(params),
   CursosCertificadosEmitidos: {
-    some: {},
+    some: { revogadoEm: null },
   },
 });
 
@@ -1225,6 +1225,7 @@ export class CursosController {
                   status: true,
                   criadoEm: true,
                   CursosCertificadosEmitidos: {
+                    where: { revogadoEm: null },
                     select: {
                       id: true,
                       codigo: true,

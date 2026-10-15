@@ -1100,8 +1100,13 @@ const buildRecursosPremiumVagasAtivoFilter = (): Prisma.EmpresasRecursosPremiumV
   destaquesIlimitados: true,
 });
 
+/**
+ * Empresas com recursos premium de vagas (ex.: a própria Advance, sem plano) aparecem na
+ * busca do cadastro de vaga para quem cadastra vaga em nome delas: admin, moderação e
+ * setor de vagas (a criação já aceita essas empresas sem plano para qualquer perfil).
+ */
 const canIncludeRecursosPremiumInElegibilidade = (role?: Roles | string | null) =>
-  role === Roles.ADMIN || role === Roles.MODERADOR;
+  role === Roles.ADMIN || role === Roles.MODERADOR || role === Roles.SETOR_DE_VAGAS;
 
 const emptyRecursosPremiumVagas = (): AdminEmpresaRecursosPremiumVagasResumo => ({
   ativo: false,

@@ -183,7 +183,7 @@ describe('API - Recursos premium de vagas para empresa', () => {
     );
   });
 
-  it('inclui recursos premium no detalhe/listagem elegivel e nao inclui para SETOR_DE_VAGAS', async () => {
+  it('inclui recursos premium no detalhe/listagem elegivel, inclusive para SETOR_DE_VAGAS', async () => {
     const admin = await registerUser({ role: Roles.ADMIN });
     const setor = await registerUser({ role: Roles.SETOR_DE_VAGAS });
     const marker = `EMP_PREMIUM_${Date.now()}`;
@@ -232,7 +232,14 @@ describe('API - Recursos premium de vagas para empresa', () => {
       .set('Authorization', `Bearer ${setor.token}`)
       .expect(200);
 
-    expect(setorList.body.pagination.total).toBe(0);
+    // O setor de vagas cadastra vaga em nome da empresa premium (ex.: a própria Advance)
+    expect(setorList.body.pagination.total).toBe(1);
+    expect(setorList.body.data[0]).toEqual(
+      expect.objectContaining({
+        id: empresa.id,
+        recursosPremiumVagas: expect.objectContaining({ ativo: true }),
+      }),
+    );
   });
 
   it('permite criar vaga em destaque sem plano e remove efeitos premium com auditoria', async () => {

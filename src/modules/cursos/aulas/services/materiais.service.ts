@@ -10,6 +10,63 @@ import { runtimeConfigService } from '@/modules/configuracoes-gerais';
 
 const materiaisLogger = logger.child({ module: 'MateriaisService' });
 
+export type UsuarioDoMaterial = { id: string; role: string };
+
+const EQUIPE = ['ADMIN', 'MODERADOR', 'PEDAGOGICO'];
+/** Situações em que o aluno estuda na turma (as mesmas da área do aluno) */
+const STATUS_COM_ACESSO = ['INSCRITO', 'EM_ANDAMENTO', 'EM_ESTAGIO', 'CONCLUIDO'] as const;
+
+const semAcesso = () =>
+  Object.assign(new Error('Você não tem acesso aos materiais desta aula'), { code: 'FORBIDDEN' });
+
+/**
+ * Materiais da aula: equipe, instrutor da aula ou da turma (inclusive co-instrutor) e
+ * aluno com matrícula ativa e paga na turma. Removido, "não concluiu" e trancado ficam de fora.
+ */
+export async function garantirAcessoAosMateriais(aulaId: string, usuario: UsuarioDoMaterial) {
+  if (EQUIPE.includes(usuario.role)) return;
+
+  const aula = await prisma.cursosTurmasAulas.findUnique({
+    where: { id: aulaId },
+    select: {
+      turmaId: true,
+      instrutorId: true,
+      criadoPorId: true,
+      deletedAt: true,
+      CursosTurmas: {
+        select: { instrutorId: true, CursosTurmasInstrutores: { select: { instrutorId: true } } },
+      },
+    },
+  });
+  if (!aula) throw semAcesso();
+
+  if (usuario.role === 'INSTRUTOR') {
+    const instrutores = [
+      aula.instrutorId,
+      aula.criadoPorId,
+      aula.CursosTurmas?.instrutorId,
+      ...(aula.CursosTurmas?.CursosTurmasInstrutores.map((v) => v.instrutorId) ?? []),
+    ];
+    if (instrutores.includes(usuario.id)) return;
+    throw semAcesso();
+  }
+
+  if (usuario.role === 'ALUNO_CANDIDATO' && aula.turmaId && !aula.deletedAt) {
+    const inscricao = await prisma.cursosTurmasInscricoes.findFirst({
+      where: {
+        turmaId: aula.turmaId,
+        alunoId: usuario.id,
+        statusPagamento: 'APROVADO',
+        removidaEm: null,
+        status: { in: [...STATUS_COM_ACESSO] },
+      },
+      select: { id: true },
+    });
+    if (inscricao) return;
+  }
+  throw semAcesso();
+}
+
 // Mapear tipo do frontend para enum do banco
 function mapTipoMaterial(tipo: string): any {
   const map: Record<string, string> = {
@@ -146,7 +203,8 @@ export const materiaisService = {
   /**
    * Listar materiais de uma aula
    */
-  async list(aulaId: string) {
+  async list(aulaId: string, usuario: UsuarioDoMaterial) {
+    await garantirAcessoAosMateriais(aulaId, usuario);
     const materiais = await prisma.cursosTurmasAulasMateriais.findMany({
       where: { aulaId },
       orderBy: { ordem: 'asc' },
@@ -364,7 +422,8 @@ export const materiaisService = {
   /**
    * Gerar token de download para arquivo
    */
-  async gerarTokenDownload(aulaId: string, materialId: string) {
+  async gerarTokenDownload(aulaId: string, materialId: string, usuario: UsuarioDoMaterial) {
+    await garantirAcessoAosMateriais(aulaId, usuario);
     const material = await prisma.cursosTurmasAulasMateriais.findFirst({
       where: { id: materialId, aulaId },
     });
@@ -384,49 +443,14 @@ export const materiaisService = {
    * Download protegido de arquivo
    */
   async downloadArquivo(token: string, usuarioId: string, usuarioRole: string) {
-    // 1. Buscar material pelo ID (token é o ID agora)
+    // O token é o id do material
     const material = await prisma.cursosTurmasAulasMateriais.findFirst({
       where: { id: token },
-      include: {
-        CursosTurmasAulas: {
-          include: {
-            CursosTurmas: {
-              include: {
-                CursosTurmasInscricoes: {
-                  where: { status: 'INSCRITO' },
-                  select: { alunoId: true },
-                },
-              },
-            },
-          },
-        },
-      },
+      select: { aulaId: true, url: true },
     });
+    if (!material?.url) throw new Error('Material não encontrado');
 
-    if (!material) throw new Error('Material não encontrado');
-
-    // 2. Verificar acesso
-    const aula = material.CursosTurmasAulas;
-    const turma = aula.CursosTurmas;
-
-    // Admin/Moderador/Pedagógico sempre têm acesso
-    if (['ADMIN', 'MODERADOR', 'PEDAGOGICO'].includes(usuarioRole)) {
-      return material.url!;
-    }
-
-    // Instrutor da aula tem acesso
-    if (usuarioRole === 'INSTRUTOR' && aula.instrutorId === usuarioId) {
-      return material.url!;
-    }
-
-    // Aluno precisa estar inscrito na turma
-    if (turma) {
-      const inscrito = turma.CursosTurmasInscricoes.some((i: any) => i.alunoId === usuarioId);
-      if (inscrito) {
-        return material.url!;
-      }
-    }
-
-    throw new Error('Você não tem acesso a este material');
+    await garantirAcessoAosMateriais(material.aulaId, { id: usuarioId, role: usuarioRole });
+    return material.url;
   },
 };

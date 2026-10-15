@@ -17,6 +17,7 @@ import { CursoStatus, Roles } from '@prisma/client';
 import { ZodError } from 'zod';
 
 import { turmasService } from '../services/turmas.service';
+import { ehEquipeOuInstrutor, filtrarParaUsuario, semDadosPrivados } from '../utils/links-privados';
 import { cursosService } from '../services/cursos.service';
 import { generateCacheKey, getCachedOrFetch, invalidateCacheByPrefix } from '@/utils/cache';
 import {
@@ -178,7 +179,10 @@ export class TurmasController {
           : null;
 
       res.json({
-        ...result,
+        // Rota com login opcional: e-mail e CPF dos instrutores só para equipe e instrutor
+        ...(ehEquipeOuInstrutor(req.user)
+          ? result
+          : semDadosPrivados(result, { links: true, dadosPessoais: true })),
         meta: {
           ...((result as any)?.meta ?? {}),
           defaultTurmaId,
@@ -241,7 +245,9 @@ export class TurmasController {
     }
 
     try {
-      const includeAlunos = parseBooleanQuery(req.query.includeAlunos) ?? false;
+      // Lista de alunos (nome, e-mail, telefone, endereço) só para equipe e instrutor
+      const includeAlunos =
+        (parseBooleanQuery(req.query.includeAlunos) ?? false) && ehEquipeOuInstrutor(req.user);
       // Compatibilidade: por padrão manter estrutura no payload.
       // Otimização permanece disponível via `?includeEstrutura=false`.
       const includeEstrutura = parseBooleanQuery(req.query.includeEstrutura) ?? true;
@@ -272,7 +278,7 @@ export class TurmasController {
           ),
         TURMAS_GET_CACHE_TTL,
       );
-      res.json(turma);
+      res.json(await filtrarParaUsuario(turma, req.user, turmaId));
     } catch (error: any) {
       if (error?.code === 'FORBIDDEN') {
         return res.status(403).json({
@@ -401,7 +407,8 @@ export class TurmasController {
       }
 
       res.set('Cache-Control', 'no-store');
-      res.json(turma);
+      // Página pública: sem links das aulas e sem dados de pessoas
+      res.json(semDadosPrivados(turma, { links: true, dadosPessoais: true }));
     } catch (error: any) {
       res.status(500).json({
         success: false,

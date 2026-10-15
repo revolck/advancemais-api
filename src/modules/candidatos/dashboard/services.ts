@@ -59,6 +59,7 @@ export const candidatoDashboardService = {
           where: {
             alunoId: usuarioId,
             statusPagamento: STATUS_PAGAMENTO_LIBERADO,
+            removidaEm: null,
             status: { in: STATUS_INSCRICAO_DASHBOARD_LIBERADA },
           },
           select: {
@@ -90,6 +91,7 @@ export const candidatoDashboardService = {
         where: {
           alunoId: usuarioId,
           statusPagamento: STATUS_PAGAMENTO_LIBERADO,
+          removidaEm: null,
           status: { in: STATUS_INSCRICAO_DASHBOARD_LIBERADA },
         },
         take: 8,

@@ -7,6 +7,7 @@ import { Prisma, Roles, StatusInscricao } from '@prisma/client';
 import { prisma, retryOperation } from '@/config/prisma';
 import { logger } from '@/utils/logger';
 import { cursosService } from '../services/cursos.service';
+import { ehEquipeOuInstrutor, semDadosPrivados } from '../utils/links-privados';
 import { buscarVisaoGeralCursos } from '../services/visaogeral.service';
 import { buscarFaturamentoTendenciasCursos } from '../services/faturamento-tendencias.service';
 import {
@@ -508,7 +509,12 @@ export class CursosController {
         CURSOS_LIST_CACHE_TTL,
       );
 
-      res.json(result);
+      // Login opcional: dados de pessoas (instrutores) e links só para equipe e instrutor
+      res.json(
+        ehEquipeOuInstrutor(req.user)
+          ? result
+          : semDadosPrivados(result, { links: true, dadosPessoais: true }),
+      );
     } catch (error: any) {
       if (error instanceof ZodError) {
         return res.status(400).json({
@@ -707,7 +713,8 @@ export class CursosController {
       }
 
       res.set('Cache-Control', 'no-store');
-      res.json(course);
+      // Página pública: sem links das aulas e sem dados de pessoas
+      res.json(semDadosPrivados(course, { links: true, dadosPessoais: true }));
     } catch (error: any) {
       res.status(500).json({
         success: false,

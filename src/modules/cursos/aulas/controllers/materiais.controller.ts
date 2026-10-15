@@ -51,13 +51,19 @@ export class MateriaisController {
     try {
       const { aulaId } = req.params;
 
-      const result = await materiaisService.list(aulaId);
+      const result = await materiaisService.list(aulaId, {
+        id: req.user!.id,
+        role: req.user!.role,
+      });
 
       res.json({
         success: true,
         ...result,
       });
     } catch (error: any) {
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({ success: false, code: 'FORBIDDEN', message: error.message });
+      }
       res.status(500).json({
         success: false,
         code: 'MATERIAIS_LIST_ERROR',
@@ -158,13 +164,19 @@ export class MateriaisController {
     try {
       const { aulaId, materialId } = req.params;
 
-      const result = await materiaisService.gerarTokenDownload(aulaId, materialId);
+      const result = await materiaisService.gerarTokenDownload(aulaId, materialId, {
+        id: req.user!.id,
+        role: req.user!.role,
+      });
 
       res.json({
         success: true,
         ...result,
       });
     } catch (error: any) {
+      if (error?.code === 'FORBIDDEN') {
+        return res.status(403).json({ success: false, code: 'FORBIDDEN', message: error.message });
+      }
       res.status(404).json({
         success: false,
         code: 'TOKEN_ERROR',

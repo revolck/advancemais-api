@@ -448,6 +448,7 @@ const buscarProximaAula = async (usuarioId: string) => {
             some: {
               alunoId: usuarioId,
               statusPagamento: STATUS_PAGAMENTO_LIBERADO,
+              removidaEm: null,
               status: {
                 in: STATUS_INSCRICAO_PROXIMA_AULA,
               },
@@ -554,6 +555,7 @@ export const candidatoCursosService = {
     const where: any = {
       alunoId: usuarioId,
       statusPagamento: STATUS_PAGAMENTO_LIBERADO,
+      removidaEm: null,
       status: {
         in: STATUS_INSCRICAO_LISTAGEM_LIBERADA,
       },
@@ -721,6 +723,7 @@ export const candidatoCursosService = {
         alunoId: usuarioId,
         turmaId,
         statusPagamento: STATUS_PAGAMENTO_LIBERADO,
+        removidaEm: null,
         status: {
           in: STATUS_INSCRICAO_LISTAGEM_LIBERADA,
         },
@@ -902,6 +905,7 @@ export const candidatoCursosService = {
         alunoId: usuarioId,
         turmaId,
         statusPagamento: STATUS_PAGAMENTO_LIBERADO,
+        removidaEm: null,
         status: { in: STATUS_INSCRICAO_LISTAGEM_LIBERADA },
         CursosTurmas: { id: turmaId, cursoId, deletedAt: null },
       },
@@ -982,6 +986,7 @@ export const candidatoCursosService = {
             alunoId: usuarioId,
             turmaId,
             statusPagamento: STATUS_PAGAMENTO_LIBERADO,
+            removidaEm: null,
             status: { in: STATUS_INSCRICAO_LISTAGEM_LIBERADA },
             CursosTurmas: { id: turmaId, cursoId, deletedAt: null },
           },
@@ -1324,6 +1329,7 @@ export const candidatoCursosService = {
         alunoId: usuarioId,
         turmaId,
         statusPagamento: STATUS_PAGAMENTO_LIBERADO,
+        removidaEm: null,
         status: {
           in: STATUS_INSCRICAO_LISTAGEM_LIBERADA,
         },

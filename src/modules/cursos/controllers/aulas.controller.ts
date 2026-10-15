@@ -3,6 +3,7 @@ import { Roles } from '@prisma/client';
 import { ZodError } from 'zod';
 
 import { aulasService } from '../services/aulas.service';
+import { filtrarParaUsuario } from '../utils/links-privados';
 import { createAulaSchema, updateAulaSchema } from '../validators/aulas.schema';
 
 const parseCursoId = (raw: string): string | null => {
@@ -54,7 +55,8 @@ export class AulasController {
 
     try {
       const aulas = await aulasService.list(cursoId, turmaId, actorFromRequest(req));
-      res.json({ data: aulas });
+      // Rota com login opcional: links das aulas só para quem tem acesso à turma
+      res.json({ data: await filtrarParaUsuario(aulas, req.user, turmaId) });
     } catch (error: any) {
       if (error?.code === 'FORBIDDEN') {
         return res.status(403).json({
@@ -96,7 +98,7 @@ export class AulasController {
 
     try {
       const aula = await aulasService.get(cursoId, turmaId, aulaId, actorFromRequest(req));
-      res.json(aula);
+      res.json(await filtrarParaUsuario(aula, req.user, turmaId));
     } catch (error: any) {
       if (error?.code === 'FORBIDDEN') {
         return res.status(403).json({

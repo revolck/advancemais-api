@@ -45,6 +45,29 @@ const SETOR_DE_VAGAS_DETAIL_STATUSES: StatusDeVagas[] = [
   StatusDeVagas.ENCERRADA,
 ];
 
+/** Erros de regra do fluxo de vagas: o serviço já define código e status HTTP */
+const responderErroDeRegra = (res: Response, error: any) => {
+  if (error instanceof EmpresaSemPlanoAtivoError) {
+    res.status(403).json({ success: false, code: error.code, message: error.message });
+    return true;
+  }
+  if (typeof error?.statusCode === 'number' && typeof error?.code === 'string') {
+    res.status(error.statusCode).json({
+      success: false,
+      code: error.code,
+      message: error.message,
+      ...(error.limite !== undefined ? { limite: error.limite, emUso: error.emUso } : {}),
+    });
+    return true;
+  }
+  return false;
+};
+
+const atorDaRequisicao = (req: Request) => ({
+  id: req.user!.id,
+  role: (req.user?.role as string | undefined) ?? null,
+});
+
 export class VagasController {
   static list = async (_req: Request, res: Response) => {
     try {
@@ -238,6 +261,10 @@ export class VagasController {
   static create = async (req: Request, res: Response) => {
     try {
       const data = createVagaSchema.parse(req.body);
+      // Empresa sempre cria vaga para si mesma, nunca em nome de outra conta
+      if (req.user?.role === Roles.EMPRESA) {
+        data.usuarioId = req.user.id;
+      }
       const vaga = await vagasService.create(data, { actorRole: req.user?.role });
       res.status(201).json(vaga);
     } catch (error: any) {
@@ -423,12 +450,41 @@ export class VagasController {
     }
   };
 
+  static enviarParaAnalise = async (req: Request, res: Response) => {
+    try {
+      const vaga = await vagasService.enviarParaAnalise(req.params.id, atorDaRequisicao(req));
+      res.json(vaga);
+    } catch (error: any) {
+      if (responderErroDeRegra(res, error)) return;
+      res.status(500).json({
+        success: false,
+        code: 'VAGAS_ENVIAR_ANALISE_ERROR',
+        message: 'Erro ao enviar a vaga para aprovação',
+      });
+    }
+  };
+
+  static despublicar = async (req: Request, res: Response) => {
+    try {
+      const vaga = await vagasService.despublicar(req.params.id, atorDaRequisicao(req));
+      res.json(vaga);
+    } catch (error: any) {
+      if (responderErroDeRegra(res, error)) return;
+      res.status(500).json({
+        success: false,
+        code: 'VAGAS_DESPUBLICAR_ERROR',
+        message: 'Erro ao despublicar a vaga',
+      });
+    }
+  };
+
   static remove = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      await vagasService.remove(id);
+      await vagasService.removerComRegras(id, atorDaRequisicao(req));
       res.status(204).send();
     } catch (error: any) {
+      if (responderErroDeRegra(res, error)) return;
       if (error?.code === 'P2025') {
         return res.status(404).json({
           success: false,

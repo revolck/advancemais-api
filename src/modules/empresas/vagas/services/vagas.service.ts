@@ -667,10 +667,49 @@ const ensurePlanoAtivoParaUsuario = async (usuarioId: string) => {
     throw new EmpresaSemPlanoAtivoError();
   }
 
-  // Observação: a partir de agora, apenas vagas PUBLICADAS contam no limite do plano.
-  // Permite enviar quantas vagas quiser para análise; o limite será validado na aprovação.
+  // O limite do plano conta vagas publicadas + em análise (ver ocupacaoDoPlano).
 
   return planoAtivo;
+};
+
+/** Vagas que ocupam o plano: publicadas e em análise (viram publicadas na aprovação) */
+const STATUS_QUE_OCUPAM_PLANO = [StatusDeVagas.PUBLICADO, StatusDeVagas.EM_ANALISE];
+
+export const ocupacaoDoPlano = async (usuarioId: string, plano?: PlanoAtivo) => {
+  const planoUsado =
+    plano ?? (await clientesService.findActiveByUsuario(usuarioId).catch(() => null));
+  const limite = planoUsado?.PlanosEmpresariais?.quantidadeVagas ?? null;
+  const emUso = await prisma.empresasVagas.count({
+    where: { usuarioId, status: { in: STATUS_QUE_OCUPAM_PLANO } },
+  });
+  return {
+    limite,
+    emUso,
+    cheio: typeof limite === 'number' && limite > 0 && emUso >= limite,
+  };
+};
+
+export const mensagemLimiteDoPlano = (ocupacao: { limite: number | null; emUso: number }) =>
+  `Seu plano permite ${ocupacao.limite} vaga(s) ativa(s) (publicadas ou em análise) e você já está usando ${ocupacao.emUso}. Encerre ou despublique uma vaga, ou faça upgrade do plano.`;
+
+const erroVaga = (code: string, message: string, statusCode: number) =>
+  Object.assign(new Error(message), { code, statusCode });
+
+/** Empresa só mexe nas próprias vagas (para as outras, a vaga "não existe") */
+const carregarVagaDoAtor = async (id: string, ator: { id: string; role?: string | null }) => {
+  const vaga = await prisma.empresasVagas.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      usuarioId: true,
+      status: true,
+      _count: { select: { EmpresasCandidatos: true } },
+    },
+  });
+  if (!vaga || (ator.role === Roles.EMPRESA && vaga.usuarioId !== ator.id)) {
+    throw erroVaga('VAGA_NOT_FOUND', 'Vaga não encontrada', 404);
+  }
+  return vaga;
 };
 
 export const vagasService = {
@@ -797,6 +836,20 @@ export const vagasService = {
       !recursosPremiumAtivos && (!canBypassPlanoAtivo(options?.actorRole) || shouldHighlight);
     const planoAtivo = precisaPlanoAtivo ? await ensurePlanoAtivoParaUsuario(data.usuarioId) : null;
 
+    // Fila de aprovação do Setor de Vagas: a vaga entra EM_ANALISE. Se o plano já está
+    // cheio, fica salva como rascunho (nada do que foi digitado se perde) com o aviso.
+    let statusInicial: StatusDeVagas = StatusDeVagas.EM_ANALISE;
+    let avisoStatus: string | null = null;
+    if (recursosPremiumAtivos) {
+      statusInicial = StatusDeVagas.PUBLICADO;
+    } else {
+      const ocupacao = await ocupacaoDoPlano(data.usuarioId, planoAtivo);
+      if (ocupacao.cheio) {
+        statusInicial = StatusDeVagas.RASCUNHO;
+        avisoStatus = `Vaga salva como rascunho. ${mensagemLimiteDoPlano(ocupacao)}`;
+      }
+    }
+
     // Preparar dados com categoria correta
     const dataComCategoria = {
       ...data,
@@ -823,12 +876,7 @@ export const vagasService = {
             dataComCategoria.slug ?? dataComCategoria.titulo,
           );
           const created = await tx.empresasVagas.create({
-            data: sanitizeCreateData(
-              dataComCategoria as any,
-              codigo,
-              slug,
-              recursosPremiumAtivos ? StatusDeVagas.PUBLICADO : undefined,
-            ),
+            data: sanitizeCreateData(dataComCategoria as any, codigo, slug, statusInicial),
           });
 
           if (shouldHighlight && !recursosPremiumAtivos) {
@@ -850,7 +898,7 @@ export const vagasService = {
           });
         });
 
-        return transformVaga(vaga);
+        return { ...transformVaga(vaga), avisoStatus };
       } catch (error) {
         if (isUniqueConstraintForField(error, 'slug')) {
           continue;
@@ -941,4 +989,90 @@ export const vagasService = {
   },
 
   remove: (id: string) => prisma.empresasVagas.delete({ where: { id } }),
+
+  /**
+   * Rascunho (ou despublicada) → fila de aprovação. Confere dono, plano ativo e limite
+   * do plano (publicadas + em análise). Recursos premium publicam direto.
+   */
+  enviarParaAnalise: async (id: string, ator: { id: string; role?: string | null }) => {
+    const vaga = await carregarVagaDoAtor(id, ator);
+    if (vaga.status === StatusDeVagas.EM_ANALISE) {
+      throw erroVaga('VAGA_JA_EM_ANALISE', 'Esta vaga já está aguardando aprovação.', 409);
+    }
+    if (vaga.status === StatusDeVagas.PUBLICADO) {
+      throw erroVaga('VAGA_JA_PUBLICADA', 'Esta vaga já está publicada.', 409);
+    }
+    const permitidos: StatusDeVagas[] = [StatusDeVagas.RASCUNHO, StatusDeVagas.DESPUBLICADA];
+    if (!permitidos.includes(vaga.status)) {
+      throw erroVaga(
+        'VAGA_STATUS_INVALIDO',
+        'Esta vaga não pode ser enviada para aprovação na situação atual.',
+        409,
+      );
+    }
+
+    const premium = await hasRecursosPremiumVagasAtivos(vaga.usuarioId);
+    let novoStatus: StatusDeVagas = StatusDeVagas.EM_ANALISE;
+    if (premium) {
+      novoStatus = StatusDeVagas.PUBLICADO;
+    } else {
+      const plano = canBypassPlanoAtivo(ator.role)
+        ? undefined
+        : await ensurePlanoAtivoParaUsuario(vaga.usuarioId);
+      const ocupacao = await ocupacaoDoPlano(vaga.usuarioId, plano);
+      if (ocupacao.cheio) {
+        throw Object.assign(erroVaga('LIMITE_VAGAS_PLANO', mensagemLimiteDoPlano(ocupacao), 409), {
+          limite: ocupacao.limite,
+          emUso: ocupacao.emUso,
+        });
+      }
+    }
+
+    const atualizada = await prisma.empresasVagas.update({
+      where: { id },
+      data: {
+        status: novoStatus,
+        ...(novoStatus === StatusDeVagas.PUBLICADO ? { inseridaEm: new Date() } : {}),
+      },
+      ...includeEmpresa,
+    });
+    return transformVaga(atualizada);
+  },
+
+  /** Publicada → despublicada; em análise → volta a rascunho. Libera espaço no plano. */
+  despublicar: async (id: string, ator: { id: string; role?: string | null }) => {
+    const vaga = await carregarVagaDoAtor(id, ator);
+    const destino =
+      vaga.status === StatusDeVagas.PUBLICADO
+        ? StatusDeVagas.DESPUBLICADA
+        : vaga.status === StatusDeVagas.EM_ANALISE
+          ? StatusDeVagas.RASCUNHO
+          : null;
+    if (!destino) {
+      throw erroVaga(
+        'VAGA_STATUS_INVALIDO',
+        'Só vagas publicadas ou aguardando aprovação podem ser despublicadas.',
+        409,
+      );
+    }
+    const atualizada = await prisma.empresasVagas.update({
+      where: { id },
+      data: { status: destino },
+      ...includeEmpresa,
+    });
+    return transformVaga(atualizada);
+  },
+
+  /** Excluir de vez só a própria vaga e só sem candidatos (com candidatos: despublique) */
+  removerComRegras: async (id: string, ator: { id: string; role?: string | null }) => {
+    const vaga = await carregarVagaDoAtor(id, ator);
+    if (vaga._count.EmpresasCandidatos > 0) {
+      throw erroVaga(
+        'VAGA_COM_CANDIDATOS',
+        'Esta vaga já tem candidatos e não pode ser excluída. Despublique ou encerre a vaga.',
+        409,
+      );
+    }
+    await prisma.empresasVagas.delete({ where: { id } });
+  },
 };

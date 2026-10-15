@@ -1055,4 +1055,56 @@ router.put('/:id', supabaseAuthMiddleware(updateRoles), VagasController.update);
  */
 router.delete('/:id', supabaseAuthMiddleware(protectedRoles), VagasController.remove);
 
+/**
+ * @openapi
+ * /api/v1/empresas/vagas/{id}/enviar-para-analise:
+ *   post:
+ *     summary: Envia um rascunho (ou vaga despublicada) para a fila de aprovação
+ *     description: >
+ *       A empresa só envia as próprias vagas. Respeita o limite do plano
+ *       (vagas publicadas + em análise). Com recursos premium a vaga é publicada direto.
+ *     tags: [Empresas - Vagas]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: Vaga em análise (ou publicada, se premium) }
+ *       403: { description: Empresa sem plano ativo }
+ *       404: { description: Vaga não encontrada }
+ *       409: { description: Limite do plano atingido ou situação da vaga não permite }
+ */
+router.post(
+  '/:id/enviar-para-analise',
+  supabaseAuthMiddleware(protectedRoles),
+  VagasController.enviarParaAnalise,
+);
+
+/**
+ * @openapi
+ * /api/v1/empresas/vagas/{id}/despublicar:
+ *   post:
+ *     summary: Despublica a vaga (ou tira da fila de aprovação, voltando a rascunho)
+ *     tags: [Empresas - Vagas]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: Vaga despublicada }
+ *       404: { description: Vaga não encontrada }
+ *       409: { description: Só vagas publicadas ou em análise podem ser despublicadas }
+ */
+router.post(
+  '/:id/despublicar',
+  supabaseAuthMiddleware(protectedRoles),
+  VagasController.despublicar,
+);
+
 export { router as vagasRoutes };

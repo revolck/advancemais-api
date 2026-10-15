@@ -243,3 +243,139 @@ describe('controller', () => {
     );
   });
 });
+
+describe('editar vaga', () => {
+  const vagaAtual = (status: string, usuarioId = EMPRESA) => ({
+    id: VAGA,
+    usuarioId,
+    status,
+    destaque: false,
+    areaInteresseId: null,
+    subareaInteresseId: null,
+    EmpresasVagasDestaque: null,
+  });
+
+  beforeEach(() => {
+    cenario(1);
+    db.$transaction.mockImplementation((fn: (tx: any) => unknown) => fn(db));
+    let salva: any = null;
+    db.empresasVagas.update.mockImplementation(({ data }: any) => {
+      salva = data;
+      return Promise.resolve({ id: VAGA });
+    });
+    db.empresasVagas.findUniqueOrThrow = jest.fn(() =>
+      Promise.resolve({
+        id: VAGA,
+        status: salva?.status ?? 'PUBLICADO',
+        modoAnonimo: false,
+        Usuarios: null,
+      }),
+    );
+  });
+
+  const dadosSalvos = () => db.empresasVagas.update.mock.calls[0][0].data;
+
+  it('empresa edita vaga publicada: sai do ar e volta para análise', async () => {
+    db.empresasVagas.findUnique.mockResolvedValue(vagaAtual('PUBLICADO'));
+    const vaga: any = await vagasService.update(VAGA, { titulo: 'Novo título' }, { ator });
+    expect(dadosSalvos()).toMatchObject({ titulo: 'Novo título', status: 'EM_ANALISE' });
+    expect(vaga.status).toBe('EM_ANALISE');
+    expect(vaga.avisoStatus).toMatch(/voltou para a aprovação/);
+  });
+
+  it('empresa edita rascunho ou vaga em análise: a situação não muda', async () => {
+    for (const status of ['RASCUNHO', 'EM_ANALISE', 'DESPUBLICADA']) {
+      db.empresasVagas.update.mockClear();
+      db.empresasVagas.findUnique.mockResolvedValue(vagaAtual(status));
+      const vaga: any = await vagasService.update(VAGA, { titulo: 'Novo' }, { ator });
+      expect(dadosSalvos().status).toBeUndefined();
+      expect(vaga.avisoStatus).toBeNull();
+    }
+  });
+
+  it('empresa não consegue se autopublicar nem trocar o dono pela edição', async () => {
+    db.empresasVagas.findUnique.mockResolvedValue(vagaAtual('RASCUNHO'));
+    await vagasService.update(
+      VAGA,
+      { titulo: 'Novo', status: 'PUBLICADO', usuarioId: OUTRA_EMPRESA } as any,
+      { ator },
+    );
+    expect(dadosSalvos().status).toBeUndefined();
+    expect(dadosSalvos().usuarioId).toBeUndefined();
+  });
+
+  it('só mandar status não conta como edição', async () => {
+    db.empresasVagas.findUnique.mockResolvedValue(vagaAtual('PUBLICADO'));
+    await expect(
+      vagasService.update(VAGA, { status: 'PUBLICADO' } as any, { ator }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR', statusCode: 400 });
+    expect(db.empresasVagas.update).not.toHaveBeenCalled();
+  });
+
+  it('empresa não edita vaga de outra empresa', async () => {
+    db.empresasVagas.findUnique.mockResolvedValue(vagaAtual('PUBLICADO', OUTRA_EMPRESA));
+    await expect(vagasService.update(VAGA, { titulo: 'x' }, { ator })).rejects.toMatchObject({
+      code: 'P2025',
+    });
+  });
+
+  it('vaga encerrada ou expirada não é editável pela empresa', async () => {
+    db.empresasVagas.findUnique.mockResolvedValue(vagaAtual('ENCERRADA'));
+    await expect(vagasService.update(VAGA, { titulo: 'x' }, { ator })).rejects.toMatchObject({
+      code: 'VAGA_NAO_EDITAVEL',
+      statusCode: 409,
+    });
+  });
+
+  it('equipe edita vaga publicada sem tirar do ar', async () => {
+    db.empresasVagas.findUnique.mockResolvedValue(vagaAtual('PUBLICADO'));
+    const vaga: any = await vagasService.update(
+      VAGA,
+      { titulo: 'Ajuste' },
+      { ator: { id: 'setor-1', role: 'SETOR_DE_VAGAS' } },
+    );
+    expect(dadosSalvos().status).toBeUndefined();
+    expect(vaga.avisoStatus).toBeNull();
+  });
+});
+
+describe('listar vagas não públicas', () => {
+  const res = () =>
+    ({
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+      setHeader: jest.fn(),
+      set: jest.fn(),
+      end: jest.fn(),
+    }) as any;
+
+  it('empresa só lista os próprios rascunhos, mesmo pedindo de outra empresa', async () => {
+    const spy = jest
+      .spyOn(vagasService, 'list')
+      .mockResolvedValue({ data: [], pagination: {} } as any);
+    await VagasController.list(
+      {
+        query: { status: 'RASCUNHO,EM_ANALISE', usuarioId: OUTRA_EMPRESA },
+        user: { id: EMPRESA, role: 'EMPRESA' },
+        headers: {},
+      } as any,
+      res(),
+    );
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ usuarioId: EMPRESA }));
+  });
+
+  it('aluno não lista rascunhos das empresas', async () => {
+    const spy = jest.spyOn(vagasService, 'list');
+    const r = res();
+    await VagasController.list(
+      {
+        query: { status: 'RASCUNHO' },
+        user: { id: 'aluno-1', role: 'ALUNO_CANDIDATO' },
+        headers: {},
+      } as any,
+      r,
+    );
+    expect(r.status).toHaveBeenCalledWith(403);
+    expect(spy).not.toHaveBeenCalled();
+  });
+});

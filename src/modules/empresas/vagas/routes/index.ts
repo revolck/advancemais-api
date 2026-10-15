@@ -11,7 +11,6 @@ import { vagasSolicitacoesRoutes } from '@/modules/empresas/vagas-solicitacoes/r
 
 const router = Router();
 const protectedRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.EMPRESA, Roles.SETOR_DE_VAGAS];
-const updateRoles = [Roles.ADMIN, Roles.MODERADOR, Roles.SETOR_DE_VAGAS];
 const categoriaAdminRoles = [Roles.ADMIN, Roles.MODERADOR];
 
 /**
@@ -908,7 +907,7 @@ router.post('/', supabaseAuthMiddleware(protectedRoles), VagasController.create)
  * /api/v1/empresas/vagas/{id}:
  *   put:
  *     summary: Atualizar vaga
- *     description: "Permite editar os dados de uma vaga existente, incluindo o status do fluxo (RASCUNHO, EM_ANALISE, PUBLICADO, DESPUBLICADA, PAUSADA, EXPIRADO ou ENCERRADA). Requer autenticação com perfil autorizado (roles: ADMIN, MODERADOR ou SETOR_DE_VAGAS)."
+ *     description: "Permite editar os dados de uma vaga existente. ADMIN, MODERADOR e SETOR_DE_VAGAS editam qualquer vaga, inclusive o status do fluxo (RASCUNHO, EM_ANALISE, PUBLICADO, DESPUBLICADA, PAUSADA, EXPIRADO ou ENCERRADA). EMPRESA edita só as próprias vagas, sem alterar status, dono ou data de publicação; vaga PUBLICADA editada pela empresa volta para EM_ANALISE (avisoStatus na resposta). Vagas ENCERRADA ou EXPIRADO não são editáveis pela empresa (409 VAGA_NAO_EDITAVEL)."
  *     tags: [Empresas]
  *     security:
  *       - bearerAuth: []
@@ -1002,7 +1001,8 @@ router.post('/', supabaseAuthMiddleware(protectedRoles), VagasController.create)
  *                  "vagaEmDestaque": false
  *                }'
  */
-router.put('/:id', supabaseAuthMiddleware(updateRoles), VagasController.update);
+// Empresa edita as próprias vagas (publicada editada volta para análise)
+router.put('/:id', supabaseAuthMiddleware(protectedRoles), VagasController.update);
 
 /**
  * @openapi

@@ -695,6 +695,12 @@ export const mensagemLimiteDoPlano = (ocupacao: { limite: number | null; emUso: 
 const erroVaga = (code: string, message: string, statusCode: number) =>
   Object.assign(new Error(message), { code, statusCode });
 
+/** Encerrada ou expirada: a empresa não edita mais (o processo daquela vaga acabou) */
+const STATUS_SEM_EDICAO_PELA_EMPRESA: StatusDeVagas[] = [
+  StatusDeVagas.ENCERRADA,
+  StatusDeVagas.EXPIRADO,
+];
+
 /** Empresa só mexe nas próprias vagas (para as outras, a vaga "não existe") */
 const carregarVagaDoAtor = async (id: string, ator: { id: string; role?: string | null }) => {
   const vaga = await prisma.empresasVagas.findUnique({
@@ -911,14 +917,56 @@ export const vagasService = {
     throw new VagaSlugDuplicadoError();
   },
 
-  update: async (id: string, data: UpdateVagaData) => {
+  /**
+   * Edição. Quando é a empresa editando: só a própria vaga, sem mexer em status, dono ou
+   * data de publicação; e vaga publicada que for editada sai do ar e volta para a fila de
+   * aprovação do setor de vagas (o conteúdo novo precisa ser aprovado de novo).
+   */
+  update: async (
+    id: string,
+    dadosRecebidos: UpdateVagaData,
+    opcoes?: { ator?: { id: string; role?: string | null } },
+  ) => {
     const vagaAtual = await prisma.empresasVagas.findUnique({
       where: { id },
       include: { EmpresasVagasDestaque: true },
     });
 
-    if (!vagaAtual) {
+    const ator = opcoes?.ator;
+    const editadaPelaEmpresa = ator?.role === Roles.EMPRESA;
+
+    if (!vagaAtual || (editadaPelaEmpresa && vagaAtual.usuarioId !== ator!.id)) {
       throw Object.assign(new Error('Vaga não encontrada'), { code: 'P2025' });
+    }
+
+    let data = dadosRecebidos;
+    let voltaParaAnalise = false;
+    if (editadaPelaEmpresa) {
+      if (STATUS_SEM_EDICAO_PELA_EMPRESA.includes(vagaAtual.status)) {
+        throw erroVaga(
+          'VAGA_NAO_EDITAVEL',
+          'Vagas encerradas ou expiradas não podem ser editadas. Crie uma nova vaga.',
+          409,
+        );
+      }
+      const {
+        status: _status,
+        usuarioId: _usuarioId,
+        inseridaEm: _inseridaEm,
+        ...camposEditaveis
+      } = dadosRecebidos;
+      if (!Object.values(camposEditaveis).some((valor) => valor !== undefined)) {
+        throw erroVaga(
+          'VALIDATION_ERROR',
+          'Informe ao menos um campo para atualização da vaga',
+          400,
+        );
+      }
+      voltaParaAnalise = vagaAtual.status === StatusDeVagas.PUBLICADO;
+      data = {
+        ...camposEditaveis,
+        ...(voltaParaAnalise ? { status: StatusDeVagas.EM_ANALISE } : {}),
+      };
     }
 
     const areaUpdate = await resolveAreaSubareaUpdate(vagaAtual, data);
@@ -985,7 +1033,12 @@ export const vagasService = {
       });
     });
 
-    return transformVaga(vaga);
+    return {
+      ...transformVaga(vaga),
+      avisoStatus: voltaParaAnalise
+        ? 'Alterações salvas. A vaga saiu do ar e voltou para a aprovação do setor de vagas.'
+        : null,
+    };
   },
 
   remove: (id: string) => prisma.empresasVagas.delete({ where: { id } }),

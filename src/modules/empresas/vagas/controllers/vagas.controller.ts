@@ -99,7 +99,6 @@ export class VagasController {
         Roles.MODERADOR,
         Roles.EMPRESA,
         Roles.SETOR_DE_VAGAS,
-        Roles.ALUNO_CANDIDATO,
       ];
       let statusesFilter: StatusDeVagas[] | undefined = undefined;
 
@@ -169,9 +168,16 @@ export class VagasController {
         }
       }
 
+      // Rascunhos, vagas em análise etc. de uma empresa não são de mais ninguém:
+      // a empresa só lista as próprias; equipe (admin, moderador, setor) lista todas.
+      let usuarioIdFiltro = typeof usuarioId === 'string' ? usuarioId : undefined;
+      if (includesRestricted && _req.user?.role === Roles.EMPRESA) {
+        usuarioIdFiltro = _req.user.id;
+      }
+
       const vagas = await vagasService.list({
         status: statusesFilter,
-        usuarioId: typeof usuarioId === 'string' ? usuarioId : undefined,
+        usuarioId: usuarioIdFiltro,
         page: page ? Math.max(1, parseInt(page, 10) || 1) : undefined,
         pageSize: pageSize ? Math.max(1, Math.min(100, parseInt(pageSize, 10) || 10)) : undefined,
       });
@@ -365,7 +371,7 @@ export class VagasController {
         });
       }
 
-      const vaga = await vagasService.update(id, payload);
+      const vaga = await vagasService.update(id, payload, { ator: atorDaRequisicao(req) });
       res.json(vaga);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -441,6 +447,8 @@ export class VagasController {
           limite: error.limite,
         });
       }
+
+      if (responderErroDeRegra(res, error)) return;
 
       res.status(500).json({
         success: false,

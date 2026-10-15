@@ -48,6 +48,19 @@ export class CursosCheckoutController {
         statusCode: 409,
         message: 'Você já possui inscrição ativa nesta turma.',
       },
+      TURMA_INDISPONIVEL: {
+        statusCode: 409,
+        message: 'Esta turma não está disponível para inscrição.',
+      },
+      INSCRICAO_JA_CONCLUIDA: {
+        statusCode: 409,
+        message: 'Você já concluiu esta turma.',
+      },
+      INSCRICAO_ENCERRADA: {
+        statusCode: 409,
+        message:
+          'Sua inscrição nesta turma foi encerrada. Fale com a equipe da Advance+ para voltar.',
+      },
       PAYER_IDENTIFICATION_REQUIRED: {
         statusCode: 400,
         message: 'CPF ou CNPJ válido é obrigatório para este pagamento.',

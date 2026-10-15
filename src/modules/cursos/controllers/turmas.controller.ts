@@ -579,6 +579,14 @@ export class TurmasController {
         });
       }
 
+      if (error?.code === 'TURMA_ENCERRADA') {
+        return res.status(409).json({
+          success: false,
+          code: 'TURMA_ENCERRADA',
+          message: error.message,
+        });
+      }
+
       if (error?.code === 'STATUS_NAO_EDITAVEL_APOS_INICIO') {
         return res.status(400).json({
           success: false,
@@ -809,6 +817,14 @@ export class TurmasController {
         });
       }
 
+      if (error?.code === 'TURMA_ENCERRADA') {
+        return res.status(409).json({
+          success: false,
+          code: 'TURMA_ENCERRADA',
+          message: error.message,
+        });
+      }
+
       if (error?.code === 'INSCRICOES_ENCERRADAS') {
         return res.status(409).json({
           success: false,
@@ -1024,6 +1040,14 @@ export class TurmasController {
 
       if (error?.code === 'TURMA_PERIODO_OBRIGATORIO_PUBLICACAO') {
         return respondTurmaPeriodoObrigatorioPublicacao(res, error);
+      }
+
+      if (error?.code === 'TURMA_ENCERRADA') {
+        return res.status(409).json({
+          success: false,
+          code: 'TURMA_ENCERRADA',
+          message: error.message,
+        });
       }
 
       if (

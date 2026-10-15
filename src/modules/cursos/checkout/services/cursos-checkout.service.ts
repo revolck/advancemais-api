@@ -9,7 +9,11 @@ import {
   type CupomCheckoutValidado,
 } from '@/modules/cupons/services/cupom-checkout.service';
 import { logger } from '@/utils/logger';
-import { Prisma } from '@prisma/client';
+import { CursoStatus, Prisma } from '@prisma/client';
+import {
+  decidirRecompra,
+  turmaAceitaNovasInscricoes,
+} from '@/modules/cursos/utils/turma-inscricao';
 import jwt from 'jsonwebtoken';
 import { Payment } from 'mercadopago';
 import type { StartCursoCheckoutInput } from '../validators/cursos-checkout.schema';
@@ -56,6 +60,9 @@ const CHECKOUT_DOMAIN_STATUS: Record<string, number> = {
   MERCADOPAGO_SANDBOX_PAYER_EMAIL_REQUIRED: 400,
   MERCADOPAGO_UNAUTHORIZED_POLICY: 503,
   SEM_VAGAS: 409,
+  TURMA_INDISPONIVEL: 409,
+  INSCRICAO_JA_CONCLUIDA: 409,
+  INSCRICAO_ENCERRADA: 409,
   CARD_PAYMENT_METHOD_REQUIRED: 400,
   CURSO_INSTALLMENTS_DISABLED: 400,
   CURSO_INSTALLMENTS_LIMIT_EXCEEDED: 400,
@@ -474,6 +481,14 @@ export const cursosCheckoutService = {
       select: {
         id: true,
         status: true,
+        _count: {
+          select: {
+            CursosCertificadosEmitidos: true,
+            CursosNotas: true,
+            CursosFrequenciaAlunos: true,
+            CursosAulasProgresso: true,
+          },
+        },
       },
     });
 
@@ -524,9 +539,20 @@ export const cursosCheckoutService = {
       }
     }
 
-    if (existing.status === 'INSCRITO' || existing.status === 'AGUARDANDO_PAGAMENTO') {
-      throw Object.assign(new Error('Você já possui inscrição ativa nesta turma'), {
-        code: 'INSCRICAO_DUPLICADA_TURMA',
+    // Só reaproveita inscrição cancelada sem histórico (ex.: pagamento cancelado);
+    // concluída, reprovada, trancada ou com histórico não é sobrescrita
+    const historico = existing._count;
+    const decisao = decidirRecompra(
+      existing.status,
+      historico.CursosCertificadosEmitidos +
+        historico.CursosNotas +
+        historico.CursosFrequenciaAlunos +
+        historico.CursosAulasProgresso >
+        0,
+    );
+    if (!decisao.permitir) {
+      throw Object.assign(new Error(decisao.message), {
+        code: decisao.code,
         statusCode: 409,
       });
     }
@@ -722,11 +748,23 @@ export const cursosCheckoutService = {
     // 2. Validar turma existe
     const turma = await prisma.cursosTurmas.findUnique({
       where: { id: params.turmaId },
-      select: { id: true, cursoId: true, vagasTotais: true },
+      select: { id: true, cursoId: true, vagasTotais: true, status: true, deletedAt: true },
     });
     if (!turma) throw new Error('Turma não encontrada');
     if (turma.cursoId !== params.cursoId) {
       throw new Error('Turma não pertence ao curso selecionado');
+    }
+
+    // Turma concluída, cancelada, em rascunho ou excluída não vende
+    if (
+      turma.deletedAt ||
+      turma.status === CursoStatus.RASCUNHO ||
+      !turmaAceitaNovasInscricoes(turma.status)
+    ) {
+      throw Object.assign(new Error('Esta turma não está disponível para inscrição.'), {
+        code: 'TURMA_INDISPONIVEL',
+        statusCode: 409,
+      });
     }
 
     // 3. Validar vagas disponíveis

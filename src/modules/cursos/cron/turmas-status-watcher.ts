@@ -7,6 +7,7 @@ import { logger } from '@/utils/logger';
 import { handlePrismaConnectionError } from '@/utils/prisma-errors';
 import { checkDatabaseConnection } from '@/utils/db-connection-check';
 import { notificacoesHelper } from '@/modules/cursos/aulas/services/notificacoes-helper.service';
+import { transicaoAutomaticaPermitida } from '@/modules/cursos/utils/turma-inscricao';
 
 const watcherLogger = logger.child({ module: 'CursosTurmasStatusWatcher' });
 
@@ -239,7 +240,12 @@ export const processTurmasStatusWatcherTick = async (agora = new Date()) => {
       await notificarEstruturaPendente24h(turma);
     }
 
-    if (!desired || desired === turma.status) {
+    // Turma em andamento nunca volta para inscrições abertas (só vira concluída)
+    if (
+      !desired ||
+      desired === turma.status ||
+      !transicaoAutomaticaPermitida(turma.status, desired)
+    ) {
       continue;
     }
 

@@ -21,6 +21,7 @@ import {
   type InstrutorScope,
 } from '@/modules/instrutor/services/instrutor-scope.service';
 import { logger } from '@/utils/logger';
+import { erroTurmaEncerrada, turmaAceitaNovasInscricoes } from '../utils/turma-inscricao';
 
 import { notificacoesHelper } from '../aulas/services/notificacoes-helper.service';
 import { meetOrchestrationService } from '../aulas/services/meet-orchestration.service';
@@ -2373,6 +2374,19 @@ export const turmasService = {
         }
       }
 
+      // Turma concluída/cancelada não volta para outro status
+      if (
+        data.status !== undefined &&
+        data.status !== turma.status &&
+        !turmaAceitaNovasInscricoes(turma.status)
+      ) {
+        const error: any = new Error(
+          'Esta turma já foi concluída e não pode voltar a receber inscrições. Crie uma nova turma.',
+        );
+        error.code = 'TURMA_ENCERRADA';
+        throw error;
+      }
+
       // Se a turma já iniciou ou finalizou, não pode alterar o status manualmente
       if (data.status !== undefined && (turmaIniciou || turmaFinalizou)) {
         const error: any = new Error(
@@ -2956,6 +2970,11 @@ export const turmasService = {
         throw error;
       }
 
+      // Concluída/cancelada não recebe inscrição, nem por admin
+      if (!turmaAceitaNovasInscricoes(turma.status)) {
+        throw erroTurmaEncerrada();
+      }
+
       const agora = new Date();
       if (turma.dataInscricaoFim && turma.dataInscricaoFim < agora) {
         const canOverrideDeadline =
@@ -3322,6 +3341,15 @@ export const turmasService = {
       let notificacaoPendente:
         | Parameters<typeof notificacoesHelper.notificarAlunosDaTurma>[1]
         | null = null;
+
+      // Turma concluída/cancelada não volta a ser publicada (crie uma nova turma)
+      if (publicar && !turmaAceitaNovasInscricoes(turma.status)) {
+        const error: any = new Error(
+          'Esta turma já foi concluída e não pode ser publicada de novo. Crie uma nova turma.',
+        );
+        error.code = 'TURMA_ENCERRADA';
+        throw error;
+      }
 
       // Validar pré-requisitos se estiver publicando
       if (publicar) {

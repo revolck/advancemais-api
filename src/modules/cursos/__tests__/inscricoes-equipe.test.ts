@@ -178,6 +178,26 @@ describe('adicionar alunos: prévia', () => {
       ),
     ).rejects.toMatchObject({ code: 'COBRANCA_INDISPONIVEL' });
   });
+
+  it('cobrança pendente em curso gratuito é recusada (não há o que pagar)', async () => {
+    db.cursosTurmas.findFirst.mockResolvedValue({
+      ...turma(),
+      Cursos: { id: CURSO, nome: 'Analista Fiscal', valor: 0, gratuito: true },
+    });
+    await expect(
+      adicionarAlunos(
+        {
+          cursoId: CURSO,
+          turmaId: TURMA,
+          alunoIds: ['a1'],
+          motivo: 'teste x',
+          pagamento: 'COBRANCA_PENDENTE',
+          simular: true,
+        },
+        ator,
+      ),
+    ).rejects.toMatchObject({ code: 'COBRANCA_INDISPONIVEL', statusCode: 409 });
+  });
 });
 
 describe('adicionar alunos: aplicar', () => {
@@ -240,7 +260,11 @@ describe('adicionar alunos: aplicar', () => {
       valorFinal: 300,
     });
     expect(notificacoesService.criar).toHaveBeenCalledWith(
-      expect.objectContaining({ tipo: 'TURMA_MATRICULA_ADICIONADA', linkAcao: `/cursos/${CURSO}` }),
+      // Endereço completo do site: no painel, /cursos/… seria a página de curso da equipe
+      expect.objectContaining({
+        tipo: 'TURMA_MATRICULA_ADICIONADA',
+        linkAcao: `https://advancemais.com/cursos/${CURSO}`,
+      }),
     );
     expect(sendGeneric.mock.calls[0][2]).toMatch(/reservada/);
   });

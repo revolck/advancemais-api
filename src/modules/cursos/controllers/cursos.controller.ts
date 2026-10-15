@@ -1551,7 +1551,11 @@ export class CursosController {
                 select: {
                   id: true,
                   status: true,
+                  statusPagamento: true,
                   criadoEm: true,
+                  origem: true,
+                  removidaEm: true,
+                  motivoRemocao: true,
                   CursosTurmas: {
                     select: {
                       id: true,
@@ -1640,7 +1644,11 @@ export class CursosController {
         inscricoes: aluno.CursosTurmasInscricoes.map((inscricao) => ({
           id: inscricao.id,
           statusInscricao: inscricao.status,
+          statusPagamento: inscricao.statusPagamento ?? null,
           criadoEm: inscricao.criadoEm,
+          origem: inscricao.origem ?? null,
+          removidaEm: inscricao.removidaEm ?? null,
+          motivoRemocao: inscricao.motivoRemocao ?? null,
           progresso: progressoMap[inscricao.id] ?? 0,
           turma: {
             id: inscricao.CursosTurmas.id,

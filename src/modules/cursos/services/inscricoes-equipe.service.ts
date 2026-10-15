@@ -128,6 +128,14 @@ export async function adicionarAlunos(pedido: PedidoAdicao, ator: AtorEquipe) {
       409,
     );
   }
+  const valorCurso = turma.Cursos.gratuito ? 0 : Number(turma.Cursos.valor ?? 0) || 0;
+  if (pedido.pagamento === 'COBRANCA_PENDENTE' && valorCurso <= 0) {
+    throw erro(
+      'COBRANCA_INDISPONIVEL',
+      'Curso gratuito não tem o que cobrar. Use "Concedido pela equipe".',
+      409,
+    );
+  }
 
   const [alunos, existentes, outrasDoCurso, ocupadas] = await Promise.all([
     prisma.usuarios.findMany({
@@ -181,7 +189,10 @@ export async function adicionarAlunos(pedido: PedidoAdicao, ator: AtorEquipe) {
       recusados.push({
         alunoId: id,
         nome: aluno.nomeCompleto,
-        motivo: 'A conta do aluno está bloqueada ou inativa.',
+        motivo:
+          aluno.status === Status.PENDENTE
+            ? 'A conta do aluno ainda não foi liberada.'
+            : 'A conta do aluno está bloqueada ou inativa.',
       });
       continue;
     }
@@ -230,7 +241,6 @@ export async function adicionarAlunos(pedido: PedidoAdicao, ator: AtorEquipe) {
   }
 
   const motivo = motivoLimpo(pedido.motivo);
-  const valorCurso = turma.Cursos.gratuito ? 0 : Number(turma.Cursos.valor ?? 0) || 0;
   const pagamento = camposDePagamento(pedido.pagamento, valorCurso);
   const origemAcao = pedido.origemAcao ?? 'TURMA';
   const inscricaoIds: string[] = [];
@@ -593,6 +603,7 @@ export async function historicoDeInscricoesDaTurma(cursoId: string, turmaId: str
     take: 300,
     select: {
       id: true,
+      entidadeId: true,
       acao: true,
       descricao: true,
       criadoEm: true,
@@ -613,12 +624,14 @@ export async function historicoDeInscricoesDaTurma(cursoId: string, turmaId: str
         const meta = (r.metadata as Record<string, unknown> | null) ?? {};
         return {
           id: r.id,
+          inscricaoId: r.entidadeId,
           acao: r.acao,
           descricao: r.descricao,
           criadoEm: r.criadoEm.toISOString(),
           aluno: { id: (meta.alunoId as string) ?? null, nome: (meta.alunoNome as string) ?? null },
           motivo: (meta.motivo as string) ?? null,
           origem: (meta.origem as string) ?? null,
+          pagamento: (meta.pagamento as string) ?? null,
           antes: r.dadosAnteriores,
           depois: r.dadosNovos,
           ator: r.Usuarios
@@ -711,6 +724,10 @@ async function avisarAdicao(
   }
   const emailService = new EmailService();
 
+  // A cobrança é paga na página do curso no site; no painel (app.) o caminho relativo
+  // cairia na página de curso da equipe, então o aviso leva o endereço completo do site
+  const linkDoPainel = pendente ? (frontend ? `${frontend}${caminho}` : undefined) : caminho;
+
   for (const aluno of alunos) {
     await notificar({
       usuarioId: aluno.alunoId,
@@ -719,7 +736,7 @@ async function avisarAdicao(
       mensagem: pendente
         ? `Reservamos sua vaga na turma "${turma.nome}" do curso "${turma.Cursos.nome}". Conclua o pagamento para começar.`
         : `Você foi matriculado(a) na turma "${turma.nome}" do curso "${turma.Cursos.nome}". O acesso já está liberado.`,
-      linkAcao: caminho,
+      linkAcao: linkDoPainel,
     });
     const dados = alunoPorId.get(aluno.alunoId);
     if (!dados?.email || !frontend) continue;

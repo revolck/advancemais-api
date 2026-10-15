@@ -63,8 +63,9 @@ describe('VagasController.get', () => {
     },
   );
 
-  it('permite SETOR_DE_VAGAS consultar vaga expirada, mas não rascunho', async () => {
-    mockedVagasService.getForInternalViewer.mockResolvedValue(vaga as any);
+  it('permite SETOR_DE_VAGAS consultar qualquer vaga, inclusive rascunho', async () => {
+    const rascunho = { ...vaga, status: StatusDeVagas.RASCUNHO };
+    mockedVagasService.getForInternalViewer.mockResolvedValue(rascunho as any);
     const res = createResponse();
 
     await VagasController.get(
@@ -72,18 +73,8 @@ describe('VagasController.get', () => {
       res,
     );
 
-    expect(mockedVagasService.getForInternalViewer).toHaveBeenCalledWith({
-      id: vaga.id,
-      status: [
-        StatusDeVagas.EM_ANALISE,
-        StatusDeVagas.PUBLICADO,
-        StatusDeVagas.EXPIRADO,
-        StatusDeVagas.DESPUBLICADA,
-        StatusDeVagas.PAUSADA,
-        StatusDeVagas.ENCERRADA,
-      ],
-    });
-    expect(res.json).toHaveBeenCalledWith(vaga);
+    expect(mockedVagasService.getForInternalViewer).toHaveBeenCalledWith({ id: vaga.id });
+    expect(res.json).toHaveBeenCalledWith(rascunho);
   });
 
   it('permite EMPRESA consultar apenas vaga própria', async () => {

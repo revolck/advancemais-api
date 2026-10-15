@@ -37,15 +37,6 @@ const sendSlugDuplicadoResponse = (res: Response) =>
     },
   });
 
-const SETOR_DE_VAGAS_DETAIL_STATUSES: StatusDeVagas[] = [
-  StatusDeVagas.EM_ANALISE,
-  StatusDeVagas.PUBLICADO,
-  StatusDeVagas.EXPIRADO,
-  StatusDeVagas.DESPUBLICADA,
-  StatusDeVagas.PAUSADA,
-  StatusDeVagas.ENCERRADA,
-];
-
 /** Erros de regra do fluxo de vagas: o serviço já define código e status HTTP */
 const responderErroDeRegra = (res: Response, error: any) => {
   if (error instanceof EmpresaSemPlanoAtivoError) {
@@ -210,17 +201,14 @@ export class VagasController {
       const user = req.user;
       const role = user?.role as Roles | undefined;
 
+      // Equipe (admin, moderador, setor de vagas) vê qualquer vaga, inclusive rascunho:
+      // é ela quem acompanha e publica as vagas das empresas
       const vaga =
-        role === Roles.ADMIN || role === Roles.MODERADOR
+        role === Roles.ADMIN || role === Roles.MODERADOR || role === Roles.SETOR_DE_VAGAS
           ? await vagasService.getForInternalViewer({ id })
-          : role === Roles.SETOR_DE_VAGAS
-            ? await vagasService.getForInternalViewer({
-                id,
-                status: SETOR_DE_VAGAS_DETAIL_STATUSES,
-              })
-            : role === Roles.EMPRESA && user?.id
-              ? await vagasService.getForInternalViewer({ id, usuarioIds: [user.id] })
-              : await vagasService.get(id);
+          : role === Roles.EMPRESA && user?.id
+            ? await vagasService.getForInternalViewer({ id, usuarioIds: [user.id] })
+            : await vagasService.get(id);
 
       if (!vaga) {
         return res.status(404).json({

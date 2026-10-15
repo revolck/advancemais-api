@@ -3,6 +3,7 @@ import { adminEmpresasService } from '@/modules/empresas/admin/services/admin-em
 import { adminVagasService } from '@/modules/empresas/admin/services/admin-vagas.service';
 import { notificacoesService } from '@/modules/notificacoes/services/notificacoes.service';
 import { logger } from '@/utils/logger';
+import { registrarHistoricoVaga } from '@/modules/empresas/vagas/utils/historico-vaga';
 import { Prisma, StatusDeVagas } from '@prisma/client';
 import type {
   AprovarSolicitacaoInput,
@@ -294,7 +295,7 @@ export const solicitacoesService = {
   /**
    * Aprova uma solicitação de publicação
    */
-  aprovar: async (solicitacaoId: string, input: AprovarSolicitacaoInput, _aprovadorId: string) => {
+  aprovar: async (solicitacaoId: string, input: AprovarSolicitacaoInput, aprovadorId: string) => {
     // Buscar a vaga com título para notificação
     const vaga = await prisma.empresasVagas.findUnique({
       where: { id: solicitacaoId },
@@ -341,6 +342,17 @@ export const solicitacoesService = {
       });
     }
 
+    // Quem aprovou fica no histórico da vaga
+    await registrarHistoricoVaga({
+      vagaId: vaga.id,
+      usuarioId: aprovadorId,
+      acao: 'VAGA_APROVADA',
+      descricao: 'Vaga aprovada e publicada pelo setor de vagas',
+      de: StatusDeVagas.EM_ANALISE,
+      para: StatusDeVagas.PUBLICADO,
+      metadata: input.observacoes ? { observacoes: input.observacoes } : undefined,
+    });
+
     // Criar notificação para a empresa
     try {
       await notificacoesService.notificarVagaAprovada({
@@ -369,7 +381,7 @@ export const solicitacoesService = {
   rejeitar: async (
     solicitacaoId: string,
     input: RejeitarSolicitacaoInput,
-    _rejeitadorId: string,
+    rejeitadorId: string,
   ) => {
     // Buscar a vaga com título e usuarioId para notificação
     const vaga = await prisma.empresasVagas.findUnique({
@@ -402,6 +414,16 @@ export const solicitacoesService = {
         observacoes: input.motivoRejeicao, // Salvar motivo de rejeição no campo observacoes
         atualizadoEm: new Date(), // Data de rejeição
       },
+    });
+
+    await registrarHistoricoVaga({
+      vagaId: vaga.id,
+      usuarioId: rejeitadorId,
+      acao: 'VAGA_REJEITADA',
+      descricao: 'Vaga rejeitada pelo setor de vagas',
+      de: StatusDeVagas.EM_ANALISE,
+      para: StatusDeVagas.RASCUNHO,
+      metadata: { motivoRejeicao: input.motivoRejeicao },
     });
 
     // Criar notificação para a empresa sobre a rejeição

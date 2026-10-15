@@ -268,7 +268,7 @@ export const notificacoesService = {
       prioridade: 'ALTA',
       vagaId: params.vagaId,
       dados: { motivoRejeicao: params.motivoRejeicao },
-      linkAcao: `/empresa/vagas/${params.vagaId}/editar`,
+      linkAcao: `/dashboard/empresas/vagas/${params.vagaId}`,
     });
   },
 
@@ -289,7 +289,7 @@ export const notificacoesService = {
       prioridade: 'NORMAL',
       vagaId: params.vagaId,
       dados: params.observacoes ? { observacoes: params.observacoes } : undefined,
-      linkAcao: `/empresa/vagas/${params.vagaId}`,
+      linkAcao: `/dashboard/empresas/vagas/${params.vagaId}`,
     });
   },
 
@@ -311,7 +311,7 @@ export const notificacoesService = {
       prioridade: 'NORMAL',
       vagaId: params.vagaId,
       candidaturaId: params.candidaturaId,
-      linkAcao: `/empresa/vagas/${params.vagaId}/candidatos`,
+      linkAcao: `/dashboard/empresas/vagas/${params.vagaId}?tab=candidatos`,
     });
   },
 
@@ -332,7 +332,7 @@ export const notificacoesService = {
       prioridade: 'ALTA',
       vagaId: params.vagaId,
       dados: { totalCandidatos: params.totalCandidatos },
-      linkAcao: `/empresa/vagas/${params.vagaId}/candidatos`,
+      linkAcao: `/dashboard/empresas/vagas/${params.vagaId}?tab=candidatos`,
     });
   },
 

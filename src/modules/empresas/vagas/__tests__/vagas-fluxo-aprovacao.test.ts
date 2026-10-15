@@ -4,6 +4,7 @@ jest.mock('@/config/prisma', () => ({
     usuarios: { findUnique: jest.fn() },
     empresasRecursosPremiumVagas: { findUnique: jest.fn() },
     empresasVagasCategorias: { findUnique: jest.fn() },
+    auditoriaLogs: { create: jest.fn() },
     empresasVagas: {
       findUnique: jest.fn(),
       count: jest.fn(),
@@ -83,9 +84,21 @@ describe('criar vaga', () => {
 
   it('entra na fila de aprovação (em análise), não como rascunho', async () => {
     cenario(1);
-    const vaga: any = await vagasService.create(payload, { actorRole: 'EMPRESA' });
+    const vaga: any = await vagasService.create(payload, {
+      actorRole: 'EMPRESA',
+      actorId: EMPRESA,
+    });
     expect(db.empresasVagas.create.mock.calls[0][0].data.status).toBe('EM_ANALISE');
     expect(vaga.avisoStatus).toBeNull();
+    expect(db.auditoriaLogs.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        acao: 'VAGA_CRIADA',
+        usuarioId: EMPRESA,
+        entidadeId: VAGA,
+        entidadeTipo: 'VAGA',
+        dadosNovos: { status: 'EM_ANALISE' },
+      }),
+    });
   });
 
   it('plano cheio: salva como rascunho e avisa o motivo', async () => {
@@ -112,11 +125,19 @@ describe('criar vaga', () => {
 });
 
 describe('enviar para aprovação (botão Publicar da empresa)', () => {
-  it('rascunho vai para a fila', async () => {
+  it('rascunho vai para a fila e fica no histórico quem enviou', async () => {
     cenario(2);
     db.empresasVagas.findUnique.mockResolvedValue(vagaNoBanco('RASCUNHO'));
     const vaga: any = await vagasService.enviarParaAnalise(VAGA, ator);
     expect(vaga.status).toBe('EM_ANALISE');
+    expect(db.auditoriaLogs.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        acao: 'VAGA_ENVIADA_PARA_ANALISE',
+        usuarioId: EMPRESA,
+        dadosAnteriores: { status: 'RASCUNHO' },
+        dadosNovos: { status: 'EM_ANALISE' },
+      }),
+    });
   });
 
   it('despublicada também pode voltar para a fila', async () => {

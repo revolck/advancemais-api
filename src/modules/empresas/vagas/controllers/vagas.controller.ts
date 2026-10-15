@@ -271,7 +271,10 @@ export class VagasController {
       if (req.user?.role === Roles.EMPRESA) {
         data.usuarioId = req.user.id;
       }
-      const vaga = await vagasService.create(data, { actorRole: req.user?.role });
+      const vaga = await vagasService.create(data, {
+        actorRole: req.user?.role,
+        actorId: req.user?.id,
+      });
       res.status(201).json(vaga);
     } catch (error: any) {
       if (error instanceof ZodError) {

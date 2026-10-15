@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
 import { ZodError } from 'zod';
+import { StatusDeVagas } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 import { adminEmpresasService } from '@/modules/empresas/admin/services/admin-empresas.service';
+import { registrarHistoricoVaga } from '@/modules/empresas/vagas/utils/historico-vaga';
 import {
   adminEmpresasBloqueioSchema,
   adminEmpresasCreateSchema,
@@ -732,6 +734,14 @@ export class AdminEmpresasController {
       const params = adminEmpresasVagaParamSchema.parse(req.params);
 
       const result = await adminEmpresasService.approveVaga(params.id, params.vagaId);
+      await registrarHistoricoVaga({
+        vagaId: params.vagaId,
+        usuarioId: req.user?.id ?? null,
+        acao: 'VAGA_APROVADA',
+        descricao: 'Vaga aprovada e publicada pelo painel de empresas',
+        de: StatusDeVagas.EM_ANALISE,
+        para: StatusDeVagas.PUBLICADO,
+      });
       res.json({ vaga: result });
     } catch (error: any) {
       if (error instanceof ZodError) {

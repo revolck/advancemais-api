@@ -19,6 +19,7 @@ import {
   UsuarioNaoEmpresaError,
 } from '@/modules/empresas/vagas/services/errors';
 import { syncExpiredPublishedVagas } from '@/modules/empresas/vagas/services/status-sync.service';
+import { registrarHistoricoVaga } from '@/modules/empresas/vagas/utils/historico-vaga';
 import type {
   CreateVagaInput,
   UpdateVagaInput,
@@ -709,6 +710,8 @@ const carregarVagaDoAtor = async (id: string, ator: { id: string; role?: string 
       id: true,
       usuarioId: true,
       status: true,
+      codigo: true,
+      titulo: true,
       _count: { select: { EmpresasCandidatos: true } },
     },
   });
@@ -807,7 +810,10 @@ export const vagasService = {
     return vaga ? transformVaga(vaga) : null;
   },
 
-  create: async (data: CreateVagaData, options?: { actorRole?: Roles | string | null }) => {
+  create: async (
+    data: CreateVagaData,
+    options?: { actorRole?: Roles | string | null; actorId?: string | null },
+  ) => {
     // Se areaInteresseId é UUID, é na verdade a categoriaVagaId
     let categoriaId = data.categoriaVagaId;
     let subcategoriaId = data.subcategoriaVagaId;
@@ -904,6 +910,18 @@ export const vagasService = {
           });
         });
 
+        await registrarHistoricoVaga({
+          vagaId: vaga.id,
+          usuarioId: options?.actorId ?? data.usuarioId,
+          acao: 'VAGA_CRIADA',
+          descricao:
+            statusInicial === StatusDeVagas.EM_ANALISE
+              ? 'Vaga criada e enviada para aprovação'
+              : statusInicial === StatusDeVagas.PUBLICADO
+                ? 'Vaga criada e publicada (recursos premium)'
+                : 'Vaga criada como rascunho (limite do plano)',
+          para: statusInicial,
+        });
         return { ...transformVaga(vaga), avisoStatus };
       } catch (error) {
         if (isUniqueConstraintForField(error, 'slug')) {
@@ -1033,6 +1051,20 @@ export const vagasService = {
       });
     });
 
+    await registrarHistoricoVaga({
+      vagaId: id,
+      usuarioId: ator?.id ?? null,
+      acao: 'VAGA_EDITADA',
+      descricao: voltaParaAnalise
+        ? 'Vaga publicada editada pela empresa: saiu do ar e voltou para aprovação'
+        : 'Vaga editada',
+      de: vagaAtual.status,
+      para: vaga.status,
+      metadata: {
+        campos: Object.keys(data).filter((campo) => (data as any)[campo] !== undefined),
+      },
+    });
+
     return {
       ...transformVaga(vaga),
       avisoStatus: voltaParaAnalise
@@ -1089,6 +1121,17 @@ export const vagasService = {
       },
       ...includeEmpresa,
     });
+    await registrarHistoricoVaga({
+      vagaId: id,
+      usuarioId: ator.id,
+      acao: 'VAGA_ENVIADA_PARA_ANALISE',
+      descricao:
+        novoStatus === StatusDeVagas.PUBLICADO
+          ? 'Vaga publicada direto (recursos premium)'
+          : 'Vaga enviada para aprovação do setor de vagas',
+      de: vaga.status,
+      para: novoStatus,
+    });
     return transformVaga(atualizada);
   },
 
@@ -1113,6 +1156,17 @@ export const vagasService = {
       data: { status: destino },
       ...includeEmpresa,
     });
+    await registrarHistoricoVaga({
+      vagaId: id,
+      usuarioId: ator.id,
+      acao: destino === StatusDeVagas.RASCUNHO ? 'VAGA_ENVIO_CANCELADO' : 'VAGA_DESPUBLICADA',
+      descricao:
+        destino === StatusDeVagas.RASCUNHO
+          ? 'Envio para aprovação cancelado (voltou a rascunho)'
+          : 'Vaga despublicada',
+      de: vaga.status,
+      para: destino,
+    });
     return transformVaga(atualizada);
   },
 
@@ -1127,5 +1181,13 @@ export const vagasService = {
       );
     }
     await prisma.empresasVagas.delete({ where: { id } });
+    await registrarHistoricoVaga({
+      vagaId: id,
+      usuarioId: ator.id,
+      acao: 'VAGA_EXCLUIDA',
+      descricao: `Vaga ${vaga.codigo} excluída`,
+      de: vaga.status,
+      metadata: { codigo: vaga.codigo, titulo: vaga.titulo },
+    });
   },
 };

@@ -175,6 +175,21 @@ export async function createTestModerator(): Promise<TestUser> {
  * Limpa usuários de teste do banco
  */
 export async function cleanupTestUsers(userIds: string[]): Promise<void> {
+  if (userIds.length === 0) return;
+  // Registros de auditoria feitos por eles ou sobre eles: ao apagar o usuário ficariam
+  // órfãos no banco (a chave vira nula), então saem antes
+  await prisma.auditoriaLogs.deleteMany({
+    where: {
+      OR: [
+        { usuarioId: { in: userIds } },
+        { entidadeId: { in: userIds } },
+        ...userIds.map((id) => ({ metadata: { path: ['alunoId'], equals: id } })),
+      ],
+    },
+  });
+  // Endereço não é apagado junto com o usuário (chave restrita)
+  await prisma.usuariosEnderecos.deleteMany({ where: { usuarioId: { in: userIds } } });
+
   // Limpar sessões primeiro (devido à foreign key)
   await prisma.usuariosSessoes.deleteMany({
     where: {

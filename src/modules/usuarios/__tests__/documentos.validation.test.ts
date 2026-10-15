@@ -9,8 +9,8 @@ import {
 
 describe('documentos validation', () => {
   it('normaliza CPF apenas com dígitos', () => {
-    expect(normalizarCPF(' 087.054.204-40 ')).toBe('08705420440');
-    expect(validarCPF('087.054.204-40')).toBe(true);
+    expect(normalizarCPF(' 529.982.247-25 ')).toBe('52998224725');
+    expect(validarCPF('529.982.247-25')).toBe(true);
   });
 
   it('normaliza e valida CNPJ alfanumérico com letras minúsculas e máscara', () => {
@@ -24,7 +24,7 @@ describe('documentos validation', () => {
 
   it('identifica CPF e CNPJ no campo unificado', () => {
     expect(normalizarDocumento(' ab.12c.345/01de-02 ')).toBe('AB12C34501DE02');
-    expect(identificarTipoDocumento('087.054.204-40')).toBe('cpf');
+    expect(identificarTipoDocumento('529.982.247-25')).toBe('cpf');
     expect(identificarTipoDocumento('12.abc.345/01de-35')).toBe('cnpj');
     expect(identificarTipoDocumento('12345678901234')).toBe('cnpj');
   });

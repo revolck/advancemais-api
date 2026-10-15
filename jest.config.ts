@@ -1,8 +1,10 @@
 import type { Config } from 'jest';
 import dotenv from 'dotenv';
 
-// Carregar variáveis de ambiente
+// Carregar variáveis de ambiente do .env; um .env.test, se existir, vence (ex.: banco de
+// testes em DATABASE_URL e DIRECT_URL — o Prisma usa DIRECT_URL primeiro)
 dotenv.config();
+dotenv.config({ path: '.env.test', override: true });
 
 const config: Config = {
   preset: 'ts-jest',

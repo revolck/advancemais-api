@@ -1,12 +1,17 @@
 /**
  * E2E - Inscrições em turma EXISTENTE
- * Usa uma turma real do banco (ex: status INSCRICOES_ABERTAS).
- * Após o teste, remove a inscrição criada para não poluir dados.
+ * Cria curso e turma com inscrições abertas (nada de turma real do banco) e, no fim,
+ * apaga tudo o que criou: inscrição, turma, curso, usuários e auditoria.
  */
 import request from 'supertest';
 import { Express } from 'express';
 import { getTestApp } from '../helpers/test-setup';
-import { createTestUser, createTestAdmin, type TestUser } from '../helpers/auth-helper';
+import {
+  cleanupTestUsers,
+  createTestUser,
+  createTestAdmin,
+  type TestUser,
+} from '../helpers/auth-helper';
 import { prisma } from '@/config/prisma';
 
 describe('API - Inscrições em Turma Existente (E2E)', () => {
@@ -19,6 +24,7 @@ describe('API - Inscrições em Turma Existente (E2E)', () => {
   let turmaId: string | null = null;
   let inscricaoId: string | null = null;
   let turmaCriadaNoTesteId: string | null = null;
+  let cursoCriadoNoTesteId: string | null = null;
 
   beforeAll(async () => {
     app = await getTestApp();
@@ -29,62 +35,47 @@ describe('API - Inscrições em Turma Existente (E2E)', () => {
     });
     testUsers.push(testAdmin, testAluno);
 
-    const agora = new Date();
-    const turma = await prisma.cursosTurmas.findFirst({
-      where: {
-        dataInscricaoFim: { gt: agora },
-        dataInscricaoInicio: { lte: agora },
-        status: { in: ['PUBLICADO', 'INSCRICOES_ABERTAS'] },
+    // Curso e turma criados aqui, já com inscrições abertas: matricular numa turma real
+    // de produção mexeria nas vagas e nos registros de verdade
+    const agoraMinus1h = new Date(Date.now() - 60 * 60 * 1000);
+    const agoraPlus7d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const marca = Date.now();
+    const curso = await prisma.cursos.create({
+      data: {
+        nome: `Curso Teste Inscrição ${marca}`,
+        codigo: `CTI${marca}`.slice(0, 12),
+        descricao: 'Curso para teste de inscrição em turma existente',
+        valor: 0,
+        valorPromocional: 0,
+        gratuito: true,
+        statusPadrao: 'PUBLICADO',
+        cargaHoraria: 40,
+        estagioObrigatorio: false,
       },
-      select: { id: true, cursoId: true, nome: true, codigo: true },
+      select: { id: true },
     });
-
-    if (!turma) {
-      const cursoBase = await prisma.cursos.findFirst({
-        select: { id: true, nome: true },
-      });
-
-      if (!cursoBase) {
-        throw new Error('Nenhum curso encontrado para criar turma de fallback do teste.');
-      }
-
-      const agoraMinus1h = new Date(Date.now() - 60 * 60 * 1000);
-      const agoraPlus7d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      const codigo = `INS${Math.floor(Math.random() * 100000)
-        .toString()
-        .padStart(5, '0')}`;
-
-      const turmaFallback = await prisma.cursosTurmas.create({
-        data: {
-          cursoId: cursoBase.id,
-          nome: `Turma fallback teste ${Date.now()}`,
-          codigo,
-          turno: 'MANHA',
-          metodo: 'ONLINE',
-          dataInscricaoInicio: agoraMinus1h,
-          dataInscricaoFim: agoraPlus7d,
-          dataInicio: agoraPlus7d,
-          dataFim: new Date(agoraPlus7d.getTime() + 30 * 24 * 60 * 60 * 1000),
-          vagasIlimitadas: true,
-          vagasTotais: 9999,
-          vagasDisponiveis: 9999,
-          status: 'INSCRICOES_ABERTAS',
-        },
-        select: { id: true, cursoId: true, nome: true, codigo: true },
-      });
-
-      turmaCriadaNoTesteId = turmaFallback.id;
-      turmaId = turmaFallback.id;
-      cursoId = turmaFallback.cursoId;
-      console.log(
-        `Turma fallback criada para teste: ${turmaFallback.nome} (${turmaFallback.codigo})`,
-      );
-      return;
-    }
-
+    cursoCriadoNoTesteId = curso.id;
+    const turma = await prisma.cursosTurmas.create({
+      data: {
+        cursoId: curso.id,
+        nome: `Turma teste inscrição ${marca}`,
+        codigo: `INS${marca}`.slice(0, 12),
+        turno: 'MANHA',
+        metodo: 'ONLINE',
+        dataInscricaoInicio: agoraMinus1h,
+        dataInscricaoFim: agoraPlus7d,
+        dataInicio: agoraPlus7d,
+        dataFim: new Date(agoraPlus7d.getTime() + 30 * 24 * 60 * 60 * 1000),
+        vagasIlimitadas: true,
+        vagasTotais: 9999,
+        vagasDisponiveis: 9999,
+        status: 'INSCRICOES_ABERTAS',
+      },
+      select: { id: true, cursoId: true },
+    });
+    turmaCriadaNoTesteId = turma.id;
     turmaId = turma.id;
     cursoId = turma.cursoId;
-    console.log(`Usando turma existente: ${turma.nome} (${turma.codigo})`);
   });
 
   afterAll(async () => {
@@ -94,15 +85,11 @@ describe('API - Inscrições em Turma Existente (E2E)', () => {
     if (turmaCriadaNoTesteId) {
       await prisma.cursosTurmas.deleteMany({ where: { id: turmaCriadaNoTesteId } });
     }
-    await prisma.usuariosSessoes.deleteMany({
-      where: { usuarioId: { in: testUsers.map((u) => u.id) } },
-    });
-    await prisma.usuariosVerificacaoEmail.deleteMany({
-      where: { usuarioId: { in: testUsers.map((u) => u.id) } },
-    });
-    await prisma.usuarios.deleteMany({
-      where: { id: { in: testUsers.map((u) => u.id) } },
-    });
+    if (cursoCriadoNoTesteId) {
+      await prisma.cursos.deleteMany({ where: { id: cursoCriadoNoTesteId } });
+    }
+    // Usuários, sessões e auditoria (inclusive o registro da matrícula)
+    await cleanupTestUsers(testUsers.map((u) => u.id));
   });
 
   it('inscreve aluno em turma existente e valida GET inscricoes', async () => {

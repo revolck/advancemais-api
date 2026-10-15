@@ -199,8 +199,14 @@ describe('Performance e Resiliência', () => {
       const isPooler = databaseUrl.includes('pooler.supabase.com');
 
       // Apenas log informativo
-      console.log('🔍 Supabase Pooler:', isPooler ? 'SIM' : 'NÃO');
-      console.log('📊 Database URL pattern:', databaseUrl.substring(0, 50) + '...');
+      // Só o host: o começo da URL traz usuário e senha do banco
+      let host = '';
+      try {
+        host = new URL(databaseUrl).hostname;
+      } catch {
+        host = '(URL inválida)';
+      }
+      console.log('🔍 Supabase Pooler:', isPooler ? 'SIM' : 'NÃO', '| host:', host);
 
       expect(databaseUrl).toBeDefined();
       expect(databaseUrl.length).toBeGreaterThan(0);

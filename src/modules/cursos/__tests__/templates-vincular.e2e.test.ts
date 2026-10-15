@@ -1,9 +1,11 @@
 import request from 'supertest';
 import { prisma } from '@/config/prisma';
 import { app } from '@/index';
-
-const ADMIN_CPF = '11111111111';
-const ADMIN_PASSWORD = 'AdminTeste@123';
+import {
+  cleanupTestUsers,
+  createTestAdmin,
+  type TestUser,
+} from '../../../__tests__/helpers/auth-helper';
 
 const buildFutureDate = (daysAhead: number) => {
   const date = new Date();
@@ -11,25 +13,54 @@ const buildFutureDate = (daysAhead: number) => {
   return date;
 };
 
+/**
+ * Admin e curso criados aqui (nada de curso real nem da conta de admin semeada);
+ * no fim apaga os modelos, o curso, o admin e a auditoria.
+ */
 describe('Cursos - Vincular templates (e2e)', () => {
   jest.setTimeout(30000);
+  let admin: TestUser;
+  let cursoId: string | null = null;
+  const aulaIds: string[] = [];
+  const avaliacaoIds: string[] = [];
+
+  beforeAll(async () => {
+    admin = await createTestAdmin();
+    const marca = Date.now();
+    const curso = await prisma.cursos.create({
+      data: {
+        nome: `Curso Teste Templates ${marca}`,
+        codigo: `CTT${marca}`.slice(0, 12),
+        descricao: 'Curso para teste de vínculo de templates',
+        valor: 0,
+        valorPromocional: 0,
+        gratuito: true,
+        statusPadrao: 'RASCUNHO',
+        cargaHoraria: 40,
+        estagioObrigatorio: false,
+      },
+      select: { id: true },
+    });
+    cursoId = curso.id;
+  });
 
   afterAll(async () => {
+    if (aulaIds.length) {
+      await prisma.cursosTurmasAulas.deleteMany({ where: { id: { in: aulaIds } } });
+    }
+    if (avaliacaoIds.length) {
+      await prisma.cursosTurmasProvas.deleteMany({ where: { id: { in: avaliacaoIds } } });
+    }
+    if (cursoId) await prisma.cursos.deleteMany({ where: { id: cursoId } });
+    if (admin) await cleanupTestUsers([admin.id]);
     await prisma.$disconnect();
   });
 
-  it('faz login e vincula templates de aula/avaliação ao curso', async () => {
-    const curso = await prisma.cursos.findFirst({ select: { id: true } });
+  it('vincula templates de aula/avaliação ao curso', async () => {
+    const curso = cursoId ? { id: cursoId } : null;
     expect(curso).toBeTruthy();
     if (!curso) return;
-
-    const loginRes = await request(app)
-      .post('/api/v1/usuarios/login')
-      .send({ documento: ADMIN_CPF, senha: ADMIN_PASSWORD, rememberMe: false });
-
-    expect(loginRes.status).toBe(200);
-    const token = loginRes.body?.token as string | undefined;
-    expect(token).toBeTruthy();
+    const token = admin.token;
 
     const aulaRes = await request(app)
       .post('/api/v1/cursos/aulas')
@@ -45,6 +76,7 @@ describe('Cursos - Vincular templates (e2e)', () => {
     expect(aulaRes.status).toBe(201);
     const aulaId = aulaRes.body?.aula?.id as string | undefined;
     expect(aulaId).toBeTruthy();
+    if (aulaId) aulaIds.push(aulaId);
 
     const dataInicio = buildFutureDate(2);
     const dataFim = buildFutureDate(3);
@@ -69,6 +101,7 @@ describe('Cursos - Vincular templates (e2e)', () => {
     expect(avaliacaoRes.status).toBe(201);
     const avaliacaoId = avaliacaoRes.body?.avaliacao?.id as string | undefined;
     expect(avaliacaoId).toBeTruthy();
+    if (avaliacaoId) avaliacaoIds.push(avaliacaoId);
 
     const vinculoRes = await request(app)
       .post('/api/v1/cursos/templates/vincular')

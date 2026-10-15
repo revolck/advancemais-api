@@ -1,3 +1,11 @@
+// A sala do Meet é simulada: o teste não cria evento na agenda Google de ninguém
+jest.mock('@/modules/cursos/aulas/services/meet-orchestration.service', () => ({
+  meetOrchestrationService: {
+    ensureMeetParaAula: jest.fn().mockResolvedValue(undefined),
+    ensureMeetParaProvaOuAtividade: jest.fn().mockResolvedValue(undefined),
+  },
+}));
+
 import { prisma } from '@/config/prisma';
 import { Express } from 'express';
 import request from 'supertest';
@@ -18,52 +26,71 @@ describe('API - Aulas: Publicação e Exclusão', () => {
   let testAdmin: TestUser;
   let testModerator: TestUser;
   let testInstrutor: TestUser;
+  /** Dono da turma; testInstrutor fica sem vínculo com ela */
+  let instrutorDaTurma: TestUser;
   let testTurmaId: string | null = null;
   let testAulaId: string | null = null;
   let testInstrutorId: string | null = null;
+  let testCursoId: string | null = null;
 
   beforeAll(async () => {
     app = await getTestApp();
     testAdmin = await createTestAdmin();
     testModerator = await createTestModerator();
     testInstrutor = await createTestUser({ role: 'INSTRUTOR' });
-    testUsers.push(testAdmin, testModerator, testInstrutor);
+    instrutorDaTurma = await createTestUser({ role: 'INSTRUTOR' });
+    testUsers.push(testAdmin, testModerator, testInstrutor, instrutorDaTurma);
 
-    // Buscar ou criar uma turma para testes
-    const turma =
-      (await prisma.cursosTurmas.findFirst({
-        where: {
-          OR: [{ instrutorId: null }, { instrutorId: { not: testInstrutor.id } }],
-        },
-        include: { Cursos: true },
-      })) ??
-      (await prisma.cursosTurmas.findFirst({
-        include: { Cursos: true },
-      }));
-
-    if (turma) {
-      testTurmaId = turma.id;
-      testInstrutorId = turma.instrutorId || testInstrutor.id;
-    }
-
-    // fallback defensivo
-    if (!testTurmaId) {
-      const turmaFallback = await prisma.cursosTurmas.findFirst({
-        include: { Cursos: true },
-      });
-      if (turmaFallback) {
-        testTurmaId = turmaFallback.id;
-        testInstrutorId = turmaFallback.instrutorId || testInstrutor.id;
-      }
-    }
+    // Curso e turma próprios, sem alunos: publicar aula numa turma real notificaria
+    // os alunos de verdade
+    const marca = Date.now();
+    const curso = await prisma.cursos.create({
+      data: {
+        nome: `Curso Teste Publicação ${marca}`,
+        codigo: `CTP${marca}`.slice(0, 12),
+        descricao: 'Curso para testes de publicação de aulas',
+        valor: 0,
+        valorPromocional: 0,
+        gratuito: true,
+        statusPadrao: 'PUBLICADO',
+        cargaHoraria: 40,
+        estagioObrigatorio: false,
+      },
+    });
+    testCursoId = curso.id;
+    const turma = await prisma.cursosTurmas.create({
+      data: {
+        cursoId: curso.id,
+        codigo: `TPB${marca}`.slice(0, 12),
+        nome: 'Turma Teste Publicação',
+        metodo: 'ONLINE',
+        instrutorId: instrutorDaTurma.id,
+        vagasTotais: 30,
+        vagasDisponiveis: 30,
+        // Começa amanhã: as aulas do teste são marcadas para os próximos dias
+        dataInicio: new Date(marca + 24 * 60 * 60 * 1000),
+        dataFim: new Date(marca + 90 * 24 * 60 * 60 * 1000),
+        status: 'INSCRICOES_ABERTAS',
+      },
+    });
+    testTurmaId = turma.id;
+    testInstrutorId = instrutorDaTurma.id;
   });
 
   afterAll(async () => {
-    // Limpar dados de teste
+    // Limpar dados de teste: aulas criadas (inclusive as sem turma), turma e curso
     if (testAulaId) {
       await prisma.cursosTurmasAulas.deleteMany({
         where: { id: testAulaId },
       });
+    }
+    if (testTurmaId) {
+      await prisma.cursosTurmasAulas.deleteMany({ where: { turmaId: testTurmaId } });
+      await prisma.cursosTurmas.deleteMany({ where: { id: testTurmaId } });
+    }
+    if (testCursoId) {
+      await prisma.cursosTurmasAulas.deleteMany({ where: { cursoId: testCursoId } });
+      await prisma.cursos.deleteMany({ where: { id: testCursoId } });
     }
     if (testUsers.length > 0) {
       await cleanupTestUsers(testUsers.map((u) => u.id));

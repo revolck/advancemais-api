@@ -22,13 +22,11 @@ echo ""
 
 # 1. Login
 echo -e "${YELLOW}[1/7] Fazendo login...${NC}"
+# Credenciais só por variável de ambiente (nunca no código)
+: "${E2E_ADMIN_DOCUMENTO:?defina E2E_ADMIN_DOCUMENTO}" "${E2E_ADMIN_SENHA:?defina E2E_ADMIN_SENHA}"
 LOGIN_RESPONSE=$(curl -s -X POST "${BASE_URL}/api/${API_VERSION}/usuarios/login" \
   -H 'Content-Type: application/json' \
-  -d '{
-    "documento": "08705420440",
-    "senha": "Fili25061995*",
-    "rememberMe": true
-  }')
+  -d "{\"documento\": \"${E2E_ADMIN_DOCUMENTO}\", \"senha\": \"${E2E_ADMIN_SENHA}\", \"rememberMe\": true}")
 
 TOKEN=$(echo $LOGIN_RESPONSE | jq -r '.token')
 

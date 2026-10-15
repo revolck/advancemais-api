@@ -27,20 +27,29 @@ interface UsuarioSeed {
   cep?: string;
 }
 
+// Conta pessoal do administrador: CPF e senha só por variável de ambiente (nunca no código).
+// Sem as variáveis, a semente não cria essa conta.
+const adminPessoal: UsuarioSeed[] =
+  process.env.SEED_ADMIN_CPF && process.env.SEED_ADMIN_SENHA
+    ? [
+        {
+          nomeCompleto: 'Filipe Admin',
+          email: 'filipe@advancemais.com.br',
+          senha: process.env.SEED_ADMIN_SENHA,
+          role: Roles.ADMIN,
+          tipoUsuario: TiposDeUsuarios.PESSOA_FISICA,
+          cpf: process.env.SEED_ADMIN_CPF,
+          telefone: '11999990001',
+          descricao: 'Administrador do sistema',
+          cidade: 'São Paulo',
+          estado: 'SP',
+        },
+      ]
+    : [];
+
 const usuarios: UsuarioSeed[] = [
   // ADMIN
-  {
-    nomeCompleto: 'Filipe Admin',
-    email: 'filipe@advancemais.com.br',
-    senha: 'Fili25061995*',
-    role: Roles.ADMIN,
-    tipoUsuario: TiposDeUsuarios.PESSOA_FISICA,
-    cpf: '08705420440',
-    telefone: '11999990001',
-    descricao: 'Administrador do sistema',
-    cidade: 'São Paulo',
-    estado: 'SP',
-  },
+  ...adminPessoal,
   // ADMIN TESTE
   {
     nomeCompleto: 'Admin Teste Sistema',

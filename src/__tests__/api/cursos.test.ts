@@ -308,6 +308,9 @@ describe('API - Cursos', () => {
       // Nota: ARQUIVADO não existe no enum CursosStatusPadrao, então arquivar significa mudar para RASCUNHO
       expect(response.body).toHaveProperty('id');
       expect(response.body).toHaveProperty('statusPadrao', 'RASCUNHO');
+
+      // "Deletar" só arquiva: apaga de verdade o curso criado pelo teste
+      await prisma.cursos.deleteMany({ where: { id: curso.id } });
     });
 
     it('deve retornar erro 403 para usuário sem permissão', async () => {

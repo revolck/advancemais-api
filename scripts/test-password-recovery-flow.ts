@@ -9,7 +9,8 @@ import { logger } from '../src/utils/logger';
 const log = logger.child({ module: 'PasswordRecoveryTest' });
 
 async function testPasswordRecovery() {
-  const cpf = '08705420440';
+  const cpf = process.env.E2E_CPF ?? '';
+  if (!cpf) throw new Error('Defina E2E_CPF para rodar este script.');
   const cpfLimpo = cpf.replace(/\D/g, '');
 
   log.info(`🔍 Buscando usuário com CPF: ${cpfLimpo}`);

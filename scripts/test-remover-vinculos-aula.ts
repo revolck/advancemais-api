@@ -5,6 +5,13 @@
 
 import 'dotenv/config';
 
+/** Credenciais só por variável de ambiente (nunca no código) */
+function exigirEnv(nome: string): string {
+  const valor = process.env[nome];
+  if (!valor) throw new Error(`Defina ${nome} para rodar este script.`);
+  return valor;
+}
+
 const API_URL = process.env.API_URL || 'http://localhost:3000';
 
 interface Aula {
@@ -37,8 +44,8 @@ async function testRemoverVinculosAula() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        documento: '08705420440',
-        senha: 'Fili25061995*',
+        documento: exigirEnv('E2E_ADMIN_DOCUMENTO'),
+        senha: exigirEnv('E2E_ADMIN_SENHA'),
       }),
     });
 

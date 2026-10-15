@@ -18,42 +18,59 @@ const solicitacoesLogger = logger.child({ module: 'SolicitacoesService' });
  */
 export type StatusSolicitacao = 'PENDENTE' | 'APROVADA' | 'REJEITADA' | 'CANCELADA';
 
+/** Já passaram pela aprovação: publicada e o que vem depois dela */
+const STATUS_APROVADA: StatusDeVagas[] = [
+  StatusDeVagas.PUBLICADO,
+  StatusDeVagas.DESPUBLICADA,
+  StatusDeVagas.PAUSADA,
+  StatusDeVagas.ENCERRADA,
+  StatusDeVagas.EXPIRADO,
+];
+
 /**
- * Mapeia status da vaga para status da solicitação
+ * Situação da solicitação a partir da vaga. Rejeitada = voltou a rascunho com motivo
+ * de rejeição (campo próprio, não as observações da empresa); rascunho sem motivo =
+ * cancelada/não enviada.
  */
-const mapStatusVagaToSolicitacao = (status: StatusDeVagas): StatusSolicitacao => {
-  switch (status) {
-    case StatusDeVagas.EM_ANALISE:
-      return 'PENDENTE';
-    case StatusDeVagas.PUBLICADO:
-      return 'APROVADA';
-    case StatusDeVagas.RASCUNHO:
-      return 'CANCELADA';
-    default:
-      return 'REJEITADA';
+const situacaoDaSolicitacao = (vaga: {
+  status: StatusDeVagas;
+  motivoRejeicao: string | null;
+}): StatusSolicitacao => {
+  if (vaga.status === StatusDeVagas.EM_ANALISE) return 'PENDENTE';
+  if (vaga.status === StatusDeVagas.RASCUNHO) {
+    return vaga.motivoRejeicao ? 'REJEITADA' : 'CANCELADA';
   }
+  return 'APROVADA';
 };
 
 /**
- * Mapeia status da solicitação para filtro de status da vaga
+ * Quando o setor de vagas respondeu. Vagas moderadas antes do campo próprio existir
+ * usam a última atualização (só para as que já passaram pela aprovação).
  */
-const mapStatusSolicitacaoToVaga = (status: StatusSolicitacao): StatusDeVagas[] => {
-  switch (status) {
+const dataDaResposta = (vaga: {
+  status: StatusDeVagas;
+  moderadaEm: Date | null;
+  atualizadoEm: Date;
+  motivoRejeicao: string | null;
+}): string | null => {
+  const situacao = situacaoDaSolicitacao(vaga);
+  if (situacao === 'PENDENTE' || situacao === 'CANCELADA') return null;
+  return (vaga.moderadaEm ?? vaga.atualizadoEm).toISOString();
+};
+
+/** Filtro do banco para cada situação de solicitação */
+const filtroDaSituacao = (situacao: StatusSolicitacao): Prisma.EmpresasVagasWhereInput => {
+  switch (situacao) {
     case 'PENDENTE':
-      return [StatusDeVagas.EM_ANALISE];
+      return { status: StatusDeVagas.EM_ANALISE };
     case 'APROVADA':
-      return [StatusDeVagas.PUBLICADO];
+      return { status: { in: STATUS_APROVADA } };
     case 'REJEITADA':
-      return [
-        StatusDeVagas.DESPUBLICADA,
-        StatusDeVagas.PAUSADA,
-        StatusDeVagas.ENCERRADA,
-        StatusDeVagas.EXPIRADO,
-      ];
+      return { status: StatusDeVagas.RASCUNHO, motivoRejeicao: { not: null } };
     case 'CANCELADA':
-      return [StatusDeVagas.RASCUNHO];
+      return { status: StatusDeVagas.RASCUNHO, motivoRejeicao: null };
     default:
-      return [];
+      return {};
   }
 };
 
@@ -104,61 +121,11 @@ export const solicitacoesService = {
     // Array para coletar condições AND
     const andConditions: Prisma.EmpresasVagasWhereInput[] = [];
 
-    // Filtro por status (mapear status de solicitação para status de vaga)
-    // Lógica especial para REJEITADA e CANCELADA que compartilham o status RASCUNHO
+    // Filtro por situação da solicitação (uma ou várias)
     if (status && status.length > 0) {
-      const statusVagas: StatusDeVagas[] = [];
-      const incluiRejeitada = status.includes('REJEITADA');
-      const incluiCancelada = status.includes('CANCELADA');
-
-      status.forEach((s) => {
-        if (s === 'REJEITADA' || s === 'CANCELADA') {
-          // REJEITADA e CANCELADA são tratados especialmente abaixo
-          // Adicionar outros status de REJEITADA (DESPUBLICADA, etc)
-          if (s === 'REJEITADA') {
-            statusVagas.push(
-              StatusDeVagas.DESPUBLICADA,
-              StatusDeVagas.PAUSADA,
-              StatusDeVagas.ENCERRADA,
-              StatusDeVagas.EXPIRADO,
-            );
-          }
-        } else {
-          statusVagas.push(...mapStatusSolicitacaoToVaga(s as StatusSolicitacao));
-        }
+      andConditions.push({
+        OR: [...new Set(status)].map((s) => filtroDaSituacao(s as StatusSolicitacao)),
       });
-
-      // RASCUNHO é compartilhado: com observacoes = REJEITADA, sem = CANCELADA
-      // Incluir RASCUNHO se qualquer um dos dois foi solicitado
-      if (incluiRejeitada || incluiCancelada) {
-        statusVagas.push(StatusDeVagas.RASCUNHO);
-      }
-
-      if (statusVagas.length > 0) {
-        where.status = { in: [...new Set(statusVagas)] }; // Remove duplicatas
-      }
-
-      // Adicionar filtro especial para RASCUNHO
-      // - Se APENAS REJEITADA: RASCUNHO precisa ter observacoes
-      // - Se APENAS CANCELADA: RASCUNHO NÃO pode ter observacoes
-      // - Se AMBOS: não precisa filtrar observacoes
-      if (incluiRejeitada && !incluiCancelada) {
-        // REJEITADA apenas: RASCUNHO precisa ter observacoes
-        andConditions.push({
-          OR: [
-            { status: { not: StatusDeVagas.RASCUNHO } },
-            { status: StatusDeVagas.RASCUNHO, observacoes: { not: null } },
-          ],
-        });
-      } else if (incluiCancelada && !incluiRejeitada) {
-        // CANCELADA apenas: RASCUNHO não pode ter observacoes
-        andConditions.push({
-          OR: [
-            { status: { not: StatusDeVagas.RASCUNHO } },
-            { status: StatusDeVagas.RASCUNHO, observacoes: null },
-          ],
-        });
-      }
     }
     // ✅ Por padrão, retornar TODAS as solicitações (sem filtro de status)
     // O frontend pode filtrar por status=PENDENTE se quiser apenas pendentes para aprovação
@@ -215,7 +182,9 @@ export const solicitacoesService = {
         status: true,
         inseridaEm: true,
         atualizadoEm: true,
-        observacoes: true, // Campo para observações de aprovação
+        motivoRejeicao: true,
+        observacoesAprovacao: true,
+        moderadaEm: true,
         Usuarios: {
           select: {
             id: true,
@@ -252,33 +221,12 @@ export const solicitacoesService = {
         id: vaga.Usuarios.id,
         nome: vaga.Usuarios.nomeCompleto,
       },
-      // Status: RASCUNHO com observações = REJEITADA (vaga foi rejeitada e voltou para edição)
-      status:
-        vaga.status === StatusDeVagas.RASCUNHO && vaga.observacoes
-          ? ('REJEITADA' as StatusSolicitacao)
-          : (mapStatusVagaToSolicitacao(vaga.status) as StatusSolicitacao),
+      status: situacaoDaSolicitacao(vaga),
       dataSolicitacao: vaga.inseridaEm.toISOString(),
-      // Data de resposta: quando a vaga foi aprovada/rejeitada
-      // Inclui RASCUNHO com observações (foi rejeitada)
-      dataResposta:
-        vaga.status !== StatusDeVagas.EM_ANALISE &&
-        (vaga.status !== StatusDeVagas.RASCUNHO || vaga.observacoes)
-          ? vaga.atualizadoEm.toISOString()
-          : null,
-      // Motivo de rejeição: preenchido quando vaga foi rejeitada
-      // RASCUNHO com observações = rejeitada, ou status DESPUBLICADA/PAUSADA/etc
-      motivoRejeicao:
-        ((vaga.status === StatusDeVagas.RASCUNHO && vaga.observacoes) ||
-          vaga.status === StatusDeVagas.DESPUBLICADA ||
-          vaga.status === StatusDeVagas.PAUSADA ||
-          vaga.status === StatusDeVagas.ENCERRADA ||
-          vaga.status === StatusDeVagas.EXPIRADO) &&
-        vaga.observacoes
-          ? vaga.observacoes
-          : null,
-      // Observações: usado para observações de aprovação (quando status = PUBLICADO)
-      observacoes:
-        vaga.status === StatusDeVagas.PUBLICADO && vaga.observacoes ? vaga.observacoes : null,
+      dataResposta: dataDaResposta(vaga),
+      motivoRejeicao: situacaoDaSolicitacao(vaga) === 'REJEITADA' ? vaga.motivoRejeicao : null,
+      // Observações que o setor de vagas deixou ao aprovar
+      observacoes: vaga.observacoesAprovacao ?? null,
     }));
 
     return {
@@ -322,25 +270,16 @@ export const solicitacoesService = {
     // Usar o serviço existente de aprovação de vagas
     await adminEmpresasService.approveVaga(vaga.usuarioId, vaga.id);
 
-    // Salvar observações de aprovação (se fornecidas)
-    // Isso atualiza o campo observacoes e a data de resposta (atualizadoEm)
-    if (input.observacoes) {
-      await prisma.empresasVagas.update({
-        where: { id: vaga.id },
-        data: {
-          observacoes: input.observacoes,
-          atualizadoEm: new Date(), // Data de aprovação (histórico)
-        },
-      });
-    } else {
-      // Mesmo sem observações, atualizar data de resposta para histórico
-      await prisma.empresasVagas.update({
-        where: { id: vaga.id },
-        data: {
-          atualizadoEm: new Date(), // Data de aprovação (histórico)
-        },
-      });
-    }
+    // Moderação em campos próprios (as observações da vaga são da empresa)
+    await prisma.empresasVagas.update({
+      where: { id: vaga.id },
+      data: {
+        observacoesAprovacao: input.observacoes?.trim() || null,
+        motivoRejeicao: null,
+        moderadaEm: new Date(),
+        atualizadoEm: new Date(),
+      },
+    });
 
     // Quem aprovou fica no histórico da vaga
     await registrarHistoricoVaga({
@@ -410,9 +349,11 @@ export const solicitacoesService = {
     await prisma.empresasVagas.update({
       where: { id: vaga.id },
       data: {
-        status: StatusDeVagas.RASCUNHO, // RASCUNHO para permitir edição e reenvio
-        observacoes: input.motivoRejeicao, // Salvar motivo de rejeição no campo observacoes
-        atualizadoEm: new Date(), // Data de rejeição
+        status: StatusDeVagas.RASCUNHO, // volta para a empresa ajustar e reenviar
+        motivoRejeicao: input.motivoRejeicao.trim(),
+        observacoesAprovacao: null,
+        moderadaEm: new Date(),
+        atualizadoEm: new Date(),
       },
     });
 

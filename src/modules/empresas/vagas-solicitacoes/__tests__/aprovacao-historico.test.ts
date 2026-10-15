@@ -1,6 +1,11 @@
 jest.mock('@/config/prisma', () => ({
   prisma: {
-    empresasVagas: { findUnique: jest.fn(), update: jest.fn() },
+    empresasVagas: {
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
+    },
     auditoriaLogs: { create: jest.fn() },
   },
 }));
@@ -68,5 +73,86 @@ describe('histórico da aprovação', () => {
     await expect(
       solicitacoesService.aprovar(VAGA.id, {} as any, 'moderador-1'),
     ).resolves.toMatchObject({ success: true });
+  });
+});
+
+describe('rejeição e aprovação não mexem nas observações da empresa', () => {
+  it('rejeitar grava o motivo no campo próprio', async () => {
+    await solicitacoesService.rejeitar(
+      VAGA.id,
+      { motivoRejeicao: ' Salário fora da faixa ' } as any,
+      'setor-1',
+    );
+    const data = db.empresasVagas.update.mock.calls[0][0].data;
+    expect(data).toMatchObject({ status: 'RASCUNHO', motivoRejeicao: 'Salário fora da faixa' });
+    expect(data.moderadaEm).toBeInstanceOf(Date);
+    expect(data).not.toHaveProperty('observacoes');
+  });
+
+  it('aprovar com observação grava no campo da moderação', async () => {
+    await solicitacoesService.aprovar(VAGA.id, { observacoes: 'Ok' } as any, 'moderador-1');
+    const data = db.empresasVagas.update.mock.calls[0][0].data;
+    expect(data).toMatchObject({ observacoesAprovacao: 'Ok', motivoRejeicao: null });
+    expect(data).not.toHaveProperty('observacoes');
+  });
+});
+
+describe('situação das solicitações', () => {
+  const linha = (status: string, extra: Record<string, unknown> = {}) => ({
+    id: `v-${status}`,
+    codigo: 'ABC123',
+    titulo: 'Vaga',
+    status,
+    inseridaEm: new Date('2026-10-15T10:00:00Z'),
+    atualizadoEm: new Date('2026-10-15T12:00:00Z'),
+    motivoRejeicao: null,
+    observacoesAprovacao: null,
+    moderadaEm: null,
+    Usuarios: { id: 'e1', nomeCompleto: 'Empresa', codUsuario: 'E1', cnpj: null },
+    ...extra,
+  });
+
+  const listar = async (linhas: any[], status?: string[]) => {
+    db.empresasVagas.findMany.mockResolvedValue(linhas);
+    db.empresasVagas.count.mockResolvedValue(linhas.length);
+    return solicitacoesService.list({ page: 1, pageSize: 10, status } as any);
+  };
+
+  it('rascunho com observação da empresa não aparece como rejeitada', async () => {
+    const { data } = await listar([linha('RASCUNHO', { observacoes: 'Texto da empresa' })]);
+    expect(data[0].status).toBe('CANCELADA');
+    expect(data[0].motivoRejeicao).toBeNull();
+  });
+
+  it('rejeitada = rascunho com motivo de rejeição', async () => {
+    const moderadaEm = new Date('2026-10-15T13:00:00Z');
+    const { data } = await listar([
+      linha('RASCUNHO', { motivoRejeicao: 'Faltou salário', moderadaEm }),
+    ]);
+    expect(data[0]).toMatchObject({
+      status: 'REJEITADA',
+      motivoRejeicao: 'Faltou salário',
+      dataResposta: moderadaEm.toISOString(),
+    });
+  });
+
+  it('vaga despublicada ou encerrada passou pela aprovação: não é "rejeitada"', async () => {
+    const { data } = await listar([linha('DESPUBLICADA'), linha('ENCERRADA')]);
+    expect(data.map((d: any) => d.status)).toEqual(['APROVADA', 'APROVADA']);
+  });
+
+  it('filtro "rejeitada" busca rascunhos com motivo', async () => {
+    await listar([], ['REJEITADA']);
+    const where = db.empresasVagas.findMany.mock.calls[0][0].where;
+    expect(where.AND).toContainEqual({
+      OR: [{ status: 'RASCUNHO', motivoRejeicao: { not: null } }],
+    });
+  });
+
+  it('observação da aprovação vem do campo próprio', async () => {
+    const { data } = await listar([
+      linha('PUBLICADO', { observacoesAprovacao: 'Aprovada', observacoes: 'Da empresa' }),
+    ]);
+    expect(data[0].observacoes).toBe('Aprovada');
   });
 });

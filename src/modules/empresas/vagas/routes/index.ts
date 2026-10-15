@@ -1101,6 +1101,29 @@ router.post(
  *       404: { description: Vaga não encontrada }
  *       409: { description: Só vagas publicadas ou em análise podem ser despublicadas }
  */
+/**
+ * @openapi
+ * /api/v1/empresas/vagas/{id}/historico:
+ *   get:
+ *     summary: Histórico da vaga (quem criou, enviou, aprovou, rejeitou, despublicou, editou)
+ *     description: >
+ *       ADMIN, MODERADOR e SETOR_DE_VAGAS veem o histórico de qualquer vaga, com o nome de
+ *       quem fez cada ação. EMPRESA vê só o das próprias vagas; ações da equipe aparecem como
+ *       "Setor de vagas". Ações anteriores ao registro do histórico vêm sem autor.
+ *     tags: [Empresas - Vagas]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: Entradas do histórico, mais recentes primeiro }
+ *       404: { description: Vaga não encontrada }
+ */
+router.get('/:id/historico', supabaseAuthMiddleware(protectedRoles), VagasController.historico);
+
 router.post(
   '/:id/despublicar',
   supabaseAuthMiddleware(protectedRoles),

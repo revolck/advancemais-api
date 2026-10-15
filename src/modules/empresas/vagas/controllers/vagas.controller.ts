@@ -5,6 +5,7 @@ import { setCacheHeaders, DEFAULT_TTL } from '@/utils/cache';
 import { Roles } from '@/modules/usuarios/enums/Roles';
 
 import { vagasService } from '@/modules/empresas/vagas/services/vagas.service';
+import { listarHistoricoDaVaga } from '@/modules/empresas/vagas/services/historico-vaga.service';
 import {
   EmpresaSemPlanoAtivoError,
   LimiteVagasDestaqueAtingidoError,
@@ -471,6 +472,20 @@ export class VagasController {
         success: false,
         code: 'VAGAS_ENVIAR_ANALISE_ERROR',
         message: 'Erro ao enviar a vaga para aprovação',
+      });
+    }
+  };
+
+  static historico = async (req: Request, res: Response) => {
+    try {
+      const data = await listarHistoricoDaVaga(req.params.id, atorDaRequisicao(req));
+      res.json({ success: true, data });
+    } catch (error: any) {
+      if (responderErroDeRegra(res, error)) return;
+      res.status(500).json({
+        success: false,
+        code: 'VAGAS_HISTORICO_ERROR',
+        message: 'Erro ao carregar o histórico da vaga',
       });
     }
   };

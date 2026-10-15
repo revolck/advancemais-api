@@ -1389,6 +1389,10 @@ model EmpresasVagas {
   atividades                  Json
   beneficios                  Json
   observacoes                 String?
+  /// Moderação do setor de vagas (separada das observações escritas pela empresa)
+  motivoRejeicao              String?                      @db.VarChar(1000)
+  observacoesAprovacao        String?                      @db.VarChar(1000)
+  moderadaEm                  DateTime?
   jornada                     Jornadas                     @default(INTEGRAL)
   senioridade                 Senioridade                  @default(ABERTO)
   inscricoesAte               DateTime?

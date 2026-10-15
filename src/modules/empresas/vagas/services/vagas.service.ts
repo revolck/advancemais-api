@@ -543,7 +543,11 @@ const sanitizeUpdateData = (data: UpdateVagaData): Prisma.EmpresasVagasUnchecked
   return update;
 };
 
-const transformVaga = (vaga: VagaWithEmpresa) => {
+/**
+ * Moderação (motivo da rejeição, observação da aprovação) é conversa entre o setor de
+ * vagas e a empresa: só sai nas respostas do painel, nunca na vaga pública.
+ */
+const transformVaga = (vaga: VagaWithEmpresa, opcoes?: { moderacao?: boolean }) => {
   if (!vaga) return null;
 
   const {
@@ -551,8 +555,18 @@ const transformVaga = (vaga: VagaWithEmpresa) => {
     EmpresasVagasDestaque: destaqueInfo,
     CandidatosAreasInteresse: areaInteresse,
     CandidatosSubareasInteresse: subareaInteresse,
+    motivoRejeicao,
+    observacoesAprovacao,
+    moderadaEm,
     ...vagaSemMetadados
   } = vaga;
+  const moderacao = opcoes?.moderacao
+    ? {
+        motivoRejeicao: motivoRejeicao ?? null,
+        observacoesAprovacao: observacoesAprovacao ?? null,
+        moderadaEm: moderadaEm ?? null,
+      }
+    : {};
 
   const empresaUsuarioRaw =
     vagaSemMetadados.Usuarios &&
@@ -604,6 +618,7 @@ const transformVaga = (vaga: VagaWithEmpresa) => {
 
   return {
     ...vagaSemMetadados,
+    ...moderacao,
     areaInteresse: areaInteresse
       ? {
           id: areaInteresse.id,
@@ -779,7 +794,7 @@ export const vagasService = {
       ...includeEmpresa,
     });
 
-    return vaga ? transformVaga(vaga) : null;
+    return vaga ? transformVaga(vaga, { moderacao: true }) : null;
   },
 
   get: async (id: string) => {
@@ -922,7 +937,7 @@ export const vagasService = {
                 : 'Vaga criada como rascunho (limite do plano)',
           para: statusInicial,
         });
-        return { ...transformVaga(vaga), avisoStatus };
+        return { ...transformVaga(vaga, { moderacao: true }), avisoStatus };
       } catch (error) {
         if (isUniqueConstraintForField(error, 'slug')) {
           continue;
@@ -1066,7 +1081,7 @@ export const vagasService = {
     });
 
     return {
-      ...transformVaga(vaga),
+      ...transformVaga(vaga, { moderacao: true }),
       avisoStatus: voltaParaAnalise
         ? 'Alterações salvas. A vaga saiu do ar e voltou para a aprovação do setor de vagas.'
         : null,
@@ -1117,6 +1132,8 @@ export const vagasService = {
       where: { id },
       data: {
         status: novoStatus,
+        // Reenvio: o motivo da rejeição anterior sai da vaga (continua no histórico)
+        motivoRejeicao: null,
         ...(novoStatus === StatusDeVagas.PUBLICADO ? { inseridaEm: new Date() } : {}),
       },
       ...includeEmpresa,
@@ -1132,7 +1149,7 @@ export const vagasService = {
       de: vaga.status,
       para: novoStatus,
     });
-    return transformVaga(atualizada);
+    return transformVaga(atualizada, { moderacao: true });
   },
 
   /** Publicada → despublicada; em análise → volta a rascunho. Libera espaço no plano. */
@@ -1167,7 +1184,7 @@ export const vagasService = {
       de: vaga.status,
       para: destino,
     });
-    return transformVaga(atualizada);
+    return transformVaga(atualizada, { moderacao: true });
   },
 
   /** Excluir de vez só a própria vaga e só sem candidatos (com candidatos: despublique) */
